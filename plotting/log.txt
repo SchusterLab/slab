@@ -1,0 +1,22 @@
+Launching Server App
+Initializing server window
+Starting timer
+timer started
+Launching Server App
+Initializing server window
+Starting timer
+timer started
+Error: Traceback (most recent call last):
+
+  File "S:\_Lib\python\slab\plotting\plotting.py", line 32, in make_server_window
+    sys.exit(app.exec_())
+
+SystemExit: 0
+
+Error: Traceback (most recent call last):
+
+  File "S:\_Lib\python\slab\plotting\plotting.py", line 32, in make_server_window
+    sys.exit(app.exec_())
+
+SystemExit: 0
+
