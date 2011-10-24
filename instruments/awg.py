@@ -11,32 +11,32 @@ from guiqwt.pyplot import *
 import time
 
 class AWG81180A(VisaInstrument):
-              
+
     def get_id(self):
         return self.query("*IDN?\n")
 
     def select_channel(self,channel=1):    #Set Channel
         self.write(":INSTrument:SELect " + str(channel)+"\n")
-        
-        
+
+
     def get_mode(self):
         return self.query(":FUNCtion:MODE?")
-        
+
     def set_mode(self,mode="USER"):        #Set Mode
         self.write(":FUNCtion:MODE " + mode+"\n")
-        
+
     def get_clockrate(self):
         return float(self.query(":FREQuency:RASTer?"))
 
     def set_clockrate(self,clockrate=1e9):
         self.write( (":FREQuency:RASTer %E\n" % (clockrate)))
-        
+
     def get_amplitude(self):
         return float(self.query(":VOLTage:LEVel:AMPLitude?"))
-    
+
     def set_amplitude(self,amp):
         self.write((":VOLTage:LEVel:AMPLitude %f\n" % (amp)))
-    
+
     def get_offset(self):
         return float(self.query(":VOLTage:LEVel:OFFSet?"))
 
@@ -50,7 +50,7 @@ class AWG81180A(VisaInstrument):
         if output:
             self.write(":OUTPut:STATe ON\n")
         else:
-            self.write(":OUTPut:STATe OFF\n")      
+            self.write(":OUTPut:STATe OFF\n")
 
     def get_sync_output(self):
         return bool(self.query(":OUTPut:SYNC:STATe?"))
@@ -63,16 +63,16 @@ class AWG81180A(VisaInstrument):
 
     def select_trace(self,trace=1):
         self.write((":TRACe:SELect %d\n") % trace)
-    
+
     def get_trace(self):
         return int(self.query(":TRACe:SELect?"))
-        
+
     def delete_trace(self,trace):
         self.write(":TRACe:DELete %d\n" % trace)
 
     def delete_all(self):
         self.write(":TRACe:DELete:ALL\n")
-        
+
     def define_trace(self,trace_num,length):
         self.write(":TRACe:DEFine %d, %d" % (trace_num, length))   #define segment length
 
@@ -119,10 +119,10 @@ class AWG81180A(VisaInstrument):
 
     def select_sequence(self,seq_num=1):
         self.write(":SEQuence:SELect %d" % seq_num)
-        
+
     def get_sequence(self):
         return int(self.query(":SEQuence:SELect?"))
-    
+
     def define_sequence_step(self,step,seg_num,loops=1,jump_flag=False):
         if jump_flag: jump=1
         else: jump=0
@@ -130,7 +130,7 @@ class AWG81180A(VisaInstrument):
 
     def get_sequence_step(self):
         return self.query(":SEQuence:DEFine?")
-        
+
     def get_settings(self):
         settings=VisaInstrument.get_settings(self)
         settings['amplitude']=self.get_amplitude()
@@ -139,10 +139,10 @@ class AWG81180A(VisaInstrument):
         settings['sync_output']=self.get_sync_output()
         settings['clockrate']=self.get_clockrate()
         settings['mode']=self.get_mode()
-        
+
 if __name__=="__main__":
 #    a=mod(arange(32*2048),2048)
-#    a=arange(1000*2048.)    
+#    a=arange(1000*2048.)
 #    b=zeros(a.__len__())
 #    teeth=100
 #    for f in arange(0.001,.1,0.001):
@@ -156,7 +156,7 @@ if __name__=="__main__":
     print "Changing arb waveform"
     awg.set_output(False)
     awg.select_channel(1)
-    awg.set_mode("USER")    
+    awg.set_mode("USER")
     awg.set_amplitude(2.0)
     awg.set_offset(1.0)
     awg.delete_all()
@@ -172,10 +172,10 @@ if __name__=="__main__":
         awg.define_sequence_step(i+1,i+1)
     figure(1)
     imshow(array(arr))
-        
-    awg.set_output(True) 
+
+    awg.set_output(True)
     awg.set_mode("SEQUENCE")
-    
+
     print "Finished uploading data."
-    
-        
+
+

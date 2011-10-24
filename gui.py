@@ -45,8 +45,8 @@ from PyQt4.QtGui import (QMainWindow, QMessageBox, QSplitter, QListWidget,
                          QFileDialog,QSizePolicy,QPushButton)
 from PyQt4.QtCore import QSize, QT_VERSION_STR, PYQT_VERSION_STR, Qt, SIGNAL,QTimer
 from PyQt4 import QtCore
-   
-   
+
+
 """
 SlabWindow is a default base class for making a GUI script
 In order to use SlabWindow properly you must define:
@@ -54,7 +54,7 @@ In order to use SlabWindow properly you must define:
     load_bookmark(filename)
     save_bookmark(filename)
 There are several useful variables/methods to make it easy to create the gui
-    self.paramswidget (this a vertical qsplitter on the left)    
+    self.paramswidget (this a vertical qsplitter on the left)
     self.plotswidget (this is a vertical qsplitter on the right)
     self.add_plot_updater (self,plot_name,plot_type,plot,plot_item) adds an item to the autoupdate table
     self.status has a reference to the status bar
@@ -67,32 +67,32 @@ class SlabWindow(QMainWindow):
             self.setWindowIcon(get_icon('python.png'))
         else:
             self.setWindowIcon(get_icon(icon_fname))
-            
+
         self.setWindowTitle(title)              #Set window title
         self.resize(QSize(size[0],size[1]))     #Set window size
         self.status = self.statusBar()          #Define status bar
         self.status.showMessage(status_msg, 5000)    #put default status message
-        
+
         self.mainwidget= QSplitter()    #Setup central widget to be a horizontal QSplitter
         self.mainwidget.setContentsMargins(10, 10, 10, 10)
         self.mainwidget.setOrientation(Qt.Horizontal)
         self.mainwidget.toolbar=self.addToolBar("Image")
-        self.setCentralWidget(self.mainwidget)   
-        
+        self.setCentralWidget(self.mainwidget)
+
         self.paramswidget= QSplitter()  #parameters on left
         self.paramswidget.setContentsMargins(10, 10, 10, 10)
-        self.paramswidget.setOrientation(Qt.Vertical) 
-        
+        self.paramswidget.setOrientation(Qt.Vertical)
+
         self.plotswidget= QSplitter()   # and plot widgets on right
         self.plotswidget.setContentsMargins(10, 10, 10, 10)
-        self.plotswidget.setOrientation(Qt.Vertical) 
-        
+        self.plotswidget.setOrientation(Qt.Vertical)
+
         self.mainwidget.addWidget(self.paramswidget)    #Add params widget
         self.mainwidget.addWidget(self.plotswidget)     #and plots widget to window
 
         self.setupUpdaters()
         self.setupMenus()
-        self.setupWidgets()
+#        self.setupWidgets()
 
     def setupUpdaters(self):
         self.plot_update_list={}    #Dictionary of plots with format {'plot_type':plot_type,'plot':plot,'plot_item':plot_item,'parent_conn':parent_conn,'child_conn':child_conn}
@@ -125,7 +125,7 @@ class SlabWindow(QMainWindow):
                                     tip="Quit application",
                                     triggered=self.close)
         add_actions(file_menu, (prefix_action, None,load_bookmark_action, save_bookmark_action,None, quit_action))
-        
+
         # Help menu
         help_menu = self.menuBar().addMenu("?")
         about_action = create_action(self, "About...",
@@ -166,25 +166,25 @@ class SlabWindow(QMainWindow):
 
     def update_plots(self):
         for name,update_data in self.plot_update_list.iteritems():
-            if update_data['plot_type'] == "line_plot":            
+            if update_data['plot_type'] == "line_plot":
                 self.update_lineplot(update_data)
-                
+
     def update_lineplot(self, update_data):
-        pconn=update_data['parent_conn']        
+        pconn=update_data['parent_conn']
         if pconn!=None:
             x=None
             while pconn.poll():
                 x,y=pconn.recv()
-            if x!=None: 
+            if x!=None:
                 #---Update curve
                 update_data['plot_item'].set_data(x, y)
                 update_data['plot'].replot()
-                #---        
+                #---
 
 #class SlabScript:
-#    
-#    params=MyDataSet()    
-#    
+#
+#    params=MyDataSet()
+#
 #    def show_gui(self):
 #        app=guidata.qapplication()
 #        #self.params.edit()
@@ -211,16 +211,16 @@ class SlabWindow(QMainWindow):
 #                                    tip="Quit application")#,
 ##                                    triggered=self.close)
 #        add_actions(file_menu, (new_action, open_action, None, quit_action))
-#        
+#
 #        # Help menu
 #        help_menu = self.menuBar().addMenu("?")
 #        about_action = create_action(self, "About...",
 #                                     icon=get_std_icon('MessageBoxInformation'))#,
 ##                                     triggered=self.about)
-#        add_actions(help_menu, (about_action,))    
-    
+#        add_actions(help_menu, (about_action,))
+
 if __name__ == "__main__":
     # Create QApplication
     script=SlabScript()
     script.show_gui()
-    
+
