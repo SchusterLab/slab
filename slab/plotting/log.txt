@@ -1,9 +1,9 @@
 Launching Server App
 Initializing server window
-Starting timer
-timer started
 Launching Server App
 Initializing server window
+Starting timer
+timer started
 Starting timer
 timer started
 Error: Traceback (most recent call last):

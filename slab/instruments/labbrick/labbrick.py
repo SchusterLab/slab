@@ -24,10 +24,14 @@ U32PP = C.POINTER(U32P)
 I32 = C.c_int32
 CFLT = C.c_float
 
-LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
+try:
+    LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
+    LABBRICKDLL=C.CDLL(LMS103dllpath)
+except:
+    print "Warning could not load labbrick dll"
 
 def LMS_get_device_info():
-    dll=C.CDLL(LMS103dllpath)
+    dll=LABBRICKDLL
     dll.fnLMS_SetTestMode(U8(int(False)))
     device_info_array_type = U32 * int(dll.fnLMS_GetNumDevices(None))
     a=device_info_array_type()
@@ -63,7 +67,7 @@ class LMS103(Instrument):
         for devinfo in devinfos:
             if devinfo['serial']==serial:
                 return devinfo
-        print "Error LAbbrick serial # %d not found! returning first device found" % serial
+        print "Error Labbrick serial # %d not found! returning first device found" % serial
         print devinfos
         return None
 
@@ -110,12 +114,12 @@ class LMS103(Instrument):
         self.dll.fnLMS_SetPowerLevel(self.devid,I32(int(power * 4)))
         
     def get_frequency(self):
-        """Get Frequency in MHz"""
-        return float(self.dll.fnLMS_GetFrequency(self.devid))/100000.
+        """Get Frequency in Hz"""
+        return float(self.dll.fnLMS_GetFrequency(self.devid)) * 10.0
 
     def set_frequency(self,frequency):
-        """Set Frequency in MHz"""
-        self.dll.fnLMS_SetFrequency(self.devid,U32(int(frequency * 100000)))
+        """Set Frequency in Hz"""
+        self.dll.fnLMS_SetFrequency(self.devid,U32(int(frequency/10.0)))
         
     def get_output(self):
         return bool(self.dll.fnLMS_GetRF_On(self.devid))

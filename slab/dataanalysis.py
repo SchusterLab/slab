@@ -9,6 +9,7 @@ import numpy as np
 from guiqwt.pyplot import *
 import glob
 import os.path
+
 from numpy import linspace,argmin,argmax, argsort, genfromtxt,loadtxt,array,transpose
 import dateutil
 import time
@@ -47,7 +48,7 @@ def load_nwa_dir(datapath):
 def next_file_index(datapath,prefix=''):
     """Searches directories for files of the form *_prefix* and returns next number
         in the series"""
-        
+
     dirlist=glob.glob(os.path.join(datapath,'*_'+prefix+'*'))
     dirlist.sort()
     try:
@@ -80,6 +81,7 @@ def make_datapath(expt_path,prefix,date_str=None):
     ii=next_path_index(expt_path,prefix)
     datapath=os.path.join(expt_path,"%s_%s_%03d" % (tag,prefix,ii) )
     os.mkdir(datapath)
+    if datapath[-1]!='\\': datapath+="\\"
     return datapath
     
 def current_datapath(expt_path,prefix,date_str=None):
