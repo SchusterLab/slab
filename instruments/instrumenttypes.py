@@ -9,6 +9,14 @@ import time
 import serial
 
 class Instrument(object):
+    """
+    A subclass of Instrument is an instrument which communicates over a certain
+    channel. The subclass must define the methods write and read, for
+    communication over that channel
+    """
+    # (Phil) Are these class variables ever set? Looks like everything used is
+    # part of the object rather than the class 
+    # (i.e. self.address vs Instrument.address)
     address=''                #Address of instrument
     name=''                   #Instrument Name
     enabled=False             #If enabled=False commands should not be sent

@@ -22,38 +22,38 @@ class E5071(SocketInstrument):
 #### Frequency setup
     def set_start_frequency(self,freq,channel=1):
         self.write(":SENS%d:FREQ:START %f" % (channel,freq))
-
+        
     def get_start_frequency(self,channel=1):
         return float(self.query(":SENS%d:FREQ:START?" % channel))
 
     def set_stop_frequency(self,freq,channel=1):
         self.write(":SENS%d:FREQ:STOP %f" % (channel,freq))
-
+        
     def get_stop_frequency(self,channel=1):
         return float(self.query(":SENS%d:FREQ:STOP?" % channel))
 
     def set_center_frequency(self,freq,channel=1):
         self.write(":SENS%d:FREQ:CENTer %f" % (channel,freq))
-
+        
     def get_center_frequency(self,channel=1):
         return float(self.query(":SENS%d:FREQ:CENTer?" % channel))
 
     def set_span(self,span,channel=1):
         return self.write(":SENS%d:FREQ:SPAN %f" % (channel,span))
-
+        
     def get_span(self,channel=1):
         return float(self.query(":SENS%d:FREQ:SPAN?" % channel))
-
+        
     def set_sweep_points(self,numpts=1600,channel=1):
         self.write(":SENSe%d:SWEep:POINts %f" % (channel,numpts))
-
+    
     def get_sweep_points(self,channel=1):
         return float(self.query(":SENSe%d:SWEep:POINts?" % (channel)))
 
 #### Averaging
     def set_averages(self,averages,channel=1):
         self.write(":SENS%d:AVERage:COUNt %d" % (channel,averages))
-
+        
     def get_averages(self,channel=1):
         return int(self.query(":SENS%d:average:count?" % channel))
 
@@ -61,16 +61,16 @@ class E5071(SocketInstrument):
         if state: s="ON"
         else: s="OFF"
         self.write(":SENS%d:AVERage:state %s" % (channel,s))
-
+        
     def get_average_state(self,channel=1):
         return bool(self.query(":SENS%d:average:state?" % channel))
 
     def clear_averages(self,channel=1):
         self.write(":SENS%d:average:clear" % channel)
 
-    def set_ifbw(self,bw,channel=1):
+    def set_ifbw(self,bw,channel=1): 
         self.write(":SENS%d:BANDwidth:RESolution %f" %(channel,bw))
-
+    
     def get_ifbw(self,channel=1):
         return float(self.query(":SENS%d:BANDwidth:RESolution?" %(channel)))
 
@@ -80,33 +80,33 @@ class E5071(SocketInstrument):
 
     def trigger_single (self):
         self.write(':TRIG:SING')
-
+        
     def set_trigger_average_mode(self,state=True):
         if state: self.write(':TRIG:AVER ON')
         else: self.write(':TRIG:AVER OFF')
 
     def get_trigger_average_mode(self):
         return bool(self.query(':TRIG:AVER?'))
-
+        
     def set_trigger_source (self,source="INTERNAL"):  #INTERNAL, MANUAL, EXTERNAL,BUS
         self.write(':TRIG:SEQ:SOURCE ' + source)
 
     def get_trigger_source (self):  #INTERNAL, MANUAL, EXTERNAL,BUS
         return self.query(':TRIG:SEQ:SOURCE?')
-
+        
 
 #### Source
 
     def set_power(self,power,channel=1):
         self.write(":SOURCE%d:POWER %f" % (channel,power))
-
+        
     def get_power(self,channel=1):
         return float(self.query(":SOURCE%d:POWER?" % channel))
-
+        
     def set_output(self,state=True):
         if state: self.write(":OUTPUT ON")
         else: self.write(":OUTPUT ON")
-
+        
     def get_output(self):
         return bool(self.query(":OUTPUT?"))
 
@@ -114,18 +114,18 @@ class E5071(SocketInstrument):
 
     def save_file(self,fname):
         self.write('MMEMORY:STORE:FDATA \"' + fname + '\"')
-
+        
     def set_format(self,trace_format='MLOG',channel=1):
-        """set_format: valid options are
+        """set_format: valid options are 
         {MLOGarithmic|PHASe|GDELay| SLINear|SLOGarithmic|SCOMplex|SMITh|SADMittance|PLINear|PLOGarithmic|POLar|MLINear|SWR|REAL| IMAGinary|UPHase|PPHase}
         """
         self.write(":CALC:FORMAT "+trace_format)
     def get_format(self,channel=1):
-        """set_format: valid options are
+        """set_format: valid options are 
         {MLOGarithmic|PHASe|GDELay| SLINear|SLOGarithmic|SCOMplex|SMITh|SADMittance|PLINear|PLOGarithmic|POLar|MLINear|SWR|REAL| IMAGinary|UPHase|PPHase}
         """
         return self.query(":CALC:FORMAT?")
-
+               
     def read_data(self,channel=1):
         """Read current NWA Data, return fpts,mags,phases"""
 #        self.write(":CALC1:PAR1:SEL")
@@ -138,7 +138,7 @@ class E5071(SocketInstrument):
         done=False
         ii=0
         while not done:
-            time.sleep(self.query_sleep)
+            time.sleep(self.query_sleep)            
             ii+=1
             try:
                 s=self.read()
@@ -151,10 +151,10 @@ class E5071(SocketInstrument):
         data=data.reshape((-1,2))
         data=data.transpose()
         #self.data=data
-        fpts=np.linspace(self.get_start_frequency(),self.get_stop_frequency(),len(data[0]))
+        fpts=np.linspace(self.get_start_frequency(),self.get_stop_frequency(),len(data[0]))       
         return np.vstack((fpts,data))
-
-
+        
+        
 #### Meta
 
     def take_one_averaged_trace(self,fname=None):
@@ -184,7 +184,7 @@ class E5071(SocketInstrument):
         self.set_trigger_average_mode(old_avg_mode)
         self.set_trigger_source('INTERNAL')
         return ans
-
+            
     def segmented_sweep(self,start,stop,step):
         """Take a segmented sweep to achieve higher resolution"""
         span=stop-start
@@ -195,7 +195,7 @@ class E5071(SocketInstrument):
         segspan=span/segments
         starts=start+segspan*np.arange(0,segments)
         stops=starts+segspan
-
+        
         print span
         print segments
         print segspan
@@ -223,7 +223,7 @@ class E5071(SocketInstrument):
             self.averaging_complete()    #Blocks!
 
             seg_data=self.read_data()
-
+            
             seg_data=seg_data.transpose()
             last=seg_data[-1]
             seg_data=seg_data[:-1].transpose()
@@ -234,8 +234,8 @@ class E5071(SocketInstrument):
         self.set_timeout(old_timeout)
         self.set_trigger_average_mode(old_avg_mode)
         self.set_trigger_source('INTERNAL')
-
-        return np.hstack(segs)
+        
+        return np.hstack(segs)       
 
     def get_settings(self):
         settings={"start": self.get_start_frequency(),"stop":self.get_stop_frequency(),
@@ -253,16 +253,16 @@ class E5071(SocketInstrument):
         self.write(":INIT1:CONT ON")
 
 
-
+        
 def condense_nwa_files(datapath,prefix):
     prefixes,data=load_nwa_dir(datapath)
     np.save(prefix,np.array(data))
-
-
+    
+    
 def load_nwa_file(filename):
     """return three arrays: frequency magnitude and phase"""
     return np.transpose(np.loadtxt(filename,skiprows=3,delimiter=','))
-
+    
 def load_nwa_dir(datapath):
     fnames=glob.glob(os.path.join(datapath,"*.CSV"))
     fnames.sort()
@@ -270,9 +270,9 @@ def load_nwa_dir(datapath):
     data = [load_nwa_file(fname) for fname in fnames]
     return prefixes, data
 
-
+        
 def nwa_watch_temperature_sweep(na,fridge,datapath,fileprefix,windows,powers,ifbws,avgs,timeout=10000,delay=0):
-    """nwa_watch_temperature_sweep monitors the temperature (via fridge) and tells the network analyzer (na) to watch certain windows
+    """nwa_watch_temperature_sweep monitors the temperature (via fridge) and tells the network analyzer (na) to watch certain windows 
     at the specified powers, ifbws, and avgs specified
     windows= [(center1,span1),(center2,span2), ...]
     powers= [power1,power2,...]
@@ -305,13 +305,13 @@ def nwa_watch_temperature_sweep(na,fridge,datapath,fileprefix,windows,powers,ifb
             na.averaging_complete()    #Blocks!
             na.save_file("%s%04d-%3d-%s-%3.3f.csv" % (datapath,count,ii,fileprefix,Temperature))
             time.sleep(delay)
-
+            
 
 def nwa_test1(na):
     """Read NWA data and plot results"""
     fpts,mags,phases=na.read_data()
-
-    figure(1)
+   
+    figure(1)    
     subplot(2,1,1)
     xlabel("Frequency (GHz)")
     ylabel("Transmission, S21 (dB)")
@@ -321,7 +321,7 @@ def nwa_test1(na):
     ylabel("Transmitted Phase (deg)")
     plot(fpts/1e9,phases)
     show()
-
+    
 def nwa_test2(na):
     """Test segmented Sweep"""
     na.set_default_state()
@@ -331,7 +331,7 @@ def nwa_test2(na):
 
     freqs,mags,phases=na.segmented_sweep(9e9,15e9,50e3)
 
-    figure(1)
+    figure(1)    
     subplot(2,1,1)
     xlabel("Frequency (GHz)")
     ylabel("Transmission, S21 (dB)")
@@ -349,18 +349,18 @@ def nwa_test3(na):
     na.set_sweep_points()
     na.set_averages(10)
     na.set_average_state(True)
-
+    
     print na.get_settings()
     na.clear_averages()
     na.take_one_averaged_trace("test.csv")
-
-
-if __name__ =='__main__':
-#    condense_nwa_files(r'C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data','C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data\\test')
+            
+    
+if __name__ =='__main__':    
+#    condense_nwa_files(r'C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data','C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data\\test')    
     na=E5071("E0571",address="205.208.15.102")
     print na.get_id()
     print "Setting window"
-
+    
     from guiqwt.pyplot import *
     #nwa_test2(na)
 #    nwa_test2(na)

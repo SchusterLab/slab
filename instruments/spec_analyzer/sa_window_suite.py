@@ -173,11 +173,20 @@ class SpectrumAnalyzerWindow(QMainWindow, Ui_SpectrumAnalyzerWindow):
         
 if __name__ == '__main__':
     import pickle
+    from slab.instruments import InstrumentManager
+
+    expt_path="S:\\_Lib\\python\\slab\\instruments\\spec_analyzer\\"    
+    im = InstrumentManager(expt_path+"instruments.cfg")
     
     app = QApplication(sys.argv)
-    sa = SpectrumAnalyzer(protocol='serial', port=2, query_sleep=0.05)
-    sacm = SACalibrationManager(pickle.load(open('10dBm_cali.data')))
-    lo = E8257D(address='rfgen1.circuitqed.com')
+    #sa = im['SA']
+    sa = SpectrumAnalyzer(protocol='serial', port=2, query_sleep=0.05, lo_offset=10.57e6)
+    #sacm = SACalibrationManager(pickle.load(open('10dBm_cali.data')))
+    sacm = SACalibrationManager(pickle.load(open('10dBm_LMS_cali.data')))
+    #lo = E8257D(address='rfgen1.circuitqed.com')
+    lo = im['LO']
+    rf = im['RF']
+   
     window = SpectrumAnalyzerWindow(sa, sacm, lo)
     window.show()
     app.exec_()

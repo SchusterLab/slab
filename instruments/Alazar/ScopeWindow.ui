@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow">
+ <class>ScopeWindow</class>
+ <widget class="QMainWindow" name="ScopeWindow">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1024</width>
-    <height>641</height>
+    <width>1104</width>
+    <height>737</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>DScope</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout_5">
@@ -23,6 +23,12 @@
       <layout class="QVBoxLayout" name="verticalLayout_5">
        <item>
         <widget class="QGroupBox" name="SampleSettings">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="title">
           <string>Sample / Buffer Settings</string>
          </property>
@@ -40,7 +46,20 @@
              </widget>
             </item>
             <item row="0" column="1">
-             <widget class="QSpinBox" name="samplesSpinBox"/>
+             <widget class="QSpinBox" name="samplesSpinBox">
+              <property name="minimum">
+               <number>32</number>
+              </property>
+              <property name="maximum">
+               <number>999999999</number>
+              </property>
+              <property name="singleStep">
+               <number>16</number>
+              </property>
+              <property name="value">
+               <number>1024</number>
+              </property>
+             </widget>
             </item>
             <item row="1" column="0">
              <widget class="QLabel" name="label_2">
@@ -50,7 +69,14 @@
              </widget>
             </item>
             <item row="1" column="1">
-             <widget class="QSpinBox" name="recordsperbufferSpinBox"/>
+             <widget class="QSpinBox" name="recordsSpinBox">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>999999999</number>
+              </property>
+             </widget>
             </item>
             <item row="2" column="0">
              <widget class="QLabel" name="label_3">
@@ -60,7 +86,14 @@
              </widget>
             </item>
             <item row="2" column="1">
-             <widget class="QSpinBox" name="buffersSpinBox"/>
+             <widget class="QSpinBox" name="buffersSpinBox">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>999999999</number>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
@@ -69,6 +102,12 @@
        </item>
        <item>
         <widget class="QGroupBox" name="VerticalSettings">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="title">
           <string>Vertical Settings</string>
          </property>
@@ -278,6 +317,12 @@
        </item>
        <item>
         <widget class="QGroupBox" name="ClockSettings">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="title">
           <string>Clock Settings</string>
          </property>
@@ -384,12 +429,12 @@
              <widget class="QComboBox" name="clocksourceComboBox">
               <item>
                <property name="text">
-                <string>Internal</string>
+                <string>internal</string>
                </property>
               </item>
               <item>
                <property name="text">
-                <string>Reference</string>
+                <string>reference</string>
                </property>
               </item>
               <item>
@@ -415,12 +460,12 @@
              <widget class="QComboBox" name="clockedgeComboBox">
               <item>
                <property name="text">
-                <string>Rising</string>
+                <string>rising</string>
                </property>
               </item>
               <item>
                <property name="text">
-                <string>Falling</string>
+                <string>falling</string>
                </property>
               </item>
              </widget>
@@ -433,7 +478,14 @@
              </widget>
             </item>
             <item row="3" column="1">
-             <widget class="QDoubleSpinBox" name="timeoutSpinBox"/>
+             <widget class="QSpinBox" name="timeoutSpinBox">
+              <property name="maximum">
+               <number>1000000000</number>
+              </property>
+              <property name="value">
+               <number>5000</number>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
@@ -442,192 +494,239 @@
        </item>
        <item>
         <widget class="QGroupBox" name="TriggerSettings">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="title">
           <string>Trigger Settings</string>
          </property>
-         <layout class="QHBoxLayout" name="horizontalLayout">
+         <layout class="QVBoxLayout" name="verticalLayout_6">
           <item>
-           <layout class="QFormLayout" name="formLayout_3">
-            <property name="fieldGrowthPolicy">
-             <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-            </property>
-            <item row="0" column="0">
-             <widget class="QLabel" name="label_7">
-              <property name="text">
-               <string>Source 1</string>
+           <layout class="QHBoxLayout" name="horizontalLayout">
+            <item>
+             <layout class="QFormLayout" name="formLayout_3">
+              <property name="fieldGrowthPolicy">
+               <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
               </property>
-             </widget>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_7">
+                <property name="text">
+                 <string>Source 1</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="trig1_sourceComboBox">
+                <property name="currentIndex">
+                 <number>2</number>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>CH_A</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>CH_B</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>external</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>disabled</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QComboBox" name="trig1_edgeComboBox">
+                <item>
+                 <property name="text">
+                  <string>rising</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>falling</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_9">
+                <property name="text">
+                 <string>Level 1</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QDoubleSpinBox" name="trig1_levelSpinBox">
+                <property name="value">
+                 <double>1.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="label_11">
+                <property name="text">
+                 <string>Coupling</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QComboBox" name="trigCouplingComboBox">
+                <item>
+                 <property name="text">
+                  <string>DC</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>AC</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_8">
+                <property name="text">
+                 <string>Edge 1</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
-            <item row="0" column="1">
-             <widget class="QComboBox" name="comboBox_4">
-              <item>
-               <property name="text">
-                <string>CH 1</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>CH 2</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>External</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Disabled</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QComboBox" name="comboBox_5">
-              <item>
-               <property name="text">
-                <string>Rising</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Falling</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_9">
-              <property name="text">
-               <string>Level 1</string>
+            <item>
+             <layout class="QFormLayout" name="formLayout_4">
+              <property name="fieldGrowthPolicy">
+               <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
               </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="ch1_triglevelSpinBox"/>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_11">
-              <property name="text">
-               <string>Coupling</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QComboBox" name="comboBox_7">
-              <item>
-               <property name="text">
-                <string>DC</string>
-               </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_12">
+                <property name="text">
+                 <string>Source 2</string>
+                </property>
+               </widget>
               </item>
-              <item>
-               <property name="text">
-                <string>AC</string>
-               </property>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="trig2_sourceComboBox">
+                <property name="currentIndex">
+                 <number>3</number>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>CH_A</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>CH_B</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>external</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>disabled</string>
+                 </property>
+                </item>
+               </widget>
               </item>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_8">
-              <property name="text">
-               <string>Edge 1</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QFormLayout" name="formLayout_4">
-            <property name="fieldGrowthPolicy">
-             <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-            </property>
-            <item row="0" column="0">
-             <widget class="QLabel" name="label_12">
-              <property name="text">
-               <string>Source 1</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
-             <widget class="QComboBox" name="comboBox_6">
-              <item>
-               <property name="text">
-                <string>CH 1</string>
-               </property>
+              <item row="1" column="1">
+               <widget class="QComboBox" name="trig2_edgeComboBox">
+                <item>
+                 <property name="text">
+                  <string>rising</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>falling</string>
+                 </property>
+                </item>
+               </widget>
               </item>
-              <item>
-               <property name="text">
-                <string>CH 2</string>
-               </property>
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_13">
+                <property name="text">
+                 <string>Level 2</string>
+                </property>
+               </widget>
               </item>
-              <item>
-               <property name="text">
-                <string>External</string>
-               </property>
+              <item row="2" column="1">
+               <widget class="QDoubleSpinBox" name="trig2_levelSpinBox">
+                <property name="value">
+                 <double>1.000000000000000</double>
+                </property>
+               </widget>
               </item>
-              <item>
-               <property name="text">
-                <string>Disabled</string>
-               </property>
+              <item row="3" column="0">
+               <widget class="QLabel" name="label_14">
+                <property name="text">
+                 <string>Operation</string>
+                </property>
+               </widget>
               </item>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QComboBox" name="comboBox_8">
-              <item>
-               <property name="text">
-                <string>Rising</string>
-               </property>
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_15">
+                <property name="text">
+                 <string>Edge 2</string>
+                </property>
+               </widget>
               </item>
-              <item>
-               <property name="text">
-                <string>Falling</string>
-               </property>
+              <item row="3" column="1">
+               <widget class="QComboBox" name="trigOpComboBox">
+                <item>
+                 <property name="text">
+                  <string>or</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>and</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>xor</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>and not</string>
+                 </property>
+                </item>
+               </widget>
               </item>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_13">
-              <property name="text">
-               <string>Level 1</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="ch1_triglevelSpinBox_2"/>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_14">
-              <property name="text">
-               <string>Coupling</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QComboBox" name="comboBox_9">
-              <item>
-               <property name="text">
-                <string>DC</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>AC</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_15">
-              <property name="text">
-               <string>Edge 1</string>
-              </property>
-             </widget>
+             </layout>
             </item>
            </layout>
           </item>
          </layout>
         </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>
@@ -644,7 +743,32 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit"/>
+         <widget class="QLineEdit" name="datapathLineEdit"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_6">
+        <item>
+         <widget class="QLabel" name="label_20">
+          <property name="text">
+           <string>File Prefix</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="filenumberLabel">
+          <property name="text">
+           <string>000_</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="prefixLineEdit">
+          <property name="text">
+           <string>trace</string>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
@@ -654,6 +778,20 @@
          <widget class="QPushButton" name="runButton">
           <property name="text">
            <string>Run</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="saveButton">
+          <property name="text">
+           <string>Save</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="autosaveCheckBox">
+          <property name="text">
+           <string>autosave</string>
           </property>
          </widget>
         </item>
@@ -669,6 +807,9 @@
         </item>
         <item>
          <widget class="QCheckBox" name="x_autoscaleCheckBox">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="text">
            <string>autoscale X</string>
           </property>
@@ -679,8 +820,21 @@
         </item>
         <item>
          <widget class="QCheckBox" name="y_autoscaleCheckBox">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="text">
            <string>autoscale Y</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="autoscaleCheckBox">
+          <property name="text">
+           <string>autoscale</string>
           </property>
           <property name="checked">
            <bool>true</bool>
@@ -705,7 +859,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1024</width>
+     <width>1104</width>
      <height>22</height>
     </rect>
    </property>

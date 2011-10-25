@@ -9,31 +9,39 @@ import time
 
 class SpectrumAnalyzer(SerialInstrument, SocketInstrument):
     #general design parameters
-    #LO offset is 10.7MHz
-    #lo_offset = 10.7e6
-    #LO power is 7dBm
+    #LO offset is 10.55MHz
+    #LO power is 10dBm
     lo_power = 10
     #bandwidth is 180kHz
     bandwidth=180e3    
-    
     #calibration information
-    calibration_data = None
+    #calibration_data = None
     #min_power = None
-    step = 10
+    #step = 10
     
-    def __init__(self, name='spec_analyzer', protocol='socket', step=10, 
+    def __init__(self, name='spec_analyzer', protocol='socket',
                  address='', port=23, enabled=True, timeout=.1, recv_length=1024, 
                  query_sleep=0.005, lo_power=10, lo_offset=10.55e6, baudrate=115200):
+
         self.lo_offset = lo_offset
         self.lo_power = lo_power
         
-        if protocol == 'serial':
+        if (address.count('.') == 3):
+            #the address is in an IP address format
+            self.protocol = 'socket'
+        else:
+            #otherwise we treat the address as port
+            self.protocol = 'serial'
+            if address != '':
+                port = int(address)
+        
+        if self.protocol == 'serial':
             SerialInstrument.__init__(self, name, port, enabled, 
                                       timeout, recv_length, baudrate=baudrate, querysleep=query_sleep)
             self.term_char = ''
             time.sleep(2)
             print self.read()
-        elif protocol == 'socket':
+        elif self.protocol == 'socket':
             if ':' in address:
                 SocketInstrument.__init__(self, name, address, enabled, 
                                       timeout, recv_length)

@@ -6,3 +6,4 @@ from cryostat import Triton
 from instrumentmanager import InstrumentManager
 from awg import *
 from spec_analyzer.spectrum_analyzer import *
+from alazar import Alazar, AlazarConfig, AlazarConstants

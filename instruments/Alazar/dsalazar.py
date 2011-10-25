@@ -26,8 +26,12 @@ U32 = C.c_uint32
 U32P = C.POINTER(U32)
 U32PP = C.POINTER(U32P)
 
+DEBUGALAZAR=False
 
-CTHelp = C.CDLL(r'C:\Users\Phil\Desktop\AlazarApi\trunk\Debug\ctypes_help.dll')
+#try:
+#    CTHelp = C.CDLL(r'C:\Users\Phil\Desktop\AlazarApi\trunk\Debug\ctypes_help.dll')
+#except:
+#    print "Couldn't load ctypes_help.dll"
 
 # Helper Functions
 def int_linterp(x, a1, a2, b1, b2):
@@ -48,6 +52,16 @@ class AlazarConstants():
             (50,U32(12)), (100,U32(14)), (200,U32(16)), (500,U32(18)), (1000,U32(20)),
             (2000,U32(24)), (5000,U32(26)), (10000,U32(28)), (20000,U32(30)), (50000,U32(34)),
             (100000,U32(36)), (250000,U32(43)), (500000,U32(48)), (1000000,U32(53))]
+#    sample_rate_txt = {"1 kHz":U32(1),"2 kHz":U32(2),"5 kHz":U32(4),"10 kHz":U32(8),"20 kHz":U32(10),
+#                      "100 kHz": U32(14),"200 kHz": U32(16),"500 kHz":U32(18),
+#                      "1 MHz":U32(20),"2 MHz":U32(24),"5 MHz":U32(26),"10 MHz":U32(28),
+#                      "20 MHz":U32(30),"50 MHz":U32(34),
+#                      "100 MHz":U32(36),"250 MHz":U32(43),"500 MHz":U32(48),"1 GHz":U32(53)}
+    sample_rate_txt = {"1 kHz":1,"2 kHz":2,"5 kHz":5,"10 kHz":10,"20 kHz":20,
+                      "100 kHz": 100,"200 kHz": 200,"500 kHz":500,
+                      "1 MHz":1000,"2 MHz":2000,"5 MHz":5000,"10 MHz":10000,
+                      "20 MHz":20000,"50 MHz":50000,"100 MHz":100000,
+                      "250 MHz":250000,"500 MHz":500000,"1 GHz":1000000}
     sample_rate_external = U32(64)
     sample_rate_reference = U32(1000000000)
     clock_edge = {"rising": U32(0),
@@ -67,9 +81,11 @@ class AlazarConstants():
     input_coupling = {"AC":U32(1), "DC":U32(2)}
     input_range = [(0.04,U32(2)), (0.1,U32(5)), (0.2,U32(6)), (0.4,U32(6)),
                    (1,U32(10)), (2,U32(11)), (4,U32(12))]
+    input_range_txt = {"40 mV":0.04,"100 mV":0.1,"200 mV":0.2,"400 mV":0.4,
+                       "1 V":1.0,"2 V":2.0,"4 V":4.0}
     input_filter = {False:U32(0), True:U32(1)}
     
-class AlazarConfig():
+class AlazarConfig1():
     _form_fields_ =[("samplesPerRecord","Samples",2048),
                     ("recordsPerBuffer","Records per Buffer",10),
                     ("recordsPerAcquisition","Total Records",10),
@@ -120,6 +136,76 @@ class AlazarConfig():
             d[field_name]=self.__getattribute__(field_name)
         return d       
 
+class AlazarConfig():
+    _fields_ = [ 'samplesPerRecord',
+                 'recordsPerBuffer',
+                 'recordsPerAcquisition',
+                 'bufferCount',
+                 'clock_source',
+                 'clock_edge',
+                 'sample_rate',
+                 'trigger_source1',
+                 'trigger_edge1',
+                 'trigger_level1',
+                 'trigger_source2',
+                 'trigger_edge2',
+                 'trigger_level2',
+                 'trigger_operation',
+                 'trigger_coupling',
+                 'timeout',
+                 'ch1_enabled',
+                 'ch1_coupling',
+                 'ch1_range',
+                 'ch1_filter',
+                 'ch2_enabled',
+                 'ch2_coupling',
+                 'ch2_range',
+                 'ch2_filter']
+    
+    def __init__(self,config_dict=None):
+        if config_dict is not None:
+            self.from_dict(config_dict)
+            
+    def from_dict(self,config_dict):
+        for k,v in config_dict.items():
+            self.__dict__[k]=v
+        
+    def get_dict(self):
+        d={}
+        for field_name in self._fields_:
+            d[field_name]=getattr(self,field_name)
+        return d       
+        
+    def from_form(self,widget):
+        self.samplesPerRecord = widget.samplesSpinBox.value()
+        self.recordsPerBuffer = widget.recordsSpinBox.value()
+        self.bufferCount = widget.buffersSpinBox.value()
+        self.recordsPerAcquisition = self.bufferCount * self.recordsPerBuffer
+        self.clock_source = str(widget.clocksourceComboBox.currentText())
+        self.clock_edge = str(widget.clockedgeComboBox.currentText())
+        self.sample_rate = AlazarConstants.sample_rate_txt[str(widget.samplerateComboBox.currentText())]
+        self.trigger_source1 = str(widget.trig1_sourceComboBox.currentText())
+        self.trigger_edge1 = str(widget.trig1_edgeComboBox.currentText())
+        self.trigger_level1 = widget.trig1_levelSpinBox.value()
+        self.trigger_source2 = str(widget.trig2_sourceComboBox.currentText())
+        self.trigger_edge2 = str(widget.trig2_edgeComboBox.currentText())
+        self.trigger_level2 = widget.trig2_levelSpinBox.value()
+
+        self.trigger_operation = str(widget.trigOpComboBox.currentText())
+        self.trigger_coupling = str(widget.trigCouplingComboBox.currentText())
+
+        self.timeout = widget.timeoutSpinBox.value()
+
+        self.ch1_enabled = widget.ch1_enabledCheckBox.isChecked()
+        self.ch1_coupling = str(widget.ch1_couplingComboBox.currentText())
+        self.ch1_range = AlazarConstants.input_range_txt[str(widget.ch1_rangeComboBox.currentText())]
+        self.ch1_filter = widget.ch1_filteredCheckBox.isChecked()
+
+        self.ch2_enabled = widget.ch2_enabledCheckBox.isChecked()
+        self.ch2_coupling = str(widget.ch2_couplingComboBox.currentText())
+        self.ch2_range = AlazarConstants.input_range_txt[str(widget.ch2_rangeComboBox.currentText())]
+        self.ch2_filter = widget.ch2_filteredCheckBox.isChecked()
+
 class Alazar():
     def __init__(self,config=None, handle=None):
         self.Az = C.CDLL(r'C:\Windows\SysWow64\ATSApi.dll')
@@ -140,13 +226,13 @@ class Alazar():
         
     def configure(self,config=None):
         if config is not None: self.config=config
-        print "Configuring Clock"
+        if DEBUGALAZAR: print "Configuring Clock"
         self.configure_clock()
-        print "Configuring triggers"
+        if DEBUGALAZAR: print "Configuring triggers"
         self.configure_trigger()
-        print "Configuring inputs"
+        if DEBUGALAZAR: print "Configuring inputs"
         self.configure_inputs()
-        print "Configuring buffers"
+        if DEBUGALAZAR: print "Configuring buffers"
         self.configure_buffers()
            
     def configure_clock(self, source=None, rate=None, edge=None):
@@ -193,7 +279,7 @@ class Alazar():
         else:
             raise ValueError("reference signal not implemented yet")
         ret = self.Az.AlazarSetCaptureClock(self.handle, source, sample_rate, AlazarConstants.clock_edge[self.config.clock_edge], U32(0))
-        print "ClockConfig:", ret_to_str(ret, self.Az)
+        if DEBUGALAZAR: print "ClockConfig:", ret_to_str(ret, self.Az)
 
     def configure_trigger(self,source=None, source2=None, edge=None, edge2=None,
                  level=None, level2=None, operation=None, coupling=None, timeout=None):
@@ -239,10 +325,10 @@ class Alazar():
         ret = self.Az.AlazarSetTriggerOperation(self.handle, op,
                 AlazarConstants.trigger_engine_1, AlazarConstants.trigger_source[self.config.trigger_source1], AlazarConstants.trigger_edge[self.config.trigger_edge1], U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255)),
                 AlazarConstants.trigger_engine_2, AlazarConstants.trigger_source[self.config.trigger_source2], AlazarConstants.trigger_edge[self.config.trigger_edge2], U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255)))
-        print "Set Trigger:", ret_to_str(ret, self.Az)
+        if DEBUGALAZAR: print "Set Trigger:", ret_to_str(ret, self.Az)
         if self.config.trigger_source1 == "external":
             ret = self.Az.AlazarSetExternalTrigger(self.handle, AlazarConstants.trigger_ext_coupling[self.config.trigger_coupling], U32(0))
-            print "Set External Trigger:", ret_to_str(ret, self.Az)
+            if DEBUGALAZAR: print "Set External Trigger:", ret_to_str(ret, self.Az)
         
     def configure_inputs(self, enabled1=None, coupling1=None, range1=None, filter1=None, enabled2=None, coupling2=None, range2=None, filter2=None):
         """
@@ -269,28 +355,28 @@ class Alazar():
         for (voltage, value) in AlazarConstants.input_range:
             if self.config.ch1_range <= voltage:
                 if self.config.ch1_range < voltage:
-                    print "Warning: input range not found, using closest value,", voltage, "Volts"
+                    if DEBUGALAZAR: print "Warning: input range not found, using closest value,", voltage, "Volts"
                 self.config.ch1_range = voltage
                 ch1_range_value=value
                 break
         for (voltage, value) in AlazarConstants.input_range:
             if self.config.ch2_range <= voltage:
                 if self.config.ch2_range < voltage:
-                    print "Warning: input range not found, using closest value,", voltage, "Volts"
+                    if DEBUGALAZAR: print "Warning: input range not found, using closest value,", voltage, "Volts"
                 self.config.ch2_range = voltage
                 ch2_range_value=value
                 break
 
         if self.config.ch1_enabled:  
             ret = self.Az.AlazarInputControl(self.handle, AlazarConstants.channel["CH_A"], AlazarConstants.input_coupling[self.config.ch1_coupling], ch1_range_value, U32(2))
-            print "Input Control CH1:", ret_to_str(ret, self.Az)
+            if DEBUGALAZAR: print "Input Control CH1:", ret_to_str(ret, self.Az)
             ret = self.Az.AlazarSetBWLimit(self.handle, AlazarConstants.channel["CH_A"], AlazarConstants.input_filter[self.config.ch1_filter])
-            print "Set BW Limit:", ret_to_str(ret, self.Az)
+            if DEBUGALAZAR: print "Set BW Limit:", ret_to_str(ret, self.Az)
         if self.config.ch2_enabled:  
             ret = self.Az.AlazarInputControl(self.handle, AlazarConstants.channel["CH_B"], AlazarConstants.input_coupling[self.config.ch2_coupling], ch2_range_value, U32(2))
-            print "Input Control CH1:", ret_to_str(ret, self.Az)
+            if DEBUGALAZAR: print "Input Control CH1:", ret_to_str(ret, self.Az)
             ret = self.Az.AlazarSetBWLimit(self.handle, AlazarConstants.channel["CH_B"], AlazarConstants.input_filter[self.config.ch2_filter])
-            print "Set BW Limit:", ret_to_str(ret, self.Az)
+            if DEBUGALAZAR: print "Set BW Limit:", ret_to_str(ret, self.Az)
 
 
     def configure_buffers(self,samplesPerRecord=None,recordsPerBuffer=None,recordsPerAcquisition=None,bufferCount=None):
@@ -312,14 +398,14 @@ class Alazar():
         flags = U32 (513) #ADMA flags, should update to be more general
         
         ret = self.Az.AlazarSetRecordSize(self.handle,U32(0),U32(self.config.samplesPerRecord))        
-        print "Set Record Size:", ret_to_str(ret,self.Az)
+        if DEBUGALAZAR: print "Set Record Size:", ret_to_str(ret,self.Az)
         
         ret = self.Az.AlazarBeforeAsyncRead(self.handle,U32(channel),pretriggers,
                                        U32(self.config.samplesPerRecord), 
                                        U32(self.config.recordsPerBuffer),
                                        U32(self.config.recordsPerAcquisition),
                                        flags)
-        print "Before Read:", ret_to_str(ret,self.Az)
+        if DEBUGALAZAR: print "Before Read:", ret_to_str(ret,self.Az)
 
         self.config.bytesPerBuffer=(self.config.samplesPerRecord * self.config.recordsPerBuffer * self.config.channelCount)        
         self.bufs=[]
@@ -329,7 +415,7 @@ class Alazar():
             for j in range(self.config.bytesPerBuffer):
                 self.bufs[i][j]=U8(0)
             ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[i],U32(self.config.bytesPerBuffer))
-        print "Posted buffers: ", ret_to_str(ret,self.Az)
+        if DEBUGALAZAR: print "Posted buffers: ", ret_to_str(ret,self.Az)
         self.arrs=[np.ctypeslib.as_array(b) for b in self.bufs]
 #        for a in self.arrs:
 #            for i in range(a.__len__()):
@@ -340,21 +426,21 @@ class Alazar():
         buffersCompleted=0
         buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
         ret = self.Az.AlazarStartCapture(self.handle)
-        print "Start Capture: ", ret_to_str(ret,self.Az)
-        print "Buffers per Acquisition: ", buffersPerAcquisition
+        if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
+        if DEBUGALAZAR: print "Buffers per Acquisition: ", buffersPerAcquisition
         while (buffersCompleted < buffersPerAcquisition):
-            print "Waiting for buffer ", buffersCompleted
+            if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
             buf_idx = buffersCompleted % self.config.bufferCount
             buffersCompleted+=1           
             ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
-            print "WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
+            if DEBUGALAZAR: print "WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
             if ret_to_str(ret,self.Az) == "ApiWaitTimeout":
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
-                print "Abort AsyncRead: ", ret_to_str(ret,self.Az)            
+                if DEBUGALAZAR: print "Abort AsyncRead: ", ret_to_str(ret,self.Az)            
                 break
             if buffersCompleted < buffersPerAcquisition:            
                 ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
-                print "PostAsyncBuffer: ", ret_to_str(ret,self.Az)            
+                if DEBUGALAZAR: print "PostAsyncBuffer: ", ret_to_str(ret,self.Az)            
             self.avg_data+=self.arrs[buf_idx]
         self.avg_data=self.avg_data/buffersCompleted
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -362,7 +448,7 @@ class Alazar():
         
 
 if __name__ == "__main__":
-    ac=AlazarConfig(fedit(AlazarConfig._form_fields_))
+    ac=AlazarConfig1(fedit(AlazarConfig1._form_fields_))
 
     card=Alazar(ac)    
     card.configure()
@@ -370,7 +456,7 @@ if __name__ == "__main__":
 
     print "Buffer bytes: ", card.config.bytesPerBuffer
     print "Buffer length: ",card.arrs[0].__len__()
-    ioff()
+    ion()
     figure(1)
     plot(card.arrs[0])
     figure(2)
