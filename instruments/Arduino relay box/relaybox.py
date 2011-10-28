@@ -5,6 +5,8 @@ Created on Fri Jun 17 10:27:19 2011
 This program utilizes the pyserial library in a 32 bit environment, and can not
 be ran on a 64bit python evironment. 
 @author: Ge Yang
+
+
 """
 
 import serial
