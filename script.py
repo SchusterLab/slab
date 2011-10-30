@@ -42,52 +42,62 @@ class ScriptPlot(object):
     """
     User must provide:
         - A name (any identifier)
-        - A matplotlib figure
+        - A function make_fig()
+          which returns a matplotlib figure
         - A function update_fn(figure, data) 
           which updates the figures state to reflect new data
 
           e.g. for a line_plot
           fig = Figure
     """
-    def __init__(self, name, fig, update_fn):
+    def __init__(self, name, make_fig, update_fn):
         global SPThread
         if not SPThread:
             SPThread = ScriptPlotThread()
 
         self.parent, child = Pipe()
-        SPThread.add_fig(name, child, fig, update_fn)
+        print self.parent, child
+        SPThread.add_fig(name, child, make_fig, update_fn)
         self.name = name
 
     def send_data(self, data):
         print "sending"
-        self.parent.send((self.name, data))
+        self.parent.send(data)
 
 
 class ScriptPlotThread(Process):
     def __init__(self, sleep_time=100):
         Process.__init__(self)
+        
+        self.pnames = []
+        self.pipes = {}
+        self.make_figures = {}
+        self.figures = {}
+        self.plots = {}
+        self.update_fns = {}
 
+        self.sleep_time=sleep_time
+
+    def add_fig(self, name, pipe, make_fig, update_fn):
+        "(Probably?) only works before process has been started" 
+        self.pnames.append(name)
+        self.pipes[name] = pipe
+        self.make_figures[name] = make_fig
+        self.update_fns[name] = update_fn
+
+    def run(self):
+        self.logfile = open("C:\\Users\\phil\\Documents\\logfile", "w")
         self.app = Qt.QApplication([])
         self.win = Qt.QMainWindow()
         self.cwidget = Qt.QSplitter(Qt.Qt.Vertical)
         self.win.setCentralWidget(self.cwidget)
 
-        self.pipes = []
-        self.figures = {}
-        self.update_fns = {}
-
-        self.sleep_time=sleep_time
-
-    def add_fig(self, name, pipe, fig, update_fn):
-        plot = FigureCanvas(fig)
-
-        self.pipes.append(pipe)
-        self.figures[name] = fig
-        self.update_fns[name] = update_fn
-
-        self.cwidget.addWidget(plot)
-
-    def run(self):
+        for name in self.pnames:
+            self.figures[name] = self.make_figures[name]()
+            plot = FigureCanvas(self.figures[name])
+            self.plots[name] = plot
+            self.cwidget.addWidget(plot)
+        
         self.timer = Qt.QTimer()
         self.app.connect(self.timer, Qt.SIGNAL("timeout()"), self.wake)
         self.timer.start(self.sleep_time)
@@ -96,32 +106,45 @@ class ScriptPlotThread(Process):
         self.app.exec_()
 
     def wake(self):
-        for pipe in self.pipes:
+        for name in self.pnames:
+            pipe = self.pipes[name]
             if pipe.poll():
-                name, data = pipe.recv()
-                self.updatefns[name](self.plots[name], data)
-                self.plots[name].draw()
+                figure, plot, update_fn =\
+                    (self.figures[name], self.plots[name], self.update_fns[name])
+                
+                data = pipe.recv()
+                update_fn(figure, data)
+                plot.draw()
+                
         self.timer.start(self.sleep_time)
+        
+def go():
+    SPThread.start()
 
 # Example usage
 def simple_fig():
     f = Figure()
-    f.add_subplot(111)
+    axes = f.add_subplot(111)
+    axes.hold(False)
     return f
 
-
 def simple_fig_updater(figure, data):
-    figure.get_axes()[0].plot(data)
-
-
+    x, y = data
+    axes = figure.get_axes()[0]
+    axes.plot(x, y)
+    
 if __name__ == "__main__":
-    sp = ScriptPlot("test", simple_fig(), simple_fig_updater)
+    p1 = ScriptPlot("test", simple_fig, simple_fig_updater)
+    p2 = ScriptPlot("test2", simple_fig, simple_fig_updater)    
     print "made"
-    SPThread.start()
+    go()
     print "started"
 
+    sleep(4)
     for i in range(100):
         sleep(.1)
-        sp.send_data(np.sin(np.arange(0, 0.1 * i, 0.1)))
-
+        rng = np.arange(0, 0.1 * i, 0.1)
+        p1.send_data((rng, np.sin(rng)))
+        p2.send_data((rng, np.cos(rng)))
+        
     print "done"
