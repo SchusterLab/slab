@@ -10,7 +10,8 @@ import numpy as np
 import time
 import pickle
 
-from instruments import AWG81180A
+#from instruments import AWG81180A
+from slab.instruments import InstrumentManager
 from spectrum_analyzer import *
 from sa_calibration_manager import *
 
@@ -34,12 +35,22 @@ def set_sin(awg, channel, intensity, frequency, phase=0.0):
     '; function:shape SIN; SIN:phase '+str(phase)+'; frequency '+str(frequency))
     
 if __name__ == '__main__':
-    awg = AWG81180A(name='awg', address='GPIB::04::INSTR')
-    sa = SpectrumAnalyzer(protocol='serial', port=2)
-    sacm = SACalibrationManager(pickle.load(open('10dBm_cali.data')))
+    #awg = AWG81180A(name='awg', address='GPIB::04::INSTR')
+    im = InstrumentManager("S:\\_Lib\\python\\slab\\instruments\\spec_analyzer\\offset_optimization.cfg" )    
+    awg = im['AWG']
+    #sa = SpectrumAnalyzer(protocol='serial', port=2)
+    #Agilent analog waveform generator     
+    #sacm = SACalibrationManager(pickle.load(open('10dBm_cali.data')))
+    #sacm = SACalibrationManager(pickle.load(open('10dBm_LMS_cali.data')))
     
-    #fig = plt.figure()
-    #ax = fig.add_subplot(111, projection='3d')
+    sa = im['SA']
+    rf = im['RF']    
+    lo = im['LO']
+    
+    rf.set_frequency(6e9)
+    rf.set_power(-3)
+    lo.set_frequency(6e9+sa.lo_offset)
+    lo.set_power(10)    
     
     step = 0.1    
     xs = np.arange(-1.0, 1.0, step)
@@ -57,15 +68,15 @@ if __name__ == '__main__':
     
     while step >= 0.001:
         if step != 0.1:
-            xs = np.arange(min_d1-step*4.0, min_d1+step*5.0, step)
-            ys = np.arange(min_d2-step*4.0, min_d2+step*5.0, step)
+            xs = np.arange(min_d1-step*9.0, min_d1+step*9.0, step)
+            ys = np.arange(min_d2-step*9.0, min_d2+step*9.0, step)
             
         for d2 in ys:
             for d1 in xs:
                 set_DC(awg, 1, d1)
                 set_DC(awg, 2, d2)
                 print 'd1 = '+str(d1)+', d2 = '+str(d2)
-                time.sleep(0.01)
+                #time.sleep(0.01)
                 pwr = sa.get_avg_power()
                 if pwr <= min_op:
                     min_op = pwr
@@ -88,11 +99,14 @@ if __name__ == '__main__':
         step *= 0.1
     #X, Y = np.meshgrid(xs, ys)
     
-    #ax.scatter(np.array(X),np.array(Y),np.array(zs))
-    #ax.plot_surface(np.array(X),np.array(Y),np.array(zs))
+    
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111, projection='3d')
     #ax.set_xlabel('Q offset (V)')
     #ax.set_ylabel('I offset (V)')
     #ax.set_zlabel('RF power (dBm)')
+    #ax.scatter(np.array(X),np.array(Y),np.array(zs))
+    #ax.plot_surface(np.array(X),np.array(Y),np.array(zs))
     
     zs = [str((pwr-min_op)/(max_op-min_op)) for pwr in zs]
     plt.scatter(X, Y, c=zs)
