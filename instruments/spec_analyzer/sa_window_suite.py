@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
 """
+name: sa_window_suite.py
+description: This is the GUI of the spectrum analyzer bundled with LO (the 
+choice of LO can set up through the external config file for InstrumentManager).
+It provides plots of intensity spectrum and realtime intensity vs time plot at 
+given frequency.
+
 Created on Fri Sep 09 21:35:41 2011
 
 @author: Dai
@@ -175,8 +181,8 @@ if __name__ == '__main__':
     import pickle
     from slab.instruments import InstrumentManager
 
-    expt_path="S:\\_Lib\\python\\slab\\instruments\\spec_analyzer\\"    
-    im = InstrumentManager(expt_path+"instruments.cfg")
+    cfg_path="S:\\_Lib\\python\\slab\\instruments\\spec_analyzer\\sa_suite.cfg"
+    im = InstrumentManager(cfg_path)
     
     app = QApplication(sys.argv)
     #sa = im['SA']
