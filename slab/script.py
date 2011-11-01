@@ -3,24 +3,30 @@
 """
 script.py -- helpers for visualizing data-taking scripts
 
-goal:
-    import script
-    import matplotlib.pyplot as plt
-
-    class myPlot(script.Plot):
-        def __init__(self):
-            self.plotfn = plt.colorbar
-            # self.plotfns = []
-            script.Plot.__init__(self)
-        def update_plot(self, myData):
-            pass
-
-    plot = myPlot()
-    plotwin = script.PlotWindow([plot])
-
-    while(True):
-        myData = getData()
-        plot.sendData(myData)
+usage:
+    from script import *
+    
+    def my_fig():
+        persistent_args = ...
+        figure = ...
+        return (figure, args)
+        # or just (return figure)
+    
+    def my_fig_updater(fig, args, data):
+        # or just (my_fig_updater(fig, data))
+        ...
+        update_figure(args, data)
+    
+    ... 
+    
+    p1 = ScriptPlot("Plot 1", my_fig, my_fig_updater)
+    p2 = ScriptPlot("Plot 2", my_other_fig, my_other_fig_updater)
+    
+    while True:
+        data1, data2 = get_data()
+        p1.send_data(data)
+        p2.send_data(data)
+    
 """
 
 from multiprocessing import Process, Pipe
@@ -35,6 +41,31 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 
 import numpy as np
+import sys, os, traceback
+
+
+# Log for thread debugging
+LOGFILENAME = "C:\\Users\\phil\\Documents\\log.txt"
+def clear_log():
+    try: os.remove(LOGFILENAME)    
+    except: pass
+
+def log_error(info=''):
+    write_log("Error: "+ info + '\n'.join(traceback.format_exception(*sys.exc_info())))
+
+def print_log():
+    try:
+        f=open(LOGFILENAME,'r')
+        print f.read()
+        f.close()
+    except:
+        print "Log file empty/non-existant."
+
+def write_log(s):
+    f=open(LOGFILENAME,'a')
+    f.write(s+'\n')
+    f.close()
+
 
 SPThread = None
 
@@ -72,6 +103,7 @@ class ScriptPlotThread(Process):
         self.pnames = []
         self.pipes = {}
         self.make_figures = {}
+        self.args = {}
         self.figures = {}
         self.plots = {}
         self.update_fns = {}
@@ -93,7 +125,13 @@ class ScriptPlotThread(Process):
         self.win.setCentralWidget(self.cwidget)
 
         for name in self.pnames:
+            result = self.make_figures[name]()
+            try:
+                self.figures[name], self.args[name] = result
+            except:
+                self.figures[name] = result
             self.figures[name] = self.make_figures[name]()
+            self.figures[name].suptitle(name)
             plot = FigureCanvas(self.figures[name])
             self.plots[name] = plot
             self.cwidget.addWidget(plot)
@@ -113,7 +151,10 @@ class ScriptPlotThread(Process):
                     (self.figures[name], self.plots[name], self.update_fns[name])
                 
                 data = pipe.recv()
-                update_fn(figure, data)
+                try:
+                    update_fn(figure, self.args[name], data)
+                except:
+                    update_fn(figure, data)
                 plot.draw()
                 
         self.timer.start(self.sleep_time)
@@ -133,9 +174,13 @@ def simple_fig_updater(figure, data):
     axes = figure.get_axes()[0]
     axes.plot(x, y)
     
+def image_fig_updater(figure, data):
+    axes = figure.get_axes()[0]
+    axes.imshow(data)
+    
 if __name__ == "__main__":
     p1 = ScriptPlot("test", simple_fig, simple_fig_updater)
-    p2 = ScriptPlot("test2", simple_fig, simple_fig_updater)    
+    p2 = ScriptPlot("test2", simple_fig, image_fig_updater)    
     print "made"
     go()
     print "started"
@@ -145,6 +190,6 @@ if __name__ == "__main__":
         sleep(.1)
         rng = np.arange(0, 0.1 * i, 0.1)
         p1.send_data((rng, np.sin(rng)))
-        p2.send_data((rng, np.cos(rng)))
+        p2.send_data(np.random.rand(100,100))
         
     print "done"
