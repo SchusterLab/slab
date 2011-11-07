@@ -70,13 +70,13 @@ def get_last_from_pipe(pipe):
     except:
         return data
 
-class ScriptLinePlot(guiqwt.plot.CurveWidget):
+class ScriptLinePlot(guiqwt.plot.CurveDialog):
     def __init__(self, n_items, title, cumulative):
-        guiqwt.plot.CurveWidget.__init__(self, title=title)
+        guiqwt.plot.CurveDialog.__init__(self, toolbar=True)
 #        self.register_all_curve_tools()
         plot = self.get_plot()
 #        plot = guiqwt.plot.CurvePlot()
-#        plot.set_title(title)
+        plot.set_title(title)
 #        self.add_plot(plot)
         self.plot_items = []
         self.cumulative = cumulative
@@ -89,9 +89,13 @@ class ScriptLinePlot(guiqwt.plot.CurveWidget):
             item = guiqwt.curve.CurveItem()
             self.plot_items.append(item)
             plot.add_item(item)
+        
+#        self.add_toolbar(thread.toolbar, id(thread.toolbar))
+#        self.register_all_curve_tools()
+            
     
-    def setup(self, thread):
-        pass
+#    def setup(self, thread):
+#        pass
   #      thread.add_guiqwt_manager(self.get_plot())
        # thread.manager.add_plot(self.get_plot())
         
@@ -144,8 +148,8 @@ class ScriptPlotWin(object):
         self.SPThread = ScriptPlotThread(grid_x, grid_y)
             
 
-    def add_linePlot(self, *args):
-        return apply(self.add_multiLinePlot, (1,) + args)[0]
+    def add_linePlot(self, **kwargs):
+        return apply(self.add_multiLinePlot, (1,), kwargs)[0]
     
     def add_multiLinePlot(self, n, title=None, auto_redraw=True, cumulative=False):
         """
@@ -197,7 +201,6 @@ class ScriptPlotThread(Process):
             self.x_capped = False
             self.y_capped = False
         self.sleep_time=sleep_time
-        self.manager = None
 
     def add_plot(self, PlotC, args, pipe, auto_redraw):
         self.make_plot.append(PlotC)
@@ -208,7 +211,10 @@ class ScriptPlotThread(Process):
     def run(self):
 #        self.logfile = open("C:\\Users\\phil\\Documents\\logfile", "w")
         self.app = guidata.qapplication()
-        self.win = Qt.QWidget()
+        self.win = Qt.QMainWindow()
+        cwidget = Qt.QWidget()
+        self.win.setCentralWidget(cwidget)
+#        self.toolbar = self.win.addToolBar("tools")
         
         if self.x_capped or self.y_capped:
             self.layout = Qt.QGridLayout()
@@ -217,7 +223,7 @@ class ScriptPlotThread(Process):
             self.layout = Qt.QVBoxLayout()
 
         self.layout = Qt.QGridLayout()
-        self.win.setLayout(self.layout)
+        cwidget.setLayout(self.layout)
        
        # Screenshot Button            
         self.ssn = 0 # Number of screenshots taken
@@ -240,7 +246,7 @@ class ScriptPlotThread(Process):
                         cur_x += 1
             else:
                 self.layout.addWidget(plot)
-            plot.setup(self)
+#            plot.setup(self)
                 
         self.timer = Qt.QTimer()
         self.app.connect(self.timer, Qt.SIGNAL("timeout()"), self.wake)
@@ -271,22 +277,21 @@ class ScriptPlotThread(Process):
             self.manager.register_all_curve_tools()
     
     def screenshot(self):
-        print "snap"
         self.ssn += 1
         pm = Qt.QPixmap()
-        pm.grabWindow(self.win.winId())
-        i = pm.toImage()
+        #pm.grabWindow(self.win.winId())
+        pm2 = pm.grabWidget(self.win.centralWidget()) # Apparently this is non-updating?
+        i = pm2.toImage()
         fn = self.screenshotdir + "ss_" + str(self.ssn) + ".png"
         i.save(fn)
-        print "saved", fn
 
-# Example usage
-# Layout
-# Toolbars
-# GuiQwt
-# Autoscale checkbox
-# screenshot?
-# Allow manual replotting rules!
+# [ ] Example usage
+# [ ] Layout
+# [X] Toolbars
+# [X] GuiQwt
+# [ ] Autoscale checkbox
+# [X] screenshot?
+# [X] Allow manual replotting rules!
 def simple_fig():
     f = Figure()
     axes = f.add_subplot(111)
@@ -310,6 +315,7 @@ def multli_line_updater(figure, data):
 def test():
     win = ScriptPlotWin()
     p1, p2 = win.add_multiLinePlot(2, title="Sine & Cosine", auto_redraw=False)
+    p3 = win.add_linePlot(title="Tangent")
     win.go()
         
     sleep(2)
@@ -319,6 +325,7 @@ def test():
         p1.send((xrng, np.sin(xrng)))
         p2.send((xrng, np.cos(xrng)))
         p1.redraw() # Or p2.redraw, same effect, perhaps this can be more semantic?
+        p3.send((xrng, np.tan(xrng)))
     print "done"
 
 
