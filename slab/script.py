@@ -147,9 +147,32 @@ class ScriptImagePlot(Qt.QWidget):
 
         
 
-class ScriptMPLPlot(FigureCanvas):
+class ScriptMPLPlot(Qt.QWidget):
     def __init__(self, figure):
-        pass
+        Qt.QWidget.__init__(self)
+        layout = Qt.QVBoxLayout()
+        self.setLayout(layout)
+        self.figure_canvas = FigureCanvas(figure)
+        self.figure = figure
+        layout.addWidget(self.figure_canvas)
+    def redraw(self):
+        self.figure_canvas.draw()
+        
+class ScriptMPLContourPlot(ScriptMPLPlot):
+    def __init__(self, xdim=10, ydim=10):
+       self.figure = Figure()
+       axes = self.figure.add_subplot(111)
+       axes.hold(False)
+       axes.set_autoscale_on(True)
+       axes.contour(np.reshape(np.arange(xdim * ydim), (xdim, ydim)))
+       ScriptMPLPlot.__init__(self, self.figure)
+       
+    def update(self, data):
+        self.figure.get_axes()[0].plot(data)
+#        self.figure.get_axes()[0].draw()
+#        self.figure.get_axes()[0].redraw_in_frame()
+        
+    
 
 class ScriptProxy:
     def __init__(self, parent, i=None):
@@ -160,8 +183,6 @@ class ScriptProxy:
             self.parent.send(("update", ((self.i, data),) + args, kwargs))
         else:
             self.parent.send(("update", (data,) + args, kwargs))
-#    def redraw(self):
-#        self.parent.send("redraw")
     def __getattr__(self, name):
         return lambda *args, **kwargs: self.parent.send((name, args, kwargs))
 
@@ -241,8 +262,6 @@ class ScriptPlotThread(Process):
         pwidget = Qt.QWidget()
         clayout.addWidget(pwidget)
         
-#        self.toolbar = self.win.addToolBar("tools")
-        
         if self.x_capped or self.y_capped:
             self.layout = Qt.QGridLayout()
             self.layout.setSpacing(8)
@@ -295,26 +314,10 @@ class ScriptPlotThread(Process):
                     except Exception as e:
                         print cmd, "failed", e
                         # Logfile stuff
-#                    if cmd == "redraw":
-#                        plot.redraw()
-#                    else:
-#                        getattr(plot)
-#                        try:
-#                            plot.update(data)
-#                            if auto_redraw:
-#                                plot.redraw()
-#                        except:
-#                            getattr(plot, data)
             except:
                 return
         self.timer.start(self.sleep_time)
-        
-#    def add_guiqwt_manager(self, plot):
-#        if not self.manager:
-#            self.manager = guiqwt.plot.PlotManager(self.win)
-#            self.manager.add_plot(plot)
-#            self.manager.register_all_curve_tools()
-    
+            
     def screenshot(self):
         while os.path.exists(self.screenshotdir + "ss_" + str(self.ssn) + ".png"):
             self.ssn += 1
@@ -325,13 +328,16 @@ class ScriptPlotThread(Process):
         fn = self.screenshotdir + "ss_" + str(self.ssn) + ".png"
         i.save(fn)
 
-# [ ] Example usage
+# [X] Example usage
 # [X] Layout
 # [X] Toolbars
 # [X] GuiQwt
-# [ ] Autoscale checkbox
+# [X] Autoscale checkbox
 # [X] screenshot?
 # [X] Allow manual replotting rules!
+# [X] Proxy-ize
+# [ ] Multiple Axes?
+# [ ] Matplotlib
 def simple_fig():
     f = Figure()
     axes = f.add_subplot(111)
@@ -361,6 +367,8 @@ def test():
     p3 = win.add_linePlot(title="Tangent")
     win2 = ScriptPlotWin()
     ip = win2.add_imagePlot(title="Random Image", xdim=100, ydim=100)
+    ip.add_tool(guiqwt.tools.AnnotatedSegmentTool)
+    ip2 = win2.add_customPlot(ScriptMPLContourPlot, (100, 100))
     win.go()
     win2.go()
         
@@ -372,7 +380,11 @@ def test():
         p2.send((xrng, np.cos(xrng)))
         p1.redraw() # Or p2.redraw, same effect, perhaps this can be more semantic?
         p3.send((xrng, np.tan(xrng)))
-        ip.send(np.random.rand(100, 100))
+        xrng2 = np.arange(0.1 * i, 10 + (0.1 * i), 0.1)
+        l = len(xrng2)
+        kp =  np.kron(np.sin(xrng2).reshape(l, 1), np.cos(xrng2).reshape(1, l))
+        ip.send(kp)
+        ip2.send(kp)
     sleep(4)
     print "done"
 
