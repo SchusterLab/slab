@@ -120,17 +120,19 @@ class ScriptMPLPlot(FigureCanvas):
     def __init__(self, figure):
         pass
 
-class SPipe:
+class ScriptProxy:
     def __init__(self, parent, i=None):
         self.parent = parent
         self.i = i
-    def send(self, data):
+    def send(self, data, *args, **kwargs):
         if self.i is not None:
-            self.parent.send((self.i, data))
+            self.parent.send(("update", ((self.i, data),) + args, kwargs))
         else:
-            self.parent.send(data)
-    def redraw(self):
-        self.parent.send("redraw")
+            self.parent.send(("update", (data,) + args, kwargs))
+#    def redraw(self):
+#        self.parent.send("redraw")
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: self.parent.send((name, args, kwargs))
 
 class ScriptPlotWin(object):
     def __init__(self, grid_x=0, grid_y=0):
@@ -148,7 +150,7 @@ class ScriptPlotWin(object):
         """
         parent, child = Pipe()
         self.SPThread.add_plot(ScriptLinePlot, (n, cumulative), kwargs, child, auto_redraw)
-        return [ SPipe(parent, i) for i in range(n) ] 
+        return [ ScriptProxy(parent, i) for i in range(n) ] 
     
     def add_imagePlot(self, **kwargs):
         return apply(self.add_customPlot, (ScriptImagePlot, ()), kwargs)
@@ -160,7 +162,7 @@ class ScriptPlotWin(object):
         """
         parent, child = Pipe() # mulitPipes?
         self.SPThread.add_plot(Plot, args, kwargs, child, auto_redraw)
-        return SPipe(parent)
+        return ScriptProxy(parent)
 
     def go(self):
         self.SPThread.start()
@@ -168,7 +170,7 @@ class ScriptPlotWin(object):
 
 class ScriptPlotThread(Process):
     screenshotdir = "C:\\Users\\phil\\Desktop\\"
-    def __init__(self, grid_x, grid_y, sleep_time=20):
+    def __init__(self, grid_x, grid_y, sleep_time=10):
         Process.__init__(self)
         
         self.pipes = []
@@ -203,6 +205,11 @@ class ScriptPlotThread(Process):
         self.win = Qt.QMainWindow()
         cwidget = Qt.QWidget()
         self.win.setCentralWidget(cwidget)
+        clayout = Qt.QVBoxLayout()
+        cwidget.setLayout(clayout)
+        pwidget = Qt.QWidget()
+        clayout.addWidget(pwidget)
+        
 #        self.toolbar = self.win.addToolBar("tools")
         
         if self.x_capped or self.y_capped:
@@ -213,12 +220,12 @@ class ScriptPlotThread(Process):
             self.layout = Qt.QVBoxLayout()
 
         self.layout = Qt.QGridLayout()
-        cwidget.setLayout(self.layout)
+        pwidget.setLayout(self.layout)
        
        # Screenshot Button            
         self.ssn = 0 # Number of screenshots taken
         self.ss_button = Qt.QPushButton("Screenshot")
-#        self.layout.addWidget(self.ss_button)
+        clayout.addWidget(self.ss_button)
         self.app.connect(self.ss_button, Qt.SIGNAL("clicked()"), self.screenshot)
 
         for PlotC, (args, kwargs) in zip(self.make_plot, self.make_plot_args):
@@ -249,13 +256,24 @@ class ScriptPlotThread(Process):
         for pipe, plot, auto_redraw in zip(self.pipes, self.plots, self.plot_redraw):
             try: # This is probably too much of a hack
                 if pipe.poll():
-                    data = pipe.recv()
-                    if data == "redraw":
-                        plot.redraw()
-                    else:
-                        plot.update(data)
-                        if auto_redraw:
+                    cmd, args, kwargs = pipe.recv()
+                    try:
+                        apply(getattr(plot, cmd), args, kwargs)
+                        if cmd == "update" and auto_redraw:
                             plot.redraw()
+                    except Exception as e:
+                        print cmd, "failed", e
+                        # Logfile stuff
+#                    if cmd == "redraw":
+#                        plot.redraw()
+#                    else:
+#                        getattr(plot)
+#                        try:
+#                            plot.update(data)
+#                            if auto_redraw:
+#                                plot.redraw()
+#                        except:
+#                            getattr(plot, data)
             except:
                 return
         self.timer.start(self.sleep_time)
@@ -267,7 +285,8 @@ class ScriptPlotThread(Process):
             self.manager.register_all_curve_tools()
     
     def screenshot(self):
-        self.ssn += 1
+        while os.path.exists(self.screenshotdir + "ss_" + str(self.ssn) + ".png"):
+            self.ssn += 1
         pm = Qt.QPixmap()
         #pm.grabWindow(self.win.winId())
         pm2 = pm.grabWidget(self.win.centralWidget()) # Apparently this is non-updating?
@@ -321,6 +340,7 @@ def test():
         p1.redraw() # Or p2.redraw, same effect, perhaps this can be more semantic?
         p3.send((xrng, np.tan(xrng)))
         ip.send(np.random.rand(100, 100))
+    sleep(4)
     print "done"
 
 
