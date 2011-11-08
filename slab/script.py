@@ -31,7 +31,7 @@ from time import sleep
 import PyQt4.Qt as Qt
 import PyQt4.Qwt5 as Qwt
 import PyQt4.QtGui as QtGui
-import guiqwt.plot, guiqwt.curve, guiqwt.builder
+import guiqwt.plot, guiqwt.curve, guiqwt.builder, guiqwt.tools
 import guidata
 
 import matplotlib.pyplot as plt
@@ -63,16 +63,18 @@ def write_log(s):
     f.write(s+'\n')
     f.close()
 
-class ScriptLinePlot(guiqwt.plot.CurveDialog):
+class ScriptLinePlot(Qt.QWidget):
     def __init__(self, n_items, cumulative, title="", style=None, **kwargs):
-        guiqwt.plot.CurveDialog.__init__(self, toolbar=True, options=kwargs)
-#        self.register_all_curve_tools()
-        plot = self.get_plot()
-#        plot = guiqwt.plot.CurvePlot()
-        plot.set_title(title)
-#        self.add_plot(plot)
+        Qt.QWidget.__init__(self)
+        layout = Qt.QVBoxLayout()
+        self.setLayout(layout)
+        self.curve_d = guiqwt.plot.CurveDialog(toolbar=True, options=kwargs)
+        layout.addWidget(self.curve_d)
+        self.plot = self.curve_d.get_plot()
+        self.plot.set_title(title)
         self.plot_items = []
         self.cumulative = cumulative
+        self.update_fns, self.redraw_fns = ([], [])
         if cumulative:
             self.datasets = []
             for i in range(n_items):
@@ -89,31 +91,60 @@ class ScriptLinePlot(guiqwt.plot.CurveDialog):
             else:
                 item = guiqwt.curve.CurveItem()
             self.plot_items.append(item)
-            plot.add_item(item)
+            self.plot.add_item(item)
         
     def update(self, data):        
-        n, (x, y) = data        
+        n, (x, y) = data
         if self.cumulative:
             np.append(self.datasets[n][0], x)
             np.append(self.datasets[n][1], y)
             x, y = self.datasets[n]
             
         self.plot_items[n].set_data(x, y)
+        for f in self.update_fns:
+            f()
     
     def redraw(self):
-        self.get_plot().replot()
+        self.plot.replot()
+        for f in self.redraw_fns:
+            f()
+    
+    def add_autoscale_check(self):
+        self.as_checkbox = Qt.QCheckBox("autoscale axes")
+        self.as_checkbox.setCheckState(Qt.Qt.Checked)
+        self.layout().addWidget(self.as_checkbox)
+        self.connect(self.as_checkbox, Qt.SIGNAL("clicked(bool)"), self.autoscale)
+    
+    def autoscale(self, b):
+        if b:
+            self.plot.do_autoscale()
+            self.redraw_fns.append(self.plot.do_autoscale) # I wish I saw a better way
+        else:
+            try: self.redraw_fns.remove(self.plot.do_autoscale)
+            except: pass
+            self.plot.disable_autoscale()
+            
+    def add_tool(self, tool, *args, **kwargs):
+        self.curve_d.add_tool(tool, *args, **kwargs)
 
-class ScriptImagePlot(guiqwt.plot.ImageDialog):
+class ScriptImagePlot(Qt.QWidget):
     def __init__(self, xdim=10, ydim=10, title="", **kwargs):
-        guiqwt.plot.ImageDialog.__init__(self, toolbar=True, options=kwargs)
-        plot = self.get_plot()
-        plot.set_title(title)
+        Qt.QWidget.__init__(self)
+        layout = Qt.QVBoxLayout()
+        self.setLayout(layout)
+        self.image_d = guiqwt.plot.ImageDialog(toolbar=True, options=kwargs)
+        layout.addWidget(self.image_d)
+        self.plot = self.image_d.get_plot()
+        self.plot.set_title(title)
         self.image = guiqwt.image.ImageItem(np.zeros((xdim, ydim)))
-        plot.add_item(self.image)
+        self.plot.add_item(self.image)
     def update(self, data):
         self.image.set_data(data)
     def redraw(self):
-        self.get_plot().replot()
+        self.plot.replot()
+    def add_tool(self, tool, *args, **kwargs):
+        self.curve_d.add_tool(tool, *args, **kwargs)
+
         
 
 class ScriptMPLPlot(FigureCanvas):
@@ -278,11 +309,11 @@ class ScriptPlotThread(Process):
                 return
         self.timer.start(self.sleep_time)
         
-    def add_guiqwt_manager(self, plot):
-        if not self.manager:
-            self.manager = guiqwt.plot.PlotManager(self.win)
-            self.manager.add_plot(plot)
-            self.manager.register_all_curve_tools()
+#    def add_guiqwt_manager(self, plot):
+#        if not self.manager:
+#            self.manager = guiqwt.plot.PlotManager(self.win)
+#            self.manager.add_plot(plot)
+#            self.manager.register_all_curve_tools()
     
     def screenshot(self):
         while os.path.exists(self.screenshotdir + "ss_" + str(self.ssn) + ".png"):
@@ -325,6 +356,8 @@ def test():
     win = ScriptPlotWin(grid_y=1)
     p1, p2 = win.add_multiLinePlot(2, title="Sine & Cosine", auto_redraw=False, style=["r-", "b-"],
                                    xlabel="X Label", ylabel="Y Label")
+    p1.add_autoscale_check()
+    p1.add_tool(guiqwt.tools.AnnotatedSegmentTool)
     p3 = win.add_linePlot(title="Tangent")
     win2 = ScriptPlotWin()
     ip = win2.add_imagePlot(title="Random Image", xdim=100, ydim=100)
