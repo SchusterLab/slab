@@ -165,7 +165,7 @@ class E5071(SocketInstrument):
         old_timeout=self.get_timeout()
 #        old_format=self.get_format()
         self.set_timeout(10000)
-        self.set_format('slog')
+        self.set_format()
         time.sleep(self.query_sleep)
         old_avg_mode=self.get_trigger_average_mode()
         self.set_trigger_average_mode(True)
@@ -173,6 +173,7 @@ class E5071(SocketInstrument):
         self.trigger_single()
         time.sleep(self.query_sleep)
         self.averaging_complete()    #Blocks!
+        self.set_format('slog')
         if fname is not None:
             self.save_file(fname)
             ans=fname
@@ -183,6 +184,7 @@ class E5071(SocketInstrument):
         self.set_timeout(old_timeout)
         self.set_trigger_average_mode(old_avg_mode)
         self.set_trigger_source('INTERNAL')
+        self.set_format()
         return ans
             
     def segmented_sweep(self,start,stop,step):
