@@ -13,6 +13,10 @@ from spectrum_analyzer import *
 from instruments import E8257D
 import time
 import numpy as np
+import matplotlib.pyplot as plt
+
+#switch for outputing intermediate data
+verbose = False
 
 def calibrate(sa, frequency, rf_power, lo, rf):
     """returns [frequency, sa ouput, rf_power] given frequency in Hz, rf_power in dBm"""
@@ -50,9 +54,9 @@ def find_min_pwr(sa, frequency, lo, rf, threshold=50.0,
         rf.set_power((lp+rp)/2.0)
         time.sleep(0.1)
         
-        print str(lo.get_frequency())+', '+str(rf.get_frequency())
+        if verbose: print str(lo.get_frequency())+', '+str(rf.get_frequency())
         m = sa.get_avg_power()
-        print m
+        if verbose: print m
         #rf.set_output(False)        
         if (m > 50.0):
             rp = (lp + rp) / 2.0
@@ -115,18 +119,17 @@ def remove_frequency(cali_data, frequency):
 
 if __name__ =='__main__':
     import pickle
-    import matplotlib.pyplot as plt
     import numpy as np
     from slab.instruments import InstrumentManager
     
     expt_path="S:\\_Lib\\python\\slab\\instruments\\spec_analyzer\\"
-    im = InstrumentManager(expt_path+"instruments.cfg")
+    im = InstrumentManager(expt_path+"sa_calibration.cfg")
     
     #rf = E8257D(address='rfgen2.circuitqed.com')
     #lo = E8257D(address='rfgen1.circuitqed.com')
     rf = im['RF']
     lo = im['LO']
-    sa = SpectrumAnalyzer(protocol='serial', port=2, lo_offset=10.57e6)
+    sa = im['SA']
     """
     for f in np.arange(5e9,10e9,0.1e9):
         lo.set_frequency(f)
@@ -152,29 +155,28 @@ if __name__ =='__main__':
     
     #listing all the desired frequencies
     #fr = np.arange(2.5e9, 7.5e9, 0.1e9)
-    fr = np.arange(5e9, 10e9, 0.1e9)
+    fr = np.arange(6.8e9, 7.2e9, 0.01e9)
     
     #finding the minimal detectable powers at certain frequencies
-    min_power = []
+    #min_power = []
 
+    cali = []    
+    step = 1.0    
     for freq in fr:
-        nd = [freq, find_min_pwr(sa, freq, lo, rf, lower_bound=-40, resolution=0.2)]
-        min_power.append(nd)
-        print nd
-        time.sleep(0.5)
-    #"""
-    #"""
-    cali = []
-    
-    step = 5.0
-    for freq, mp in min_power:
-        for pwr in np.arange(mp, 10.0, step):
-            nd = calibrate(sa, freq, pwr, lo, rf)
+        #nd = [freq, find_min_pwr(sa, freq, lo, rf, lower_bound=-40, resolution=0.2)]
+        #min_power.append(nd)
+        #print nd        
+        mp = find_min_pwr(sa, freq, lo, rf, lower_bound=-40, resolution=0.2)
+        for pwr in np.arange(mp, 5.0, step):
+            nd = calibrate(sa, freq, pwr, lo, rf)        
             cali.append(nd)
             print nd
+        time.sleep(0.05)
+    #"""
+    #"""
     
     print cali
-    pickle.dump(cali, open('10dBm_LMS_cali.data', 'w'))
+    pickle.dump(cali, open('10dBm_LMS_cali_11182011.data', 'w'))
     
     c = np.array(cali)
     c = c.transpose()

@@ -14,7 +14,7 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import QSize, QT_VERSION_STR, PYQT_VERSION_STR, Qt, SIGNAL,QTimer
 from PyQt4 import QtCore
 
-
+from guiqwt.plot import CurveWidget, ImageWidget
 from guiqwt.builder import make
 
 #from slab import *
@@ -22,6 +22,8 @@ from Server_ui import *
 
 LOGFILENAME='log.txt'
 LOGENABLED=True
+
+
 
 def make_server_window(pipe=None,xlabel=None,ylabel=None,title=None):
     try:
@@ -35,7 +37,7 @@ def make_server_window(pipe=None,xlabel=None,ylabel=None,title=None):
         else: pass
 
 class FigureClient():
-    def __init__(self,xlabel=None,ylabel=None,title=None):
+    def __init__(self,xlabel=None,ylabel=None,title=None):            
         self.parent,self.child=Pipe()
         self.process = Process(target=make_server_window, args=(self.child,xlabel,ylabel,title))
         self.process.start()
@@ -84,7 +86,7 @@ def write_log(s):
     f.write(s+'\n')
     f.close()
 
-class ServerWindow (QMainWindow,Ui_ServerWindow):
+class ServerWindow (QMainWindow, Ui_ServerWindow):
 
     def __init__(self, pipe = None,xlabel=None,ylabel=None,title=None,parent = None):
         try:
@@ -93,22 +95,29 @@ class ServerWindow (QMainWindow,Ui_ServerWindow):
             self.setupUi(self)
             self.setWindowTitle(title) 
             self.pipe=pipe
-            self.curvewidget.add_toolbar(self.addToolBar("Curve"))
-            self.curvewidget.register_all_image_tools()
-            self.plot = self.curvewidget.plot   
-            x=np.linspace(-5,5,1000)        #Create some sample curves
-            y1=np.cos(x)
-            self.plot_item = make.mcurve(x, y1,label='Magnitude') #Make Ch1 curve
-            self.plot.add_item(self.plot_item)
-            self.plot.set_titles(title=title, xlabel=xlabel, ylabel=ylabel)
+            self.setup_plot(title, xlabel, ylabel)
             write_log ('Starting timer')
             self.ctimer = QTimer()      #Setup autoupdating timer to call update_plots at 10Hz
             QtCore.QObject.connect(self.ctimer, QtCore.SIGNAL("timeout()"), self.process_command )
+#            self.connect()            
             self.ctimer.start(10)
             if LOGENABLED: write_log('timer started')
         except:
             if LOGENABLED: log_error()
             else: pass
+
+    def setup_plot(self, title, xlabel, ylabel):
+#        self.curvewidget = CurveWidget()
+#        self.setCentralWidget(self.curvewidget)
+        
+        self.curvewidget.add_toolbar(self.addToolBar("Curve"))
+        self.curvewidget.register_all_image_tools()
+        self.plot = self.curvewidget.plot   
+        x=np.linspace(-5,5,1000)        #Create some sample curves
+        y1=np.cos(x)
+        self.plot_item = make.mcurve(x, y1,label='Magnitude') #Make Ch1 curve
+        self.plot.add_item(self.plot_item)
+        self.plot.set_titles(title=title, xlabel=xlabel, ylabel=ylabel)
 
     def process_command(self):
         self.ctimer.stop()
@@ -127,11 +136,21 @@ class ServerWindow (QMainWindow,Ui_ServerWindow):
     def blah(self,cmd):
         return 'blahblah'
         
-    def update_plot(self, x,y):
+    def update_plot(self, data):
+        x, y = data
         self.plot_item.set_data(x, y)
         self.plot.replot()
         
-if __name__ == "__main__":
+class ImageFigureClient(FigureClient):
+    def setup_plot(self):
+        self.imagewidget = ImageWidget()
+        self.plot = self.imagewidget.plot
+        self.image = make.image(np.random.rand(100,100))
+        self.plot.add_item(self.image)
+    def update_plot(self, data):
+        self.image.set_data(data)
+
+def test():
     clear_log()
     #write_log('test')
     fig1=FigureClient(xlabel='Frequency',ylabel='Amplitude',title='Parabola')
@@ -151,10 +170,14 @@ if __name__ == "__main__":
         x3.append(x[ii])
         y3.append(yy[ii])
 #        client.parent.send(('update_plot',x2,y2))
-        fig1.update_plot(x2,y2)
-        fig2.update_plot(x3,y3)
+        fig1.update_plot((x2,y2))
+        fig2.update_plot((x3,y3))
         time.sleep(0.1)
-    print_log()
+    print_log()        
+
+
+if __name__ == "__main__":
+    test()
 
 #    t=test_proxy()
 #    b=t.blah('a','b','c')
