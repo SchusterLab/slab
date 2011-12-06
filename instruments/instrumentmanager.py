@@ -51,7 +51,5 @@ class InstrumentManager(dict):
             f.write('\n')
         f.close()
         
-        
-        
 if __name__=="__main__":
     im = InstrumentManager(r'D:\Dropbox\UofC\_Lib\python\slab\instruments\instrument.cfg')

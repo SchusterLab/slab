@@ -72,6 +72,7 @@ class E5071(SocketInstrument):
         self.write(":SENS%d:BANDwidth:RESolution %f" %(channel,bw))
     
     def get_ifbw(self,channel=1):
+        
         return float(self.query(":SENS%d:BANDwidth:RESolution?" %(channel)))
 
     def averaging_complete(self):

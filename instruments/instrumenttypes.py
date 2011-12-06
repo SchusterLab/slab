@@ -26,6 +26,7 @@ class Instrument(object):
     timeout=0                 #timeout for commands
     query_sleep=0             #seconds to wait between write and read
     term_char='\n'            #character to be appended to all writes
+    #operation_range={}        #map to hold the operation range
     
     def  __init__(self,name,address='',enabled=True):
         self.name=name
@@ -53,7 +54,12 @@ class Instrument(object):
         
     def set_settings(self,settings):
         print settings
-        
+
+    #def set_operation_range(self, operation_range):
+    #    self.operation_range = operation_range
+    
+    #def get_operation_range(self):
+    #    return self.operation_range
 
 class VisaInstrument(Instrument):
     def __init__(self,name,address='',enabled=True):

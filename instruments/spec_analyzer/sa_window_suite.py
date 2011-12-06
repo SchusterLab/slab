@@ -51,6 +51,7 @@ class SpectrumAnalyzerWindow(QMainWindow, Ui_SpectrumAnalyzerWindow):
         
         #spectrum plot
         self.spec_plot = self.spectrumCurvewidget.plot
+        self.spectrumCurvewidget.register_all_image_tools()
         self.spec_plot.set_titles(title='Power vs. Frequency', xlabel='Frequency (GHz)', ylabel='Power')
         self.spectrum = make.mcurve(np.array([]), np.array([]))
         self.spec_plot.add_item(self.spectrum)
@@ -192,6 +193,8 @@ if __name__ == '__main__':
     #lo = E8257D(address='rfgen1.circuitqed.com')
     lo = im['LO']
     rf = im['RF']
+    
+    rf.set_frequency(7e9)
    
     window = SpectrumAnalyzerWindow(sa, sacm, lo)
     window.show()

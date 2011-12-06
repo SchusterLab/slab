@@ -139,6 +139,7 @@ class AWG81180A(VisaInstrument):
         settings['sync_output']=self.get_sync_output()
         settings['clockrate']=self.get_clockrate()
         settings['mode']=self.get_mode()
+        return settings
         
 if __name__=="__main__":
 #    a=mod(arange(32*2048),2048)

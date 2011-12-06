@@ -50,7 +50,8 @@ def LMS_get_device_info():
 class LMS103(Instrument):
     def __init__(self,name="Labbrick",address=None,enabled=True):
         Instrument.__init__(self,name,address,enabled=True)
-        self.dll=C.CDLL(LMS103dllpath)
+        #self.dll=C.CDLL(LMS103dllpath)
+        self.dll=LABBRICKDLL
         self.set_test_mode(False)
         if address is not None:
             self.init_by_serial(address)

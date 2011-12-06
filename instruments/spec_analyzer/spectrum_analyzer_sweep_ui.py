@@ -220,7 +220,7 @@ class Ui_SpectrumAnalyzerWindow(object):
         font.setPointSize(11)
         self.stepSweepSpinBox.setFont(font)
         self.stepSweepSpinBox.setDecimals(4)
-        self.stepSweepSpinBox.setMinimum(0.0002)
+        self.stepSweepSpinBox.setMinimum(0.0001)
         self.stepSweepSpinBox.setMaximum(1.0)
         self.stepSweepSpinBox.setSingleStep(0.0001)
         self.stepSweepSpinBox.setProperty(_fromUtf8("value"), 0.01)
