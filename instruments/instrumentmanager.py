@@ -39,10 +39,14 @@ class InstrumentManager(dict):
             settings.append(inst.get_settings())
         return settings
         
-    def save_settings(self,path,prefix='',params={}):
+    def save_settings(self,path,prefix=None,params={}):
         settings=self.get_settings()
         settings.append(params)
-        fname=os.path.join(path,prefix)
+        if prefix:
+            fname=os.path.join(path,prefix)
+        else:
+            print "hey"
+            fname = path
         if ".cfg" not in fname.lower():
             fname+='.cfg'
         f=open(fname,'w')

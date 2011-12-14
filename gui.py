@@ -1,201 +1,238 @@
-# -*- coding: utf-8 -*-
 """
-Created on Wed May 11 22:36:16 2011
-@author: Dave
+gui.py
+
+usage:
+    - Create a UI in Qt Designer, and with pyuic convert the .ui to .py
+        - Use the 'SlabWindow' template as a base to enable config_file menu items
+          (! not yet fully functional !)
+    - Create a class inheriting from SlabWindow and Ui_MainWindow (as provided by
+    the designer file)
+    - In the class' __init__ method
+        - register any plots from the UI with the plot manager, i.e.
+          self.plot_manager["myplot"] = self.myplot
+        - connect any parameter input widgets' signals to the set_param()
+          method i.e.
+          self.connect(self.myparamSpinBox, SIGNAL("valueChanged(int)"),
+                       lambda i: self.set_param("myparam", i))
+    - Subclass DataThread to add run_script(). In the DataThread
+      namespace, you will find self.instruments (an InstrumentManager),
+      self.params (a dictionary of parameters), and self.plots (a PlotManager)
+        - For any scripts/functions which you wish to execute in a non-blocking
+          fashion, add a method to the DataThread subclass that executes this
+          script using the provided resources
+        - register the methods with start and stop buttons, i.e. after
+          providing the "myscript" method:
+          self.register_script("myscript", self.my_go_button, self.my_abort_button)
+            - after registering all methods, call self.start_thread()
+
+    A more complete (functional) example is given at the end of the file
 """
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Mar 15 12:18:46 2011
-@author: Dave
-"""
-#Imports
-from multiprocessing import Process,Pipe
-import os
-from numpy import *
-import time
-import guidata
-from guidata.dataset.datatypes import (DataSet, BeginTabGroup, EndTabGroup,
-                                       BeginGroup, EndGroup, ObjectItem)
-from guidata.dataset.dataitems import (FloatItem, IntItem, BoolItem, ChoiceItem,
-                             MultipleChoiceItem, ImageChoiceItem, FilesOpenItem,
-                             StringItem, TextItem, ColorItem, FileSaveItem,
-                             FileOpenItem, DirectoryItem, FloatArrayItem)
-from guidata.dataset.qtwidgets import DataSetEditLayout, DataSetShowLayout,DataSetEditGroupBox
-from guidata.dataset.qtitemwidgets import DataSetWidget
-from guidata.qthelpers import create_action, add_actions, get_std_icon
-from guiqwt.pyplot import *
-from guiqwt.plot import ImageWidget,CurveWidget
-from guiqwt.builder import make
-#from guiqwt.io import imagefile_to_array, IMAGE_LOAD_FILTERS
-####
+from instruments import InstrumentManager
+from PyQt4.Qt import Qt, QApplication, QObject, QThread, QMainWindow, QFileDialog, SIGNAL
+import PyQt4.Qwt5 as Qwt
 import numpy as np
-from PyQt4.QtGui import (QMainWindow, QMessageBox, QSplitter, QListWidget,
-                         QFileDialog,QSizePolicy,QPushButton)
-from PyQt4.QtCore import QSize, QT_VERSION_STR, PYQT_VERSION_STR, Qt, SIGNAL,QTimer
-from PyQt4 import QtCore
+from time import sleep
+import sys
 
+class DataThread(QObject):
+    def __init__(self, config_file=None):
+        QObject.__init__(self)
+        self.config_file = config_file
+        self.instruments = InstrumentManager(self.config_file)
+        self.params = {}
+        self.plots = ManagerProxy("plotMethodCalled")
+        self._aborted = False
 
-"""
-SlabWindow is a default base class for making a GUI script
-In order to use SlabWindow properly you must define:
-    setup_widgets()
-    load_bookmark(filename)
-    save_bookmark(filename)
-There are several useful variables/methods to make it easy to create the gui
-    self.paramswidget (this a vertical qsplitter on the left)
-    self.plotswidget (this is a vertical qsplitter on the right)
-    self.add_plot_updater (self,plot_name,plot_type,plot,plot_item) adds an item to the autoupdate table
-    self.status has a reference to the status bar
-"""
-class SlabWindow(QMainWindow):
-    def __init__(self, icon_fname=None,title="My application",size=(1024,768),status_msg="Status bar"):
-        """Setup window parameters"""
-        QMainWindow.__init__(self)  #Call super constructor
-        if icon_fname is None:      #If no icon specified use default python icon
-            self.setWindowIcon(get_icon('python.png'))
+    def load_config(config_file):
+        self.instrument_manager.load_config_file(config_file)
+
+    def run_on_instrument_manager(inst_name, method_name, args, kwargs):
+        try: getattr(self.instrument_manager[inst_name], method_name)(*args, **kwargs)
+        except Exception as e: self.emit("instrumentMethodFailed", (str(e),))
+
+    def set_param(self, name, value):
+        self.params[name] = value
+
+    def save_experimental_settings(self):
+        filename = str(QFileDialog.getSaveFileName())
+        self.instruments.save_settings(filename)
+
+    def save_all_settings(self):
+        filename = str(QFileDialog.getSaveFileName())
+        # save_settings does not currently (11/13) process params meaningfully
+        self.instruments.save_settings(filename, params=self.params)
+
+    def load_settings(self):
+        filename = QFileDialog.getOpenFileName()
+        self.instruments.load_config_file(filename)
+
+    def list_instruments(self):
+        for key, inst in self.instruments.iteritems():
+            self.msg(key + inst.name)
+
+    def msg(self, s):
+        self.emit(SIGNAL("msg"), s)
+
+    def abort(self):
+        self._aborted = True
+
+    def aborted(self):
+        if self._aborted:
+            self._aborted = False
+            return True
         else:
-            self.setWindowIcon(get_icon(icon_fname))
+            return False
 
-        self.setWindowTitle(title)              #Set window title
-        self.resize(QSize(size[0],size[1]))     #Set window size
-        self.status = self.statusBar()          #Define status bar
-        self.status.showMessage(status_msg, 5000)    #put default status message
+    def run_data_thread(self, method):
+        self.run_script()
+        self.emit(SIGNAL(method + "done"))
 
-        self.mainwidget= QSplitter()    #Setup central widget to be a horizontal QSplitter
-        self.mainwidget.setContentsMargins(10, 10, 10, 10)
-        self.mainwidget.setOrientation(Qt.Horizontal)
-        self.mainwidget.toolbar=self.addToolBar("Image")
-        self.setCentralWidget(self.mainwidget)
+class ManagerProxy(QObject):
+    def __init__(self, emit_name):
+        QObject.__init__(self)
+        self.emit_name = emit_name
+    def __getitem__(self, item_name):
+        class IProxy(object):
+            def __getattr__(self2, method_name):
+                return lambda *args, **kwargs: self.emit(SIGNAL(self.emit_name),
+                item_name, method_name, args, kwargs)
 
-        self.paramswidget= QSplitter()  #parameters on left
-        self.paramswidget.setContentsMargins(10, 10, 10, 10)
-        self.paramswidget.setOrientation(Qt.Vertical)
+        return IProxy()
 
-        self.plotswidget= QSplitter()   # and plot widgets on right
-        self.plotswidget.setContentsMargins(10, 10, 10, 10)
-        self.plotswidget.setOrientation(Qt.Vertical)
+class DictProxy(QObject):
+    def __init__(self, emit_name):
+        QObject.__init__(self)
+        self.cache = {}
+        self.emit_name = emit_name
+    def __setitem__(self, name, value):
+        self.cache[name] = value
+        self.emit(SIGNAL(self.emit_name), name, value)
+    def __getitem__(self, name):
+        return self.cache[name]
 
-        self.mainwidget.addWidget(self.paramswidget)    #Add params widget
-        self.mainwidget.addWidget(self.plotswidget)     #and plots widget to window
-        self.setupUpdaters()
-        self.setupMenus()
-#        self.setupWidgets()
-    def setupUpdaters(self):
-        self.plot_update_list={}    #Dictionary of plots with format {'plot_type':plot_type,'plot':plot,'plot_item':plot_item,'parent_conn':parent_conn,'child_conn':child_conn}
-        self.pipes={}               #Dictionary of (child) pipes to pass to processor
-        self.ctimer = QTimer()      #Setup autoupdating timer to call update_plots at 10Hz
-        QtCore.QObject.connect(self.ctimer, QtCore.SIGNAL("timeout()"), self.update_plots)
-        self.ctimer.start(0.1)
-    def setupMenus(self):
-                # File menu
-        file_menu = self.menuBar().addMenu("File")
-        prefix_action = create_action(self, "Prefix...",
-                                   shortcut="Ctrl+N",
-                                   icon=get_icon('filenew.png'),
-                                   tip="Select File prefix",
-                                   triggered=self.select_prefix_action)
-        load_bookmark_action = create_action(self, "Load Bookmark...",
-                                             shortcut="Ctrl+O",
-                                             icon=get_icon('fileopen.png'),
-                                             tip="Load Bookmark",
-                                             triggered=self.load_bookmark_action)
-        save_bookmark_action = create_action(self, "Save Bookmark...",
-                                             shortcut="Ctrl+S",
-                                             icon=get_icon('filesave.png'),
-                                             tip="Save Bookmark",
-                                             triggered=self.save_bookmark_action)
-        quit_action = create_action(self, "Quit",
-                                    shortcut="Ctrl+Q",
-                                    icon=get_std_icon("DialogCloseButton"),
-                                    tip="Quit application",
-                                    triggered=self.close)
-        add_actions(file_menu, (prefix_action, None,load_bookmark_action, save_bookmark_action,None, quit_action))
 
-        # Help menu
-        help_menu = self.menuBar().addMenu("?")
-        about_action = create_action(self, "About...",
-                                     icon=get_std_icon('MessageBoxInformation'))#,
-#                                     triggered=self.about)
-        add_actions(help_menu, (about_action,))
-    def select_prefix_action(self):
-        self.ctimer.stop()
-        filename = QFileDialog.getSaveFileName(self, "Set Prefix", "")
-        if filename:
-            self.prefix=filename
-        self.ctimer.start(0.1)
-    def load_bookmark_action(self):
-        self.ctimer.stop()
-        filename = QFileDialog.getOpenFileName(self, "Load Bookmark", "")
-        if filename: self.load_bookmark(filename)
-        self.ctimer.start(0.1)
-    def load_bookmark(self,filename):
-        print filename
-    def save_bookmark_action(self):
-        self.ctimer.stop()
-        filename = QFileDialog.getSaveFileName(self, "Save Bookmark", "")
-        if filename: self.save_bookmark(filename)
-        self.ctimer.start(0.1)
-    def save_bookmark(self,filename):
-        print filename
-    def add_plot_updater (self,plot_name,plot_type,plot,plot_item):
-        parent_conn,child_conn=Pipe()
-        self.plot_update_list[plot_name]={'plot_type':plot_type,'plot':plot,'plot_item':plot_item,'parent_conn':parent_conn,'child_conn':child_conn}
-        self.pipes[plot_name]=child_conn
-    def update_plots(self):
-        for name,update_data in self.plot_update_list.iteritems():
-            if update_data['plot_type'] == "line_plot":
-                self.update_lineplot(update_data)
+class SlabWindow(QMainWindow):
+    def __init__(self, DataThreadC, config_file=None):
+        QMainWindow.__init__(self)
+        self.instruments = ManagerProxy("instrumentMethodCalled")
+        self.plot_manager = {}
+        self.params = DictProxy("parameterChanged")
+        self.data_thread_obj = DataThreadC()
+#        self.setup_commands()
+        self.connect(self.instruments, SIGNAL("instrumentMethodCalled"),
+                self.data_thread_obj.run_on_instrument_manager)
+        self.connect(self.data_thread_obj, SIGNAL("instrumentMethodFailed"),
+                self.msg)
+        self.connect(self.data_thread_obj.plots, SIGNAL("plotMethodCalled"),
+                self.run_on_plot_manager)
+        self.connect(self.params, SIGNAL("parameterChanged"),
+                self.data_thread_obj.set_param)
+        self.connect(self.data_thread_obj, SIGNAL("msg"), self.msg)
 
-    def update_lineplot(self, update_data):
-        pconn=update_data['parent_conn']
-        if pconn!=None:
-            x=None
-            while pconn.poll():
-                x,y=pconn.recv()
-            if x!=None:
-                #---Update curve
-                update_data['plot_item'].set_data(x, y)
-                update_data['plot'].replot()
-                #---
-#class SlabScript:
+    def register_script(self, method, go_button, abort_button=None):
+        self.connect(go_button, SIGNAL("clicked()"),
+                     lambda: go_button.setDisabled(True))
+        self.connect(go_button, SIGNAL("clicked()"), lambda: self.emit(SIGNAL("method"), method))
+        self.connect(self, SIGNAL("method"), self.data_thread_obj.run_data_thread)
+        self.connect(self.data_thread_obj, SIGNAL(method + "done"),
+                     lambda: go_button.setDisabled(False))
+        if abort_button:
+            self.connect(abort_button, SIGNAL("clicked()"),
+                         self.data_thread_obj.abort, Qt.DirectConnection)
+
+    def setupSlabWindow(self):
+        "Connect Ui components provided by the SlabWindow designer template"
+        self.setupUi(self)
+
+        self._data_thread = QThread()
+        self.data_thread_obj.moveToThread(self._data_thread)
+
+        try:
+            self.connect(self.actionExperimental_Settings, SIGNAL("triggered()"),
+                         self.data_thread_obj.save_experimental_settings)
+            self.connect(self.actionExperimental_and_Instrument_Settings, SIGNAL("triggered()"),
+                         self.data_thread_obj.save_all_settings)
+            self.connect(self.actionLoad, SIGNAL("triggered()"),
+                         self.data_thread_obj.load_settings)
+#            self.connect(self.cmd_lineEdit, SIGNAL("returnPressed()"),
+#                         self.process_cmd)
+#            self.connect(self.cmd_lineEdit, SIGNAL("returnPressed()"),
+#                         lambda: self.cmd_lineEdit.setText(""))
+        except Exception as e:
+            print "Could not connect menu actions", e
+
+
+#    def setup_commands(self):
+#        self.commands = {}
 #
-#    params=MyDataSet()
+#        instrument_list = lambda: self.emit(SIGNAL("list_instruments"))
+#        self.connect(self, SIGNAL("list_instruments"),
+#                self.data_thread_obj.list_instruments)
 #
-#    def show_gui(self):
-#        app=guidata.qapplication()
-#        #self.params.edit()
-#        window=SlabWindow()
-#        #print self.params
-#        window.show()
-#        app.exec_()
-#    def setupMenus(self):
-#                # File menu
-#        file_menu = self.menuBar().addMenu("File")
-#        new_action = create_action(self, "New...",
-#                                   shortcut="Ctrl+N",
-#                                   icon=get_icon('filenew.png'),
-#                                   tip="Create a new image")#,
-##                                   triggered=self.new_image)
-#        open_action = create_action(self, "Open...",
-#                                    shortcut="Ctrl+O",
-#                                    icon=get_icon('fileopen.png'),
-#                                    tip="Open an image")#,
-##                                    triggered=self.open_image)
-#        quit_action = create_action(self, "Quit",
-#                                    shortcut="Ctrl+Q",
-#                                    icon=get_std_icon("DialogCloseButton"),
-#                                    tip="Quit application")#,
-##                                    triggered=self.close)
-#        add_actions(file_menu, (new_action, open_action, None, quit_action))
+#        self.commands["il"] = instrument_list
 #
-#        # Help menu
-#        help_menu = self.menuBar().addMenu("?")
-#        about_action = create_action(self, "About...",
-#                                     icon=get_std_icon('MessageBoxInformation'))#,
-##                                     triggered=self.about)
-#        add_actions(help_menu, (about_action,))
+#    def process_cmd(self):
+#        line = str(self.cmd_lineEdit.text()).split()
+#        cmd = line[0]
+#        args = tuple(line[1:])
+#        try: apply(self.commands[cmd], args)
+#        except Exception as e: self.msg("Command failed: " + repr(e))
+
+    def run_on_plot_manager(self, plot_name, method_name, args, kwargs):
+        getattr(self.plot_manager[plot_name], method_name)(*args, **kwargs)
+
+    def msg(self, message):
+        try:
+            self.message_box.append(message)
+        except:
+            print "no msg box:", message
+
+    def set_param(self, name, value):
+#        self.msg(str(name) + " :: " + str(value))
+        self.params[name] = value
+
+    def start_thread(self):
+        self._data_thread.start()
+
+# Example code
+
+from test_ui import *
+
+class test_DataThread(DataThread):
+    def run_script(self):
+        omega = self.params["rate"]
+        for i in range(100):
+            if (i % 10) == 0:
+                self.msg(str(i))
+            if self.aborted():
+                self.msg("aborted")
+                break
+            xrng = np.linspace(0, 2 * np.pi, num = i)
+            sleep(.1)
+            self.plots["sine"].setData(xrng, np.sin(omega * xrng))
+            self.plots["cosine"].setData(xrng, np.cos(omega * xrng))
+            self.plots["plot"].replot()
+
+class TestWin(SlabWindow, Ui_MainWindow):
+    def __init__(self):
+        SlabWindow.__init__(self, test_DataThread, config_file=None)
+        self.setupSlabWindow()
+        self.register_script("run_script", self.go_button, self.abort_button)
+        self.start_thread()
+
+        self.connect(self.spinBox, SIGNAL("valueChanged(int)"),
+                lambda i: self.set_param("rate", i))
+        self.set_param("rate", 1)
+        self.plot_manager["plot"] = self.qwtPlot
+        sine_curve = Qwt.QwtPlotCurve("Sine")
+        cosine_curve = Qwt.QwtPlotCurve("Cosine")
+        sine_curve.attach(self.qwtPlot)
+        cosine_curve.attach(self.qwtPlot)
+        self.plot_manager["sine"] = sine_curve
+        self.plot_manager["cosine"] = cosine_curve
 
 if __name__ == "__main__":
-    # Create QApplication
-    script=SlabScript()
-    script.show_gui()
+    app = QApplication([])
+    win = TestWin()
+    win.show()
+    sys.exit(app.exec_())
