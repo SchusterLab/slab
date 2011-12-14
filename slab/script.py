@@ -5,24 +5,24 @@ script.py -- helpers for visualizing data-taking scripts
 
 usage:
     from script import *
-    
+
     window_1 = ScriptPlotWin()
     window_2 = ScriptPlotWin()
-    
+
     plot_conn_1 = window_1.add_linePlot()
     plot_conn_2, plot_conn_3 = window_1.add_multiLinePlot(2)
     iplot_conn = window_2.add_imagePlot()
-    
+
     window_1.go()
     window_2.go()
-    
+
     while True:
         x_data_1, y_data_1 = get_data()
         image_data = get_image_data()
         plot_conn_1.send((x_data_1, y_data_1)) # Data is a tuple of numpy arrays (x,y)
         iplot_conn.send(image_data)
         ...
-    
+
 """
 
 from multiprocessing import Process, Pipe
@@ -44,7 +44,7 @@ import sys, os, traceback
 # Log for thread debugging
 LOGFILENAME = "C:\\Users\\phil\\Documents\\log.txt"
 def clear_log():
-    try: os.remove(LOGFILENAME)    
+    try: os.remove(LOGFILENAME)
     except: pass
 
 def log_error(info=''):
@@ -64,6 +64,9 @@ def write_log(s):
     f.close()
 
 class ScriptLinePlot(Qt.QWidget):
+    """
+    Wrapper for guiqwt.plot.CurveDialog
+    """
     def __init__(self, n_items, cumulative, title="", style=None, **kwargs):
         Qt.QWidget.__init__(self)
         layout = Qt.QVBoxLayout()
@@ -84,7 +87,7 @@ class ScriptLinePlot(Qt.QWidget):
                 style = [style]
             elif len(style) < n_items:
                 style = style * int(np.ceil(float(n_items) / len(style)))
-            
+
         for i in range(n_items):
             if style:
                 item = guiqwt.builder.make.mcurve(np.array([]), np.array([]), style[i])
@@ -92,29 +95,29 @@ class ScriptLinePlot(Qt.QWidget):
                 item = guiqwt.curve.CurveItem()
             self.plot_items.append(item)
             self.plot.add_item(item)
-        
-    def update(self, data):        
+
+    def update(self, data):
         n, (x, y) = data
         if self.cumulative:
             np.append(self.datasets[n][0], x)
             np.append(self.datasets[n][1], y)
             x, y = self.datasets[n]
-            
+
         self.plot_items[n].set_data(x, y)
         for f in self.update_fns:
             f()
-    
+
     def redraw(self):
         self.plot.replot()
         for f in self.redraw_fns:
             f()
-    
+
     def add_autoscale_check(self):
         self.as_checkbox = Qt.QCheckBox("autoscale axes")
         self.as_checkbox.setCheckState(Qt.Qt.Checked)
         self.layout().addWidget(self.as_checkbox)
         self.connect(self.as_checkbox, Qt.SIGNAL("clicked(bool)"), self.autoscale)
-    
+
     def autoscale(self, b):
         if b:
             self.plot.do_autoscale()
@@ -123,7 +126,7 @@ class ScriptLinePlot(Qt.QWidget):
             try: self.redraw_fns.remove(self.plot.do_autoscale)
             except: pass
             self.plot.disable_autoscale()
-            
+
     def add_tool(self, tool, *args, **kwargs):
         self.curve_d.add_tool(tool, *args, **kwargs)
 
@@ -145,7 +148,7 @@ class ScriptImagePlot(Qt.QWidget):
     def add_tool(self, tool, *args, **kwargs):
         self.curve_d.add_tool(tool, *args, **kwargs)
 
-        
+
 
 class ScriptMPLPlot(Qt.QWidget):
     def __init__(self, figure):
@@ -157,7 +160,7 @@ class ScriptMPLPlot(Qt.QWidget):
         layout.addWidget(self.figure_canvas)
     def redraw(self):
         self.figure_canvas.draw()
-        
+
 class ScriptMPLContourPlot(ScriptMPLPlot):
     def __init__(self, xdim=10, ydim=10):
        self.figure = Figure()
@@ -166,13 +169,13 @@ class ScriptMPLContourPlot(ScriptMPLPlot):
        axes.set_autoscale_on(True)
        axes.contour(np.reshape(np.arange(xdim * ydim), (xdim, ydim)))
        ScriptMPLPlot.__init__(self, self.figure)
-       
+
     def update(self, data):
         self.figure.get_axes()[0].plot(data)
 #        self.figure.get_axes()[0].draw()
 #        self.figure.get_axes()[0].redraw_in_frame()
-        
-    
+
+
 
 class ScriptProxy:
     def __init__(self, parent, i=None):
@@ -187,13 +190,18 @@ class ScriptProxy:
         return lambda *args, **kwargs: self.parent.send((name, args, kwargs))
 
 class ScriptPlotWin(object):
+    """
+    Creates a gui thread. Call methods to add plots to thread and receive
+    connection objects for sending data to the plots. Call go() to start the
+    thread and enable data transmission
+    """
     def __init__(self, grid_x=0, grid_y=0):
         self.SPThread = ScriptPlotThread(grid_x, grid_y)
-            
+
 
     def add_linePlot(self, **kwargs):
         return apply(self.add_multiLinePlot, (1,), kwargs)[0]
-    
+
     def add_multiLinePlot(self, n, auto_redraw=True, cumulative=False, **kwargs):
         """
         n sets the number of lines to be included on the plot,
@@ -202,11 +210,11 @@ class ScriptPlotWin(object):
         """
         parent, child = Pipe()
         self.SPThread.add_plot(ScriptLinePlot, (n, cumulative), kwargs, child, auto_redraw)
-        return [ ScriptProxy(parent, i) for i in range(n) ] 
-    
+        return [ ScriptProxy(parent, i) for i in range(n) ]
+
     def add_imagePlot(self, **kwargs):
         return apply(self.add_customPlot, (ScriptImagePlot, ()), kwargs)
-    
+
     def add_customPlot(self, Plot, args, auto_redraw=True, **kwargs):
         """
         Plot must be a subclass of QWidget which also provides an
@@ -224,14 +232,14 @@ class ScriptPlotThread(Process):
     screenshotdir = "C:\\Users\\phil\\Desktop\\"
     def __init__(self, grid_x, grid_y, sleep_time=10):
         Process.__init__(self)
-        
+
         self.pipes = []
         self.make_plot = []
         self.make_plot_args = []
         self.plot_redraw = []
         self.plots = []
         self.names = []
-        
+
         if grid_x > 0:
             self.x_capped = True
             self.y_capped = False
@@ -261,7 +269,7 @@ class ScriptPlotThread(Process):
         cwidget.setLayout(clayout)
         pwidget = Qt.QWidget()
         clayout.addWidget(pwidget)
-        
+
         if self.x_capped or self.y_capped:
             self.layout = Qt.QGridLayout()
             self.layout.setSpacing(8)
@@ -271,8 +279,8 @@ class ScriptPlotThread(Process):
 
         self.layout = Qt.QGridLayout()
         pwidget.setLayout(self.layout)
-       
-       # Screenshot Button            
+
+       # Screenshot Button
         self.ssn = 0 # Number of screenshots taken
         self.ss_button = Qt.QPushButton("Screenshot")
         clayout.addWidget(self.ss_button)
@@ -294,7 +302,7 @@ class ScriptPlotThread(Process):
             else:
                 self.layout.addWidget(plot)
 #            plot.setup(self)
-                
+
         self.timer = Qt.QTimer()
         self.app.connect(self.timer, Qt.SIGNAL("timeout()"), self.wake)
         self.timer.start(self.sleep_time)
@@ -317,7 +325,7 @@ class ScriptPlotThread(Process):
             except:
                 return
         self.timer.start(self.sleep_time)
-            
+
     def screenshot(self):
         while os.path.exists(self.screenshotdir + "ss_" + str(self.ssn) + ".png"):
             self.ssn += 1
@@ -336,27 +344,8 @@ class ScriptPlotThread(Process):
 # [X] screenshot?
 # [X] Allow manual replotting rules!
 # [X] Proxy-ize
-# [ ] Multiple Axes?
-# [ ] Matplotlib
-def simple_fig():
-    f = Figure()
-    axes = f.add_subplot(111)
-    axes.hold(False)
-    return f
-
-def simple_fig_updater(figure, data):
-    x, y = data
-    axes = figure.get_axes()[0]
-    axes.plot(x, y)
-    
-def image_fig_updater(figure, data):
-    axes = figure.get_axes()[0]
-    axes.imshow(data)
-    
-def multli_line_updater(figure, data):
-    n_plot, (x, y) = data
-    a = figure.get_axes()[n_plot]
-    a.plot(x, y)    
+# [X] Multiple Axes?
+# [X] Matplotlib
 
 def test():
     win = ScriptPlotWin(grid_y=1)
@@ -371,7 +360,7 @@ def test():
     ip2 = win2.add_customPlot(ScriptMPLContourPlot, (100, 100))
     win.go()
     win2.go()
-        
+
     sleep(2)
     for i in range(100):
         sleep(0.1)
