@@ -177,9 +177,7 @@ class E5071(SocketInstrument):
         self.set_format('slog')
         if fname is not None:
             self.save_file(fname)
-            ans=fname
-        else:
-            ans=self.read_data()
+        ans=self.read_data()
         time.sleep(self.query_sleep)
 #       self.set_format(old_format)
         self.set_timeout(old_timeout)
@@ -192,7 +190,7 @@ class E5071(SocketInstrument):
         """Take a segmented sweep to achieve higher resolution"""
         span=stop-start
         total_sweep_pts=span/step
-        if total_sweep_pts<1600:
+        if total_sweep_pts<=1601:
             print "Segmented sweep unnecessary"
         segments=np.ceil(total_sweep_pts/1600.)
         segspan=span/segments
@@ -239,6 +237,64 @@ class E5071(SocketInstrument):
         self.set_trigger_source('INTERNAL')
 
         return np.hstack(segs)
+        
+    def segmented_sweep2(self,start,stop,step,sweep_pts=None,fname=None):
+        """Take a segmented sweep to achieve higher resolution"""
+        span=stop-start
+        total_sweep_pts=span/step
+        if total_sweep_pts<1600:
+            print "Segmented sweep unnecessary"
+            self.set_sweep_points(max(sweep_pts,total_sweep_pts))
+            self.set_start_frequency(start)
+            self.set_stop_frequency(stop)
+            return take_one_averaged_trace(fname)
+        segments=np.ceil(total_sweep_pts/1600.)
+        segspan=span/segments
+        starts=start+segspan*np.arange(0,segments)
+        stops=starts+segspan
+
+        print span
+        print segments
+        print segspan
+
+        #Set Save old settings and set up for automated data taking
+        time.sleep(self.query_sleep)
+        old_format=self.get_format()
+        old_timeout=self.get_timeout()
+        old_avg_mode=self.get_trigger_average_mode()
+
+        self.set_timeout(10000)
+        self.set_trigger_average_mode(True)
+        self.set_trigger_source('BUS')
+        self.set_format('mlog')
+
+        self.set_span(segspan)
+        segs=[]
+        for start,stop in zip(starts,stops):
+            self.set_start_frequency(start)
+            self.set_stop_frequency(stop)
+
+            self.clear_averages()
+            self.trigger_single()
+            time.sleep(self.query_sleep)
+            self.averaging_complete()    #Blocks!
+            self.set_format('slog')
+            seg_data=self.read_data()
+            self.set_format('mlog')
+            seg_data=seg_data.transpose()
+            last=seg_data[-1]
+            seg_data=seg_data[:-1].transpose()
+            segs.append(seg_data)
+        segs.append(np.array([last]).transpose())
+        time.sleep(self.query_sleep)
+        self.set_format(old_format)
+        self.set_timeout(old_timeout)
+        self.set_trigger_average_mode(old_avg_mode)
+        self.set_trigger_source('INTERNAL')
+        ans=np.hstack(segs)
+        if fname is not None:
+            np.savetxt(fname,ans,delimiter=',')
+        return ans
 
     def get_settings(self):
         settings={"start": self.get_start_frequency(),"stop":self.get_stop_frequency(),
