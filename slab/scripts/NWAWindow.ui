@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Network Analyzer Interface</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -82,7 +82,7 @@
               <double>10.000000000000000</double>
              </property>
              <property name="value">
-              <double>-10.000000000000000</double>
+              <double>-20.000000000000000</double>
              </property>
             </widget>
            </item>
@@ -147,13 +147,13 @@
               </sizepolicy>
              </property>
              <property name="suffix">
-              <string> GHz</string>
+              <string> MHz</string>
              </property>
              <property name="maximum">
               <double>20000.000000000000000</double>
              </property>
              <property name="value">
-              <double>1.000000000000000</double>
+              <double>1000.000000000000000</double>
              </property>
             </widget>
            </item>
@@ -238,7 +238,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="datapathLineEdit"/>
+           <widget class="QLineEdit" name="datapathLineEdit">
+            <property name="text">
+             <string>S:\_Data\</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -266,7 +270,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="checkBox">
+           <widget class="QCheckBox" name="saveCheckBox">
             <property name="text">
              <string>Save Trace</string>
             </property>

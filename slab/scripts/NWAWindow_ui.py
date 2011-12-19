@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'NWAWindow.ui'
 #
-# Created: Sun Dec 18 09:45:05 2011
+# Created: Sun Dec 18 23:36:59 2011
 #      by: PyQt4 UI code generator 4.8.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -52,7 +52,7 @@ class Ui_NWAWindow(object):
         self.powerSpinBox = QtGui.QDoubleSpinBox(self.groupBox)
         self.powerSpinBox.setMinimum(-100.0)
         self.powerSpinBox.setMaximum(10.0)
-        self.powerSpinBox.setProperty(_fromUtf8("value"), -10.0)
+        self.powerSpinBox.setProperty(_fromUtf8("value"), -20.0)
         self.powerSpinBox.setObjectName(_fromUtf8("powerSpinBox"))
         self.formLayout.setWidget(0, QtGui.QFormLayout.FieldRole, self.powerSpinBox)
         self.sweep_ptsSpinBox = QtGui.QSpinBox(self.groupBox)
@@ -84,7 +84,7 @@ class Ui_NWAWindow(object):
         sizePolicy.setHeightForWidth(self.spanstopSpinBox.sizePolicy().hasHeightForWidth())
         self.spanstopSpinBox.setSizePolicy(sizePolicy)
         self.spanstopSpinBox.setMaximum(20000.0)
-        self.spanstopSpinBox.setProperty(_fromUtf8("value"), 1.0)
+        self.spanstopSpinBox.setProperty(_fromUtf8("value"), 1000.0)
         self.spanstopSpinBox.setObjectName(_fromUtf8("spanstopSpinBox"))
         self.formLayout.setWidget(5, QtGui.QFormLayout.FieldRole, self.spanstopSpinBox)
         self.label_5 = QtGui.QLabel(self.groupBox)
@@ -135,9 +135,9 @@ class Ui_NWAWindow(object):
         self.prefixLineEdit = QtGui.QLineEdit(self.centralwidget)
         self.prefixLineEdit.setObjectName(_fromUtf8("prefixLineEdit"))
         self.horizontalLayout_6.addWidget(self.prefixLineEdit)
-        self.checkBox = QtGui.QCheckBox(self.centralwidget)
-        self.checkBox.setObjectName(_fromUtf8("checkBox"))
-        self.horizontalLayout_6.addWidget(self.checkBox)
+        self.saveCheckBox = QtGui.QCheckBox(self.centralwidget)
+        self.saveCheckBox.setObjectName(_fromUtf8("saveCheckBox"))
+        self.horizontalLayout_6.addWidget(self.saveCheckBox)
         self.verticalLayout.addLayout(self.horizontalLayout_6)
         self.magplotwidget = CurveWidget(self.centralwidget)
         self.magplotwidget.setOrientation(QtCore.Qt.Horizontal)
@@ -196,7 +196,7 @@ class Ui_NWAWindow(object):
         QtCore.QMetaObject.connectSlotsByName(NWAWindow)
 
     def retranslateUi(self, NWAWindow):
-        NWAWindow.setWindowTitle(QtGui.QApplication.translate("NWAWindow", "MainWindow", None, QtGui.QApplication.UnicodeUTF8))
+        NWAWindow.setWindowTitle(QtGui.QApplication.translate("NWAWindow", "Network Analyzer Interface", None, QtGui.QApplication.UnicodeUTF8))
         self.groupBox.setTitle(QtGui.QApplication.translate("NWAWindow", "NWA Parameters", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("NWAWindow", "Power", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("NWAWindow", "Sweep pts", None, QtGui.QApplication.UnicodeUTF8))
@@ -207,17 +207,18 @@ class Ui_NWAWindow(object):
         self.powerSpinBox.setSuffix(QtGui.QApplication.translate("NWAWindow", " dBm", None, QtGui.QApplication.UnicodeUTF8))
         self.ifbwSpinBox.setSuffix(QtGui.QApplication.translate("NWAWindow", " Hz", None, QtGui.QApplication.UnicodeUTF8))
         self.centerstartSpinBox.setSuffix(QtGui.QApplication.translate("NWAWindow", " GHz", None, QtGui.QApplication.UnicodeUTF8))
-        self.spanstopSpinBox.setSuffix(QtGui.QApplication.translate("NWAWindow", " GHz", None, QtGui.QApplication.UnicodeUTF8))
+        self.spanstopSpinBox.setSuffix(QtGui.QApplication.translate("NWAWindow", " MHz", None, QtGui.QApplication.UnicodeUTF8))
         self.label_5.setText(QtGui.QApplication.translate("NWAWindow", "Max Step", None, QtGui.QApplication.UnicodeUTF8))
         self.resolutionSpinBox.setSuffix(QtGui.QApplication.translate("NWAWindow", " MHz", None, QtGui.QApplication.UnicodeUTF8))
         self.centerspanstartstopCheckBox.setText(QtGui.QApplication.translate("NWAWindow", "Start/Stop", None, QtGui.QApplication.UnicodeUTF8))
         self.go_button.setText(QtGui.QApplication.translate("NWAWindow", "Go", None, QtGui.QApplication.UnicodeUTF8))
         self.abort_button.setText(QtGui.QApplication.translate("NWAWindow", "Abort", None, QtGui.QApplication.UnicodeUTF8))
         self.datapathButton.setText(QtGui.QApplication.translate("NWAWindow", "Datapath", None, QtGui.QApplication.UnicodeUTF8))
+        self.datapathLineEdit.setText(QtGui.QApplication.translate("NWAWindow", "S:\\_Data\\", None, QtGui.QApplication.UnicodeUTF8))
         self.label_20.setText(QtGui.QApplication.translate("NWAWindow", "File Prefix", None, QtGui.QApplication.UnicodeUTF8))
         self.filenumberLabel.setText(QtGui.QApplication.translate("NWAWindow", "000_", None, QtGui.QApplication.UnicodeUTF8))
         self.prefixLineEdit.setText(QtGui.QApplication.translate("NWAWindow", "trace", None, QtGui.QApplication.UnicodeUTF8))
-        self.checkBox.setText(QtGui.QApplication.translate("NWAWindow", "Save Trace", None, QtGui.QApplication.UnicodeUTF8))
+        self.saveCheckBox.setText(QtGui.QApplication.translate("NWAWindow", "Save Trace", None, QtGui.QApplication.UnicodeUTF8))
         self.message_box.setHtml(QtGui.QApplication.translate("NWAWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
