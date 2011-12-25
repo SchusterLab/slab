@@ -11,6 +11,9 @@ import glob
 import os.path
 
 class E5071(SocketInstrument):
+
+    MAXSWEEPPTS=1601    
+    
     def __init__(self,name="E5071",address='nwa.circuitqed.com:5025',enabled=True):
         if ':' not in address: address+=':5025'
         SocketInstrument.__init__(self,name,address,enabled=enabled,timeout=10,recv_length=2**20)
@@ -154,7 +157,6 @@ class E5071(SocketInstrument):
         #self.data=data
         fpts=np.linspace(self.get_start_frequency(),self.get_stop_frequency(),len(data[0]))
         return np.vstack((fpts,data))
-
 
 #### Meta
 

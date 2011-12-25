@@ -79,8 +79,8 @@ class SACalibrationManager:
 
         #check whether output is out of bound
         if sa_output < self.cali_pwr[lf][0][0] or sa_output > self.cali_pwr[lf][len(self.cali_pwr[lf])-1][0]:
-            raise OutputOutOfRangeError(lf, self.cali_pwr[lf][0][0], 
-                                   self.cali_pwr[lf][len(self.cali_pwr[lf])-1][0])        
+            raise OutputOutOfRangeError(lf, self.cali_pwr[lf][0][0], self.cali_pwr[lf][0][1],
+                                   self.cali_pwr[lf][len(self.cali_pwr[lf])-1][0], self.cali_pwr[lf][len(self.cali_pwr[lf])-1][1])
         
         ll = [lf, 0, 0]
         lh = [lf, 0, 0]
@@ -98,8 +98,8 @@ class SACalibrationManager:
         
         #check whether output is out of bound
         if sa_output < self.cali_pwr[hf][0][0] or sa_output > self.cali_pwr[hf][len(self.cali_pwr[hf])-1][0]:
-            raise OutputOutOfRangeError(hf, self.cali_pwr[hf][0][0], 
-                                   self.cali_pwr[hf][len(self.cali_pwr[hf])-1][0])
+            raise OutputOutOfRangeError(hf, self.cali_pwr[hf][0][0], self.cali_pwr[hf][0][1],
+                                   self.cali_pwr[hf][len(self.cali_pwr[hf])-1][0], self.cali_pwr[hf][len(self.cali_pwr[hf])-1][1])
                         
         hl = [hf, 0, 0]
         hh = [hf, 0, 0]
@@ -127,12 +127,14 @@ class FrequencyOutOfRangeError(OutOfRangeError):
         OutOfRangeError.__init__(self, lower_bound, upper_bound)
         
 class OutputOutOfRangeError(OutOfRangeError):
-    def __init__(self, frequency, lower_bound, upper_bound):
+    def __init__(self, frequency, lower_bound, lower_bound_pwr, upper_bound, upper_bound_pwr):
         self.frequency = frequency
+        self.lower_bound_pwr = lower_bound_pwr
+        self.upper_bound_pwr = upper_bound_pwr
         OutOfRangeError.__init__(self, lower_bound, upper_bound)
 
     def __str__(self):
-        return 'at frequency '+str(self.frequency)+' whose ' + OutOfRangeError.__str__(self)
+        return 'at frequency '+str(self.frequency)+' where ' + OutOfRangeError.__str__(self)+' are at '+str(self.lower_bound_pwr)+' dBm and '+ str(self.upper_bound_pwr)+' dBm, respectively.'
 
 if __name__ == '__main__':
     import pickle

@@ -111,7 +111,7 @@ class ScopeWindow(QMainWindow, Ui_ScopeWindow):
         if self.autoscaleCheckBox.isChecked():
             self.plot.do_autoscale()
         if self.autorunCheckBox.isChecked():
-            self.ctimer.start(10)
+            self.ctimer.start(1)
 
         
 if __name__ == "__main__":
