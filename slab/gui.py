@@ -63,7 +63,7 @@ class DataThread(QObject):
         self.instruments.save_settings(filename, params=self.params)
 
     def load_settings(self):
-        filename = QFileDialog.getOpenFileName()
+        filename = QFileDialog.getOpenFileName(filter="*.cfg")
         self.instruments.load_config_file(filename)
 
     def list_instruments(self):

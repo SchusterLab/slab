@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'NWAWindow.ui'
 #
-# Created: Sun Dec 18 23:36:59 2011
+# Created: Sat Dec 24 17:56:50 2011
 #      by: PyQt4 UI code generator 4.8.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -91,8 +91,10 @@ class Ui_NWAWindow(object):
         self.label_5.setObjectName(_fromUtf8("label_5"))
         self.formLayout.setWidget(6, QtGui.QFormLayout.LabelRole, self.label_5)
         self.resolutionSpinBox = QtGui.QDoubleSpinBox(self.groupBox)
-        self.resolutionSpinBox.setMinimum(10.0)
+        self.resolutionSpinBox.setDecimals(5)
+        self.resolutionSpinBox.setMinimum(1e-05)
         self.resolutionSpinBox.setMaximum(999999999.0)
+        self.resolutionSpinBox.setSingleStep(1e-05)
         self.resolutionSpinBox.setProperty(_fromUtf8("value"), 100.0)
         self.resolutionSpinBox.setObjectName(_fromUtf8("resolutionSpinBox"))
         self.formLayout.setWidget(6, QtGui.QFormLayout.FieldRole, self.resolutionSpinBox)

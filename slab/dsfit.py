@@ -9,6 +9,7 @@ import numpy as np
 import math as math
 import guiqwt.pyplot as plt # Original version doesn't seem to work. Changed to a better coding style 
 #from guiqwt.pyplot import *
+#import matplotlib.pyplot as plt # Original version doesn't seem to work. Changed to a better coding style 
 #from matplotlib.pyplot import *
 from scipy import optimize
 
@@ -31,8 +32,8 @@ def fitgeneral(xdata,ydata,fitfunc,fitparams,domain=None,showfit=False,showstart
 #    print 'minimum', np.min(fitdatay)
 #    ymin=np.min(fitdatay)
     errfunc = lambda p, x, y: (fitfunc(p,x) - y) #there shouldn't be **2 # Distance to the target function
-    startparams=fitparams # Initial guess for the parameters
-    bestfitparams, success = optimize.leastsq(errfunc, startparams[:], args=(fitdatax,fitdatay))
+    startparams=fitparams # Initial guess for the parameters 
+    bestfitparams, success = optimize.leastsq(errfunc, startparams[:], args=(fitdatax,fitdatay));    
     if showfit:
         plt.plot(fitdatax,fitdatay,'bo',label=label+" data")
         if showstartfit:
@@ -126,8 +127,8 @@ def fithanger_old (xdata,ydata,fitparams=None,domain=None,showfit=False,showstar
 
 def hangerfunc(p,x):
     """p=[f0,Qi,Qc,df,scale]"""
-    print p    
-    f0,Qi,Qc,df,scale,slope, offset = p
+    #print p    
+    f0,Qi,Qc,df,scale = p
     a=(x-(f0+df))/(f0+df)
     b=2*df/f0
     Q0=1./(1./Qi+1./Qc)
@@ -144,6 +145,32 @@ def hangerfunctilt(p,x):
 
 
 def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+    """Fit Hanger Transmission (S21) data taking into account asymmetry.
+        fitparams = []
+        returns p=[f0, Q, S21Min, Tmax]
+        Uses hangerfunctilt instead of hangerfunc. 
+    """
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:    
+        peakloc=np.argmin(fitdatay)
+        ymax=(fitdatay[0]+fitdatay[-1])/2.
+        ymin=fitdatay[peakloc]        
+        f0=fitdatax[peakloc]
+        Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/3.))
+        Qi=Q0*(1.+ymax)
+        Qc=Qi/ymax
+        scale= 1
+        slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
+        offset= ymin-slope*f0
+        fitparams=[f0,Qi,Qc,0.,scale]
+        print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
+    return fitgeneral(fitdatax,fitdatay,hangerfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+    
+def fithangeroffset(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
         fitparams = []
         returns p=[f0, Q, S21Min, Tmax]
@@ -193,7 +220,7 @@ if __name__ =='__main__':
 #    params2=[7.8,200,0.01,1.]
     xdata2=np.linspace(7,9,1000)
     ydata2=hangerfunc(params2,xdata2)-noise/2.+noise*np.random.rand(len(xdata2))
-    fit=fithanger(xdata2,ydata2,showfit=True,showstartfit=True)   
+    fit=fithangeroffset(xdata2,ydata2,showfit=True,showstartfit=True)   
     print '{0}\n--------------Best Fit---------- \nf0: {1}\nQi: {2}\nQc: {3}\ndf: {4}\nScale: {5}\nSlope: {6}\nOffset:{7}\n'.format\
           ('hanger',fit[0],fit[1],fit[2],fit[3],fit[4],fit[5],fit[6])
     #print hangerqs(p3)

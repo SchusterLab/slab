@@ -10,27 +10,17 @@ from NWAWindow_ui import *
 from guiqwt.builder import make
 import os
 
-class nwa_DataThread(DataThread):
-    def run_script(self):
-        try:
-            nwa=self.instruments['NWA']
-        except:
-            self.msg("NWA config not loaded!")
-            return
-        self.msg("Configuring NWA....")
-        self.msg(str(nwa.get_id()))
 
-        if self.params["centerspanstartstop"]:
-            nwa.set_center_frequency(self.params['centerstart']*1e9)
-            nwa.set_span(self.params['spanstop']*1e6)
-        else:
-            nwa.set_start_frequency(self.params['centerstart']*1e9)
-            nwa.set_stop_frequency(self.params['spanstop']*1e9)
-        
-        nwa.set_ifbw(self.params['ifbw'])
-        nwa.set_power(self.params['power'])
-        nwa.set_averages(self.params['avgs'])
-        nwa.set_sweep_points(self.params['sweep_pts'])
+
+class nwa_DataThread(DataThread):
+    
+    def do_normal_sweep(self,nwa,start,stop,sweep_pts):
+        self.msg('Commencing normal Sweep...')
+        #calculate start and stop frequencies       
+        nwa.set_start_frequency(start)
+        nwa.set_stop_frequency(stop)       
+        nwa.set_sweep_points(sweep_pts)
+
         self.msg("Acquiring data...")
         freqs,mags,phases=nwa.take_one_averaged_trace()
         self.msg("Data acquisition complete.")
@@ -42,9 +32,111 @@ class nwa_DataThread(DataThread):
             fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
             np.savetxt(fname,transpose(array([freqs,mags,phases])),delimiter=',')
 
+    def do_segmented_sweep(self,nwa,start,stop,step):
+        self.msg('Commencing segmented Sweep...')
+        span=stop-start
+        total_sweep_pts=span/step
+        if total_sweep_pts<1600:
+            print "Segmented sweep unnecessary"
+        segments=np.ceil(total_sweep_pts/1600.)
+        segspan=span/segments
+        starts=start+segspan*np.arange(0,segments)
+        stops=starts+segspan
+        
+        self.msg('Segments: %d\t Segment Span: %f MHz' % (segments,segspan/1e6))
+              
+        old_timeout=nwa.get_timeout()
+        nwa.set_timeout(10000)
+        nwa.set_trigger_average_mode(True)
+        nwa.set_trigger_source('BUS')
+        nwa.set_format('mlog')
+    
+        nwa.set_span(segspan)
+        segs=[]
+        if self.params['save']:
+            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
+            np.savetxt(fname,transpose(data),delimiter=',')
+        for start,stop in zip(starts,stops):
+            nwa.set_start_frequency(start)
+            nwa.set_stop_frequency(stop)
+    
+            nwa.clear_averages()
+            nwa.trigger_single()
+            time.sleep(nwa.query_sleep)
+            nwa.averaging_complete()    #Blocks!
+            nwa.set_format('slog')
+            
+            seg_data=nwa.read_data()
+
+            seg_data=seg_data.transpose()
+            last=seg_data[-1]
+            seg_data=seg_data[:-1].transpose()
+            segs.append(seg_data)
+            data=np.hstack(segs) 
+            self.plots["mag"].set_data(data[0]/1e9,data[1])
+            self.plots["phase"].set_data(data[0]/1e9,data[2])
+            self.plots["magplot"].replot()
+            self.plots["phaseplot"].replot()
+            if self.params['save']:
+                np.savetxt(fname,transpose(data),delimiter=',')
+            if self.aborted():
+                self.msg("aborted")
+                return
+
+
+            
+        segs.append(np.array([last]).transpose())
+        data=np.hstack(segs) 
+        time.sleep(nwa.query_sleep)
+        nwa.set_timeout(old_timeout)
+        nwa.set_format('mlog')
+        nwa.set_trigger_average_mode(False)
+        nwa.set_trigger_source('INTERNAL')
+
+        if self.params['save']:
+            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
+            np.savetxt(fname,transpose(data),delimiter=',')
+            
+
+    def run_script(self):
+        try:
+            nwa=self.instruments['NWA']
+        except:
+            self.msg("NWA config not loaded!")
+            return
+        self.msg("Configuring NWA....")
+        self.msg(str(nwa.get_id()))
+
+        nwa.set_ifbw(self.params['ifbw'])
+        nwa.set_power(self.params['power'])
+        nwa.set_averages(self.params['avgs'])
+
+        #calculate start and stop frequencies
+        if self.params["centerspanstartstop"]:
+            start=self.params['centerstart']*1e9-self.params['spanstop']*1e6/2.
+            stop=self.params['centerstart']*1e9+self.params['spanstop']*1e6/2.
+        else:
+            start=self.params['centerstart']*1e9
+            stop=self.params['spanstop']*1e9
+            
+        #Calculate resolution
+        minstep=self.params['resolution']*1e6
+        step=(stop-start)/self.params['sweep_pts']
+        self.msg('start: %f GHz\tstop: %f GHz\tstep: %f MHz' % (start/1e9,stop/1e9,step/1e6))
+        if step <= minstep:
+            self.do_normal_sweep(nwa,start,stop,self.params['sweep_pts'])
+        elif step > minstep:
+            step=minstep
+            if (stop-start)/minstep <= nwa.MAXSWEEPPTS:
+                sweep_pts=(stop-start)/minstep 
+                self.do_normal_sweep(nwa,start,stop,sweep_pts)
+            else:
+                self.do_segmented_sweep(nwa,start,stop,step)
+        
+
 class NWAWin(SlabWindow, Ui_NWAWindow):
     def __init__(self):
-        SlabWindow.__init__(self, nwa_DataThread, config_file=None)
+        SlabWindow.__init__(self, nwa_DataThread, config_file='instruments.cfg')
         self.setupSlabWindow()
         self.register_script("run_script", self.go_button, self.abort_button)
         self.start_thread()
