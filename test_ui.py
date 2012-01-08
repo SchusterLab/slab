@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'test.ui'
 #
-# Created: Fri Dec  2 15:57:59 2011
+# Created: Sun Jan  8 13:06:48 2012
 #      by: PyQt4 UI code generator 4.8.6
 #
 # WARNING! All changes made in this file will be lost!
@@ -33,11 +33,11 @@ class Ui_MainWindow(object):
         self.label.setText(QtGui.QApplication.translate("MainWindow", "Rate", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setObjectName(_fromUtf8("label"))
         self.horizontalLayout.addWidget(self.label)
-        self.spinBox = QtGui.QSpinBox(self.verticalLayoutWidget)
-        self.spinBox.setMinimumSize(QtCore.QSize(100, 0))
-        self.spinBox.setProperty("value", 1)
-        self.spinBox.setObjectName(_fromUtf8("spinBox"))
-        self.horizontalLayout.addWidget(self.spinBox)
+        self.param_rate = QtGui.QSpinBox(self.verticalLayoutWidget)
+        self.param_rate.setMinimumSize(QtCore.QSize(100, 0))
+        self.param_rate.setProperty("value", 1)
+        self.param_rate.setObjectName(_fromUtf8("param_rate"))
+        self.horizontalLayout.addWidget(self.param_rate)
         self.qwtPlot = Qwt5.QwtPlot(self.verticalLayoutWidget)
         self.qwtPlot.setObjectName(_fromUtf8("qwtPlot"))
         self.horizontalLayout.addWidget(self.qwtPlot)
