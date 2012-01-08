@@ -8,12 +8,20 @@ usage:
     - Create a class inheriting from SlabWindow and Ui_MainWindow (as provided by
     the designer file)
     - In the class' __init__ method
-        - register any plots from the UI with the plot manager, i.e.
+        - run self.setupSlabWindow()
+        - register any plots (or actually any UI components to be
+          dynamically updated) from the UI with the plot manager, i.e.
           self.plot_manager["myplot"] = self.myplot
-        - connect any parameter input widgets' signals to the set_param()
-          method i.e.
-          self.connect(self.myparamSpinBox, SIGNAL("valueChanged(int)"),
-                       lambda i: self.set_param("myparam", i))
+        - For connecting parameter widgets there are three options
+          - For "standard" widgets (i.e. SpinBox, Checkbox, ButtonGroup, LineEdit),
+            register a widget with a name using self.register_widget(widget, "widgetName")
+          - Automatically register parameter widgets by modifying the call to setupSlabWindow
+            self.setupSlabWindow(autoparam=True)
+            This will locate widgets named with the convention param_widgetName, and
+            automatically call register_widget(widget, "widgetName")
+          - For non-standard widgets find the appropriate signal to call self.set_param from, i.e
+            self.connect(self.myparamSpinBox, SIGNAL("valueChanged(int)"),
+                         lambda i: self.set_param("myparam", i))
     - Subclass DataThread to add run_script(). In the DataThread
       namespace, you will find self.instruments (an InstrumentManager),
       self.params (a dictionary of parameters), and self.plots (a PlotManager)
@@ -28,7 +36,7 @@ usage:
     A more complete (functional) example is given at the end of the file
 """
 from instruments import InstrumentManager
-from PyQt4.Qt import Qt, QApplication, QObject, QThread, QMainWindow, QFileDialog, SIGNAL
+from PyQt4.Qt import *
 import PyQt4.Qwt5 as Qwt
 import numpy as np
 from time import sleep
@@ -117,6 +125,7 @@ class SlabWindow(QMainWindow):
         self.instruments = ManagerProxy("instrumentMethodCalled")
         self.plot_manager = {}
         self.params = DictProxy("parameterChanged")
+        self.param_widgets = []
         self.data_thread_obj = DataThreadC()
 #        self.setup_commands()
         self.connect(self.instruments, SIGNAL("instrumentMethodCalled"),
@@ -140,7 +149,7 @@ class SlabWindow(QMainWindow):
             self.connect(abort_button, SIGNAL("clicked()"),
                          self.data_thread_obj.abort, Qt.DirectConnection)
 
-    def setupSlabWindow(self):
+    def setupSlabWindow(self, autoparam=False):
         "Connect Ui components provided by the SlabWindow designer template"
         self.setupUi(self)
 
@@ -161,6 +170,13 @@ class SlabWindow(QMainWindow):
         except Exception as e:
             print "Could not connect menu actions", e
 
+        if autoparam:
+            for wname in dir(self):
+                print wname
+                if wname[:6] == "param_":
+                    widget = getattr(self, wname)
+                    if isinstance(widget, QWidget):
+                        self.register_param(widget, wname[6:])
 
 #    def setup_commands(self):
 #        self.commands = {}
@@ -192,7 +208,34 @@ class SlabWindow(QMainWindow):
         self.params[name] = value
 
     def start_thread(self):
+        self.read_param_widgets()
         self._data_thread.start()
+
+    def read_param_widgets(self):
+        for widget, name in self.param_widgets:
+            if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
+                self.set_param(name, widget.value)
+            elif isinstance(widget, QLineEdit):
+                self.set_param(name, widget.text())
+            elif isinstance(widget, QButtonGroup):
+                self.set_param(name, i)
+            elif isinstance(widget, QCheckBox):
+                self.set_param(name, i > 0)
+
+    def register_param(self, widget, name):
+        self.param_widgets.append((widget, name))
+        if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
+            self.connect(widget, SIGNAL("valueChanged(int)"),
+                    lambda i: self.set_param(name, i))
+        elif isinstance(widget, QLineEdit):
+            self.connect(widget, SIGNAL("returnPressed()"),
+                    lambda: self.set_param(name, widget.text()))
+        elif isinstance(widget, QButtonGroup):
+            self.connect(widget, SIGNAL("buttonClicked(int)"),
+                    lambda i: self.set_param(name, i))
+        elif isinstance(widget, QCheckBox):
+            self.connect(widget, SIGNAL("stateChanged(int)"),
+                    lambda i: self.set_param(name, i > 0))
 
 # Example code
 
@@ -216,12 +259,12 @@ class test_DataThread(DataThread):
 class TestWin(SlabWindow, Ui_MainWindow):
     def __init__(self):
         SlabWindow.__init__(self, test_DataThread, config_file=None)
-        self.setupSlabWindow()
+        self.setupSlabWindow(autoparam=True)
         self.register_script("run_script", self.go_button, self.abort_button)
+#        self.connect(self.spinBox, SIGNAL("valueChanged(int)"),
+#                lambda i: self.set_param("rate", i))
+#        self.register_param(self.spinBox, "rate")
         self.start_thread()
-
-        self.connect(self.spinBox, SIGNAL("valueChanged(int)"),
-                lambda i: self.set_param("rate", i))
         self.set_param("rate", 1)
         self.plot_manager["plot"] = self.qwtPlot
         sine_curve = Qwt.QwtPlotCurve("Sine")
@@ -231,8 +274,11 @@ class TestWin(SlabWindow, Ui_MainWindow):
         self.plot_manager["sine"] = sine_curve
         self.plot_manager["cosine"] = cosine_curve
 
-if __name__ == "__main__":
+def runWin(WinC, *args, **kwargs):
     app = QApplication([])
-    win = TestWin()
+    win = WinC(*args, **kwargs)
     win.show()
-    sys.exit(app.exec_())
+    app.exec_()
+
+if __name__ == "__main__":
+    sys.exit(runWin(TestWin))
