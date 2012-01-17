@@ -1,3 +1,4 @@
+#!/usr/bin/python2.7
 """
 gui.py
 
@@ -14,11 +15,11 @@ usage:
           self.plot_manager["myplot"] = self.myplot
         - For connecting parameter widgets there are three options
           - For "standard" widgets (i.e. SpinBox, Checkbox, ButtonGroup, LineEdit),
-            register a widget with a name using self.register_widget(widget, "widgetName")
+            register a widget with a name using self.register_param(widget, "widgetName")
           - Automatically register parameter widgets by modifying the call to setupSlabWindow
             self.setupSlabWindow(autoparam=True)
             This will locate widgets named with the convention param_widgetName, and
-            automatically call register_widget(widget, "widgetName")
+            automatically call register_param(widget, "widgetName")
           - For non-standard widgets find the appropriate signal to call self.set_param from, i.e
             self.connect(self.myparamSpinBox, SIGNAL("valueChanged(int)"),
                          lambda i: self.set_param("myparam", i))
@@ -35,6 +36,7 @@ usage:
 
     A more complete (functional) example is given at the end of the file
 """
+
 from instruments import InstrumentManager
 from PyQt4.Qt import *
 import PyQt4.Qwt5 as Qwt
@@ -127,7 +129,7 @@ class SlabWindow(QMainWindow):
         self.params = DictProxy("parameterChanged")
         self.param_widgets = []
         self.data_thread_obj = DataThreadC()
-#        self.setup_commands()
+
         self.connect(self.instruments, SIGNAL("instrumentMethodCalled"),
                 self.data_thread_obj.run_on_instrument_manager)
         self.connect(self.data_thread_obj, SIGNAL("instrumentMethodFailed"),
@@ -149,12 +151,14 @@ class SlabWindow(QMainWindow):
             self.connect(abort_button, SIGNAL("clicked()"),
                          self.data_thread_obj.abort, Qt.DirectConnection)
 
+
     def setupSlabWindow(self, autoparam=False):
         "Connect Ui components provided by the SlabWindow designer template"
         self.setupUi(self)
 
         self._data_thread = QThread()
         self.data_thread_obj.moveToThread(self._data_thread)
+        self.connect(self, SIGNAL("lastWindowClosed()"), self._data_thread.exit)
 
         try:
             self.connect(self.actionExperimental_Settings, SIGNAL("triggered()"),
@@ -163,10 +167,6 @@ class SlabWindow(QMainWindow):
                          self.data_thread_obj.save_all_settings)
             self.connect(self.actionLoad, SIGNAL("triggered()"),
                          self.data_thread_obj.load_settings)
-#            self.connect(self.cmd_lineEdit, SIGNAL("returnPressed()"),
-#                         self.process_cmd)
-#            self.connect(self.cmd_lineEdit, SIGNAL("returnPressed()"),
-#                         lambda: self.cmd_lineEdit.setText(""))
         except Exception as e:
             print "Could not connect menu actions", e
 
@@ -177,22 +177,6 @@ class SlabWindow(QMainWindow):
                     widget = getattr(self, wname)
                     if isinstance(widget, QWidget):
                         self.register_param(widget, wname[6:])
-
-#    def setup_commands(self):
-#        self.commands = {}
-#
-#        instrument_list = lambda: self.emit(SIGNAL("list_instruments"))
-#        self.connect(self, SIGNAL("list_instruments"),
-#                self.data_thread_obj.list_instruments)
-#
-#        self.commands["il"] = instrument_list
-#
-#    def process_cmd(self):
-#        line = str(self.cmd_lineEdit.text()).split()
-#        cmd = line[0]
-#        args = tuple(line[1:])
-#        try: apply(self.commands[cmd], args)
-#        except Exception as e: self.msg("Command failed: " + repr(e))
 
     def run_on_plot_manager(self, plot_name, method_name, args, kwargs):
         getattr(self.plot_manager[plot_name], method_name)(*args, **kwargs)
@@ -240,6 +224,7 @@ class SlabWindow(QMainWindow):
 # Example code
 
 from test_ui import *
+from widgets import *
 
 class test_DataThread(DataThread):
     def run_script(self):
@@ -259,11 +244,17 @@ class test_DataThread(DataThread):
 class TestWin(SlabWindow, Ui_MainWindow):
     def __init__(self):
         SlabWindow.__init__(self, test_DataThread, config_file=None)
-        self.setupSlabWindow(autoparam=True)
+        self.setupSlabWindow()#autoparam=True)
+
         self.register_script("run_script", self.go_button, self.abort_button)
 #        self.connect(self.spinBox, SIGNAL("valueChanged(int)"),
 #                lambda i: self.set_param("rate", i))
-#        self.register_param(self.spinBox, "rate")
+        self.slabSpinBox = SlabSpinBox()#self.verticalLayoutWidget)
+        self.slabSpinBox.setProperty("value", 1)
+        self.slabSpinBox.setRange(-(10**16),10**16)
+        #        print dir(self.slabSpinBox)
+        self.verticalLayout.addWidget(self.slabSpinBox)
+        self.register_param(self.param_rate, "rate")
         self.start_thread()
         self.set_param("rate", 1)
         self.plot_manager["plot"] = self.qwtPlot
@@ -278,6 +269,7 @@ def runWin(WinC, *args, **kwargs):
     app = QApplication([])
     win = WinC(*args, **kwargs)
     win.show()
+    app.connect(app, SIGNAL("lastWindowClosed()"), win, SIGNAL("lastWindowClosed()"))
     app.exec_()
 
 if __name__ == "__main__":
