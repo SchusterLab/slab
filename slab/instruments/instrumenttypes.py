@@ -127,9 +127,10 @@ class SerialInstrument(Instrument):
                  recv_length=1024, baudrate=9600, querysleep=1):
         Instrument.__init__(self, name, address, enabled)
         self.protocol='serial'
+        self.enabled=enabled
         if self.enabled:
             try:
-                self.ser = serial.Serial(int(address), baudrate)
+                self.ser = serial.Serial(int(address[-1])-1, baudrate)
             except serial.SerialException:
                 print 'Cannot create a connection to port '+str(address)+'.\n'
         self.set_timeout(timeout)

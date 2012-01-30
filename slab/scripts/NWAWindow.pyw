@@ -30,7 +30,7 @@ class nwa_DataThread(DataThread):
         self.plots["phaseplot"].replot()
         if self.params['save']:
             fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
-            np.savetxt(fname,transpose(array([freqs,mags,phases])),delimiter=',')
+            np.savetxt(os.path.join(self.params['datapath'],fname),transpose(array([freqs,mags,phases])),delimiter=',')
 
     def do_segmented_sweep(self,nwa,start,stop,step):
         self.msg('Commencing segmented Sweep...')
@@ -49,16 +49,15 @@ class nwa_DataThread(DataThread):
         nwa.set_timeout(10000)
         nwa.set_trigger_average_mode(True)
         nwa.set_trigger_source('BUS')
-        nwa.set_format('mlog')
     
         nwa.set_span(segspan)
         segs=[]
         if self.params['save']:
             fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
-            np.savetxt(fname,transpose(data),delimiter=',')
         for start,stop in zip(starts,stops):
             nwa.set_start_frequency(start)
             nwa.set_stop_frequency(stop)
+            nwa.set_format('mlog')
     
             nwa.clear_averages()
             nwa.trigger_single()
@@ -67,7 +66,7 @@ class nwa_DataThread(DataThread):
             nwa.set_format('slog')
             
             seg_data=nwa.read_data()
-
+    
             seg_data=seg_data.transpose()
             last=seg_data[-1]
             seg_data=seg_data[:-1].transpose()
@@ -78,7 +77,7 @@ class nwa_DataThread(DataThread):
             self.plots["magplot"].replot()
             self.plots["phaseplot"].replot()
             if self.params['save']:
-                np.savetxt(fname,transpose(data),delimiter=',')
+                np.savetxt(os.path.join(self.params['datapath'],fname),transpose(data),delimiter=',')
             if self.aborted():
                 self.msg("aborted")
                 return
@@ -95,7 +94,8 @@ class nwa_DataThread(DataThread):
 
         if self.params['save']:
             fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
-            np.savetxt(fname,transpose(data),delimiter=',')
+            np.savetxt(os.path.join(self.params['datapath'],fname),transpose(data),delimiter=',')
+        self.msg('Segmented scan complete.')
             
 
     def run_script(self):
@@ -166,6 +166,7 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
         self.datapathButton.clicked.connect(self.selectDatapath)
         self.datapathLineEdit.textChanged.connect(self.update_filenumber)
         self.prefixLineEdit.textChanged.connect(self.update_filenumber)
+        self.go_button.clicked.connect(self.update_filenumber)
         
         #Initialize Parameters
         self.set_param("power", -20)

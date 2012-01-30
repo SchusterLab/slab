@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'NWAWindow.ui'
 #
-# Created: Sat Dec 24 17:56:50 2011
+# Created: Sun Jan 29 13:41:38 2012
 #      by: PyQt4 UI code generator 4.8.3
 #
 # WARNING! All changes made in this file will be lost!
