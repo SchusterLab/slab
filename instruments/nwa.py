@@ -240,7 +240,7 @@ class E5071(SocketInstrument):
 
         return np.hstack(segs)
         
-    def segmented_sweep2(self,start,stop,step,sweep_pts=None,fname=None):
+    def segmented_sweep2(self,start,stop,step,sweep_pts=None,fname=None,save_segments=True):
         """Take a segmented sweep to achieve higher resolution"""
         span=stop-start
         total_sweep_pts=span/step
@@ -255,9 +255,9 @@ class E5071(SocketInstrument):
         starts=start+segspan*np.arange(0,segments)
         stops=starts+segspan
 
-        print span
-        print segments
-        print segspan
+#        print span
+#        print segments
+#        print segspan
 
         #Set Save old settings and set up for automated data taking
         time.sleep(self.query_sleep)
@@ -287,6 +287,8 @@ class E5071(SocketInstrument):
             last=seg_data[-1]
             seg_data=seg_data[:-1].transpose()
             segs.append(seg_data)
+            if (fname is not None) and save_segments:
+                np.savetxt(fname,np.transpose(segs),delimiter=',')
         segs.append(np.array([last]).transpose())
         time.sleep(self.query_sleep)
         self.set_format(old_format)
@@ -295,7 +297,7 @@ class E5071(SocketInstrument):
         self.set_trigger_source('INTERNAL')
         ans=np.hstack(segs)
         if fname is not None:
-            np.savetxt(fname,ans,delimiter=',')
+            np.savetxt(fname,np.transpose(ans),delimiter=',')
         return ans
 
     def get_settings(self):

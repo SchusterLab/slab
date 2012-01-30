@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>NWAWindow</class>
- <widget class="QMainWindow" name="NWAWindow">
+ <class>TSweepWindow</class>
+ <widget class="QMainWindow" name="TSweepWindow">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>714</width>
-    <height>597</height>
+    <width>944</width>
+    <height>675</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Network Analyzer Interface</string>
+   <string>Temperature Sweep with Network Analyzer</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -159,29 +159,6 @@
                </property>
               </widget>
              </item>
-             <item row="6" column="0">
-              <widget class="QLabel" name="label_5">
-               <property name="text">
-                <string>Max Step</string>
-               </property>
-              </widget>
-             </item>
-             <item row="6" column="1">
-              <widget class="QDoubleSpinBox" name="resolutionSpinBox">
-               <property name="suffix">
-                <string> MHz</string>
-               </property>
-               <property name="minimum">
-                <double>10.000000000000000</double>
-               </property>
-               <property name="maximum">
-                <double>999999999.000000000000000</double>
-               </property>
-               <property name="value">
-                <double>100.000000000000000</double>
-               </property>
-              </widget>
-             </item>
             </layout>
            </item>
            <item>
@@ -206,14 +183,14 @@
            <property name="fieldGrowthPolicy">
             <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
            </property>
-           <item row="0" column="0">
+           <item row="2" column="0">
             <widget class="QLabel" name="label_7">
              <property name="text">
               <string>Fit type</string>
              </property>
             </widget>
            </item>
-           <item row="0" column="1">
+           <item row="2" column="1">
             <layout class="QHBoxLayout" name="horizontalLayout_7">
              <item>
               <widget class="QRadioButton" name="radioButton">
@@ -231,25 +208,32 @@
              </item>
             </layout>
            </item>
-           <item row="1" column="0">
+           <item row="3" column="0">
             <widget class="QLabel" name="label_8">
              <property name="text">
               <string>Max T</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="1">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
+           <item row="3" column="1">
+            <widget class="QDoubleSpinBox" name="maxTSpinBox"/>
            </item>
-           <item row="2" column="0">
+           <item row="4" column="0">
             <widget class="QLabel" name="label_9">
              <property name="text">
               <string>Delay</string>
              </property>
             </widget>
            </item>
-           <item row="2" column="1">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_2"/>
+           <item row="4" column="1">
+            <widget class="QDoubleSpinBox" name="delaySpinBox"/>
+           </item>
+           <item row="1" column="1">
+            <widget class="QCheckBox" name="analysisCheckBox">
+             <property name="text">
+              <string>Analysis Enabled</string>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>
@@ -268,7 +252,7 @@
          </spacer>
         </item>
         <item>
-         <widget class="QLabel" name="label_10">
+         <widget class="QLabel" name="temperatureLabel">
           <property name="font">
            <font>
             <pointsize>12</pointsize>
@@ -312,7 +296,7 @@
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_5">
              <item>
-              <widget class="CurveWidget" name="curvewidget">
+              <widget class="CurveWidget" name="dataCurveWidget">
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
                </property>
@@ -328,12 +312,22 @@
                 </widget>
                </item>
                <item>
-                <widget class="QSpinBox" name="spinBox"/>
+                <widget class="QSpinBox" name="traceNumSpinBox"/>
                </item>
                <item>
-                <widget class="QCheckBox" name="checkBox">
+                <widget class="QLabel" name="browserTLabel">
+                 <property name="text">
+                  <string>T= N/A</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="autoCheckBox">
                  <property name="text">
                   <string>auto</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
@@ -349,14 +343,14 @@
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_6">
              <item>
-              <widget class="CurveWidget" name="curvewidget_2">
+              <widget class="CurveWidget" name="f0CurveWidget">
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="CurveWidget" name="curvewidget_3">
+              <widget class="CurveWidget" name="QCurveWidget">
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
                </property>
@@ -370,14 +364,14 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_3">
           <item>
-           <widget class="QPushButton" name="datapathButton">
+           <widget class="QPushButton" name="exptpathButton">
             <property name="text">
-             <string>Datapath</string>
+             <string>Experiment Path</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="datapathLineEdit">
+           <widget class="QLineEdit" name="exptpathLineEdit">
             <property name="text">
              <string>S:\_Data\</string>
             </property>
@@ -404,7 +398,7 @@
           <item>
            <widget class="QLineEdit" name="prefixLineEdit">
             <property name="text">
-             <string>trace</string>
+             <string>TSweep</string>
             </property>
            </widget>
           </item>
@@ -468,8 +462,8 @@ p, li { white-space: pre-wrap; }
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>714</width>
-     <height>22</height>
+     <width>944</width>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
