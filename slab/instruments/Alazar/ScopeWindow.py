@@ -94,34 +94,8 @@ class ScopeWindow(QMainWindow, Ui_ScopeWindow):
         
     def runScope(self):
         self.ctimer.stop()
-        self.time_pts,self.ch1_pts,self.ch2_pts=self.card.acquire_avg_data2()
+        self.time_pts,self.ch1_pts,self.ch2_pts=self.card.acquire_avg_data()
         
-#        self.ch1_pts=array(self.card.arrs[0])
-#        if (self.scope_settings.ch1_enabled) and (self.scope_settings.ch2_enabled):
-#            self.ch1_pts=array(self.card.arrs[0][:self.scope_settings.samplesPerRecord])
-#            self.ch2_pts=array(self.card.arrs[0][self.scope_settings.samplesPerRecord:])
-#        elif (self.scope_settings.ch1_enabled):
-#            self.ch1_pts=array(self.card.arrs[0])
-#            self.ch2_pts=np.zeros(len(self.ch1_pts))
-
-        #self.data_pts=array(self.card.arrs[0])
-#        self.data_pts=self.card.avg_data
-#        if (self.scope_settings.ch1_enabled) and (self.scope_settings.ch2_enabled):
-#            self.ch1_pts=array(self.data_pts[:self.scope_settings.samplesPerRecord])
-#            self.ch2_pts=array(self.data_pts[self.scope_settings.samplesPerRecord:])
-#        elif (self.scope_settings.ch1_enabled):
-#            self.ch1_pts=array(self.data_pts)
-#            self.ch2_pts=np.zeros(len(self.ch1_pts))
-
-        
-        
-        #print self.ch1_pts
-        #self.ch2_pts=self.card.arrs[1]
-#        self.time_pts=arange(len(self.ch1_pts))
-#        print self.scope_settings.get_dict()
-#        self.time_pts=arange(self.scope_settings.samplesPerRecord)        
-#        self.ch1_pts=cos(self.time_pts/100.)
-#        self.ch2_pts=sin(self.time_pts/100.)
         self.update_plots()
         if self.autoscaleCheckBox.isChecked():
             self.plot.do_autoscale()
@@ -133,6 +107,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = ScopeWindow()
     window.show()
-    sys.exit(app.exec_())        
-
-       
+    sys.exit(app.exec_())       
