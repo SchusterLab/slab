@@ -78,9 +78,6 @@ class DataThread(QObject):
         self.plots = ManagerProxy("plotMethodCalled")
         self._aborted = False
 
-    def load_config(config_file):
-        self.instrument_manager.load_config_file(config_file)
-
     def run_on_instrument_manager(inst_name, method_name, args, kwargs):
         try: getattr(self.instrument_manager[inst_name], method_name)(*args, **kwargs)
         except Exception as e: self.emit("instrumentMethodFailed", (str(e),))
@@ -223,10 +220,10 @@ class SlabWindow(QMainWindow):
                 self.set_param(name, widget.value())
             elif isinstance(widget, QLineEdit):
                 self.set_param(name, widget.text())
-#            elif isinstance(widget, QButtonGroup):
-#                self.set_param(name, i)
-#            elif isinstance(widget, QCheckBox):
-#                self.set_param(name, i > 0)
+            elif isinstance(widget, QButtonGroup):
+                self.set_param(name, widget.checkedId())
+            elif isinstance(widget, QCheckBox):
+                self.set_param(name, widget.isChecked())
 
     def register_param(self, widget, name):
         self.param_widgets.append((widget, name))
