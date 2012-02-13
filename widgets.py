@@ -1,5 +1,14 @@
 """
 widgets -- Customized PyQt widgets
+
+A note on Qt Designer usage: In order to use these custom widgets in
+Qt Designer, first put a place holder widget (if applicable, a member
+of the base class of the widget being used), into your designed
+gui. Right click on the element, and select 'Promote to...', If the
+widget has not been previously promoted, write the widget name in the
+promoted class name field (e.g. SlabSpinBox), 'slab.h' in the header
+field (this will be appropriately translated by pyuic), and click
+'add', then 'Promote'.
 """
 
 from PyQt4.Qt import *
@@ -7,11 +16,11 @@ import math
 import re
 
 class SlabSpinBox(QDoubleSpinBox):
-    def __init__(self, precision=4, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        self.precision = kwargs.pop('precision') if kwargs.has_key('precision') else 4
         QDoubleSpinBox.__init__(self, *args, **kwargs)
         self.maxv = 10 ** 3
         self.minv = 10 ** -2
-        self.precision = precision
         self.prefixes = { "n|nano" : 10 ** -9,
                           "u|micro" : 10 ** -6,
                           "milli" : 10 ** -3,
@@ -41,7 +50,6 @@ class SlabSpinBox(QDoubleSpinBox):
         for p in self.prefixes:
             if QRegExp("^[\+-]?[0-9]+(\.[0-9]*)?(" + p + ")$").exactMatch(text):
                 base = float("".join([ c for c in text if c.isdigit() or c == '.']))
-                print base, base * self.prefixes[p]
                 return base * self.prefixes[p]
         return 0.
 
@@ -51,8 +59,3 @@ class SlabSpinBox(QDoubleSpinBox):
             return QString(("%." + str(self.precision) + "e") % value)
         else:
             return QString(("%." + str(self.precision) + "f") % value)
-        
-        
-
-
-
