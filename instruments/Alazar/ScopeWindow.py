@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ # -*- coding: utf-8 -*-
 """
 Created on Sat Oct 15 18:30:23 2011
 
@@ -47,7 +47,8 @@ class ScopeWindow(QMainWindow, Ui_ScopeWindow):
         self.plot.set_titles(title="Oscilloscope", xlabel="Time", ylabel="Voltage")
 
         self.datapathButton.clicked.connect(self.selectDatapath)
-        self.runButton.clicked.connect(self.runScope)
+        #self.runButton.clicked.connect(self.runScope)
+        self.runButton.clicked.connect(self.config_and_run)
         self.datapathLineEdit.textChanged.connect(self.update_filenumber)
         self.prefixLineEdit.textChanged.connect(self.update_filenumber)
         
@@ -79,7 +80,12 @@ class ScopeWindow(QMainWindow, Ui_ScopeWindow):
                 self.plot.add_item(self.ch2_plot)
             
             self.update_lineplot(self.plot,self.ch2_plot,(self.time_pts,self.ch2_pts))            
-            
+       
+    def config_and_run(self):
+        print self.scope_settings.get_dict()
+        self.scope_settings.from_form(self)
+        self.card.configure(self.scope_settings)
+        self.runScope()
                 
     def update_lineplot(self,plot,plot_item,data):
         plot_item.set_data(data[0],data[1])
@@ -88,21 +94,30 @@ class ScopeWindow(QMainWindow, Ui_ScopeWindow):
         
     def runScope(self):
         self.ctimer.stop()
-        self.scope_settings.from_form(self)
-        self.card.configure(self.scope_settings)
-        self.card.acquire_data()
+        self.time_pts,self.ch1_pts,self.ch2_pts=self.card.acquire_avg_data2()
         
-        self.ch1_pts=array(self.card.arrs[0])
-        if (self.scope_settings.ch1_enabled) and (self.scope_settings.ch2_enabled):
-            self.ch1_pts=array(self.card.arrs[0][:self.scope_settings.samplesPerRecord])
-            self.ch2_pts=array(self.card.arrs[0][self.scope_settings.samplesPerRecord:])
-        elif (self.scope_settings.ch1_enabled):
-            self.ch1_pts=array(self.card.arrs[0])
-            self.ch2_pts=np.zeros(len(self.ch1_pts))
-            
+#        self.ch1_pts=array(self.card.arrs[0])
+#        if (self.scope_settings.ch1_enabled) and (self.scope_settings.ch2_enabled):
+#            self.ch1_pts=array(self.card.arrs[0][:self.scope_settings.samplesPerRecord])
+#            self.ch2_pts=array(self.card.arrs[0][self.scope_settings.samplesPerRecord:])
+#        elif (self.scope_settings.ch1_enabled):
+#            self.ch1_pts=array(self.card.arrs[0])
+#            self.ch2_pts=np.zeros(len(self.ch1_pts))
+
+        #self.data_pts=array(self.card.arrs[0])
+#        self.data_pts=self.card.avg_data
+#        if (self.scope_settings.ch1_enabled) and (self.scope_settings.ch2_enabled):
+#            self.ch1_pts=array(self.data_pts[:self.scope_settings.samplesPerRecord])
+#            self.ch2_pts=array(self.data_pts[self.scope_settings.samplesPerRecord:])
+#        elif (self.scope_settings.ch1_enabled):
+#            self.ch1_pts=array(self.data_pts)
+#            self.ch2_pts=np.zeros(len(self.ch1_pts))
+
+        
+        
         #print self.ch1_pts
         #self.ch2_pts=self.card.arrs[1]
-        self.time_pts=arange(len(self.ch1_pts))
+#        self.time_pts=arange(len(self.ch1_pts))
 #        print self.scope_settings.get_dict()
 #        self.time_pts=arange(self.scope_settings.samplesPerRecord)        
 #        self.ch1_pts=cos(self.time_pts/100.)
