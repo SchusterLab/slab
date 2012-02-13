@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ScopeWindow.ui'
 #
-# Created: Thu Oct 20 21:17:50 2011
+# Created: Sun Feb 12 22:42:18 2012
 #      by: PyQt4 UI code generator 4.5.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -39,7 +39,7 @@ class Ui_ScopeWindow(object):
         self.samplesSpinBox = QtGui.QSpinBox(self.SampleSettings)
         self.samplesSpinBox.setMinimum(32)
         self.samplesSpinBox.setMaximum(999999999)
-        self.samplesSpinBox.setSingleStep(16)
+        self.samplesSpinBox.setSingleStep(64)
         self.samplesSpinBox.setProperty("value", QtCore.QVariant(1024))
         self.samplesSpinBox.setObjectName("samplesSpinBox")
         self.formLayout.setWidget(0, QtGui.QFormLayout.FieldRole, self.samplesSpinBox)
@@ -59,6 +59,15 @@ class Ui_ScopeWindow(object):
         self.buffersSpinBox.setMaximum(999999999)
         self.buffersSpinBox.setObjectName("buffersSpinBox")
         self.formLayout.setWidget(2, QtGui.QFormLayout.FieldRole, self.buffersSpinBox)
+        self.label_21 = QtGui.QLabel(self.SampleSettings)
+        self.label_21.setObjectName("label_21")
+        self.formLayout.setWidget(3, QtGui.QFormLayout.LabelRole, self.label_21)
+        self.recordsPerAcquisitionSpinBox = QtGui.QSpinBox(self.SampleSettings)
+        self.recordsPerAcquisitionSpinBox.setMinimum(1)
+        self.recordsPerAcquisitionSpinBox.setMaximum(999999999)
+        self.recordsPerAcquisitionSpinBox.setProperty("value", QtCore.QVariant(1))
+        self.recordsPerAcquisitionSpinBox.setObjectName("recordsPerAcquisitionSpinBox")
+        self.formLayout.setWidget(3, QtGui.QFormLayout.FieldRole, self.recordsPerAcquisitionSpinBox)
         self.gridLayout.addLayout(self.formLayout, 0, 0, 1, 1)
         self.verticalLayout_5.addWidget(self.SampleSettings)
         self.VerticalSettings = QtGui.QGroupBox(self.ScopeSettings)
@@ -380,6 +389,7 @@ class Ui_ScopeWindow(object):
         self.label.setText(QtGui.QApplication.translate("ScopeWindow", "Samples", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("ScopeWindow", "Records per Buffer", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("ScopeWindow", "Buffers", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_21.setText(QtGui.QApplication.translate("ScopeWindow", "Records per Acquisition", None, QtGui.QApplication.UnicodeUTF8))
         self.VerticalSettings.setTitle(QtGui.QApplication.translate("ScopeWindow", "Vertical Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.Ch1Vertical.setTitle(QtGui.QApplication.translate("ScopeWindow", "Channel 1", None, QtGui.QApplication.UnicodeUTF8))
         self.ch1_enabledCheckBox.setText(QtGui.QApplication.translate("ScopeWindow", "Enabled", None, QtGui.QApplication.UnicodeUTF8))
