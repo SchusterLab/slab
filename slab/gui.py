@@ -44,6 +44,31 @@ import numpy as np
 from time import sleep
 import sys
 
+class ManagerProxy(QObject):
+    def __init__(self, emit_name):
+        QObject.__init__(self)
+        self.emit_name = emit_name
+    def __getitem__(self, item_name):
+        class IProxy(object):
+            def __getattr__(self2, method_name):
+                return lambda *args, **kwargs: self.emit(SIGNAL(self.emit_name),
+                item_name, method_name, args, kwargs)
+
+        return IProxy()
+
+class DictProxy(QObject):
+    def __init__(self, emit_name):
+        QObject.__init__(self)
+        self.cache = {}
+        self.emit_name = emit_name
+    def __setitem__(self, name, value):
+        self.cache[name] = value
+        self.emit(SIGNAL(self.emit_name), name, value)
+    def __getitem__(self, name):
+        return self.cache[name]
+    def __contains__(self, key):
+        return key in self.cache
+
 class DataThread(QObject):
     def __init__(self, config_file=None):
         QObject.__init__(self)
@@ -83,6 +108,12 @@ class DataThread(QObject):
     def msg(self, s):
         self.emit(SIGNAL("msg"), s)
 
+    def status(self, s):
+        self.emit(SIGNAL("status"), s)
+
+    def progress(self, val, tot):
+        self.emit(SIGNAL("progress"), (val, tot))
+
     def abort(self):
         self._aborted = True
 
@@ -97,28 +128,6 @@ class DataThread(QObject):
         self.run_script()
         self.emit(SIGNAL(method + "done"))
 
-class ManagerProxy(QObject):
-    def __init__(self, emit_name):
-        QObject.__init__(self)
-        self.emit_name = emit_name
-    def __getitem__(self, item_name):
-        class IProxy(object):
-            def __getattr__(self2, method_name):
-                return lambda *args, **kwargs: self.emit(SIGNAL(self.emit_name),
-                item_name, method_name, args, kwargs)
-
-        return IProxy()
-
-class DictProxy(QObject):
-    def __init__(self, emit_name):
-        QObject.__init__(self)
-        self.cache = {}
-        self.emit_name = emit_name
-    def __setitem__(self, name, value):
-        self.cache[name] = value
-        self.emit(SIGNAL(self.emit_name), name, value)
-    def __getitem__(self, name):
-        return self.cache[name]
 
 
 class SlabWindow(QMainWindow):
@@ -138,7 +147,10 @@ class SlabWindow(QMainWindow):
                 self.run_on_plot_manager)
         self.connect(self.params, SIGNAL("parameterChanged"),
                 self.data_thread_obj.set_param)
+
         self.connect(self.data_thread_obj, SIGNAL("msg"), self.msg)
+        self.connect(self.data_thread_obj, SIGNAL("status"), self.status)
+        self.connect(self.data_thread_obj, SIGNAL("progress"), self.progress)
 
     def register_script(self, method, go_button, abort_button=None):
         self.connect(go_button, SIGNAL("clicked()"),
@@ -172,10 +184,10 @@ class SlabWindow(QMainWindow):
 
         if autoparam:
             for wname in dir(self):
-                print wname
                 if wname[:6] == "param_":
                     widget = getattr(self, wname)
                     if isinstance(widget, QWidget):
+                        print "attached parameter", wname[6:]
                         self.register_param(widget, wname[6:])
 
     def run_on_plot_manager(self, plot_name, method_name, args, kwargs):
@@ -187,8 +199,18 @@ class SlabWindow(QMainWindow):
         except:
             print "no msg box:", message
 
+    def status(self, message):
+        try:
+            self.statusbar.showMessage(message)
+        except:
+            print "no status bar:", message
+
+    def progress(self, pair):
+        val, tot = pair
+        self.progressBar.setMaximum(tot)
+        self.progressBar.setValue(val)
+
     def set_param(self, name, value):
-#        self.msg(str(name) + " :: " + str(value))
         self.params[name] = value
 
     def start_thread(self):
@@ -198,18 +220,21 @@ class SlabWindow(QMainWindow):
     def read_param_widgets(self):
         for widget, name in self.param_widgets:
             if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
-                self.set_param(name, widget.value)
+                self.set_param(name, widget.value())
             elif isinstance(widget, QLineEdit):
                 self.set_param(name, widget.text())
-            elif isinstance(widget, QButtonGroup):
-                self.set_param(name, i)
-            elif isinstance(widget, QCheckBox):
-                self.set_param(name, i > 0)
+#            elif isinstance(widget, QButtonGroup):
+#                self.set_param(name, i)
+#            elif isinstance(widget, QCheckBox):
+#                self.set_param(name, i > 0)
 
     def register_param(self, widget, name):
         self.param_widgets.append((widget, name))
-        if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
+        if isinstance(widget, QSpinBox): 
             self.connect(widget, SIGNAL("valueChanged(int)"),
+                    lambda i: self.set_param(name, i))
+        elif isinstance(widget, QDoubleSpinBox):
+            self.connect(widget, SIGNAL("valueChanged(double)"),
                     lambda i: self.set_param(name, i))
         elif isinstance(widget, QLineEdit):
             self.connect(widget, SIGNAL("returnPressed()"),
@@ -220,8 +245,13 @@ class SlabWindow(QMainWindow):
         elif isinstance(widget, QCheckBox):
             self.connect(widget, SIGNAL("stateChanged(int)"),
                     lambda i: self.set_param(name, i > 0))
+        else: print "could not match", name, "with widget"
 
-# Example code
+
+
+################
+# Example code #
+################
 
 from test_ui import *
 from widgets import *
@@ -230,8 +260,7 @@ class test_DataThread(DataThread):
     def run_script(self):
         omega = self.params["rate"]
         for i in range(100):
-            if (i % 10) == 0:
-                self.msg(str(i))
+            self.progress(i, 100)
             if self.aborted():
                 self.msg("aborted")
                 break
@@ -244,19 +273,10 @@ class test_DataThread(DataThread):
 class TestWin(SlabWindow, Ui_MainWindow):
     def __init__(self):
         SlabWindow.__init__(self, test_DataThread, config_file=None)
-        self.setupSlabWindow()#autoparam=True)
+        self.setupSlabWindow(autoparam=True)
 
         self.register_script("run_script", self.go_button, self.abort_button)
-#        self.connect(self.spinBox, SIGNAL("valueChanged(int)"),
-#                lambda i: self.set_param("rate", i))
-        self.slabSpinBox = SlabSpinBox()#self.verticalLayoutWidget)
-        self.slabSpinBox.setProperty("value", 1)
-        self.slabSpinBox.setRange(-(10**16),10**16)
-        #        print dir(self.slabSpinBox)
-        self.verticalLayout.addWidget(self.slabSpinBox)
-        self.register_param(self.param_rate, "rate")
         self.start_thread()
-        self.set_param("rate", 1)
         self.plot_manager["plot"] = self.qwtPlot
         sine_curve = Qwt.QwtPlotCurve("Sine")
         cosine_curve = Qwt.QwtPlotCurve("Cosine")
@@ -264,6 +284,8 @@ class TestWin(SlabWindow, Ui_MainWindow):
         cosine_curve.attach(self.qwtPlot)
         self.plot_manager["sine"] = sine_curve
         self.plot_manager["cosine"] = cosine_curve
+
+        
 
 def runWin(WinC, *args, **kwargs):
     app = QApplication([])
