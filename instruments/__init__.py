@@ -6,6 +6,7 @@ from cryostat import Triton
 from instrumentmanager import InstrumentManager
 from awg import *
 from spec_analyzer.spectrum_analyzer import *
+from ipsmagnet import *
 
 from Alazar import Alazar, AlazarConfig, AlazarConstants
 from Alazar import Alazar, AlazarConfig, AlazarConstants
@@ -15,4 +16,5 @@ instrument_dict = { "Network Analyzer" : E5071,
                     "Lab Brick" : LMS103,
                     "Cryostat" : Triton,
                     "Arbitrary Waveform Generator" : AWG81180A,
-                    "Spectrum Analyzer" : SpectrumAnalyzer}
+                    "Spectrum Analyzer" : SpectrumAnalyzer,
+                    "IPS Magnet" : IPSMagnet}
