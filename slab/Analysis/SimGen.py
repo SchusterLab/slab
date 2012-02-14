@@ -32,7 +32,9 @@ if __name__ == "__main__":
     s[1] = a+b+c
     
     f= abs(sp.fft(s[1]))
+    pl.plot(s1[0],s[1])
+    pl.show()
     
-    pl.plot(f)
+    pl.plot(s[1], f)
     pl.show()
     
