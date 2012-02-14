@@ -7,11 +7,16 @@ Created on Wed Apr 06 15:41:58 2011
 
 import numpy as np
 import math as math
-import guiqwt.pyplot as plt # Original version doesn't seem to work. Changed to a better coding style 
-#from guiqwt.pyplot import *
-#import matplotlib.pyplot as plt # Original version doesn't seem to work. Changed to a better coding style 
-#from matplotlib.pyplot import *
+import guiqwt.pyplot as plt1 # Original version doesn't seem to work. Changed to a better coding style 
+import matplotlib.pyplot as plt2
+plt=plt1
+
 from scipy import optimize
+
+def set_fit_plotting(pkg='matplotlib'):
+    global plt
+    plt={'guiqwt':plt1,'matplotlib':plt2}[pkg]
+    
 
 def selectdomain(xdata,ydata,domain):
     ind=np.searchsorted(xdata,domain)
@@ -32,8 +37,8 @@ def fitgeneral(xdata,ydata,fitfunc,fitparams,domain=None,showfit=False,showstart
 #    print 'minimum', np.min(fitdatay)
 #    ymin=np.min(fitdatay)
     errfunc = lambda p, x, y: (fitfunc(p,x) - y) #there shouldn't be **2 # Distance to the target function
-    startparams=fitparams # Initial guess for the parameters 
-    bestfitparams, success = optimize.leastsq(errfunc, startparams[:], args=(fitdatax,fitdatay));    
+    startparams=fitparams # Initial guess for the parameters
+    bestfitparams, success = optimize.leastsq(errfunc, startparams[:], args=(fitdatax,fitdatay))
     if showfit:
         plt.plot(fitdatax,fitdatay,'bo',label=label+" data")
         if showstartfit:
@@ -123,7 +128,7 @@ def fithanger_old (xdata,ydata,fitparams=None,domain=None,showfit=False,showstar
         if fitdatay[peakloc]>0: fitparams[2]=(fitdatay[peakloc]/ymax)**0.5
         else: fitparams[2]=0.001
         fitparams[3]=ymax
-    return fitgeneral(fitdatax,fitdatay,hangerfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+    return fitgeneral(fitdatax,fitdatay,hangerfunc_old,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
 
 def hangerfunc(p,x):
     """p=[f0,Qi,Qc,df,scale]"""
@@ -147,8 +152,8 @@ def hangerfunctilt(p,x):
 def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
         fitparams = []
-        returns p=[f0, Q, S21Min, Tmax]
-        Uses hangerfunctilt instead of hangerfunc. 
+        returns p=[f0,Qi,Qc,df,scale]
+        Uses hangerfunc. 
     """
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
@@ -163,14 +168,14 @@ def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=
         Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/3.))
         Qi=Q0*(1.+ymax)
         Qc=Qi/ymax
-        scale= 1
-        slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
-        offset= ymin-slope*f0
+        scale= ymax-ymin
+        #slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
+        #offset= ymin-slope*f0
         fitparams=[f0,Qi,Qc,0.,scale]
-        print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
+        #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
     return fitgeneral(fitdatax,fitdatay,hangerfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
     
-def fithangeroffset(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+def fithangertilt(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
         fitparams = []
         returns p=[f0, Q, S21Min, Tmax]
@@ -193,10 +198,9 @@ def fithangeroffset(xdata,ydata,fitparams=None,domain=None,showfit=False,showsta
         slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
         offset= ymin-slope*f0
         fitparams=[f0,Qi,Qc,0.,scale,slope, offset]
-        print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
+        #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
     return fitgeneral(fitdatax,fitdatay,hangerfunctilt,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
-    
-
+ 
 
 if __name__ =='__main__':
     plt.figure(1)
@@ -220,7 +224,7 @@ if __name__ =='__main__':
 #    params2=[7.8,200,0.01,1.]
     xdata2=np.linspace(7,9,1000)
     ydata2=hangerfunc(params2,xdata2)-noise/2.+noise*np.random.rand(len(xdata2))
-    fit=fithangeroffset(xdata2,ydata2,showfit=True,showstartfit=True)   
+    fit=fithanger(xdata2,ydata2,showfit=True,showstartfit=True)   
     print '{0}\n--------------Best Fit---------- \nf0: {1}\nQi: {2}\nQc: {3}\ndf: {4}\nScale: {5}\nSlope: {6}\nOffset:{7}\n'.format\
           ('hanger',fit[0],fit[1],fit[2],fit[3],fit[4],fit[5],fit[6])
     #print hangerqs(p3)

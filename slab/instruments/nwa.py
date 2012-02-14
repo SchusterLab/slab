@@ -17,7 +17,7 @@ class E5071(SocketInstrument):
     def __init__(self,name="E5071",address='nwa.circuitqed.com:5025',enabled=True):
         if ':' not in address: address+=':5025'
         SocketInstrument.__init__(self,name,address,enabled=enabled,timeout=10,recv_length=2**20)
-        self.query_sleep=0.75
+        self.query_sleep=0.05
 
     def get_id(self):
         return self.query('*IDN?')
@@ -79,8 +79,10 @@ class E5071(SocketInstrument):
         return float(self.query(":SENS%d:BANDwidth:RESolution?" %(channel)))
 
     def averaging_complete(self):
-        if self.query("*OPC?") == '+1\n': return True
-        else: return False
+        #if self.query("*OPC?") == '+1\n': return True
+        self.write("*OPC?")
+        self.read()
+#        else: return False
 
     def trigger_single (self):
         self.write(':TRIG:SING')
@@ -138,7 +140,7 @@ class E5071(SocketInstrument):
         self.write(":FORM:DATA ASC")
         self.write(":CALC1:DATA:FDAT?")
         data_str=''
-
+        
         done=False
         ii=0
         while not done:

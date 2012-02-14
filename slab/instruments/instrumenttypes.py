@@ -66,7 +66,15 @@ class VisaInstrument(Instrument):
         Instrument.__init__(self,name,address,enabled)
         if self.enabled:
             self.protocol='GPIB'
-            self.instrument=visa.instrument(address)
+            address=address.upper()
+            print address
+#            if address[:5]=="GPIB":
+#                addnum=int(address.split("GPIB")[1])
+#                print addnum
+#                self.instrument=visa.instrument(addnum)
+#                
+#            else:
+        self.instrument=visa.instrument(address)
             
     def write(self, s):
         if self.enabled: self.instrument.write(s+self.term_char)
@@ -130,7 +138,7 @@ class SerialInstrument(Instrument):
         self.enabled=enabled
         if self.enabled:
             try:
-                self.ser = serial.Serial(int(address[-1])-1, baudrate)
+                self.ser = serial.Serial(int(address.upper().split('COM')[1])-1, baudrate)
             except serial.SerialException:
                 print 'Cannot create a connection to port '+str(address)+'.\n'
         self.set_timeout(timeout)
