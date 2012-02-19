@@ -20,17 +20,12 @@ import time
 
 
 class relaybox():
-<<<<<<< .mine
     OnOff={'0':'OF', '1':'ON'}
     ser=serial.Serial()
             
     def __init__(self, com=3, timeout=5):
-=======
-    def __init__(self, com=2, timeout=15):
->>>>>>> .r107
         self.c=com
         self.t=timeout
-<<<<<<< .mine
         self.baudrate='9600'
         self.address = '00'
         self.stopbit = 1
@@ -38,24 +33,15 @@ class relaybox():
         self.parity = None
         self.open()
         self.setBaudRate()
-=======
         self.open()
->>>>>>> .r107
                      
     def hello(self):
         return "Hello World!"
         
-<<<<<<< .mine
     def open(self):
         self.ser.timeout=self.t
         self.ser.port=self.c
         if self.ser.isOpen()==True:
-=======
-    def open(self):
-        ser.timeout=self.t
-        ser.port=self.c
-        if ser.isOpen()==True:
->>>>>>> .r107
             print 'serial port COM{0} is already open'.format(self.c+1)
         else:
             print 'serial port COM{0} is not open, I am trying to open it...'.format(self.c+1)
@@ -65,21 +51,13 @@ class relaybox():
             else:
                 print 'serial port COM{0} is can\'t be opened, there might be something wrong!'.format(self.c+1)
                 return
-<<<<<<< .mine
     def close(self):
         self.ser.port=self.c        
         self.ser.close()
         if self.ser.isOpen()==False:
-=======
-    def close(self):
-        ser.port=self.c        
-        ser.close()
-        if ser.isOpen()==False:
->>>>>>> .r107
             print 'serial port COM{0} is now closed'.format(self.c+1)
         else:
             print 'serial port COM{0} is still open, please try again~'.format(self.c+1)
-<<<<<<< .mine
     def setBaudRate(self):
         if self.ser.isOpen(): 
             write_string='@'+self.address+' BS '+self.baudrate+'\r'
@@ -88,11 +66,7 @@ class relaybox():
         else: print 'port is not open...'
     def relay(self, port=False, state=''):
         if self.ser.isOpen()==False:
-=======
-            
-    def relay(self, port=False, state=''):
-        if ser.isOpen()==False:
->>>>>>> .r107
+
             self.open()
         if port==False:
             print "0 operates to all ports"
@@ -123,17 +97,12 @@ class relaybox():
             self.ser.flushInput()            
             self.ser.write('@'+self.address+' RS {0}\r'.format(port))
             #time.sleep(0.1)
-<<<<<<< .mine
             read=self.ser.read(7)
             readR=read.split()
             print(read)
             print 'splited read is',readR
             print 'Port {0}\'s state is '.format(port) + self.OnOff[readR[-1]]
-=======
-            read=ser.read(14).split()
-            print 'read result:'; read
-            #print 'Port {0}\'s state is '.format(port) + OnOff[read[-1]]
->>>>>>> .r107
+
             #IT TAKES TIME for the writing command to finish writing and reading from the         
     def pulseOn(self,port,t):
         """
@@ -157,8 +126,7 @@ class relaybox():
     
 if __name__== '__main__':
     re=relaybox()
-<<<<<<< .mine
- #   re.close()
+#   re.close()
 #    re.relay(1)
 #    re.relay(1,'ON')
 #    print 'now wait for 1 second'
@@ -177,21 +145,7 @@ if __name__== '__main__':
     re.pulseOn(5,40)
     re.pulseOn(6,80)
     
-#    
-=======
- #   re.Close()
-    re.relay(1)
-    re.relay(1,'ON')
-    print 'now wait for 1 second'
-    time.sleep(1)
-    re.relay(1,'OF')
-    LoopSize=100
-    for i in range(LoopSize):
-        time.sleep(1)
-        re.relay(1,'ON')
-        time.sleep(1)
-        re.relay(1,'OF')
->>>>>>> .r107
+
     
     
     
