@@ -23,7 +23,7 @@ class relaybox():
     OnOff={'0':'OF', '1':'ON'}
     ser=serial.Serial()
             
-    def __init__(self, com=3, timeout=5):
+    def __init__(self, com=2, timeout=5):
         self.c=com
         self.t=timeout
         self.baudrate='9600'
@@ -84,6 +84,7 @@ class relaybox():
     def read(self, port=1):
         if port == 0:     
             write_str='@'+self.address+' RS 0\r'
+            self.ser.flushInput()            
             self.ser.write(write_str)
             read=bin(int(self.ser.read(7).split()[-1])+256)[-8:]
             print 'relay status are',read
@@ -126,17 +127,17 @@ class relaybox():
     
 if __name__== '__main__':
     re=relaybox()
-#   re.close()
-#    re.relay(1)
-#    re.relay(1,'ON')
-#    print 'now wait for 1 second'
-#    time.sleep(1)
-#    re.relay(1,'OF')
-#    LoopSize=100
-##    for i in range(LoopSize):
-#    re.relay(0,'ON')
-##        time.sleep(0.1)
-#    re.relay(0,'OF')
+    re.close()
+    re.relay(1)
+    re.relay(1,'ON')
+    print 'now wait for 1 second'
+    time.sleep(1)
+    re.relay(1,'OF')
+    LoopSize=100
+#    for i in range(LoopSize):
+    re.relay(0,'ON')
+#        time.sleep(0.1)
+    re.relay(0,'OF')
     
     re.pulseOn(1,5)
     re.pulseOn(2,5)
