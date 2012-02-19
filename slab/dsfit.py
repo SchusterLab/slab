@@ -17,6 +17,9 @@ def set_fit_plotting(pkg='matplotlib'):
     global plt
     plt={'guiqwt':plt1,'matplotlib':plt2}[pkg]
     
+def argselectdomain(xdata,domain):
+    ind=np.searchsorted(xdata,domain)
+    return (ind[0],ind[1])
 
 def selectdomain(xdata,ydata,domain):
     ind=np.searchsorted(xdata,domain)
@@ -200,7 +203,23 @@ def fithangertilt(xdata,ydata,fitparams=None,domain=None,showfit=False,showstart
         fitparams=[f0,Qi,Qc,0.,scale,slope, offset]
         #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
     return fitgeneral(fitdatax,fitdatay,hangerfunctilt,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
- 
+
+def polynomial(p,x):
+    return p[0]+p[1]*(x-p[-1])+p[2]*(x-p[-1])**2+p[3]*(x-p[-1])**3+p[4]*(x-p[-1])**4+p[5]*(x-p[-1])**5+p[6]*(x-p[-1])**6+p[7]*(x-p[-1])**7+p[8]*(x-p[-1])**8+p[9]*(x-p[-1])**9
+
+def fitbackground(xdata,ydata,fitparams=None, showfit=False,showstartfit=False,label=""):
+    """Fit Hanger Transmission (S21) data taking into account asymmetry.
+        fitparams = []
+        returns p=[f0,Qi,Qc,df,scale]
+        Uses hangerfunc. 
+    """
+    fitdatax=xdata
+    fitdatay=ydata
+    if fitparams is None:    
+        fitparams=[-6,0,0,0,0,0,0,0,0,0,6.9e+9]
+        #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
+    return fitgeneral(fitdatax,fitdatay,polynomial,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+     
 
 if __name__ =='__main__':
     plt.figure(1)

@@ -13,7 +13,7 @@ import matplotlib as mpl
 
 def ExpDecaySine(f,tau,cycle,step):
     x=arange(0,cycle,step)
-    y=sin(x*pi*f)*exp(-x/tau)
+    y=sin(x*2*pi*f)*exp(-x/tau)
 #    pl.plot(x,y,'bo')
 #    pl.show()
     return [x,y]
