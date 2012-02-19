@@ -15,15 +15,15 @@ ser=serial.Serial()
 OnOff={'0':'OF', '1':'ON'}
 
 class relaybox():
-    def __init__(self, com=2, timeout=1):
+    def __init__(self, com=2, timeout=15):
         self.c=com
         self.t=timeout
-        self.Open()
+        self.open()
                      
     def hello(self):
         return "Hello World!"
         
-    def Open(self):
+    def open(self):
         ser.timeout=self.t
         ser.port=self.c
         if ser.isOpen()==True:
@@ -36,7 +36,7 @@ class relaybox():
             else:
                 print 'serial port COM{0} is can\'t be opened, there might be something wrong!'.format(self.c+1)
                 return
-    def Close(self):
+    def close(self):
         ser.port=self.c        
         ser.close()
         if ser.isOpen()==False:
@@ -44,14 +44,14 @@ class relaybox():
         else:
             print 'serial port COM{0} is still open, please try again~'.format(self.c+1)
             
-    def Relay(self, port=False, state=''):
+    def relay(self, port=False, state=''):
         if ser.isOpen()==False:
-            self.Open()
+            self.open()
         if port==False:
             print "0 operates to all ports"
                        
         if state=='':
-            self.Read(port)
+            self.read(port)
             print '*****************************include ON or OF as the state if want to change it.'
         elif state=='ON' or state=='OF':
             print 'Setting Port{0} to {1}'.format(port, state), "------",            
@@ -59,8 +59,8 @@ class relaybox():
             print cmd
             ser.write(cmd)
             #time.sleep(0.1)
-            self.Read(port)
-    def Read(self, port=1):
+            self.read(port)
+    def read(self, port=1):
         if port == 0:     
             for i in [1, 2, 3, 4, 5, 6, 7, 8]:
               ser.write('@00 RS {0}\r'.format(i))
@@ -71,8 +71,8 @@ class relaybox():
             ser.write('@00 RS {0}\r'.format(port))
             #time.sleep(0.1)
             read=ser.read(14).split()
-            print read
-            print 'Port {0}\'s state is '.format(port) + OnOff[read[-1]]
+            print 'read result:'; read
+            #print 'Port {0}\'s state is '.format(port) + OnOff[read[-1]]
             #IT TAKES TIME for the writing command to finish writing and reading from the         
 
 
@@ -82,16 +82,17 @@ class relaybox():
 if __name__== '__main__':
     re=relaybox()
  #   re.Close()
-    re.Relay(1)
-    re.Relay(1,'ON')
+    re.relay(1)
+    re.relay(1,'ON')
     print 'now wait for 1 second'
     time.sleep(1)
-    re.Relay(1,'OF')
+    re.relay(1,'OF')
     LoopSize=100
-#    for i in range(LoopSize):
-    re.Relay(0,'ON')
-#        time.sleep(0.1)
-    re.Relay(0,'OF')
-#    
+    for i in range(LoopSize):
+        time.sleep(1)
+        re.relay(1,'ON')
+        time.sleep(1)
+        re.relay(1,'OF')
+    
     
     
