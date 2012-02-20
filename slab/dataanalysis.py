@@ -6,7 +6,7 @@ Created on Sat Jul 30 14:04:03 2011
 """
 
 import numpy as np
-from guiqwt.pyplot import *
+#from guiqwt.pyplot import *
 import glob
 import os.path
 from scipy.signal import decimate    
@@ -74,7 +74,7 @@ def next_path_index(expt_path,prefix=''):
     
 def get_next_filename(datapath,prefix,suffix=''):
     ii=next_file_index(datapath,prefix)
-    return "%03d_" % (ii) + prefix +suffix
+    return "%04d_" % (ii) + prefix +suffix
 
 def make_datapath(expt_path,prefix,date_str=None):
     tag=date_tag(date_str)

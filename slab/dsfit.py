@@ -47,7 +47,7 @@ def fitgeneral(xdata,ydata,fitfunc,fitparams,domain=None,showfit=False,showstart
         if showstartfit:
             plt.plot(fitdatax,fitfunc(startparams,fitdatax),label=label+" startfit")
         plt.plot(fitdatax,fitfunc(bestfitparams,fitdatax),'r-',label=label+" fit")
-        plt.legend()
+        if label!='': plt.legend()
         err=math.fsum(errfunc(bestfitparams,fitdatax,fitdatay))
         print 'the best fit has an RMS of {0}'.format(err)
 #    plt.t
@@ -152,7 +152,7 @@ def hangerfunctilt(p,x):
     return slope*x+offset+scale*(-2.*Q0*Qc + Qc**2. + Q0**2.*(1. + Qc**2.*(2.*a + b)**2.))/(Qc**2*(1. + 4.*Q0**2.*a**2.))
 
 
-def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,printresult=False,label=""):
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
         fitparams = []
         returns p=[f0,Qi,Qc,df,scale]
@@ -169,14 +169,16 @@ def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=
         ymin=fitdatay[peakloc]        
         f0=fitdatax[peakloc]
         Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/3.))
-        Qi=Q0*(1.+ymax)
-        Qc=Qi/ymax
         scale= ymax-ymin
+        Qi=Q0*(1.+ymax)
+        Qc=Qi/(ymax)
         #slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
         #offset= ymin-slope*f0
         fitparams=[f0,Qi,Qc,0.,scale]
         #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
-    return fitgeneral(fitdatax,fitdatay,hangerfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+    fitresult=fitgeneral(fitdatax,fitdatay,hangerfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)        
+    if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}'.format(fitresult[0],fitresult[1],fitresult[2],fitresult[3],fitresult[4])
+    return fitresult
     
 def fithangertilt(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
     """Fit Hanger Transmission (S21) data taking into account asymmetry.

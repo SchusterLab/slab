@@ -20,7 +20,7 @@ from scipy.fftpack import fft,rfft
 #import matplotlib.pyplot as mplt
 #import operator
 import time
-import fftw3
+#import fftw3
 
 U8 = C.c_uint8
 U8P = C.POINTER(U8)
@@ -539,7 +539,7 @@ class Alazar():
         avg_data2*=(self.config.ch2_range/128.)
         tpts=np.arange(self.config.samplesPerRecord)/float(self.config.sample_rate*1e3)
         if DEBUGALAZAR: print "Acquisition finished."
-        print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
         if excise is not None:
             return tpts[excise[0]:excise[1]],avg_data1[excise[0]:excise[1]],avg_data2[excise[0]:excise[1]]
@@ -619,82 +619,82 @@ class Alazar():
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
         return f0_data,kappa_data
         
-    def acquire_cavity_ringdown_data_fftw(self,excise=None,frequency_window=None):
-        if self.config.ch2_enabled: 
-            raise ValueError("Channel 2 must not be enabled in cavity ringdown mode!")
-        self.post_buffers()
-        #preprocessing
-        nyquist=1./2.*float(self.config.sample_rate*1e3)
-        s2=np.sqrt(2.)
-        if excise is None:
-            excise=(0,self.config.samplesPerRecord)
-
-        freqs=np.arange(0,2*nyquist,2*nyquist/(excise[1]-excise[0]))
-        if frequency_window is not None:        
-            fex=self.argselectdomain(freqs,frequency_window)
-        else: fex=(0,-1)
-        freqs2=freqs[fex[0]:fex[1]]
-
-        f0_data=np.zeros(self.config.recordsPerAcquisition,dtype=float)
-        kappa_data=np.zeros(self.config.recordsPerAcquisition,dtype=float)
-
-        bufcopies=[]
-        fftbufs=[]
-        plans=[]
-        for i in range(self.config.bufferCount):
-            bufcopies.append(np.zeros(self.config.samplesPerRecord,dtype=float))
-            fftbufs.append(np.zeros(self.config.samplesPerRecord,dtype=np.complex128))
-            plans.append(fftw3.Plan(bufcopies[i],fftbufs[i],direction='forward',create_plan=True,nthreads=7))
-        
-        a=time.time()
-        buffersCompleted=0
-        buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
-        print "go"
-        print "Taking %d data points." % buffersPerAcquisition
-        print "|"+("  ")*10+" |",
-        print "|",
-        
-        ret = self.Az.AlazarStartCapture(self.handle)
-        if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
-        if DEBUGALAZAR: print "Buffers per Acquisition: ", buffersPerAcquisition
-        while (buffersCompleted < buffersPerAcquisition):
-            if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
-            buf_idx = buffersCompleted % self.config.bufferCount
-            if buffersCompleted % (buffersPerAcquisition/10.) ==0: print "-",
-            buffersCompleted+=1           
-            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
-            if DEBUGALAZAR: print "WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
-            if ret_to_str(ret,self.Az) != "ApiSuccess":
-                print "Abort AsyncRead: ", ret_to_str(ret,self.Az)            
-                ret = self.Az.AlazarAbortAsyncRead(self.handle)
-                break       
-            for n in range(self.config.recordsPerBuffer):
-                if self.config.ch1_enabled: 
-                    np.copyto(bufcopies[buf_idx],self.arrs[buf_idx][n*self.config.samplesPerRecord+excise[0]:n*self.config.samplesPerRecord+excise[1]],casting='unsafe')
-                    plans[buf_idx].execute()
-                    np.absolute(fftbufs,out=fftbufs)
-                    #fs=abs(fft(self.arrs[buf_idx][n*self.config.samplesPerRecord+excise[0]:n*self.config.samplesPerRecord+excise[1]]))
-                    #fs2=fs[fex[0]:fex[1]]
-                    maxloc=np.argmax(fftbufs)
-                    for i in xrange(maxloc,len(fs2)):
-                        if fftbufs[i]<fftbufs[maxloc]/s2: break
-                    f0_data[(buffersCompleted-1)*self.config.recordsPerBuffer+n]=freqs2[maxloc]
-                    kappa_data[(buffersCompleted-1)*self.config.recordsPerBuffer+n]=2.*(freqs2[i]-freqs2[maxloc])
-            #plot(self.arrs[buf_idx])
-            #if buffersCompleted < buffersPerAcquisition:            
-            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
-            if ret_to_str(ret,self.Az) != "ApiSuccess":
-                print "Abort AsyncRead: ", ret_to_str(ret,self.Az)            
-                ret = self.Az.AlazarAbortAsyncRead(self.handle)
-                break       
-            if DEBUGALAZAR: print "PostAsyncBuffer: ", ret_to_str(ret,self.Az) 
-        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
-        if DEBUGALAZAR: print "Acquisition finished."
-        print "|"
-        print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
-        print "time taken: %f s" % (time.time()-a)
-        ret = self.Az.AlazarAbortAsyncRead(self.handle)
-        return f0_data,kappa_data
+#    def acquire_cavity_ringdown_data_fftw(self,excise=None,frequency_window=None):
+#        if self.config.ch2_enabled: 
+#            raise ValueError("Channel 2 must not be enabled in cavity ringdown mode!")
+#        self.post_buffers()
+#        #preprocessing
+#        nyquist=1./2.*float(self.config.sample_rate*1e3)
+#        s2=np.sqrt(2.)
+#        if excise is None:
+#            excise=(0,self.config.samplesPerRecord)
+#
+#        freqs=np.arange(0,2*nyquist,2*nyquist/(excise[1]-excise[0]))
+#        if frequency_window is not None:        
+#            fex=self.argselectdomain(freqs,frequency_window)
+#        else: fex=(0,-1)
+#        freqs2=freqs[fex[0]:fex[1]]
+#
+#        f0_data=np.zeros(self.config.recordsPerAcquisition,dtype=float)
+#        kappa_data=np.zeros(self.config.recordsPerAcquisition,dtype=float)
+#
+#        bufcopies=[]
+#        fftbufs=[]
+#        plans=[]
+#        for i in range(self.config.bufferCount):
+#            bufcopies.append(np.zeros(self.config.samplesPerRecord,dtype=float))
+#            fftbufs.append(np.zeros(self.config.samplesPerRecord,dtype=np.complex128))
+#            plans.append(fftw3.Plan(bufcopies[i],fftbufs[i],direction='forward',create_plan=True,nthreads=7))
+#        
+#        a=time.time()
+#        buffersCompleted=0
+#        buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
+#        print "go"
+#        print "Taking %d data points." % buffersPerAcquisition
+#        print "|"+("  ")*10+" |",
+#        print "|",
+#        
+#        ret = self.Az.AlazarStartCapture(self.handle)
+#        if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
+#        if DEBUGALAZAR: print "Buffers per Acquisition: ", buffersPerAcquisition
+#        while (buffersCompleted < buffersPerAcquisition):
+#            if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
+#            buf_idx = buffersCompleted % self.config.bufferCount
+#            if buffersCompleted % (buffersPerAcquisition/10.) ==0: print "-",
+#            buffersCompleted+=1           
+#            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+#            if DEBUGALAZAR: print "WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
+#            if ret_to_str(ret,self.Az) != "ApiSuccess":
+#                print "Abort AsyncRead: ", ret_to_str(ret,self.Az)            
+#                ret = self.Az.AlazarAbortAsyncRead(self.handle)
+#                break       
+#            for n in range(self.config.recordsPerBuffer):
+#                if self.config.ch1_enabled: 
+#                    np.copyto(bufcopies[buf_idx],self.arrs[buf_idx][n*self.config.samplesPerRecord+excise[0]:n*self.config.samplesPerRecord+excise[1]],casting='unsafe')
+#                    plans[buf_idx].execute()
+#                    np.absolute(fftbufs,out=fftbufs)
+#                    #fs=abs(fft(self.arrs[buf_idx][n*self.config.samplesPerRecord+excise[0]:n*self.config.samplesPerRecord+excise[1]]))
+#                    #fs2=fs[fex[0]:fex[1]]
+#                    maxloc=np.argmax(fftbufs)
+#                    for i in xrange(maxloc,len(fs2)):
+#                        if fftbufs[i]<fftbufs[maxloc]/s2: break
+#                    f0_data[(buffersCompleted-1)*self.config.recordsPerBuffer+n]=freqs2[maxloc]
+#                    kappa_data[(buffersCompleted-1)*self.config.recordsPerBuffer+n]=2.*(freqs2[i]-freqs2[maxloc])
+#            #plot(self.arrs[buf_idx])
+#            #if buffersCompleted < buffersPerAcquisition:            
+#            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+#            if ret_to_str(ret,self.Az) != "ApiSuccess":
+#                print "Abort AsyncRead: ", ret_to_str(ret,self.Az)            
+#                ret = self.Az.AlazarAbortAsyncRead(self.handle)
+#                break       
+#            if DEBUGALAZAR: print "PostAsyncBuffer: ", ret_to_str(ret,self.Az) 
+#        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+#        if DEBUGALAZAR: print "Acquisition finished."
+#        print "|"
+#        print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+#        print "time taken: %f s" % (time.time()-a)
+#        ret = self.Az.AlazarAbortAsyncRead(self.handle)
+#        return f0_data,kappa_data
 
 
 

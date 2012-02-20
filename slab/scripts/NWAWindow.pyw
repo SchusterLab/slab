@@ -106,32 +106,36 @@ class nwa_DataThread(DataThread):
             return
         self.msg("Configuring NWA....")
         self.msg(str(nwa.get_id()))
-
-        nwa.set_ifbw(self.params['ifbw'])
-        nwa.set_power(self.params['power'])
-        nwa.set_averages(self.params['avgs'])
-
-        #calculate start and stop frequencies
-        if self.params["centerspanstartstop"]:
-            start=self.params['centerstart']*1e9-self.params['spanstop']*1e6/2.
-            stop=self.params['centerstart']*1e9+self.params['spanstop']*1e6/2.
-        else:
-            start=self.params['centerstart']*1e9
-            stop=self.params['spanstop']*1e9
-            
-        #Calculate resolution
-        minstep=self.params['resolution']*1e6
-        step=(stop-start)/self.params['sweep_pts']
-        self.msg('start: %f GHz\tstop: %f GHz\tstep: %f MHz' % (start/1e9,stop/1e9,step/1e6))
-        if step <= minstep:
-            self.do_normal_sweep(nwa,start,stop,self.params['sweep_pts'])
-        elif step > minstep:
-            step=minstep
-            if (stop-start)/minstep <= nwa.MAXSWEEPPTS:
-                sweep_pts=(stop-start)/minstep 
-                self.do_normal_sweep(nwa,start,stop,sweep_pts)
+        first=True
+        nwa.set_output(state=True)
+        while ((first or self.params['autorun']) and not self.aborted()):
+            first=False
+            self.plots["self"].update_filenumber()
+            nwa.set_ifbw(self.params['ifbw'])
+            nwa.set_power(self.params['power'])
+            nwa.set_averages(self.params['avgs'])
+    
+            #calculate start and stop frequencies
+            if self.params["centerspanstartstop"]:
+                start=self.params['centerstart']*1e9-self.params['spanstop']*1e6/2.
+                stop=self.params['centerstart']*1e9+self.params['spanstop']*1e6/2.
             else:
-                self.do_segmented_sweep(nwa,start,stop,step)
+                start=self.params['centerstart']*1e9
+                stop=self.params['spanstop']*1e9
+                
+            #Calculate resolution
+            minstep=self.params['resolution']*1e6
+            step=(stop-start)/self.params['sweep_pts']
+            self.msg('start: %f GHz\tstop: %f GHz\tstep: %f MHz' % (start/1e9,stop/1e9,step/1e6))
+            if step <= minstep:
+                self.do_normal_sweep(nwa,start,stop,self.params['sweep_pts'])
+            elif step > minstep:
+                step=minstep
+                if (stop-start)/minstep <= nwa.MAXSWEEPPTS:
+                    sweep_pts=(stop-start)/minstep 
+                    self.do_normal_sweep(nwa,start,stop,sweep_pts)
+                else:
+                    self.do_segmented_sweep(nwa,start,stop,step)
         
 
 class NWAWin(SlabWindow, Ui_NWAWindow):
@@ -160,6 +164,8 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
                 lambda i: self.set_param("resolution", i)) 
         self.connect(self.saveCheckBox, SIGNAL("stateChanged(int)"),
                 lambda i: self.set_param("save", i)) 
+        self.connect(self.autoRunCheckBox, SIGNAL("stateChanged(int)"),
+                lambda i: self.set_param("autorun", i)) 
         self.connect(self.centerspanstartstopCheckBox, SIGNAL("stateChanged(int)"),self.on_centerspanstartstopChanged)
         
         self.datapath='S:\\_Data\\'
@@ -178,9 +184,12 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
         self.set_param("centerspanstartstop",1)
         self.set_param("resolution", 100.)
         self.set_param("save",0)
+        self.set_param("autorun",0)
         self.set_param("datapath",self.datapath)
         self.set_param("prefix",'trace')
         self.set_param("filenumber",0)
+        
+        self.plot_manager["self"]=self
         
         #Make some default data
         self.freqs=np.linspace(self.params['centerstart']-self.params['spanstop']/2.,self.params['centerstart']+self.params['spanstop']/2.,self.params['sweep_pts'])        
