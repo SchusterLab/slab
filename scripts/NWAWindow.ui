@@ -282,6 +282,13 @@
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QCheckBox" name="autoRunCheckBox">
+            <property name="text">
+             <string>autorun</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
         <item>
