@@ -9,7 +9,7 @@ import re
 
 class Triton(SocketInstrument):
     
-    def __init__(self,name="Triton",address='fridge.circuitqed.com',enabled=True,timeout=10):
+    def __init__(self,name="Triton",address='fridge1.uchicago.edu',enabled=True,timeout=10):
         if ':' not in address: address+=':22518'        
         SocketInstrument.__init__(self,name,address,enabled,timeout)
         self.query_sleep=0.1
@@ -46,6 +46,13 @@ class Triton(SocketInstrument):
     def get_temperature(self,channel='MC RuO2'):
         return self.get_temperatures()[channel]
         
+    def get_mc_temperature(self):
+        Temperature=self.get_temperature('MC RuO2')
+        if not Temperature >0:
+            Temperature=self.get_temperature('MC cernox')
+        return Temperature
+
+        
     def get_settings(self):
          settings=SocketInstrument.get_settings(self)
          settings.update(self.get_temperatures())
@@ -55,7 +62,7 @@ class Triton(SocketInstrument):
          
         
 if __name__ == '__main__':
-    fridge=Triton (address='fridge.circuitqed.com')
+    fridge=Triton (address='triton.local')
     #print fridge.get_status()
     d=fridge.get_temperatures()
     #print fridge.get_temperatures()

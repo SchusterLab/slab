@@ -21,11 +21,14 @@ class InstrumentManager(dict):
         
     def load_config_file(self,config_path):
         """Loads configuration file"""
+        print "Loaded Instruments: ",
         f=open(config_path,'r')
         for line in f.readlines():
             if line[0]!='#':
                 name=line.split()[0]
+                print name,
                 self[name]=self.load_instrument(line)
+        print "!"
     
     def load_instrument(self,config_string):
         """Loads instrument based on config_string (Name\tAddress\tType)"""
