@@ -111,7 +111,7 @@ class E5071(SocketInstrument):
 
     def set_output(self,state=True):
         if state: self.write(":OUTPUT ON")
-        else: self.write(":OUTPUT ON")
+        else: self.write(":OUTPUT OFF")
 
     def get_output(self):
         return bool(self.query(":OUTPUT?"))
@@ -422,14 +422,14 @@ def nwa_test3(na):
 
 if __name__ =='__main__':
 #    condense_nwa_files(r'C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data','C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data\\test')
-    na=E5071("E0571",address="205.208.15.102")
+    na=E5071("E0571",address="192.168.14.130")
     print na.get_id()
-    print "Setting window"
+    #print "Setting window"
 
-    from guiqwt.pyplot import *
+    #from guiqwt.pyplot import *
     #nwa_test2(na)
 #    nwa_test2(na)
-    nwa_test2(na)
+    #nwa_test2(na)
 
 
 #    nwa_test3(na)

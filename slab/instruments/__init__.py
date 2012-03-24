@@ -7,6 +7,8 @@ from instrumentmanager import InstrumentManager
 from awg import *
 from spec_analyzer.spectrum_analyzer import *
 from ipsmagnet import *
+from relaybox.relaybox import RelayBox
+from relaybox.heliummanifold import HeliumManifold
 
 from Alazar import Alazar, AlazarConfig, AlazarConstants
 from Alazar import Alazar, AlazarConfig, AlazarConstants

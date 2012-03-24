@@ -537,6 +537,7 @@ class Alazar():
         avg_data1*=(self.config.ch1_range/128.)
         avg_data2-=128.
         avg_data2*=(self.config.ch2_range/128.)
+        if not self.config.ch2_enabled: avg_data2=np.zeros(self.config.samplesPerRecord,dtype=float)
         tpts=np.arange(self.config.samplesPerRecord)/float(self.config.sample_rate*1e3)
         if DEBUGALAZAR: print "Acquisition finished."
         if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
