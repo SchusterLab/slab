@@ -150,15 +150,18 @@ class SlabWindow(QMainWindow):
         self.connect(self.data_thread_obj, SIGNAL("progress"), self.progress)
 
     def register_script(self, method, go_button, abort_button=None):
-        self.connect(go_button, SIGNAL("clicked()"),
-                     lambda: go_button.setDisabled(True))
-        self.connect(go_button, SIGNAL("clicked()"), lambda: self.emit(SIGNAL("method"), method))
+#        self.connect(go_button, SIGNAL("clicked()"),
+#                     lambda: go_button.setDisabled(True))
+#        self.connect(go_button, SIGNAL("clicked()"), lambda: self.emit(SIGNAL("method"), method))
+        go_button.clicked.connect(lambda: go_button.setDisabled(True))
+        go_button.clicked.connect(lambda: self.emit(SIGNAL("method"), method))
         self.connect(self, SIGNAL("method"), self.data_thread_obj.run_data_thread)
         self.connect(self.data_thread_obj, SIGNAL(method + "done"),
                      lambda: go_button.setDisabled(False))
         if abort_button:
-            self.connect(abort_button, SIGNAL("clicked()"),
-                         self.data_thread_obj.abort, Qt.DirectConnection)
+            abort_button.clicked.connect(self.data_thread_obj.abort, Qt.DirectConnection)
+#            self.connect(abort_button, SIGNAL("clicked()"),
+#                         self.data_thread_obj.abort, Qt.DirectConnection)
 
 
     def setupSlabWindow(self, autoparam=False):
@@ -208,6 +211,8 @@ class SlabWindow(QMainWindow):
         self.progressBar.setValue(val)
 
     def set_param(self, name, value):
+        if isinstance(value, QString):
+            value = str(value)
         self.params[name] = value
 
     def start_thread(self):
@@ -227,62 +232,27 @@ class SlabWindow(QMainWindow):
 
     def register_param(self, widget, name):
         self.param_widgets.append((widget, name))
+        set_fn = lambda i: self.set_param(name, i)
         if isinstance(widget, QSpinBox): 
-            self.connect(widget, SIGNAL("valueChanged(int)"),
-                    lambda i: self.set_param(name, i))
+            widget.valueChanged.connect(set_fn)
+
         elif isinstance(widget, QDoubleSpinBox):
-            self.connect(widget, SIGNAL("valueChanged(double)"),
-                    lambda i: self.set_param(name, i))
+            widget.valueChanged.connect(set_fn)
+
         elif isinstance(widget, QLineEdit):
-            self.connect(widget, SIGNAL("returnPressed()"),
-                    lambda: self.set_param(name, widget.text()))
+            widget.textEdited.connect(set_fn)
+
         elif isinstance(widget, QButtonGroup):
-            self.connect(widget, SIGNAL("buttonClicked(int)"),
-                    lambda i: self.set_param(name, i))
+            widget.buttonClicked.connect(set_fn)
+
         elif isinstance(widget, QCheckBox):
-            self.connect(widget, SIGNAL("stateChanged(int)"),
-                    lambda i: self.set_param(name, i > 0))
+            widget.stateChanged.connect(lambda i: self.set_param(name, i > 0))
+
+        elif isinstance(widget, QComboBox):
+            widget.currentIndexChanged[str].connect(set_fn)
+
         else: print "could not match", name, "with widget"
 
-
-
-################
-# Example code #
-################
-
-from test_ui import *
-from widgets import *
-
-class test_DataThread(DataThread):
-    def run_script(self):
-        omega = self.params["rate"]
-        for i in range(100):
-            self.progress(i, 100)
-            if self.aborted():
-                self.msg("aborted")
-                break
-            xrng = np.linspace(0, 2 * np.pi, num = i)
-            sleep(.1)
-            self.plots["sine"].setData(xrng, np.sin(omega * xrng))
-            self.plots["cosine"].setData(xrng, np.cos(omega * xrng))
-            self.plots["plot"].replot()
-
-class TestWin(SlabWindow, Ui_MainWindow):
-    def __init__(self):
-        SlabWindow.__init__(self, test_DataThread, config_file=None)
-        self.setupSlabWindow(autoparam=True)
-
-        self.register_script("run_script", self.go_button, self.abort_button)
-        self.start_thread()
-        self.plot_manager["plot"] = self.qwtPlot
-        sine_curve = Qwt.QwtPlotCurve("Sine")
-        cosine_curve = Qwt.QwtPlotCurve("Cosine")
-        sine_curve.attach(self.qwtPlot)
-        cosine_curve.attach(self.qwtPlot)
-        self.plot_manager["sine"] = sine_curve
-        self.plot_manager["cosine"] = cosine_curve
-
-        
 
 def runWin(WinC, *args, **kwargs):
     app = QApplication([])
@@ -290,6 +260,42 @@ def runWin(WinC, *args, **kwargs):
     win.show()
     app.connect(app, SIGNAL("lastWindowClosed()"), win, SIGNAL("lastWindowClosed()"))
     app.exec_()
+################
+# Example code #
+################
 
 if __name__ == "__main__":
-    sys.exit(runWin(TestWin))
+    from test_ui import *
+    from widgets import *
+    import cProfile
+
+    class test_DataThread(DataThread):
+        def run_script(self):
+            omega = self.params["rate"]
+            for i in range(100):
+                self.progress(i, 100)
+                if self.aborted():
+                    self.msg("aborted")
+                    break
+                xrng = np.linspace(0, 2 * np.pi, num = i)
+                sleep(.1)
+                self.plots["sine"].setData(xrng, np.sin(omega * xrng))
+                self.plots["cosine"].setData(xrng, np.cos(omega * xrng))
+                self.plots["plot"].replot()
+
+    class TestWin(SlabWindow, Ui_MainWindow):
+        def __init__(self):
+            SlabWindow.__init__(self, test_DataThread, config_file=None)
+            self.setupSlabWindow(autoparam=True)
+
+            self.register_script("run_script", self.go_button, self.abort_button)
+            self.start_thread()
+            self.plot_manager["plot"] = self.qwtPlot
+            sine_curve = Qwt.QwtPlotCurve("Sine")
+            cosine_curve = Qwt.QwtPlotCurve("Cosine")
+            sine_curve.attach(self.qwtPlot)
+            cosine_curve.attach(self.qwtPlot)
+            self.plot_manager["sine"] = sine_curve
+            self.plot_manager["cosine"] = cosine_curve
+
+    cProfile.run("sys.exit(runWin(TestWin))")
