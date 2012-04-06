@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1107</width>
-    <height>770</height>
+    <height>800</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -103,7 +103,7 @@
              </widget>
             </item>
             <item row="3" column="1">
-             <widget class="QSpinBox" name="param_recordsPerAquisition">
+             <widget class="QSpinBox" name="param_recordsPerAcquisition">
               <property name="minimum">
                <number>1</number>
               </property>
@@ -114,6 +114,30 @@
                <number>1</number>
               </property>
              </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="6" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_7">
+            <item>
+             <widget class="QLabel" name="label_22">
+              <property name="text">
+               <string>Excise Start</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="param_excise_start"/>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_23">
+              <property name="text">
+               <string>Excise End</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="param_excise_end"/>
             </item>
            </layout>
           </item>
@@ -168,7 +192,7 @@
                 </widget>
                </item>
                <item row="1" column="1">
-                <widget class="QComboBox" name="param_ch1_range">
+                <widget class="QComboBox" name="param_ch1_range_txt">
                  <item>
                   <property name="text">
                    <string>4 V</string>
@@ -268,7 +292,7 @@
                 </widget>
                </item>
                <item row="1" column="1">
-                <widget class="QComboBox" name="param_ch2_range">
+                <widget class="QComboBox" name="param_ch2_range_txt">
                  <item>
                   <property name="text">
                    <string>4 V</string>
@@ -360,7 +384,7 @@
              </widget>
             </item>
             <item row="0" column="1">
-             <widget class="QComboBox" name="param_sample_rate">
+             <widget class="QComboBox" name="param_sample_rate_txt">
               <item>
                <property name="text">
                 <string>1 GHz</string>
@@ -736,6 +760,23 @@
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="applyButton">
+         <property name="text">
+          <string>Apply Settings</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTextEdit" name="message_box"/>
+       </item>
+       <item>
+        <widget class="QPushButton" name="sweepButton">
+         <property name="text">
+          <string>Sweep</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -798,6 +839,13 @@
          <widget class="QPushButton" name="runButton">
           <property name="text">
            <string>Run</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="stopButton">
+          <property name="text">
+           <string>Stop</string>
           </property>
          </widget>
         </item>
@@ -880,9 +928,24 @@
      <x>0</x>
      <y>0</y>
      <width>1107</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuSave">
+     <property name="title">
+      <string>Save</string>
+     </property>
+     <addaction name="actionExperimental_Settings"/>
+     <addaction name="actionExperimental_and_Instrument_Settings"/>
+    </widget>
+    <addaction name="menuSave"/>
+    <addaction name="actionLoad"/>
+   </widget>
+   <addaction name="menuFile"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
@@ -896,6 +959,21 @@
     <bool>false</bool>
    </attribute>
   </widget>
+  <action name="actionLoad">
+   <property name="text">
+    <string>Load</string>
+   </property>
+  </action>
+  <action name="actionExperimental_Settings">
+   <property name="text">
+    <string>Experimental Settings</string>
+   </property>
+  </action>
+  <action name="actionExperimental_and_Instrument_Settings">
+   <property name="text">
+    <string>Experimental and Instrument Settings</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

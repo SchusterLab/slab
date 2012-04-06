@@ -43,6 +43,21 @@ def load_nwa_dir(datapath):
     data = [load_nwa_file(fname) for fname in fnames]
     return prefixes, data
     
+def load_nwa_list(datapath, header_list):
+    fnames=glob.glob(os.path.join(datapath,"*.CSV"))
+    prefixes=[];fnames2=[];
+    fnames.sort()
+    for fname in fnames:
+        prefix=os.path.split(fname)[-1]
+        number=prefix.split('_')[0]
+        if int(number) in header_list: 
+            prefixes.append(prefix)
+            fnames2.append(fname)
+#            print 'filename', fname
+#    print 'filenames 2',fnames2
+    data = [load_nwa_file(fname) for fname in fnames2]
+    return prefixes, data
+    
 ############## Experiment helpers #####################
 
 def next_file_index(datapath,prefix=''):
@@ -93,10 +108,10 @@ def tic():
     global last_tic
     last_tic=time.time()
     
-def toc():
+def toc(log=False):
     global last_tic
     t=time.time()
-    print "Tic-Toc: %.0f ms" % ((t-last_tic)*1000.)
+    if log: print "Tic-Toc: %.0f ms" % ((t-last_tic)*1000.)
     return t-last_tic
     
 def digital_homodyne(time_pts,ch1_pts,ch2_pts,IFfreq,dfactor=1,AmpPhase=False):

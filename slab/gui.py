@@ -12,7 +12,7 @@ usage:
         - run self.setupSlabWindow()
         - register any plots (or actually any UI components to be
           dynamically updated) from the UI with the plot manager, i.e.
-          self.plot_manager["myplot"] = self.myplot
+          self.plots["myplot"] = self.myplot
         - For connecting parameter widgets there are three options
           - For "standard" widgets (i.e. SpinBox, Checkbox, ButtonGroup, LineEdit),
             register a widget with a name using self.register_param(widget, "widgetName")
@@ -36,13 +36,16 @@ usage:
 
     A more complete (functional) example is given at the end of the file
 """
-
 from instruments import InstrumentManager
+from dataanalysis import get_next_filename
+from widgets import SweepDialog
 from PyQt4.Qt import *
 import PyQt4.Qwt5 as Qwt
 import numpy as np
 from time import sleep
-import sys
+import sys, csv, os
+
+DEBUG = True
 
 class ManagerProxy(QObject):
     def __init__(self, emit_name):
@@ -122,18 +125,18 @@ class DataThread(QObject):
             return False
 
     def run_data_thread(self, method):
-        self.run_script()
+        if DEBUG: print method, "running"
+        getattr(self, method)()
         self.emit(SIGNAL(method + "done"))
-
-
 
 class SlabWindow(QMainWindow):
     def __init__(self, DataThreadC, config_file=None):
         QMainWindow.__init__(self)
         self.instruments = ManagerProxy("instrumentMethodCalled")
-        self.plot_manager = {}
+        self.plots = {}
         self.params = DictProxy("parameterChanged")
         self.param_widgets = []
+        self.registered_actions = []
         self.data_thread_obj = DataThreadC()
 
         self.connect(self.instruments, SIGNAL("instrumentMethodCalled"),
@@ -144,27 +147,27 @@ class SlabWindow(QMainWindow):
                 self.run_on_plot_manager)
         self.connect(self.params, SIGNAL("parameterChanged"),
                 self.data_thread_obj.set_param)
+        self.connect(self.params, SIGNAL("parameterChanged"),
+                self.write_param_widget)
 
         self.connect(self.data_thread_obj, SIGNAL("msg"), self.msg)
         self.connect(self.data_thread_obj, SIGNAL("status"), self.status)
         self.connect(self.data_thread_obj, SIGNAL("progress"), self.progress)
 
     def register_script(self, method, go_button, abort_button=None):
-#        self.connect(go_button, SIGNAL("clicked()"),
-#                     lambda: go_button.setDisabled(True))
-#        self.connect(go_button, SIGNAL("clicked()"), lambda: self.emit(SIGNAL("method"), method))
+        self.registered_actions.append(method)
         go_button.clicked.connect(lambda: go_button.setDisabled(True))
-        go_button.clicked.connect(lambda: self.emit(SIGNAL("method"), method))
-        self.connect(self, SIGNAL("method"), self.data_thread_obj.run_data_thread)
+        # Emit / connect necessary for non-blocking
+        go_button.clicked.connect(lambda: self.emit(SIGNAL(method), method))
+        self.connect(self, SIGNAL(method), self.data_thread_obj.run_data_thread)
+        #go_button.clicked.connect(lambda: self.data_thread_obj.run_data_thread(method))
         self.connect(self.data_thread_obj, SIGNAL(method + "done"),
                      lambda: go_button.setDisabled(False))
         if abort_button:
             abort_button.clicked.connect(self.data_thread_obj.abort, Qt.DirectConnection)
-#            self.connect(abort_button, SIGNAL("clicked()"),
-#                         self.data_thread_obj.abort, Qt.DirectConnection)
 
 
-    def setupSlabWindow(self, autoparam=False):
+    def setupSlabWindow(self, autoparam=False, prefix="param_"):
         "Connect Ui components provided by the SlabWindow designer template"
         self.setupUi(self)
 
@@ -173,37 +176,44 @@ class SlabWindow(QMainWindow):
         self.connect(self, SIGNAL("lastWindowClosed()"), self._data_thread.exit)
 
         try:
-            self.connect(self.actionExperimental_Settings, SIGNAL("triggered()"),
-                         self.data_thread_obj.save_experimental_settings)
-            self.connect(self.actionExperimental_and_Instrument_Settings, SIGNAL("triggered()"),
-                         self.data_thread_obj.save_all_settings)
-            self.connect(self.actionLoad, SIGNAL("triggered()"),
-                         self.data_thread_obj.load_settings)
+            self.actionExperimental_Settings.triggered.connect(
+                self.data_thread_obj.save_experimental_settings)
+            self.actionExperimental_and_InstrumentSettings.triggered.connect(
+                self.data_thread_obj.save_all_settings)
+            self.actionLoad.triggered.connect(
+                self.data_thread_obj.load_settings)
+            
         except Exception as e:
             print "Could not connect menu actions", e
 
         if autoparam:
+            pl = len(prefix)
             for wname in dir(self):
-                if wname[:6] == "param_":
+                if wname.startswith(prefix):
                     widget = getattr(self, wname)
                     if isinstance(widget, QWidget):
-                        print "attached parameter", wname[6:]
-                        self.register_param(widget, wname[6:])
+                        if DEBUG: print "attached parameter", wname[pl:]
+                        self.register_param(widget, wname[pl:])
 
     def run_on_plot_manager(self, plot_name, method_name, args, kwargs):
-        getattr(self.plot_manager[plot_name], method_name)(*args, **kwargs)
+        getattr(self.plots[plot_name], method_name)(*args, **kwargs)
 
-    def msg(self, message):
+    def msg(self, message_):
         try:
+            message = str(message_)
             self.message_box.append(message)
-        except:
-            print "no msg box:", message
+        except Exception as e:
+            if DEBUG:
+                print "no msg box:", e
+                print message_
 
     def status(self, message):
         try:
             self.statusbar.showMessage(message)
-        except:
-            print "no status bar:", message
+        except Exception as e:
+            if DEBUG:
+                print "no status bar:", e
+                print message
 
     def progress(self, pair):
         val, tot = pair
@@ -229,6 +239,24 @@ class SlabWindow(QMainWindow):
                 self.set_param(name, widget.checkedId())
             elif isinstance(widget, QCheckBox):
                 self.set_param(name, widget.isChecked())
+            elif isinstance(widget, QComboBox):
+                self.set_param(name, widget.currentText())
+
+    def write_param_widget(self, name, value):
+        try:
+            widget, name = lookup(self.param_widgets, name, 1)
+            if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
+                widget.setValue(value)
+            elif isinstance(widget, QLineEdit):
+                widget.setText(value)
+            elif isinstance(widget, QButtonGroup):
+                widget.setId(value)
+            elif isinstance(widget, QCheckBox):
+                widget.setChecked(Qt.Checked if value else Qt.Unchecked)
+            elif isintance(widget, QComboBox):
+                widget.set
+        except:
+            pass
 
     def register_param(self, widget, name):
         self.param_widgets.append((widget, name))
@@ -252,7 +280,55 @@ class SlabWindow(QMainWindow):
             widget.currentIndexChanged[str].connect(set_fn)
 
         else: print "could not match", name, "with widget"
+        
+    def save_time_series(self, *xs):
+        datapath = self.params["datapath"]
+        fname = os.path.join(datapath, get_next_filename(datapath, self.params["prefix"]))
+        f = open(fname, 'w')
+        csv.writer(f).writerows(zip(*xs))
+        f.close()
+        if DEBUG: print "saved", fname
 
+    def params_combo_box(self, comboBox):
+        for widget, name in self.param_widgets:
+            if isinstance(widget, QSpinBox):
+                comboBox.addItem(name)
+         
+    def actions_combo_box(self, comboBox):
+        for action in self.registered_actions:
+           comboBox.addItem(action)
+            
+    def add_sweep_dialog(self):
+        self.sweep_dialog = SweepDialog()
+        
+        self.sweep_dialog = dialog = QDialog()
+        d_layout = QVBoxLayout(dialog)
+        group = QGroupBox("Sweep", dialog)
+        sweep_1_lo = QHBoxLayout(dialog)
+        lab_1 = QLabel("Sweep Parameter 1", group)
+        sweep_1_cb = self.params_combo_box(group)
+        sweep_1_lo.addWidget(lab_1)
+        sweep_1_lo.addWidget(sweep_1_cb)
+        sweep_2_lo = QHBoxLayout(group)
+        lab_2 = QLabel("Sweep Parameter 2", group)
+        sweep_2_cb = self.params_combo_box(group)
+        sweep_2_check = QCheckBox("Enable Sweep 2", group)
+        sweep_2_lo.addWidget(lab_2)
+        sweep_2_lo.addWidget(sweep_2_cb)
+        sweep_2_lo.addWidget(sweep_2_check)
+        self.actions_priority_boxes(group)
+        d_layout.addWidget(group)
+        buttons = QDialogButtonBox(dialog)
+        buttons.addButton(QPushButton("OK"), QDialogButtonBox.YesRole)
+        buttons.addButton(QPushButton("Cancel"), QDialogButtonBox.NoRole)
+        d_layout.addWidget(buttons)
+        
+        
+
+def lookup(tuplelist, ident, idx=0):
+    for t in tuplelist:
+        if t[idx] == ident:
+            return t
 
 def runWin(WinC, *args, **kwargs):
     app = QApplication([])
@@ -290,12 +366,13 @@ if __name__ == "__main__":
 
             self.register_script("run_script", self.go_button, self.abort_button)
             self.start_thread()
-            self.plot_manager["plot"] = self.qwtPlot
+
+            self.plots["plot"] = self.qwtPlot
             sine_curve = Qwt.QwtPlotCurve("Sine")
             cosine_curve = Qwt.QwtPlotCurve("Cosine")
             sine_curve.attach(self.qwtPlot)
             cosine_curve.attach(self.qwtPlot)
-            self.plot_manager["sine"] = sine_curve
-            self.plot_manager["cosine"] = cosine_curve
+            self.plots["sine"] = sine_curve
+            self.plots["cosine"] = cosine_curve
 
     cProfile.run("sys.exit(runWin(TestWin))")
