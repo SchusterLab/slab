@@ -6,7 +6,10 @@ except:
 import telnetlib
 import socket
 import time
-import serial
+try:
+    import serial
+except:
+    print "Warning serial library import failed."
 
 class Instrument(object):
     """

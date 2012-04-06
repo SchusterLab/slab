@@ -9,8 +9,9 @@ from spec_analyzer.spectrum_analyzer import *
 from ipsmagnet import *
 from relaybox.relaybox import RelayBox
 from relaybox.heliummanifold import HeliumManifold
+from bkpowersupply import BKPowerSupply
+from KEPCOPowerSupply import KEPCOPowerSupply
 
-from Alazar import Alazar, AlazarConfig, AlazarConstants
 from Alazar import Alazar, AlazarConfig, AlazarConstants
 
 instrument_dict = { "Network Analyzer" : E5071,
@@ -19,4 +20,6 @@ instrument_dict = { "Network Analyzer" : E5071,
                     "Cryostat" : Triton,
                     "Arbitrary Waveform Generator" : AWG81180A,
                     "Spectrum Analyzer" : SpectrumAnalyzer,
-                    "IPS Magnet" : IPSMagnet}
+                    "IPS Magnet" : IPSMagnet,
+                    "BK": BKPowerSupply,
+                    "KEPCO": KEPCOPowerSupply}

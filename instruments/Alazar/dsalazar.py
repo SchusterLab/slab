@@ -181,7 +181,13 @@ class AlazarConfig():
         for field_name in self._fields_:
             d[field_name]=getattr(self,field_name)
         return d       
-        
+    
+    def interpret_constants(self):
+        self.sample_rate = AlazarConstants.sample_rate_txt[self.sample_rate_txt]
+        self.ch1_range = AlazarConstants.input_range_txt[self.ch1_range_txt]
+        self.ch2_range = AlazarConstants.input_range_txt[self.ch2_range_txt]
+
+    
     def from_form(self,widget):
         self.samplesPerRecord = widget.samplesSpinBox.value()
         self.recordsPerBuffer = widget.recordsSpinBox.value()
@@ -309,7 +315,7 @@ class Alazar():
         if DEBUGALAZAR: print "ClockConfig:", ret_to_str(ret, self.Az)
 
     def configure_trigger(self,source=None, source2=None, edge=None, edge2=None,
-                 level=None, level2=None, operation=None, coupling=None, timeout=None,delay=None):
+                 level=None, level2=None, operation=None, coupling=None, timeout=None,delay=0):
         """
         Can set up to two trigger operations to be performed
         @param source: Where the first trigger engine should take its input.
@@ -344,6 +350,7 @@ class Alazar():
         if coupling is not None: self.config.trigger_coupling= coupling
         if timeout is not None: self.config.timeout= timeout
         if delay is not None: self.config.trigger_delay = delay
+        
         
         if source2 == "disabled":
             op = AlazarConstants.single_op

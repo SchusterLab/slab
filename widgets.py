@@ -12,8 +12,21 @@ field (this will be appropriately translated by pyuic), and click
 """
 
 from PyQt4.Qt import *
+import guiqwt.plot
 import math
 import re
+
+class PlotWithTB(QMainWindow):
+    def __init__(self, parent=None):
+        QMainWindow.__init__(self, parent, Qt.Widget)
+        self.plot = guiqwt.plot.CurveWidget()
+        self.setCentralWidget(self.plot)
+        self.toolbar = QToolBar(self)
+        self.plot.add_toolbar(self.toolbar)
+        self.plot.register_all_curve_tools()
+    def __getattr__(self, item):
+        return self.plot.__getattr__(item)
+    
 
 class SlabSpinBox(QDoubleSpinBox):
     def __init__(self, *args, **kwargs):

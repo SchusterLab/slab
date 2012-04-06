@@ -30,7 +30,7 @@ def zipsort(xdata,ydata):
     return plt.take(xdata,inds),plt.take(ydata,inds,axis=0)
     
 """Wraplter around scipy.optimize.leastsq"""
-def fitgeneral(xdata,ydata,fitfunc,fitparams,domain=None,showfit=False,showstartfit=False,label=""):
+def fitgeneral(xdata,ydata,fitfunc,fitparams,domain=None,showfit=False,showstartfit=False,label="",mark_data='bo',mark_fit='r-'):
     """Uses optimize.leastsq to fit xdata ,ydata using fitfunc and adjusting fit params"""
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
@@ -43,10 +43,10 @@ def fitgeneral(xdata,ydata,fitfunc,fitparams,domain=None,showfit=False,showstart
     startparams=fitparams # Initial guess for the parameters
     bestfitparams, success = optimize.leastsq(errfunc, startparams[:], args=(fitdatax,fitdatay))
     if showfit:
-        plt.plot(fitdatax,fitdatay,'bo',label=label+" data")
+        plt.plot(fitdatax,fitdatay,mark_data,label=label+" data")
         if showstartfit:
             plt.plot(fitdatax,fitfunc(startparams,fitdatax),label=label+" startfit")
-        plt.plot(fitdatax,fitfunc(bestfitparams,fitdatax),'r-',label=label+" fit")
+        plt.plot(fitdatax,fitfunc(bestfitparams,fitdatax),mark_fit,label=label+" fit")
         if label!='': plt.legend()
         err=math.fsum(errfunc(bestfitparams,fitdatax,fitdatay))
         print 'the best fit has an RMS of {0}'.format(err)
@@ -58,7 +58,7 @@ def lorfunc(p, x):
     """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""
     return p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)
 
-def fitlor (xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+def fitlor(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
     """fit lorentzian:
         returns [offset,amplitude,center,hwhm]"""
     if domain is not None:
@@ -66,7 +66,7 @@ def fitlor (xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fa
     else:
         fitdatax=xdata
         fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         fitparams=[0,0,0,0]
         fitparams[0]=(fitdatay[0]+fitdatay[-1])/2.
         fitparams[1]=max(fitdatay)-min(fitdatay)
@@ -101,6 +101,27 @@ def fitgauss (xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=
         fitparams[3]=(max(fitdatax)-min(fitdatax))/3.
 
     p1 = fitgeneral(fitdatax,fitdatay,gaussfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+    return p1   
+    
+def decaysin(p,x):
+    
+    return p[0]*np.sin(p[1]*x+p[2])*np.e**(-1*x/p[3])+p[4]
+
+def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:    
+        fitparams=[0,0,0,0,0]
+        fitparams[4]=(max(fitdatay)+min(fitdatay))/2
+        fitparams[0]=(max(fitdatay)-min(fitdatay))/2
+        fitparams[1]=2*np.pi/((max(fitdatax)-min(fitdatax))/20)
+        fitparams[2]=0.
+        fitparams[3]=(max(fitdatax)-min(fitdatax))/2.
+
+    p1 = fitgeneral(fitdatax,fitdatay,decaysin,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
     return p1    
 
 def hangerfunc_old(p,x):
@@ -142,22 +163,62 @@ def hangerfunc(p,x):
     Q0=1./(1./Qi+1./Qc)
     return scale*(-2.*Q0*Qc + Qc**2. + Q0**2.*(1. + Qc**2.*(2.*a + b)**2.))/(Qc**2*(1. + 4.*Q0**2.*a**2.))
 
+def hangerfunc_new(p,x):
+    """p=[f0,Qi,Qc,df,scale]"""
+    #print p    
+    f0,Qi,Qc,df,scale = p
+    a=(x-(f0+df))/(f0+df)
+    b=2*df/f0
+    y=10.*np.log10(scale*(Qc**2. + Qi**2.*Qc**2.*(2.*a + b)**2.)/((Qc+Qi)**2 + 4.*Qi**2.*Qc**2.*a**2.))
+    return y
+
 def hangerfunctilt(p,x):
     """Ge Editing  p=[f0,Qi,Qc,df,scale,slope, offset]"""
-    f0, Qi, Qc, df, scale, slope, offset = p
+    f0, Qi, Qc, df, slope, offset = p
     a=(x-(f0+df))/(f0+df)
     b=2*df/f0
     Q0=1./(1./Qi+1./Qc)
+    #y=math.exp(slope*x+offset)
+    y=[math.exp(slope*i+offset) for i in x]
 #    return slope*x+offset+scale*(-2.*Q0*Qc + Qc**2. + Q0**2.*(1. + Qc**2.*(2.*a + b)**2.))/(Qc**2*(1. + 4.*Q0**2.*a**2.))
-    return slope*x+offset+scale*(-2.*Q0*Qc + Qc**2. + Q0**2.*(1. + Qc**2.*(2.*a + b)**2.))/(Qc**2*(1. + 4.*Q0**2.*a**2.))
+    return y*(-2.*Q0*Qc + Qc**2. + Q0**2.*(1. + Qc**2.*(2.*a + b)**2.))/(Qc**2*(1. + 4.*Q0**2.*a**2.))
 
-
-def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,printresult=False,label=""):
+def fithanger_new(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,printresult=False,label="",mark_data='bo',mark_fit='r-'):
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
         fitparams = []
         returns p=[f0,Qi,Qc,df,scale]
         Uses hangerfunc. 
     """
+    
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:    
+        peakloc=np.argmin(fitdatay)
+        ymax=(fitdatay[0]+fitdatay[-1])/2.
+        ymin=fitdatay[peakloc]        
+        f0=fitdatax[peakloc]
+        Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/500.))
+        scale= ymax-ymin
+        Qi=Q0*100
+        Qc=Q0
+        #slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
+        #offset= ymin-slope*f0
+        fitparams=[f0,abs(Qi),abs(Qc),0.,scale]
+        #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
+    fitresult=fitgeneral(fitdatax,fitdatay,hangerfunc_new,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label, mark_data=mark_data, mark_fit=mark_fit)        
+    if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}'.format(fitresult[0],fitresult[1],fitresult[2],fitresult[3],fitresult[4])
+    return fitresult
+
+def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,printresult=False,label="",mark_data='bo',mark_fit='r-'):
+    """Fit Hanger Transmission (S21) data taking into account asymmetry.
+        fitparams = []
+        returns p=[f0,Qi,Qc,df,scale]
+        Uses hangerfunc. 
+    """
+    
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
     else:
@@ -176,7 +237,7 @@ def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=
         #offset= ymin-slope*f0
         fitparams=[f0,Qi,Qc,0.,scale]
         #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
-    fitresult=fitgeneral(fitdatax,fitdatay,hangerfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)        
+    fitresult=fitgeneral(fitdatax,fitdatay,hangerfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label, mark_data=mark_data, mark_fit=mark_fit)        
     if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}'.format(fitresult[0],fitresult[1],fitresult[2],fitresult[3],fitresult[4])
     return fitresult
     
@@ -202,7 +263,7 @@ def fithangertilt(xdata,ydata,fitparams=None,domain=None,showfit=False,showstart
         scale= ymax-ymin
         slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
         offset= ymin-slope*f0
-        fitparams=[f0,Qi,Qc,0.,scale,slope, offset]
+        fitparams=[f0,Qi,Qc,0.,slope, offset]
         #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
     return fitgeneral(fitdatax,fitdatay,hangerfunctilt,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
 
