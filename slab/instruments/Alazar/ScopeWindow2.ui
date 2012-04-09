@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1107</width>
-    <height>800</height>
+    <height>827</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -945,7 +945,14 @@
     <addaction name="menuSave"/>
     <addaction name="actionLoad"/>
    </widget>
+   <widget class="QMenu" name="menuSweep">
+    <property name="title">
+     <string>Sweep</string>
+    </property>
+    <addaction name="actionStart_Sweep"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuSweep"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
@@ -972,6 +979,11 @@
   <action name="actionExperimental_and_Instrument_Settings">
    <property name="text">
     <string>Experimental and Instrument Settings</string>
+   </property>
+  </action>
+  <action name="actionStart_Sweep">
+   <property name="text">
+    <string>Start Sweep</string>
    </property>
   </action>
  </widget>

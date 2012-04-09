@@ -130,7 +130,7 @@ class DataThread(QObject):
 
     def run_sweep(self):
         params = Bunch(self.params)
-        prange = range(params.sweep1_start, 
+        prange = range(params.sweep1_start,
                 params.sweep1_start, params.sweep1step)
         if params.sweep2_enabled:
             raise NotImplementedError
@@ -256,14 +256,14 @@ class SlabWindow(QMainWindow):
                          "write" : "setText",
                          "change_signal" : "textEdited"},
             QButtonGroup : {"read" : "checkedId",
-                            "write" : "setValue",
-                            "change_signal" : "valueChanged"},
+                            "write" : "setId",
+                            "change_signal" : "buttonClicked"},
             QCheckBox : {"read" : "isChecked",
-                         "write" : "setValue",
-                         "change_signal" : "valueChanged"},
+                         "write" : "setChecked",
+                         "change_signal" : "stateChanged"},
             QComboBox : {"read" : "currentText",
                          "write" : 
-                            lambda w, v: w.setIndex(w.findtext(v)),
+                            lambda w, v: w.setCurrentIndex(w.findText(v)),
                          "change_signal": 
                             lambda w, f: w.currentIndexChanged[str].connect(f)}
             }
@@ -273,20 +273,20 @@ class SlabWindow(QMainWindow):
         for widget, name in self.param_widgets:
             for cls, clstools in self.widget_tools.items():
                 if isinstance(widget, cls):
-                    try: 
-                        self.set_param(name, getattr(widget, clstools["read"])())
-                    except:
+                    if hasattr(clstools["read"], "__call__"):
                         self.set_param(clstools["read"](widget))
+                    else: 
+                        self.set_param(name, getattr(widget, clstools["read"])())
                     break
 
     def write_param_widget(self, name, value):
          widget, name =  lookup(self.param_widgets, name, 1)
          for cls, clstools in self.widget_tools.items():
              if isinstance(widget, cls):
-                try:
-                     getattr(widget, clstools["write"])(value)
-                except:
-                    self.clstools["write"](widget, value)
+                if hasattr(clstools["write"], "__call__"):
+                    clstools["write"](widget, value)
+                else:
+                    getattr(widget, clstools["write"])(value)
                 break
 
     def register_param(self, widget, name):
@@ -294,68 +294,16 @@ class SlabWindow(QMainWindow):
         set_fn = lambda i: self.set_param(name, i)
         for cls, clstools in self.widget_tools.items():
             if isinstance(widget, cls):
-                try: 
+                if hasattr(clstools["change_signal"], "__call__"):
+                    clstools["change_signal"](widget, set_fn)
+                else: 
                     getattr(widget, clstools["change_signal"]).connect(set_fn)
-                except:
-                    self.clstools["change_signal"](widget, set_fn)
                 break
 
-
-#    def read_param_widgets(self):
-#        for widget, name in self.param_widgets:
-#            if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
-#                self.set_param(name, widget.value())
-#            elif isinstance(widget, QLineEdit):
-#                self.set_param(name, widget.text())
-#            elif isinstance(widget, QButtonGroup):
-#                self.set_param(name, widget.checkedId())
-#            elif isinstance(widget, QCheckBox):
-#                self.set_param(name, widget.isChecked())
-#            elif isinstance(widget, QComboBox):
-#                self.set_param(name, widget.currentText())
-
-#    def write_param_widget(self, name, value):
-#        try:
-#            widget, name = lookup(self.param_widgets, name, 1)
-#            if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
-#                widget.setValue(value)
-#            elif isinstance(widget, QLineEdit):
-#                widget.setText(value)
-#            elif isinstance(widget, QButtonGroup):
-#                widget.setId(value)
-#            elif isinstance(widget, QCheckBox):
-#                widget.setChecked(Qt.Checked if value else Qt.Unchecked)
-#            elif isintance(widget, QComboBox):
-#                widget.set
-#        except:
-#            pass
-
-#    def register_param(self, widget, name):
-#        self.param_widgets.append((widget, name))
-#        set_fn = lambda i: self.set_param(name, i)
-#        if isinstance(widget, QSpinBox): 
-#            widget.valueChanged.connect(set_fn)
-#
-#        elif isinstance(widget, QDoubleSpinBox):
-#            widget.valueChanged.connect(set_fn)
-#
-#        elif isinstance(widget, QLineEdit):
-#            widget.textEdited.connect(set_fn)
-#
-#        elif isinstance(widget, QButtonGroup):
-#            widget.buttonClicked.connect(set_fn)
-#
-#        elif isinstance(widget, QCheckBox):
-#            widget.stateChanged.connect(lambda i: self.set_param(name, i > 0))
-#
-#        elif isinstance(widget, QComboBox):
-#            widget.currentIndexChanged[str].connect(set_fn)
-#
-#        else: print "could not match", name, "with widget"
-        
     def save_time_series(self, *xs):
         datapath = self.params["datapath"]
-        fname = os.path.join(datapath, get_next_filename(datapath, self.params["prefix"]))
+        fname = os.path.join(datapath, 
+                             get_next_filename(datapath, self.params["prefix"]))
         f = open(fname, 'w')
         csv.writer(f).writerows(zip(*xs))
         f.close()
@@ -369,17 +317,29 @@ class SlabWindow(QMainWindow):
         self.autoparam("SweepDialog")
         try: self.actionStart_Sweep.triggered.connect(sd.exec_)
         except AttributeError: print "No actionStart_Sweep to connect"
-
-        for name, widget in self.param_widgets:
-            if isinstance(widget, QSpinBox):
+        self.whichStack = {}
+        for w, name in self.param_widgets:
+            if isinstance(w, QSpinBox) or isinstance(w, QDoubleSpinBox):
+                print "sweep enabled on", name
                 sd.param_sweep1.addItem(name)
                 sd.param_sweep2.addItem(name)
+                if isinstance(w, QSpinBox):
+                    self.whichStack[name] = 0
+                else:
+                    self.whichStack[name] = 1
         for name in self.registered_actions:
             sd.actions_comboBox.addItem(name)
 
         sd.addActionButton.clicked.connect(
             lambda: sd.param_actions.append(
                 sd.actions_comboBox.currentText()))
+        sd.clearActionsButton.clicked.connect(sd.param_actions.clear)                
+        sd.param_sweep1.currentIndexChanged[str].connect(
+            lambda name: 
+                sd.sweep1_stackedWidget.setCurrentIndex(self.whichStack[str(name)]))
+        sd.param_sweep2.currentIndexChanged[str].connect(
+                    lambda name: 
+                        sd.sweep2_stackedWidget.setCurrentIndex(self.whichStack[str(name)]))
 
         sd.accepted.connect(self.data_thread_obj.run_sweep)
 

@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ScopeWindow2.ui'
 #
-# Created: Fri Apr 06 14:43:36 2012
+# Created: Mon Apr 09 15:10:58 2012
 #      by: PyQt4 UI code generator 4.8.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -17,7 +17,7 @@ except AttributeError:
 class Ui_ScopeWindow(object):
     def setupUi(self, ScopeWindow):
         ScopeWindow.setObjectName(_fromUtf8("ScopeWindow"))
-        ScopeWindow.resize(1107, 800)
+        ScopeWindow.resize(1107, 827)
         ScopeWindow.setWindowTitle(QtGui.QApplication.translate("ScopeWindow", "DScope", None, QtGui.QApplication.UnicodeUTF8))
         self.centralwidget = QtGui.QWidget(ScopeWindow)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
@@ -512,6 +512,9 @@ class Ui_ScopeWindow(object):
         self.menuSave = QtGui.QMenu(self.menuFile)
         self.menuSave.setTitle(QtGui.QApplication.translate("ScopeWindow", "Save", None, QtGui.QApplication.UnicodeUTF8))
         self.menuSave.setObjectName(_fromUtf8("menuSave"))
+        self.menuSweep = QtGui.QMenu(self.menubar)
+        self.menuSweep.setTitle(QtGui.QApplication.translate("ScopeWindow", "Sweep", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuSweep.setObjectName(_fromUtf8("menuSweep"))
         ScopeWindow.setMenuBar(self.menubar)
         self.statusbar = QtGui.QStatusBar(ScopeWindow)
         self.statusbar.setObjectName(_fromUtf8("statusbar"))
@@ -529,11 +532,16 @@ class Ui_ScopeWindow(object):
         self.actionExperimental_and_Instrument_Settings = QtGui.QAction(ScopeWindow)
         self.actionExperimental_and_Instrument_Settings.setText(QtGui.QApplication.translate("ScopeWindow", "Experimental and Instrument Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.actionExperimental_and_Instrument_Settings.setObjectName(_fromUtf8("actionExperimental_and_Instrument_Settings"))
+        self.actionStart_Sweep = QtGui.QAction(ScopeWindow)
+        self.actionStart_Sweep.setText(QtGui.QApplication.translate("ScopeWindow", "Start Sweep", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionStart_Sweep.setObjectName(_fromUtf8("actionStart_Sweep"))
         self.menuSave.addAction(self.actionExperimental_Settings)
         self.menuSave.addAction(self.actionExperimental_and_Instrument_Settings)
         self.menuFile.addAction(self.menuSave.menuAction())
         self.menuFile.addAction(self.actionLoad)
+        self.menuSweep.addAction(self.actionStart_Sweep)
         self.menubar.addAction(self.menuFile.menuAction())
+        self.menubar.addAction(self.menuSweep.menuAction())
 
         self.retranslateUi(ScopeWindow)
         self.param_trigger_source1.setCurrentIndex(2)
