@@ -15,6 +15,13 @@ from PyQt4.Qt import *
 import guiqwt.plot
 import math
 import re
+
+DEBUG = True
+if DEBUG:
+    from PyQt4 import uic
+    uifile = open("S:\\_Lib\\python\\slab\\widgets\\SweepDialog_ui.py", 'w')
+    uic.compileUi("S:\\_Lib\\python\\slab\\widgets\\SweepDialog.ui", uifile)
+    uifile.close()
 from SweepDialog_ui import Ui_SweepDialog
 from AlazarWidget_ui import Ui_AlazarForm
 #from slab import gui
