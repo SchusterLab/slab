@@ -132,9 +132,16 @@ p, li { white-space: pre-wrap; }
     <addaction name="actionShow_Message_Box"/>
     <addaction name="actionShow_Progress_Bar"/>
    </widget>
+   <widget class="QMenu" name="menuSweep">
+    <property name="title">
+     <string>Sweep</string>
+    </property>
+    <addaction name="actionStart_Sweep"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuInstruments"/>
    <addaction name="menuView"/>
+   <addaction name="menuSweep"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionExperimental_Settings">
@@ -172,6 +179,11 @@ p, li { white-space: pre-wrap; }
    </property>
    <property name="text">
     <string>Show Progress Bar</string>
+   </property>
+  </action>
+  <action name="actionStart_Sweep">
+   <property name="text">
+    <string>Start Sweep</string>
    </property>
   </action>
  </widget>

@@ -25,24 +25,6 @@
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QPushButton" name="go_button">
-         <property name="text">
-          <string>Go</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="abort_button">
-         <property name="text">
-          <string>Abort</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
       <widget class="QTextBrowser" name="message_box">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
@@ -115,9 +97,16 @@ p, li { white-space: pre-wrap; }
     <addaction name="actionHide_Message_Box"/>
     <addaction name="actionHide_Progress_Bar"/>
    </widget>
+   <widget class="QMenu" name="menuSweep">
+    <property name="title">
+     <string>Sweep</string>
+    </property>
+    <addaction name="actionStart_Sweep"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuInstruments"/>
    <addaction name="menuView"/>
+   <addaction name="menuSweep"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionExperimental_Settings">
@@ -149,6 +138,11 @@ p, li { white-space: pre-wrap; }
    </property>
    <property name="text">
     <string>Hide Progress Bar</string>
+   </property>
+  </action>
+  <action name="actionStart_Sweep">
+   <property name="text">
+    <string>Start Sweep</string>
    </property>
   </action>
  </widget>
