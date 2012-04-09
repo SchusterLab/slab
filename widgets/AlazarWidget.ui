@@ -1,0 +1,779 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AlazarForm</class>
+ <widget class="QWidget" name="AlazarForm">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>446</width>
+    <height>678</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QGroupBox" name="ScopeSettings">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>458</width>
+     <height>661</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Scope Settings</string>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout_5">
+    <item>
+     <widget class="QGroupBox" name="SampleSettings">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="title">
+       <string>Sample / Buffer Settings</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <layout class="QFormLayout" name="formLayout">
+         <property name="fieldGrowthPolicy">
+          <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+         </property>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Samples</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QSpinBox" name="param_samplesPerRecord">
+           <property name="minimum">
+            <number>32</number>
+           </property>
+           <property name="maximum">
+            <number>999999999</number>
+           </property>
+           <property name="singleStep">
+            <number>64</number>
+           </property>
+           <property name="value">
+            <number>1024</number>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Records per Buffer</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QSpinBox" name="param_recordsPerBuffer">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>999999999</number>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Buffers</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QSpinBox" name="param_bufferCount">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>999999999</number>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_21">
+           <property name="text">
+            <string>Records per Acquisition</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QSpinBox" name="param_recordsPerAcquisition">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>999999999</number>
+           </property>
+           <property name="value">
+            <number>1</number>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="6" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_7">
+         <item>
+          <widget class="QLabel" name="label_22">
+           <property name="text">
+            <string>Excise Start</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QSpinBox" name="param_excise_start"/>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_23">
+           <property name="text">
+            <string>Excise End</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QSpinBox" name="param_excise_end"/>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="VerticalSettings">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="title">
+       <string>Vertical Settings</string>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QGroupBox" name="Ch1Vertical">
+         <property name="title">
+          <string>Channel 1</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <layout class="QFormLayout" name="formLayout_5">
+            <property name="fieldGrowthPolicy">
+             <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+            </property>
+            <item row="0" column="0">
+             <widget class="QCheckBox" name="param_ch1_enabled">
+              <property name="text">
+               <string>Enabled</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QCheckBox" name="param_ch1_filter">
+              <property name="text">
+               <string>Filtered</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_16">
+              <property name="text">
+               <string>Range</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QComboBox" name="param_ch1_range_txt">
+              <item>
+               <property name="text">
+                <string>4 V</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>2 V</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>1 V</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>400 mV</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>200 mV</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>100 mV</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>40 mV</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_17">
+              <property name="text">
+               <string>Coupling</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QComboBox" name="param_ch1_coupling">
+              <item>
+               <property name="text">
+                <string>DC</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>AC</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="Ch2Vertical">
+         <property name="title">
+          <string>Channel 2</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <layout class="QFormLayout" name="formLayout_6">
+            <property name="fieldGrowthPolicy">
+             <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+            </property>
+            <item row="0" column="0">
+             <widget class="QCheckBox" name="param_ch2_enabled">
+              <property name="text">
+               <string>Enabled</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QCheckBox" name="param_ch2_filter">
+              <property name="text">
+               <string>Filtered</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_18">
+              <property name="text">
+               <string>Range</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QComboBox" name="param_ch2_range_txt">
+              <item>
+               <property name="text">
+                <string>4 V</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>2 V</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>1 V</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>400 mV</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>200 mV</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>100 mV</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>40 mV</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_19">
+              <property name="text">
+               <string>Coupling</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QComboBox" name="param_ch2_coupling">
+              <item>
+               <property name="text">
+                <string>DC</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>AC</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="ClockSettings">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="title">
+       <string>Clock Settings</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <layout class="QFormLayout" name="formLayout_2">
+         <property name="fieldGrowthPolicy">
+          <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+         </property>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Clock Rate</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QComboBox" name="param_sample_rate_txt">
+           <item>
+            <property name="text">
+             <string>1 GHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>500 MHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>250 MHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>100 MHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>50 MHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>20 MHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>10 MHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>5 MHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>2 MHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>1 MHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>20 kHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>10 kHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>5 kHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>2 kHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>1 kHz</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>Clock Source</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QComboBox" name="param_clock_source">
+           <item>
+            <property name="text">
+             <string>internal</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>reference</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>60 MHz</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>1 GHz</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>Clock Edge</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QComboBox" name="param_clock_edge">
+           <item>
+            <property name="text">
+             <string>rising</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>falling</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_10">
+           <property name="text">
+            <string>Timeout</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QSpinBox" name="param_timeout">
+           <property name="maximum">
+            <number>1000000000</number>
+           </property>
+           <property name="value">
+            <number>5000</number>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="TriggerSettings">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="title">
+       <string>Trigger Settings</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_6">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <item>
+          <layout class="QFormLayout" name="formLayout_3">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_7">
+             <property name="text">
+              <string>Source 1</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="param_trigger_source1">
+             <property name="currentIndex">
+              <number>2</number>
+             </property>
+             <item>
+              <property name="text">
+               <string>CH_A</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>CH_B</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>external</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>disabled</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QComboBox" name="param_trigger_edge1">
+             <item>
+              <property name="text">
+               <string>rising</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>falling</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_9">
+             <property name="text">
+              <string>Level 1</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QDoubleSpinBox" name="param_trigger_level1">
+             <property name="value">
+              <double>1.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label_11">
+             <property name="text">
+              <string>Coupling</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QComboBox" name="param_trigger_coupling">
+             <item>
+              <property name="text">
+               <string>DC</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>AC</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_8">
+             <property name="text">
+              <string>Edge 1</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QFormLayout" name="formLayout_4">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_12">
+             <property name="text">
+              <string>Source 2</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="param_trigger_source2">
+             <property name="currentIndex">
+              <number>3</number>
+             </property>
+             <item>
+              <property name="text">
+               <string>CH_A</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>CH_B</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>external</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>disabled</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QComboBox" name="param_trigger_edge2">
+             <item>
+              <property name="text">
+               <string>rising</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>falling</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_13">
+             <property name="text">
+              <string>Level 2</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QDoubleSpinBox" name="param_trigger_level2">
+             <property name="value">
+              <double>1.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label_14">
+             <property name="text">
+              <string>Operation</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_15">
+             <property name="text">
+              <string>Edge 2</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QComboBox" name="param_trigger_operation">
+             <item>
+              <property name="text">
+               <string>or</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>and</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>xor</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>and not</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="applyButton">
+      <property name="text">
+       <string>Apply Settings</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

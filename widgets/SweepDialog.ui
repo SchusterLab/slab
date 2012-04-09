@@ -1,41 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Dialog</class>
- <widget class="QDialog" name="Dialog">
+ <class>SweepDialog</class>
+ <widget class="QDialog" name="SweepDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>473</height>
+    <width>421</width>
+    <height>609</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <widget class="QDialogButtonBox" name="buttonBox">
-   <property name="geometry">
-    <rect>
-     <x>30</x>
-     <y>430</y>
-     <width>341</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="orientation">
-    <enum>Qt::Horizontal</enum>
-   </property>
-   <property name="standardButtons">
-    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-   </property>
-  </widget>
   <widget class="QWidget" name="verticalLayoutWidget">
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>10</y>
-     <width>381</width>
-     <height>421</height>
+     <y>0</y>
+     <width>401</width>
+     <height>571</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -50,7 +34,7 @@
          <x>9</x>
          <y>19</y>
          <width>361</width>
-         <height>100</height>
+         <height>128</height>
         </rect>
        </property>
        <layout class="QGridLayout" name="gridLayout">
@@ -62,10 +46,10 @@
          </widget>
         </item>
         <item row="1" column="1">
-         <widget class="QSpinBox" name="spinBox"/>
+         <widget class="QSpinBox" name="param_sweep1_start"/>
         </item>
         <item row="0" column="1">
-         <widget class="QComboBox" name="comboBox"/>
+         <widget class="QComboBox" name="param_sweep1"/>
         </item>
         <item row="2" column="0">
          <widget class="QLabel" name="label_2">
@@ -82,10 +66,10 @@
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QSpinBox" name="spinBox_2"/>
+         <widget class="QSpinBox" name="param_sweep1_stop"/>
         </item>
         <item row="3" column="1">
-         <widget class="QSpinBox" name="spinBox_3"/>
+         <widget class="QSpinBox" name="param_sweep1_step"/>
         </item>
         <item row="0" column="0">
          <widget class="QLabel" name="label_4">
@@ -99,7 +83,7 @@
      </widget>
     </item>
     <item>
-     <widget class="QCheckBox" name="checkBox">
+     <widget class="QCheckBox" name="param_enable_sweep2">
       <property name="text">
        <string>Enable Sweep 2</string>
       </property>
@@ -119,7 +103,7 @@
          <x>9</x>
          <y>19</y>
          <width>361</width>
-         <height>100</height>
+         <height>140</height>
         </rect>
        </property>
        <layout class="QGridLayout" name="gridLayout_3">
@@ -131,10 +115,10 @@
          </widget>
         </item>
         <item row="1" column="1">
-         <widget class="QSpinBox" name="spinBox_4"/>
+         <widget class="QSpinBox" name="param_sweep2_start"/>
         </item>
         <item row="0" column="1">
-         <widget class="QComboBox" name="comboBox_2"/>
+         <widget class="QComboBox" name="param_sweep2"/>
         </item>
         <item row="2" column="0">
          <widget class="QLabel" name="label_6">
@@ -151,10 +135,10 @@
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QSpinBox" name="spinBox_5"/>
+         <widget class="QSpinBox" name="param_sweep2_stop"/>
         </item>
         <item row="3" column="1">
-         <widget class="QSpinBox" name="spinBox_6"/>
+         <widget class="QSpinBox" name="param_sweep2_step"/>
         </item>
         <item row="0" column="0">
          <widget class="QLabel" name="label_8">
@@ -175,15 +159,15 @@
       <widget class="QWidget" name="gridLayoutWidget_2">
        <property name="geometry">
         <rect>
-         <x>0</x>
-         <y>10</y>
+         <x>10</x>
+         <y>20</y>
          <width>379</width>
-         <height>111</height>
+         <height>124</height>
         </rect>
        </property>
        <layout class="QGridLayout" name="gridLayout_2">
         <item row="0" column="1">
-         <widget class="QPushButton" name="pushButton">
+         <widget class="QPushButton" name="addActionButton">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -196,13 +180,13 @@
          </widget>
         </item>
         <item row="0" column="0">
-         <widget class="QComboBox" name="comboBox_3"/>
+         <widget class="QComboBox" name="actions_comboBox"/>
         </item>
         <item row="1" column="0">
-         <widget class="QTextBrowser" name="textBrowser"/>
+         <widget class="QTextBrowser" name="param_actions"/>
         </item>
         <item row="1" column="1">
-         <widget class="QPushButton" name="pushButton_2">
+         <widget class="QPushButton" name="clearActionsButton">
           <property name="text">
            <string>Clear</string>
           </property>
@@ -214,13 +198,29 @@
     </item>
    </layout>
   </widget>
+  <widget class="QDialogButtonBox" name="buttonBox">
+   <property name="geometry">
+    <rect>
+     <x>50</x>
+     <y>570</y>
+     <width>341</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Horizontal</enum>
+   </property>
+   <property name="standardButtons">
+    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections>
   <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
-   <receiver>Dialog</receiver>
+   <receiver>SweepDialog</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -236,7 +236,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
-   <receiver>Dialog</receiver>
+   <receiver>SweepDialog</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -250,7 +250,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>checkBox</sender>
+   <sender>param_enable_sweep2</sender>
    <signal>clicked(bool)</signal>
    <receiver>sweep2_groupBox</receiver>
    <slot>setVisible(bool)</slot>

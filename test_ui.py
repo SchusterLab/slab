@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'test.ui'
 #
-# Created: Sun Feb 12 17:25:53 2012
+# Created: Sat Apr  7 13:20:14 2012
 #      by: PyQt4 UI code generator 4.8.6
 #
 # WARNING! All changes made in this file will be lost!
@@ -88,6 +88,9 @@ class Ui_MainWindow(object):
         self.menuView = QtGui.QMenu(self.menubar)
         self.menuView.setTitle(QtGui.QApplication.translate("MainWindow", "View", None, QtGui.QApplication.UnicodeUTF8))
         self.menuView.setObjectName(_fromUtf8("menuView"))
+        self.menuSweep = QtGui.QMenu(self.menubar)
+        self.menuSweep.setTitle(QtGui.QApplication.translate("MainWindow", "Sweep", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuSweep.setObjectName(_fromUtf8("menuSweep"))
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtGui.QStatusBar(MainWindow)
         self.statusbar.setObjectName(_fromUtf8("statusbar"))
@@ -103,21 +106,28 @@ class Ui_MainWindow(object):
         self.actionLoad.setObjectName(_fromUtf8("actionLoad"))
         self.actionShow_Message_Box = QtGui.QAction(MainWindow)
         self.actionShow_Message_Box.setCheckable(True)
+        self.actionShow_Message_Box.setChecked(True)
         self.actionShow_Message_Box.setText(QtGui.QApplication.translate("MainWindow", "Show Message Box", None, QtGui.QApplication.UnicodeUTF8))
         self.actionShow_Message_Box.setObjectName(_fromUtf8("actionShow_Message_Box"))
         self.actionShow_Progress_Bar = QtGui.QAction(MainWindow)
         self.actionShow_Progress_Bar.setCheckable(True)
+        self.actionShow_Progress_Bar.setChecked(True)
         self.actionShow_Progress_Bar.setText(QtGui.QApplication.translate("MainWindow", "Show Progress Bar", None, QtGui.QApplication.UnicodeUTF8))
         self.actionShow_Progress_Bar.setObjectName(_fromUtf8("actionShow_Progress_Bar"))
+        self.actionStart_Sweep = QtGui.QAction(MainWindow)
+        self.actionStart_Sweep.setText(QtGui.QApplication.translate("MainWindow", "Start Sweep", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionStart_Sweep.setObjectName(_fromUtf8("actionStart_Sweep"))
         self.menuSave.addAction(self.actionExperimental_Settings)
         self.menuSave.addAction(self.actionExperimental_and_Instrument_Settings)
         self.menuFile.addAction(self.menuSave.menuAction())
         self.menuFile.addAction(self.actionLoad)
         self.menuView.addAction(self.actionShow_Message_Box)
         self.menuView.addAction(self.actionShow_Progress_Bar)
+        self.menuSweep.addAction(self.actionStart_Sweep)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menuInstruments.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
+        self.menubar.addAction(self.menuSweep.menuAction())
 
         self.retranslateUi(MainWindow)
         QtCore.QObject.connect(self.actionShow_Message_Box, QtCore.SIGNAL(_fromUtf8("toggled(bool)")), self.message_box.setVisible)
