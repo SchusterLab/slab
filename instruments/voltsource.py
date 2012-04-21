@@ -45,6 +45,12 @@ class SRS900(SerialInstrument,VisaInstrument):
     def set_volt(self,voltage,channel=1):
         self.write('SNDT %d,\"VOLT %f\"' % (channel,voltage))
         
+    def on_volt(self):
+        self.write('OPON')
+        
+    def off_volt(self):
+        self.write('OPOF')
+        
         
 if __name__=="__main__":
     srs=SRS900(address="COM5")
