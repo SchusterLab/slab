@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ScopeWindow2.ui'
 #
-# Created: Mon Apr 09 15:10:58 2012
+# Created: Wed Apr 11 14:54:49 2012
 #      by: PyQt4 UI code generator 4.8.5
 #
 # WARNING! All changes made in this file will be lost!

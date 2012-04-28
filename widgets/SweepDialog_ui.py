@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'S:\_Lib\python\slab\widgets\SweepDialog.ui'
 #
-# Created: Mon Apr 09 15:10:58 2012
+# Created: Fri Apr 27 23:01:21 2012
 #      by: PyQt4 UI code generator 4.8.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -105,11 +105,11 @@ class Ui_SweepDialog(object):
         self.sweep1_stackedWidget.addWidget(self.page_4)
         self.gridLayout.addWidget(self.sweep1_stackedWidget, 2, 0, 1, 2)
         self.verticalLayout.addWidget(self.sweep1_groupBox)
-        self.param_enable_sweep2 = QtGui.QCheckBox(self.verticalLayoutWidget)
-        self.param_enable_sweep2.setText(QtGui.QApplication.translate("SweepDialog", "Enable Sweep 2", None, QtGui.QApplication.UnicodeUTF8))
-        self.param_enable_sweep2.setChecked(True)
-        self.param_enable_sweep2.setObjectName(_fromUtf8("param_enable_sweep2"))
-        self.verticalLayout.addWidget(self.param_enable_sweep2)
+        self.param_sweep2_enabled = QtGui.QCheckBox(self.verticalLayoutWidget)
+        self.param_sweep2_enabled.setText(QtGui.QApplication.translate("SweepDialog", "Enable Sweep 2", None, QtGui.QApplication.UnicodeUTF8))
+        self.param_sweep2_enabled.setChecked(True)
+        self.param_sweep2_enabled.setObjectName(_fromUtf8("param_sweep2_enabled"))
+        self.verticalLayout.addWidget(self.param_sweep2_enabled)
         self.sweep2_groupBox = QtGui.QGroupBox(self.verticalLayoutWidget)
         self.sweep2_groupBox.setTitle(QtGui.QApplication.translate("SweepDialog", "Sweep 2", None, QtGui.QApplication.UnicodeUTF8))
         self.sweep2_groupBox.setObjectName(_fromUtf8("sweep2_groupBox"))
@@ -211,13 +211,13 @@ class Ui_SweepDialog(object):
         self.actions_comboBox = QtGui.QComboBox(self.gridLayoutWidget_2)
         self.actions_comboBox.setObjectName(_fromUtf8("actions_comboBox"))
         self.gridLayout_2.addWidget(self.actions_comboBox, 0, 0, 1, 1)
-        self.param_actions = QtGui.QTextBrowser(self.gridLayoutWidget_2)
-        self.param_actions.setObjectName(_fromUtf8("param_actions"))
-        self.gridLayout_2.addWidget(self.param_actions, 1, 0, 1, 1)
         self.clearActionsButton = QtGui.QPushButton(self.gridLayoutWidget_2)
         self.clearActionsButton.setText(QtGui.QApplication.translate("SweepDialog", "Clear", None, QtGui.QApplication.UnicodeUTF8))
         self.clearActionsButton.setObjectName(_fromUtf8("clearActionsButton"))
         self.gridLayout_2.addWidget(self.clearActionsButton, 1, 1, 1, 1)
+        self.param_actions = QtGui.QTextEdit(self.gridLayoutWidget_2)
+        self.param_actions.setObjectName(_fromUtf8("param_actions"))
+        self.gridLayout_2.addWidget(self.param_actions, 1, 0, 1, 1)
         self.verticalLayout.addWidget(self.groupBox)
         self.buttonBox = QtGui.QDialogButtonBox(SweepDialog)
         self.buttonBox.setGeometry(QtCore.QRect(50, 570, 341, 32))
@@ -230,7 +230,7 @@ class Ui_SweepDialog(object):
         self.sweep2_stackedWidget.setCurrentIndex(0)
         QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL(_fromUtf8("accepted()")), SweepDialog.accept)
         QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL(_fromUtf8("rejected()")), SweepDialog.reject)
-        QtCore.QObject.connect(self.param_enable_sweep2, QtCore.SIGNAL(_fromUtf8("toggled(bool)")), self.sweep2_groupBox.setVisible)
+        QtCore.QObject.connect(self.param_sweep2_enabled, QtCore.SIGNAL(_fromUtf8("toggled(bool)")), self.sweep2_groupBox.setVisible)
         QtCore.QMetaObject.connectSlotsByName(SweepDialog)
 
     def retranslateUi(self, SweepDialog):
