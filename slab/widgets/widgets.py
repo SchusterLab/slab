@@ -24,7 +24,9 @@ if DEBUG:
     uifile.close()
 from SweepDialog_ui import Ui_SweepDialog
 from AlazarWidget_ui import Ui_AlazarForm
-#from slab import gui
+import PyQt4.Qt as Qt
+import guiqwt.plot
+import guiqwt.builder
 
 class AlazarWidget(QWidget, Ui_AlazarForm):
     def __init__(self):
@@ -36,26 +38,17 @@ class SweepDialog(QDialog, Ui_SweepDialog):
         QDialog.__init__(self)
         self.setupUi(self)
 
-#    def run_sweep(self):
-#        for p1 in range(p1start, p1end, p1step):
-#            for p2 in range(p2start, p2end, p2step):
-#                for action in actionslist:
-#                    self.slab
-#        self.slabwindow.msg(self.sweep_dialog.actions_comboBox.text())
-
-
-class PlotWithTB(QMainWindow):
-    def __init__(self, parent=None):
-        QMainWindow.__init__(self, parent, Qt.Widget)
-        self.plot = guiqwt.plot.CurveWidget()
-        self.setCentralWidget(self.plot)
-        self.toolbar = QToolBar(self)
-        self.plot.add_toolbar(self.toolbar)
-        self.plot.register_all_curve_tools()
-    def __getattr__(self, item):
-        return self.plot.__getattr__(item)
-    
-
+class SlabLinePlot(guiqwt.plot.CurvePlot):
+    def __init__(self, ncurves=1):
+        guiqwt.plot.CurvePlot.__init__(self)
+        self.curves = []
+        for i in range(ncurves):
+            c = guiqwt.builder.make([],[])
+            self.curves.append(c)
+            self.add_item(c)
+    def update_curve(x, y, curve_n=0):
+        self.curves[curve_n].set_data(x,y)
+        
 class SlabSpinBox(QDoubleSpinBox):
     def __init__(self, *args, **kwargs):
         self.precision = kwargs.pop('precision') if kwargs.has_key('precision') else 4
@@ -75,8 +68,7 @@ class SlabSpinBox(QDoubleSpinBox):
             "^[\+-]?[0-9]+(\.[0-9]*)?(e[\+-]?[0-9]+|(" + "|".join(pfkeys) + "))?$",
             cs=Qt.CaseInsensitive)
         self.REValidator = QRegExpValidator(self.RE, self)
-        #        self.lineEdit().setValidator(self.REValidator)
-
+        
     def validate(self, text_, pos):
         return self.REValidator.validate(text_, pos)
 

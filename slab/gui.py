@@ -36,11 +36,13 @@ usage:
 
     A more complete (functional) example is given at the end of the file
 """
+
 from instruments import InstrumentManager
 from dataanalysis import get_next_filename
 from slab.widgets import SweepDialog
 from PyQt4.Qt import *
 import PyQt4.Qwt5 as Qwt
+from PyQt4 import uic
 import numpy as np
 from time import sleep
 import sys, csv, os
@@ -49,7 +51,8 @@ DEBUG = True
 
 class Bunch(object):
     def __init__(self, adict):
-        self.__dict__.update(adict)
+        try: self.__dict__.update(adict)
+        except: self.__dict__.update(adict.cache)
 
 class ManagerProxy(QObject):
     def __init__(self, emit_name):
@@ -62,15 +65,21 @@ class ManagerProxy(QObject):
                 item_name, method_name, args, kwargs)
 
         return IProxy()
-
+        
 class DictProxy(QObject):
     def __init__(self, emit_name):
         QObject.__init__(self)
         self.cache = {}
         self.emit_name = emit_name
-    def __setitem__(self, name, value):
+    def set_nosignal(self, name, value):
         self.cache[name] = value
-        self.emit(SIGNAL(self.emit_name), name, value)
+    def __setitem__(self, name, value):
+        self.set_nosignal(name, value)
+        self.emit(SIGNAL(self.emit_name+"Changed"), name, value)
+    def update(self):
+        self.emit(SIGNAL(self.emit_name+"Get"))
+    def update_cache(self, db):
+        self.cache = db
     def __getitem__(self, name):
         return self.cache[name]
     def __contains__(self, key):
@@ -81,7 +90,11 @@ class DataThread(QObject):
         QObject.__init__(self)
         self.config_file = config_file
         self.instruments = InstrumentManager(self.config_file)
-        self.params = {}
+        #self.params = {}
+        self.params = DictProxy("threadParameter")
+        self.connect(self.params, SIGNAL("threadParameterChanged"), 
+                     lambda n,v: self.emit(SIGNAL("threadParameterChanged"), n, v))        
+        
         self.plots = ManagerProxy("plotMethodCalled")
         self._aborted = False
 
@@ -90,7 +103,7 @@ class DataThread(QObject):
         except Exception as e: self.emit("instrumentMethodFailed", (str(e),))
 
     def set_param(self, name, value):
-        self.params[name] = value
+        self.params.set_nosignal(name, value)
 
     def save_experimental_settings(self):
         filename = str(QFileDialog.getSaveFileName())
@@ -108,6 +121,9 @@ class DataThread(QObject):
     def list_instruments(self):
         for key, inst in self.instruments.iteritems():
             self.msg(key + inst.name)
+    
+    def get_local_params(self):
+        self.emit(SIGNAL("localParams"), self.params)
 
     def msg(self, s):
         self.emit(SIGNAL("msg"), s)
@@ -128,17 +144,30 @@ class DataThread(QObject):
         else:
             return False
 
-    def run_sweep(self):
+    def run_sweep(self, whichStack):
+        self.msg("Sweeping...")
         params = Bunch(self.params)
-        prange = range(params.sweep1_start,
-                params.sweep1_start, params.sweep1step)
+        if whichStack[params.sweep1] == 0:
+            prange = range(params.sweep1_start_int,
+                           params.sweep1_stop_int, params.sweep1_step_int)
+        else:
+            prange = np.arange(params.sweep1_start_float,
+                           params.sweep1_stop_float, params.sweep1_step_float)
+        self.msg(prange)
         if params.sweep2_enabled:
             raise NotImplementedError
         actions = params.actions.splitlines()
         for p in prange:
+            self.msg(params.sweep1 + "=" + str(p))
             for action in actions:
-                self.params[self.params.sweep1] = p
+                self.params[params.sweep1] = p
+                try: 
+                    if self.params["abort_sweep"]:
+                        self.params["abort_sweep"] = False
+                        return
+                except: pass
                 getattr(self, action)()
+        self.msg("Done")
                 
             
     def run_data_thread(self, method):
@@ -151,7 +180,7 @@ class SlabWindow(QMainWindow):
         QMainWindow.__init__(self)
         self.instruments = ManagerProxy("instrumentMethodCalled")
         self.plots = {}
-        self.params = DictProxy("parameterChanged")
+        self.params = DictProxy("parameter")
         self.param_widgets = []
         self.registered_actions = []
         self.data_thread_obj = DataThreadC()
@@ -166,22 +195,47 @@ class SlabWindow(QMainWindow):
                 self.data_thread_obj.set_param)
         self.connect(self.params, SIGNAL("parameterChanged"),
                 self.write_param_widget)
-
+        self.connect(self.data_thread_obj, SIGNAL("threadParameterChanged"),
+                self.write_param_widget)
+        self.connect(self.params, SIGNAL("parameterGet"),
+                self.data_thread_obj.get_local_params)
+        self.connect(self.data_thread_obj, SIGNAL("localParams"),
+                self.params.update_cache)
+        
         self.connect(self.data_thread_obj, SIGNAL("msg"), self.msg)
         self.connect(self.data_thread_obj, SIGNAL("status"), self.status)
         self.connect(self.data_thread_obj, SIGNAL("progress"), self.progress)
 
-    def register_script(self, method, go_button, abort_button=None):
+    def register_script(self, method, go_widget, abort_button=None):
         self.registered_actions.append(method)
-        go_button.clicked.connect(lambda: go_button.setDisabled(True))
+        if isinstance(go_widget, QPushButton):
+            go_widget.clicked.connect(lambda: go_button.setDisabled(True))
+            go_widget.clicked.connect(lambda: self.emit(SIGNAL(method), method))
+            self.connect(self.data_thread_obj, SIGNAL(method + "done"),
+                         lambda: go_button.setDisabled(False))
+        elif isinstance(go_widget, QDialog):
+            go_widget.accepted.connect(lambda: self.emit(SIGNAL(method), method))
+        elif isinstance(go_widget, QAction):
+            go_widget.triggered.connect(lambda: self.emit(SIGNAL(method), method))
+        else:
+            raise ValueError("go_widget must be either a button, an action or a dialog")
         # Emit / connect necessary for non-blocking
-        go_button.clicked.connect(lambda: self.emit(SIGNAL(method), method))
         self.connect(self, SIGNAL(method), self.data_thread_obj.run_data_thread)
-        self.connect(self.data_thread_obj, SIGNAL(method + "done"),
-                     lambda: go_button.setDisabled(False))
         if abort_button:
             abort_button.clicked.connect(self.data_thread_obj.abort, 
                     Qt.DirectConnection)
+
+#    def register_script(self, method, go_button, abort_button=None):
+#        self.registered_actions.append(method)
+#        go_button.clicked.connect(lambda: go_button.setDisabled(True))
+#        # Emit / connect necessary for non-blocking
+#        go_button.clicked.connect(lambda: self.emit(SIGNAL(method), method))
+#        self.connect(self, SIGNAL(method), self.data_thread_obj.run_data_thread)
+#        self.connect(self.data_thread_obj, SIGNAL(method + "done"),
+#                     lambda: go_button.setDisabled(False))
+#        if abort_button:
+#            abort_button.clicked.connect(self.data_thread_obj.abort, 
+#                    Qt.DirectConnection)
 
     def setupSlabWindow(self, autoparam=False, prefix="param_"):
         "Connect Ui components provided by the SlabWindow designer template"
@@ -194,10 +248,18 @@ class SlabWindow(QMainWindow):
         try:
             self.actionExperimental_Settings.triggered.connect(
                 self.data_thread_obj.save_experimental_settings)
-            self.actionExperimental_and_InstrumentSettings.triggered.connect(
-                self.data_thread_obj.save_all_settings)
+        except Exception as e:
+                    print "Could not connect menu actions", e
+        try:
+            self.actionExperimental_and_Instrument_Settings.triggered.connect(
+                    self.data_thread_obj.save_all_settings)
+
+        except Exception as e:
+            print "Could not connect menu actions", e
+ 
+        try:        
             self.actionLoad.triggered.connect(
-                self.data_thread_obj.load_settings)
+                    self.data_thread_obj.load_settings)
             
         except Exception as e:
             print "Could not connect menu actions", e
@@ -207,7 +269,7 @@ class SlabWindow(QMainWindow):
 
     def autoparam(self, container, prefix="param_"):
         for wname, widget in self_dict(container, prefix).items():
-            if isinstance(widget, QWidget):
+            if isinstance(widget, QWidget) or isinstance(widget, QAction):
                 if DEBUG: print "attached parameter", wname
                 self.register_param(widget, wname)
 
@@ -252,6 +314,10 @@ class SlabWindow(QMainWindow):
             QDoubleSpinBox : {"read" : "value",
                               "write" : "setValue",
                               "change_signal" : "valueChanged"},
+            QTextEdit : {"read" : "toPlainText",
+                         "write" : None,
+                         "change_signal" :
+                             lambda w, f: w.textChanged.connect(lambda: f(w.document().toPlainText()))},
             QLineEdit : {"read" : "text",
                          "write" : "setText",
                          "change_signal" : "textEdited"},
@@ -265,7 +331,11 @@ class SlabWindow(QMainWindow):
                          "write" : 
                             lambda w, v: w.setCurrentIndex(w.findText(v)),
                          "change_signal": 
-                            lambda w, f: w.currentIndexChanged[str].connect(f)}
+                            lambda w, f: w.currentIndexChanged[str].connect(f)},
+            QAction : {"read" : None,
+                       "write" : None,
+                       "change_signal": 
+                           lambda w, f: w.triggered.connect(lambda: f(True))}
             }
 
 
@@ -273,21 +343,25 @@ class SlabWindow(QMainWindow):
         for widget, name in self.param_widgets:
             for cls, clstools in self.widget_tools.items():
                 if isinstance(widget, cls):
-                    if hasattr(clstools["read"], "__call__"):
-                        self.set_param(clstools["read"](widget))
-                    else: 
-                        self.set_param(name, getattr(widget, clstools["read"])())
-                    break
+                    if clstools["read"] is not None:
+                        if hasattr(clstools["read"], "__call__"):
+                            self.set_param(clstools["read"](widget))
+                        else: 
+                            self.set_param(name, getattr(widget, clstools["read"])())
+                        break
 
     def write_param_widget(self, name, value):
-         widget, name =  lookup(self.param_widgets, name, 1)
-         for cls, clstools in self.widget_tools.items():
-             if isinstance(widget, cls):
-                if hasattr(clstools["write"], "__call__"):
-                    clstools["write"](widget, value)
-                else:
-                    getattr(widget, clstools["write"])(value)
-                break
+         res = lookup(self.param_widgets, name, 1)
+         if res is not None: 
+             widget, name = res
+             for cls, clstools in self.widget_tools.items():
+                 if isinstance(widget, cls):
+                    if clstools["write"] is not None:
+                        if hasattr(clstools["write"], "__call__"):
+                            clstools["write"](widget, value)
+                        else:
+                            getattr(widget, clstools["write"])(value)
+                        break
 
     def register_param(self, widget, name):
         self.param_widgets.append((widget, name))
@@ -299,6 +373,8 @@ class SlabWindow(QMainWindow):
                 else: 
                     getattr(widget, clstools["change_signal"]).connect(set_fn)
                 break
+        else:
+            print "Error: Could Not match parameter", name, "with class"
 
     def save_time_series(self, *xs):
         datapath = self.params["datapath"]
@@ -314,7 +390,7 @@ class SlabWindow(QMainWindow):
 
     def add_sweep_dialog(self):
         self.sweep_dialog = sd = SweepDialog()
-        self.autoparam("SweepDialog")
+
         try: self.actionStart_Sweep.triggered.connect(sd.exec_)
         except AttributeError: print "No actionStart_Sweep to connect"
         self.whichStack = {}
@@ -327,6 +403,7 @@ class SlabWindow(QMainWindow):
                     self.whichStack[name] = 0
                 else:
                     self.whichStack[name] = 1
+                    
         for name in self.registered_actions:
             sd.actions_comboBox.addItem(name)
 
@@ -341,7 +418,15 @@ class SlabWindow(QMainWindow):
                     lambda name: 
                         sd.sweep2_stackedWidget.setCurrentIndex(self.whichStack[str(name)]))
 
-        sd.accepted.connect(self.data_thread_obj.run_sweep)
+        sd.accepted.connect(lambda: self.emit(SIGNAL("run_sweep"), self.whichStack))
+        self.data_thread_obj.connect(self, SIGNAL("run_sweep"), self.data_thread_obj.run_sweep)
+        self.autoparam(self.sweep_dialog)
+
+def compile_ui(prefix):
+    uifilename = prefix + ".ui"
+    pyfile = open(prefix + "_ui.py", 'w')
+    uic.compileUi(uifilename, pyfile)
+    pyfile.close()
 
 def self_dict(obj, prefix="param_"):
     res = {}
@@ -361,44 +446,4 @@ def runWin(WinC, *args, **kwargs):
     win.show()
     app.connect(app, SIGNAL("lastWindowClosed()"), win, SIGNAL("lastWindowClosed()"))
     app.exec_()
-################
-# Example code #
-################
 
-if __name__ == "__main__":
-    from test_ui import *
-    from widgets import *
-    import cProfile
-
-    class test_DataThread(DataThread):
-        def run_script(self):
-            omega = self.params["rate"]
-            for i in range(100):
-                self.progress(i, 100)
-                if self.aborted():
-                    self.msg("aborted")
-                    break
-                xrng = np.linspace(0, 2 * np.pi, num = i)
-                sleep(.1)
-                self.plots["sine"].setData(xrng, np.sin(omega * xrng))
-                self.plots["cosine"].setData(xrng, np.cos(omega * xrng))
-                self.plots["plot"].replot()
-
-    class TestWin(SlabWindow, Ui_MainWindow):
-        def __init__(self):
-            SlabWindow.__init__(self, test_DataThread, config_file=None)
-            self.setupSlabWindow(autoparam=True)
-            self.register_script("run_script", self.go_button, self.abort_button)
-            self.add_sweep_dialog()
-            self.start_thread()
-
-            self.plots["plot"] = self.qwtPlot
-            sine_curve = Qwt.QwtPlotCurve("Sine")
-            cosine_curve = Qwt.QwtPlotCurve("Cosine")
-            sine_curve.attach(self.qwtPlot)
-            cosine_curve.attach(self.qwtPlot)
-            self.plots["sine"] = sine_curve
-            self.plots["cosine"] = cosine_curve
-
-    #cProfile.run("sys.exit(runWin(TestWin))")
-    sys.exit(runWin(TestWin))

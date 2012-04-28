@@ -1,7 +1,7 @@
 from slab.gui import *
 from slab.instruments import Alazar, AlazarConfig, AlazarConstants
 
-DEBUG = True
+DEBUG = False
 if DEBUG:
     from slab import tic, toc
     import time
@@ -65,23 +65,19 @@ class ScopeDataThread(DataThread):
 class ScopeWin(SlabWindow, Ui_ScopeWindow):
     def __init__(self):
         SlabWindow.__init__(self, ScopeDataThread)
-
         self.setupSlabWindow(autoparam=True)
         self.register_script("run_scope", self.runButton, self.stopButton)
         self.register_script("apply_settings", self.applyButton)
         self.datapathButton.clicked.connect(self.select_datapath)
         self.saveButton.clicked.connect(self.save_trace)
-
         self.add_sweep_dialog()
         self.sweepButton.clicked.connect(self.sweep_dialog.exec_)
-        
         self.start_thread()      
         self.init_plots()
 
     def select_datapath(self):
         self.params["datapath"]=str(QFileDialog.getExistingDirectory(self,
                                     'Open Datapath',self.params["datapath"]))
-        #self.datapathLineEdit.setText(self.params["datapath"])
 
     def save_trace(self):
         x, y1 = self.plots["ch1"].get_data()

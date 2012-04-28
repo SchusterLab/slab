@@ -148,7 +148,7 @@
      </widget>
     </item>
     <item>
-     <widget class="QCheckBox" name="param_enable_sweep2">
+     <widget class="QCheckBox" name="param_sweep2_enabled">
       <property name="text">
        <string>Enable Sweep 2</string>
       </property>
@@ -312,15 +312,15 @@
         <item row="0" column="0">
          <widget class="QComboBox" name="actions_comboBox"/>
         </item>
-        <item row="1" column="0">
-         <widget class="QTextBrowser" name="param_actions"/>
-        </item>
         <item row="1" column="1">
          <widget class="QPushButton" name="clearActionsButton">
           <property name="text">
            <string>Clear</string>
           </property>
          </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QTextEdit" name="param_actions"/>
         </item>
        </layout>
       </widget>
@@ -380,7 +380,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>param_enable_sweep2</sender>
+   <sender>param_sweep2_enabled</sender>
    <signal>toggled(bool)</signal>
    <receiver>sweep2_groupBox</receiver>
    <slot>setVisible(bool)</slot>

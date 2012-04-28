@@ -6,4 +6,5 @@ import os
 from plotting import *
 import gui
 import script
+import diamond
 
