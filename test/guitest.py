@@ -53,6 +53,12 @@ class ExistingAppTest(unittest.TestCase):
             pass
 
 class test_DataThread(gui.DataThread):
+    def clear(self):
+        print "clear"
+        self.gui["sine"].setData([],[])
+        self.gui["cosine"].setData([],[])
+        self.gui["qwtPlot"].replot()
+
     def run_script(self):
         omega = self.params["rate"]
         for i in range(100):
@@ -72,6 +78,7 @@ class TestWin(gui.SlabWindow, Ui_MainWindow):
         gui.SlabWindow.__init__(self, test_DataThread, config_file=None)
         self.setupSlabWindow(autoparam=True)
         self.register_script("run_script", self.go_button, self.abort_button)
+        self.abort_button.clicked.connect(self.test_clear)
         self.add_sweep_dialog()
         self.start_thread()
         self.sine = Qwt.QwtPlotCurve("Sine")
@@ -79,6 +86,10 @@ class TestWin(gui.SlabWindow, Ui_MainWindow):
         self.sine.attach(self.qwtPlot)
         self.cosine.attach(self.qwtPlot)
         self.auto_register_gui()
+
+    def test_clear(self):
+        print "test_clear"
+        self.emit(Qt.SIGNAL("RunOnDataThread"), "clear")
 
 def show():
     sys.exit(gui.runWin(TestWin))
