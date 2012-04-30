@@ -214,29 +214,35 @@ class SlabWindow(QMainWindow):
         self.registered_actions.append(method)
         if isinstance(go_widget, QPushButton):
             go_widget.clicked.connect(lambda: go_widget.setDisabled(True))
-            go_widget.clicked.connect(lambda: self.emit(SIGNAL(method), method))
+            go_widget.clicked.connect(lambda: self.emit(SIGNAL("RunOnDataThread"), method))
             self.connect(self.data_thread_obj, SIGNAL(method + "done"),
                          lambda: go_widget.setDisabled(False))
         elif isinstance(go_widget, QDialog):
-            go_widget.accepted.connect(lambda: self.emit(SIGNAL(method), method))
+            go_widget.accepted.connect(lambda: self.emit(SIGNAL("RunOnDataThread"), method))
         elif isinstance(go_widget, QAction):
-            go_widget.triggered.connect(lambda: self.emit(SIGNAL(method), method))
+            go_widget.triggered.connect(lambda: self.emit(SIGNAL("RunOnDataThread"), method))
         else:
             raise ValueError("go_widget must be either a button, an action or a dialog")
         # Emit / connect necessary for non-blocking
-        self.connect(self, SIGNAL(method), self.data_thread_obj.run_data_thread)
         if abort_button:
             abort_button.clicked.connect(self.data_thread_obj.abort,
                     Qt.DirectConnection)
 
-#    def register_script(self, method, go_button, abort_button=None):
+#    def register_script(self, method, go_widget, abort_button=None):
 #        self.registered_actions.append(method)
-#        go_button.clicked.connect(lambda: go_button.setDisabled(True))
+#        if isinstance(go_widget, QPushButton):
+#            go_widget.clicked.connect(lambda: go_widget.setDisabled(True))
+#            go_widget.clicked.connect(lambda: self.emit(SIGNAL(method), method))
+#            self.connect(self.data_thread_obj, SIGNAL(method + "done"),
+#                         lambda: go_widget.setDisabled(False))
+#        elif isinstance(go_widget, QDialog):
+#            go_widget.accepted.connect(lambda: self.emit(SIGNAL(method), method))
+#        elif isinstance(go_widget, QAction):
+#            go_widget.triggered.connect(lambda: self.emit(SIGNAL(method), method))
+#        else:
+#            raise ValueError("go_widget must be either a button, an action or a dialog")
 #        # Emit / connect necessary for non-blocking
-#        go_button.clicked.connect(lambda: self.emit(SIGNAL(method), method))
 #        self.connect(self, SIGNAL(method), self.data_thread_obj.run_data_thread)
-#        self.connect(self.data_thread_obj, SIGNAL(method + "done"),
-#                     lambda: go_button.setDisabled(False))
 #        if abort_button:
 #            abort_button.clicked.connect(self.data_thread_obj.abort,
 #                    Qt.DirectConnection)
@@ -318,6 +324,7 @@ class SlabWindow(QMainWindow):
         self.params[name] = value
 
     def start_thread(self):
+        self.connect(self, SIGNAL("RunOnDataThread"), self.data_thread_obj.run_data_thread)
         self.read_param_widgets()
         self._data_thread.start()
 
