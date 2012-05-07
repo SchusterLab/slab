@@ -33,6 +33,7 @@ import PyQt4.Qwt5 as Qwt
 import PyQt4.QtGui as QtGui
 import guiqwt.plot, guiqwt.curve, guiqwt.builder, guiqwt.tools
 import guidata
+import signal
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -225,7 +226,11 @@ class ScriptPlotWin(object):
         return ScriptProxy(parent)
 
     def go(self):
+        self.SPThread.daemon = True
         self.SPThread.start()
+        
+    def hold(self):
+        self.SPThread.join()
 
 
 class ScriptPlotThread(Process):
@@ -292,13 +297,15 @@ class ScriptPlotThread(Process):
             if self.x_capped or self.y_capped:
                 self.layout.addWidget(plot, cur_y, cur_x)
                 if self.x_capped:
-                    next_cur_x = (cur_x + 1) % self.grid_x
-                    if next_cur_x <= cur_x:
+                    next_x = (cur_x + 1) % self.grid_x
+                    if next_x <= cur_x:
                         cur_y += 1
+                    cur_x = next_x
                 else:
-                    next_cur_y = (cur_y + 1) % self.grid_y
-                    if next_cur_y <= cur_y:
+                    next_y = (cur_y + 1) % self.grid_y
+                    if next_y <= cur_y:
                         cur_x += 1
+                    cur_y = next_y
             else:
                 self.layout.addWidget(plot)
 #            plot.setup(self)
@@ -322,8 +329,8 @@ class ScriptPlotThread(Process):
                     except Exception as e:
                         print cmd, "failed", e
                         # Logfile stuff
-            except:
-                return
+            except Exception as e:
+                self.app.exit()
         self.timer.start(self.sleep_time)
 
     def screenshot(self):
@@ -362,7 +369,7 @@ def test():
     win2.go()
 
     sleep(2)
-    for i in range(100):
+    for i in range(20):
         sleep(0.1)
         xrng = np.arange(0, 0.1 * i, 0.1)
         p1.send((xrng, np.sin(xrng)))
@@ -374,8 +381,8 @@ def test():
         kp =  np.kron(np.sin(xrng2).reshape(l, 1), np.cos(xrng2).reshape(1, l))
         ip.send(kp)
         ip2.send(kp)
-    sleep(4)
     print "done"
+    win.hold()
 
 
 if __name__ == "__main__":
