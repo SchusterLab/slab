@@ -7,6 +7,7 @@ Created on Wed Feb 15 13:45:44 2012
 
 from slab.instruments import SerialInstrument,VisaInstrument
 import re
+import time
 
 class SRS900(SerialInstrument,VisaInstrument):
     
@@ -45,6 +46,10 @@ class SRS900(SerialInstrument,VisaInstrument):
     def set_volt(self,voltage,channel=1):
         self.write('SNDT %d,\"VOLT %f\"' % (channel,voltage))
         
+    
+        
+        
+        
     def on_volt(self):
         self.write('OPON')
         
@@ -52,8 +57,10 @@ class SRS900(SerialInstrument,VisaInstrument):
         self.write('OPOF')
         
         
-if __name__=="__main__":
-    srs=SRS900(address="COM5")
-    print srs.get_id()
-    srs.set_volt(.5,2)
+    if __name__=="__main__":
+        srs=SRS900(address="COM5")
+        print srs.get_id()
+        srs.set_volt(.5,2)
+    
+
     
