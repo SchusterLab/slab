@@ -26,8 +26,10 @@ class Switch(Relay Box):
     def connect(self, port=0, sign="high")
         self.set_relay()
         if sign is "high":
+            self.set_relay(port, True)
             self.pulse_relay(self,port=7,pulse_width=1)
         elif sign is "low":
+            self.set_relay(port, True)
             self.pulse_relay(self,port=8,pulse_width=1)
         else:
             print "Type high or low!"
