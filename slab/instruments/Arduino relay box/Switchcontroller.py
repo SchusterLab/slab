@@ -9,7 +9,7 @@ Relay Numbers(Ports) are always 1-8 unless activating multiple relays at a time.
 from slab.instruments import RelayBox
 import time
 
-class Switch(Relay Box):
+class Switch(RelayBox):
     
     def __init__(self,name="Switch",address="COM6",enabled=True,timeout=0):
         RelayBox.__init__(self,name,address,enabled,timeout)
