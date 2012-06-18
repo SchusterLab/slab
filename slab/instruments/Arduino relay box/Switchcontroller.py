@@ -16,14 +16,14 @@ class Switch(RelayBox):
         
         self.set_relay()
         
-    def get_status(self,port=0)
+    def get_status(self,port=0):
         ans=self.query('@%s RS %d' % (self.boxaddress,port))       
         relay_status=[x=='1' for x in bin(256+int(ans[4:-2]))[-8:]]
         relay_status.reverse()
         if port !=0: return relay_status[port-1]
         else: return relay_status
     
-    def connect(self, port=0, sign="high")
+    def connect(self, port=0, sign="high"):
         self.set_relay()
         if sign is "high":
             self.set_relay(port, True)
@@ -36,6 +36,6 @@ class Switch(RelayBox):
             
     
         
-    def reset(self)
+    def reset(self):
     
         self.set_relay()
