@@ -7,19 +7,13 @@ from instrumentmanager import InstrumentManager
 from awg import *
 from spec_analyzer.spectrum_analyzer import *
 from ipsmagnet import *
-from relaybox.relaybox import RelayBox
-from relaybox.heliummanifold import HeliumManifold
-from bkpowersupply import BKPowerSupply
-from KEPCOPowerSupply import KEPCOPowerSupply
+try: from relaybox.relaybox import RelayBox
+except: print "Could not load relaybox"
+try: from relaybox.heliummanifold import HeliumManifold
+except: print "Could not load heliummanifold"
+try: from bkpowersupply import BKPowerSupply
+except: print "Could not load BKPowerSupply"
+try: from KEPCOPowerSupply import KEPCOPowerSupply
+except: print "Could not load KEPCOPowerSupply"
 
 from Alazar import Alazar, AlazarConfig, AlazarConstants
-
-instrument_dict = { "Network Analyzer" : E5071,
-                    "Radio Frequency Generator" : E8257D,
-                    "Lab Brick" : LMS103,
-                    "Cryostat" : Triton,
-                    "Arbitrary Waveform Generator" : AWG81180A,
-                    "Spectrum Analyzer" : SpectrumAnalyzer,
-                    "IPS Magnet" : IPSMagnet,
-                    "BK": BKPowerSupply,
-                    "KEPCO": KEPCOPowerSupply}

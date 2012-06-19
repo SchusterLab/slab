@@ -45,9 +45,9 @@ from PyQt4.Qt import *
 from PyQt4 import uic
 import numpy as np
 #from time import sleep
-import csv, os, inspect
+import csv, os, inspect, time
 
-DEBUG = True
+DEBUG = False
 
 
 class Bunch(object):
@@ -126,8 +126,8 @@ class DataThread(QObject):
     def get_local_params(self):
         self.emit(SIGNAL("localParams"), self.params)
 
-    def msg(self, s):
-        self.emit(SIGNAL("msg"), s)
+    def msg(self, *args):
+        self.emit(SIGNAL("msg"), *args)
 
     def status(self, s):
         self.emit(SIGNAL("status"), s)
@@ -171,9 +171,12 @@ class DataThread(QObject):
         self.msg("Done")
 
 
-    def run_data_thread(self, method):
-        if DEBUG: print method, "running"
-        getattr(self, method)()
+    def run_data_thread(self, method, *args):
+        if DEBUG:
+            print method, "running"
+            self.msg(method)
+            self.msg(args)
+        getattr(self, method)(*args)
         self.emit(SIGNAL(method + "done"))
 
 class SlabWindow(QMainWindow):
@@ -210,43 +213,7 @@ class SlabWindow(QMainWindow):
         self.connect(self.data_thread_obj, SIGNAL("status"), self.status)
         self.connect(self.data_thread_obj, SIGNAL("progress"), self.progress)
 
-    def register_script(self, method, go_widget, abort_button=None):
-        self.registered_actions.append(method)
-        if isinstance(go_widget, QPushButton):
-            go_widget.clicked.connect(lambda: go_widget.setDisabled(True))
-            go_widget.clicked.connect(lambda: self.emit(SIGNAL("RunOnDataThread"), method))
-            self.connect(self.data_thread_obj, SIGNAL(method + "done"),
-                         lambda: go_widget.setDisabled(False))
-        elif isinstance(go_widget, QDialog):
-            go_widget.accepted.connect(lambda: self.emit(SIGNAL("RunOnDataThread"), method))
-        elif isinstance(go_widget, QAction):
-            go_widget.triggered.connect(lambda: self.emit(SIGNAL("RunOnDataThread"), method))
-        else:
-            raise ValueError("go_widget must be either a button, an action or a dialog")
-        # Emit / connect necessary for non-blocking
-        if abort_button:
-            abort_button.clicked.connect(self.data_thread_obj.abort,
-                    Qt.DirectConnection)
-
-#    def register_script(self, method, go_widget, abort_button=None):
-#        self.registered_actions.append(method)
-#        if isinstance(go_widget, QPushButton):
-#            go_widget.clicked.connect(lambda: go_widget.setDisabled(True))
-#            go_widget.clicked.connect(lambda: self.emit(SIGNAL(method), method))
-#            self.connect(self.data_thread_obj, SIGNAL(method + "done"),
-#                         lambda: go_widget.setDisabled(False))
-#        elif isinstance(go_widget, QDialog):
-#            go_widget.accepted.connect(lambda: self.emit(SIGNAL(method), method))
-#        elif isinstance(go_widget, QAction):
-#            go_widget.triggered.connect(lambda: self.emit(SIGNAL(method), method))
-#        else:
-#            raise ValueError("go_widget must be either a button, an action or a dialog")
-#        # Emit / connect necessary for non-blocking
-#        self.connect(self, SIGNAL(method), self.data_thread_obj.run_data_thread)
-#        if abort_button:
-#            abort_button.clicked.connect(self.data_thread_obj.abort,
-#                    Qt.DirectConnection)
-
+    
     def setupSlabWindow(self, autoparam=False, prefix="param_"):
         "Connect Ui components provided by the SlabWindow designer template"
         self.setupUi(self)
@@ -296,27 +263,6 @@ class SlabWindow(QMainWindow):
     def run_on_gui(self, plot_name, method_name, args, kwargs):
         getattr(self.gui[plot_name], method_name)(*args, **kwargs)
 
-    def msg(self, message_):
-        try:
-            message = str(message_)
-            self.message_box.append(message)
-        except Exception as e:
-            if DEBUG:
-                print "no msg box:", e
-                print message_
-
-    def status(self, message):
-        try:
-            self.statusbar.showMessage(message)
-        except Exception as e:
-            if DEBUG:
-                print "no status bar:", e
-                print message
-
-    def progress(self, pair):
-        val, tot = pair
-        self.progressBar.setMaximum(tot)
-        self.progressBar.setValue(val)
 
     def set_param(self, name, value):
         if isinstance(value, QString):
@@ -327,6 +273,48 @@ class SlabWindow(QMainWindow):
         self.connect(self, SIGNAL("RunOnDataThread"), self.data_thread_obj.run_data_thread)
         self.read_param_widgets()
         self._data_thread.start()
+
+    launcher_widget_tools = {
+        QPushButton : "released",
+        QDialog: "accepted",
+        QAction: "triggered",
+        QListWidget: "itemDoubleClicked",
+        QTreeWidget: "itemDoubleClicked",
+        QLineEdit: "returnPressed"
+    }
+    
+    def register_script(self, method, launch_widget, abort_widget=None):
+        """
+        Connect a launcher widget to a method in the data thread, causing that method
+        to run when the widget is activated.
+
+        @param method: A string sharing the name of a method belonging to your data thread
+        @param go_widget: A widget in this window, which must be an instance of either
+          - QPushButton
+          - QDialog
+          - QAction
+          - QListWidget
+          - QTreeWidget
+
+        In the case that the widget is a List/Tree Widget, the method will be invoked
+        when an item is double-clicked, and the method will receive as
+        it's first (and only) method the List/TreeWidgetItem clicked.
+        """
+        self.registered_actions.append(method)
+        for WidgetC, sig_name in self.launcher_widget_tools.iteritems():
+            if isinstance(launch_widget, WidgetC):
+                getattr(launch_widget, sig_name).connect(
+                    lambda *args:
+                        self.emit(SIGNAL("RunOnDataThread"), method, *args))
+                print "attached method", method
+                break
+        else:
+            print "Did not attach", method, "could not identify widget", launch_widget
+
+        if abort_widget is not None:
+            for WidgetC, sig_name in self.launcher_widget_tools.iteritems():
+                if isinstance(abort_widget, WidgetC):
+                    getattr(abort_widget, sig_name).connect(self.data_thread_obj.abort, Qt.DirectConnection)
 
     widget_tools = {
             QSpinBox : {"read" : "value",
@@ -356,7 +344,12 @@ class SlabWindow(QMainWindow):
             QAction : {"read" : None,
                        "write" : None,
                        "change_signal":
-                           lambda w, f: w.triggered.connect(lambda: f(True))}
+                           lambda w, f: w.triggered.connect(lambda: f(True))},
+            QTreeWidget : {"read" : "currentItem",
+                           "write" : "setCurrentItem",
+                           "change_signal":
+                               lambda w, f:
+                               w.currentItemChanged.connect(lambda cur, prev: f(cur))}
             }
 
 
@@ -397,17 +390,40 @@ class SlabWindow(QMainWindow):
         else:
             print "Error: Could Not match parameter", name, "with class"
 
-    def save_time_series(self, *xs):
-        datapath = self.params["datapath"]
-        fname = os.path.join(datapath,
-                             get_next_filename(datapath, self.params["prefix"]))
-        f = open(fname, 'w')
-        csv.writer(f).writerows(zip(*xs))
-        f.close()
-        if DEBUG: print "saved", fname
+    def msg(self, *args):
+        t = time.strftime("%D %H:%M:%S")
+        message = t + " :: " + " ".join(map(str, args))
+        try:
+            self.message_box.append(message)
+        except Exception as e:
+            if DEBUG:
+                print "no msg box:", e
+                print message_
 
-    def add_instrument(self, iname):
-        pass
+    def status(self, message):
+        try:
+            self.statusbar.showMessage(message)
+        except Exception as e:
+            if DEBUG:
+                print "no status bar:", e
+                print message
+
+    def progress(self, pair):
+        val, tot = pair
+        self.progressBar.setMaximum(tot)
+        self.progressBar.setValue(val)
+
+#    def save_time_series(self, *xs):
+#        datapath = self.params["datapath"]
+#        fname = os.path.join(datapath,
+#                             get_next_filename(datapath, self.params["prefix"]))
+#        f = open(fname, 'w')
+#        csv.writer(f).writerows(zip(*xs))
+#        f.close()
+#        if DEBUG: print "saved", fname
+#
+#    def add_instrument(self, iname):
+#        pass
 
     def add_sweep_dialog(self):
         self.sweep_dialog = sd = SweepDialog()
