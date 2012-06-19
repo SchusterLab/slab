@@ -253,7 +253,8 @@ class HDFViewWindow(gui.SlabWindow, UiClass):
         # Setup Prompt
         message = "The currently loaded file is stored as 'f'"
         self.shell = InternalShell(self, message=message)
-        self.shell.set_font(Qt.QFont("Andale Mono"))
+        #self.shell.set_font(Qt.QFont("Andale Mono"))
+        self.shell.set_font(Qt.QFont("Consolas"))
         self.shell_dockWidget.setWidget(self.shell)
         self.gui["shell"] = self.shell
 
@@ -264,9 +265,11 @@ class HDFViewWindow(gui.SlabWindow, UiClass):
         event.accept()
 
     def select_datapath(self):
-        self.params["datapath"]=str(Qt.QFileDialog.getExistingDirectory(self,
-                                    'Open Datapath',self.params["datapath"]))
-        self.emit(Qt.SIGNAL("RunOnDataThread"), "set_datapath")
+        path = str(Qt.QFileDialog.getExistingDirectory(
+                    self, 'Open Datapath',self.params["datapath"]))
+        if path:
+            self.params["datapath"] = path
+            self.emit(Qt.SIGNAL("RunOnDataThread"), "set_datapath")
 
     def datasets_context_menu(self, point):
         menu = Qt.QMenu()
