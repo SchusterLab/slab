@@ -16,7 +16,7 @@ import guiqwt.plot
 import math
 import re
 
-DEBUG = True
+DEBUG = False
 if DEBUG:
     from PyQt4 import uic
     uifile = open("S:\\_Lib\\python\\slab\\widgets\\SweepDialog_ui.py", 'w')
