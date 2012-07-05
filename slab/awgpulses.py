@@ -34,25 +34,29 @@ def ramsey(pi2_amp,pi2_width,wait,pause_before_measure,total_length):
 def rabi(amp,width,pause_before_measure,total_length):
     return pad_left(concatenate((gauss(amp,width,cutoff_length=3*width),delay(pause_before_measure))),total_length)
 
+def spin_echo(amp,width,pause_between_pulses,total_length):
+    return pad_left(concatenate((gauss(amp,width,cutoff_length=4*width),delay(pause_between_pulses-6*width),gauss(amp,2*width,cutoff_length=8*width),delay(pause_between_pulses-4*width+50000))),total_length)    
+    
 def T1(pi_amp,pi_width,wait,total_length):
     return pad_left(concatenate((gauss(pi_amp,pi_width,cutoff_length=3*pi_width),delay(wait))),total_length)
 
 #def shift_pulse_frequency(pulse, freq,phase):
 
 
-total_length=200
+total_length=400
 sigma=3
 pi2_amp=10
 mdelay=10
 pi_amp=20
 
-numexpts=100
+numexpts=50
 
+spin_sweep=array([spin_echo(20,5,a+20,total_length) for a in range (numexpts)])
 ramsey_sweep=array([ramsey(pi2_amp,sigma,d,mdelay,total_length) for d in range (numexpts)])
 rabi_sweep=array([rabi(a,sigma,mdelay,total_length) for a in range (numexpts)])
 T1_sweep = array([T1(pi_amp,sigma,d,total_length) for d in range (numexpts)])
 
-RRTpulses=hstack((ramsey_sweep,rabi_sweep,T1_sweep))
+RRTpulses=hstack((ramsey_sweep,rabi_sweep,T1_sweep,spin_sweep))
 
 
 #pulses=array([co])    

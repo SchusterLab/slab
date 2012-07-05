@@ -34,7 +34,6 @@ class MainWindow(QMainWindow, Ui_NWADirectoryViewerWindow):
         self.data=None
         self.prefixes=None
         self.directory=None
-        
 
         self.fileButton.clicked.connect(self.selectFile)
         self.linearCheckBox.stateChanged.connect(self.update_image)

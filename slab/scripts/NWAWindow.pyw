@@ -6,31 +6,52 @@ Created on Sat Dec 17 17:10:50 2011
 """
 from slab import *
 from slab.gui import *
-from NWAWindow_ui import *
+#from NWAWindow_ui import *
 from guiqwt.builder import make
 import os
 
-
+import h5py
+from guiqwt.qtdesigner import loadui
+from slab.datamanagement import *
+Ui_NWAWindow = loadui("S:\\_Lib\\python\\slab\\scripts\\NWAWindow2.ui")
 
 class nwa_DataThread(DataThread):
-    
+    def set_file(self, *args):
+        filename = self.params['filename']
+        dset_path = self.params['datasetPath']
+        try: self.file = open_to_path(h5py.File(filename, 'w'), dset_path)
+        except:
+            self.msg("Could not open h5 file!")
+            return
+        if self.params['numberTraces']:
+            self.trace_no = get_next_trace_number(self.file)
+            self.plots['trace'].setText("%03d" % self.trace_no)
+                       
     def do_normal_sweep(self,nwa,start,stop,sweep_pts):
         self.msg('Commencing normal Sweep...')
-        #calculate start and stop frequencies       
+        #calculate start and stop frequencies      
         nwa.set_start_frequency(start)
         nwa.set_stop_frequency(stop)       
         nwa.set_sweep_points(sweep_pts)
 
         self.msg("Acquiring data...")
         freqs,mags,phases=nwa.take_one_averaged_trace()
+        xrng, yrng = ((freqs[0],freqs[-1]),(start, stop))
         self.msg("Data acquisition complete.")
         self.plots["mag"].set_data(freqs,mags)
         self.plots["phase"].set_data(freqs,phases)
         self.plots["magplot"].replot()
         self.plots["phaseplot"].replot()
         if self.params['save']:
-            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
-            np.savetxt(os.path.join(self.params['datapath'],fname),transpose(array([freqs,mags,phases])),delimiter=',')
+            self.set_file()
+            f = self.file[self.trace_no] if self.params["numberTraces"] else self.file
+            for n, d in [("mag", mags), ("phase", phases)]:
+                f[n] = d
+                set_range(f[n], start, stop)
+                set_labels(f[n], "Frequency (Hz)", "Response")
+            
+#            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
+#            np.savetxt(os.path.join(self.params['datapath'],fname),transpose(array([freqs,mags,phases])),delimiter=',')
 
     def do_segmented_sweep(self,nwa,start,stop,step):
         self.msg('Commencing segmented Sweep...')
@@ -98,11 +119,14 @@ class nwa_DataThread(DataThread):
         self.msg('Segmented scan complete.')
             
 
-    def run_script(self):
+    def run_script(self):#self.attrs["_script"] = open(sys.argv[0], 'r').read()
+
         try:
             nwa=self.instruments['NWA']
-        except:
+        except Exception as E:
             self.msg("NWA config not loaded!")
+            self.msg("loaded values:", self.instruments.keys())
+            self.msg(E)
             return
         self.msg("Configuring NWA....")
         self.msg(str(nwa.get_id()))
@@ -110,7 +134,7 @@ class nwa_DataThread(DataThread):
         nwa.set_output(state=True)
         while ((first or self.params['autorun']) and not self.aborted()):
             first=False
-            self.plots["self"].update_filenumber()
+            #self.plots["self"].update_filenumber()
             nwa.set_ifbw(self.params['ifbw'])
             nwa.set_power(self.params['power'])
             nwa.set_averages(self.params['avgs'])
@@ -140,56 +164,59 @@ class nwa_DataThread(DataThread):
 
 class NWAWin(SlabWindow, Ui_NWAWindow):
     def __init__(self):
-        SlabWindow.__init__(self, nwa_DataThread, config_file='instruments.cfg')
-        self.setupSlabWindow()
+        SlabWindow.__init__(self, nwa_DataThread, config_file='S:\\_Lib\\python\\slab\\scripts\\instruments.cfg')
+        self.setupSlabWindow(autoparam=True)
         self.register_script("run_script", self.go_button, self.abort_button)
         self.start_thread()
 
         #Connect controls
-        self.connect(self.powerSpinBox, SIGNAL("valueChanged(double)"),
-                lambda i: self.set_param("power", i))
-        self.connect(self.sweep_ptsSpinBox, SIGNAL("valueChanged(int)"),
-                lambda i: self.set_param("sweep_pts", i))
-        self.connect(self.ifbwSpinBox, SIGNAL("valueChanged(double)"),
-                lambda i: self.set_param("ifbw", i))               
-        self.connect(self.avgsSpinBox, SIGNAL("valueChanged(int)"),
-                lambda i: self.set_param("avgs", i)) 
-        self.connect(self.centerstartSpinBox, SIGNAL("valueChanged(double)"),
-                lambda i: self.set_param("centerstart", i)) 
-        self.connect(self.spanstopSpinBox, SIGNAL("valueChanged(double)"),
-                lambda i: self.set_param("spanstop", i)) 
-        self.connect(self.centerspanstartstopCheckBox, SIGNAL("stateChanged(double)"),
-                lambda i: self.set_param("centerspanstartstop", i)) 
-        self.connect(self.resolutionSpinBox, SIGNAL("valueChanged(double)"),
-                lambda i: self.set_param("resolution", i)) 
-        self.connect(self.saveCheckBox, SIGNAL("stateChanged(int)"),
-                lambda i: self.set_param("save", i)) 
-        self.connect(self.autoRunCheckBox, SIGNAL("stateChanged(int)"),
-                lambda i: self.set_param("autorun", i)) 
-        self.connect(self.centerspanstartstopCheckBox, SIGNAL("stateChanged(int)"),self.on_centerspanstartstopChanged)
+        #self.connect(self.powerSpinBox, SIGNAL("valueChanged(double)"),
+        #        lambda i: self.set_param("power", i))
+        #self.connect(self.sweep_ptsSpinBox, SIGNAL("valueChanged(int)"),
+        #        lambda i: self.set_param("sweep_pts", i))
+        #self.connect(self.ifbwSpinBox, SIGNAL("valueChanged(double)"),
+        #        lambda i: self.set_param("ifbw", i))               
+        #self.connect(self.avgsSpinBox, SIGNAL("valueChanged(int)"),
+        #        lambda i: self.set_param("avgs", i)) 
+        #self.connect(self.centerstartSpinBox, SIGNAL("valueChanged(double)"),
+        #        lambda i: self.set_param("centerstart", i)) 
+        #self.connect(self.spanstopSpinBox, SIGNAL("valueChanged(double)"),
+        #        lambda i: self.set_param("spanstop", i)) 
+        #self.connect(self.centerspanstartstopCheckBox, SIGNAL("stateChanged(double)"),
+        #        lambda i: self.set_param("centerspanstartstop", i)) 
+        #self.connect(self.resolutionSpinBox, SIGNAL("valueChanged(double)"),
+        #        lambda i: self.set_param("resolution", i)) 
+        #self.connect(self.saveCheckBox, SIGNAL("stateChanged(int)"),
+        #        lambda i: self.set_param("save", i))
+        #self.connect(self.autoRunCheckBox, SIGNAL("stateChanged(int)"),
+        #        lambda i: self.set_param("autorun", i)) 
+        #self.connect(self.centerspanstartstopCheckBox, SIGNAL("stateChanged(int)"),self.on_centerspanstartstopChanged)
         
-        self.datapath='S:\\_Data\\'
-        self.datapathButton.clicked.connect(self.selectDatapath)
-        self.datapathLineEdit.textChanged.connect(self.update_filenumber)
-        self.prefixLineEdit.textChanged.connect(self.update_filenumber)
-        self.go_button.clicked.connect(self.update_filenumber)
+        #self.datapath='S:\\_Data\\'
+        #self.datapathButton.clicked.connect(self.selectDatapath)
+        #self.datapathLineEdit.textChanged.connect(self.update_filenumber)
+        #self.prefixLineEdit.textChanged.connect(self.update_filenumber)
+        #self.go_button.clicked.connect(self.update_filenumber)
         
         #Initialize Parameters
-        self.set_param("power", -20)
-        self.set_param("sweep_pts",1601)
-        self.set_param("ifbw",1e3)
-        self.set_param("avgs",1)
-        self.set_param("centerstart",10.)
-        self.set_param("spanstop",1000.)
-        self.set_param("centerspanstartstop",1)
-        self.set_param("resolution", 100.)
-        self.set_param("save",0)
-        self.set_param("autorun",0)
-        self.set_param("datapath",self.datapath)
-        self.set_param("prefix",'trace')
-        self.set_param("filenumber",0)
+        #self.set_param("power", -20)
+        #self.set_param("sweep_pts",1601)
+        #self.set_param("ifbw",1e3)
+        #self.set_param("avgs",1)
+        #self.set_param("centerstart",10.)
+        #self.set_param("spanstop",1000.)
+        #self.set_param("centerspanstartstop",1)
+        #self.set_param("resolution", 100.)
+        #self.set_param("save",0)
+        #self.set_param("autorun",0)
+        #self.set_param("datapath",self.datapath)
+        #self.set_param("prefix",'trace')
+        #self.set_param("filenumber",0)
         
-        self.plot_manager["self"]=self
+        self.filenameButton.clicked.connect(self.selectFile)
+        
+        self.plots["self"] = self
+        self.plots["trace"] = self.trace_label
         
         #Make some default data
         self.freqs=np.linspace(self.params['centerstart']-self.params['spanstop']/2.,self.params['centerstart']+self.params['spanstop']/2.,self.params['sweep_pts'])        
@@ -197,21 +224,24 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
         self.phases=np.zeros(len(self.freqs))
         
         #Initialize Magnitude plot"
-        self.plot_manager["magplot"] = self.magplotwidget.plot        
+        self.plots["magplot"] = self.magplotwidget.plot        
         self.magplotwidget.add_toolbar(self.addToolBar("Curve"))
         self.magplotwidget.register_all_image_tools()
-        self.plot_manager["magplot"].set_titles(title="Magnitude", xlabel="Frequency (GHz)", ylabel="S21")       
-        self.plot_manager["mag"] = make.mcurve(self.freqs, self.mags,label='Magnitude') #Make Ch1 curve
-        self.plot_manager["magplot"].add_item(self.plot_manager["mag"])
+        self.plots["magplot"].set_titles(title="Magnitude", xlabel="Frequency (GHz)", ylabel="S21")       
+        self.plots["mag"] = make.mcurve(self.freqs, self.mags,label='Magnitude') #Make Ch1 curve
+        self.plots["magplot"].add_item(self.plots["mag"])
 
         #Initialize Phase plot
-        self.plot_manager["phaseplot"] = self.phaseplotwidget.plot
+        self.plots["phaseplot"] = self.phaseplotwidget.plot
         self.phaseplotwidget.add_toolbar(self.addToolBar("Curve"))
         self.phaseplotwidget.register_all_image_tools()
-        self.plot_manager["phaseplot"].set_titles(title="Phase", xlabel="Frequency (GHz)", ylabel="Phase (deg)")
-        self.plot_manager["phase"] = make.mcurve(self.freqs, self.phases,label='Phase') #Make Ch1 curve
-        self.plot_manager["phaseplot"].add_item(self.plot_manager["phase"])
+        self.plots["phaseplot"].set_titles(title="Phase", xlabel="Frequency (GHz)", ylabel="Phase (deg)")
+        self.plots["phase"] = make.mcurve(self.freqs, self.phases,label='Phase') #Make Ch1 curve
+        self.plots["phaseplot"].add_item(self.plots["phase"])
 
+    def selectFile(self):
+        self.filenameLineEdit.setText(str(QFileDialog.getSaveFileName(self)))
+        
     def selectDatapath(self):
         self.datapath=str(QFileDialog.getExistingDirectory(self,'Open Datapath',self.datapath))
         self.datapathLineEdit.setText(self.datapath)       

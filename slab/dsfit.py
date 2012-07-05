@@ -166,10 +166,21 @@ def hangerfunc(p,x):
 def hangerfunc_new(p,x):
     """p=[f0,Qi,Qc,df,scale]"""
     #print p    
+    f0,Qi,df,scale = p
+    a=(x-(f0+df))/(f0+df)
+    b=2*df/f0
+    Qc=64000.
+    y=10*np.log10(scale*(Qc**2. + Qi**2.*Qc**2.*(2.*a + b)**2.)/((Qc+Qi)**2 + 4.*Qi**2.*Qc**2.*a**2.))
+    return y
+    
+def hangerfunc_new_withQc(p,x):
+    """p=[f0,Qi,Qc,df,scale]"""
+    #print p    
     f0,Qi,Qc,df,scale = p
     a=(x-(f0+df))/(f0+df)
     b=2*df/f0
-    y=10.*np.log10(scale*(Qc**2. + Qi**2.*Qc**2.*(2.*a + b)**2.)/((Qc+Qi)**2 + 4.*Qi**2.*Qc**2.*a**2.))
+    #Qc=26000.
+    y=10*np.log10(scale*(Qc**2. + Qi**2.*Qc**2.*(2.*a + b)**2.)/((Qc+Qi)**2 + 4.*Qi**2.*Qc**2.*a**2.))
     return y
 
 def hangerfunctilt(p,x):
@@ -200,16 +211,49 @@ def fithanger_new(xdata,ydata,fitparams=None,domain=None,showfit=False,showstart
         ymax=(fitdatay[0]+fitdatay[-1])/2.
         ymin=fitdatay[peakloc]        
         f0=fitdatax[peakloc]
-        Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/500.))
+        Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/5.))
         scale= ymax-ymin
-        Qi=Q0*100
+        Qi=2*Q0
+
+        #slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
+        #offset= ymin-slope*f0
+        fitparams=[f0,abs(Qi),0.,scale]
+        #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
+    fitresult=fitgeneral(fitdatax,fitdatay,hangerfunc_new,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label, mark_data=mark_data, mark_fit=mark_fit)        
+    fitresult[1]=abs(fitresult[1])
+    #fitresult[2]=abs(fitresult[2])
+    if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}'.format(fitresult[0],fitresult[1],fitresult[2],fitresult[3])
+    return fitresult
+    
+def fithanger_new_withQc(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,printresult=False,label="",mark_data='bo',mark_fit='r-'):
+    """Fit Hanger Transmission (S21) data taking into account asymmetry.
+        fitparams = []
+        returns p=[f0,Qi,Qc,df,scale]
+        Uses hangerfunc. 
+    """
+    
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:    
+        peakloc=np.argmin(fitdatay)
+        ymax=(fitdatay[0]+fitdatay[-1])/2.
+        ymin=fitdatay[peakloc]        
+        f0=fitdatax[peakloc]
+        Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/5.))
+        scale= ymax-ymin
+        Qi=2*Q0
         Qc=Q0
         #slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
         #offset= ymin-slope*f0
         fitparams=[f0,abs(Qi),abs(Qc),0.,scale]
         #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
-    fitresult=fitgeneral(fitdatax,fitdatay,hangerfunc_new,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label, mark_data=mark_data, mark_fit=mark_fit)        
-    if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}'.format(fitresult[0],fitresult[1],fitresult[2],fitresult[3],fitresult[4])
+    fitresult=fitgeneral(fitdatax,fitdatay,hangerfunc_new_withQc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label, mark_data=mark_data, mark_fit=mark_fit)        
+    fitresult[1]=abs(fitresult[1])
+    fitresult[2]=abs(fitresult[2])
+    if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}'.format(fitresult[0],fitresult[1],fitresult[2],fitresult[3])
     return fitresult
 
 def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,printresult=False,label="",mark_data='bo',mark_fit='r-'):
@@ -230,7 +274,7 @@ def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=
         ymin=fitdatay[peakloc]        
         f0=fitdatax[peakloc]
         Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/3.))
-        scale= ymax-ymin
+        scale= ymax
         Qi=Q0*(1.+ymax)
         Qc=Qi/(ymax)
         #slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
