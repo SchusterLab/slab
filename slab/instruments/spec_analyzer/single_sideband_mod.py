@@ -55,7 +55,7 @@ def get_power_at(sa, lo, frequency):
 
 if __name__ == '__main__':
     #awg = AWG81180A(name='awg', address='GPIB::04::INSTR')
-    im = InstrumentManager("S:\\_Lib\\python\\slab\\instruments\\spec_analyzer\\ssm_optimization.cfg" )    
+    im = InstrumentManager("ssm_optimization.cfg" )    
     awg = im['AWG']
     #sa = SpectrumAnalyzer(protocol='serial', port=2)
     #Agilent analog waveform generator     

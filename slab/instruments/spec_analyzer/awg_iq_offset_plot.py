@@ -36,7 +36,7 @@ def set_sin(awg, channel, intensity, frequency, phase=0.0):
     
 if __name__ == '__main__':
     #awg = AWG81180A(name='awg', address='GPIB::04::INSTR')
-    im = InstrumentManager("S:\\_Lib\\python\\slab\\instruments\\spec_analyzer\\offset_optimization.cfg" )    
+    im = InstrumentManager("offset_optimization.cfg" )    
     awg = im['AWG']
     #sa = SpectrumAnalyzer(protocol='serial', port=2)
     #Agilent analog waveform generator     
