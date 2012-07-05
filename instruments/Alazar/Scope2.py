@@ -15,7 +15,7 @@ from guiqwt.builder import make
 import numpy as np
 import sys
 
-from slab.widgets import PlotWithTB
+#from slab.widgets import PlotWithTB
 
 class ScopeDataThread(DataThread):
     def __init__(self):
