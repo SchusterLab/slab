@@ -1,6 +1,7 @@
 
 try:
     import visa
+    #pass
 except:
     print "Warning VISA library import failed"
 import telnetlib
@@ -10,6 +11,7 @@ try:
     import serial
 except:
     print "Warning serial library import failed."
+
 
 class Instrument(object):
     """
@@ -141,7 +143,11 @@ class SerialInstrument(Instrument):
         self.enabled=enabled
         if self.enabled:
             try:
-                self.ser = serial.Serial(int(address.upper().split('COM')[1])-1, baudrate)
+                self.ser = serial.Serial(address, baudrate)
+                #try: self.ser = serial.Serial(int(address.upper().split('COM')[1])-1, baudrate)
+                #except: 
+                #    try: self.ser = serial.Serial(int(address), baudrate)
+                #    except: raise ValueError
             except serial.SerialException:
                 print 'Cannot create a connection to port '+str(address)+'.\n'
         self.set_timeout(timeout)
@@ -161,6 +167,14 @@ class SerialInstrument(Instrument):
     def read(self):
         if self.enabled: return self.ser.read(self.recv_length)
 
-#    def __del__(self):
-#        if self.enabled: self.ser.close()
-        
+    def reset_connection(self):
+        self.ser.close()
+        time.sleep(self.query_sleep)
+        self.ser.open()
+
+    def __del__(self):
+        try:
+            self.ser.close()
+        except Exception as e:
+            print e
+            print 'cannot properly close the serial connection.'

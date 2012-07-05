@@ -28,7 +28,16 @@ def get_output(awg, channel):
     
 def set_output(awg, channel, output=True):
     awg.write('inst:sel '+str(channel)+'; OUTPUT '+str(int(output)))
-    
+
+def get_sync(awg):
+    return bool(awg.query('inst:coup:stat ?'))
+
+def set_sync(awg, sync=True):
+    if sync:
+        awg.write('inst:coup:stat on')
+    else:
+        awg.write('inst:coup:stat off')
+
 def get_power(awg, channel):
     return float(awg.query('inst:sel '+str(channel)+'; POW ?'))
     

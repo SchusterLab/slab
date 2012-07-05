@@ -80,23 +80,24 @@ class SpectrumAnalyzer(SerialInstrument, SocketInstrument):
         self.write('READ_AVG')
         #leaves extra time for average power reading
         time.sleep(0.15)
+
         return float(self.read())
         
 
 if __name__ == '__main__':
-    from instruments import E8257D
+    #from instruments import E8257D
     
-    sa = SpectrumAnalyzer(address='128.135.35.167:23')
-    rf = E8257D(address='rfgen1.circuitqed.com')
-    lo = E8257D(address='rfgen2.circuitqed.com')
-    rf.set_output(False)
-    lo.set_output(False)
-    rf.set_frequency(6e9)
-    lo.set_frequency(6e9+sa.lo_offset)
-    lo.set_power(10)
-    rf.set_power(-10)
-    lo.set_output()
-    rf.set_output()
+    sa = SpectrumAnalyzer(protocol='serial', port=2)
+    #rf = E8257D(address='rfgen1.circuitqed.com')
+    #lo = E8257D(address='rfgen2.circuitqed.com')
+    #rf.set_output(False)
+    #lo.set_output(False)
+    #rf.set_frequency(6e9)
+    #lo.set_frequency(6e9+sa.lo_offset)
+    #lo.set_power(10)
+    #rf.set_power(-10)
+    #lo.set_output()
+    #rf.set_output()
     
     print sa.get_power()
     print sa.get_avg_power()

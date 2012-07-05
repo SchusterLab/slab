@@ -226,10 +226,10 @@ class LabbrickWindow(QMainWindow, Ui_labbrickWindow):
             self.ctimer.stop()
 
 if __name__=="__main__":
-    app = QApplication(sys.argv)
-    window = LabbrickWindow(address=1198)
-    window.show()
-    sys.exit(app.exec_())
-
-#    rf=LMS103(address=1198)
-#    print rf.get_settings()
+    #app = QApplication(sys.argv)
+    #window = LabbrickWindow(address=1200)
+    #window.show()
+    #sys.exit(app.exec_())
+    
+    rf=LMS103(address=1200)
+    

@@ -6,6 +6,7 @@ Created on Tue Aug 02 09:55:05 2011
 """
 from slab.instruments import SerialInstrument,VisaInstrument
 import re
+import time
 
 class IPSMagnet(SerialInstrument,VisaInstrument):
     
@@ -107,10 +108,10 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
 
     def set_target_current(self, current):
         """Sets target current to current (in amps)"""
-        tol=.001
+        tol=.005
         count=0
         self.remote()
-        while (count<5):
+        while (count<20):
             try:
                 print 'I%07.4f' % current
                 self.query('I%07.4f' % current)
@@ -122,17 +123,20 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
             except:
                 print "Warning: could not set set_point trying again..."
             count+=1
+            self.reset_connection()
+            time.sleep(1)
         raise Exception("Can't set target current correctly!\nSet to: %f\tRead back: %f" % (current,setpt))
-        
         
     def set_target_field (self,field):
         """Sets target magnetic field to field (in Tesla)"""
         self.query('I%08.5f' % field)
         
     def set_current_sweeprate(self,sweeprate):
+        """Sets current sweep rate in Amps/minute"""
         self.query('S%07.4f' % sweeprate)
         
     def set_field_sweeprate(self,sweeprate):
+        """Sets current sweep rate in Tesla/minute"""
         self.query('T%08.5f' % sweeprate)
         
     def get_status(self):
@@ -185,11 +189,16 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
         #        'volt':self.get_volt(),'setpoint':self.get_setpoint(),'sweeprate':self.get_sweeprate()}
                 
 
-
 if __name__ == '__main__':
-    magnet=IPSMagnet (address="COM8")
+    print "HERE"
+    magnet=IPSMagnet(address="COM8")
+    magnet.set_mode('remote_unlocked')
     #magnet.set_local()
     print magnet.get_id()
+    #magnet.set_heater()
+    magnet.set_current_sweeprate(0.3) 
+    magnet.hold()
+    print "done"
     #print fridge.get_status()
     #d=fridge.get_temperatures()
     #print fridge.get_temperatures()

@@ -9,7 +9,7 @@ import re
 
 class Triton(SocketInstrument):
     
-    def __init__(self,name="Triton",address='fridge1.uchicago.edu',enabled=True,timeout=10):
+    def __init__(self,name="Triton",address='slab-fridge1.uchicago.edu',enabled=True,timeout=10):
         if ':' not in address: address+=':22518'        
         SocketInstrument.__init__(self,name,address,enabled,timeout)
         self.query_sleep=0.1
@@ -62,7 +62,7 @@ class Triton(SocketInstrument):
          
         
 if __name__ == '__main__':
-    fridge=Triton (address='triton.local')
+    fridge=Triton (address='192.168.14.129')
     #print fridge.get_status()
     d=fridge.get_temperatures()
     #print fridge.get_temperatures()
