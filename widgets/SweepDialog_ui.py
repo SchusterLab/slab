@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'S:\_Lib\python\slab\widgets\SweepDialog.ui'
 #
-# Created: Fri Apr 27 23:01:21 2012
+# Created: Mon Jun 18 20:55:33 2012
 #      by: PyQt4 UI code generator 4.8.5
 #
 # WARNING! All changes made in this file will be lost!

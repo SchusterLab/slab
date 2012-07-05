@@ -188,7 +188,11 @@ class SlabWindow(QMainWindow):
         self.params = DictProxy("parameter")
         self.param_widgets = []
         self.registered_actions = []
-        self.data_thread_obj = DataThreadC()
+        if config_file:
+            self.data_thread_obj = DataThreadC(config_file=config_file)
+        else:
+            self.data_thread_obj = DataThreadC()
+            
 
         self.connect(self.instruments, SIGNAL("instrumentMethodCalled"),
                 self.data_thread_obj.run_on_instrument_manager)
@@ -391,7 +395,7 @@ class SlabWindow(QMainWindow):
             print "Error: Could Not match parameter", name, "with class"
 
     def msg(self, *args):
-        t = time.strftime("%D %H:%M:%S")
+        t = time.strftime("%d %H:%M:%S")
         message = t + " :: " + " ".join(map(str, args))
         try:
             self.message_box.append(message)

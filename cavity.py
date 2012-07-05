@@ -92,7 +92,6 @@ def get_next_filename(datapath,prefix,suffix=''):
     return "%04d_" % (ii) + prefix +suffix
 
 def make_datapath(expt_path,prefix,date_str=None):
-    """Automatically makes a new folder in the experiment folder with new index"""
     tag=date_tag(date_str)
     ii=next_path_index(expt_path,prefix)
     datapath=os.path.join(expt_path,"%s_%s_%03d" % (tag,prefix,ii) )
@@ -109,10 +108,10 @@ def tic():
     global last_tic
     last_tic=time.time()
     
-def toc(log=False):
+def toc():
     global last_tic
     t=time.time()
-    if log: print "Tic-Toc: %.0f ms" % ((t-last_tic)*1000.)
+    print "Tic-Toc: %.0f ms" % ((t-last_tic)*1000.)
     return t-last_tic
     
 def digital_homodyne(time_pts,ch1_pts,ch2_pts,IFfreq,dfactor=1,AmpPhase=False):
