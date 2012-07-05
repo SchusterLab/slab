@@ -241,25 +241,29 @@ class Chip(sdxf.Block):
     """Chip is a class which contains structures
        Perhaps it will also be used to do some error checking
     """
-    def __init__(self,name,size=(7000.,2000.),mask_id_loc=(0,0),chip_id_loc=(0,0),textsize=(160,160)):
+    def __init__(self,name,size=(7000.,2000.),mask_id_loc=(0,0),chip_id_loc=(0,0),textsize=(160,160), two_layer=False, layer=None, solid=False):
         """size is a tuple size=(xsize,ysize)"""
-        sdxf.Block.__init__(self,name)
+        self.two_layer = two_layer
+        if two_layer:
+            self.gap_layer = Chip(name+"gap", size, mask_id_loc, chip_id_loc,
+                                  textsize, layer='gap', solid=solid)
+            self.pin_layer = Chip(name+"pin", size, mask_id_loc, chip_id_loc,
+                                  textsize, layer='pin', solid=solid)
+            #self.rest_layer = Chip(name, size, mask_id_loc, chip_id_loc,
+            #                       textsize, layer='rest', solid=solid)
+            #self.append = self.rest_layer.append
+            
+        #else:    
+        if layer:
+            sdxf.Block.__init__(self,name,layer=layer)
+        else:
+            sdxf.Block.__init__(self,name)
         self.size=size
+        self.solid=solid
         self.mask_id_loc=mask_id_loc
         self.chip_id_loc=chip_id_loc
-#        self.dicing_border=dicing_border
-
         self.name=name
-#        self.maskid_struct=Structure(self,start=translate_pt(mask_id_loc,(dicing_border,dicing_border)),layer="id_text",color=3)
-#        self.chipid_struct=Structure(self,start=translate_pt(chip_id_loc,(dicing_border,dicing_border)),layer="id_text",color=3)
-
         self.textsize=textsize
-#        if dicing_border>0:
-#            ChipBorder (self,border_thickness=dicing_border,layer="border",color=3)
-#        self.left_midpt=(dicing_border,(size[1]+2*dicing_border)/2)
-#        self.right_midpt=(size[0]+dicing_border,(size[1]+2*dicing_border)/2)
-#        self.top_midpt=((size[0]+2*dicing_border)/2,size[1]+dicing_border)
-#        self.bottom_midpt=((size[0]+2*dicing_border)/2,dicing_border)
         self.left_midpt=(0,size[1]/2.)
         self.right_midpt=(size[0],size[1]/2.)
         self.top_midpt=(size[0]/2.,size[1])
@@ -269,6 +273,7 @@ class Chip(sdxf.Block):
         self.topleft_corner=(0,size[1])
         self.topright_corner=(size[0],size[1])
         self.bottomright_corner=(size[0],0)
+        self.center=(size[0]/2.,size[1]/2.)
                     
     def label_chip(self,drawing,maskid,chipid,offset=(0,0)):
         """Labels chip in drawing at locations given by mask_id_loc and chip_id_loc with an optional offset.
@@ -284,17 +289,33 @@ class Chip(sdxf.Block):
             fname+='.dxf'
             
         d=sdxf.Drawing()
-    
+
+        if self.two_layer:
+            d.layers.append(sdxf.Layer(name='gap', color=1))
+            d.layers.append(sdxf.Layer(name='pin', color=3))
+            d.blocks.append(self.gap_layer)
+            d.append(sdxf.Insert(self.gap_layer.name,point=(0,0),layer='gap'))
+            d.blocks.append(self.pin_layer)
+            d.append(sdxf.Insert(self.pin_layer.name,point=(0,0),layer='pin'))
+            print d.layers
+            print self.gap_layer.layer
+            print self.pin_layer.layer
+            
+
         d.blocks.append(self)
         d.append(sdxf.Insert(self.name,point=(0,0)))
         self.label_chip(d,maskid,chipid)
         d.saveas(fname)
         
-class Structure:
+        
+class Structure(object):
     """Structure keeps track of current location and direction, 
     defaults is a dictionary with default values that substructures can call
     """
     def __init__(self,chip,start=(0,0),direction=0,layer="structures",color=1, defaults={}):
+        if chip.two_layer:
+            self.gap_layer = Structure(chip.gap_layer, start, direction, 'gap', 1, defaults)
+            self.pin_layer = Structure(chip.pin_layer, start, direction, 'pin', 2, defaults)
         self.chip=chip        
         self.start=start
         self.last=start
@@ -308,6 +329,17 @@ class Structure:
         """gives a more convenient reference to the chips.append method"""
         self.chip.append(shape)
         
+    def __setattr__(self, name, value):
+        if hasattr(self, "chip") and self.chip.two_layer:
+            if name is "last":
+                self.gap_layer.last = value
+                self.pin_layer.last = value
+            if name is "last_direction":
+                self.gap_layer.last_direction = value
+                self.pin_layer.last_direction = value
+        object.__setattr__(self, name, value)
+    
+
 #===============================================================================       
 #  CPW COMPONENTS    
 #===============================================================================
@@ -334,39 +366,6 @@ class Launcher:
             CPWLinearTaper(s,length=taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=150,stop_gapw=75)
             CPWStraight(s,length=pad_length,pinw=150,gapw=75)
             
-class c:
-    """A straight section of CPW transmission line"""
-    def __init__(self, structure,length,pinw=None,gapw=None):
-        """ Adds a straight section of CPW transmission line of length = length to the structure"""
-        if length==0: return
-
-        s=structure
-        start=structure.last
-        
-        if pinw is None: pinw=structure.defaults['pinw']
-        if gapw is None: gapw=structure.defaults['gapw']
-        
-        gap1=[  (start[0],start[1]+pinw/2.),
-                (start[0]+length,start[1]+pinw/2.),
-                (start[0]+length,start[1]+pinw/2.+gapw),
-                (start[0],start[1]+pinw/2.+gapw),
-                (start[0],start[1]+pinw/2.)
-                ]
-
-        gap2=[  (start[0],start[1]-pinw/2.),
-                (start[0]+length,start[1]-pinw/2.),
-                (start[0]+length,start[1]-pinw/2.-gapw),
-                (start[0],start[1]-pinw/2.-gapw),
-                (start[0],start[1]-pinw/2.)
-                ]
-        
-        gap1=rotate_pts(gap1,s.last_direction,start)
-        gap2=rotate_pts(gap2,s.last_direction,start)
-        stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
-        s.last=stop
-
-        s.append(sdxf.PolyLine(gap1))
-        s.append(sdxf.PolyLine(gap2))
         
 #===============================================================================       
 #  CPW COMPONENTS    
@@ -379,33 +378,90 @@ class CPWStraight:
         if length==0: return
 
         s=structure
-        start=structure.last
-        
         if pinw is None: pinw=structure.defaults['pinw']
         if gapw is None: gapw=structure.defaults['gapw']
-        
-        gap1=[  (start[0],start[1]+pinw/2),
-                (start[0]+length,start[1]+pinw/2),
-                (start[0]+length,start[1]+pinw/2+gapw),
-                (start[0],start[1]+pinw/2+gapw),
-                (start[0],start[1]+pinw/2)
-                ]
 
-        gap2=[  (start[0],start[1]-pinw/2),
-                (start[0]+length,start[1]-pinw/2),
-                (start[0]+length,start[1]-pinw/2-gapw),
-                (start[0],start[1]-pinw/2-gapw),
-                (start[0],start[1]-pinw/2)
-                ]
-        
-        gap1=rotate_pts(gap1,s.last_direction,start)
-        gap2=rotate_pts(gap2,s.last_direction,start)
-        stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
-        s.last=stop
+        if s.chip.two_layer:
+            CPWStraight(s.gap_layer, length, 0, pinw/2. + gapw)
+            CPWStraight(s.pin_layer, length, 0, pinw/2.)
+            assert s.gap_layer.last == s.pin_layer.last
+            s.last = s.gap_layer.last
+            return
 
-        s.append(sdxf.PolyLine(gap1))
-        s.append(sdxf.PolyLine(gap2))
-        
+        else:
+            start=structure.last
+
+            gap1=[  (start[0],start[1]+pinw/2),
+                    (start[0]+length,start[1]+pinw/2),
+                    (start[0]+length,start[1]+pinw/2+gapw),
+                    (start[0],start[1]+pinw/2+gapw),
+                    (start[0],start[1]+pinw/2)
+                    ]
+
+            gap2=[  (start[0],start[1]-pinw/2),
+                    (start[0]+length,start[1]-pinw/2),
+                    (start[0]+length,start[1]-pinw/2-gapw),
+                    (start[0],start[1]-pinw/2-gapw),
+                    (start[0],start[1]-pinw/2)
+                    ]
+
+            gap1=rotate_pts(gap1,s.last_direction,start)
+            gap2=rotate_pts(gap2,s.last_direction,start)
+      
+            stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
+            s.last=stop
+
+            if s.chip.solid:
+                s.append(sdxf.Solid(gap1[:-1]))
+                s.append(sdxf.Solid(gap2[:-1]))
+
+            s.append(sdxf.PolyLine(gap1))
+            s.append(sdxf.PolyLine(gap2))
+"""
+class CPWConnect:        
+    def __init__(self,s,endpoint,pinw=None,gapw=None):
+        if length==0: return
+
+        s=structure
+        if pinw is None: pinw=structure.defaults['pinw']
+        if gapw is None: gapw=structure.defaults['gapw']
+
+        if s.chip.two_layer:
+            CPWConnect(s.gap_layer, endpoint, 0, pinw/2. + gapw)
+            CPWConnect(s.pin_layer, endpoint, 0, pinw/2.)
+            assert s.gap_layer.last == s.pin_layer.last
+            s.last = s.gap_layer.last
+            return
+        else:
+            start=structure.last
+
+            gap1=[  (start[0],start[1]+pinw/2),
+                    (start[0]+length,start[1]+pinw/2),
+                    (start[0]+length,start[1]+pinw/2+gapw),
+                    (start[0],start[1]+pinw/2+gapw),
+                    (start[0],start[1]+pinw/2)
+                    ]
+
+            gap2=[  (start[0],start[1]-pinw/2),
+                    (start[0]+length,start[1]-pinw/2),
+                    (start[0]+length,start[1]-pinw/2-gapw),
+                    (start[0],start[1]-pinw/2-gapw),
+                    (start[0],start[1]-pinw/2)
+                    ]
+
+            gap1=rotate_pts(gap1,s.last_direction,start)
+            gap2=rotate_pts(gap2,s.last_direction,start)
+      
+            stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
+            s.last=stop
+
+            if s.chip.solid:
+                s.append(sdxf.Solid(gap1[:-1]))
+                s.append(sdxf.Solid(gap2[:-1]))
+
+            s.append(sdxf.PolyLine(gap1))
+            s.append(sdxf.PolyLine(gap2))
+"""
 class CPWQubitBox:
     """A straight section of CPW transmission line with fingers in the ground plane to add a capacitor"""
     def __init__(self,structure,fingerlen,fingerw,finger_gapw,finger_no,int_len=10,pinw=None,gapw=None,align=True,small=10,medium=20,big=50):
@@ -543,35 +599,44 @@ class CPWLinearTaper:
         #load attributes
         s=structure
         start=s.last
-        
-        #define geometry of gaps
-        gap1= [ 
-            (start[0],start[1]+start_pinw/2.),
-            (start[0]+length,start[1]+stop_pinw/2.),
-            (start[0]+length,start[1]+stop_pinw/2.+stop_gapw),
-            (start[0],start[1]+start_pinw/2.+start_gapw),
-            (start[0],start[1]+start_pinw/2.)
-            ]
-                    
-        gap2= [ 
-            (start[0],start[1]-start_pinw/2.),
-            (start[0]+length,start[1]-stop_pinw/2.),
-            (start[0]+length,start[1]-stop_pinw/2.-stop_gapw),
-            (start[0],start[1]-start_pinw/2.-start_gapw),
-            (start[0],start[1]-start_pinw/2.)
-            ]
-        
-        #rotate structure to proper orientation
-        gap1=rotate_pts(gap1,s.last_direction,start)
-        gap2=rotate_pts(gap2,s.last_direction,start)
 
-        #create polylines and append to drawing
-        s.append(sdxf.PolyLine(gap1))
-        s.append(sdxf.PolyLine(gap2))
-        
-        #update last anchor position
-        stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
-        s.last=stop
+        if s.chip.two_layer:
+            CPWLinearTaper(s.gap_layer, length, 0, 0, (start_pinw/2.)+start_gapw, (stop_pinw/2.)+stop_gapw)
+            CPWLinearTaper(s.pin_layer, length, 0, 0, start_pinw/2., stop_pinw/2.)
+            s.last = s.gap_layer.last
+        else:
+            #define geometry of gaps
+            gap1= [ 
+                (start[0],start[1]+start_pinw/2.),
+                (start[0]+length,start[1]+stop_pinw/2.),
+                (start[0]+length,start[1]+stop_pinw/2.+stop_gapw),
+                (start[0],start[1]+start_pinw/2.+start_gapw),
+                (start[0],start[1]+start_pinw/2.)
+                ]
+
+            gap2= [ 
+                (start[0],start[1]-start_pinw/2.),
+                (start[0]+length,start[1]-stop_pinw/2.),
+                (start[0]+length,start[1]-stop_pinw/2.-stop_gapw),
+                (start[0],start[1]-start_pinw/2.-start_gapw),
+                (start[0],start[1]-start_pinw/2.)
+                ]
+
+            #rotate structure to proper orientation
+            gap1=rotate_pts(gap1,s.last_direction,start)
+            gap2=rotate_pts(gap2,s.last_direction,start)
+
+            #create polylines and append to drawing
+            if s.chip.solid:
+                s.append(sdxf.Solid(gap1[:-1]))
+                s.append(sdxf.Solid(gap2[:-1]))
+            else:
+                s.append(sdxf.PolyLine(gap1))
+                s.append(sdxf.PolyLine(gap2))
+
+            #update last anchor position
+            stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
+            s.last=stop
         
 #Inside and Outside Versions are for two layer capacitors        
         
@@ -621,34 +686,64 @@ class CPWBend:
         if radius is None: radius=s.defaults['radius']
         if pinw is None:   pinw=s.defaults['pinw']
         if gapw is None:   gapw=s.defaults['gapw']
-        
-        self.structure=structure
-        self.turn_angle=turn_angle
-        self.pinw=pinw
-        self.gapw=gapw
-        self.radius=radius
-        self.segments=segments
 
-        self.start=s.last
-        self.start_angle=s.last_direction
-        self.stop_angle=self.start_angle+self.turn_angle
-        
-        if turn_angle>0: self.asign=1
-        else:            self.asign=-1
-       
-        #DXF uses the angle of the radial vector for its start and stop angles
-        #so we have to rotate our angles by 90 degrees to get them right
-        #also it only knows about arcs with CCW sense to them, so we have to rotate our angles appropriately
-        self.astart_angle=self.start_angle-self.asign*90
-        self.astop_angle=self.stop_angle-self.asign*90
-        #calculate location of Arc center
-        self.center=rotate_pt( (self.start[0],self.start[1]+self.asign*self.radius),self.start_angle,self.start)
-        
-        if polyarc: self.poly_arc_bend()
-        else:       self.arc_bend()
+        if s.chip.two_layer:
+            CPWBend(s.gap_layer, turn_angle, 0, pinw/2. + gapw, radius, polyarc, segments)
+            CPWBend(s.pin_layer, turn_angle, 0, pinw/2., radius, polyarc, segments)
+            s.last = s.gap_layer.last
+            s.last_direction = s.gap_layer.last_direction
+        else:
+            if s.chip.solid:
+                left_offset = rotate_pt((0, (pinw + gapw)/2.), s.last_direction)
+                right_offset = rotate_pt((0, -(pinw + gapw)/2.), s.last_direction)
+                left_gap = Structure(s.chip, direction=s.last_direction,
+                                     start=(s.last[0] + left_offset[0],
+                                            s.last[1] + left_offset[1]))
+                right_gap = Structure(s.chip, direction=s.last_direction,
+                                      start=(s.last[0] + right_offset[0],
+                                             s.last[1] + right_offset[1]))
 
-        self.structure.last=rotate_pt(self.start,self.stop_angle-self.start_angle,self.center)
-        self.structure.last_direction=self.stop_angle
+                if turn_angle >= 0:
+                    ChannelBendSolid(left_gap, turn_angle=turn_angle,
+                                     radius=radius-((pinw + gapw)/2.),
+                                     channelw=gapw)
+                    ChannelBendSolid(right_gap, turn_angle=turn_angle,
+                                     radius=radius+((pinw + gapw)/2.),
+                                     channelw=gapw)
+                else:
+                    ChannelBendSolid(left_gap, turn_angle=turn_angle,
+                                     radius=radius+((pinw + gapw)/2.),
+                                     channelw=gapw)
+                    ChannelBendSolid(right_gap, turn_angle=turn_angle,
+                                     radius=radius-((pinw + gapw)/2.),
+                                     channelw=gapw)
+            self.structure=structure
+            self.turn_angle=turn_angle
+            self.pinw=pinw
+            self.gapw=gapw
+            self.radius=radius
+            self.segments=segments
+
+            self.start=s.last
+            self.start_angle=s.last_direction
+            self.stop_angle=self.start_angle+self.turn_angle
+
+            if turn_angle>0: self.asign=1
+            else:            self.asign=-1
+
+            #DXF uses the angle of the radial vector for its start and stop angles
+            #so we have to rotate our angles by 90 degrees to get them right
+            #also it only knows about arcs with CCW sense to them, so we have to rotate our angles appropriately
+            self.astart_angle=self.start_angle-self.asign*90
+            self.astop_angle=self.stop_angle-self.asign*90
+            #calculate location of Arc center
+            self.center=rotate_pt( (self.start[0],self.start[1]+self.asign*self.radius),self.start_angle,self.start)
+
+            if polyarc: self.poly_arc_bend()
+            else:       self.arc_bend()
+
+            self.structure.last=rotate_pt(self.start,self.stop_angle-self.start_angle,self.center)
+            self.structure.last_direction=self.stop_angle
 
 
     def arc_bend(self):    
@@ -1213,48 +1308,90 @@ class CPWFingerCap:
         center_width=self.num_fingers*self.finger_width+ (self.num_fingers-1)*self.finger_gap
         length=self.finger_length+self.finger_gap
         
-        gap1=[  (start[0],start[1]-center_width/2.),
-                (start[0]+length,start[1]-center_width/2.),
-                (start[0]+length,start[1]-center_width/2.-gapw),
-                (start[0],start[1]-center_width/2.-gapw),
-                (start[0],start[1]-center_width/2.)
-            ]
+        if s.chip.two_layer:
+            width = (center_width/2.) + gapw
+            gap_pts = [(0, -width),
+                       (length, -width),
+                       (length, +width),
+                       (0, +width),
+                       (0, -width)]
+            gap_pts = orient_pts(gap_pts, s.last_direction, start)
+            if s.chip.solid:
+                s.gap_layer.append(sdxf.Solid(gap_pts[:-1]))
+            else:
+                s.gap_layer.append(sdxf.PolyLine(gap_pts))
+            # TODO: Pin Layer for TLS                    
+        else:    
+            gap1=[  (start[0],start[1]-center_width/2.),
+                    (start[0]+length,start[1]-center_width/2.),
+                    (start[0]+length,start[1]-center_width/2.-gapw),
+                    (start[0],start[1]-center_width/2.-gapw),
+                    (start[0],start[1]-center_width/2.)
+                ]
+    
+            gap2=[  (start[0],start[1]+center_width/2.),
+                    (start[0]+length,start[1]+center_width/2.),
+                    (start[0]+length,start[1]+center_width/2.+gapw),
+                    (start[0],start[1]+center_width/2.+gapw),
+                    (start[0],start[1]+center_width/2.)
+                ]
+    
+    
+            gap1=rotate_pts(gap1,s.last_direction,start)
+            gap2=rotate_pts(gap2,s.last_direction,start)
 
-        gap2=[  (start[0],start[1]+center_width/2.),
-                (start[0]+length,start[1]+center_width/2.),
-                (start[0]+length,start[1]+center_width/2.+gapw),
-                (start[0],start[1]+center_width/2.+gapw),
-                (start[0],start[1]+center_width/2.)
-            ]
-
-
-        gap1=rotate_pts(gap1,s.last_direction,start)
-        gap2=rotate_pts(gap2,s.last_direction,start)
+            
+            
+            if s.chip.solid:
+                s.append(sdxf.Solid(gap1[:-1]))
+                s.append(sdxf.Solid(gap2[:-1]))
+            else:
+                s.append(sdxf.PolyLine(gap1))
+                s.append(sdxf.PolyLine(gap2))
+        
         stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
         s.last=stop
-
-        s.append(sdxf.PolyLine(gap1))
-        s.append(sdxf.PolyLine(gap2))
-
+        
         #draw finger gaps
-        for ii in range(self.num_fingers-1):
-            if ii%2==0:
-                pts=self.left_finger_points(self.finger_width,self.finger_length,self.finger_gap)
-            else:
-                pts=self.right_finger_points(self.finger_width,self.finger_length,self.finger_gap)
+        if s.chip.two_layer:
+            finger = [(0,0), (0,self.finger_width),
+                      (self.finger_length, self.finger_width),
+                      (self.finger_length, 0), (0,0)]
+            finger = translate_pts(finger, start)
+            for ii in range(self.num_fingers):
+                if ii % 2 == 0: # Right side
+                    offset = (self.finger_gap, 
+                              (ii *(self.finger_width + self.finger_gap)) - (center_width/2.))
+                else: # Left side
+                    offset = (0,
+                              (ii *(self.finger_width + self.finger_gap)) - (center_width/2.))
+                new_pts = orient_pts(finger, s.last_direction, offset)
+                if s.chip.solid:
+                    s.pin_layer.append(sdxf.Solid(new_pts[:-1]))
+                else:
+                    s.pin_layer.append(sdxf.PolyLine(new_pts))
+        else:
+            for ii in range(self.num_fingers-1):
+                if ii%2==0:
+                    pts=self.left_finger_points(self.finger_width,self.finger_length,self.finger_gap)
+                else:
+                    pts=self.right_finger_points(self.finger_width,self.finger_length,self.finger_gap)
+                pts=translate_pts(pts,start)
+                pts=translate_pts(pts,(0,ii*(self.finger_width+self.finger_gap)-self.pinw/2.))
+                pts=rotate_pts(pts,s.last_direction,start)
+                if s.chip.solid:
+                    s.append(sdxf.Solid(pts[:-1]))
+                else:
+                    s.append(sdxf.PolyLine(pts))
+
+            #draw last little box to separate sides
+            pts = [ (0,0),(0,self.finger_width),(self.finger_gap,self.finger_width),(self.finger_gap,0),(0,0)]
             pts=translate_pts(pts,start)
-            pts=translate_pts(pts,(0,ii*(self.finger_width+self.finger_gap)-self.pinw/2.))
+            #if odd number of fingers add box on left otherwise on right
+            pts=translate_pts(pts,( ((self.num_fingers+1) %2)*(length-self.finger_gap),(self.num_fingers-1)*(self.finger_width+self.finger_gap)-self.pinw/2.))
             pts=rotate_pts(pts,s.last_direction,start)
             s.append(sdxf.PolyLine(pts))
-
-        #draw last little box to separate sides
-        pts = [ (0,0),(0,self.finger_width),(self.finger_gap,self.finger_width),(self.finger_gap,0),(0,0)]
-        pts=translate_pts(pts,start)
-        #if odd number of fingers add box on left otherwise on right
-        pts=translate_pts(pts,( ((self.num_fingers+1) %2)*(length-self.finger_gap),(self.num_fingers-1)*(self.finger_width+self.finger_gap)-self.pinw/2.))
-        pts=rotate_pts(pts,s.last_direction,start)
-        s.append(sdxf.PolyLine(pts))
-        
+            
         CPWLinearTaper(s,length=self.taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=s.defaults['pinw'],stop_gapw=s.defaults['gapw'])
    
         

@@ -218,8 +218,11 @@ def inductor_length(inductance):
     L_table = [1.87, 2.75, 3.98, 5.49, 7.63, 8.58, 11.2, 12.7, 15.4, 16.0,17.6,18.9,20.47]  #inductance (pH)
     
     f=interp1d (L_table,length_table)     #function length = inductor_length (inductance) which gives length for input inductance
-    return float(f(inductance*1e12))
-
+    try:
+        return float(f(inductance*1e12))
+    except:
+        raise ValueError("inductance"+str(inductance)+"is out of range of simulated values")
+    
 def shunt_ext_Q (inductance,frequency, Z0 =50,resonator_type=0.5):
         q=2.*pi*frequency*self.capacitance*impedance
         Q=0
