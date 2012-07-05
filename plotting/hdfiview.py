@@ -199,6 +199,12 @@ class HDFViewThread(gui.DataThread):
                     parent.addChild(ti)
                 self.process_items(v, ti)
 
+    def set_y_data(self, _trash):
+        item = self.params["dataset"]
+        dset = self.open_file
+        for p in item.path: dset = dset[p]
+        self.y_data = np.array(dset)
+
     def set_x_data(self, _trash):
         item = self.params["dataset"]
         dset = self.open_file
@@ -207,6 +213,9 @@ class HDFViewThread(gui.DataThread):
 
     def clear_x_data(self, _trash):
         self.x_data = None
+        
+    def clear_y_data(self, _trash):
+        self.y_data = None    
                 
 class HDFViewWindow(gui.SlabWindow, UiClass):
     def __init__(self):
@@ -220,7 +229,7 @@ class HDFViewWindow(gui.SlabWindow, UiClass):
         # Setup Plots -- Could be eliminated if QtDesigner plugins were setup
         self.toolbar = Qt.QToolBar()
         self.addToolBar(self.toolbar)
-        self.image_widget = ImageWidget()
+        self.image_widget = ImageWidget(show_xsection=True, show_ysection=True)
         self.image_widget.add_toolbar(self.toolbar)
         self.image_widget.register_all_image_tools()
         self.image_plot = self.image_widget.plot
