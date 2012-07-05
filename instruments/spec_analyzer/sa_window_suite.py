@@ -250,7 +250,7 @@ if __name__ == '__main__':
     import pickle
     from slab.instruments import InstrumentManager
 
-    cfg_path="S:\\_Lib\\python\\slab\\instruments\\spec_analyzer\\sa_suite.cfg"
+    cfg_path="sa_suite.cfg"
     im = InstrumentManager(cfg_path)
     
     app = QApplication(sys.argv)
