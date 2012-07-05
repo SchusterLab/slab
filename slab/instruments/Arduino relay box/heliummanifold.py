@@ -8,7 +8,7 @@ from slab.instruments import RelayBox
 import time
 
 DEBUG_HELIUM_MANIFOLD = True
-DEBUG_HELIUM_MANIFOLD_VERBOSE = False
+DEBUG_HELIUM_MANIFOLD_VERBOSE = True
 
 class HeliumManifold(RelayBox):
 
@@ -19,7 +19,7 @@ class HeliumManifold(RelayBox):
 
     atm_level=340.6
     vacuum_offset=0.
-    vacuum_threshold=0.01
+    vacuum_threshold=0.02
 
     def __init__(self,name="Helium Manifold",address="COM6",enabled=True,timeout=0):
         RelayBox.__init__(self,name,address,enabled,timeout)
@@ -55,6 +55,7 @@ class HeliumManifold(RelayBox):
                 self.set_relay(self.inlet_port,state)
         self.get_manifold_status()
                 
+
     def set_pump(self,state=False):
         if DEBUG_HELIUM_MANIFOLD_VERBOSE: print "Set Pump: %s"% str(state)
         if not state:

@@ -11,18 +11,18 @@ Created on Fri Sep 09 21:35:41 2011
 @author: Dai
 """
 from PyQt4.QtGui import QMainWindow, QApplication
-from PyQt4.QtCore import QTimer
+from PyQt4.QtCore import QTimer, QThread
 from guiqwt.builder import make
 import numpy as np
 import sys
 import time
+from threading import Thread
 
 from instruments import E8257D
 from spectrum_analyzer import SpectrumAnalyzer
 from sa_calibration_manager import *
 
 from spectrum_analyzer_sweep_ui import *
-
 
 class SpectrumAnalyzerWindow(QMainWindow, Ui_SpectrumAnalyzerWindow):
     def __init__(self, sa, sacm, lo, parent = None):    
@@ -56,12 +56,14 @@ class SpectrumAnalyzerWindow(QMainWindow, Ui_SpectrumAnalyzerWindow):
         self.spectrum = make.mcurve(np.array([]), np.array([]))
         self.spec_plot.add_item(self.spectrum)
         self.spec = []
+        self.fd = []
+        self.sweeping = [False, False]
         
         self.sweep_end = self.endSweepSpinBox.value()
 
         #register UI listeners
         self.ctimer = QTimer()      #Setup autoupdating timer to call update_plots at 10Hz
-        self.ctimer.timeout.connect(self.update_power)
+        self.ctimer.timeout.connect(self.update_ui)
         self.ctimer.start(100)
         self.dBmLabel.hide()
         self.calibratedOuputCheckBox.clicked.connect(self.cali_output_checkbox_clicked)
@@ -105,6 +107,26 @@ class SpectrumAnalyzerWindow(QMainWindow, Ui_SpectrumAnalyzerWindow):
         self.plot.do_autoscale()
         self.plot.replot()
     
+    def update_ui(self):
+        if not self.sweeping[0]:
+        # read power during sweep might collide
+            self.update_power()
+            if self.sweeping[1]:
+                # just finished a sweep, reset ui
+                self.sweepButton.setEnabled(True)
+                self.sweepButton.setText('Sweep')
+                self.fd = []
+                self.spec = []
+                self.sweeping[1] = False
+        
+        # update the sweep plot if it is sweeping
+        if self.sweeping[0]:
+            # plot the new sweep data
+            self.spectrum.set_data(np.array(self.fd), np.array(self.spec))
+            self.spec_plot.do_autoscale()
+            self.spec_plot.replot()
+            
+    
     def clear_plot(self):
         self.data = []
         self.tl = []
@@ -139,16 +161,62 @@ class SpectrumAnalyzerWindow(QMainWindow, Ui_SpectrumAnalyzerWindow):
         self.clear_plot()
 
     def sweep(self):
-        self.ctimer.stop()
+        #self.ctimer.stop()
+        
+        """
+        create a new thread to sweep and disable the sweep button
+        to prevent multiple sweeps
+        """
+        self.sweepButton.setEnabled(False)
+        self.sweepButton.setText('Sweeping...')
+        
+        data = {
+                 'lo': self.lo, 
+                 'sacm': self.sacm,
+                 'sa': self.sa,
+                 'fd': self.fd,
+                 'spec': self.spec,
+                 'calibrated': self.calibratedOuputCheckBox.checkState(),
+                 'instant' : self.instantRButton.isChecked(),
+                 'sweep_start': self.startSweepSpinBox.value(),
+                 'sweep_end': self.sweep_end,
+                 'sweep_interval': self.stepSweepSpinBox.value(),
+                 'sweeping': self.sweeping
+                }        
+
+        st = SweepThread(data)
+        st.start()
+        
+        #self.first_update = True
+        #self.frequency_changed()
+        
+class SweepThread(Thread):
+    """a thread subclass to handle sweep"""
+    def __init__(self, data):
+        self.lo = data['lo']
+        self.sacm = data['sacm']
+        self.sa = data['sa']
+        self.fd = data['fd']
+        self.spec = data['spec']
+        self.calibrated = data['calibrated']
+        self.sweep_start = data['sweep_start']
+        self.sweep_end = data['sweep_end']
+        self.sweep_interval = data['sweep_interval']
+        self.sweeping = data['sweeping']
+        self.instant = data['instant']
+        Thread.__init__(self)
+        
+    def run(self):
+        self.sweeping[0] = True
+        original_frequency = self.lo.get_frequency()
         
         #self.lo.set_output(False)
         #self.lo.set_output()
         time.sleep(0.3)
         #self.lo.set_power(10)
-        self.fd = []
-        fr = [x*1e9 for x in np.arange(self.startSweepSpinBox.value(), 
+        fr = [x*1e9 for x in np.arange(self.sweep_start, 
                                     self.sweep_end,
-                                    self.stepSweepSpinBox.value())]
+                                    self.sweep_interval)]
         for f in fr:
             self.lo.set_frequency(f+self.sa.lo_offset) 
             #self.lo.set_output()
@@ -156,28 +224,28 @@ class SpectrumAnalyzerWindow(QMainWindow, Ui_SpectrumAnalyzerWindow):
             self.fd.append(f/1e9)
             
             try:
-                if self.calibratedOuputCheckBox.checkState():
-                    self.spec.append(self.sacm.get_rf_power(f, self.sa.get_avg_power()))
+                if self.instant:
+                    r = self.sa.get_power()
                 else:
-                    self.spec.append(self.sa.get_avg_power())
+                    r = self.sa.get_avg_power()
+            
+                if self.calibrated:
+                    self.spec.append(self.sacm.get_rf_power(f, r))
+                else:
+                    self.spec.append(r)
             
             except OutputOutOfRangeError as e:
                 print e
                 self.spec.append(self.sacm.get_rf_power(e.frequency, e.lower_bound))
             except Exception as e:
                 print e
-            
-            #self.lo.set_output(False)
-            self.spectrum.set_data(np.array(self.fd), np.array(self.spec))
-            self.spec_plot.do_autoscale()
-            self.spec_plot.replot()
+        
+        """unlock sweep by enabling the sweep button"""
+        self.sweeping[0] = False
+        self.sweeping[1] = True
+        self.lo.set_frequency(original_frequency)
+        time.sleep(0.1)
 
-        self.fd = []
-        self.spec = []
-        
-        self.first_update = True
-        self.frequency_changed()
-        
 if __name__ == '__main__':
     import pickle
     from slab.instruments import InstrumentManager
@@ -187,7 +255,7 @@ if __name__ == '__main__':
     
     app = QApplication(sys.argv)
     #sa = im['SA']
-    sa = SpectrumAnalyzer(protocol='serial', port=2, query_sleep=0.05, lo_offset=10.57e6)
+    sa = SpectrumAnalyzer(protocol='serial', address='2', query_sleep=0.05, lo_offset=10.57e6)
     #sacm = SACalibrationManager(pickle.load(open('10dBm_cali.data')))
     sacm = SACalibrationManager(pickle.load(open('10dBm_LMS_cali.data')))
     #lo = E8257D(address='rfgen1.circuitqed.com')
@@ -195,6 +263,8 @@ if __name__ == '__main__':
     rf = im['RF']
     
     rf.set_frequency(7e9)
+    # +13dBm LO to drive IQB0618
+    rf.set_power(13)
    
     window = SpectrumAnalyzerWindow(sa, sacm, lo)
     window.show()

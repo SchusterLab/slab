@@ -18,7 +18,7 @@ class SRS900(SerialInstrument,VisaInstrument):
         else:
             VisaInstrument.__init__(self,name,address,enabled)
         self.query_sleep=0.05
-        self.recv_length=65536
+        self.recv_length=65535
         #self.term_char='\r'
 
     def read(self):
@@ -57,10 +57,7 @@ class SRS900(SerialInstrument,VisaInstrument):
         self.write('OPOF')
         
         
-    if __name__=="__main__":
-        srs=SRS900(address="COM5")
-        print srs.get_id()
-        srs.set_volt(.5,2)
-    
-
-    
+if __name__=="__main__":
+    srs=SRS900(address="COM13")
+    print srs.get_id()
+    srs.set_volt(.5,2)

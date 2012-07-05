@@ -10,7 +10,7 @@ from slab.instruments import *
 from guiqwt.pyplot import *
 import time
 
-class AWG81180A(VisaInstrument):
+class AWG81180A(SocketInstrument):
               
     def get_id(self):
         return self.query("*IDN?\n")
@@ -70,34 +70,47 @@ class AWG81180A(VisaInstrument):
     def delete_trace(self,trace):
         self.write(":TRACe:DELete %d\n" % trace)
 
-    def delete_all(self):
+    def delete_all_traces(self):
         self.write(":TRACe:DELete:ALL\n")
+        
+    def delete_sequence(self,sequence):
+        self.write(":SEQuence:DELete %d\n" % trace)
+
+    def delete_all_sequences(self):
+        self.write(":SEQuence:DELete:ALL\n")       
+
+    def delete_all(self):
+        self.delete_all_traces()
+        self.delete_all_sequences()
         
     def define_trace(self,trace_num,length):
         self.write(":TRACe:DEFine %d, %d" % (trace_num, length))   #define segment length
 
-    #takes data from -1.0 to 1.0
-    def add_floatsegment(self,data,segnum=1):
+    def convert_float_to_int_data(self,floatdata):
         #print "Converting waveform to long"
-        maxd=max(data)
-        mind=min(data)
-        if maxd==mind:
-            idata=zeros(data.__len__(),dtype=long)
-        else:
-            idata=array(4095*((data-mind)/(maxd-mind)),dtype=long)
 #        plot(idata)
 #        show()
 #        print "idata max/min: %d /%d" %(max (idata),min(idata))
-        self.add_intsegment(idata,segnum)
+        maxd=max(floatdata)
+        mind=min(floatdata)
+        if maxd==mind:
+            idata=zeros(len(floatdata),dtype=long)
+        else:
+            idata=array(4095*((floatdata-mind)/(maxd-mind)),dtype=long)
+        return idata
+
+    #takes data from -1.0 to 1.0
+    def add_floatsegment(self,data,segnum=1):
+        self.add_intsegment(self.convert_float_to_int_data(data),segnum)
 
     def add_intsegment (self,data,segnum=1):
         if data.__len__() % 32 != 0:
             raise RuntimeError("AWG81180A segment length not divisible by 32")
         #print "Converting waveform to bytecode"
-        self.define_trace(segnum,data.__len__())
+        self.define_trace(segnum,len(data))
         self.select_trace(segnum)
         b=bytearray(data.__len__()*2)
-        for ii in xrange(data.__len__()):
+        for ii in xrange(len(data)):
             b[ii*2] = (data[ii] & 0xFF)
             b[ii*2+1] = (data[ii] & 0xFF00)>>8
         print "Uploading trace %d to AWG" % segnum
@@ -110,9 +123,9 @@ class AWG81180A(VisaInstrument):
         blockarraylengthposition=blockarraylength.__len__()
         cmd = commandstring+" #"+str(blockarraylengthposition)+blockarraylength
         #print "bbw cmd string: ", cmd
-        self.instrument.term_chars = ""
+        #self.instrument.term_chars = ""
         self.write(str(bytearray(cmd)+blockarray))
-        self.instrument.term_chars = None
+        #self.instrument.term_chars = None
         response= self.query("*OPC?")
         #print "BinBlockWrite Response: ", response
         return response
@@ -152,7 +165,8 @@ if __name__=="__main__":
 #    show()
 
     print "Initializing Instrument"
-    awg=AWG81180A (name='awg',address="GPIB0::04::INSTR")
+    #awg=AWG81180A (name='awg',address="GPIB0::04::INSTR")
+    awg=AWG81180A (name='awg',address="192.168.14.134:5025")
     print awg.get_id()
     print "Changing arb waveform"
     awg.set_output(False)
@@ -164,19 +178,23 @@ if __name__=="__main__":
     awg.select_sequence(1)
     arr=[]
     print "Calculating waveform"
-    for i in range(200):
-        b=zeros(12800)
-        for j in range(i*50):
+    for i in range(20):
+        b=zeros(100000)
+        for j in range(i*5000):
             b[j]=4095
         arr.append(b)
-        awg.add_floatsegment(b,i+1)
-        awg.define_sequence_step(i+1,i+1)
-    figure(1)
-    imshow(array(arr))
+    print "Convert to integer waveform"
+    idata=[awg.convert_float_to_int_data(seg) for seg in arr]    
+    print "Uploading waveform"
+    for ii,seg in enumerate(idata):
+        awg.add_intsegment(seg,ii+1)
+        awg.define_sequence_step(ii+1,ii+1)
+    #figure(1)
+    #imshow(array(arr))
         
     awg.set_output(True) 
     awg.set_mode("SEQUENCE")
-    
+     
     print "Finished uploading data."
     
         
