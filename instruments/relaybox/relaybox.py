@@ -14,139 +14,67 @@ source of delay in the program.
 
 
 """
-
-import serial
+from slab.instruments import SerialInstrument
 import time
 
-
-class relaybox():
-    OnOff={'0':'OF', '1':'ON'}
-    ser=serial.Serial()
+class RelayBox(SerialInstrument):
+    def __init__(self,name="",address='COM6',enabled=True,timeout=0):
+        SerialInstrument.__init__(self,name,address,enabled,timeout,querysleep=0.1)
+        self.term_char='\r'
+        self.boxaddress = '00'      
             
-    def __init__(self, com=2, timeout=5):
-        self.c=com
-        self.t=timeout
-        self.baudrate='9600'
-        self.address = '00'
-        self.stopbit = 1
-        self.databits=8
-        self.parity = None
-        self.open()
-        self.setBaudRate()
-        self.open()
-                     
-    def hello(self):
-        return "Hello World!"
+    def set_relay(self, port=0, state=False):
+        if state: self.query('@%s ON %d' % (self.boxaddress,port))
+        else:     self.query('@%s OF %d' % (self.boxaddress,port))
+
+    def get_relay(self,port=0):
+        ans=self.query('@%s RS %d' % (self.boxaddress,port))       
+        relay_status=[x=='1' for x in bin(256+int(ans[4:-2]))[-8:]]
+        relay_status.reverse()
+        if port !=0: return relay_status[port-1]
+        else: return relay_status
         
-    def open(self):
-        self.ser.timeout=self.t
-        self.ser.port=self.c
-        if self.ser.isOpen()==True:
-            print 'serial port COM{0} is already open'.format(self.c+1)
-        else:
-            print 'serial port COM{0} is not open, I am trying to open it...'.format(self.c+1)
-            self.ser.open()
-            if self.ser.isOpen()==True:
-                print 'serial port COM{c} now is open with {t}s timeout.'.format(c=self.c+1,t=self.t)
-            else:
-                print 'serial port COM{0} is can\'t be opened, there might be something wrong!'.format(self.c+1)
-                return
-    def close(self):
-        self.ser.port=self.c        
-        self.ser.close()
-        if self.ser.isOpen()==False:
-            print 'serial port COM{0} is now closed'.format(self.c+1)
-        else:
-            print 'serial port COM{0} is still open, please try again~'.format(self.c+1)
-    def setBaudRate(self):
-        if self.ser.isOpen(): 
-            write_string='@'+self.address+' BS '+self.baudrate+'\r'
-            self.ser.write(write_string)
-            print(write_string)
-        else: print 'port is not open...'
-    def relay(self, port=False, state=''):
-        if self.ser.isOpen()==False:
-
-            self.open()
-        if port==False:
-            print "0 operates to all ports"
-                       
-        if state=='':
-            self.read(port)
-            print '*****************************include ON or OF as the state if want to change it.'
-        elif state=='ON' or state=='OF':
-            print 'Setting Port{0} to {1}'.format(port, state), "------",            
-            cmd = '@'+self.address+' {0} {1}\r'.format(state, port)
-            print cmd
-            self.ser.write(cmd)
-            #time.sleep(0.1)
-            self.read(port)
-    def read(self, port=1):
-        if port == 0:     
-            write_str='@'+self.address+' RS 0\r'
-            self.ser.flushInput()            
-            self.ser.write(write_str)
-            read=bin(int(self.ser.read(7).split()[-1])+256)[-8:]
-            print 'relay status are',read
-#            for i in range(8):
-#              write_str='@'+self.address+' RS {0}\r'
-#              self.ser.write('@'+self.address+' RS {0}\r'.format(i))
-#              read=self.ser.read(7).split()
-#              print 'Port {0}\'s state is '.format(i) + self.OnOff[read[-1]]
-        else:
-            print 'asking state of Port {0}'.format(port),
-            self.ser.flushInput()            
-            self.ser.write('@'+self.address+' RS {0}\r'.format(port))
-            #time.sleep(0.1)
-            read=self.ser.read(7)
-            readR=read.split()
-            print(read)
-            print 'splited read is',readR
-            print 'Port {0}\'s state is '.format(port) + self.OnOff[readR[-1]]
-
-            #IT TAKES TIME for the writing command to finish writing and reading from the         
-    def pulseOn(self,port,t):
-        """
-            Two parameters are required. 
-        port is a number from 1-8 (0 is not included, aka no way to operate all relays)
-        time is a number from 1 to 255, in unit of 100us. 
-            for example, 100 corresponds to 10s. 001 cor. to 0.1s.
-            Note: Relay X is locked from further pulses until the current operation is finished.
-        """
-        bk=0
-        if port >8 or port <0 : print'port number no good. Need 1-8' ; bk=1
-        if t >255 or t<0 : print 'Need Pulse On time between 0-255'; bk=1
-        if bk==1 : return
-        else:
-            #Need to cast t into a three digit # from 001 to 255 to be used in the writing string
-            t=str(t+1000)[-3:]
-            write_str='@'+str(self.address)+' TR '+str(port)+' '+t+'\r'
-            print(write_str)
-            self.ser.write(write_str)
-    print 'done loading!'
-    
+    def get_analog_input (self,port=0):
+        ans=self.query('@%s AI %d' % (self.boxaddress,port))
+        analog_inputs=[int(x) for x in ans.split()[1:]]
+        if port!=0: return analog_inputs[port-1]
+        else: return analog_inputs
+        
+    def pulse_relay(self,port=0,pulse_width=1):
+        self.query('@%s TR %d %03d' % (self.boxaddress,port,pulse_width))
+        
+    def keep_alive(self,time_to_live=0):
+        self.query('@%s KA %d' % (self.boxaddress,time_to_live))
+        
+    def write_relays(self,relaystate=0):
+        self.query('@%s WR %d' % (self.boxaddress,relaystate))
+   
 if __name__== '__main__':
-    re=relaybox()
-    re.close()
-    re.relay(1)
-    re.relay(1,'ON')
-    print 'now wait for 1 second'
-    time.sleep(1)
-    re.relay(1,'OF')
-    LoopSize=100
-#    for i in range(LoopSize):
-    re.relay(0,'ON')
-#        time.sleep(0.1)
-    re.relay(0,'OF')
+    re=RelayBox(address='COM6')
+    #re.write_relays(0b11011111)
+    print re.get_relay()
+# #   re.close()
+#    re.relay(1)
+#    re.relay(1,'ON')
+#    print 'now wait for 1 second'
+#    time.sleep(1)
+#    re.relay(1,'OF')
+#    LoopSize=100
+##    for i in range(LoopSize):
+#    re.relay(0,'ON')
+##        time.sleep(0.1)
+#    re.relay(0,'OF')
     
-    re.pulseOn(1,5)
-    re.pulseOn(2,5)
-    re.pulseOn(3,10)
-    re.pulseOn(4,20)
-    re.pulseOn(5,40)
-    re.pulseOn(6,80)
+#    re.pulseOn(1,5)
+#    re.pulseOn(2,5)
+#    re.pulseOn(3,10)
+#    re.pulseOn(4,20)
+#    re.pulseOn(5,40)
+#    re.pulseOn(6,80)
+#    re.relay(1,'ON')
+#    time.sleep(1)
+#    re.relay(1,"OF")
     
-
-    
+#    
     
     
