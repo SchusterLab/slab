@@ -19,8 +19,8 @@ import re
 DEBUG = False
 if DEBUG:
     from PyQt4 import uic
-    uifile = open("S:\\_Lib\\python\\slab\\widgets\\SweepDialog_ui.py", 'w')
-    uic.compileUi("S:\\_Lib\\python\\slab\\widgets\\SweepDialog.ui", uifile)
+    uifile = open("SweepDialog_ui.py", 'w')
+    uic.compileUi("SweepDialog.ui", uifile)
     uifile.close()
 from SweepDialog_ui import Ui_SweepDialog
 from AlazarWidget_ui import Ui_AlazarForm

@@ -115,28 +115,52 @@ def toc(log=False):
     if log: print "Tic-Toc: %.0f ms" % ((t-last_tic)*1000.)
     return t-last_tic
     
-def digital_homodyne(time_pts,ch1_pts,ch2_pts,IFfreq,dfactor=1,AmpPhase=False):
-    df=int(1./(time_pts[1]-time_pts[0])/IFfreq)
+def digital_homodyne(time_pts,ch1_pts,ch2_pts=None,IFfreq=1,dfactor=1.,AmpPhase=False):
+    '''digital_homodyne computes I/Q or Amp/Phase as a function of time of a particular frequency component.
+       @param time_pts: time of each sample
+       @param ch1_pts: Scope channel 1 points 
+       @param ch2_pts: Scope channel 2 points (optional)
+       @param IFfreq: Frequency to extract info for
+       @param dfactor: decimation factor number of periods to include per point
+       @param AmpPhase: returns I/Q if False (default) or Amp/Phase if True
+       '''    
+
+    df=int(dfactor/(time_pts[1]-time_pts[0])/IFfreq)
     cospts=(2./sqrt(df))*cos(2.*pi*IFfreq*time_pts)
     sinpts=(2./sqrt(df))*sin(2.*pi*IFfreq*time_pts)
     in2=ones(df,dtype=float)/sqrt(df)
 
     I1pts=decimate(convolve(ch1_pts*cospts,in2,mode='valid'),df,n=2)
     Q1pts=decimate(convolve(ch1_pts*sinpts,in2,mode='valid'),df,n=2)
-    I2pts=decimate(convolve(ch2_pts*cospts,in2,mode='valid'),df,n=2)
-    Q2pts=decimate(convolve(ch2_pts*sinpts,in2,mode='valid'),df,n=2)
     dtpts=arange(len(I1pts))*((time_pts[1]-time_pts[0])*df)+time_pts[0]
     
+    if ch2_pts is not None:
+        I2pts=decimate(convolve(ch2_pts*cospts,in2,mode='valid'),df,n=2)
+        Q2pts=decimate(convolve(ch2_pts*sinpts,in2,mode='valid'),df,n=2)
+        
     if AmpPhase:
         amp1pts=sqrt(I1pts**2+Q1pts**2)
         phi1pts=arctan2(I1pts,Q1pts)*180./pi
-        amp2pts=sqrt(I2pts**2+Q2pts**2)
-        phi2pts=arctan2(I2pts,Q2pts)*180./pi
-        return dtpts,amp1pts,phi1pts,amp2pts,phi2pts
+        if ch2_pts is not None:
+            amp2pts=sqrt(I2pts**2+Q2pts**2)
+            phi2pts=arctan2(I2pts,Q2pts)*180./pi
+            return dtpts,amp1pts,phi1pts,amp2pts,phi2pts
+        else: return dtpts,amp1pts,phi1pts
     else:
-        return dtpts,I1pts,Q1pts,I2pts,Q2pts            
+        if ch2_pts is not None:
+            return dtpts,I1pts,Q1pts,I2pts,Q2pts            
+        else:
+            return dtpts,I1pts,Q1pts
  
 def heterodyne(time_pts,ch1_pts,ch2_pts,IFfreq,AmpPhase=True):
+    '''digital_homodyne computes I/Q or Amp/Phase as a function of time of a particular frequency component.
+       @param time_pts: time of each sample
+       @param ch1_pts: Scope channel 1 points 
+       @param ch2_pts: Scope channel 2 points (optional)
+       @param IFfreq: Frequency to extract info for
+       @param dfactor: decimation factor number of periods to include per point
+       @param AmpPhase: returns I/Q if False (default) or Amp/Phase if True
+       '''    
     cospts=cos(2.*pi*IFfreq*time_pts)
     sinpts=sin(2.*pi*IFfreq*time_pts)
     A1=2.*sum(cospts*ch1_pts)/len(time_pts)
