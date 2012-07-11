@@ -251,7 +251,7 @@ class E5071(SocketInstrument):
             self.set_sweep_points(max(sweep_pts,total_sweep_pts))
             self.set_start_frequency(start)
             self.set_stop_frequency(stop)
-            return take_one_averaged_trace(fname)
+            return self.take_one_averaged_trace(fname)
         segments=np.ceil(total_sweep_pts/1600.)
         segspan=span/segments
         starts=start+segspan*np.arange(0,segments)
@@ -418,6 +418,27 @@ def nwa_test3(na):
     print na.get_settings()
     na.clear_averages()
     na.take_one_averaged_trace("test.csv")
+    
+def convert_nwa_files_to_hdf(nwa_file_dir, h5file, sweep_min, sweep_max, sweep_label="B Field", ext=".CSV"):
+    import glob, h5py, csv
+    hfile = h5py.File(h5file)
+    files = glob.glob(nwa_file_dir + "*" + ext)
+    n_files = len(files)
+    for j, fn in enumerate(files):
+        f = open(fn, 'r')
+        # Skip Header
+        for i in range(3):
+            f.readline()
+        rows = np.array((csv.reader(f)))
+        if j is 0:
+            n_points = len(rows)
+            for t in ["mag", "phase"]:
+                hfile[t] = np.zeros((n_points, n_files))
+                hfile[t].attrs["_axes"] = ((rows[0][0], rows[-1][0]), (sweep_min, sweep_max))
+                hfile[t].attrs["_axes_labels"] = ("Frequency", sweep_label, "S21")
+        hfile["mag"][:,j] = rows[:,1]
+        hfile["phase"][:,j] = rows[:,2]
+    
 
 
 if __name__ =='__main__':

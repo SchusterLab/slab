@@ -69,8 +69,6 @@ def NVH(B):
     EE=0.0043
     return D*dot(jmat(1,'z'),jmat(1,'z'))+EE*(dot(jmat(1,'x'),jmat(1,'x'))-dot(jmat(1,'y'),jmat(1,'y')))+m0*(B[0]*jmat(1,'x')+B[1]*jmat(1,'y')+B[2]*jmat(1,'z'))
 
-
-
 def NV_allowed_transitions(ekets,threshold=.001):
     allowed_transitions=[]
     for ii in xrange(len(ekets)):

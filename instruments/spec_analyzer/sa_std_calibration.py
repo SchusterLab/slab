@@ -122,8 +122,7 @@ if __name__ =='__main__':
     import numpy as np
     from slab.instruments import InstrumentManager
     
-    expt_path="S:\\_Lib\\python\\slab\\instruments\\spec_analyzer\\"
-    im = InstrumentManager(expt_path+"sa_calibration.cfg")
+    im = InstrumentManager("sa_calibration.cfg")
     
     #rf = E8257D(address='rfgen2.circuitqed.com')
     #lo = E8257D(address='rfgen1.circuitqed.com')
