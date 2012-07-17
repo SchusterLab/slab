@@ -1,6 +1,6 @@
 from scipy import sqrt,pi,tanh
 from scipy.special import ellipk
-from scipy.optimize import newton
+from scipy.optimize import newton, brentq
 from scipy.interpolate import interp1d
 from MaskMaker import ChannelFingerCap,CapDesc,CPWLCoupler,CPWGapCap,CPWFingerCap,CPWInductiveShunt,MaskError
 from math import floor, ceil
@@ -68,7 +68,8 @@ def calculate_resonator_frequency(length,eps_eff,impedance,resonator_type=0.5,ha
 
 def calculate_gap_width (eps_eff,impedance,pinw):
     f=lambda x: (calculate_impedance (pinw,x,eps_eff)-impedance)
-    return newton(f,pinw)
+    #return newton(f,pinw)
+    return brentq(f, .2 * pinw, 5 * pinw)
 
 def calculate_interior_length(frequency,phase_velocity,impedance,resonator_type=0.5,harmonic=0,Ckin=None, Ckout=None):
     """
