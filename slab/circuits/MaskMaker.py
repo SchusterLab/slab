@@ -2,9 +2,11 @@ import sdxf
 from math import sin,cos,tan,pi,floor,asin,acos,atan,degrees,radians
 from alphanum import alphanum_dict
 import random
+from numpy import sqrt
    
 class MaskError:
-    """MaskError is an exception to be raised whenever invalid parameters are used in one of the MaskMaker functions, value is just a string"""
+    """MaskError is an exception to be raised whenever invalid parameters are 
+    used in one of the MaskMaker functions, value is just a string"""
     def __init__(self, value):
         self.value = value
     def __str__(self):
@@ -13,7 +15,11 @@ class MaskError:
 #===============================================================================       
 #  POINT-WISE OPERATIONS   
 #===============================================================================
-
+def distance(tuple1,tuple2):
+    dx=tuple1[0]-tuple2[0]
+    dy=tuple1[1]-tuple2[1]
+    return sqrt(dx**2+dy**2)
+    
 def rotate_pt(p,angle,center=(0,0)):
     """rotates point p=(x,y) about point center (defaults to (0,0)) by CCW angle (in degrees)"""
     dx=p[0]-center[0]
@@ -417,51 +423,12 @@ class CPWStraight:
 
             s.append(sdxf.PolyLine(gap1))
             s.append(sdxf.PolyLine(gap2))
-"""
 class CPWConnect:        
     def __init__(self,s,endpoint,pinw=None,gapw=None):
+        length = distance(endpoint,s.last)
         if length==0: return
+        CPWStraight(s,length,pinw=pinw,gapw=gapw)
 
-        s=structure
-        if pinw is None: pinw=structure.defaults['pinw']
-        if gapw is None: gapw=structure.defaults['gapw']
-
-        if s.chip.two_layer:
-            CPWConnect(s.gap_layer, endpoint, 0, pinw/2. + gapw)
-            CPWConnect(s.pin_layer, endpoint, 0, pinw/2.)
-            assert s.gap_layer.last == s.pin_layer.last
-            s.last = s.gap_layer.last
-            return
-        else:
-            start=structure.last
-
-            gap1=[  (start[0],start[1]+pinw/2),
-                    (start[0]+length,start[1]+pinw/2),
-                    (start[0]+length,start[1]+pinw/2+gapw),
-                    (start[0],start[1]+pinw/2+gapw),
-                    (start[0],start[1]+pinw/2)
-                    ]
-
-            gap2=[  (start[0],start[1]-pinw/2),
-                    (start[0]+length,start[1]-pinw/2),
-                    (start[0]+length,start[1]-pinw/2-gapw),
-                    (start[0],start[1]-pinw/2-gapw),
-                    (start[0],start[1]-pinw/2)
-                    ]
-
-            gap1=rotate_pts(gap1,s.last_direction,start)
-            gap2=rotate_pts(gap2,s.last_direction,start)
-      
-            stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
-            s.last=stop
-
-            if s.chip.solid:
-                s.append(sdxf.Solid(gap1[:-1]))
-                s.append(sdxf.Solid(gap2[:-1]))
-
-            s.append(sdxf.PolyLine(gap1))
-            s.append(sdxf.PolyLine(gap2))
-"""
 class CPWQubitBox:
     """A straight section of CPW transmission line with fingers in the ground plane to add a capacitor"""
     def __init__(self,structure,fingerlen,fingerw,finger_gapw,finger_no,int_len=10,pinw=None,gapw=None,align=True,small=10,medium=20,big=50):
