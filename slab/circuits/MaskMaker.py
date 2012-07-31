@@ -1258,7 +1258,8 @@ class CPWFingerCap:
     
     def description(self):
         return "type:\t%s\tAssumed Capacitance:\t%f\t# of fingers:\t%d\tFinger Length:\t%f\tFinger Width:\t%f\tFinger Gap:\t%f\tTotal Pin Width:\t%f\tGap Width:\t%f\tTaper Length:\t%f" % (
-                self.type,self.capacitance*1e15,self.num_fingers,self.finger_length,self.finger_width,self.finger_gap,self.pinw,self.gapw,self.taper_length
+                self.type,self.capacitance*1e15,self.num_fingers,self.finger_length,
+                self.finger_width,self.finger_gap,self.pinw,self.gapw,self.taper_length
                 )
 
     def draw(self,structure):
@@ -1268,7 +1269,8 @@ class CPWFingerCap:
         if self.gapw is None: self.gapw=self.pinw*s.defaults['gapw']/s.defaults['pinw']
         gapw=self.gapw
         
-        CPWLinearTaper(structure,length=self.taper_length,start_pinw=s.defaults['pinw'],start_gapw=s.defaults['gapw'],stop_pinw=pinw,stop_gapw=gapw)
+        CPWLinearTaper(structure,length=self.taper_length,start_pinw=s.defaults['pinw'],
+                       start_gapw=s.defaults['gapw'],stop_pinw=pinw,stop_gapw=gapw)
         
         start=structure.last
         
@@ -1327,11 +1329,11 @@ class CPWFingerCap:
             #finger = translate_pts(finger, start)
             for ii in range(self.num_fingers):
                 if ii % 2 == 0: # Right side
-                    offset = (self.finger_gap, 
-                              (ii *(self.finger_width + self.finger_gap)) - (center_width/2.))
+                    offset = [self.finger_gap, 
+                              (ii *(self.finger_width + self.finger_gap)) - (center_width/2.)]
                 else: # Left side
-                    offset = (0,
-                              (ii *(self.finger_width + self.finger_gap)) - (center_width/2.))
+                    offset = [0,
+                              (ii *(self.finger_width + self.finger_gap)) - (center_width/2.)]
                 print "offset1", offset
                 offset[0] += start[0]
                 offset[1] += start[1]
