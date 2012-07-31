@@ -792,6 +792,8 @@ class CPWWiggles:
         #total length=number of 180 degree arcs + number of vertical segs + vertical radius spacers
         #total_length=(1+num_wiggles)*(pi*radius)+2*num_wiggles*vlength+2*(num_wiggles-1)*radius
         vlength=(total_length-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)*radius))/(2*num_wiggles)
+        
+        self.height = vlength + radius
 
         if vlength<0: print "Warning: length of vertical segments is less than 0, increase total_length or decrease num_wiggles"
         
@@ -1263,7 +1265,6 @@ class CPWFingerCap:
                 )
 
     def draw(self,structure):
-        print "drawing cap"
         s=structure
         pinw=self.pinw
         if self.gapw is None: self.gapw=self.pinw*s.defaults['gapw']/s.defaults['pinw']
@@ -1290,6 +1291,7 @@ class CPWFingerCap:
                 s.gap_layer.append(sdxf.Solid(gap_pts[:-1]))
             else:
                 s.gap_layer.append(sdxf.PolyLine(gap_pts))
+            # TODO: Pin Layer for TLS                    
         else:    
             gap1=[  (start[0],start[1]-center_width/2.),
                     (start[0]+length,start[1]-center_width/2.),
@@ -1326,22 +1328,16 @@ class CPWFingerCap:
             finger = [(0,0), (0,self.finger_width),
                       (self.finger_length, self.finger_width),
                       (self.finger_length, 0), (0,0)]
-            #finger = translate_pts(finger, start)
+            finger = translate_pts(finger, start)
             for ii in range(self.num_fingers):
                 if ii % 2 == 0: # Right side
-                    offset = [self.finger_gap, 
-                              (ii *(self.finger_width + self.finger_gap)) - (center_width/2.)]
+                    offset = (self.finger_gap, 
+                              (ii *(self.finger_width + self.finger_gap)) - (center_width/2.))
                 else: # Left side
-                    offset = [0,
-                              (ii *(self.finger_width + self.finger_gap)) - (center_width/2.)]
-                print "offset1", offset
-                offset[0] += start[0]
-                offset[1] += start[1]
-                print "offset2", offset
+                    offset = (0,
+                              (ii *(self.finger_width + self.finger_gap)) - (center_width/2.))
                 new_pts = orient_pts(finger, s.last_direction, offset)
-                print "pts", start, s.last_direction, new_pts[0]
                 if s.chip.solid:
-                    print start, new_pts[0]
                     s.pin_layer.append(sdxf.Solid(new_pts[:-1]))
                 else:
                     s.pin_layer.append(sdxf.PolyLine(new_pts))
