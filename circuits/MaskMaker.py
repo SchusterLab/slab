@@ -167,7 +167,11 @@ class WaferMask(sdxf.Drawing):
             
         if self.dashed_dicing_border>0:
             DashedChipBorder(chip,self.dicing_border/2.)
-            
+        if chip.two_layer:
+            self.layers.append(sdxf.Layer(name='gap', color=1))
+            self.layers.append(sdxf.Layer(name='pin', color=3))
+            self.blocks.append(chip.gap_layer)
+            self.blocks.append(chip.pin_layer)    
         self.blocks.append(chip)
         slots_remaining=self.chip_points.__len__()-self.current_point
         for ii in range (copies):
@@ -176,6 +180,9 @@ class WaferMask(sdxf.Drawing):
             p=self.chip_points[self.current_point]
             self.current_point+=1
             self.append(sdxf.Insert(chip.name,point=p))
+            if chip.two_layer:
+                self.append(sdxf.Insert(chip.name+'gap', point=p, layer='gap'))
+                self.append(sdxf.Insert(chip.name+'pin', point=p, layer='pin'))
             if label:
                 chip.label_chip(self,maskid=self.name,chipid=chip.name+str(ii+1),offset=p)
             self.num_chips+=1
@@ -247,7 +254,7 @@ class Chip(sdxf.Block):
     """Chip is a class which contains structures
        Perhaps it will also be used to do some error checking
     """
-    def __init__(self,name,size=(7000.,2000.),mask_id_loc=(0,0),chip_id_loc=(0,0),textsize=(160,160), two_layer=False, layer=None, solid=False):
+    def __init__(self,name,size=(7000.,2000.),mask_id_loc=(0,0),chip_id_loc=(0,0),textsize=(160,160), two_layer=False, layer=None, solid=False, **kwargs):
         """size is a tuple size=(xsize,ysize)"""
         self.two_layer = two_layer
         if two_layer:
@@ -312,6 +319,12 @@ class Chip(sdxf.Block):
         d.append(sdxf.Insert(self.name,point=(0,0)))
         self.label_chip(d,maskid,chipid)
         d.saveas(fname)
+        
+    def short_description(self):
+        try: return self.__doc__
+        except: return "No description"
+    def long_description(self):
+        return self.short_description()
         
         
 class Structure(object):
@@ -775,7 +788,7 @@ class CPWBend:
 
 class CPWWiggles:
     """CPW Wiggles (meanders)"""
-    def __init__(self,structure,num_wiggles,total_length,start_up=True,radius=None,pinw=None,gapw=None):
+    def __init__(self,structure,num_wiggles,total_length,start_up=True,radius=None,pinw=None,gapw=None, segments=60):
         """ 
             @param num_wiggles: a wiggle is from the center pin up/down and back
             @param total_length: The total length of the meander
@@ -792,23 +805,21 @@ class CPWWiggles:
         #total length=number of 180 degree arcs + number of vertical segs + vertical radius spacers
         #total_length=(1+num_wiggles)*(pi*radius)+2*num_wiggles*vlength+2*(num_wiggles-1)*radius
         vlength=(total_length-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)*radius))/(2*num_wiggles)
-        
         self.height = vlength + radius
-
         if vlength<0: print "Warning: length of vertical segments is less than 0, increase total_length or decrease num_wiggles"
         
         if start_up:  asign=1
         else:         asign=-1
         
-        CPWBend(s,asign*90,pinw,gapw,radius)
+        CPWBend(s,asign*90,pinw,gapw,radius, segments=segments)
         for ii in range(num_wiggles):
             isign=2*(ii%2)-1
             CPWStraight(s,vlength,pinw,gapw)
-            CPWBend(s,isign*asign*180,pinw,gapw,radius)
+            CPWBend(s,isign*asign*180,pinw,gapw,radius, segments=segments)
             CPWStraight(s,vlength,pinw,gapw)
             if ii<num_wiggles-1:
                 CPWStraight(s,2*radius,pinw,gapw)
-        CPWBend(s,-isign*asign*90,pinw,gapw,radius)
+        CPWBend(s,-isign*asign*90,pinw,gapw,radius, segments=segments)
 
 class CPWWigglesByLength:
     """An updated version of CPWWiggles which is more general.  
@@ -1531,7 +1542,7 @@ class CPWLCoupler:
                 self.type,self.capacitance,self.coupler_length,self.separation,self.pinw,self.gapw,self.radius,self.spinw,self.sgapw
                 )
 
-    def draw(self,structure,padding_type=None,pad_to_length=0):
+    def draw(self,structure,padding_type=None, flipped=None, pad_to_length=0):
         """Draws the coupler and creates the new structure (self.coupled_structure) for building onto"""
         s=structure
         if self.pinw is None:    self.pinw=s.defaults['pinw']
@@ -1546,8 +1557,8 @@ class CPWLCoupler:
         start_dir=s.last_direction
         lstart_dir=start_dir+180
         
-        if self.flipped: flip_sign=-1
-        else:            flip_sign=1
+        if flipped is None: flipped = self.flipped
+        flip_sign=-1 if flipped else 1
         
         offset_length=0
         if padding_type=='center': offset_length=pad_to_length/2.
@@ -1573,7 +1584,9 @@ class CPWLCoupler:
         #make the coupler
         CPWGapCap(gap=self.gapw).draw(cs)
         CPWStraight(cs,self.coupler_length)
-        CPWBend(cs,-90*flip_sign) 
+        CPWBend(cs,-90*flip_sign)
+        
+        return cs
         
     def ext_Q(self,frequency,impedance=50,resonator_type=0.5):
         if self.capacitance==0: 
