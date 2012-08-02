@@ -71,7 +71,9 @@ def calculate_gap_width (eps_eff,impedance,pinw):
     #return newton(f,pinw)
     return brentq(f, .2 * pinw, 5 * pinw)
 
-def calculate_interior_length(frequency,phase_velocity,impedance,resonator_type=0.5,harmonic=0,Ckin=None, Ckout=None):
+def calculate_interior_length(frequency,phase_velocity,impedance,
+                              resonator_type=0.5,harmonic=0,
+                              Ckin=None, Ckout=None):
     """
         @param frequency:   frequency in GHz
     """
@@ -85,7 +87,9 @@ def calculate_interior_length(frequency,phase_velocity,impedance,resonator_type=
     if Ckout is None:   out_cap=0.0
     else:               out_cap=Ckout.capacitance
     
-    #Todo: Not sure if this is 100% correct for both lambda/2 and lambda/4 may require using something more like the length_factor to get it right...the same for fundamentals though    
+    #Todo: Not sure if this is 100% correct for both lambda/2 and lambda/4 may 
+    #      require using something more like the length_factor to get it 
+    #      right...the same for fundamentals though    
     Csum=1/(2*pi*frequency*(harmonic+1)*impedance)
     #print "Csum= %f pF" % (Csum*1e12)
     df=-frequency*(in_cap+out_cap)/(2*Csum)        #Calculate shift due to coupling capacitors
@@ -95,8 +99,9 @@ def calculate_interior_length(frequency,phase_velocity,impedance,resonator_type=
     else:                      length_factor=0.5*(harmonic+1)
     
     #print "length_factor: %f" % length_factor
-    #length=1e6*length_factor*phase_velocity/(frequency-df)                      #Calculate total length to get shifted frequency
-    length=1e6*(length_factor*phase_velocity/frequency)/(1+frequency*impedance*(1+harmonic)*pi*(in_cap+out_cap))
+    #length=1e6*length_factor*phase_velocity/(frequency-df)                    #Calculate total length to get shifted frequency
+    length=1e6*(length_factor*phase_velocity/frequency)/(1+frequency*impedance*
+                                              (1+harmonic)*pi*(in_cap+out_cap))
     #print length
     if (not Ckin is None) and (Ckin.type=='finger'):
         length-=0.4*Ckin.finger_length #subtract input finger length
