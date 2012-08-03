@@ -14,6 +14,7 @@ class SlabFile(h5py.File):
         h5py.File.__init__(self, *args, **kwargs)
         #self.attrs["_script"] = open(sys.argv[0], 'r').read()
         self.attrs["_script"] = open(__file__, 'r').read()
+        self.flush()
 
 
 def set_range(h5file, xmin, xmax, ymin=None, ymax=None):
