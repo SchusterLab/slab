@@ -331,10 +331,13 @@ class Structure(object):
     """Structure keeps track of current location and direction, 
     defaults is a dictionary with default values that substructures can call
     """
-    def __init__(self,chip,start=(0,0),direction=0,layer="structures",color=1, defaults={}):
+    def __init__(self,chip,start=(0,0),direction=0,layer="structures",color=1, 
+                 defaults={}):
         if chip.two_layer:
-            self.gap_layer = Structure(chip.gap_layer, start, direction, 'gap', 1, defaults)
-            self.pin_layer = Structure(chip.pin_layer, start, direction, 'pin', 2, defaults)
+            self.gap_layer = Structure(chip.gap_layer, start, direction, 'gap', 
+                                       1, defaults)
+            self.pin_layer = Structure(chip.pin_layer, start, direction, 'pin', 
+                                       2, defaults)
         self.chip=chip        
         self.start=start
         self.last=start
@@ -343,6 +346,15 @@ class Structure(object):
         self.color=color
         self.defaults=defaults.copy()
         self.structures=[]
+        print self.defaults
+        try :self.pinw=chip.pinw 
+        except AttributeError: 
+            try : self.pinw=self.defaults['pinw']
+            except KeyError: print 'no pinw for chips',chip.name, 'at initialization'
+        try :self.gapw=chip.gapw 
+        except AttributeError: 
+            try : self.gapw=self.defaults['gapw']
+            except KeyError: print 'no gapw for chips',chip.name, 'at initialization'
         
     def append(self,shape):
         """gives a more convenient reference to the chips.append method"""
@@ -436,11 +448,12 @@ class CPWStraight:
 
             s.append(sdxf.PolyLine(gap1))
             s.append(sdxf.PolyLine(gap2))
-class CPWConnect:        
+class CPWConnect:   
     def __init__(self,s,endpoint,pinw=None,gapw=None):
         length = distance(endpoint,s.last)
         if length==0: return
         CPWStraight(s,length,pinw=pinw,gapw=gapw)
+        self.length=length
 
 class CPWQubitBox:
     """A straight section of CPW transmission line with fingers in the ground plane to add a capacitor"""
@@ -787,7 +800,10 @@ class CPWBend:
 #    def __init__(self, structure,num_fingers,finger_length=None,finger_width=None,finger_gap=None,gapw=None):
 
 class CPWWiggles:
-    """CPW Wiggles (meanders)"""
+    """CPW Wiggles (meanders)
+        CPWWiggles(structure,num_wiggles,total_length,start_up=True,
+                   radius=None,pinw=None,gapw=None, segments=60)
+    """
     def __init__(self,structure,num_wiggles,total_length,start_up=True,radius=None,pinw=None,gapw=None, segments=60):
         """ 
             @param num_wiggles: a wiggle is from the center pin up/down and back
@@ -804,12 +820,14 @@ class CPWWiggles:
         #calculate vertical segment length:
         #total length=number of 180 degree arcs + number of vertical segs + vertical radius spacers
         #total_length=(1+num_wiggles)*(pi*radius)+2*num_wiggles*vlength+2*(num_wiggles-1)*radius
-        vlength=(total_length-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)*radius))/(2*num_wiggles)
+        vlength=(total_length-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)
+        *radius))/(2*num_wiggles)
         self.height = vlength + radius
         if vlength<0: print "Warning: length of vertical segments is less than 0, increase total_length or decrease num_wiggles"
         
         if start_up:  asign=1
         else:         asign=-1
+        if not segments:  segments=s.defalts['segments']      
         
         CPWBend(s,asign*90,pinw,gapw,radius, segments=segments)
         for ii in range(num_wiggles):
@@ -826,7 +844,8 @@ class CPWWigglesByLength:
     Specifies a meander by length but allows for starting at different angles 
     and also allows meanders which are symmetric or asymmetric about the center pin.
     """
-    def __init__(self,structure,num_wiggles,total_length,start_bend_angle=None,symmetric=True,radius=None,pinw=None,gapw=None,flipped=False):
+    def __init__(self,structure,num_wiggles,total_length,start_bend_angle=None,
+                 symmetric=True,radius=None,pinw=None,gapw=None,flipped=False):
         """
             @param num_wiggles: a wiggle is from the center pin up/down and back
             @param total_length: The total length of the meander
@@ -858,9 +877,11 @@ class CPWWigglesByLength:
             flip=1
         
         if symmetric:
-            vlength=(total_length-2*(abs(start_bend_angle)*pi/180*radius)-num_wiggles*pi*radius-2*radius*(num_wiggles-1))/(2*num_wiggles)
+            vlength=(total_length-2*(abs(start_bend_angle)*pi/180*radius)-
+            num_wiggles*pi*radius-2*radius*(num_wiggles-1))/(2*num_wiggles)
         else:
-            vlength=(total_length-2*(abs(start_bend_angle)*pi/180*radius)-pi*radius*(2*num_wiggles-1))/(2*num_wiggles)
+            vlength=(total_length-2*(abs(start_bend_angle)*pi/180*radius)-
+            pi*radius*(2*num_wiggles-1))/(2*num_wiggles)
 
         if vlength<0:
             raise MaskError, "Warning: length of vertical segments is less than 0, increase total_length or decrease num_wiggles"
@@ -889,7 +910,8 @@ class ChannelWigglesByLength:
     Specifies a meander by length but allows for starting at different angles 
     and also allows meanders which are symmetric or asymmetric about the center pin.
     """
-    def __init__(self,structure,num_wiggles,total_length,start_bend_angle=None,symmetric=True,radius=None,channelw=None):
+    def __init__(self,structure,num_wiggles,total_length,start_bend_angle=None,
+                 symmetric=True,radius=None,channelw=None):
         """
             @param num_wiggles: a wiggle is from the center pin up/down and back
             @param total_length: The total length of the meander
@@ -915,31 +937,33 @@ class ChannelWigglesByLength:
             asign=-1
         
         if symmetric:
-            vlength=(total_length-2*(abs(start_bend_angle)*pi/180*radius)-num_wiggles*pi*radius-2*radius*(num_wiggles-1))/(2*num_wiggles)
+            vlength=(total_length-2*(abs(start_bend_angle)*pi/180*radius)
+            -num_wiggles*pi*radius-2*radius*(num_wiggles-1))/(2*num_wiggles)
         else:
-            vlength=(total_length-2*(abs(start_bend_angle)*pi/180*radius)-pi*radius*(2*num_wiggles-1))/(2*num_wiggles)
+            vlength=(total_length-2*(abs(start_bend_angle)*pi/180*radius)
+            -pi*radius*(2*num_wiggles-1))/(2*num_wiggles)
 
         if vlength<0:
             raise MaskError, "Warning: length of vertical segments is less than 0, increase total_length or decrease num_wiggles"
 
         self.vlength=vlength
                 
-        ChannelBendSolid(s,start_bend_angle,channelw=channelw,radius=radius)
+        ChannelBend(s,start_bend_angle,channelw=channelw,radius=radius)
         for ii in range(num_wiggles):
             if symmetric:
                 isign=2*(ii%2)-1
             else:
                 isign=-1
                 
-            Channel(s,vlength,channelw=channelw)
-            ChannelBendSolid(s,isign*asign*180,channelw=channelw,radius=radius)
-            Channel(s,vlength,channelw=channelw)
+            CPWStraight(s,vlength,s.pinw,s.gapw)
+            CPWBend(s,isign*asign*180,s.pinw,s.gapw,radius=radius)
+            CPWStraight(s,vlength,s.pinw,s.gapw)
             if ii<num_wiggles-1:
                 if symmetric:
-                    Channel(s,2*radius,channelw=channelw)           #if symmetric must account for initial bend height
+                    CPWStraight(s,2*radius,s.pinw,s.gapw)           #if symmetric must account for initial bend height
                 else:
-                    ChannelBendSolid(s,asign*180,channelw=channelw,radius=radius)      #if asymmetric must turn around
-        ChannelBendSolid(s,-isign*start_bend_angle,channelw=channelw,radius=radius)
+                    CPWBend(s,asign*180,s.pinw,s.gapw,radius=radius)      #if asymmetric must turn around
+        CPWBend(s,-isign*start_bend_angle,s.pinw,s.gapw,radius=radius)
         
 class CPWWigglesByArea:
     """CPW Wiggles which fill an area specified by (length,width)"""
