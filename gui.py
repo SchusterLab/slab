@@ -188,7 +188,7 @@ class SlabWindow(QMainWindow):
         self.params = DictProxy("parameter")
         self.param_widgets = []
         self.registered_actions = []
-        if config_file:
+        if config_file is not None:
             self.data_thread_obj = DataThreadC(config_file=config_file)
         else:
             self.data_thread_obj = DataThreadC()
