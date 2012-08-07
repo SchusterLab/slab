@@ -1,4 +1,4 @@
-from scipy import sqrt,pi,tanh
+from scipy import sqrt,pi,tanh,sinh
 from scipy.special import ellipk
 from scipy.optimize import newton, brentq
 from scipy.interpolate import interp1d
@@ -13,24 +13,25 @@ def calculate_eps_eff_from_geometry(substrate_epsR,pinw,gapw,substrate_height):
     a=pinw
     b=pinw+2*gapw
     h=substrate_height
-    k0 = a/b
+    k0 = float(a)/b
     k0p = sqrt(1-k0**2)
-    k3 = tanh(pi*a/(4*h))/  tanh(pi*b/(4*h))
+    #k3 = tanh(pi*a/(4*h))/  tanh(pi*b/(4*h))
+    k3 = sinh(pi*a/(4*h)) / sinh(pi*b/(4*h))
     k3p= sqrt(1-k3**2)
+    Ktwid= ellipk(k0p**2)*ellipk(k3**2)/(ellipk(k0**2)*ellipk(k3p**2))
     
-    Ktwid= ellipk(k0p)*ellipk(k3)/(ellipk(k0)*ellipk(k3p))
-    
-    return (1+substrate_epsR*Ktwid)/(1+Ktwid)
+    #return (1+substrate_epsR*Ktwid)/(1+Ktwid)
+    return 1 + (substrate_epsR - 1) * Ktwid / 2
 
 def calculate_eps_eff (phase_velocity):
     return (speedoflight/phase_velocity)**2
 
 def calculate_impedance (pinw,gapw,eps_eff):
     #From Andreas' resonator paper or my thesis...agrees for values given in his paper
-    k0 = pinw/(pinw+2*gapw)
+    k0 = float(pinw)/(pinw+2*gapw)
     k0p = sqrt(1-k0**2)
-    L=(mu0/4)*ellipk(k0p)/ellipk(k0)
-    C=4 *eps0*eps_eff*ellipk(k0)/ellipk(k0p)
+    L=(mu0/4)*ellipk(k0p**2)/ellipk(k0**2)
+    C=4 *eps0*eps_eff*ellipk(k0**2)/ellipk(k0p**2)
     Z=sqrt(L/C)
     #print "pinw: %f, gapw: %f, k0: %f, k0p: %f, L: %f nH/m, C: %f pF/m, Z: %f" % (pinw,gapw,k0,k0p,L *1e9,C*1e12,Z)
     return Z
@@ -91,23 +92,20 @@ def calculate_interior_length(frequency,phase_velocity,impedance,
     #      require using something more like the length_factor to get it 
     #      right...the same for fundamentals though    
     Csum=1/(2*pi*frequency*(harmonic+1)*impedance)
-    #print "Csum= %f pF" % (Csum*1e12)
     df=-frequency*(in_cap+out_cap)/(2*Csum)        #Calculate shift due to coupling capacitors
-    #print "df: %f" % (df*1e-9)
 
     if (resonator_type==0.25): length_factor=0.25*(2*harmonic+1)
     else:                      length_factor=0.5*(harmonic+1)
     
-    #print "length_factor: %f" % length_factor
-    #length=1e6*length_factor*phase_velocity/(frequency-df)                    #Calculate total length to get shifted frequency
-    length=1e6*(length_factor*phase_velocity/frequency)/(1+frequency*impedance*
-                                              (1+harmonic)*pi*(in_cap+out_cap))
-    #print length
+    #length=1e6*length_factor*phase_velocity/(frequency-df)                      #Calculate total length to get shifted frequency
+    #fixed by PCR and LSB, but only checked for lambda/2
+    length=1e6*(length_factor*phase_velocity/frequency)*(1-(frequency/(harmonic+1))*impedance*2*(in_cap+out_cap))
     if (not Ckin is None) and (Ckin.type=='finger'):
         length-=0.4*Ckin.finger_length #subtract input finger length
     if (not Ckout is None) and (Ckout.type=='finger'):
         length-=0.4*+Ckout.finger_length #subtract output finger length
-    #print "Resonator at frequency=%f GHz is length=%f mm" % (frequency*1e-9,length*1e-3) 
+    length -= Ckin.taper_length + Ckout.taper_length
+
     return length
 
 def calculate_resonator_Q(frequency,impedance=50,Ckin=None, Ckout=None):
@@ -149,7 +147,7 @@ def sapphire_capacitor_by_Q(frequency,Q,impedance=50,resonator_type=0.5):
     with the appropriate geometry to yield the desired Q"""
     return sapphire_capacitor_by_C(capacitance_by_Q(frequency,Q,impedance,resonator_type))
 
-def sapphire_capacitor_by_C(capacitance):
+def sapphire_capacitor_by_C(capacitance, taper_length=50):
     """def sapphire_capacitor_by_C(capacitance):
     Interpolates simulated capacitance tables to get specified capacitance values
     Simulations done in sonnet by Leo 
@@ -184,7 +182,7 @@ def sapphire_capacitor_by_C(capacitance):
     
     length=round(float(get_length(capacitance)))
     print "Capacitance: %f, Fingers: %d, Finger Length: %f " % (capacitance, num_fingers,length)
-    return CPWFingerCap(num_fingers=num_fingers,finger_length=length,finger_width=3,finger_gap=4,taper_length = 50, capacitance=1e-15*capacitance)
+    return CPWFingerCap(num_fingers=num_fingers,finger_length=length,finger_width=3,finger_gap=4,taper_length = taper_length, capacitance=1e-15*capacitance)
 
 #-------------------------------------------------------------------------------------------------------------
 # CHANNEL CAPACITORS e on He
