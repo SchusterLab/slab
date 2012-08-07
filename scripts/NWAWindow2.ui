@@ -199,6 +199,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="param_autorun">
+           <property name="text">
+            <string>Autorun</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <layout class="QHBoxLayout" name="horizontalLayout_2">
            <item>
             <widget class="QPushButton" name="go_button">
