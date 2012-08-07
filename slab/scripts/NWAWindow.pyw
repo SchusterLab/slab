@@ -19,9 +19,10 @@ class nwa_DataThread(DataThread):
     def set_file(self, *args):
         filename = self.params['filename']
         dset_path = self.params['datasetPath']
-        try: self.file = open_to_path(h5py.File(filename, 'w'), dset_path)
-        except:
+        try: self.file = open_to_path(SlabFile(filename, 'w'), dset_path)
+        except Exception as e:
             self.msg("Could not open h5 file!")
+            self.msg(e)
             return
         if self.params['numberTraces']:
             self.trace_no = get_next_trace_number(self.file)
@@ -38,10 +39,14 @@ class nwa_DataThread(DataThread):
         freqs,mags,phases=nwa.take_one_averaged_trace()
         xrng, yrng = ((freqs[0],freqs[-1]),(start, stop))
         self.msg("Data acquisition complete.")
-        self.plots["mag"].set_data(freqs,mags)
+        self.plots["mag"].set_data(freqs,mags/1e9)
         self.plots["phase"].set_data(freqs,phases)
         self.plots["magplot"].replot()
-        self.plots["phaseplot"].replot()
+        self.plots["phaseplot"].replot()         
+        self.plots["magplot"].do_autoscale()
+        self.plots["phaseplot"].do_autoscale()
+        self.msg(mags[1:5])
+        self.msg(freqs[1:5])
         if self.params['save']:
             self.set_file()
             f = self.file[self.trace_no] if self.params["numberTraces"] else self.file
@@ -167,6 +172,7 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
         SlabWindow.__init__(self, nwa_DataThread, config_file='c:\\_Lib\\python\\slab\\scripts\\instruments.cfg')
         self.setupSlabWindow(autoparam=True)
         self.register_script("run_script", self.go_button, self.abort_button)
+        self.filenameButton.clicked.connect(self.selectFile)
         self.start_thread()
 
         #Connect controls
@@ -213,7 +219,6 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
         #self.set_param("prefix",'trace')
         #self.set_param("filenumber",0)
         
-        self.filenameButton.clicked.connect(self.selectFile)
         
         self.plots["self"] = self
         self.plots["trace"] = self.trace_label
@@ -240,7 +245,7 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
         self.plots["phaseplot"].add_item(self.plots["phase"])
 
     def selectFile(self):
-        self.filenameLineEdit.setText(str(QFileDialog.getSaveFileName(self)))
+        self.param_filename.setText(str(QFileDialog.getSaveFileName(self)))
         
     def selectDatapath(self):
         self.datapath=str(QFileDialog.getExistingDirectory(self,'Open Datapath',self.datapath))
