@@ -1363,15 +1363,18 @@ class CPWFingerCap:
             finger = [(0,0), (0,self.finger_width),
                       (self.finger_length, self.finger_width),
                       (self.finger_length, 0), (0,0)]
-            finger = translate_pts(finger, start)
+            #finger = translate_pts(finger, start)
+            finger = orient_pts(finger, s.last_direction, start)
             for ii in range(self.num_fingers):
+                print "Writing finger", ii
                 if ii % 2 == 0: # Right side
                     offset = (self.finger_gap, 
                               (ii *(self.finger_width + self.finger_gap)) - (center_width/2.))
                 else: # Left side
                     offset = (0,
                               (ii *(self.finger_width + self.finger_gap)) - (center_width/2.))
-                new_pts = orient_pts(finger, s.last_direction, offset)
+                offset = rotate_pt(offset, s.last_direction)
+                new_pts = translate_pts(finger, offset)
                 if s.chip.solid:
                     s.pin_layer.append(sdxf.Solid(new_pts[:-1]))
                 else:
