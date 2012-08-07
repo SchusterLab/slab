@@ -13,7 +13,7 @@ import os
 import h5py
 from guiqwt.qtdesigner import loadui
 from slab.datamanagement import *
-Ui_NWAWindow = loadui("S:\\_Lib\\python\\slab\\scripts\\NWAWindow2.ui")
+Ui_NWAWindow = loadui("c:\\_Lib\\python\\slab\\scripts\\NWAWindow2.ui")
 
 class nwa_DataThread(DataThread):
     def set_file(self, *args):
@@ -164,7 +164,7 @@ class nwa_DataThread(DataThread):
 
 class NWAWin(SlabWindow, Ui_NWAWindow):
     def __init__(self):
-        SlabWindow.__init__(self, nwa_DataThread, config_file='S:\\_Lib\\python\\slab\\scripts\\instruments.cfg')
+        SlabWindow.__init__(self, nwa_DataThread, config_file='c:\\_Lib\\python\\slab\\scripts\\instruments.cfg')
         self.setupSlabWindow(autoparam=True)
         self.register_script("run_script", self.go_button, self.abort_button)
         self.start_thread()
