@@ -14,7 +14,11 @@ class TestTwoLayer(Chip):
         s = Structure(self, start=self.left_midpt, defaults=d)
         Launcher(s),
         CPWStraight(s, 400)
-        CPWFingerCap(6, 80, 5, 5, taper_length=40).draw(s)
+        cap = sapphire_capacitor_by_Q(10, 1000)
+        cap.draw(s)
+        CPWBend(s, 180, radius=200)
+        cap.draw(s)
+        #CPWFingerCap(6, 80, 5, 5, taper_length=40).draw(s)
         CPWStraight(s, 400) 
         Launcher(s, flipped=True)
 
