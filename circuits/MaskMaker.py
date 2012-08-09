@@ -20,6 +20,12 @@ def distance(tuple1,tuple2):
     dy=tuple1[1]-tuple2[1]
     return sqrt(dx**2+dy**2)
     
+def ang2pt(direction,distance):    
+    theta=pi*direction/180
+    dx=distance*cos(theta)
+    dy=distance*sin(theta)
+    return (dx,dy)
+    
 def rotate_pt(p,angle,center=(0,0)):
     """rotates point p=(x,y) about point center (defaults to (0,0)) by CCW angle (in degrees)"""
     dx=p[0]-center[0]
@@ -355,6 +361,10 @@ class Structure(object):
         except AttributeError: 
             try : self.gapw=self.defaults['gapw']
             except KeyError: print 'no gapw for chips',chip.name, 'at initialization'
+            
+    def move(self,distance,direction=None):
+        if direction == None: direction = self.last_direction
+        self.last=translate_pt(self.last,ang2pt(direction,distance))
         
     def append(self,shape):
         """gives a more convenient reference to the chips.append method"""
@@ -448,13 +458,17 @@ class CPWStraight:
 
             s.append(sdxf.PolyLine(gap1))
             s.append(sdxf.PolyLine(gap2))
-class CPWConnect:   
+class CPWs2p:
     def __init__(self,s,endpoint,pinw=None,gapw=None):
         length = distance(endpoint,s.last)
         if length==0: return
         CPWStraight(s,length,pinw=pinw,gapw=gapw)
         self.length=length
-
+        
+class CPWConnect:   
+    def __init__(self,s1,s2,pinw=None,gapw=None):
+        CPWs2p(s1,s2.last,pinw,gapw)
+        
 class CPWQubitBox:
     """A straight section of CPW transmission line with fingers in the ground plane to add a capacitor"""
     def __init__(self,structure,fingerlen,fingerw,finger_gapw,finger_no,int_len=10,pinw=None,gapw=None,align=True,small=10,medium=20,big=50):
@@ -798,7 +812,14 @@ class CPWBend:
  
 #class TaperedCPWFingerCap:
 #    def __init__(self, structure,num_fingers,finger_length=None,finger_width=None,finger_gap=None,gapw=None):
-
+class CPWSturn(Chip):
+    def __init__(self,s,d1,t1,r1,d2,t2,r2,d3):
+        CPWStraight(s, d1)
+        CPWBend(s,t1,radius=r1)
+        CPWStraight(s,d2)
+        CPWBend(s,t2,radius=r2)
+        CPWStraight(s,d3)
+    
 class CPWWiggles:
     """CPW Wiggles (meanders)
         CPWWiggles(structure,num_wiggles,total_length,start_up=True,

@@ -105,7 +105,8 @@ def calculate_interior_length(frequency,phase_velocity,impedance,
     if (not Ckout is None) and (Ckout.type=='finger'):
         length-=0.4*+Ckout.finger_length #subtract output finger length
     
-    if Ckin is not None and Ckout is not None:
+    if (Ckin is not None and Ckout is not None):
+
         length -= Ckin.taper_length + Ckout.taper_length
 
     return length
