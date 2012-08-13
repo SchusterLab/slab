@@ -2,7 +2,7 @@ import sdxf
 from math import sin,cos,tan,pi,floor,asin,acos,atan,degrees,radians
 from alphanum import alphanum_dict
 import random
-from numpy import sqrt
+from numpy import sqrt,array
    
 class MaskError:
     """MaskError is an exception to be raised whenever invalid parameters are 
@@ -293,6 +293,11 @@ class Chip(sdxf.Block):
         self.topright_corner=(size[0],size[1])
         self.bottomright_corner=(size[0],0)
         self.center=(size[0]/2.,size[1]/2.)
+        self.top_left=(self.top_midpt[0]-2000.0,self.top_midpt[1])
+        self.top_right=(self.top_midpt[0]+2000.0,self.top_midpt[1])
+        self.bottom_left=(self.bottom_midpt[0]-2000.0,self.bottom_midpt[1])
+        self.bottom_right=(self.bottom_midpt[0]+2000.0,self.bottom_midpt[1])
+        
                     
     def label_chip(self,drawing,maskid,chipid,offset=(0,0)):
         """Labels chip in drawing at locations given by mask_id_loc and chip_id_loc with an optional offset.
@@ -411,7 +416,25 @@ class Launcher:
 #===============================================================================       
 #  CPW COMPONENTS    
 #===============================================================================
-
+class Box:
+    """A one layer box that can be launched asymetrically. Appends a box to the
+        structure designated. Ge"""
+    def __init__(self, structure,length,width):
+        if length==0 or width == 0 : return
+        s=structure
+        start=structure.last
+    ### Drawing
+        box= [translate_pt(start,(0, width/2.)),
+              translate_pt(start,(0,-width/2.)),
+              translate_pt(start,(length,-width/2.)),
+              translate_pt(start,(length, width/2.)),
+              translate_pt(start,(0, width/2.))
+              ]
+        box = rotate_pts(box,s.last_direction,start)
+        stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
+        s.last=stop
+        s.append(sdxf.PolyLine(box))
+    
 class CPWStraight:
     """A straight section of CPW transmission line"""
     def __init__(self, structure,length,pinw=None,gapw=None):
@@ -809,11 +832,16 @@ class CPWBend:
       
         self.structure.append(sdxf.PolyLine(translate_pts(pts1,self.center)))
         self.structure.append(sdxf.PolyLine(translate_pts(pts2,self.center)))
- 
+class CPWL(Chip):
+    def __init__(self,s,d1,t1,r1,d2,pinw=None,gapw=None):
+        CPWStraight(s, d1,pinw,gapw)
+        CPWBend(s,t1,pinw,gapw,r1)
+        CPWStraight(s,d2,pinw,gapw)
+        
 #class TaperedCPWFingerCap:
 #    def __init__(self, structure,num_fingers,finger_length=None,finger_width=None,finger_gap=None,gapw=None):
 class CPWSturn(Chip):
-    def __init__(self,s,d1,t1,r1,d2,t2,r2,d3):
+    def __init__(self,s,d1,t1,r1,d2,t2,r2,d3,pinw=None,Gapw=None):
         CPWStraight(s, d1)
         CPWBend(s,t1,radius=r1)
         CPWStraight(s,d2)
