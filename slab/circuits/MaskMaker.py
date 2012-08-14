@@ -418,22 +418,64 @@ class Launcher:
 #===============================================================================
 class Box:
     """A one layer box that can be launched asymetrically. Appends a box to the
-        structure designated. Ge"""
+        structure designated. 
+        Method "align" allows on to append alignment marks to the pattern.
+        Personally I think the syntax is pretty awesome.        
+        Ge
+        """
     def __init__(self, structure,length,width):
         if length==0 or width == 0 : return
-        s=structure
-        start=structure.last
-    ### Drawing
+        s=structure;self.s=s
+        start=structure.last;self.start=start
+        self.box0=self.box(length,width,start)
+        items=[self.box0]
+        self.rotNadd(s,items)        
+        stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
+        s.last=stop
+
+    def rotNadd(self,s,items):
+        for item in items :
+            item = rotate_pts(item,s.last_direction,self.start)
+            s.append(sdxf.PolyLine(item))
+        
+    def align(self, align_spacing,align_size):   
+        l,w=align_spacing       
+        box=self.box0
+        ### now draw virtual boxes around each corner of the original BOX0
+        a0=self.box_center(l,w,center=box[0])
+        a1=self.box_center(l,w,center=box[1])
+        a2=self.box_center(l,w,center=box[2])
+        a3=self.box_center(l,w,center=box[3])
+        ### then draw the real alignment boxes at these locations.
+        ### This style reduces coding error significantly
+        l,w=align_size       
+        items=[]
+        items.append(   self.box_center(l,w,center=a0[0])  )      
+        items.append(   self.box_center(l,w,center=a1[1])  )
+        items.append(   self.box_center(l,w,center=a2[2])  )
+        items.append(   self.box_center(l,w,center=a3[3])  )
+        
+        self.rotNadd(self.s,items)
+        
+    def box(self,length,width,start):
+        ### Drawing
         box= [translate_pt(start,(0, width/2.)),
               translate_pt(start,(0,-width/2.)),
               translate_pt(start,(length,-width/2.)),
               translate_pt(start,(length, width/2.)),
               translate_pt(start,(0, width/2.))
               ]
-        box = rotate_pts(box,s.last_direction,start)
-        stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
-        s.last=stop
-        s.append(sdxf.PolyLine(box))
+        return box
+
+    def box_center(self,length,width,center):
+        ### Drawing
+        box= [translate_pt(center,(-length/2., width/2.)),
+              translate_pt(center,(-length/2.,-width/2.)),
+              translate_pt(center,( length/2.,-width/2.)),
+              translate_pt(center,( length/2., width/2.)),
+              translate_pt(center,(-length/2., width/2.))
+              ]
+        return box
     
 class CPWStraight:
     """A straight section of CPW transmission line"""
