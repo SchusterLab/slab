@@ -4,24 +4,10 @@ Created on Mon Aug 06 11:30:46 2012
 
 @author: phil
 """
-from slab.circuits import orient_pts
+from slab.circuits import orient_pts, calculate_gap_width, calculate_interior_length
+from math import pi
+import numpy as np
 
-script_header = \
-"""
-Dim oAnsoftApp
-Dim oDesktop
-Dim oProject
-Dim oDesign
-Dim oEditor
-Dim oModule
-Set oAnsoftApp = CreateObject("AnsoftDesigner.DesignerScript")
-Set oDesktop = oAnsoftApp.GetAppDesktop()
-oDesktop.RestoreWindow
-Set oProject = oDesktop.NewProject
-oProject.InsertDesign "EM Design", "%(designname)s", "", ""
-Set oDesign = oProject.SetActiveDesign("%(designname)s")
-Set oEditor = oDesign.SetActiveEditor("Layout")
-"""
 
 class DesignerScript(object):
     def __init__(self, fname, unit="um"):
@@ -34,6 +20,10 @@ class DesignerScript(object):
         self.stackup_height = 0
         self.file.write(script_header % {"designname":self.designname})
         self._uid = 0 # Just a unique number for arbitrary names
+        self.setup_num = 1
+        self.sweep_num = 1
+        self.opti_num = 1
+        DString.script = self
 
     def write(self, s):
         self.file.write(s)
@@ -46,6 +36,8 @@ class DesignerScript(object):
         return str(self._uid)
     
     def add_unit(self, v):
+        if isinstance(v, DString):
+            v = v._val
         if isinstance(v, (float, int)) or v.isdigit():
             return str(v)+self.unit
         else:
@@ -60,7 +52,7 @@ class DesignerScript(object):
                     self.write(", ")
             self.write(")")
         else:
-            if isinstance(arr, str):
+            if isinstance(arr, (DString, str)):
                 self.write("\""+str(arr)+"\"")
             elif isinstance(arr, bool):
                 self.write(str(arr).lower())
@@ -94,7 +86,7 @@ class DesignerScript(object):
         self.write_array(arg)
         self.write("\n")
     
-    def add_property(self, name, value):
+    def add_property(self, name, value, optimize=False):
         self.write("oDesign.ChangeProperty ")
         arg = [
                 "NAME:AllTabs",
@@ -110,15 +102,71 @@ class DesignerScript(object):
                       "NAME:"+name,
                       "PropType:=", "VariableProp",
                       "UserDef:=", True,
-                      "Value:=", value
-                    ]
+                      "Value:=", value,
+                      ["NAME:Optimization", "Included:=", optimize]
+                    ] 
                   ]                  
                 ]
               ]
         self.write_array(arg)
         self.write("\n")
+        
+    def add_properties(self, prop_dict):
+        for key, value in prop_dict.items():
+            self.add_property(key, value)
     
-    def draw_rectangle_pts(self, pt1, pt2, angle=0, name=None, layer=None,):
+    def set_module(self, module):
+        self.write('Set oModule = oDesign.GetModule("%s")\n' % module)
+    
+    def add_planar_setup(self, freq):
+        self.set_module("SolveSetups")
+        name = "PlanarEM Setup " + str(self.setup_num)
+        self.write(SetupCommand %
+          {"name":name, "freq":freq}
+        )
+        self.setup_num += 1
+        self.last_setup = name
+        return name
+    
+    def add_sweep(self, data, fastsweep, setup=None):
+        setup = setup if setup else self.last_setup
+        name = "Sweep " + str(self.sweep_num)
+        self.sweep_num += 1
+        self.write(SweepCommand %
+          {"setup":setup, "name":name, "data":data, "fastsweep":fastsweep})
+        self.last_sweep = name
+        return name
+    
+    def add_lincount(self, start, stop, count, setup=None):
+        self.add_sweep(" ".join(["LINC"]+map(str,[start, stop, count])), "true", setup)
+    
+    def add_point_calc(self, point, setup=None):
+        self.add_sweep(str(point), "false", setup)
+        
+    def add_optimization(self, targets, optimizer="Quasi Newton", setup=None, sweep=None):
+        setup = setup if setup else self.last_setup
+        sweep = sweep if sweep else self.last_sweep
+        self.set_module("Optimetrics")
+        name = "Optimization"+str(self.opti_num)
+        self.opti_num += 1
+        self.write(OptimizationCommandHead % {"name":name, "optimizer":optimizer})
+        for ii, (formula, xtype, xval, yval) in enumerate(targets):
+            self.write(OptimizationGoal % 
+              {"setup":setup, "sweep":sweep, 
+               "formula":formula, "xtype":xtype, 
+               "xval":str(xval), "yval":str(yval)})
+            if ii is not (len(targets)-1):
+                self.write(", ")
+        self.write(OptimizationCommandTail)
+        self.last_opt = name
+        return name
+    
+    def run_optimization(self, name=None):
+        name = name if name else self.last_opt
+        self.set_module("Optimetrics")
+        self.write('oModule.SolveSetup "%s"\n' % name)
+        
+    def draw_rectangle_pts(self, pt1, pt2, angle=0, name=None, layer=None):
         self.write("oEditor.CreateRectangle ")
         if not name:
             name = "rect"+self.uid()
@@ -141,7 +189,31 @@ class DesignerScript(object):
               ]
         self.write_array(arg)
         self.write("\n")
-              
+        return name
+    
+    def draw_polygon(self, pts, name=None, layer=None):
+        self.write("oEditor.CreatePolygon ")
+        if not name:
+            name = "poly"+self.uid()
+        if not layer:
+            layer = self.main_layer
+            
+        arg = [
+                "NAME:Contents",
+                "polyGeometry:=",
+                [
+                  "Name:=", name,
+                  "LayerName:=", layer,
+                  "lw:=", 0,
+                  "n:=", len(pts)
+                ] + \
+                flatten([["x%d:=" % i, p[0], "y%d:=" % i, p[1]] for i, p in enumerate(pts)])
+              ]
+        self.write_array(arg)
+        self.write("\n")
+        return name
+
+          
     def draw_line_pts(self, pts, width, name=None, layer=None):
         self.write("oEditor.CreateLine ")
         if not name:
@@ -154,77 +226,281 @@ class DesignerScript(object):
                 [
                   "Name:=", name,
                   "LayerName:=", layer,
-                  "lw:=", str(width)+self.unit if isinstance(width, (int, float)) else width,
-                  "endstyle:=", 0,
-                  "joinstyle:=", 1,
+                  "lw:=", self.add_unit(width),
+                  "endstyle:=", 1, #It turns out, endstyle actually sets bendtype, joinstyle sets endstyle...
+                  "joinstyle:=", 0,
                   "n:=", len(pts)
-                ] + flatten([["x:=", p[0], "y:=", p[1]] for p in pts])
+                ] + flatten([["x%d:=" % i, p[0], "y%d:=" % i, p[1]] for i, p in enumerate(pts)])
               ]
         self.write_array(arg)
         self.write("\n")
-              
-    def CPWStraight(self, start, angle, length, pinw, gapw):
-        start = map(DString, start)
-        angle, length, pinw, gapw =\
-          map(DString, [angle, length, pinw, gapw])
-        h0 = start[1] + pinw/2.
-        h1 = start[1] + (pinw/2.) + gapw
-        w0, w1 = start[0], start[0] + length
-        gap1 = [(w0, h0), (w1, h1)]
-        gap2 = [(w0, -h0), (w1, -h1)]
-        self.draw_rectangle_pts(gap1[0], gap1[1], angle)
-        self.draw_rectangle_pts(gap2[0], gap2[1], angle)
+        return name
     
-    def CPWBend(self, start, start_angle, bend_angle, radius, pinw, gapw, 
-                segments=6, name=None, ):
-        "Segment number is fixed. Allowed parametric: start, start_angle, pinw, gapw?"
-        start, start_angle, bend_angle, radius, pinw, gapw =\
-          map(DString, [start, start_angle, bend_angle, radius, pinw, gapw])
+    def draw_arc(self, start, delta, radius, width, orientation, name=None, layer=None):
+        #arc_id = self.uid()
+        R = radius
+        dx, dy = delta
+        #dx.cache_result("arc_dx_"+arc_id)
+        #dy.cache_result("arc_dy_"+arc_id)        
+        osign = {'CW':1, 'CCW':-1}[orientation]
+        sagitta = R - sqrt(R*R - ((dx*dx + dy*dy)/4))
+        #sagitta.cache_result("arc_sagitta_"+arc_id)
+        end = vadd(start, delta)
+        return self.draw_line_pts([start, (osign*sagitta, "1E+200"), end], width, name, layer)
         
-        #segment_angle_prop = "_" + name + "segang"
-        #self.add_property(segment_angle_prop, bend_angle_prop+"/"+str(segments))
-        comp_angle = 180 - bend_angle - start_angle
-        circle_offset = -1*radius*("cos("+comp_angle+")"), radius*("sin("+comp_angle+")")
-        def x_form(n, r):
-            return r*("cos("+(n*bend_angle)+")") + start[0] + circle_offset[0]
-        def y_form(n, r):
-            return r*("sin("+(n*bend_angle)+")") + start[1] + circle_offset[1]
-        def points(r):
-            return [(x_form(n, r), y_form(n, r)) for n in map(str, range(segments))]
+    def draw_arc_angle(self, start, start_angle, bend_angle, radius, width, orientation, name=None, layer=None):
+        osign = {'CW':-1, 'CCW':1}[orientation]
+        delta = radius*sin(bend_angle), osign*radius*(1-cos(bend_angle))
+        delta = rotate_pt(delta, start_angle)
+        return self.draw_arc(start, delta, radius, width, orientation, name, layer)
+        
+    def CPWStraight(self, structure, length, pinw=None, gapw=None):
+        pinw = pinw if pinw else structure.pinw
+        gapw = gapw if gapw else structure.gapw
+
+        start, angle = structure.start, structure.angle
+        length, pinw, gapw = map(DString, [length, pinw, gapw])
+        delta = (pinw+gapw)/2
+        names = []
+        for sign in [-1, +1]:
+            name = self.draw_line_pts(structure.orient_pts([(0, sign*delta),(length, sign*delta)]), gapw)
+            names.append(name)
+        end_pt_x, end_pt_y = vadd(start, structure.rotate_pt((length, 0)))
+        line_id = self.uid()
+        end_pt_x.cache_result("end_pt_x"+line_id)
+        end_pt_y.cache_result("end_pt_y"+line_id)
+        structure.start = end_pt_x, end_pt_y
+        return names
+    
+    def CPWBend(self, structure, bend_angle, radius, orientation, pinw=None, gapw=None, name=None):
+        "Orientation should be either 'CW' or 'CCW', bend_angle should be positive!"
+        if isinstance(bend_angle, (int, float)):
+            bend_angle = str(bend_angle) + "deg"
+        assert(orientation in ['CW', 'CCW'])
+        pinw = pinw if pinw else structure.pinw
+        gapw = gapw if gapw else structure.gapw
+        start, start_angle = structure.start, structure.angle
+        bend_angle, radius, pinw, gapw =\
+          map(DString, [bend_angle, radius, pinw, gapw])
         
         delta = (pinw+gapw)/2
-        gap1 = points(radius + delta)
-        gap2 = points(radius - delta)
-        self.draw_line_pts(self, gap1, gapw)
-        self.draw_line_pts(self, gap2, gapw)
+        osign = {'CW':-1, 'CCW':1}[orientation]
+        names = []
+        for sign in [-1, 1]:
+            offset = structure.rotate_pt((0, sign*delta))            
+            start_gap = vadd(start, offset)
+            gap_radius = radius - (osign*sign)*delta
+            #gap_radius.cache_result("arc_radius_"+self.uid())
+            name = self.draw_arc_angle(start_gap, start_angle, bend_angle, gap_radius, gapw, orientation)
+            names.append(name)
+        
+        start_delta = radius*sin(bend_angle), osign*radius*(1-cos(bend_angle))
+        end_pt_x, end_pt_y = vadd(start, structure.rotate_pt(start_delta))
+        bend_id = self.uid()
+        end_pt_x.cache_result("endpt_x_"+bend_id)
+        end_pt_y.cache_result("endpt_y_"+bend_id)
+        structure.start = end_pt_x, end_pt_y
+        structure.angle += osign * bend_angle
+        return names
+        
+    def CPWTaper(self, structure, length, start_pinw, start_gapw, end_pinw, end_gapw):
+        start, start_angle = structure.start, structure.angle
+        length, start_pinw, start_gapw, end_pinw, end_gapw =\
+          map(DString, [length, start_pinw, start_gapw, end_pinw, end_gapw])
+        names = []
+        for sign in [-1, 1]:
+            h0 = sign * (start_pinw/2)
+            h1 = sign * (end_pinw/2)
+            h2 = sign * (end_gapw + (end_pinw/2))
+            h3 = sign * (start_gapw + (start_pinw/2))
+            pts = [(0, h0), (length, h1), (length, h2), (0, h3)]
+            pts = structure.orient_pts(pts)
+            names.append(self.draw_polygon(pts))
+        structure.start = vadd(start, structure.rotate_pt((length, 0)))
+        return names
+    
+    def CPWWiggles(self, structure, total_length, num_wiggles, radius, pinw=None, gapw=None):
+        pinw = pinw if pinw else structure.pinw
+        gapw = gapw if gapw else structure.gapw
+        total_length, radius, pinw, gapw = \
+          map(DString, [total_length, radius, pinw, gapw])
+        print radius
+        print radius._val
+        s = structure
+        vlength=(total_length-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)*radius))/(2*num_wiggles)
+        
+        self.CPWBend(s,90,radius,"CCW")
+        for ii in range(num_wiggles):
+            orientation = "CW" if ii % 2 == 0 else "CCW"
+            self.CPWStraight(s, vlength, pinw, gapw)
+            self.CPWBend(s,180,radius, orientation, pinw, gapw)
+            self.CPWStraight(s, vlength, pinw, gapw)
+            if ii<num_wiggles-1:
+                self.CPWStraight(s, 2*radius, pinw, gapw)
+        final_bend_orientation = "CW" if num_wiggles % 2 == 0 else "CCW"        
+        self.CPWBend(s, 90, radius, final_bend_orientation)
+        
+    def CPWFingerCap(self, structure, num_fingers, finger_length, finger_width, finger_gap, taper_length="50um"):
+        pinw, gapw = map(DString, [structure.pinw, structure.gapw])
+        finger_length, finger_width, finger_gap, taper_length =\
+          map(DString, [finger_length, finger_width, finger_gap, taper_length])
+        center_width = num_fingers*finger_width + (num_fingers-1)*finger_gap
+        center_gap = center_width * gapw / pinw
+        length = finger_length + finger_gap
+        
+        self.CPWTaper(structure, taper_length, pinw, gapw, center_width, center_gap)
 
+        left_finger_points =\
+          [(0,0),
+           (0,finger_width+finger_gap),
+           (finger_length+finger_gap,finger_width+finger_gap),
+           (finger_length+finger_gap,finger_width),
+           (finger_gap,finger_width),
+           (finger_gap,0)]
+        right_finger_points =\
+          [(finger_length+finger_gap,0),
+           (finger_length+finger_gap,finger_width+finger_gap),
+           (0,finger_width+finger_gap),
+           (0,finger_width),
+           (finger_length,finger_width),
+           (finger_length,0)]
+        for ii in range(num_fingers-1):
+            if ii%2==0:
+                pts=left_finger_points
+            else:
+                pts=right_finger_points
+            
+            pts = translate_pts(pts, (0,ii*(finger_width+finger_gap)-center_width/2.))
+            pts = structure.orient_pts(pts)
+            self.draw_polygon(pts)
+
+        #draw last little box to separate sides
+        pts = [ (0,0),(0,finger_width),(finger_gap,finger_width),(finger_gap,0)]
+        pts = translate_pts(pts,(((num_fingers+1) %2)*(length-finger_gap),(num_fingers-1)*(finger_width+finger_gap)-center_width/2.))
+        pts = structure.orient_pts(pts)
+        self.draw_polygon(pts)
+        
+        self.CPWStraight(structure, length, center_width, center_gap)
+        self.CPWTaper(structure, taper_length, center_width, center_gap, pinw, gapw)
+    
+    def create_port(self, name1, edge1, name2, edge2):
+        self.write("oEditor.CreateEdgePort ")
+        arg = ["NAME:Contents", 
+               "edge:=", [name1, edge1],
+               "edge:=", [name2, edge2],
+               "external:=", True]
+        self.write_array(arg)
+        self.write("\n")
+    
+    def CPWLauncher(self, structure, pad_length, taper_length, 
+                    start_pin, start_gap, make_port=False, flipped=False):
+        if flipped:
+            self.CPWTaper(structure, taper_length, structure.pinw, 
+                          structure.gapw, start_pin, start_gap)
+            left_box, right_box = self.CPWStraight(structure, pad_length, 
+                                                   pinw=start_pin, gapw=start_gap)
+            edge_no = 1
+        else:
+            left_box, right_box = self.CPWStraight(structure, pad_length, 
+                                                   pinw=start_pin, gapw=start_gap)
+            self.CPWTaper(structure, taper_length, start_pin, start_gap,
+                          structure.pinw, structure.gapw)
+            edge_no = 0
+        if make_port:
+            self.create_port(left_box, edge_no, right_box, edge_no)
+        
+
+
+def rotate_pt(pt, angle):
+    x = pt[0]*cos(angle) - pt[1]*sin(angle)
+    y = pt[0]*sin(angle) + pt[1]*cos(angle)
+    return (x, y)
+    
 class DStructure(object):
-    def __init__(self, start=("0","0"), direction="0"):
+    def __init__(self, x="0", y="0", angle="0", pinw="10um", gapw="10um"):
+        self.start = DString(x), DString(y)
+        self.angle = DString(angle)
+        self.pinw = DString(pinw)
+        self.gapw = DString(gapw)
+    def rotate_pt(self, pt):
+        return rotate_pt(pt, self.angle)
+        x = pt[0]*cos(self.angle) - pt[1]*sin(self.angle)
+        y = pt[0]*sin(self.angle) + pt[1]*cos(self.angle)
+        return (x, y)
+    def translate_pt(self, pt):
+        return vadd(pt, self.start)
+    def translate_pts(self, pts):
+        return translate_pts(pts, self.start)
+    def orient_pt(self, pt):
+        return self.translate_pt(self.rotate_pt(pt))
+    def orient_pts(self, pts):
+        return [self.orient_pt(p) for p in pts]
 
-class DString(str):
+class DString(object):
+    script = None
+    def __init__(self, name):
+        try:
+            parts=name.split(":=")
+            if len(parts) is 1:
+                self._val = name
+            else:
+                self.script.add_property(parts[0], parts[1])
+                self._val = parts[0]
+            if self._val.isdigit():
+                self._val = self.script.add_unit(self._val)
+        except AttributeError:
+            self._val = str(name)
+    def cache_result(self, name):
+        self.script.add_property(name, str(self))
+        self._val = name
+            
+    def __repr__(self):
+        return self._val
     def __add__(self, other):
+        if str(other) is "0" or str(other) is "0.0":
+            return self
         return DString("("+str(self)+"+"+str(other)+")")
     def __radd__(self, other):
+        if str(other) is "0" or str(other) is "0.0":
+            return self
         return DString("("+str(other)+"+"+str(self)+")")
     def __sub__(self, other):
+        if str(other) is "0" or str(other) is "0.0":
+            return self
         return DString("("+str(self)+"-"+str(other)+")")
     def __rsub__(self, other):
+        if str(other) is "0" or str(other) is "0.0":
+            return -self
         return DString("("+str(other)+"-"+str(self)+")")
     def __mul__(self, other):
+        if str(other) is "1" or str(other) is "1.0":
+            return self
         return DString("("+str(self)+"*"+str(other)+")")
     def __rmul__(self, other):
+        if str(other) is "1" or str(other) is "1.0":
+            return self
         return DString("("+str(other)+"*"+str(self)+")")
     def __div__(self, other):
+        if str(other) is "1" or str(other) is "1.0":
+            return self
         return DString("("+str(self)+"/"+str(other)+")")
     def __rdiv__(self, other):
         return DString("("+str(other)+"/"+str(self)+")")
     def __neg__(self):
         return DString("(-"+str(self)+")")
-
 def cos(a):
-  return DString("cos("+str(a)+")")
+    return DString("cos("+str(a)+")")
 def sin(a):
-  return DString("sin("+str(a)+")")
+    return DString("sin("+str(a)+")")
+def sqrt(a):
+    return DString("sqrt("+str(a)+")")
+    
+def vadd(a, b):
+    return a[0]+b[0],a[1]+b[1]
+def translate_pts(pts, offset):
+    return [vadd(p, offset) for p in pts]
+def vsub(a, b):
+    return a[0]-b[0],a[1]-b[1]
 
 def flatten(list_of_lists):
     res = []
@@ -232,15 +508,118 @@ def flatten(list_of_lists):
         res += l
     return res
 
-#class DesignerStructure(object):
-#    def __init__(self, start, direction):
-#        self.start = start
-    
+script_header = \
+"""
+Dim oAnsoftApp
+Dim oDesktop
+Dim oProject
+Dim oDesign
+Dim oEditor
+Dim oModule
+Set oAnsoftApp = CreateObject("AnsoftDesigner.DesignerScript")
+Set oDesktop = oAnsoftApp.GetAppDesktop()
+oDesktop.RestoreWindow
+Set oProject = oDesktop.NewProject
+oProject.InsertDesign "EM Design", "%(designname)s", "", ""
+Set oDesign = oProject.SetActiveDesign("%(designname)s")
+Set oEditor = oDesign.SetActiveEditor("Layout")
+"""
+
+OptimizationCommandHead = \
+"""
+oModule.InsertSetup "OptiOptimization", Array("NAME:%(name)s", Array("NAME:StartingPoint"), "Optimizer:=",  _
+  "%(optimizer)s", Array("NAME:AnalysisStopOptions", "StopForNumIteration:=", true, "StopForElapsTime:=",  _
+  false, "StopForSlowImprovement:=", false, "StopForGrdTolerance:=", false, "MaxNumIteration:=",  _
+  1000, "MaxSolTimeInSec:=", 3600, "RelGradientTolerance:=", 0), "CostFuncNormType:=",  _
+  "L2", "PriorPSetup:=", "", "PreSolvePSetup:=", true, Array("NAME:Variables"), Array("NAME:LCS"), Array("NAME:Goals", """
+
+OptimizationGoal = \
+"""Array("NAME:Goal", "ReportType:=",  _
+  "Standard", "Solution:=", "%(setup)s : %(sweep)s", Array("NAME:SimValueContext", "SimValueContext:=", Array( _
+  3, 0, 2, 0, false, false, -1, 1, 0, 1, 1, "", 0, 0, "EnsDiffPairKey", false, "0",  _
+  "IDIID", false, "1")), "Calculation:=", "%(formula)s", "Name:=",  _
+  "%(formula)s", Array("NAME:Ranges", "Range:=", Array("Var:=", "%(xtype)s", "Type:=",  _
+  "d", "DiscreteValues:=", "%(xval)s")), "Condition:=", "==", Array("NAME:GoalValue", "GoalValueType:=",  _
+  "Independent", "Format:=", "Real/Imag", "bG:=", Array("v:=", "[%(yval)s;]")), "Weight:=",  _
+  "[1;]") """
+  
+OptimizationCommandTail = \
+"""), "Acceptable_Cost:=", 0, "Noise:=", 0.0001, "UpdateDesign:=", false, "UpdateIteration:=",  _
+  5, "KeepReportAxis:=", true, "UpdateDesignWhenDone:=", true)
+"""
+
+SetupCommand = \
+"""
+oModule.Add Array("NAME:%(name)s", Array("NAME:Properties", "Enable:=", "true"), "PercentRefinementPerPass:=",  _
+  25, "AdaptiveFrequency:=", "%(freq)s", "NumberOfRequestedPasses:=", 10, "TargetMaximumDeltaNorm:=",  _
+  0.05, "MinNumberOfPasses:=", 1, "MinNumberOfConvergedPasses:=", 1, "UseDefaultLambda:=",  _
+  true, "UseMaxRefinement:=", true, "MaxRefinement:=", 100000, "SaveAdaptiveCurrents:=",  _
+  false,"Refine:=", false, "Frequency:=", "%(freq)s", "LambdaRefine:=", true, "MeshSizeFactor:=",  _
+  12, "QualityRefine:=", true, "MinAngle:=", "15deg", "UniformityRefine:=",  _
+  false, "MaxRatio:=", 2, "Smooth:=", false, "SmoothingPasses:=", 5, "UseEdgeMesh:=",  _
+  false, "UseEdgeMeshAbsLength:=", false, "EdgeMeshRatio:=", 0.1, "EdgeMeshAbsLength:=",  _
+  "1000mm", "LayerProjectThickness:=", "0meter", "UseDefeature:=", true, "UseDefeatureAbsLength:=",  _
+  false, "DefeatureRatio:=", 1E-006, "DefeatureAbsLength:=", "0mm", "InfArrayDimX:=",  _
+  0, "InfArrayDimY:=", 0, "InfArrayOrigX:=", 0, "InfArrayOrigY:=", 0, "InfArraySkew:=",  _
+  0, "ViaNumSides:=", 1, "ViaMaterial:=", "", "Style25DVia:=", "Wirebond", "Replace3DTriangles:=",  _
+  true, "ViaDensity:=", 0, "HfssMesh:=", false, "UnitFactor:=", 1000, "Verbose:=",  _
+  false, Array("NAME:AuxBlock"), "DoAdaptive:=", false, "Color:=", Array("R:=", 0, "G:=",  _
+  0, "B:=", 0), Array("NAME:AdvancedSettings", "AccuracyLevel:=", 2, "GapPortCalibration:=",  _
+  true, "ReferenceLengthRatio:=", 0.25, "RefineAreaRatio:=", 4, "DRCOn:=", false, "FastSolverOn:=",  _
+  false, "StartFastSolverAt:=", 4000, "StartIterativeSolverAt:=", 3000, "LoopTreeOn:=",  _
+  true, "SingularElementsOn:=", false, "UseStaticPortSolver:=", false, "UseThinMetalPortSolver:=",  _
+  false, "ComputeBothEvenAndOddCPWModes:=", false, "ZeroMetalLayerThickness:=",  _
+  4E-005, "ThinDielectric:=", 0, "SVDHighCompression:=", false, "NumProcessors:=",  _
+  1, "UseHfssIterativeSolver:=", false, "RelativeResidual:=", 0.0001, "OrderBasis:=",  _
+  -1, "MaxDeltaZo:=", 2, "UseRadBoundaryOnPorts:=", false, "SetTrianglesForWavePort:=",  _
+  false, "MinTrianglesForWavePort:=", 100, "MaxTrianglesForWavePort:=", 500, "numprocessorsdistrib:=",  _
+  1, "usehpcformp:=", false, "hpclicensetype:=", 1, "DesignType:=", "Generic"), Array("NAME:CurveApproximation", "ArcAngle:=",  _
+  "30deg", "StartAzimuth:=", "0deg", "UseError:=", false, "Error:=", "0meter", "MaxPoints:=",  _
+  8, "UnionPolys:=", true, "Replace3DTriangles:=", true))
+"""
+
+SweepCommand = \
+"""
+oModule.AddSweep "%(setup)s", Array("NAME:%(name)s", Array("NAME:Properties", "Enable:=",  _
+  "true"), "GenerateSurfaceCurrent:=", false, "FastSweep:=", %(fastsweep)s, "ZoSelected:=",  _
+  false, "SAbsError:=", 0.005, "ZoPercentError:=", 1, Array("NAME:Sweeps", "Variable:=",  _
+  "%(name)s", "Data:=", "%(data)s", "OffsetF1:=", false, "Synchronize:=",  _
+  0))
+"""
+
+# TODO: Check that properties have been added when they are used    
 if __name__ == "__main__":
+    ilen = calculate_interior_length(5, 3e8/np.sqrt(5.5), 50)   
+    
     d = DesignerScript("test_dscript")
+    
+    
+    d.add_layer("substrate", "dielectric", "sapphire", 430)
     d.add_layer("main", "ground", "perfect conductor", 0, main=True)
-    d.add_property("straight_length", "200um")
-    d.add_property("gapw", "10um")
-    d.CPWStraight((0,0), 0, "straight_length", "10um", "gapw")
+    
+    
+    d.add_property("wiggles_length", str(ilen)+"um", optimize=True)
+    d.add_property("inner_finger_length", "20 um", optimize=True)
+    
+    
+    gapw = calculate_gap_width(5.5, 50, 10)
+    s = DStructure(angle="start_angle:=0deg", pinw="pinw:=10um", gapw="gapw:=%.3fum" % gapw)
+    d.CPWLauncher(s, "50um", "100um", "50um", "25um", True)    
+    d.CPWStraight(s, "150um")
+    d.CPWFingerCap(s, 4, "finger_length:=20um", "finger_width:=5um", "finger_gap:=5um")
+    d.CPWWiggles(s, "wiggles_length", 4, "bend_radius:=25um")
+    d.CPWFingerCap(s, 4, "inner_finger_length", "finger_width", "finger_gap")
+    d.CPWWiggles(s, "wiggles_length", 4, "bend_radius")
+    d.CPWFingerCap(s, 4, "finger_length", "finger_width", "finger_gap")
+    d.CPWStraight(s, "150um")
+    d.CPWLauncher(s, "50um", "100um", "50um", "25um", True, True)
+    
+    d.add_planar_setup("5GHz")
+    d.add_point_calc("5GHz 5.1GHz")
+    d.add_optimization([("im(Y(Port1,Port1))", "F", "5GHz", 0),
+                        ("im(Y(Port1,Port1))", "F", "5.1GHz", 0)])
+                        
+    d.run_optimization()
+        
     d.save()
     print "Done!"
