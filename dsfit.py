@@ -169,7 +169,7 @@ def hangerfunc_new(p,x):
     f0,Qi,df,scale = p
     a=(x-(f0+df))/(f0+df)
     b=2*df/f0
-    Qc=64000.
+    Qc=4000.
     y=10*np.log10(scale*(Qc**2. + Qi**2.*Qc**2.*(2.*a + b)**2.)/((Qc+Qi)**2 + 4.*Qi**2.*Qc**2.*a**2.))
     return y
     
@@ -179,7 +179,6 @@ def hangerfunc_new_withQc(p,x):
     f0,Qi,Qc,df,scale = p
     a=(x-(f0+df))/(f0+df)
     b=2*df/f0
-    #Qc=26000.
     y=10*np.log10(scale*(Qc**2. + Qi**2.*Qc**2.*(2.*a + b)**2.)/((Qc+Qi)**2 + 4.*Qi**2.*Qc**2.*a**2.))
     return y
 
@@ -196,9 +195,11 @@ def hangerfunctilt(p,x):
 
 def fithanger_new(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,printresult=False,label="",mark_data='bo',mark_fit='r-'):
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
+        needs a given Qc, which is assumed to be constant.
+        You need to define the Qc in hangerfunc_new()
         fitparams = []
-        returns p=[f0,Qi,Qc,df,scale]
-        Uses hangerfunc. 
+        returns p=[f0,Qi,df,scale]
+        Uses hangerfunc_new. 
     """
     
     if domain is not None:
@@ -227,6 +228,7 @@ def fithanger_new(xdata,ydata,fitparams=None,domain=None,showfit=False,showstart
     
 def fithanger_new_withQc(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,printresult=False,label="",mark_data='bo',mark_fit='r-'):
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
+        use the same parameters as old one 'fithanger', but a different interpretation of the fit formula
         fitparams = []
         returns p=[f0,Qi,Qc,df,scale]
         Uses hangerfunc. 
@@ -253,7 +255,7 @@ def fithanger_new_withQc(xdata,ydata,fitparams=None,domain=None,showfit=False,sh
     fitresult=fitgeneral(fitdatax,fitdatay,hangerfunc_new_withQc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label, mark_data=mark_data, mark_fit=mark_fit)        
     fitresult[1]=abs(fitresult[1])
     fitresult[2]=abs(fitresult[2])
-    if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}'.format(fitresult[0],fitresult[1],fitresult[2],fitresult[3])
+    if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nscale: {4}'.format(fitresult[0],fitresult[1],fitresult[2],fitresult[3],fitresult[4])
     return fitresult
 
 def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,printresult=False,label="",mark_data='bo',mark_fit='r-'):
