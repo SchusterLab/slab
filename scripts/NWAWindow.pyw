@@ -39,8 +39,8 @@ class nwa_DataThread(DataThread):
         freqs,mags,phases=nwa.take_one_averaged_trace()
         xrng, yrng = ((freqs[0],freqs[-1]),(start, stop))
         self.msg("Data acquisition complete.")
-        self.plots["mag"].set_data(freqs,mags/1e9)
-        self.plots["phase"].set_data(freqs,phases)
+        self.plots["mag"].set_data(freqs/1e9,mags)
+        self.plots["phase"].set_data(freqs/1e9,phases)
         self.plots["magplot"].replot()
         self.plots["phaseplot"].replot()         
         self.plots["magplot"].do_autoscale()
@@ -54,7 +54,7 @@ class nwa_DataThread(DataThread):
                 f[n] = d
                 set_range(f[n], start, stop)
                 set_labels(f[n], "Frequency (Hz)", "Response")
-            
+                f.close()
 #            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
 #            np.savetxt(os.path.join(self.params['datapath'],fname),transpose(array([freqs,mags,phases])),delimiter=',')
 
@@ -78,8 +78,9 @@ class nwa_DataThread(DataThread):
     
         nwa.set_span(segspan)
         segs=[]
-        if self.params['save']:
-            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
+#        if self.params['save']:
+#            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
+
         for start,stop in zip(starts,stops):
             nwa.set_start_frequency(start)
             nwa.set_stop_frequency(stop)
@@ -102,25 +103,39 @@ class nwa_DataThread(DataThread):
             self.plots["phase"].set_data(data[0]/1e9,data[2])
             self.plots["magplot"].replot()
             self.plots["phaseplot"].replot()
-            if self.params['save']:
-                np.savetxt(os.path.join(self.params['datapath'],fname),transpose(data),delimiter=',')
+#            if self.params['save']:
+#                np.savetxt(os.path.join(self.params['datapath'],fname),transpose(data),delimiter=',')
+            
+                
             if self.aborted():
                 self.msg("aborted")
                 return
 
-
             
         segs.append(np.array([last]).transpose())
         data=np.hstack(segs) 
+
+        if self.params['save']:
+            self.set_file()
+            f = self.file[self.trace_no] if self.params["numberTraces"] else self.file
+            for n, d in [("mag", data[1]), ("phase", data[2])]:
+#                print n
+#                if n not in f.keys():
+#                    f[n] = zeros(len(data[0])*segments)
+                f[n] = d
+                set_range(f[n], data[0][0], data[0][-1])
+                set_labels(f[n], "Frequency (Hz)", "Response")
+                f.close()
+
         time.sleep(nwa.query_sleep)
         nwa.set_timeout(old_timeout)
         nwa.set_format('mlog')
         nwa.set_trigger_average_mode(False)
         nwa.set_trigger_source('INTERNAL')
 
-        if self.params['save']:
-            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
-            np.savetxt(os.path.join(self.params['datapath'],fname),transpose(data),delimiter=',')
+#        if self.params['save']:
+#            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
+#            np.savetxt(os.path.join(self.params['datapath'],fname),transpose(data),delimiter=',')
         self.msg('Segmented scan complete.')
             
 
@@ -173,6 +188,7 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
         self.setupSlabWindow(autoparam=True)
         self.register_script("run_script", self.go_button, self.abort_button)
         self.filenameButton.clicked.connect(self.selectFile)
+        #self.connect(self.param_centerspanstartstop, SIGNAL("stateChanged(int)"),self.on_centerspanstartstopChanged)
         self.start_thread()
 
         #Connect controls
