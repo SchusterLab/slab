@@ -7,10 +7,10 @@ Created on Fri Apr 13 15:02:55 2012
 
 from qutip import tensor,jmat, sigmax,sigmay,sigmaz,qeye,destroy,basis
 from matplotlib.pyplot import *
-from numpy import array,dot,arange,transpose,real,abs,sqrt,cross,cos,sin,pi
+from numpy import array,dot,arange,transpose,real,abs,sqrt,cross,cos,sin,pi,zeros,ones,vstack,hstack
 
 def spin_hanger_s21(tlist,glist,kslist,f0,kc,kci,f):
-    return abs(1+kc/( complex(0,1)*2*pi*(f-f0)-(kc+kci/2)+sum(glist**2/(complex(0,1)*(2*pi*f0-tlist)-kslist/2))))**2
+    return abs(1+kc/( complex(0,1)*(f-f0)-(kc+kci/2)+sum(glist**2/(complex(0,1)*(f-tlist)-kslist/2))))**2
 
 def RotateAboutN(theta,n):
     
@@ -77,6 +77,10 @@ def NV_allowed_transitions(ekets,threshold=.001):
                 allowed_transitions.append([ii,jj])
     return allowed_transitions
 
+def transition_frequencies(enlist,transitions):
+    return array([abs(enlist[trans[0]]-enlist[trans[1]]) for trans in transitions])
+        
+
 def plot_transitions(xpts,enlist,label='',allowed_transitions=None):
     if allowed_transitions is None:
         allowed_transitions=[]
@@ -96,7 +100,7 @@ if __name__=="__main__":
     H_nv = NVH(array([0,0,1]))
     p1list_1=[]; p1list_2=[]; p1list_3=[]; p1list_4=[]
     nvlist_1=[]; nvlist_2=[]; nvlist_3=[]; nvlist_4=[]
-    blist=arange(-200.00001,200.,10.)
+    blist=arange(40.,60.,.1)
     theta=0.0001
     phi=0.
     Bn=array([cos(phi)*sin(theta),sin(phi)*sin(theta),cos(theta)])
@@ -107,7 +111,7 @@ if __name__=="__main__":
     R2=RotateAtoB([0,0,1.],[-1.,-1., 1.])
     R3=RotateAtoB([0,0,1.],[ 1.,-1.,-1.])
     R4=RotateAtoB([0,0,1.],[-1., 1.,-1.])
-    
+    print "Calculating transitions"
     for b in blist:
         B=b*Bn
         B1=dot(R1,B)
@@ -117,52 +121,75 @@ if __name__=="__main__":
         #print bz
         H_p1_1 = P1H(B1)
         H_nv_1 = NVH(B1)
-        H_p1_2 = P1H(B2)
-        H_nv_2 = NVH(B2)
-        H_p1_3 = P1H(B3)
-        H_nv_3 = NVH(B3)
-        H_p1_4 = P1H(B4)
-        H_nv_4 = NVH(B4)
+#        H_p1_2 = P1H(B2)
+#        H_nv_2 = NVH(B2)
+#        H_p1_3 = P1H(B3)
+#        H_nv_3 = NVH(B3)
+#        H_p1_4 = P1H(B4)
+#        H_nv_4 = NVH(B4)
         
         p1_ekets, evals = H_p1_1.eigenstates()
         p1list_1.append(evals)
         nv_ekets, evals = H_nv_1.eigenstates()
         nvlist_1.append(evals)
-        p1_ekets, evals = H_p1_2.eigenstates()
-        p1list_2.append(evals)
-        nv_ekets, evals = H_nv_2.eigenstates()
-        nvlist_2.append(evals)
-        p1_ekets, evals = H_p1_3.eigenstates()
-        p1list_3.append(evals)
-        nv_ekets, evals = H_nv_3.eigenstates()
-        nvlist_3.append(evals)
-        p1_ekets, evals = H_p1_4.eigenstates()
-        p1list_4.append(evals)
-        nv_ekets, evals = H_nv_4.eigenstates()
-        nvlist_4.append(evals)
+#        p1_ekets, evals = H_p1_2.eigenstates()
+#        p1list_2.append(evals)
+#        nv_ekets, evals = H_nv_2.eigenstates()
+#        nvlist_2.append(evals)
+#        p1_ekets, evals = H_p1_3.eigenstates()
+#        p1list_3.append(evals)
+#        nv_ekets, evals = H_nv_3.eigenstates()
+#        nvlist_3.append(evals)
+#        p1_ekets, evals = H_p1_4.eigenstates()
+#        p1list_4.append(evals)
+#        nv_ekets, evals = H_nv_4.eigenstates()
+#        nvlist_4.append(evals)
         
     p1list_1=transpose(array(p1list_1))
     nvlist_1=transpose(array(nvlist_1))
-    p1list_2=transpose(array(p1list_2))
-    nvlist_2=transpose(array(nvlist_2))
-    p1list_3=transpose(array(p1list_3))
-    nvlist_3=transpose(array(nvlist_3))
-    p1list_4=transpose(array(p1list_4))
-    nvlist_4=transpose(array(nvlist_4))
+#    p1list_2=transpose(array(p1list_2))
+#    nvlist_2=transpose(array(nvlist_2))
+#    p1list_3=transpose(array(p1list_3))
+#    nvlist_3=transpose(array(nvlist_3))
+#    p1list_4=transpose(array(p1list_4))
+#    nvlist_4=transpose(array(nvlist_4))
     
     
-    
-    figure(1)
-    plot_transitions(blist,p1list_1,'P1_1',P1_allowed_transitions(p1_ekets,.05))
-    plot_transitions(blist,p1list_2,'P1_2',P1_allowed_transitions(p1_ekets,.05))
-    plot_transitions(blist,p1list_3,'P1_3',P1_allowed_transitions(p1_ekets,.05))
-    plot_transitions(blist,p1list_4,'P1_4',P1_allowed_transitions(p1_ekets,.05))
-    #figure(2)
-    plot_transitions(blist,nvlist_1,'NV_1',NV_allowed_transitions(nv_ekets))
-    plot_transitions(blist,nvlist_2,'NV_2',NV_allowed_transitions(nv_ekets))
-    plot_transitions(blist,nvlist_3,'NV_3',NV_allowed_transitions(nv_ekets))
-    plot_transitions(blist,nvlist_4,'NV_4',NV_allowed_transitions(nv_ekets))
+#    print "P1 transitions"
+#    figure(1)
+#    xlabel('Magnetic Field, B (mT)')
+#    ylabel('Frequency, F (GHz)')
+#    plot_transitions(blist,p1list_1,'P1_1',P1_allowed_transitions(p1_ekets,.05))
+#    plot_transitions(blist,p1list_2,'P1_2',P1_allowed_transitions(p1_ekets,.05))
+#    plot_transitions(blist,p1list_3,'P1_3',P1_allowed_transitions(p1_ekets,.05))
+#    plot_transitions(blist,p1list_4,'P1_4',P1_allowed_transitions(p1_ekets,.05))
+#    print "NV transitions"
+#    figure(2)
+#    xlabel('Magnetic Field, B (mT)')
+#    ylabel('Frequency, F (GHz)')
+#    plot_transitions(blist,nvlist_1,'NV_1',NV_allowed_transitions(nv_ekets))
+#    plot_transitions(blist,nvlist_2,'NV_2',NV_allowed_transitions(nv_ekets))
+#    plot_transitions(blist,nvlist_3,'NV_3',NV_allowed_transitions(nv_ekets))
+#    plot_transitions(blist,nvlist_4,'NV_4',NV_allowed_transitions(nv_ekets))
     #print P1_allowed_transitions(p1_ekets)
-    
+    figure(3)
+    print "Calculating density plot"
+    f0=5.
+    kc=.01
+    kci=0.0001
+    ks=.001
+    g=.05
+    fpts=arange(4.9,5.1,.001)
+    spin_pts=arange(4.,5.5,.001)
+    tlist=transpose(transition_frequencies(nvlist_1,NV_allowed_transitions(nv_ekets)))
+    s21pts=zeros((len(fpts),len(tlist)))
+    for xx,f in enumerate(fpts):
+        for yy,t in enumerate(tlist):
+            s21pts[xx,yy]=spin_hanger_s21(t,g,ks,f0,kc,kci,f)    
+    imshow(s21pts,aspect='auto',origin='lower',interpolation='none',extent=(blist[0],blist[-1],fpts[0],fpts[-1]))
+    xlabel('Magnetic Field, B (mT)')
+    ylabel('Frequency, F (GHz)')
+    #plot_transitions(blist,nvlist_1,'NV_1',NV_allowed_transitions(nv_ekets))
+    plot(blist,tlist)
     show()
     
