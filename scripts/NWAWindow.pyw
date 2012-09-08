@@ -54,7 +54,7 @@ class nwa_DataThread(DataThread):
                 f[n] = d
                 set_range(f[n], start, stop)
                 set_labels(f[n], "Frequency (Hz)", "Response")
-                f.close()
+            f.close()
 #            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
 #            np.savetxt(os.path.join(self.params['datapath'],fname),transpose(array([freqs,mags,phases])),delimiter=',')
 
@@ -106,12 +106,10 @@ class nwa_DataThread(DataThread):
 #            if self.params['save']:
 #                np.savetxt(os.path.join(self.params['datapath'],fname),transpose(data),delimiter=',')
             
-                
             if self.aborted():
                 self.msg("aborted")
                 return
 
-            
         segs.append(np.array([last]).transpose())
         data=np.hstack(segs) 
 
@@ -119,13 +117,10 @@ class nwa_DataThread(DataThread):
             self.set_file()
             f = self.file[self.trace_no] if self.params["numberTraces"] else self.file
             for n, d in [("mag", data[1]), ("phase", data[2])]:
-#                print n
-#                if n not in f.keys():
-#                    f[n] = zeros(len(data[0])*segments)
                 f[n] = d
                 set_range(f[n], data[0][0], data[0][-1])
                 set_labels(f[n], "Frequency (Hz)", "Response")
-                f.close()
+            f.close()
 
         time.sleep(nwa.query_sleep)
         nwa.set_timeout(old_timeout)
