@@ -23,7 +23,25 @@ def dBm_to_W(dBm):
 
 dBmtoW=dBm_to_W
 
-########################
+######################## File handling
+
+def get_script():
+    """returns currently running script file as a string"""
+    f=open(__file__, 'r')
+    s=f.read()
+    f.close()
+    return s  
+
+def save_script(expt_path,prefix):
+    """This function saves the file of the current running script to a file in the standard file naming convention:
+        expt_path\date_prefix_number"""
+    tag=date_tag(None)
+    ii=next_path_index(expt_path,prefix)
+    fname=os.path.join(expt_path,"%s_%s_%03d.py" % (tag,prefix,ii) )    
+    fw=open(fname,'w')
+    fw.write(get_script())
+    fw.close()
+    return fname
 
 def find_closest_index(a,v):
     return argsort(abs(a-v))[0]
