@@ -67,10 +67,10 @@ class Instrument(object):
     #    return self.operation_range
 
 class VisaInstrument(Instrument):
-    def __init__(self,name,address='',enabled=True):
+    def __init__(self,name,address='',enabled=True, **kwargs):
         Instrument.__init__(self,name,address,enabled)
         if self.enabled:
-            self.protocol='GPIB'
+            self.protocol='VISA'
             address=address.upper()
             print address
 #            if address[:5]=="GPIB":
@@ -79,7 +79,7 @@ class VisaInstrument(Instrument):
 #                self.instrument=visa.instrument(addnum)
 #                
 #            else:
-        self.instrument=visa.instrument(address)
+        self.instrument=visa.Instrument(address, **kwargs)
             
     def write(self, s):
         if self.enabled: self.instrument.write(s+self.term_char)
