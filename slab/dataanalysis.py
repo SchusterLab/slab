@@ -13,6 +13,7 @@ from scipy.signal import decimate
 from numpy import linspace,argmin,argmax, argsort, genfromtxt,loadtxt,array,transpose,pi,cos,sin,arctan2,convolve,correlate,sum,sqrt,ones,zeros,arange
 import dateutil
 import time
+import inspect
 ###################################################
 
 #### General
@@ -27,7 +28,7 @@ dBmtoW=dBm_to_W
 
 def get_script():
     """returns currently running script file as a string"""
-    f=open(__file__, 'r')
+    f=open(inspect.stack()[-1][1],'r')
     s=f.read()
     f.close()
     return s  
