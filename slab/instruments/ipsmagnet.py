@@ -15,7 +15,7 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
         if address[:3].upper()=='COM':
             SerialInstrument.__init__(self,name,address,enabled,timeout)
         else:
-            VisaInstrument.__init__(self,name,address,enabled)
+            VisaInstrument.__init__(self,name,address,enabled, term_chars='\r')
         self.query_sleep=0.05
         self.recv_length=65536
         self.term_char='\r'
@@ -24,20 +24,20 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
     def read(self):
         if self.protocol == 'serial':
             return SerialInstrument.read(self)
-        if self.protocol == 'GPIB':
+        if self.protocol == 'VISA':
             return VisaInstrument.read(self)
             
     def write(self, s):
         if self.protocol == 'serial':
             SerialInstrument.write(self, s)
-        if self.protocol == 'socket':
+        if self.protocol == 'VISA':
             VisaInstrument.write(self, s)
     
     def __del__(self):
         return
         if self.protocol == 'serial':
             SerialInstrument.__del__(self)
-        if self.protocol == 'visa':
+        if self.protocol == 'VISA':
             VisaInstrument.__del__(self)
     
     def get_id(self):
@@ -81,7 +81,7 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
         
     def ramp(self):
         """Ramp to Set point"""
-        self.remote()
+#        self.remote()
         self.query('A1')
         
     def zero(self):
@@ -113,8 +113,9 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
         self.remote()
         while (count<20):
             try:
-                print 'I%07.4f' % current
-                self.query('I%07.4f' % current)
+                #print 'I%07.4f' % current
+                self.query('I%06.3f' % current)
+                time.sleep(0.05)
                 setpt=self.get_setpoint()
                 if abs(current-setpt)<tol:
                     return
@@ -191,13 +192,15 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
 
 if __name__ == '__main__':
     print "HERE"
-    magnet=IPSMagnet(address="COM8")
+    #magnet=IPSMagnet(address='COM1')
+    magnet=IPSMagnet(address='GPIB0::25::INSTR')
     magnet.set_mode('remote_unlocked')
     #magnet.set_local()
     print magnet.get_id()
     #magnet.set_heater()
-    magnet.set_current_sweeprate(0.3) 
-    magnet.hold()
+    #magnet.set_current_sweeprate(0.3) 
+    #magnet.hold()
+    
     print "done"
     #print fridge.get_status()
     #d=fridge.get_temperatures()
