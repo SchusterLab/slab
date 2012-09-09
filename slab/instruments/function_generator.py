@@ -5,6 +5,7 @@ Created on Thu Aug 11 19:09:25 2011
 @author: Phil
 """
 from slab.instruments import SocketInstrument
+import time
 
 class BNCAWG(SocketInstrument):
     def __init__(self,name='BNCAWG',address='', enabled=True,timeout=10, recv_length=1024):
@@ -110,8 +111,11 @@ class FilamentDriver(BNCAWG):
         
         self.set_output(True)
         
-        
-        
+    def fire_filament(self, delay=0,pulses=1):
+        for ii in range(pulses):
+            self.trigger()
+            time.sleep(delay)
+            
 
         
     
