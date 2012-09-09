@@ -49,7 +49,7 @@ def fitgeneral(xdata,ydata,fitfunc,fitparams,domain=None,showfit=False,showstart
         plt.plot(fitdatax,fitfunc(bestfitparams,fitdatax),mark_fit,label=label+" fit")
         if label!='': plt.legend()
         err=math.fsum(errfunc(bestfitparams,fitdatax,fitdatay))
-        print 'the best fit has an RMS of {0}'.format(err)
+        #print 'the best fit has an RMS of {0}'.format(err)
 #    plt.t
 #    plt.figtext()    
     return bestfitparams
