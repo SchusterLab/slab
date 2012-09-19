@@ -25,8 +25,8 @@ class DesignerScript(object):
         self.opti_num = 1
         DString.script = self
 
-    def write(self, s):
-        self.file.write(s)
+    def write(self, string):
+        self.file.write(string)
 
     def save(self):
         self.file.close()
@@ -86,7 +86,9 @@ class DesignerScript(object):
         self.write_array(arg)
         self.write("\n")
     
-    def add_property(self, name, value, optimize=False):
+    def add_property(self, name, value, optimize=False, add_unit=False):
+        if add_unit:
+            value = str(value)+self.unit
         self.write("oDesign.ChangeProperty ")
         arg = [
                 "NAME:AllTabs",
@@ -165,6 +167,42 @@ class DesignerScript(object):
         name = name if name else self.last_opt
         self.set_module("Optimetrics")
         self.write('oModule.SolveSetup "%s"\n' % name)
+        
+    def add_report(self, yform, xform="F", name=None, setup=None, sweep=None):
+        name = name if name else "XY Plot " + self.uid()
+        setup = setup if setup else self.last_setup
+        sweep = sweep if sweep else self.last_sweep
+        yform = yform if isinstance(yform, list) else [yform]
+        self.set_module("ReportSetup")
+        self.write("oModule.CreateReport ")
+        arg = \
+        [
+          name, "Standard", "Rectangular Plot",
+          setup + " : " + sweep,
+          [
+            "NAME:Context", "SimValueContext:=",
+            [
+              3, 0, 2, 0, False, False, -1, 1, 0, 1, 1, "", 0, 0, 
+              "EnsDiffPairKey", False, "0", "IDIID", False, "1"
+            ]
+          ],
+          [
+            "%s:=" % xform, ["All"],
+          ],
+          [
+            "X Component:=", xform,
+            "Y Component:=", yform,
+          ], []
+        ]
+        self.write_array(arg)
+        self.write("\n")
+        self.last_report = name
+        return name
+        
+    def export_report(self, fname, report=None):
+        report = report if report else self.last_report
+        self.set_module("ReportSetup")
+        self.write('oModule.ExportToFile "' + report + '", "' + fname + '"\n"')
         
     def draw_rectangle_pts(self, pt1, pt2, angle=0, name=None, layer=None):
         self.write("oEditor.CreateRectangle ")
@@ -324,8 +362,6 @@ class DesignerScript(object):
         gapw = gapw if gapw else structure.gapw
         total_length, radius, pinw, gapw = \
           map(DString, [total_length, radius, pinw, gapw])
-        print radius
-        print radius._val
         s = structure
         vlength=(total_length-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)*radius))/(2*num_wiggles)
         
@@ -408,8 +444,111 @@ class DesignerScript(object):
             edge_no = 0
         if make_port:
             self.create_port(left_box, edge_no, right_box, edge_no)
-        
+    
+    def CPWGapCap(self, s, gap, pinw, gapw):
+        self.draw_line_pts(s.orient_pts([(0,0), (gap, 0)]), pinw+(2*gapw))
+        s.start = vadd(s.start, s.rotate_pt((gap, 0)))
 
+    def DoubleCPW(self, s, length, inner_pin, inner_gap, outer_pin, outer_gap):
+        start = s.start
+        self.CPWStraight(s, length, pinw=inner_pin, gapw=inner_gap)
+        s.start = start
+        self.CPWStraight(s, length, pinw=inner_pin+(2*(inner_gap+outer_pin)), gapw=outer_gap)
+        
+    def CPWInnerOuterFingerIsland(self, s, c_gap, n_fingers, inner_finger_length,
+                                  outer_finger_length, flipped=False):
+        pinw = s.pinw
+        gapw = s.gapw
+        # Initial Part
+        if flipped:
+            #CPWGapCap(c_gap, pinw, inner_finger_length+outer_finger_length+(5*c_gap)).draw(s)
+            self.CPWStraight(s, c_gap, c_gap, ((pinw+c_gap)/2.)+inner_finger_length+outer_finger_length+(4*c_gap))
+            self.CPWStraight(s, c_gap, pinw+(2*(inner_finger_length+outer_finger_length+(4*c_gap))), c_gap)
+            start = s.start
+            self.DoubleCPW(s, c_gap, pinw, inner_finger_length+(2*c_gap), c_gap, 
+                      outer_finger_length+(2*c_gap))
+            s.start = start
+            self.CPWGapCap(s, c_gap, pinw, 0)
+        else:
+            self.CPWStraight(s, c_gap, pinw, inner_finger_length+outer_finger_length+(5*c_gap))
+            self.DoubleCPW(s, c_gap, pinw, c_gap, 
+                      inner_finger_length+outer_finger_length+(3*c_gap), c_gap)
+            self.DoubleCPW(s, c_gap, pinw, inner_finger_length+(2*c_gap), c_gap, 
+                      outer_finger_length+(2*c_gap))
+        # Middle Fingers
+        for i in range(n_fingers-2):
+            # gap bit
+            self.DoubleCPW(s, c_gap, pinw+(2*(inner_finger_length+c_gap)), c_gap, c_gap, c_gap)
+            # first bit
+            self.DoubleCPW(s, c_gap, pinw, inner_finger_length+(2*c_gap), c_gap, 
+                      outer_finger_length+(2*c_gap))
+            # middle bit
+            self.DoubleCPW(s, c_gap, pinw, c_gap, 
+                      inner_finger_length+outer_finger_length+(3*c_gap), c_gap)
+            # last bit == first bit
+            self.DoubleCPW(s, c_gap, pinw, inner_finger_length+(2*c_gap), c_gap, 
+                      outer_finger_length+(2*c_gap))
+
+        # Last gap bit
+        self.DoubleCPW(s, c_gap, pinw+(2*(inner_finger_length+c_gap)), c_gap, c_gap, c_gap)
+        # Final part
+        if flipped:
+            self.DoubleCPW(s, c_gap, pinw, inner_finger_length+(2*c_gap), c_gap, 
+                      outer_finger_length+(2*c_gap))            
+            self.DoubleCPW(s, c_gap, pinw, c_gap, 
+                      inner_finger_length+outer_finger_length+(3*c_gap), c_gap)
+            self.CPWStraight(s, c_gap, pinw, inner_finger_length+outer_finger_length+(5*c_gap))
+        else:            
+            start = s.start
+            self.DoubleCPW(s, c_gap, pinw, inner_finger_length+(2*c_gap), c_gap, 
+                      outer_finger_length+(2*c_gap))
+            s.start = start
+            self.CPWGapCap(s, c_gap, pinw, 0)
+            self.CPWStraight(s, c_gap, pinw+(2*(inner_finger_length+outer_finger_length+(4*c_gap))), c_gap)
+            self.CPWStraight(s, c_gap, c_gap, ((pinw+c_gap)/2.)+inner_finger_length+outer_finger_length+(4*c_gap))
+            
+            
+            
+    def CPWQubitBox(self, s, c_gap, finger_no_left, finger_no_right,
+                 outer_finger_len_left, outer_finger_len_right,
+                 inner_finger_len_left, inner_finger_len_right,
+                 taper_len=0, int_len=30, pinw=None, gapw=None, align=False, flipped=False):
+        c_gap = DString(c_gap)
+        outer_finger_len_left = DString(outer_finger_len_left)
+        outer_finger_len_right = DString(outer_finger_len_right)
+        inner_finger_len_left = DString(inner_finger_len_left)
+        inner_finger_len_right = DString(inner_finger_len_right)
+        finger_gapw = c_gap
+        fingerw = 3 * c_gap        
+
+        gapw = gapw if gapw else s.gapw
+        pinw = pinw if pinw else s.pinw
+        
+        taper_len, int_len, pinw, gapw = map(DString, [taper_len, int_len, pinw, gapw])
+        finger_gapw = c_gap
+        center_gapw = fingerw = 3 * c_gap
+        center_pinw_left = 2 * inner_finger_len_left + pinw
+        center_pinw_right = 2 * inner_finger_len_right + pinw
+        center_width = dmax(center_pinw_left, center_pinw_right) + (2*center_gapw)
+        outer_finger_len_left, outer_finger_len_right = outer_finger_len_left, outer_finger_len_right
+        inner_finger_len_left, inner_finger_len_right = inner_finger_len_left, inner_finger_len_right
+        if flipped:
+            center_pinw_left, center_pinw_right = center_pinw_right, center_pinw_left
+            finger_no_left, finger_no_right = finger_no_right, finger_no_left
+            outer_finger_len_left, outer_finger_len_right = outer_finger_len_right, outer_finger_len_left
+            inner_finger_len_left, inner_finger_len_right = inner_finger_len_right, inner_finger_len_left
+        
+        self.CPWTaper(s, taper_len, pinw, center_pinw_left, gapw, center_gapw)
+
+        self.CPWInnerOuterFingerIsland(s, c_gap, finger_no_left,
+                                  inner_finger_len_left, outer_finger_len_left)
+        self.CPWStraight(s, int_len/2., c_gap, (center_width-c_gap)/2.)
+        self.CPWGapCap(s, c_gap, center_width, 0)
+        self.CPWStraight(s, int_len/2., c_gap, (center_width-c_gap)/2.)
+        self.CPWInnerOuterFingerIsland(s, c_gap, finger_no_right,
+                                  inner_finger_len_right, outer_finger_len_right, flipped=True)    
+
+        self.CPWTaper(s, taper_len, center_pinw_right, pinw, center_gapw, gapw)
 
 def rotate_pt(pt, angle):
     x = pt[0]*cos(angle) - pt[1]*sin(angle)
@@ -439,7 +578,9 @@ class DStructure(object):
 class DString(object):
     script = None
     def __init__(self, name):
-        try:
+        if isinstance(name, DString):
+            self._val = name._val
+        elif isinstance(name, str):
             parts=name.split(":=")
             if len(parts) is 1:
                 self._val = name
@@ -448,8 +589,9 @@ class DString(object):
                 self._val = parts[0]
             if self._val.isdigit():
                 self._val = self.script.add_unit(self._val)
-        except AttributeError:
-            self._val = str(name)
+        elif isinstance(name, (float, int)):
+            print "Added unit %s to" % self.script.unit, name
+            self._val = str(name)+self.script.unit # If you don't specify a unit, length is assumed
     def cache_result(self, name):
         self.script.add_property(name, str(self))
         self._val = name
@@ -488,12 +630,15 @@ class DString(object):
         return DString("("+str(other)+"/"+str(self)+")")
     def __neg__(self):
         return DString("(-"+str(self)+")")
+        
 def cos(a):
     return DString("cos("+str(a)+")")
 def sin(a):
     return DString("sin("+str(a)+")")
 def sqrt(a):
     return DString("sqrt("+str(a)+")")
+def dmax(*a):
+    return DString("max(" + ",".join(map(str,a)) + ")")
     
 def vadd(a, b):
     return a[0]+b[0],a[1]+b[1]
@@ -544,7 +689,7 @@ OptimizationGoal = \
   "[1;]") """
   
 OptimizationCommandTail = \
-"""), "Acceptable_Cost:=", 0, "Noise:=", 0.0001, "UpdateDesign:=", false, "UpdateIteration:=",  _
+"""), "Acceptable_Cost:=", 0, "Noise:=", 0.0001, "defaults["pinw"]        UpdateDesign:=", false, "UpdateIteration:=",  _
   5, "KeepReportAxis:=", true, "UpdateDesignWhenDone:=", true)
 """
 
@@ -597,29 +742,36 @@ if __name__ == "__main__":
     d.add_layer("substrate", "dielectric", "sapphire", 430)
     d.add_layer("main", "ground", "perfect conductor", 0, main=True)
     
-    
     d.add_property("wiggles_length", str(ilen)+"um", optimize=True)
     d.add_property("inner_finger_length", "20 um", optimize=True)
+    d.add_property("delta", "0um")
+    d.add_property("left_finger_len", "83um")
+    d.add_property("right_finger_len", "87um")
     
     
     gapw = calculate_gap_width(5.5, 50, 10)
     s = DStructure(angle="start_angle:=0deg", pinw="pinw:=10um", gapw="gapw:=%.3fum" % gapw)
-    d.CPWLauncher(s, "50um", "100um", "50um", "25um", True)    
-    d.CPWStraight(s, "150um")
-    d.CPWFingerCap(s, 4, "finger_length:=20um", "finger_width:=5um", "finger_gap:=5um")
-    d.CPWWiggles(s, "wiggles_length", 4, "bend_radius:=25um")
-    d.CPWFingerCap(s, 4, "inner_finger_length", "finger_width", "finger_gap")
-    d.CPWWiggles(s, "wiggles_length", 4, "bend_radius")
-    d.CPWFingerCap(s, 4, "finger_length", "finger_width", "finger_gap")
-    d.CPWStraight(s, "150um")
-    d.CPWLauncher(s, "50um", "100um", "50um", "25um", True, True)
+    #d.CPWLauncher(s, "50um", "100um", "50um", "25um", True)    
+    #d.CPWStraight(s, "150um")
+    #d.CPWFingerCap(s, 4, "finger_length:=20um", "finger_width:=5um", "finger_gap:=5um")
+    #d.CPWWiggles(s, "wiggles_length", 4, "bend_radius:=25um")
     
-    d.add_planar_setup("5GHz")
-    d.add_point_calc("5GHz 5.1GHz")
-    d.add_optimization([("im(Y(Port1,Port1))", "F", "5GHz", 0),
-                        ("im(Y(Port1,Port1))", "F", "5.1GHz", 0)])
+    d.CPWQubitBox("c_gap:=5um", 6, 6, "left_finger_len + delta", "right_finger_len + delta", "inner_left_len:=20um", "inner_right_len:=3um")
+    #d.CPWStraight(s, "150um")
+    #d.CPWLauncher(s, "50um", "100um", "50um", "25um", True, True)
+
+    
+    
+    #d.CPWWiggles(s, "wiggles_length", 4, "bend_radius")
+    #d.CPWFingerCap(s, 4, "finger_length", "finger_width", "finger_gap")
+    #d.CPWStraight(s, "150um")
+    
+    #d.add_planar_setup("5GHz")
+    #d.add_point_calc("5GHz 5.1GHz")
+    #d.add_optimization([("im(Y(Port1,Port1))", "F", "5GHz", 0),
+    #                    ("im(Y(Port1,Port1))", "F", "5.1GHz", 0)])
                         
-    d.run_optimization()
+    #d.run_optimization()
         
     d.save()
     print "Done!"
