@@ -21,6 +21,7 @@ class SRS900(SerialInstrument,VisaInstrument):
         self.recv_length=65535
         self.escapekey='XXYYXX'
         #self.term_char='\r'
+    
 
     def read(self,port=None):
         if port is not None:
