@@ -14,19 +14,31 @@ source of delay in the program.
 
 
 """
-from slab.instruments import SerialInstrument
+from slab.instruments import Instrument import SerialInstrument import IPInstrument
 import time
+import urllib2
 
 class RelayBox(SerialInstrument):
     def __init__(self,name="",address='COM6',enabled=True,timeout=0):
-        SerialInstrument.__init__(self,name,address,enabled,timeout,querysleep=0.1)
-        self.term_char='\r'
-        self.boxaddress = '00'      
-            
+        if address[:3].upper()=='COM':
+            SerialInstrument.__init__(self,name,address,enabled,timeout,querysleep=0.1)
+            self.term_char='\r'
+            self.boxaddress = '00'      
+        else if address == "20" || address == "21"
+            IPInstrument.__init__(self,name,address,enabled)
     def set_relay(self, port=0, state=False):
-        if state: self.query('@%s ON %d' % (self.boxaddress,port))
-        else:     self.query('@%s OF %d' % (self.boxaddress,port))
-
+        
+        if self.protocol == "serial":
+            if state: self.query('@%s ON %d' % (self.boxaddress,port))
+            else:     self.query('@%s OF %d' % (self.boxaddress,port))
+        if self.protocol == "IP":
+            if self.address == "20"
+                if state: urlopen("http://192.168.14.20/relaybox/json?ON" + port)
+                else: urlopen("http://192.168.14.20/relaybox/json?OF" + port)
+            if self.address == "21"
+                if state: urlopen("http://192.168.14.21/relaybox/json?ON" + port)
+                else: urlopen("http://192.168.14.21/relaybox/json?OF" + port)
+    
     def get_relay(self,port=0):
         ans=self.query('@%s RS %d' % (self.boxaddress,port))       
         relay_status=[x=='1' for x in bin(256+int(ans[4:-2]))[-8:]]
