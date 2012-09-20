@@ -184,4 +184,3 @@ class IPInstrument(Instrument):
         Instrument.__init__(self,name,address,enabled)
         self.protocol='IP'
         self.enabled=enabled
-        

@@ -14,7 +14,7 @@ source of delay in the program.
 
 
 """
-from slab.instruments import Instrument import SerialInstrument import IPInstrument
+from slab.instruments import SerialInstrument, IPInstrument
 import time
 import urllib2
 
@@ -24,7 +24,7 @@ class RelayBox(SerialInstrument):
             SerialInstrument.__init__(self,name,address,enabled,timeout,querysleep=0.1)
             self.term_char='\r'
             self.boxaddress = '00'      
-        else if address == "20" || address == "21"
+        elif address == '20' or address == '21':
             IPInstrument.__init__(self,name,address,enabled)
     def set_relay(self, port=0, state=False):
         
@@ -32,12 +32,21 @@ class RelayBox(SerialInstrument):
             if state: self.query('@%s ON %d' % (self.boxaddress,port))
             else:     self.query('@%s OF %d' % (self.boxaddress,port))
         if self.protocol == "IP":
-            if self.address == "20"
-                if state: urlopen("http://192.168.14.20/relaybox/json?ON" + port)
-                else: urlopen("http://192.168.14.20/relaybox/json?OF" + port)
-            if self.address == "21"
-                if state: urlopen("http://192.168.14.21/relaybox/json?ON" + port)
-                else: urlopen("http://192.168.14.21/relaybox/json?OF" + port)
+            port = str(port)
+            if self.address == "20":
+                if state: 
+                    f = urllib2.urlopen("http://192.168.14.20/relaybox/json?ON" + port)
+                    print f
+                else: 
+                    f = urllib2.urlopen("http://192.168.14.20/relaybox/json?OF" + port)
+                    print f
+            if self.address == "21":
+                if state:  
+                    f = urllib2.urlopen("http://192.168.14.21/relaybox/json?ON" + port)
+                    print f
+                else:  
+                    f = urllib2.urlopen("http://192.168.14.21/relaybox/json?OF" + port)
+                    print f
     
     def get_relay(self,port=0):
         ans=self.query('@%s RS %d' % (self.boxaddress,port))       
@@ -62,9 +71,9 @@ class RelayBox(SerialInstrument):
         self.query('@%s WR %d' % (self.boxaddress,relaystate))
    
 if __name__== '__main__':
-    re=RelayBox(address='COM6')
+    re=RelayBox(address='20')
     #re.write_relays(0b11011111)
-    print re.get_relay()
+    re.set_relay(1, True)
 # #   re.close()
 #    re.relay(1)
 #    re.relay(1,'ON')
