@@ -14,11 +14,18 @@ source of delay in the program.
 
 
 """
-from slab.instruments import SerialInstrument, IPInstrument
+from slab.instruments import SerialInstrument, Instrument 
 import time
 import urllib2
 
-class RelayBox(SerialInstrument):
+
+class IPInstrument(Instrument):
+    def __init__(self,name,address='',enabled=True):
+        Instrument.__init__(self,name,address,enabled)
+        self.protocol='IP'
+        self.enabled=enabled
+
+class RelayBox(SerialInstrument, IPInstrument):
     def __init__(self,name="",address='COM6',enabled=True,timeout=0):
         if address[:3].upper()=='COM':
             SerialInstrument.__init__(self,name,address,enabled,timeout,querysleep=0.1)
@@ -47,6 +54,7 @@ class RelayBox(SerialInstrument):
                 else:  
                     f = urllib2.urlopen("http://192.168.14.21/relaybox/json?OF" + port)
                     print f
+        print 'lol'
     
     def get_relay(self,port=0):
         ans=self.query('@%s RS %d' % (self.boxaddress,port))       
@@ -71,9 +79,9 @@ class RelayBox(SerialInstrument):
         self.query('@%s WR %d' % (self.boxaddress,relaystate))
    
 if __name__== '__main__':
-    re=RelayBox(address='20')
+    re=RelayBox(address='21')
     #re.write_relays(0b11011111)
-    re.set_relay(1, True)
+    re.set_relay(1, False)
 # #   re.close()
 #    re.relay(1)
 #    re.relay(1,'ON')
