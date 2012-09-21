@@ -144,9 +144,35 @@ void jsonCmd(WebServer &server, WebServer::ConnectionType type,  char* url_tail,
          }
        }
     }
+ else if(url_tail[0]=='S' && url_tail[1]=='T')
+   {
+     if(url_tail[3]=='1' ||url_tail[3]=='2' ||url_tail[3]=='3' ||url_tail[3]=='4'|| url_tail[3]=='5' || url_tail[3]=='6' ||url_tail[3]=='7'||url_tail[3]=='8')
+       {
+         int val = digitalRead(int(url_tail[3])-47));
+         server << "Status of Relay " << int(url_tail[3])-48)<< ":" << val;
+         return;
+       }
+     else if(url_tail[3]=='0')
+       {
+         int i;    
+        server << "Status of Relays" << ":";
+        for (i = 1; i <= 8; ++i)
+        {
+            // ignore the pins we use to talk to the Ethernet chip
+             int val = digitalRead(i+1);
+              server << "Pin" << i << ":" << val << ", ";
+        }
+        return;
+      }
+      
+    else
+      {
+         server<< "Not a valid input";
+      }
+  }
  else
     {
-      server << "Not a valid command. Currently only valid commands are ON, OF, and TR followed by the relay number.";
+      server << "Not a valid command.";
     }
 
   int i;    
