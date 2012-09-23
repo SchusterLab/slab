@@ -111,7 +111,7 @@ class FilamentDriver(BNCAWG):
         
         self.set_output(True)
         
-    def fire_filament(self, delay=0,pulses=1):
+    def fire_filament(self, pulses=1, delay=0):
         for ii in range(pulses):
             self.trigger()
             time.sleep(delay)
