@@ -73,12 +73,13 @@ class nwa_DataThread(DataThread):
             for n, d in [("mag", mags), ("phase", phases)]:
                 if n not in f:
                     ds=f.create_dataset(n,shape=(1,len(d)),maxshape=(None,len(d)))
-                    set_range(ds, start, stop)
+
                     set_labels(ds, "Frequency (Hz)", "Response")
                 else:
                     ds=f[n]
                     ds.resize((ds.shape[0]+1,ds.shape[1]))
                 ds[ds.shape[0]-1,:]=d
+            set_range(ds, start, stop,0,ds.shape[0]-1)
             f.close()
 #            f = self.file[self.trace_no] if self.params["numberTraces"] else self.file
 #            for n, d in [("mag", mags), ("phase", phases)]:
@@ -96,6 +97,7 @@ class nwa_DataThread(DataThread):
         if total_sweep_pts<1600:
             print "Segmented sweep unnecessary"
         segments=np.ceil(total_sweep_pts/1600.)
+        total_sweep_pts=segments*1600+1
         segspan=span/segments
         starts=start+segspan*np.arange(0,segments)
         stops=starts+segspan
@@ -111,8 +113,9 @@ class nwa_DataThread(DataThread):
         segs=[]
 #        if self.params['save']:
 #            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
-
+        maxstop=0
         for start,stop in zip(starts,stops):
+            maxstop=max(maxstop,stop)
             nwa.set_start_frequency(start)
             nwa.set_stop_frequency(stop)
             nwa.set_format('mlog')
@@ -142,6 +145,7 @@ class nwa_DataThread(DataThread):
 #            if self.params['save']:
 #                np.savetxt(os.path.join(self.params['datapath'],fname),transpose(data),delimiter=',')
             self.msg('data Length: %d' % len(data[1]))
+            
             if self.params['save']:
                 f=self.open_datafile()
                 for n, d in [("mag", data[1]), ("phase", data[2])]:
@@ -153,23 +157,14 @@ class nwa_DataThread(DataThread):
                         if start == starts[0]:
                             ds.resize((ds.shape[0]+1,ds.shape[1]))
                             
-                    set_range(ds, starts[0], stop)
                     if ds.shape[1]<len(d):
                         ds.resize((ds.shape[0],len(d)))
                     ds[ds.shape[0]-1,:len(d)]=d
+                set_range(ds, starts[0], maxstop,0,ds.shape[0]-1)
                 f.close()            
             if self.aborted():
                 self.msg("aborted")
                 return
-
-#        if self.params['save']:
-#            self.set_file()
-#            f = self.file[self.trace_no] if self.params["numberTraces"] else self.file
-#            for n, d in [("mag", data[1]), ("phase", data[2])]:
-#                f[n] = d
-#                set_range(f[n], data[0][0], data[0][-1])
-#                set_labels(f[n], "Frequency (Hz)", "Response")
-#            f.close()
 
         time.sleep(nwa.query_sleep)
         nwa.set_timeout(old_timeout)
