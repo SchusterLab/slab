@@ -85,6 +85,8 @@ class DictProxy(QObject):
         return self.cache[name]
     def __contains__(self, key):
         return key in self.cache
+    def keys(self):                 #Added by DS not sure if this is right
+        return self.cache.keys()
 
 class DataThread(QObject):
     def __init__(self, config_file=None):
