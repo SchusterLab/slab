@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1084</width>
-    <height>748</height>
+    <height>836</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,7 +16,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_4">
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
+     <layout class="QHBoxLayout" name="horizontalLayout_5">
       <item>
        <widget class="QGroupBox" name="groupBox">
         <property name="title">
@@ -35,43 +35,8 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_2">
-             <property name="text">
-              <string>Sweep pts</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="label_3">
-             <property name="text">
-              <string>IF BW</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="0">
-            <widget class="QLabel" name="label_4">
-             <property name="text">
-              <string>Avgs</string>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="0">
-            <widget class="QLabel" name="centerstartLabel">
-             <property name="text">
-              <string>Center</string>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="0">
-            <widget class="QLabel" name="spanstopLabel">
-             <property name="text">
-              <string>Span</string>
-             </property>
-            </widget>
-           </item>
            <item row="0" column="1">
-            <widget class="QDoubleSpinBox" name="powerSpinBox">
+            <widget class="QDoubleSpinBox" name="param_power">
              <property name="suffix">
               <string> dBm</string>
              </property>
@@ -86,8 +51,15 @@
              </property>
             </widget>
            </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>Sweep pts</string>
+             </property>
+            </widget>
+           </item>
            <item row="1" column="1">
-            <widget class="QSpinBox" name="sweep_ptsSpinBox">
+            <widget class="QSpinBox" name="param_sweep_pts">
              <property name="maximum">
               <number>1601</number>
              </property>
@@ -96,8 +68,15 @@
              </property>
             </widget>
            </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>IF BW</string>
+             </property>
+            </widget>
+           </item>
            <item row="2" column="1">
-            <widget class="QDoubleSpinBox" name="ifbwSpinBox">
+            <widget class="QDoubleSpinBox" name="param_ifbw">
              <property name="suffix">
               <string> Hz</string>
              </property>
@@ -112,15 +91,29 @@
              </property>
             </widget>
            </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label_4">
+             <property name="text">
+              <string>Avgs</string>
+             </property>
+            </widget>
+           </item>
            <item row="3" column="1">
-            <widget class="QSpinBox" name="avgsSpinBox">
+            <widget class="QSpinBox" name="param_avgs">
              <property name="minimum">
               <number>1</number>
              </property>
             </widget>
            </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="centerstartLabel">
+             <property name="text">
+              <string>Center</string>
+             </property>
+            </widget>
+           </item>
            <item row="4" column="1">
-            <widget class="QDoubleSpinBox" name="centerstartSpinBox">
+            <widget class="QDoubleSpinBox" name="param_centerstart">
              <property name="suffix">
               <string> GHz</string>
              </property>
@@ -138,8 +131,15 @@
              </property>
             </widget>
            </item>
+           <item row="5" column="0">
+            <widget class="QLabel" name="spanstopLabel">
+             <property name="text">
+              <string>Span</string>
+             </property>
+            </widget>
+           </item>
            <item row="5" column="1">
-            <widget class="QDoubleSpinBox" name="spanstopSpinBox">
+            <widget class="QDoubleSpinBox" name="param_spanstop">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -165,7 +165,7 @@
             </widget>
            </item>
            <item row="6" column="1">
-            <widget class="QDoubleSpinBox" name="resolutionSpinBox">
+            <widget class="QDoubleSpinBox" name="param_resolution">
              <property name="suffix">
               <string> MHz</string>
              </property>
@@ -189,12 +189,22 @@
           </layout>
          </item>
          <item>
-          <widget class="QCheckBox" name="centerspanstartstopCheckBox">
+          <widget class="QCheckBox" name="param_centerspanstartstop">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
            <property name="text">
             <string>Start/Stop</string>
            </property>
            <property name="checked">
             <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="param_autorun">
+           <property name="text">
+            <string>Autorun</string>
            </property>
           </widget>
          </item>
@@ -244,48 +254,61 @@
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="datapathLineEdit">
+           <widget class="QLineEdit" name="param_datapath">
             <property name="text">
              <string>S:\_Data\</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="param_save">
+            <property name="text">
+             <string>Auto-Save</string>
             </property>
            </widget>
           </item>
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
-           <widget class="QLabel" name="label_20">
+           <widget class="QLabel" name="label_6">
             <property name="text">
-             <string>File Prefix</string>
+             <string>Filename</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="filenumberLabel">
+           <widget class="QLabel" name="trace_label">
             <property name="text">
-             <string>000_</string>
+             <string>0000_</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="prefixLineEdit">
+           <widget class="QLineEdit" name="param_filename">
             <property name="text">
-             <string>trace</string>
+             <string/>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="saveCheckBox">
+           <widget class="QCheckBox" name="param_autoscale">
             <property name="text">
-             <string>Save Trace</string>
+             <string>Autoscale</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="autoRunCheckBox">
+           <widget class="QCheckBox" name="param_numberTraces">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="text">
-             <string>autorun</string>
+             <string>Number Traces</string>
             </property>
            </widget>
           </item>
