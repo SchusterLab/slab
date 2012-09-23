@@ -13,7 +13,8 @@ from scipy.signal import decimate
 from numpy import linspace,argmin,argmax, argsort, genfromtxt,loadtxt,array,transpose,pi,cos,sin,arctan2,convolve,correlate,sum,sqrt,ones,zeros,arange
 import dateutil
 import time
-import inspect
+#import inspect
+from datamanagement import get_script
 ###################################################
 
 #### General
@@ -26,13 +27,6 @@ dBmtoW=dBm_to_W
 
 ######################## File handling
 
-def get_script():
-    """returns currently running script file as a string"""
-    f=open(inspect.stack()[-1][1],'r')
-    s=f.read()
-    f.close()
-    return s  
-
 def save_script(expt_path,prefix):
     """This function saves the file of the current running script to a file in the standard file naming convention:
         expt_path\date_prefix_number"""
@@ -43,7 +37,6 @@ def save_script(expt_path,prefix):
     fw.write(get_script())
     fw.close()
     return fname
-
 def find_closest_index(a,v):
     return argsort(abs(a-v))[0]
 
