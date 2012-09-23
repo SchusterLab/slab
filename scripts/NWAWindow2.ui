@@ -191,7 +191,7 @@
          <item>
           <widget class="QCheckBox" name="param_centerspanstartstop">
            <property name="enabled">
-            <bool>false</bool>
+            <bool>true</bool>
            </property>
            <property name="text">
             <string>Start/Stop</string>
@@ -247,14 +247,14 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_3">
           <item>
-           <widget class="QPushButton" name="filenameButton">
+           <widget class="QPushButton" name="datapathButton">
             <property name="text">
-             <string>H5 File</string>
+             <string>Datapath</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="param_filename">
+           <widget class="QLineEdit" name="param_datapath">
             <property name="text">
              <string>S:\_Data\</string>
             </property>
@@ -274,28 +274,41 @@
           <item>
            <widget class="QLabel" name="label_6">
             <property name="text">
-             <string>Dataset Path</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="param_datasetPath">
-            <property name="text">
-             <string>/</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="param_numberTraces">
-            <property name="text">
-             <string>Number Traces</string>
+             <string>Filename</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QLabel" name="trace_label">
             <property name="text">
-             <string>000</string>
+             <string>0000_</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="param_filename">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="param_autoscale">
+            <property name="text">
+             <string>Autoscale</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="param_numberTraces">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>Number Traces</string>
             </property>
            </widget>
           </item>
