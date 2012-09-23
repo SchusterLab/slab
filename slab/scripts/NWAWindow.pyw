@@ -13,24 +13,44 @@ import os
 import h5py
 from guiqwt.qtdesigner import loadui
 from slab.datamanagement import *
-Ui_NWAWindow = loadui("c:\\_Lib\\python\\slab\\scripts\\NWAWindow2.ui")
+Ui_NWAWindow = loadui("c:\\_Lib\\python\\slab\\scripts\\NWAWindow.ui")
+import inspect
 
 class nwa_DataThread(DataThread):
-    def set_file(self, *args):
-        filename = self.params['filename']
-        dset_path = self.params['datasetPath']
-        try: self.file = open_to_path(SlabFile(filename, 'w'), dset_path)
+
+    def open_datafile(self):
+        try: 
+            self.file = SlabFile(os.path.join(self.params['datapath'],self.filename))
         except Exception as e:
             self.msg("Could not open h5 file!")
             self.msg(e)
             return
-        if self.params['numberTraces']:
-            self.trace_no = get_next_trace_number(self.file)
-            self.plots['trace'].setText("%03d" % self.trace_no)
+        if 'settings' not in self.file:
+            self.file.save_settings(dic=self.params)
+        return self.file
+      
+#        if self.params['numberTraces']:
+#            self.trace_no = get_next_trace_number(self.file)
+#            self.plots['trace'].setText("%03d" % self.trace_no)
                        
+#This should probably be moved into the Window class and probably we can make it 
+#an automatic thing so we don't have to code it for each new script
+    def save_defaults(self):  
+        try:
+            settings_file= SlabFile('NWAWindow_defaults.h5')
+            settings_file.save_settings(self.params)
+            settings_file.close()
+        except Exception as e:
+            self.msg("Could not open NWAWindow_defaults.h5!")
+            self.msg(e)            
+        return
+            
+        
+        
     def do_normal_sweep(self,nwa,start,stop,sweep_pts):
         self.msg('Commencing normal Sweep...')
         #calculate start and stop frequencies      
+
         nwa.set_start_frequency(start)
         nwa.set_stop_frequency(stop)       
         nwa.set_sweep_points(sweep_pts)
@@ -42,19 +62,30 @@ class nwa_DataThread(DataThread):
         self.plots["mag"].set_data(freqs/1e9,mags)
         self.plots["phase"].set_data(freqs/1e9,phases)
         self.plots["magplot"].replot()
-        self.plots["phaseplot"].replot()         
-        self.plots["magplot"].do_autoscale()
-        self.plots["phaseplot"].do_autoscale()
+        self.plots["phaseplot"].replot()   
+        if self.params['autoscale']:
+            self.plots["magplot"].do_autoscale()
+            self.plots["phaseplot"].do_autoscale()
         self.msg(mags[1:5])
         self.msg(freqs[1:5])
         if self.params['save']:
-            self.set_file()
-            f = self.file[self.trace_no] if self.params["numberTraces"] else self.file
+            f=self.open_datafile()
             for n, d in [("mag", mags), ("phase", phases)]:
-                f[n] = d
-                set_range(f[n], start, stop)
-                set_labels(f[n], "Frequency (Hz)", "Response")
+                if n not in f:
+                    ds=f.create_dataset(n,shape=(1,len(d)),maxshape=(None,len(d)))
+                    set_range(ds, start, stop)
+                    set_labels(ds, "Frequency (Hz)", "Response")
+                else:
+                    ds=f[n]
+                    ds.resize((ds.shape[0]+1,ds.shape[1]))
+                ds[ds.shape[0]-1,:]=d
             f.close()
+#            f = self.file[self.trace_no] if self.params["numberTraces"] else self.file
+#            for n, d in [("mag", mags), ("phase", phases)]:
+#                f[n] = d
+#                set_range(f[n], start, stop)
+#                set_labels(f[n], "Frequency (Hz)", "Response")
+#            f.close()
 #            fname=get_next_filename(self.params['datapath'],self.params['prefix'],'.csv')
 #            np.savetxt(os.path.join(self.params['datapath'],fname),transpose(array([freqs,mags,phases])),delimiter=',')
 
@@ -94,33 +125,51 @@ class nwa_DataThread(DataThread):
             
             seg_data=nwa.read_data()
     
-            seg_data=seg_data.transpose()
-            last=seg_data[-1]
-            seg_data=seg_data[:-1].transpose()
+            if stop<stops[-1]:
+                seg_data=seg_data.transpose()
+                seg_data=seg_data[:-1].transpose()
             segs.append(seg_data)
             data=np.hstack(segs) 
+
             self.plots["mag"].set_data(data[0]/1e9,data[1])
             self.plots["phase"].set_data(data[0]/1e9,data[2])
             self.plots["magplot"].replot()
             self.plots["phaseplot"].replot()
+            if self.params['autoscale']:
+                self.plots["magplot"].do_autoscale()
+                self.plots["phaseplot"].do_autoscale()
+
 #            if self.params['save']:
 #                np.savetxt(os.path.join(self.params['datapath'],fname),transpose(data),delimiter=',')
-            
+            self.msg('data Length: %d' % len(data[1]))
+            if self.params['save']:
+                f=self.open_datafile()
+                for n, d in [("mag", data[1]), ("phase", data[2])]:
+                    if n not in f:
+                        ds=f.create_dataset(n,shape=(1,len(d)),maxshape=(None,total_sweep_pts+1))
+                        set_labels(ds, "Frequency (Hz)", "Response")
+                    else:
+                        ds=f[n]
+                        if start == starts[0]:
+                            ds.resize((ds.shape[0]+1,ds.shape[1]))
+                            
+                    set_range(ds, starts[0], stop)
+                    if ds.shape[1]<len(d):
+                        ds.resize((ds.shape[0],len(d)))
+                    ds[ds.shape[0]-1,:len(d)]=d
+                f.close()            
             if self.aborted():
                 self.msg("aborted")
                 return
 
-        segs.append(np.array([last]).transpose())
-        data=np.hstack(segs) 
-
-        if self.params['save']:
-            self.set_file()
-            f = self.file[self.trace_no] if self.params["numberTraces"] else self.file
-            for n, d in [("mag", data[1]), ("phase", data[2])]:
-                f[n] = d
-                set_range(f[n], data[0][0], data[0][-1])
-                set_labels(f[n], "Frequency (Hz)", "Response")
-            f.close()
+#        if self.params['save']:
+#            self.set_file()
+#            f = self.file[self.trace_no] if self.params["numberTraces"] else self.file
+#            for n, d in [("mag", data[1]), ("phase", data[2])]:
+#                f[n] = d
+#                set_range(f[n], data[0][0], data[0][-1])
+#                set_labels(f[n], "Frequency (Hz)", "Response")
+#            f.close()
 
         time.sleep(nwa.query_sleep)
         nwa.set_timeout(old_timeout)
@@ -147,6 +196,11 @@ class nwa_DataThread(DataThread):
         self.msg(str(nwa.get_id()))
         first=True
         nwa.set_output(state=True)
+        if self.params['save']:                
+            if self.params['filename'][-3:].lower() != '.h5': 
+                self.params['filename']=self.params['filename']+'.h5'
+        self.filename=get_next_filename(self.params['datapath'],self.params['filename'])
+
         while ((first or self.params['autorun']) and not self.aborted()):
             first=False
             #self.plots["self"].update_filenumber()
@@ -166,6 +220,7 @@ class nwa_DataThread(DataThread):
             minstep=self.params['resolution']*1e6
             step=(stop-start)/self.params['sweep_pts']
             self.msg('start: %f GHz\tstop: %f GHz\tstep: %f MHz' % (start/1e9,stop/1e9,step/1e6))
+            self.save_defaults()
             if step <= minstep:
                 self.do_normal_sweep(nwa,start,stop,self.params['sweep_pts'])
             elif step > minstep:
@@ -182,54 +237,16 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
         SlabWindow.__init__(self, nwa_DataThread, config_file='c:\\_Lib\\python\\slab\\scripts\\instruments.cfg')
         self.setupSlabWindow(autoparam=True)
         self.register_script("run_script", self.go_button, self.abort_button)
-        self.filenameButton.clicked.connect(self.selectFile)
+        self.datapathButton.clicked.connect(self.selectDatapath)
+        
         #self.connect(self.param_centerspanstartstop, SIGNAL("stateChanged(int)"),self.on_centerspanstartstopChanged)
-        self.start_thread()
+        self.param_centerspanstartstop.stateChanged.connect(self.on_centerspanstartstopChanged)
+        self.param_datapath.textChanged.connect(self.update_filenumber)
+        self.param_filename.textChanged.connect(self.update_filenumber)
+        self.go_button.clicked.connect(self.update_filenumber)
 
-        #Connect controls
-        #self.connect(self.powerSpinBox, SIGNAL("valueChanged(double)"),
-        #        lambda i: self.set_param("power", i))
-        #self.connect(self.sweep_ptsSpinBox, SIGNAL("valueChanged(int)"),
-        #        lambda i: self.set_param("sweep_pts", i))
-        #self.connect(self.ifbwSpinBox, SIGNAL("valueChanged(double)"),
-        #        lambda i: self.set_param("ifbw", i))               
-        #self.connect(self.avgsSpinBox, SIGNAL("valueChanged(int)"),
-        #        lambda i: self.set_param("avgs", i)) 
-        #self.connect(self.centerstartSpinBox, SIGNAL("valueChanged(double)"),
-        #        lambda i: self.set_param("centerstart", i)) 
-        #self.connect(self.spanstopSpinBox, SIGNAL("valueChanged(double)"),
-        #        lambda i: self.set_param("spanstop", i)) 
-        #self.connect(self.centerspanstartstopCheckBox, SIGNAL("stateChanged(double)"),
-        #        lambda i: self.set_param("centerspanstartstop", i)) 
-        #self.connect(self.resolutionSpinBox, SIGNAL("valueChanged(double)"),
-        #        lambda i: self.set_param("resolution", i)) 
-        #self.connect(self.saveCheckBox, SIGNAL("stateChanged(int)"),
-        #        lambda i: self.set_param("save", i))
-        #self.connect(self.autoRunCheckBox, SIGNAL("stateChanged(int)"),
-        #        lambda i: self.set_param("autorun", i)) 
-        #self.connect(self.centerspanstartstopCheckBox, SIGNAL("stateChanged(int)"),self.on_centerspanstartstopChanged)
-        
-        #self.datapath='S:\\_Data\\'
-        #self.datapathButton.clicked.connect(self.selectDatapath)
-        #self.datapathLineEdit.textChanged.connect(self.update_filenumber)
-        #self.prefixLineEdit.textChanged.connect(self.update_filenumber)
-        #self.go_button.clicked.connect(self.update_filenumber)
-        
-        #Initialize Parameters
-        #self.set_param("power", -20)
-        #self.set_param("sweep_pts",1601)
-        #self.set_param("ifbw",1e3)
-        #self.set_param("avgs",1)
-        #self.set_param("centerstart",10.)
-        #self.set_param("spanstop",1000.)
-        #self.set_param("centerspanstartstop",1)
-        #self.set_param("resolution", 100.)
-        #self.set_param("save",0)
-        #self.set_param("autorun",0)
-        #self.set_param("datapath",self.datapath)
-        #self.set_param("prefix",'trace')
-        #self.set_param("filenumber",0)
-        
+        self.start_thread()       
+        self.load_defaults()
         
         self.plots["self"] = self
         self.plots["trace"] = self.trace_label
@@ -254,49 +271,68 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
         self.plots["phaseplot"].set_titles(title="Phase", xlabel="Frequency (GHz)", ylabel="Phase (deg)")
         self.plots["phase"] = make.mcurve(self.freqs, self.phases,label='Phase') #Make Ch1 curve
         self.plots["phaseplot"].add_item(self.plots["phase"])
+        
+
+
+    def load_defaults(self):
+        try: 
+            settings_file= SlabFile('NWAWindow_defaults.h5','r')
+        except Exception as e:
+            self.msg("Could not open NWAWindow_defaults.h5!")
+            self.msg(e)            
+            return
+        d=settings_file.load_settings('settings')
+        for k in d.keys():
+            self.set_param(k,d[k])
+            #self.msg(k,': ',str(self.params[k]))
+        settings_file.close()
+            
+
 
     def selectFile(self):
         self.param_filename.setText(str(QFileDialog.getSaveFileName(self)))
         
     def selectDatapath(self):
         self.datapath=str(QFileDialog.getExistingDirectory(self,'Open Datapath',self.datapath))
-        self.datapathLineEdit.setText(self.datapath)       
+        self.param_datapath.setText(self.datapath)       
         
     def update_filenumber(self):
-        filenumber=next_file_index(self.datapath,str(self.prefixLineEdit.text()))
-        self.filenumberLabel.setText("%04d_" % filenumber)
+        self.datapath=self.params['datapath']
+        filenumber=next_file_index(self.datapath,str(self.param_filename.text()))
+        self.trace_label.setText("%04d_" % filenumber)
         self.set_param("datapath",self.datapath)
         self.set_param("filenumber",filenumber)
-        self.set_param("prefix",str(self.prefixLineEdit.text()))
+        self.set_param("prefix",str(self.param_filename.text()))
 
     def on_centerspanstartstopChanged(self,state):
         if state: 
-            self.centerspanstartstopCheckBox.setText('Start/Stop')
+            self.param_centerspanstartstop.setText('Start/Stop')
             self.centerstartLabel.setText('Center')
             self.spanstopLabel.setText('Span')
 
-            self.spanstopSpinBox.setSuffix(' MHz')
-            center=(self.centerstartSpinBox.value()+self.spanstopSpinBox.value())/2.
-            span=(self.spanstopSpinBox.value()-self.centerstartSpinBox.value())*1e3
-            self.centerstartSpinBox.setValue(center)
-            self.spanstopSpinBox.setValue(span)
+            self.param_spanstop.setSuffix(' MHz')
+            center=(self.param_centerstart.value()+self.param_spanstop.value())/2.
+            span=(self.param_spanstop.value()-self.param_centerstart.value())*1e3
+            self.param_centerstart.setValue(center)
+            self.param_spanstop.setValue(span)
             self.set_param("centerstart",center)
             self.set_param("spanstop",span)
         else:
-            self.centerspanstartstopCheckBox.setText('Center/Span')
+            self.param_centerspanstartstop.setText('Center/Span')
             self.centerstartLabel.setText('Start')
             self.spanstopLabel.setText('Stop')
 
-            self.spanstopSpinBox.setSuffix(' GHz')
-            start=(self.centerstartSpinBox.value()-self.spanstopSpinBox.value()/1e3/2.)
-            stop=(self.centerstartSpinBox.value()+self.spanstopSpinBox.value()/1e3/2.)
-            self.centerstartSpinBox.setValue(start)
-            self.spanstopSpinBox.setValue(stop)
+            self.param_spanstop.setSuffix(' GHz')
+            start=(self.param_centerstart.value()-self.param_spanstop.value()/1e3/2.)
+            stop=(self.param_centerstart.value()+self.param_spanstop.value()/1e3/2.)
+            self.param_centerstart.setValue(start)
+            self.param_spanstop.setValue(stop)
             self.set_param("centerstart",start)
             self.set_param("spanstop",stop)
         
 
 if __name__ == "__main__":
+    #print inspect.stack()[-1][1]
     app = QApplication([])
     win = NWAWin()
     win.show()
