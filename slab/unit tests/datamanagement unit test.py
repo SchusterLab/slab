@@ -7,6 +7,8 @@ Created on Sun Sep 23 12:14:08 2012
 
 from slab import *
 from os import *
+from numpy import *
+import matplotlib.pyplot as plt
 
 def test_slabfile():
     fname='slabfile_test.h5'
@@ -46,10 +48,50 @@ def test_slabfile():
     else: print "Failed: Rewrite settings."
     os.remove(fname)
     
+def test_append_data():
+    fname='append_data_test.h5'
+    try: os.remove(fname)
+    except: pass
 
+    error=False
+
+    num_fpts=100
+    num_tpts=1000
+    freqs=linspace(1.,10.,num_fpts)
+
+    tpts=linspace(0.,1.,num_tpts)
+    data=array([exp(-tpts/0.5)*sin(2*pi*freq *tpts) for freq in freqs])
+#    plt.figure(1)
+#    plt.imshow(data)
+#    plt.show()
+    
+    f=SlabFile(fname)
+    ds=f.create_dataset('Rabi',shape=(1,num_tpts),maxshape=(None,num_tpts))
+    f.close()
+    for ii,d in enumerate(data):
+        f=SlabFile(fname)
+        ds=f['Rabi']
+        ds.resize((ii+1,num_tpts)) 
+        ds[ii,:]=d
+        f.close()
+
+    f2=SlabFile(fname)
+    data2=array(f['Rabi'])
+    f2.close()
+    plt.figure(1)
+    plt.imshow(data2)
+    plt.show()
+
+    if not error: print "Passed: Append data."
+    else: print "Failed: Append data."
+        
+    
+    
+    os.remove(fname)
 
     
     
     
 if __name__=="__main__":
     test_slabfile()
+    test_append_data()
