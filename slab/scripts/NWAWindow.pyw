@@ -37,7 +37,7 @@ class nwa_DataThread(DataThread):
 #an automatic thing so we don't have to code it for each new script
     def save_defaults(self):  
         try:
-            settings_file= SlabFile('NWAWindow_defaults.h5')
+            settings_file= SlabFile('c:\\_Lib\\python\\slab\\scripts\\NWAWindow_defaults.h5')
             settings_file.save_settings(self.params)
             settings_file.close()
         except Exception as e:
@@ -276,7 +276,7 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
 
     def load_defaults(self):
         try: 
-            settings_file= SlabFile('NWAWindow_defaults.h5','r')
+            settings_file= SlabFile('c:\\_Lib\\python\\slab\\scripts\\NWAWindow_defaults.h5','r')
         except Exception as e:
             self.msg("Could not open NWAWindow_defaults.h5!")
             self.msg(e)            
