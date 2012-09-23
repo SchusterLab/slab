@@ -14,19 +14,35 @@ class SlabFile(h5py.File):
     def __init__(self, *args, **kwargs):
         h5py.File.__init__(self, *args, **kwargs)
         #self.attrs["_script"] = open(sys.argv[0], 'r').read()
-        self.attrs["_script"] = get_script()
+#        if self.mode is not 'r':
+#            self.attrs["_script"] = get_script()
+        #if not read-only or existing then save the script into the .h5
+        #Maybe should take this automatic feature out and just do it when you want to
+        if (self.mode is not 'r') and ("_script" not in self.attrs):     
+            self.save_script()
         self.flush()
         
+    def save_script(self,name="_script"):
+            self.attrs[name] = get_script()
+
     def save_settings(self,dic,group='settings'):
         if group not in self:
             self.create_group(group)
         for k in dic.keys():
             self[group].attrs[k]=dic[k]
+            
+    def load_settings(self,group='settings'):
+        d={}
+        for k in self[group].attrs.keys():
+            d[k]=self[group].attrs[k]
+        return d
     
 
 def get_script():
     """returns currently running script file as a string"""
-    f=open(inspect.stack()[-1][1],'r')
+    fname=inspect.stack()[-1][1]    
+    #print fname
+    f=open(fname,'r')
     s=f.read()
     f.close()
     return s  
