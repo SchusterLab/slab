@@ -179,7 +179,7 @@ class SerialInstrument(Instrument):
             print e
             print 'cannot properly close the serial connection.'
 
-class IPInstrument(Instrument):
+class WebInstrument(Instrument):
     
     def __init__(self,name,address='',enabled=True):
         Instrument.__init__(self,name,address,enabled)
