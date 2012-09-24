@@ -180,6 +180,7 @@ class SerialInstrument(Instrument):
             print 'cannot properly close the serial connection.'
 
 class IPInstrument(Instrument):
+    
     def __init__(self,name,address='',enabled=True):
         Instrument.__init__(self,name,address,enabled)
         self.protocol='IP'
