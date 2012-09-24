@@ -6,11 +6,11 @@ Relay Numbers(Ports) are always 1-8 unless activating multiple relays at a time.
 @author: ThomasLaptop
 """
 
-from slab.instruments import RelayBox, Instrument
+from slab.instruments.relaybox import RelayBox
 import time
 
 
-class RFSwitch(RelayBox, WebInstrument):    
+class RFSwitch(RelayBox):    
     
     def __init__(self,name="",address="",enabled=True):
        RelayBox.__init__(self,name,address,enabled)
