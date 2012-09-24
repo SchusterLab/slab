@@ -357,15 +357,14 @@ class Structure(object):
         self.color=color
         self.defaults=defaults.copy()
         self.structures=[]
-        print self.defaults
         try :self.pinw=chip.pinw 
         except AttributeError: 
             try : self.pinw=self.defaults['pinw']
-            except KeyError: print 'no pinw for chips',chip.name, 'at initialization'
+            except KeyError: pass#print 'no pinw for chips',chip.name, 'at initialization'
         try :self.gapw=chip.gapw 
         except AttributeError: 
             try : self.gapw=self.defaults['gapw']
-            except KeyError: print 'no gapw for chips',chip.name, 'at initialization'
+            except KeyError: pass#print 'no gapw for chips',chip.name, 'at initialization'
             
     def move(self,distance,direction=None):
         if direction == None: direction = self.last_direction
@@ -486,6 +485,7 @@ class CPWStraight:
         s=structure
         if pinw is None: pinw=structure.defaults['pinw']
         if gapw is None: gapw=structure.defaults['gapw']
+        pinw, gapw = float(pinw), float(gapw)
 
         if s.chip.two_layer:
             CPWStraight(s.gap_layer, length, 0, pinw/2. + gapw)
@@ -895,40 +895,42 @@ class CPWWiggles:
         CPWWiggles(structure,num_wiggles,total_length,start_up=True,
                    radius=None,pinw=None,gapw=None, segments=60)
     """
-    def __init__(self,structure,num_wiggles,total_length,start_up=True,radius=None,pinw=None,gapw=None, segments=60):
+    def __init__(self,structure,num_wiggles,total_length,start_up=True,radius=None,pinw=None,gapw=None, segments=60, square=False):
         """ 
             @param num_wiggles: a wiggle is from the center pin up/down and back
             @param total_length: The total length of the meander
             @param start_up: Start with a CCW 90 degree turn or a CW turn
         """
-            
+        
         s=structure
         start=structure.last
         if pinw is None:   pinw=s.defaults['pinw']
         if gapw is None:   gapw=s.defaults['gapw']
         if radius is None: radius=s.defaults['radius']
-
-        #calculate vertical segment length:
-        #total length=number of 180 degree arcs + number of vertical segs + vertical radius spacers
-        #total_length=(1+num_wiggles)*(pi*radius)+2*num_wiggles*vlength+2*(num_wiggles-1)*radius
-        vlength=(total_length-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)
-        *radius))/(2*num_wiggles)
-        self.height = vlength + radius
-        if vlength<0: print "Warning: length of vertical segments is less than 0, increase total_length or decrease num_wiggles"
-        
-        if start_up:  asign=1
-        else:         asign=-1
-        if not segments:  segments=s.defalts['segments']      
-        
-        CPWBend(s,asign*90,pinw,gapw,radius, segments=segments)
-        for ii in range(num_wiggles):
-            isign=2*(ii%2)-1
-            CPWStraight(s,vlength,pinw,gapw)
-            CPWBend(s,isign*asign*180,pinw,gapw,radius, segments=segments)
-            CPWStraight(s,vlength,pinw,gapw)
-            if ii<num_wiggles-1:
-                CPWStraight(s,2*radius,pinw,gapw)
-        CPWBend(s,-isign*asign*90,pinw,gapw,radius, segments=segments)
+        if square:
+            RightJointWiggles(s, total_length, num_wiggles, radius)
+        else:
+            #calculate vertical segment length:
+            #total length=number of 180 degree arcs + number of vertical segs + vertical radius spacers
+            #total_length=(1+num_wiggles)*(pi*radius)+2*num_wiggles*vlength+2*(num_wiggles-1)*radius
+            vlength=(total_length-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)
+            *radius))/(2*num_wiggles)
+            self.height = vlength + radius
+            if vlength<0: print "Warning: length of vertical segments is less than 0, increase total_length or decrease num_wiggles"
+            
+            if start_up:  asign=1
+            else:         asign=-1
+            if not segments:  segments=s.defalts['segments']      
+            
+            CPWBend(s,asign*90,pinw,gapw,radius, segments=segments)
+            for ii in range(num_wiggles):
+                isign=2*(ii%2)-1
+                CPWStraight(s,vlength,pinw,gapw)
+                CPWBend(s,isign*asign*180,pinw,gapw,radius, segments=segments)
+                CPWStraight(s,vlength,pinw,gapw)
+                if ii<num_wiggles-1:
+                    CPWStraight(s,2*radius,pinw,gapw)
+            CPWBend(s,-isign*asign*90,pinw,gapw,radius, segments=segments)
 
 class CPWWigglesByLength:
     """An updated version of CPWWiggles which is more general.  
@@ -995,6 +997,65 @@ class CPWWigglesByLength:
                 else:
                     CPWBend(s,asign*180,pinw,gapw,radius)      #if asymmetric must turn around
         CPWBend(s,-flip*isign*start_bend_angle,pinw,gapw,radius)
+
+class CPWRightJoint:
+    "Sharp right angle"
+    def __init__(self, s, CCW=False, pinw=None, gapw=None):
+        pinw = pinw if pinw else s.defaults["pinw"]
+        gapw = gapw if gapw else s.defaults["gapw"]
+        d = pinw/2.
+        gap = gapw
+        ext = 2*gapw + pinw
+        if CCW:
+            d *= -1
+            gap *= -1
+        inner = [(0,-d), (gapw, -d), (gapw, -(d+gap)), (0, -(d+gap)), (0,-d)]
+        outer_1 = [(0, d), (ext, d), (ext, d+gap), (0, d+gap), (0, d)]
+        outer_2 = [(ext-gapw, d), (ext-gapw, -(d+gap)), (ext, -(d+gap)), (ext, d), (ext-gapw, d)]
+        for shape in [inner, outer_1, outer_2]:
+            s.append(sdxf.PolyLine(orient_pts(shape, s.last_direction, s.last)))
+        s.last = orient_pt((ext/2.,(1 if CCW else -1) * ext/2.), s.last_direction, s.last)
+        if CCW:
+            s.last_direction += 90
+        else:
+            s.last_direction -= 90
+        
+class RightJointWiggles:
+    "Square Wiggles, speed up your simulations!"
+    def __init__(self, s, total_length, num_wiggles, radius):
+        pinw = s.defaults["pinw"]
+        gapw = s.defaults["gapw"]
+        cpwidth = pinw + 2*gapw
+        hlength = (2*radius) - cpwidth
+        #vlength = ((total_length - ((num_wiggles-1)*cpwidth))/ float(2*num_wiggles)) - hlength - (2*cpwidth)
+        vlength = (total_length - (num_wiggles*hlength) - (((3*num_wiggles)+1)*cpwidth)) / (2*num_wiggles)
+
+        assert hlength > 0 and vlength > 0
+        
+        tot_span = 0        
+        
+        CPWRightJoint(s,True)
+        tot_span += cpwidth
+        for ii in range(num_wiggles):
+            CCW = (ii % 2) != 0
+            CPWStraight(s,vlength,pinw,gapw)
+            tot_span += vlength
+            #CPWBend(s,isign*asign*180,pinw,gapw,radius, segments=segments)
+            CPWRightJoint(s, CCW)
+            tot_span += cpwidth
+            CPWStraight(s, hlength)
+            tot_span += hlength
+            CPWRightJoint(s, CCW)            
+            tot_span += cpwidth
+            CPWStraight(s,vlength,pinw,gapw)
+            tot_span += vlength
+            if ii<num_wiggles-1:
+                CPWStraight(s,cpwidth,pinw,gapw)
+                tot_span += cpwidth
+        CPWRightJoint(s, (not CCW))
+        tot_span += cpwidth
+        
+        #print "CHECK", tot_span, total_length
 
 class ChannelWigglesByLength:
     """An updated version of CPWWiggles which is more general.  
