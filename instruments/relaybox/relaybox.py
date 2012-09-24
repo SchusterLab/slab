@@ -31,7 +31,7 @@ class RelayBox(SerialInstrument, IPInstrument):
             SerialInstrument.__init__(self,name,address,enabled,timeout,querysleep=0.1)
             self.term_char='\r'
             self.boxaddress = '00'      
-        elif address == 'IP_RF1' or address == 'IP_RF2':
+        elif address[:2] =='IP':
             IPInstrument.__init__(self,name,address,enabled)
     def set_relay(self, port=0, state=False):
         
