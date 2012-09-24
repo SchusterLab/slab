@@ -74,6 +74,7 @@ class RelayBox(SerialInstrument, WebInstrument):
             port = str(port)
             f = urllib2.urlopen(self.address+ "TR" + port)
             print f.read(1000)
+            self.name = f.read(1000)
         
     def keep_alive(self,time_to_live=0):
         self.query('@%s KA %d' % (self.boxaddress,time_to_live))
