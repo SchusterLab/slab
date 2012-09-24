@@ -148,8 +148,8 @@ void jsonCmd(WebServer &server, WebServer::ConnectionType type,  char* url_tail,
    {
      if(url_tail[2]=='1' ||url_tail[2]=='2' ||url_tail[2]=='3' ||url_tail[2]=='4'|| url_tail[2]=='5' || url_tail[2]=='6' ||url_tail[2]=='7'||url_tail[2]=='8')
        {
-         int val = digitalRead(int(url_tail[3])-47));
-         server << "Status of Relay " << int(url_tail[3])-48)<< ":" << val;
+         int val = digitalRead(int(url_tail[3])-47);
+         server << "Status of Relay " << int(url_tail[3])-48<< ":" << val;
          return;
        }
      else if(url_tail[3]=='0')
@@ -174,8 +174,8 @@ else if(url_tail[0]=='A' && url_tail[1]=='I')
   {
     if(url_tail[2]=='1' ||url_tail[2]=='2' ||url_tail[2]=='3' ||url_tail[2]=='4'|| url_tail[2]=='5' || url_tail[2]=='6' ||url_tail[2]=='7'||url_tail[2]=='8')
       {
-         int val = analogRead(int(url_tail[3])-49));
-         server << "Status of Relay " << int(url_tail[3])-48)<< ":" << val;
+         int val = analogRead(int(url_tail[3])-49);
+         server << "Status of Relay " << int(url_tail[3])-48<< ":" << val;
          return;
        }
   else if(url_tail[3]=='0')
