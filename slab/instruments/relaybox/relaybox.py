@@ -16,7 +16,7 @@ source of delay in the program.
 
 
 """
-from slab.instruments import SerialInstrument, Instrument, WebInstrument 
+from slab.instruments import SerialInstrument, Instrument, WebInstrument
 import time
 import urllib2
 
