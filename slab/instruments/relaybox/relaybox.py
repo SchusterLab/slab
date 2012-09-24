@@ -16,27 +16,27 @@ source of delay in the program.
 
 
 """
-from slab.instruments import SerialInstrument, Instrument, IPInstrument 
+from slab.instruments import SerialInstrument, Instrument, WebInstrument 
 import time
 import urllib2
 
 
 
 
-class IPInstrument(Instrument):
+class WebInstrument(Instrument):
     def __init__(self,name,address='',enabled=True):
         Instrument.__init__(self,name,address,enabled)
         self.protocol='IP'
         self.enabled=enabled
 
-class RelayBox(SerialInstrument, IPInstrument):
+class RelayBox(SerialInstrument, WebInstrument):
     def __init__(self,name="",address='COM6',enabled=True,timeout=0):
         if address[:3].upper()=='COM':
             SerialInstrument.__init__(self,name,address,enabled,timeout,querysleep=0.1)
             self.term_char='\r'
             self.boxaddress = '00'      
         else:
-            IPInstrument.__init__(self,name,address,enabled)
+            WebInstrument.__init__(self,name,address,enabled)
     
     def set_relay(self, port=0, state=False):
         if self.protocol == "serial":
