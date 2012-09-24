@@ -31,7 +31,7 @@ class RelayBox(SerialInstrument, IPInstrument):
             SerialInstrument.__init__(self,name,address,enabled,timeout,querysleep=0.1)
             self.term_char='\r'
             self.boxaddress = '00'      
-        elif address == 'RF1' or address == 'RF2':
+        elif address == 'IP_RF1' or address == 'IP_RF2':
             IPInstrument.__init__(self,name,address,enabled)
     def set_relay(self, port=0, state=False):
         
@@ -40,14 +40,14 @@ class RelayBox(SerialInstrument, IPInstrument):
             else:     self.query('@%s OF %d' % (self.boxaddress,port))
         if self.protocol == "IP":
             port = str(port)
-            if self.address == "RF1":
+            if self.address == "IP_RF1":
                 if state: 
                     f = urllib2.urlopen("http://192.168.14.20/relaybox/json?ON" + port)
                     print f.read()
                 else: 
                     f = urllib2.urlopen("http://192.168.14.20/relaybox/json?OF" + port)
                     print f.read()
-            if self.address == "RF2":
+            if self.address == "IP_RF2":
                 if state:  
                     f = urllib2.urlopen("http://192.168.14.21/relaybox/json?ON" + port)
                     print f.read()
@@ -64,10 +64,10 @@ class RelayBox(SerialInstrument, IPInstrument):
             if port !=0: return relay_status[port-1]
             else: return relay_status
         if self.protocol=="IP":
-            if self.address=="RF1":
+            if self.address=="IP_RF1":
                  f = urllib2.urlopen("http://192.168.14.20/relaybox/json?RS" + port)
                  print f.read()
-            if self.address=="RF2":
+            if self.address=="IP_RF2":
                 f = urllib2.urlopen("http://192.168.14.21/relaybox/json?RS" + port)
                 print f.read()
             
@@ -82,10 +82,10 @@ class RelayBox(SerialInstrument, IPInstrument):
         if self.protocol=="serial":  
             self.query('@%s TR %d %03d' % (self.boxaddress,port,pulse_width))
         if self.protocol=="IP":
-            if self.address=="RF1":
+            if self.address=="IP_RF1":
                  f = urllib2.urlopen("http://192.168.14.20/relaybox/json?TR" + port)
                  print f.read()
-            if self.address=="RF2":
+            if self.address=="IP_RF2":
                 f = urllib2.urlopen("http://192.168.14.21/relaybox/json?RS" + port)
                 print f.read()
         
@@ -96,9 +96,9 @@ class RelayBox(SerialInstrument, IPInstrument):
         self.query('@%s WR %d' % (self.boxaddress,relaystate))
    
 if __name__== '__main__':
-    re=RelayBox(address='RF2')
+    re=RelayBox(address='IP_RF2')
     #re.write_relays(0b11011111)
-    re.set_relay(1, False)
+    re.set_relay(1, True)
 # #   re.close()
 #    re.relay(1)
 #    re.relay(1,'ON')
