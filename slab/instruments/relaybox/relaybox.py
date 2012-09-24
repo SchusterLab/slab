@@ -67,8 +67,7 @@ class RelayBox(SerialInstrument, WebInstrument):
             port = str(port)
             f = urllib2.urlopen(self.address+ "AI" + port)
             print f.read(1000)
-   
-def pulse_relay(self,port=0,pulse_width=1):
+    def pulse_relay(self,port=0,pulse_width=1):                                                                                                                  
        if self.protocol=="serial":  
             self.query('@%s TR %d %03d' % (self.boxaddress,port,pulse_width))
        if self.protocol=="IP":
@@ -76,16 +75,16 @@ def pulse_relay(self,port=0,pulse_width=1):
             f = urllib2.urlopen(self.address+ "TR" + port)
             print f.read(1000)
         
-def keep_alive(self,time_to_live=0):
+    def keep_alive(self,time_to_live=0):
         self.query('@%s KA %d' % (self.boxaddress,time_to_live))
         
-def write_relays(self,relaystate=0):
+    def write_relays(self,relaystate=0):
         self.query('@%s WR %d' % (self.boxaddress,relaystate))
    
 if __name__== '__main__':
     re=RelayBox(address='http://192.168.14.21/relaybox/json?')
     #re.write_relays(0b11011111)
-    re.set_relay(0, False)
+    re.pulse_relay(1)
 # #   re.close()
 #    re.relay(1)
 #    re.relay(1,'ON')
