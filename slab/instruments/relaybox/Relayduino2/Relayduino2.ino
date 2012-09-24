@@ -119,7 +119,7 @@ void jsonCmd(WebServer &server, WebServer::ConnectionType type,  char* url_tail,
          {
            digitalWrite(int(url_tail[3])-47, HIGH);
            digitalWrite(8, HIGH);
-           delay(100);
+           delay(300);
            digitalWrite(8, LOW);
            digitalWrite(int(url_tail[3])-47, LOW);
          }
@@ -134,7 +134,7 @@ void jsonCmd(WebServer &server, WebServer::ConnectionType type,  char* url_tail,
          {
            digitalWrite(int(url_tail[3])-47, HIGH);
            digitalWrite(9, HIGH);
-           delay(50);
+           delay(300);
            digitalWrite(9, LOW);
            digitalWrite(int(url_tail[3])-47, LOW);
          }
