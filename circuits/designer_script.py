@@ -6,8 +6,10 @@ Created on Mon Aug 06 11:30:46 2012
 """
 from slab.circuits import orient_pts, calculate_gap_width, calculate_interior_length
 from math import pi
+from dsobj import *
 import numpy as np
-
+import logging
+logging.basicConfig(filename="dstest.log")
 
 class DesignerScript(object):
     def __init__(self, fname, unit="um"):
@@ -23,7 +25,9 @@ class DesignerScript(object):
         self.setup_num = 1
         self.sweep_num = 1
         self.opti_num = 1
-        DString.script = self
+        self.properties = []
+        #DString.script = self
+        DSObj.script = self
 
     def write(self, string):
         self.file.write(string)
@@ -35,13 +39,13 @@ class DesignerScript(object):
         self._uid += 1
         return str(self._uid)
     
-    def add_unit(self, v):
-        if isinstance(v, DString):
-            v = v._val
-        if isinstance(v, (float, int)) or v.isdigit():
-            return str(v)+self.unit
-        else:
-            return v
+    #def add_unit(self, v):
+    #    if isinstance(v, DString):
+    #        v = v._val
+    #    if isinstance(v, (float, int)) or v.isdigit():
+    #        return str(v)+self.unit
+    #    else:
+    #        return v
     def write_array(self, arr):
         if isinstance(arr, list):
             im = len(arr) - 1
@@ -52,7 +56,7 @@ class DesignerScript(object):
                     self.write(", ")
             self.write(")")
         else:
-            if isinstance(arr, (DString, str)):
+            if isinstance(arr, (DSObj, str)):
                 self.write("\""+str(arr)+"\"")
             elif isinstance(arr, bool):
                 self.write(str(arr).lower())
@@ -76,8 +80,8 @@ class DesignerScript(object):
               "ElevationEditMode:=", "none",
                 [
                  "NAME:Sublayer",
-                 "Thickness:=", self.add_unit(thickness),
-                 "LowerElevation:=", self.add_unit(self.stackup_height),
+                 "Thickness:=", str(thickness) + self.unit,
+                 "LowerElevation:=", str(self.stackup_height) + self.unit,
                  "Roughness:=", 0,
                  "Material:=", material
                 ]
@@ -86,9 +90,10 @@ class DesignerScript(object):
         self.write_array(arg)
         self.write("\n")
     
-    def add_property(self, name, value, optimize=False, add_unit=False):
-        if add_unit:
-            value = str(value)+self.unit
+    def add_property(self, name, value, unit="", optimize=False):
+        self.properties.append(name)
+        #if add_unit:
+        #    value = str(value)+self.unit
         self.write("oDesign.ChangeProperty ")
         arg = [
                 "NAME:AllTabs",
@@ -138,6 +143,14 @@ class DesignerScript(object):
           {"setup":setup, "name":name, "data":data, "fastsweep":fastsweep})
         self.last_sweep = name
         return name
+    
+    def run_sweep(self, setup=None, sweep=None):
+        assert (setup and sweep) or not (setup or sweep)
+        if not setup:
+            setup = self.last_setup
+        if not sweep:
+            sweep = self.last_sweep
+        self.write('oDesign.Analyze "%(setup)s : %(sweep)s' % (locals()))
     
     def add_lincount(self, start, stop, count, setup=None):
         self.add_sweep(" ".join(["LINC"]+map(str,[start, stop, count])), "true", setup)
@@ -204,6 +217,12 @@ class DesignerScript(object):
         self.set_module("ReportSetup")
         self.write('oModule.ExportToFile "' + report + '", "' + fname + '"\n"')
         
+    def import_dxf(self, fname):
+        self.write(ImportCommand % {"filename":fname, "dest_layer":self.main_layer})
+    
+    def zoom_to_fit(self):
+        self.write("oEditor.ZoomToFit\n")
+    
     def draw_rectangle_pts(self, pt1, pt2, angle=0, name=None, layer=None):
         self.write("oEditor.CreateRectangle ")
         if not name:
@@ -218,10 +237,10 @@ class DesignerScript(object):
                   "Name:=", name,
                   "LayerName:=", layer,
                   "lw:=", 0,
-                  "Ax:=", self.add_unit(pt1[0]),
-                  "Ay:=", self.add_unit(pt1[1]),
-                  "Bx:=", self.add_unit(pt2[0]),
-                  "By:=", self.add_unit(pt2[1]),
+                  "Ax:=", pt1[0],#self.add_unit(pt1[0]),
+                  "Ay:=", pt1[1],#self.add_unit(pt1[1]),
+                  "Bx:=", pt2[0],#self.add_unit(pt2[0]),
+                  "By:=", pt2[1],#self.add_unit(pt2[1]),
                   "ang:=", angle
                 ]
               ]
@@ -264,7 +283,7 @@ class DesignerScript(object):
                 [
                   "Name:=", name,
                   "LayerName:=", layer,
-                  "lw:=", self.add_unit(width),
+                  "lw:=", width,
                   "endstyle:=", 1, #It turns out, endstyle actually sets bendtype, joinstyle sets endstyle...
                   "joinstyle:=", 0,
                   "n:=", len(pts)
@@ -297,29 +316,40 @@ class DesignerScript(object):
         gapw = gapw if gapw else structure.gapw
 
         start, angle = structure.start, structure.angle
-        length, pinw, gapw = map(DString, [length, pinw, gapw])
+        length, pinw, gapw = map(DSObjLen, [length, pinw, gapw])
         delta = (pinw+gapw)/2
         names = []
         for sign in [-1, +1]:
-            name = self.draw_line_pts(structure.orient_pts([(0, sign*delta),(length, sign*delta)]), gapw)
+            name = self.draw_line_pts(structure.orient_pts([("0um", sign*delta),(length, sign*delta)]), gapw)
             names.append(name)
-        end_pt_x, end_pt_y = vadd(start, structure.rotate_pt((length, 0)))
+        end_pt_x, end_pt_y = vadd(start, structure.rotate_pt((length, "0um")))
         line_id = self.uid()
         end_pt_x.cache_result("end_pt_x"+line_id)
         end_pt_y.cache_result("end_pt_y"+line_id)
         structure.start = end_pt_x, end_pt_y
         return names
     
+    def CPWGroundCap(self, s, n_fingers, finger_len, finger_width=None, pinw=None, gapw=None):
+        pinw = pinw if pinw else s.pinw
+        gapw = gapw if gapw else s.gapw
+        finger_width = finger_width if finger_width else gapw
+        finger_len, finger_width, pinw, gapw = \
+          map(DSObjLen, [finger_len, finger_width, pinw, gapw])
+        for i in range(n_fingers):
+            self.CPWStraight(s, gapw, gapw=gapw+finger_len)
+            self.CPWStraight(s, finger_width, pinw=pinw+(2*finger_len))
+            self.CPWStraight(s, gapw, gapw=gapw+finger_len)
+            if i is not (n_fingers - 1):
+                self.CPWStraight(s, finger_width)
+       
     def CPWBend(self, structure, bend_angle, radius, orientation, pinw=None, gapw=None, name=None):
         "Orientation should be either 'CW' or 'CCW', bend_angle should be positive!"
-        if isinstance(bend_angle, (int, float)):
-            bend_angle = str(bend_angle) + "deg"
         assert(orientation in ['CW', 'CCW'])
         pinw = pinw if pinw else structure.pinw
         gapw = gapw if gapw else structure.gapw
         start, start_angle = structure.start, structure.angle
-        bend_angle, radius, pinw, gapw =\
-          map(DString, [bend_angle, radius, pinw, gapw])
+        bend_angle = DSObj(bend_angle, "deg")
+        radius, pinw, gapw = map(DSObjLen, [radius, pinw, gapw])
         
         delta = (pinw+gapw)/2
         osign = {'CW':-1, 'CCW':1}[orientation]
@@ -344,7 +374,7 @@ class DesignerScript(object):
     def CPWTaper(self, structure, length, start_pinw, start_gapw, end_pinw, end_gapw):
         start, start_angle = structure.start, structure.angle
         length, start_pinw, start_gapw, end_pinw, end_gapw =\
-          map(DString, [length, start_pinw, start_gapw, end_pinw, end_gapw])
+          map(DSObjLen, [length, start_pinw, start_gapw, end_pinw, end_gapw])
         names = []
         for sign in [-1, 1]:
             h0 = sign * (start_pinw/2)
@@ -361,7 +391,7 @@ class DesignerScript(object):
         pinw = pinw if pinw else structure.pinw
         gapw = gapw if gapw else structure.gapw
         total_length, radius, pinw, gapw = \
-          map(DString, [total_length, radius, pinw, gapw])
+          map(DSObjLen, [total_length, radius, pinw, gapw])
         s = structure
         vlength=(total_length-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)*radius))/(2*num_wiggles)
         
@@ -377,11 +407,11 @@ class DesignerScript(object):
         self.CPWBend(s, 90, radius, final_bend_orientation)
         
     def CPWFingerCap(self, structure, num_fingers, finger_length, finger_width, finger_gap, taper_length="50um"):
-        pinw, gapw = map(DString, [structure.pinw, structure.gapw])
+        pinw, gapw = map(DSObjLen, [structure.pinw, structure.gapw])
         finger_length, finger_width, finger_gap, taper_length =\
-          map(DString, [finger_length, finger_width, finger_gap, taper_length])
+          map(DSObjLen, [finger_length, finger_width, finger_gap, taper_length])
         center_width = num_fingers*finger_width + (num_fingers-1)*finger_gap
-        center_gap = center_width * gapw / pinw
+        center_gap = center_width * (gapw / pinw)
         length = finger_length + finger_gap
         
         self.CPWTaper(structure, taper_length, pinw, gapw, center_width, center_gap)
@@ -513,18 +543,18 @@ class DesignerScript(object):
                  outer_finger_len_left, outer_finger_len_right,
                  inner_finger_len_left, inner_finger_len_right,
                  taper_len=0, int_len=30, pinw=None, gapw=None, align=False, flipped=False):
-        c_gap = DString(c_gap)
-        outer_finger_len_left = DString(outer_finger_len_left)
-        outer_finger_len_right = DString(outer_finger_len_right)
-        inner_finger_len_left = DString(inner_finger_len_left)
-        inner_finger_len_right = DString(inner_finger_len_right)
+        c_gap = DSObjLen(c_gap)
+        outer_finger_len_left = DSObjLen(outer_finger_len_left)
+        outer_finger_len_right = DSObjLen(outer_finger_len_right)
+        inner_finger_len_left = DSObjLen(inner_finger_len_left)
+        inner_finger_len_right = DSObjLen(inner_finger_len_right)
         finger_gapw = c_gap
         fingerw = 3 * c_gap        
 
         gapw = gapw if gapw else s.gapw
         pinw = pinw if pinw else s.pinw
         
-        taper_len, int_len, pinw, gapw = map(DString, [taper_len, int_len, pinw, gapw])
+        taper_len, int_len, pinw, gapw = map(DSObjLen, [taper_len, int_len, pinw, gapw])
         finger_gapw = c_gap
         center_gapw = fingerw = 3 * c_gap
         center_pinw_left = 2 * inner_finger_len_left + pinw
@@ -556,11 +586,11 @@ def rotate_pt(pt, angle):
     return (x, y)
     
 class DStructure(object):
-    def __init__(self, x="0", y="0", angle="0", pinw="10um", gapw="10um"):
-        self.start = DString(x), DString(y)
-        self.angle = DString(angle)
-        self.pinw = DString(pinw)
-        self.gapw = DString(gapw)
+    def __init__(self, x="0um", y="0um", angle="0deg", pinw="10um", gapw="10um", unit="um"):
+        self.start = DSObj(x), DSObj(y)
+        self.angle = DSObj(angle)
+        self.pinw = DSObj(pinw)
+        self.gapw = DSObj(gapw)
     def rotate_pt(self, pt):
         return rotate_pt(pt, self.angle)
         x = pt[0]*cos(self.angle) - pt[1]*sin(self.angle)
@@ -575,71 +605,6 @@ class DStructure(object):
     def orient_pts(self, pts):
         return [self.orient_pt(p) for p in pts]
 
-class DString(object):
-    script = None
-    def __init__(self, name):
-        if isinstance(name, DString):
-            self._val = name._val
-        elif isinstance(name, str):
-            parts=name.split(":=")
-            if len(parts) is 1:
-                self._val = name
-            else:
-                self.script.add_property(parts[0], parts[1])
-                self._val = parts[0]
-            if self._val.isdigit():
-                self._val = self.script.add_unit(self._val)
-        elif isinstance(name, (float, int)):
-            print "Added unit %s to" % self.script.unit, name
-            self._val = str(name)+self.script.unit # If you don't specify a unit, length is assumed
-    def cache_result(self, name):
-        self.script.add_property(name, str(self))
-        self._val = name
-            
-    def __repr__(self):
-        return self._val
-    def __add__(self, other):
-        if str(other) is "0" or str(other) is "0.0":
-            return self
-        return DString("("+str(self)+"+"+str(other)+")")
-    def __radd__(self, other):
-        if str(other) is "0" or str(other) is "0.0":
-            return self
-        return DString("("+str(other)+"+"+str(self)+")")
-    def __sub__(self, other):
-        if str(other) is "0" or str(other) is "0.0":
-            return self
-        return DString("("+str(self)+"-"+str(other)+")")
-    def __rsub__(self, other):
-        if str(other) is "0" or str(other) is "0.0":
-            return -self
-        return DString("("+str(other)+"-"+str(self)+")")
-    def __mul__(self, other):
-        if str(other) is "1" or str(other) is "1.0":
-            return self
-        return DString("("+str(self)+"*"+str(other)+")")
-    def __rmul__(self, other):
-        if str(other) is "1" or str(other) is "1.0":
-            return self
-        return DString("("+str(other)+"*"+str(self)+")")
-    def __div__(self, other):
-        if str(other) is "1" or str(other) is "1.0":
-            return self
-        return DString("("+str(self)+"/"+str(other)+")")
-    def __rdiv__(self, other):
-        return DString("("+str(other)+"/"+str(self)+")")
-    def __neg__(self):
-        return DString("(-"+str(self)+")")
-        
-def cos(a):
-    return DString("cos("+str(a)+")")
-def sin(a):
-    return DString("sin("+str(a)+")")
-def sqrt(a):
-    return DString("sqrt("+str(a)+")")
-def dmax(*a):
-    return DString("max(" + ",".join(map(str,a)) + ")")
-    
 def vadd(a, b):
     return a[0]+b[0],a[1]+b[1]
 def translate_pts(pts, offset):
@@ -730,6 +695,19 @@ oModule.AddSweep "%(setup)s", Array("NAME:%(name)s", Array("NAME:Properties", "E
   false, "SAbsError:=", 0.005, "ZoPercentError:=", 1, Array("NAME:Sweeps", "Variable:=",  _
   "%(name)s", "Data:=", "%(data)s", "OffsetF1:=", false, "Synchronize:=",  _
   0))
+"""
+
+ImportCommand = \
+"""
+oEditor.ImportDXF Array("NAME:options", "FileName:=",  _
+  "%(filename)s", "Scale:=", 1E-006, "AutoDetectClosed:=", true, "SelfStitch:=",  _
+  true, "DefeatureGeometry:=", false, "DefeatureDistance:=", 0, "RoundCoordinates:=",  _
+  false, "RoundNumDigits:=", 4, "WritePolyWithWidthAsFilledPoly:=", false, "ImportMethod:=",  _
+  1, "2DSheetBodies:=", false, Array("NAME:LayerInfo", Array("NAME:0", "source:=", "0", "display_source:=",  _
+  "0", "import:=", false, "dest:=", "%(dest_layer)s", "dest_selected:=", true, "layer_type:=",  _
+  "metalizedsignal"), Array("NAME:PYDXF", "source:=", "PYDXF", "display_source:=",  _
+  "PYDXF", "import:=", false, "dest:=", "PYDXF", "dest_selected:=", false, "layer_type:=",  _
+  "signal")))
 """
 
 # TODO: Check that properties have been added when they are used    
