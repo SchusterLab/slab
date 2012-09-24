@@ -6,19 +6,14 @@ Relay Numbers(Ports) are always 1-8 unless activating multiple relays at a time.
 @author: ThomasLaptop
 """
 
-from slab.instruments import RelayBox, Instrument, SerialInstrument
+from slab.instruments import RelayBox, Instrument
 import time
 
-class IPInstrument(Instrument):
-    def __init__(self,name,address='',enabled=True):
-        Instrument.__init__(self,name,address,enabled)
-        self.protocol='IP'
-        self.enabled=enabled
 
-class RFSwitch(RelayBox):    
+class RFSwitch(RelayBox, WebInstrument):    
     
-    def __init__(self,name="",address="",enabled=True,timeout=0):
-        RelayBox.__init__(self,name,address,enabled,timeout)
+    def __init__(self,name="",address="",enabled=True):
+       RelayBox.__init__(self,name,address,enabled)
         
     def activate(self, port=0):    
         self.set_relay(port, True)
@@ -33,8 +28,8 @@ class RFSwitch(RelayBox):
 
 
 if __name__=="__main__":
-    RF_1= "http://192.168.14.20/relaybox/json?"
-    RF_2="http://192.168.14.21/relaybox/json?"
+    RF_1= 'http://192.168.14.20/relaybox/json?'
+    RF_2='http://192.168.14.21/relaybox/json?'
     
     rfs=RFSwitch(address=RF_1)
-    rfs.set_relay(3,True)
+    rfs.set_relay(3, True)
