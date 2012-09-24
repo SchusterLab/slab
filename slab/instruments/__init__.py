@@ -1,4 +1,4 @@
-from instrumenttypes import Instrument,VisaInstrument,TelnetInstrument,SocketInstrument,SerialInstrument
+from instrumenttypes import Instrument,VisaInstrument,TelnetInstrument,SocketInstrument,SerialInstrument, WebInstrument
 from nwa import E5071
 from rfgenerators import E8257D
 from labbrick.labbrick import LMS_get_device_info,LMS103,LabbrickWindow
