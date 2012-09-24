@@ -3,6 +3,9 @@
 Created on Tue May 22 14:49:01 2012
 
 Relay Numbers(Ports) are always 1-8 unless activating multiple relays at a time.
+Ports 1-6 can be activated/deactivated
+If using USB cable, set address to appropriate COM.
+If using web access, set address to appropriate URL.
 @author: ThomasLaptop
 """
 
@@ -31,5 +34,7 @@ if __name__=="__main__":
     RF_1= 'http://192.168.14.20/relaybox/json?'
     RF_2='http://192.168.14.21/relaybox/json?'
     
-    rfs=RFSwitch(address=RF_1)
-    rfs.set_relay(3, True)
+    rfs_1=RFSwitch(address=RF_1)
+    rfs_2=RFSwitch(address=RF_2)
+    rfs_1.set_relay(3, False)
+    rfs_2.deactivate(4)
