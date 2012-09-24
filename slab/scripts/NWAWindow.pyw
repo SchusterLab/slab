@@ -79,7 +79,7 @@ class nwa_DataThread(DataThread):
                     ds=f[n]
                     ds.resize((ds.shape[0]+1,ds.shape[1]))
                 ds[ds.shape[0]-1,:]=d
-            set_range(ds, start, stop,0,ds.shape[0]-1)
+                set_range(ds, start, stop,0,ds.shape[0]-1)
             f.close()
 #            f = self.file[self.trace_no] if self.params["numberTraces"] else self.file
 #            for n, d in [("mag", mags), ("phase", phases)]:
@@ -160,7 +160,7 @@ class nwa_DataThread(DataThread):
                     if ds.shape[1]<len(d):
                         ds.resize((ds.shape[0],len(d)))
                     ds[ds.shape[0]-1,:len(d)]=d
-                set_range(ds, starts[0], maxstop,0,ds.shape[0]-1)
+                    set_range(ds, starts[0], maxstop,0,ds.shape[0]-1)
                 f.close()            
             if self.aborted():
                 self.msg("aborted")
