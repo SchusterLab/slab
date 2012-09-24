@@ -24,3 +24,5 @@ try: from Alazar import Alazar, AlazarConfig, AlazarConstants
 except: print "Could not load Alazar card"
 try: from function_generator import FilamentDriver,BNCAWG
 except: print "Could not load BNC AWG classes"
+
+foo = 'abc'
