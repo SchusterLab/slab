@@ -215,7 +215,7 @@ class nwa_DataThread(DataThread):
             minstep=self.params['resolution']*1e6
             step=(stop-start)/self.params['sweep_pts']
             self.msg('start: %f GHz\tstop: %f GHz\tstep: %f MHz' % (start/1e9,stop/1e9,step/1e6))
-            self.save_defaults()
+
             if step <= minstep:
                 self.do_normal_sweep(nwa,start,stop,self.params['sweep_pts'])
             elif step > minstep:
@@ -239,7 +239,8 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
         self.param_datapath.textChanged.connect(self.update_filenumber)
         self.param_filename.textChanged.connect(self.update_filenumber)
         self.go_button.clicked.connect(self.update_filenumber)
-
+        self.go_button.clicked.connect(self.save_defaults)
+        
         self.start_thread()       
         self.load_defaults()
         
@@ -281,7 +282,17 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
             self.set_param(k,d[k])
             #self.msg(k,': ',str(self.params[k]))
         settings_file.close()
-            
+          
+    def save_defaults(self):  
+        try:
+            settings_file= SlabFile('c:\\_Lib\\python\\slab\\scripts\\NWAWindow_defaults.h5')
+            settings_file.save_settings(self.params)
+            settings_file.close()
+        except Exception as e:
+            self.msg("Could not open NWAWindow_defaults.h5!")
+            self.msg(e)            
+        return
+
 
 
     def selectFile(self):
