@@ -38,10 +38,10 @@ class RelayBox(SerialInstrument, WebInstrument):
             port = str(port)
             if state: 
                 f = urllib2.urlopen(self.address+ "ON" + port)
-                print f.read(1000)
+                
             else: 
                 f = urllib2.urlopen(self.address+ "OF" + port)
-                print f.read(1000)
+                
             
     
     def get_relay(self,port=0):
@@ -73,7 +73,7 @@ class RelayBox(SerialInstrument, WebInstrument):
        if self.protocol=="IP":
             port = str(port)
             f = urllib2.urlopen(self.address+ "TR" + port)
-            print f.read(1000)
+            
             
         
     def keep_alive(self,time_to_live=0):
