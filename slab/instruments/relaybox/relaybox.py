@@ -37,10 +37,10 @@ class RelayBox(SerialInstrument, WebInstrument):
         if self.protocol == "IP":
             port = str(port)
             if state: 
-                f = urllib2.urlopen(self.address+ "ON" + port)
+                f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "ON" + port)
                 
             else: 
-                f = urllib2.urlopen(self.address+ "OF" + port)
+                f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "OF" + port)
                 
             
     
@@ -53,7 +53,7 @@ class RelayBox(SerialInstrument, WebInstrument):
             else: return relay_status
         if self.protocol=="IP":
            port = str(port)
-           f = urllib2.urlopen(self.address+ "RS" + port)
+           f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "RS" + port)
            print f.read(1000)     
             
         
@@ -65,14 +65,14 @@ class RelayBox(SerialInstrument, WebInstrument):
             else: return analog_inputs
         if self.protocol=="IP":
             port = str(port)
-            f = urllib2.urlopen(self.address+ "AI" + port)
+            f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "AI" + port)
             print f.read(1000)
     def pulse_relay(self,port=0,pulse_width=1):                                                                                                                  
        if self.protocol=="serial":  
             self.query('@%s TR %d %03d' % (self.boxaddress,port,pulse_width))
        if self.protocol=="IP":
             port = str(port)
-            f = urllib2.urlopen(self.address+ "TR" + port)
+            f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "TR" + port)
             
             
         
@@ -83,7 +83,7 @@ class RelayBox(SerialInstrument, WebInstrument):
         self.query('@%s WR %d' % (self.boxaddress,relaystate))
    
 if __name__== '__main__':
-    re=RelayBox(address='http://192.168.14.21/relaybox/json?')
+    re=RelayBox(address='http://192.168.14.21')
     #re.write_relays(0b11011111)
     re.pulse_relay(1)
 # #   re.close()
