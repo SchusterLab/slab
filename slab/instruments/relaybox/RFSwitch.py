@@ -36,6 +36,12 @@ if __name__=="__main__":
     
     rfs_1=RFSwitch(address=RF_1)
     rfs_2=RFSwitch(address=RF_2)
-    rfs_1.get_relay(4)
-    rfs_1.set_relay(4, True)
-    rfs_1.get_relay(4)
+    rfs_1.activate(4)
+    rfs_2.activate(4)
+    
+    
+    
+    
+    
+    rfs_1.get_relay(0)
+    rfs_2.get_relay(0)
