@@ -15,33 +15,61 @@ import time
 
 class RFSwitch(RelayBox):    
     
-    def __init__(self,name="",address="",enabled=True):
+    def __init__(self,name="",address="",enabled=True, RF_Status="000000"):
        RelayBox.__init__(self,name,address,enabled)
+       self.RF_Status=RF_Status
         
     def activate(self, port=0):    
-        self.set_relay(port, True)
-        self.pulse_relay(7)
-        self.set_relay(port, False)
+        if port >0:
+            self.set_relay(port, True)
+            self.pulse_relay(7)
+            self.set_relay(port, False)
+            if port == 1:
+                self.RF_Status= '1' + self.RF_Status[1:]
+            else:
+                self.RF_Status= self.RF_Status[0:port-1] + '1' + self.RF_Status[port:]
+        elif port == 0:
+            for i in range(6):
+                self.set_relay(i+1, True)
+            self.pulse_relay(7)
+            for i in range(6):
+                self.set_relay(i+1, False)
+            self.RF_Status='111111'
       
     
     def deactivate(self, port=0):
-        self.set_relay(port, True)
-        self.pulse_relay(8)
-        self.set_relay(port, False)
-
-
+        if port>0:
+            self.set_relay(port, True)
+            self.pulse_relay(8)
+            self.set_relay(port, False)
+            if port == 1:
+                self.RF_Status= '0' + self.RF_Status[1:]
+            else:
+                self.RF_Status= self.RF_Status[0:port-1] + '0' + self.RF_Status[port:]
+        elif port == 0:
+            for i in range(6):
+                self.set_relay(i+1, True)
+            self.pulse_relay(8)
+            for i in range(6):
+                self.set_relay(i+1, False)
+            self.RF_Status='000000'
+                
 if __name__=="__main__":
-    RF_1= 'http://192.168.14.20/relaybox/json?'
-    RF_2='http://192.168.14.21/relaybox/json?'
+    RF_1= 'http://192.168.14.20'
+    RF_2='http://192.168.14.21'
     
-    rfs_1=RFSwitch(address=RF_1)
-    rfs_2=RFSwitch(address=RF_2)
-    rfs_1.activate(4)
-    rfs_2.activate(4)
+    rfs_1=RFSwitch(name="Switch1", address=RF_1)
+    rfs_2=RFSwitch(name="Switch2", address=RF_2)
+
+    for i in range(6):
+       rfs_2.activate(i+1)
+       print rfs_2.RF_Status
+    
+    for i in range(6):
+       rfs_2.deactivate(i+1)
+       print rfs_2.RF_Status
     
     
     
     
     
-    rfs_1.get_relay(0)
-    rfs_2.get_relay(0)
