@@ -16,8 +16,7 @@ source of delay in the program.
 
 
 """
-from slab.instruments import SerialInstrument, Instrument, WebInstrument
-import time
+from slab.instruments import SerialInstrument, WebInstrument
 import urllib2
 
 
@@ -37,10 +36,10 @@ class RelayBox(SerialInstrument, WebInstrument):
         if self.protocol == "IP":
             port = str(port)
             if state: 
-                f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "ON" + port)
+                urllib2.urlopen(self.address+ "/relaybox/json?"+ "ON" + port)
                 
             else: 
-                f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "OF" + port)
+                urllib2.urlopen(self.address+ "/relaybox/json?"+ "OF" + port)
                 
             
     
@@ -72,7 +71,7 @@ class RelayBox(SerialInstrument, WebInstrument):
             self.query('@%s TR %d %03d' % (self.boxaddress,port,pulse_width))
        if self.protocol=="IP":
             port = str(port)
-            f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "TR" + port)
+            urllib2.urlopen(self.address+ "/relaybox/json?"+ "TR" + port)
             
             
         

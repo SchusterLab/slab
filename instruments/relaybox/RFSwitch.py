@@ -62,12 +62,12 @@ if __name__=="__main__":
     rfs_2=RFSwitch(name="Switch2", address=RF_2)
 
     for i in range(6):
-       rfs_2.activate(i+1)
-       print rfs_2.RF_Status
+       rfs_1.activate(i+1)
+       print rfs_1.RF_Status
     
     for i in range(6):
-       rfs_2.deactivate(i+1)
-       print rfs_2.RF_Status
+       rfs_1.deactivate(i+1)
+       print rfs_1.RF_Status
     
     
     
