@@ -12,7 +12,7 @@ try: from relaybox.relaybox import RelayBox
 except: print "Could not load relaybox"
 try: from relaybox.heliummanifold import HeliumManifold
 except: print "Could not load heliummanifold"
-try: from relaybox.rfswitchcontroller import RFSwitch
+try: from relaybox.RFSwitch import RFSwitch
 except: print "Could not load heliummanifold"
 try: from bkpowersupply import BKPowerSupply
 except: print "Could not load BKPowerSupply"

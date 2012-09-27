@@ -14,10 +14,11 @@ import time
 
 
 class RFSwitch(RelayBox):    
-    
+
     def __init__(self,name="",address="",enabled=True, RF_Status="000000"):
-       RelayBox.__init__(self,name,address,enabled)
-       self.RF_Status=RF_Status
+        print "Switch", name, "at address", address, " is initiated!" 
+        RelayBox.__init__(self,name,address,enabled)
+        self.RF_Status=RF_Status
         
     def activate(self, port=0):    
         if port >0:
