@@ -12,55 +12,60 @@ If using web access, set address to appropriate URL.
 from slab.instruments.relaybox import RelayBox
 import time
 
-
 class RFSwitch(RelayBox):    
 
-    def __init__(self,name="",address="",enabled=True, RF_Status="000000"):
-        #print "Switch", name, "at address", address, " is initiated!" 
+    def __init__(self,name="",address="",enabled=True, RF_Status=[False,False,False,False,False,False]):
+        print "Switch", name, "at address", address, " is initiated!" 
         RelayBox.__init__(self,name,address,enabled)
         self.RF_Status=RF_Status
         
-    def activate(self, port=0,pulse_width=1):    
-        if port >0:
-            self.set_relay(port, True)
+    def set_switch (self, switch=0,state=True):
+        """activates or deactivates RF Switch according to state, 
+        if switch=0 does for all switches, if switch=1..6 does individual port"""
+        if state: self.activate(switch)
+        else: self.deactivate(switch)        
+        
+    def get_switch (self,switch=0):
+        """Get switch (cached) state of _switch_ if _switch_ = 0 return array of switch states """
+        if switch == 0: return self.RF_Status
+        else:           return self.RF_Status[switch-1]
+                
+    def activate(self, switch=0):
+        """Activate _switch_ if _switch_=0 activate all switches"""
+        if switch>0:
+            self.set_relay(switch, True)
             self.pulse_relay(7)
-            self.set_relay(port, False)
-            if port == 1:
-                self.RF_Status= '1' + self.RF_Status[1:]
-            else:
-                self.RF_Status= self.RF_Status[0:port-1] + '1' + self.RF_Status[port:]
-        elif port == 0:
-            for ii in range(1,7):
-                self.activate(ii,pulse_width)
+            self.set_relay(switch, False)
+            self.RF_Status[switch-1]= True
+        elif switch == 0:
+            for i in range(1,7):
+                self.activate(i)
       
-    
-    def deactivate(self, port=0,pulse_width=1):
-        if port>0:
-            self.set_relay(port, True)
+    def deactivate(self, switch=0):
+        """Activate _switch_ if _switch_=0 activate all switches"""
+        if switch>0:
+            self.set_relay(switch, True)
             self.pulse_relay(8)
-            self.set_relay(port, False)
-            if port == 1:
-                self.RF_Status= '0' + self.RF_Status[1:]
-            else:
-                self.RF_Status= self.RF_Status[0:port-1] + '0' + self.RF_Status[port:]
-        elif port == 0:
-            for ii in range(1,7):
-                self.deactivate(ii,pulse_width)
+            self.set_relay(switch, False)
+            self.RF_Status[switch-1]= False
+        elif switch == 0:
+            for i in range(1,7):
+                self.deactivate(i)
                 
 if __name__=="__main__":
     RF_1= 'http://192.168.14.20'
-    RF_2= 'http://192.168.14.21'
+    RF_2='http://192.168.14.21'
     
     rfs_1=RFSwitch(name="Switch1", address=RF_1)
     rfs_2=RFSwitch(name="Switch2", address=RF_2)
 
-#    for i in range(6):
-#       rfs_1.activate(i+1)
-#       print rfs_1.RF_Status
-#    
-#    for i in range(6):
-#       rfs_1.deactivate(i+1)
-#       print rfs_1.RF_Status
+    for i in range(6):
+       rfs_1.activate(i+1)
+       print rfs_1.RF_Status
+    
+    for i in range(6):
+       rfs_1.deactivate(i+1)
+       print rfs_1.RF_Status
     
     
     

@@ -33,7 +33,7 @@ class RelayBox(SerialInstrument, WebInstrument):
         if self.protocol == "serial":
             if state: self.query('@%s ON %d' % (self.boxaddress,port))
             else:     self.query('@%s OF %d' % (self.boxaddress,port))
-        if self.protocol == "IP":
+        if self.protocol == "http":
             port = str(port)
             if state: 
                 urllib2.urlopen(self.address+ "/relaybox/json?"+ "ON" + port)
@@ -50,7 +50,7 @@ class RelayBox(SerialInstrument, WebInstrument):
             relay_status.reverse()
             if port !=0: return relay_status[port-1]
             else: return relay_status
-        if self.protocol=="IP":
+        if self.protocol=="http":
            port = str(port)
            f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "RS" + port)
            print f.read(1000)     
@@ -62,19 +62,17 @@ class RelayBox(SerialInstrument, WebInstrument):
             analog_inputs=[int(x) for x in ans.split()[1:]]
             if port!=0: return analog_inputs[port-1]
             else: return analog_inputs
-        if self.protocol=="IP":
+        if self.protocol=="http":
             port = str(port)
             f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "AI" + port)
             print f.read(1000)
     def pulse_relay(self,port=0,pulse_width=1):                                                                                                                  
        if self.protocol=="serial":  
             self.query('@%s TR %d %03d' % (self.boxaddress,port,pulse_width))
-       if self.protocol=="IP":
+       if self.protocol=="http":
             port = str(port)
             urllib2.urlopen(self.address+ "/relaybox/json?"+ "TR" + port)
             
-            
-        
     def keep_alive(self,time_to_live=0):
         self.query('@%s KA %d' % (self.boxaddress,time_to_live))
         
