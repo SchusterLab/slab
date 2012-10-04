@@ -183,5 +183,5 @@ class WebInstrument(Instrument):
     
     def __init__(self,name,address='',enabled=True):
         Instrument.__init__(self,name,address,enabled)
-        self.protocol='IP'
+        self.protocol='http'
         self.enabled=enabled
