@@ -6,6 +6,7 @@ import os
 from plotting import *
 import gui
 import script
+from analysisScript import *
 from datamanagement import *
 #import diamond
 
