@@ -24,7 +24,7 @@ class InstrumentManager(dict):
         print "Loaded Instruments: ",
         f=open(config_path,'r')
         for line in f.readlines():
-            if line[0]!='#':
+            if line[0]!='#' and line[0]!='':
                 name=line.split()[0]
                 print name,
                 self[name]=self.load_instrument(line)
