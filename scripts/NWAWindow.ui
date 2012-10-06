@@ -302,16 +302,6 @@
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QCheckBox" name="param_numberTraces">
-            <property name="enabled">
-             <bool>false</bool>
-            </property>
-            <property name="text">
-             <string>Number Traces</string>
-            </property>
-           </widget>
-          </item>
          </layout>
         </item>
         <item>
