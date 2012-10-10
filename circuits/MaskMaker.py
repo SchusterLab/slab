@@ -365,7 +365,8 @@ class Structure(object):
         except AttributeError: 
             try : self.gapw=self.defaults['gapw']
             except KeyError: pass#print 'no gapw for chips',chip.name, 'at initialization'
-            
+        self.pinw2=None
+        
     def move(self,distance,direction=None):
         if direction == None: direction = self.last_direction
         self.last=translate_pt(self.last,ang2pt(direction,distance))
@@ -755,7 +756,7 @@ class CPWBend:
         
         s=structure
 
-        if radius is None: radius=s.__dict__['radius']
+        if radius is None: radius=s.defaults['radius']
         if pinw is None:   pinw=s.__dict__['pinw']
         if gapw is None:   gapw=s.__dict__['gapw']
 
@@ -906,7 +907,7 @@ class CPWWiggles:
         start=structure.last
         if pinw is None:   pinw=s.__dict__['pinw']
         if gapw is None:   gapw=s.__dict__['gapw']
-        if radius is None: radius=s.__dict__['radius']
+        if radius is None: radius=s.defaults['radius']
         if square:
             RightJointWiggles(s, total_length, num_wiggles, radius)
         else:
@@ -1552,8 +1553,9 @@ class CPWFingerCap:
             pts=translate_pts(pts,( ((self.num_fingers+1) %2)*(length-self.finger_gap),(self.num_fingers-1)*(self.finger_width+self.finger_gap)-self.pinw/2.))
             pts=rotate_pts(pts,s.last_direction,start)
             s.append(sdxf.PolyLine(pts))
-        if structure.pinw_rsn!=None:
-            s.pinw=structure.pinw_rsn
+        if structure.pinw2!=None:
+            s.pinw=structure.pinw2
+            structure.pinw2=None
         CPWLinearTaper(s,length=self.taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=s.__dict__['pinw'],stop_gapw=s.__dict__['gapw'])
    
         
@@ -2482,8 +2484,8 @@ class ChannelWiggles:
         """
             
         s=structure
-        if channelw is None:   channelw=s.__dict__['channelw']
-        if radius is None: radius=s.__dict__['radius']
+        if channelw is None:   channelw=s.defaults['channelw']
+        if radius is None: radius=s.defaults['radius']
 
         #calculate vertical segment length:
         #total length=number of 180 degree arcs + number of vertical segs + vertical radius spacers
