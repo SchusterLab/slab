@@ -190,12 +190,12 @@ def sapphire_capacitor_by_C(capacitance, taper_length=50):
 #-------------------------------------------------------------------------------------------------------------
 # CHANNEL CAPACITORS e on He
 #-------------------------------------------------------------------------------------------------------------
-def sapphire_capacitor_by_Q_Channels(frequency,Q,impedance=50,resonator_type=0.5,channelw=2):
+def sapphire_capacitor_by_Q_Channels(frequency,Q,impedance=50,resonator_type=0.5):
     """Calculates capacitance for desired Q and returns a CPWFingerCapacitor 
     with the appropriate geometry to yield the desired Q"""
     return sapphire_capacitor_by_C_Channels(capacitance_by_Q(frequency,Q,impedance,resonator_type))
 
-def sapphire_capacitor_by_C_Channels(capacitance,channelw=2):
+def sapphire_capacitor_by_C_Channels(capacitance):
     """def sapphire_capacitor_by_C(capacitance):
     Interpolates simulated capacitance tables to get specified capacitance values
     Simulations done in sonnet by Andy
@@ -217,7 +217,8 @@ def sapphire_capacitor_by_C_Channels(capacitance,channelw=2):
     
     length=round(float(get_length(capacitance)))
     print "Capacitance: %f, Fingers: %d, Finger Length: %f " % (capacitance, num_fingers,length)
-    return ChannelFingerCap(num_fingers=num_fingers,finger_length=length,finger_width=2,finger_gap=2,taper_length = 50,channelw=channelw,capacitance=1e-15*capacitance)
+    return CPWFingerCap(num_fingers=num_fingers,finger_length=length,finger_width=2,finger_gap=2,taper_length = 50,capacitance=1e-15*capacitance)
+    #ChannelFingerCap(num_fingers=num_fingers,finger_length=length,finger_width=2,finger_gap=2,taper_length = 50,channelw=channelw,capacitance=1e-15*capacitance)
 
 #-------------------------------------------------------------------------------------------------------------
 def inductor_length(inductance):

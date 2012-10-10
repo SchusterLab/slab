@@ -293,10 +293,10 @@ class Chip(sdxf.Block):
         self.topright_corner=(size[0],size[1])
         self.bottomright_corner=(size[0],0)
         self.center=(size[0]/2.,size[1]/2.)
-        self.top_left=(self.top_midpt[0]-2000.0,self.top_midpt[1])
-        self.top_right=(self.top_midpt[0]+2000.0,self.top_midpt[1])
-        self.bottom_left=(self.bottom_midpt[0]-2000.0,self.bottom_midpt[1])
-        self.bottom_right=(self.bottom_midpt[0]+2000.0,self.bottom_midpt[1])
+        self.top_left=(self.top_midpt[0]-2500.0,self.top_midpt[1])
+        self.top_right=(self.top_midpt[0]+2500.0,self.top_midpt[1])
+        self.bottom_left=(self.bottom_midpt[0]-2500.0,self.bottom_midpt[1])
+        self.bottom_right=(self.bottom_midpt[0]+2500.0,self.bottom_midpt[1])
         
                     
     def label_chip(self,drawing,maskid,chipid,offset=(0,0)):
@@ -391,8 +391,8 @@ class Structure(object):
 class Launcher:
     def __init__(self,structure,flipped=False,pad_length=250,taper_length=250,pad_to_length=500,pinw=None,gapw=None):
         s=structure
-        if pinw is None: pinw = s.defaults['pinw']
-        if gapw is None: gapw = s.defaults['gapw']
+        if pinw is None: pinw = s.__dict__['pinw']
+        if gapw is None: gapw = s.__dict__['gapw']
 
         padding = pad_to_length-pad_length-taper_length
         if padding <0: 
@@ -483,8 +483,8 @@ class CPWStraight:
         if length==0: return
 
         s=structure
-        if pinw is None: pinw=structure.defaults['pinw']
-        if gapw is None: gapw=structure.defaults['gapw']
+        if pinw is None: pinw=structure.__dict__['pinw']
+        if gapw is None: gapw=structure.__dict__['gapw']
         pinw, gapw = float(pinw), float(gapw)
 
         if s.chip.two_layer:
@@ -551,8 +551,8 @@ class CPWQubitBox:
         self.s=structure
         start=structure.last
         
-        if pinw is None: pinw=structure.defaults['pinw']
-        if gapw is None: gapw=structure.defaults['gapw']
+        if pinw is None: pinw=structure.__dict__['pinw']
+        if gapw is None: gapw=structure.__dict__['gapw']
         
         self.pinw = pinw
         self.gapw = gapw
@@ -755,9 +755,9 @@ class CPWBend:
         
         s=structure
 
-        if radius is None: radius=s.defaults['radius']
-        if pinw is None:   pinw=s.defaults['pinw']
-        if gapw is None:   gapw=s.defaults['gapw']
+        if radius is None: radius=s.__dict__['radius']
+        if pinw is None:   pinw=s.__dict__['pinw']
+        if gapw is None:   gapw=s.__dict__['gapw']
 
         if s.chip.two_layer:
             CPWBend(s.gap_layer, turn_angle, 0, pinw/2. + gapw, radius, polyarc, segments)
@@ -904,9 +904,9 @@ class CPWWiggles:
         
         s=structure
         start=structure.last
-        if pinw is None:   pinw=s.defaults['pinw']
-        if gapw is None:   gapw=s.defaults['gapw']
-        if radius is None: radius=s.defaults['radius']
+        if pinw is None:   pinw=s.__dict__['pinw']
+        if gapw is None:   gapw=s.__dict__['gapw']
+        if radius is None: radius=s.__dict__['radius']
         if square:
             RightJointWiggles(s, total_length, num_wiggles, radius)
         else:
@@ -948,9 +948,9 @@ class CPWWigglesByLength:
 
         s=structure
         start=structure.last
-        if pinw is None:    pinw=s.defaults['pinw']
-        if gapw is None:    gapw=s.defaults['gapw']
-        if radius is None:  radius=s.defaults['radius']
+        if pinw is None:    pinw=s.__dict__['pinw']
+        if gapw is None:    gapw=s.__dict__['gapw']
+        if radius is None:  radius=s.__dict__['radius']
         
         if num_wiggles == 0 or total_length == 0:
             self.vlength=0
@@ -1001,8 +1001,8 @@ class CPWWigglesByLength:
 class CPWRightJoint:
     "Sharp right angle"
     def __init__(self, s, CCW=False, pinw=None, gapw=None):
-        pinw = pinw if pinw else s.defaults["pinw"]
-        gapw = gapw if gapw else s.defaults["gapw"]
+        pinw = pinw if pinw else s.__dict__["pinw"]
+        gapw = gapw if gapw else s.__dict__["gapw"]
         d = pinw/2.
         gap = gapw
         ext = 2*gapw + pinw
@@ -1023,8 +1023,8 @@ class CPWRightJoint:
 class RightJointWiggles:
     "Square Wiggles, speed up your simulations!"
     def __init__(self, s, total_length, num_wiggles, radius):
-        pinw = s.defaults["pinw"]
-        gapw = s.defaults["gapw"]
+        pinw = s.__dict__["pinw"]
+        gapw = s.__dict__["gapw"]
         cpwidth = pinw + 2*gapw
         hlength = (2*radius) - cpwidth
         #vlength = ((total_length - ((num_wiggles-1)*cpwidth))/ float(2*num_wiggles)) - hlength - (2*cpwidth)
@@ -1073,8 +1073,8 @@ class ChannelWigglesByLength:
 
         s=structure
         start=structure.last
-        if channelw is None:    channelw=s.defaults['pinw']+2*s.defaults['gapw']
-        if radius is None:  radius=s.defaults['radius']
+        if channelw is None:    channelw=s.__dict__['pinw']+2*s.__dict__['gapw']
+        if radius is None:  radius=s.__dict__['radius']
         
         if num_wiggles == 0 or total_length == 0:
             self.vlength=0
@@ -1122,11 +1122,11 @@ class CPWWigglesByArea:
     def __init__(self,structure,length,width,start_up=True,radius=None,pinw=None,gapw=None):
         s=structure
         if pinw is None:
-            pinw=s.defaults['pinw']
+            pinw=s.__dict__['pinw']
         if gapw is None:
-            gapw=s.defaults['gapw']
+            gapw=s.__dict__['gapw']
         if radius is None:
-            radius=s.defaults['radius']
+            radius=s.__dict__['radius']
 
         #figure out how many wiggles you can fit
         #length=2*(num_wiggles+1)*radius
@@ -1150,11 +1150,11 @@ class CPWPaddedWiggles:
     def __init__(self,structure,length,width,cpw_length,start_up=True,radius=None,pinw=None,gapw=None):
         s=structure
         if pinw is None:
-            pinw=s.defaults['pinw']
+            pinw=s.__dict__['pinw']
         if gapw is None:
-            gapw=s.defaults['gapw']
+            gapw=s.__dict__['gapw']
         if radius is None:
-            radius=s.defaults['radius']
+            radius=s.__dict__['radius']
             
         if cpw_length<length+(2*pi-4)*radius:
             raise MaskError, "Error in CPWPaddedWiggles: cpw_length=%f needs less than one wiggle!" %(cpw_length)
@@ -1284,8 +1284,8 @@ class CPWGapCap:
         s=structure
         start=structure.last
         
-        if self.pinw is None: self.pinw=structure.defaults['pinw']
-        if self.gapw is None: self.gapw=structure.defaults['gapw']
+        if self.pinw is None: self.pinw=structure.__dict__['pinw']
+        if self.gapw is None: self.gapw=structure.__dict__['gapw']
         
         pinw=self.pinw
         gapw=self.gapw
@@ -1358,7 +1358,7 @@ class CPWInductiveShunt:
 
     def draw(self,structure,pad_to_length = 0, flipped= False):
         s=structure
-        if self.pinw is None: self.pinw=s.defaults['pinw']
+        if self.pinw is None: self.pinw=s.__dict__['pinw']
         pinw=self.pinw
         gapw=self.gapw
         
@@ -1369,7 +1369,7 @@ class CPWInductiveShunt:
             self.padding=pad_to_length-self.segment_length-self.taper_length
 
         if not self.flipped: CPWStraight(s,self.padding)
-        CPWLinearTaper(s,length=self.taper_length,start_pinw=s.defaults['pinw'],start_gapw=s.defaults['gapw'],stop_pinw=pinw,stop_gapw=gapw)
+        CPWLinearTaper(s,length=self.taper_length,start_pinw=s.__dict__['pinw'],start_gapw=s.__dict__['gapw'],stop_pinw=pinw,stop_gapw=gapw)
         start=structure.last
         
         if self.num_segments >0:
@@ -1412,7 +1412,7 @@ class CPWInductiveShunt:
                 s.append(sdxf.PolyLine(pts))
             s.last=orient_pt((2*self.segment_gap+self.segment_width,0),s.last_direction,s.last)
             
-        CPWLinearTaper(s,length=self.taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=s.defaults['pinw'],stop_gapw=s.defaults['gapw'])
+        CPWLinearTaper(s,length=self.taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=s.__dict__['pinw'],stop_gapw=s.__dict__['gapw'])
         if self.flipped: CPWStraight(s,self.padding)
         
     def ext_Q (self,frequency, impedance=50, resonator_type=0.5):
@@ -1444,7 +1444,7 @@ class CPWFingerCap:
         self.length=finger_length+finger_gap
         self.taper_length=taper_length
         self.total_length=finger_length+finger_gap+2.*taper_length
-    
+        
     def description(self):
         return "type:\t%s\tAssumed Capacitance:\t%f\t# of fingers:\t%d\tFinger Length:\t%f\tFinger Width:\t%f\tFinger Gap:\t%f\tTotal Pin Width:\t%f\tGap Width:\t%f\tTaper Length:\t%f" % (
                 self.type,self.capacitance*1e15,self.num_fingers,self.finger_length,
@@ -1454,11 +1454,11 @@ class CPWFingerCap:
     def draw(self,structure):
         s=structure
         pinw=self.pinw
-        if self.gapw is None: self.gapw=self.pinw*s.defaults['gapw']/s.defaults['pinw']
+        if self.gapw is None: self.gapw=self.pinw*s.__dict__['gapw']/s.__dict__['pinw']
         gapw=self.gapw
         
-        CPWLinearTaper(structure,length=self.taper_length,start_pinw=s.defaults['pinw'],
-                       start_gapw=s.defaults['gapw'],stop_pinw=pinw,stop_gapw=gapw)
+        CPWLinearTaper(structure,length=self.taper_length,start_pinw=s.__dict__['pinw'],
+                       start_gapw=s.__dict__['gapw'],stop_pinw=pinw,stop_gapw=gapw)
         
         start=structure.last
         
@@ -1552,8 +1552,9 @@ class CPWFingerCap:
             pts=translate_pts(pts,( ((self.num_fingers+1) %2)*(length-self.finger_gap),(self.num_fingers-1)*(self.finger_width+self.finger_gap)-self.pinw/2.))
             pts=rotate_pts(pts,s.last_direction,start)
             s.append(sdxf.PolyLine(pts))
-            
-        CPWLinearTaper(s,length=self.taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=s.defaults['pinw'],stop_gapw=s.defaults['gapw'])
+        if structure.pinw_rsn!=None:
+            s.pinw=structure.pinw_rsn
+        CPWLinearTaper(s,length=self.taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=s.__dict__['pinw'],stop_gapw=s.__dict__['gapw'])
    
         
     def left_finger_points(self,finger_width,finger_length,finger_gap):      
@@ -1616,10 +1617,10 @@ class CPWFingerCapInside:
     def draw(self,structure):
         s=structure
         pinw=self.pinw
-        if self.gapw is None: self.gapw=self.pinw*s.defaults['gapw']/s.defaults['pinw']
+        if self.gapw is None: self.gapw=self.pinw*s.__dict__['gapw']/s.__dict__['pinw']
         gapw=self.gapw
         
-        CPWLinearTaperInside(structure,length=self.taper_length,start_pinw=s.defaults['pinw'],start_gapw=s.defaults['gapw'],stop_pinw=pinw,stop_gapw=gapw)
+        CPWLinearTaperInside(structure,length=self.taper_length,start_pinw=s.__dict__['pinw'],start_gapw=s.__dict__['gapw'],stop_pinw=pinw,stop_gapw=gapw)
         
         start=structure.last
         
@@ -1662,7 +1663,7 @@ class CPWFingerCapInside:
         pts=rotate_pts(pts,s.last_direction,start)
         s.append(sdxf.PolyLine(pts))
         
-        CPWLinearTaperInside(s,length=self.taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=s.defaults['pinw'],stop_gapw=s.defaults['gapw'])
+        CPWLinearTaperInside(s,length=self.taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=s.__dict__['pinw'],stop_gapw=s.__dict__['gapw'])
    
         
     def left_finger_points(self,finger_width,finger_length,finger_gap):      
@@ -1724,13 +1725,13 @@ class CPWLCoupler:
     def draw(self,structure,padding_type=None, flipped=None, pad_to_length=0):
         """Draws the coupler and creates the new structure (self.coupled_structure) for building onto"""
         s=structure
-        if self.pinw is None:    self.pinw=s.defaults['pinw']
-        if self.gapw is None:    self.gapw=s.defaults['gapw']
-        if self.radius is None:  self.radius=s.defaults['radius']
+        if self.pinw is None:    self.pinw=s.__dict__['pinw']
+        if self.gapw is None:    self.gapw=s.__dict__['gapw']
+        if self.radius is None:  self.radius=s.__dict__['radius']
         self.padding_type=padding_type
         self.pad_to_length=pad_to_length
-        self.spinw=s.defaults['pinw']
-        self.sgapw=s.defaults['gapw']
+        self.spinw=s.__dict__['pinw']
+        self.sgapw=s.__dict__['gapw']
         
         start=s.last
         start_dir=s.last_direction
@@ -1747,11 +1748,11 @@ class CPWLCoupler:
         lstart=rotate_pt(lstart,start_dir)
         lstart=translate_pt(lstart,start)
         
-        self.coupled_structure=Structure(s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.defaults)
+        self.coupled_structure=Structure(s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.__dict__)
         cs=self.coupled_structure
-        cs.defaults['pinw']=self.pinw
-        cs.defaults['gapw']=self.gapw
-        cs.defaults['radius']=self.radius
+        cs.__dict__['pinw']=self.pinw
+        cs.__dict__['gapw']=self.gapw
+        cs.__dict__['radius']=self.radius
 
         #Continue the feedline
         self.feed_length=self.coupler_length+self.radius
@@ -1803,13 +1804,13 @@ class ChannelCouplerLayer:
     def draw(self,structure,padding_type=None,pad_to_length=0):
         """Draws the coupler and creates the new structure (self.coupled_structure) for building onto"""
         s=structure
-        if self.pinw is None:    self.pinw=s.defaults['pinw']
-        if self.gapw is None:    self.gapw=s.defaults['gapw']
-        if self.radius is None:  self.radius=s.defaults['radius']
+        if self.pinw is None:    self.pinw=s.__dict__['pinw']
+        if self.gapw is None:    self.gapw=s.__dict__['gapw']
+        if self.radius is None:  self.radius=s.__dict__['radius']
         self.padding_type=padding_type
         self.pad_to_length=pad_to_length
-        self.spinw=s.defaults['pinw']
-        self.sgapw=s.defaults['gapw']
+        self.spinw=s.__dict__['pinw']
+        self.sgapw=s.__dict__['gapw']
         if self.L2:
             self.channelw=self.pinw
         else:
@@ -1830,11 +1831,11 @@ class ChannelCouplerLayer:
         lstart=rotate_pt(lstart,start_dir)
         lstart=translate_pt(lstart,start)
         
-        self.coupled_structure=Structure(s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.defaults)
+        self.coupled_structure=Structure(s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.__dict__)
         cs=self.coupled_structure
-        cs.defaults['pinw']=self.pinw
-        cs.defaults['gapw']=self.gapw
-        cs.defaults['radius']=self.radius
+        cs.__dict__['pinw']=self.pinw
+        cs.__dict__['gapw']=self.gapw
+        cs.__dict__['radius']=self.radius
 
         #Continue the feedline
         self.feed_length=self.coupler_length+self.radius
@@ -1869,10 +1870,10 @@ class CPWTee(Structure):
         """
         s=structure
         #print sgapw
-        if pinw is None: pinw=s.defaults['pinw']
-        if gapw is None: gapw=s.defaults['gapw']
-        if spinw is None: spinw=s.defaults['pinw']
-        if sgapw is None: sgapw=s.defaults['gapw']
+        if pinw is None: pinw=s.__dict__['pinw']
+        if gapw is None: gapw=s.__dict__['gapw']
+        if spinw is None: spinw=s.__dict__['pinw']
+        if sgapw is None: sgapw=s.__dict__['gapw']
         #print "pinw: %f, gapw: %f, spinw: %f, sgapw: %f" % (pinw,gapw,spinw,sgapw)
 
         #minimum feed_length is
@@ -1914,7 +1915,7 @@ class CPWTee(Structure):
         s.last=orient_pt((feed_length,0),s.last_direction,s.last)
         lstart=orient_pt((stub_length,0),lstart_dir,center)
 
-        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.defaults)
+        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.__dict__)
         self.defaults['pinw']=pinw
         self.defaults['gapw']=gapw   
 
@@ -1936,13 +1937,13 @@ class CapStar:
         self.structure = structure
         self.number = number
         self.cap = cap
-        if pinw is None: pinw=structure.defaults['pinw']
-        if gapw is None: gapw=structure.defaults['gapw']
+        if pinw is None: pinw=structure.__dict__['pinw']
+        if gapw is None: gapw=structure.__dict__['gapw']
         self.pinw = pinw
         self.gapw = gapw
         
         self.start = structure.last
-        self.defaults = structure.defaults
+        self.defaults = structure.__dict__
         
         
     def draw(self):
@@ -1955,7 +1956,7 @@ class CapStar:
         cap = self.cap
         number = self.number
         
-        cap_width=cap.num_fingers*cap.finger_width+(cap.num_fingers-1)*cap.finger_gap+2*cap.pinw*s.defaults['gapw']/s.defaults['pinw']
+        cap_width=cap.num_fingers*cap.finger_width+(cap.num_fingers-1)*cap.finger_gap+2*cap.pinw*s.__dict__['gapw']/s.__dict__['pinw']
         taper_length=cap.taper_length
         #phi is angle capacitor taper makes
         phi = atan((cap_width-pinw-2*gapw)/(2.*taper_length))
@@ -2118,8 +2119,8 @@ class Channel:
         start=structure.last
             
         if solid is None:
-            if s.defaults.has_key('solid') == True:
-                solid = s.defaults['solid']
+            if s.__dict__.has_key('solid') == True:
+                solid = s.__dict__['solid']
             else:
                 solid = False
         
@@ -2203,8 +2204,8 @@ class ChannelBend:
         
         s=structure
 
-        if radius is None: radius=s.defaults['radius']
-        if channelw is None:   channelw=s.defaults['channelw']
+        if radius is None: radius=s.__dict__['radius']
+        if channelw is None:   channelw=s.__dict__['channelw']
         
         self.structure=structure
         self.turn_angle=turn_angle
@@ -2315,8 +2316,8 @@ class ChannelBendSolid:
         
         s=structure
 
-        if radius is None: radius=s.defaults['radius']
-        if channelw is None:   channelw=s.defaults['channelw']
+        if radius is None: radius=s.__dict__['radius']
+        if channelw is None:   channelw=s.__dict__['channelw']
         
         self.structure=structure
         self.turn_angle=turn_angle
@@ -2481,8 +2482,8 @@ class ChannelWiggles:
         """
             
         s=structure
-        if channelw is None:   channelw=s.defaults['channelw']
-        if radius is None: radius=s.defaults['radius']
+        if channelw is None:   channelw=s.__dict__['channelw']
+        if radius is None: radius=s.__dict__['radius']
 
         #calculate vertical segment length:
         #total length=number of 180 degree arcs + number of vertical segs + vertical radius spacers
@@ -2527,7 +2528,7 @@ class ChannelTee(Structure):
         """
         s=structure
         
-        if channelw is None: channelw=s.defaults['channelw']
+        if channelw is None: channelw=s.__dict__['channelw']
 
         #minimum feed_length is
         if (feed_length is None) or (feed_length < channelw): 
@@ -2563,7 +2564,7 @@ class ChannelTee(Structure):
         s.last=orient_pt((feed_length,0),s.last_direction,s.last)
         lstart=orient_pt((stub_length,0),lstart_dir,center)
 
-        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.defaults)
+        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.__dict__)
         self.defaults['channelw']=channelw    
 
 #---------------------------------------------------------------------------------- 
@@ -2578,10 +2579,10 @@ class CenterPinTee(Structure):
         """
         s=structure
         #print sgapw
-        if pinw is None: pinw=s.defaults['pinw']
-        if gapw is None: gapw=s.defaults['gapw']
-        if spinw is None: spinw=s.defaults['pinw']
-        if sgapw is None: sgapw=s.defaults['gapw']
+        if pinw is None: pinw=s.__dict__['pinw']
+        if gapw is None: gapw=s.__dict__['gapw']
+        if spinw is None: spinw=s.__dict__['pinw']
+        if sgapw is None: sgapw=s.__dict__['gapw']
         #print "pinw: %f, gapw: %f, spinw: %f, sgapw: %f" % (pinw,gapw,spinw,sgapw)
 
         #minimum feed_length is
@@ -2625,7 +2626,7 @@ class CenterPinTee(Structure):
         s.last=orient_pt((feed_length,0),s.last_direction,s.last)
         lstart=orient_pt((stub_length,0),lstart_dir,center)
 
-        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.defaults)
+        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.__dict__)
         self.defaults['pinw']=pinw
         self.defaults['gapw']=gapw   
            
@@ -2637,10 +2638,10 @@ class CCDChannelTee(Structure):
     def __init__(self,structure,stub_length=None,feed_length=None,flipped=False,pinw=None,gapw=None,spinw=None,sgapw=None,ccdwidth=100,ccdlength=100,channelwidth=8):
         s=structure
         #print sgapw
-        if pinw is None: pinw=s.defaults['pinw']
-        if gapw is None: gapw=s.defaults['gapw']
-        if spinw is None: spinw=s.defaults['pinw']
-        if sgapw is None: sgapw=s.defaults['gapw']
+        if pinw is None: pinw=s.__dict__['pinw']
+        if gapw is None: gapw=s.__dict__['gapw']
+        if spinw is None: spinw=s.__dict__['pinw']
+        if sgapw is None: sgapw=s.__dict__['gapw']
 
         #minimum feed_length is
         if (feed_length is None) or (feed_length < 2*gapw+pinw): 
@@ -2715,7 +2716,7 @@ class CCDChannelTee(Structure):
         s.last=orient_pt((feed_length,0),s.last_direction,s.last)
         lstart=orient_pt((stub_length,0),lstart_dir,center)
 
-        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.defaults)
+        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.__dict__)
         self.defaults['pinw']=pinw
         self.defaults['gapw']=gapw   
 #-------------------------------------------------------------------------------------------------
@@ -2731,10 +2732,10 @@ class CCDChannelTeeL2(Structure):
         """
         s=structure
         #print sgapw
-        if pinw is None: pinw=s.defaults['pinw']
-        if gapw is None: gapw=s.defaults['gapw']
-        if spinw is None: spinw=s.defaults['pinw']
-        if sgapw is None: sgapw=s.defaults['gapw']
+        if pinw is None: pinw=s.__dict__['pinw']
+        if gapw is None: gapw=s.__dict__['gapw']
+        if spinw is None: spinw=s.__dict__['pinw']
+        if sgapw is None: sgapw=s.__dict__['gapw']
         #print "pinw: %f, gapw: %f, spinw: %f, sgapw: %f" % (pinw,gapw,spinw,sgapw)
 
         #minimum feed_length is
@@ -2794,7 +2795,7 @@ class CCDChannelTeeL2(Structure):
         s.last=orient_pt((feed_length,0),s.last_direction,s.last)
         lstart=orient_pt((stub_length,0),lstart_dir,center)
 
-        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.defaults)
+        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.__dict__)
         self.defaults['pinw']=pinw
         self.defaults['gapw']=gapw 
 
@@ -2852,7 +2853,7 @@ class ChannelReservoirL1(Structure):
         s.last=orient_pt((0,length),s.last_direction,s.last)
         lstart=orient_pt((0,0),lstart_dir,center)
 
-        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.defaults)
+        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.__dict__)
         
 #-------------------------------------------------------------------------------------------------
 
@@ -2910,12 +2911,17 @@ class ChannelReservoirL2(Structure):
         s.last=orient_pt((0,length),s.last_direction,s.last)
         lstart=orient_pt((0,0),lstart_dir,center)
 
-        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.defaults)
+        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.__dict__)
         
 #-------------------------------------------------------------------------------------------------
 
 class ChannelFingerCap:
-    """A Channel finger capacitor"""
+    """A Channel finger capacitor
+        I mean this piece of code is just a piece of shit. totally unmanagable, 
+        mostly just coppied from CPWFingerCap. Piece of shit.
+        I updated the CPWFingerCap to include the same function. This is left 
+        here in case anyone want to see some coding horror.
+        Ge 20121009"""
     def __init__(self,num_fingers,finger_length,finger_width,finger_gap,taper_length=10,channelw=2,capacitance=0.0):
         self.type='Channel finger cap'
         self.capacitance=capacitance        #simulated capacitance
@@ -3232,7 +3238,7 @@ class ForkCoupler(Structure):
         start=s.last
         start_dir=s.last_direction
         
-        if channelw is None: channelw=s.defaults['channelw']
+        if channelw is None: channelw=s.__dict__['channelw']
 
         #minimum fork_width is
         if (fork_width is None) or (fork_width < channelw): 
@@ -3270,12 +3276,12 @@ class ForkCoupler(Structure):
         s.last=orient_pt((fork_length,0),s.last_direction,s.last)
         lstart=orient_pt((0,0),lstart_dir,center)
 
-        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.defaults)
+        Structure.__init__(self,s.chip,start=lstart,direction=lstart_dir,layer=s.layer,color=s.color,defaults=s.__dict__)
         
         #s.last=orient_pt((0,0),s.last_direction,s.last)
         #lstart=orient_pt((0,0),s.last_direction,s.last)
 
-        #Structure.__init__(self,s.chip,start=lstart,direction=0,layer=s.layer,color=s.color,defaults=s.defaults)
+        #Structure.__init__(self,s.chip,start=lstart,direction=0,layer=s.layer,color=s.color,defaults=s.__dict__)
         #self.defaults['channelw']=channelw    
 
 
@@ -3382,8 +3388,8 @@ class SolidNotch:
     
     def draw(self,structure):
         s=structure
-        if self.pinw is None: self.pinw=s.defaults['pinw']
-        if self.gapw is None: self.gapw=s.defaults['gapw']
+        if self.pinw is None: self.pinw=s.__dict__['pinw']
+        if self.gapw is None: self.gapw=s.__dict__['gapw']
         
         notch_pts= [ (-self.notch_length/2.,-self.pinw/2.-self.gapw), (-self.notch_length/2.,-self.pinw/2.-self.gapw-self.notch_depth), (self.notch_length/2.,-self.pinw/2.-self.gapw-self.notch_depth),(self.notch_length/2.,-self.pinw/2.-self.gapw), (-self.notch_length/2.,-self.pinw/2.-self.gapw)]
         notch2_pts= mirror_pts(notch_pts,0,(0,0))
