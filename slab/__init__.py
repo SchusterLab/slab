@@ -1,5 +1,4 @@
 import instruments
-import widgets
 from dsfit import *
 from dataanalysis import *
 import os
@@ -8,5 +7,9 @@ import gui
 import script
 from analysisScript import *
 from datamanagement import *
+from circuitqed import *
 #import diamond
+try: import widgets
+except: print "Warning: Could not import widgets"
+
 
