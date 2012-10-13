@@ -21,6 +21,20 @@ class SlabFile(h5py.File):
         if (self.mode is not 'r') and ("_script" not in self.attrs):     
             self.save_script()
         self.flush()
+
+
+    def set_range(dataset, xmin, xmax, ymin=None, ymax=None):
+        if ymin is not None and ymax is not None:
+            dataset.attrs["_axes"] = ((xmin, xmax), (ymin, ymax))
+        else:
+            dataset.attrs["_axes"] = (xmin, xmax)
+    
+    def set_labels(dataset, x_lab, y_lab, z_lab=None):
+        if z_lab is not None:
+            dataset.attrs["_axes_labels"] = (x_lab, y_lab, z_lab)
+        else:
+            dataset.attrs["_axes_labels"] = (x_lab, y_lab)
+
         
     def save_script(self,name="_script"):
             self.attrs[name] = get_script()
@@ -47,18 +61,6 @@ def get_script():
     f.close()
     return s  
 
-
-def set_range(h5file, xmin, xmax, ymin=None, ymax=None):
-    if ymin is not None and ymax is not None:
-        h5file.attrs["_axes"] = ((xmin, xmax), (ymin, ymax))
-    else:
-        h5file.attrs["_axes"] = (xmin, xmax)
-
-def set_labels(h5file, x_lab, y_lab, z_lab=None):
-    if z_lab is not None:
-        h5file.attrs["_axes_labels"] = (x_lab, y_lab, z_lab)
-    else:
-        h5file.attrs["_axes_labels"] = (x_lab, y_lab)
         
 def open_to_path(h5file, path, pathsep='/'):
     f = h5file
