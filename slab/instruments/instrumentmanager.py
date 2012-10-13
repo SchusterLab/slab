@@ -6,18 +6,29 @@ Created on Sat Sep 03 14:50:09 2011
 """
 import slab.instruments
 import os
+try:
+    import Pyro4
+    Pyro4Loaded=True
+except:
+    print "Warning: Pyro4 package is not present, Instrument Servers will not work."
+    Pyro4Loaded=False
 
 class InstrumentManager(dict):
     """InstrumentManager class reads configuration files and 
     keeps track of listed instruments and their settings
     """
-    def __init__(self,config_path=None):
+    def __init__(self,config_path=None,ns_address=None):
         """Initializes InstrumentManager using config_path if available"""
         dict.__init__(self)
         self.config_path=config_path
         self.config=None
+        self.ns_address=ns_address
         #self.instruments={}
-        if config_path is not None: self.load_config_file(config_path)
+        if config_path is None: 
+            if Pyro4Loaded:
+                self.connect_proxies()
+        else:
+            self.load_config_file(config_path)
         
     def load_config_file(self,config_path):
         """Loads configuration file"""
@@ -35,14 +46,31 @@ class InstrumentManager(dict):
         #print config_string
         params=config_string.split()
         return getattr(slab.instruments,params[1])(name=params[0],address=params[2])
+
+    def serve_instruments(self):
+        """inst_dict is in form {name:instrument_instance}"""
+        daemon = Pyro4.Daemon()
+        ns = Pyro4.locateNS(self.ns_address)
+        for name, instrument_instance in self.items():
+            uri = daemon.register(instrument_instance)
+            ns.register(name, uri)
+            print "Registered: %s\t%s" %(name,uri)
+        daemon.requestLoop()
+        
+    def connect_proxies(self):
+        self.ns=Pyro4.locateNS()
+        for name,uri in self.ns.list().items()[1:]:
+            self[name]=Pyro4.Proxy(uri)
         
     def get_settings(self):
+        """Get settings from all instruments"""
         settings=[]
         for k,inst in self.iteritems():
             settings.append(inst.get_settings())
         return settings
         
     def save_settings(self,path,prefix=None,params={}):
+        """Get settings from all instruments and save to a .cfg file"""
         settings=self.get_settings()
         settings.append(params)
         if prefix:
@@ -59,4 +87,5 @@ class InstrumentManager(dict):
         f.close()
         
 if __name__=="__main__":
-    im = InstrumentManager(r'D:\Dropbox\UofC\_Lib\python\slab\instruments\instrument.cfg')
+    im = InstrumentManager(r'c:\_Lib\python\slab\instruments\instrument.cfg')
+    im.serve_instruments()
