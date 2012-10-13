@@ -20,7 +20,7 @@ and an InstrumentManager server
 
 from slab.instruments import InstrumentManager
 
-im=InstrumentManager()
+im=InstrumentManager(ns_address='192.168.14.1')
 
 print im.keys()
 print im['echo'].echo('This is a test')
