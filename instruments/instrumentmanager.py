@@ -76,7 +76,7 @@ class InstrumentManager(dict):
         if prefix:
             fname=os.path.join(path,prefix)
         else:
-            print "hey"
+            #print "hey"
             fname = path
         if ".cfg" not in fname.lower():
             fname+='.cfg'

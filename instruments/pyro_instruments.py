@@ -22,7 +22,7 @@ def load_instrument(name):
     ns = Pyro4.locateNS()
     return Pyro4.Proxy(ns.lookup(name))
 
-"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 class TestPyro:
@@ -39,7 +39,9 @@ def test_server():
 
 def test_client():
     ns = Pyro4.locateNS()
-    proxy = Pyro4.Proxy(ns.lookup("testpyro"))
+    print ns._pyroUri
+    uri = ns.lookup("testpyro")
+    print uri
+    proxy = Pyro4.Proxy(uri)
     print proxy.hello()    
     return proxy.npsin(100)
-"""
