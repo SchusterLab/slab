@@ -6,6 +6,7 @@ Created on Sat Sep 03 14:50:09 2011
 """
 import slab.instruments
 import os
+import sys
 try:
     import Pyro4
     Pyro4Loaded=True
@@ -91,5 +92,10 @@ class InstrumentManager(dict):
         f.close()
         
 if __name__=="__main__":
-    im = InstrumentManager(r'c:\_Lib\python\slab\instruments\instrument.cfg')
+    if len(sys.argv)>1:
+        cp=sys.argv[1]
+    else:
+        cp=r"C:\_Lib\python\slab\instruments\instrument.cfg"
+    
+    im = InstrumentManager(config_path=cp,server=True)
     im.serve_instruments()
