@@ -9,8 +9,8 @@ Created on Sat Oct 13 10:41:58 2012
 To do this test you have to first start the nameserver 
 and an InstrumentManager server
 
-#To start a nameserver
-    python -m Pyro4.naming
+#To start a nameserver (if one isn't already present)
+    python -m Pyro4.naming -n hostname
     
 #To start InstrumentManager Server
     im = InstrumentManager(r'c:\_Lib\python\slab\instruments\instrument.cfg')
@@ -20,8 +20,8 @@ and an InstrumentManager server
 
 from slab.instruments import InstrumentManager
 
-im=InstrumentManager(ns_address='192.168.14.1')
-
+im=InstrumentManager()
 print im.keys()
 print im['echo'].echo('This is a test')
 print im['random'].random()
+#print im['FRIDGE'].get_status()
