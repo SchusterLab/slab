@@ -8,7 +8,6 @@ Created on Wed Aug 10 18:16:08 2011
 import ctypes as C
 import numpy as np
 import sys
-from guiqwt.pyplot import *
 
 from PyQt4.QtGui import *
 from PyQt4.QtCore import QTimer
@@ -177,53 +176,59 @@ class LMS103(Instrument):
                 'pulse_width':self.get_pulse_width(),'pulse_period':self.get_pulse_period(),
                 'PLL':self.get_PLL_status()
                 }
-    
-class LabbrickWindow(QMainWindow, Ui_labbrickWindow):
-    def __init__(self, address=None,parent = None):
-    
-        QMainWindow.__init__(self, parent)
-        self.setupUi(self)
-        self.updateButton.clicked.connect(self.update_rf)
-        self.autoupdateCheckBox.stateChanged.connect(self.autoupdateCheckBox_changed)
 
-        if address is not None:
-            self.rf=LMS103(address=address)
-        else:
-            devinfo=LMS_get_device_info()[0]
-            self.rf=LMS103(address=devinfo['serial'])
-            #self.rf=LMS103(address=1198)
+try:
+    from guiqwt.pyplot import *
+    
+        
+    class LabbrickWindow(QMainWindow, Ui_labbrickWindow):
+        def __init__(self, address=None,parent = None):
+        
+            QMainWindow.__init__(self, parent)
+            self.setupUi(self)
+            self.updateButton.clicked.connect(self.update_rf)
+            self.autoupdateCheckBox.stateChanged.connect(self.autoupdateCheckBox_changed)
+    
+            if address is not None:
+                self.rf=LMS103(address=address)
+            else:
+                devinfo=LMS_get_device_info()[0]
+                self.rf=LMS103(address=devinfo['serial'])
+                #self.rf=LMS103(address=1198)
+                
+            #print self.rf.get_serial_number()
+            self.get_state()
+            self.ctimer = QTimer()      #Setup autoupdating timer to call update_plots at 10Hz
+            self.ctimer.timeout.connect(self.update_rf)
             
-        #print self.rf.get_serial_number()
-        self.get_state()
-        self.ctimer = QTimer()      #Setup autoupdating timer to call update_plots at 10Hz
-        self.ctimer.timeout.connect(self.update_rf)
-        
-    def update_rf(self):
-        self.ctimer.stop()
-        self.rf.set_frequency(self.frequencySpinBox.value())
-        self.rf.set_power(self.powerSpinBox.value())
-        self.rf.set_pulse_parameters(self.pulsewidthSpinBox.value()*1e-6,self.pulserepSpinBox.value()*1e-6,self.modCheckBox.isChecked())
-        self.rf.set_output(self.outputCheckBox.isChecked())
-        self.get_state()
-        self.ctimer.start(1000)
-        #print "Update!"
-        
-    def get_state(self):
-        settings=self.rf.get_settings()
-        self.frequencySpinBox.setValue(settings['frequency'])
-        self.powerSpinBox.setValue(settings['power'])
-        self.generatorNumber.display(self.rf.get_serial_number())
-        self.outputCheckBox.setChecked(settings['output'])
-        self.modCheckBox.setChecked(settings['mod'])
-        self.pulsewidthSpinBox.setValue(settings['pulse_width']*1e6)
-        self.pulserepSpinBox.setValue(settings['pulse_period']*1e6)
-        self.PLLBox.setChecked(settings['PLL'])
-       
-    def autoupdateCheckBox_changed(self):
-        if self.autoupdateCheckBox.isChecked():
-            self.ctimer.start(1000)
-        else:
+        def update_rf(self):
             self.ctimer.stop()
+            self.rf.set_frequency(self.frequencySpinBox.value())
+            self.rf.set_power(self.powerSpinBox.value())
+            self.rf.set_pulse_parameters(self.pulsewidthSpinBox.value()*1e-6,self.pulserepSpinBox.value()*1e-6,self.modCheckBox.isChecked())
+            self.rf.set_output(self.outputCheckBox.isChecked())
+            self.get_state()
+            self.ctimer.start(1000)
+            #print "Update!"
+            
+        def get_state(self):
+            settings=self.rf.get_settings()
+            self.frequencySpinBox.setValue(settings['frequency'])
+            self.powerSpinBox.setValue(settings['power'])
+            self.generatorNumber.display(self.rf.get_serial_number())
+            self.outputCheckBox.setChecked(settings['output'])
+            self.modCheckBox.setChecked(settings['mod'])
+            self.pulsewidthSpinBox.setValue(settings['pulse_width']*1e6)
+            self.pulserepSpinBox.setValue(settings['pulse_period']*1e6)
+            self.PLLBox.setChecked(settings['PLL'])
+           
+        def autoupdateCheckBox_changed(self):
+            if self.autoupdateCheckBox.isChecked():
+                self.ctimer.start(1000)
+            else:
+                self.ctimer.stop()
+except:
+    print "Warning could not load LabBrick Gui"
 
 if __name__=="__main__":
     #app = QApplication(sys.argv)
