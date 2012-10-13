@@ -7,7 +7,6 @@ Created on Sun May 08 17:03:09 2011
 
 from numpy import *
 from slab.instruments import *
-from guiqwt.pyplot import *
 import time
 
 class AWG81180A(SocketInstrument):
@@ -153,6 +152,11 @@ class AWG81180A(SocketInstrument):
         settings['clockrate']=self.get_clockrate()
         settings['mode']=self.get_mode()
         return settings
+
+try:
+    from guiqwt.pyplot import *
+except:
+    print "Could not load guiqwt"
         
 if __name__=="__main__":
 #    a=mod(arange(32*2048),2048)
