@@ -7,6 +7,7 @@ from instrumentmanager import InstrumentManager
 from awg import *
 from spec_analyzer.spectrum_analyzer import *
 from ipsmagnet import *
+from TestInstruments import EchoInstrument,RandomInstrument
 
 try: from relaybox.relaybox import RelayBox
 except: print "Could not load relaybox"
