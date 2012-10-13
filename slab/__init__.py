@@ -1,5 +1,6 @@
 import instruments
-from dsfit import *
+try: from dsfit import *
+except: print "Warning: Could not import fitting package"
 from dataanalysis import *
 import os
 from plotting import *
