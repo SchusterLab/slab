@@ -17,7 +17,7 @@ class InstrumentManager(dict):
     """InstrumentManager class reads configuration files and 
     keeps track of listed instruments and their settings
     """
-    def __init__(self,config_path=None,ns_address=None):
+    def __init__(self,config_path=None,server=False,ns_address=None):
         """Initializes InstrumentManager using config_path if available"""
         dict.__init__(self)
         self.config_path=config_path
@@ -29,6 +29,10 @@ class InstrumentManager(dict):
                 self.connect_proxies()
         else:
             self.load_config_file(config_path)
+            if server:
+                self.serve_instruments()
+            elif Pyro4Loaded:
+                self.connect_proxies()
         
     def load_config_file(self,config_path):
         """Loads configuration file"""
