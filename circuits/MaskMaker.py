@@ -173,9 +173,9 @@ class WaferMask(sdxf.Drawing):
         """Adds chip design 'copies' times into mask.  chip must have a unique name as it will be inserted as a block"""
         if self.etchtype:
             ChipBorder(chip,self.dicing_border/2.)
-            
         if self.dashed_dicing_border>0:
-            DashedChipBorder(chip,self.dicing_border/2.)
+            if chip.two_layer: dashlayer='gap'
+            DashedChipBorder(chip,self.dicing_border/2.,layer=dashlayer)
         if chip.two_layer:
             self.layers.append(sdxf.Layer(name='gap', color=1))
             self.layers.append(sdxf.Layer(name='pin', color=3))
@@ -1255,8 +1255,8 @@ class ChipBorder(Structure):
         
 class DashedChipBorder(Structure):
     """Dashed Chip border for e-beam drawing and then dicing"""
-    def __init__(self,chip,border_thickness,dash_width=40,dash_length=200,color=1):
-        Structure.__init__(self,chip.gap_layer,color=color)
+    def __init__(self,chip,border_thickness=40,dash_width=40,dash_length=200,layer='structure',color=1):
+        Structure.__init__(self,chip,layer=layer,color=color)
 
         '''Caution: border_thickness refers to the bid dicing border. Other quantities refer to dashes.'''        
         
@@ -1298,10 +1298,10 @@ class DashedChipBorder(Structure):
                 ]
         pts4=translate_pts(pts4,(-border_thickness,-border_thickness))
 
-        self.append(sdxf.Solid(pts1))
-        self.append(sdxf.Solid(pts2))
-        self.append(sdxf.Solid(pts3))
-        self.append(sdxf.Solid(pts4))
+        self.append(sdxf.Solid(pts1,layer=layer))
+        self.append(sdxf.Solid(pts2,layer=layer))
+        self.append(sdxf.Solid(pts3,layer=layer))
+        self.append(sdxf.Solid(pts4,layer=layer))
 
 class CPWGapCap:
     """A CPW gap capacitor (really just a gap in the CPW center pin with no padding)"""
@@ -2075,7 +2075,7 @@ class CapStar:
 
 
 class LShapeAlignmentMarks:
-    def __init__(self,structure,width,armlength):
+    def __init__(self,structure,width,armlength,layer='structure'):
         """creates an L shaped alignment marker of width and armlength for photolitho"""
         if width==0: return
         if armlength==0: return
@@ -2103,9 +2103,30 @@ class LShapeAlignmentMarks:
         stop=rotate_pt((start[0]+armlength,start[1]),s.last_direction,start)
         s.last=stop
 
-        s.append(sdxf.Solid(box1))
-        s.append(sdxf.Solid(box2))
+        s.append(sdxf.Solid(box1,layer=layer))
+        s.append(sdxf.Solid(box2,layer=layer))
+
+class FineAlign:
+    def __init__(self,chip,buffer=60,al=60,wid=2):
+        '''Draws 4 L shaped alignment marks in the corners of the chip
+        wid is width of the L's
+        buffer is distance from center of L's to edge of chip
+        length is lenght of outer side of the L's leg.
+        '''
+        layer='gap'
+        s1=Structure(chip,start=(buffer,buffer), layer=layer,color=3,direction=0)
+        LShapeAlignmentMarks(s1,width=wid,armlength=al, layer=layer)
         
+        s2=Structure(chip,start=(buffer,chip.size[1]-buffer), layer=layer,color=3,direction=270)
+        LShapeAlignmentMarks(s2,width=wid,armlength=al, layer=layer)
+        
+        s3=Structure(chip,start=(chip.size[0]-buffer,chip.size[1]-buffer), layer=layer,color=3,direction=180)
+        LShapeAlignmentMarks(s3,width=wid,armlength=al, layer=layer)
+        
+        s4=Structure(chip,start=(chip.size[0]-buffer,buffer),layer=layer,color=3,direction=90)
+        LShapeAlignmentMarks(s4,width=wid,armlength=al, layer=layer)
+
+
 #---------------------------------------------------------------------------- 
 class ArrowAlignmentMarks_L1:
     def __init__(self,structure,height,width,buffer=30):
@@ -3396,26 +3417,6 @@ class AlignmentCross:
         else:
             for point in points:     
                 drawing.append(sdxf.Insert(sdxf.PolyLine(pts)),point=point)
-
-class FineAlign:
-    def __init__(self,chip,buffer=60,al=60,wid=2):
-        '''Draws 4 L shaped alignment marks in the corners of the chip
-        wid is width of the L's
-        buffer is distance from center of L's to edge of chip
-        length is lenght of outer side of the L's leg.
-        '''
-        
-        s1=Structure(chip,start=(buffer,buffer),color=3,direction=0)
-        LShapeAlignmentMarks(s1,width=wid,armlength=al)
-        
-        s2=Structure(chip,start=(buffer,chip.size[1]-buffer),color=3,direction=270)
-        LShapeAlignmentMarks(s2,width=wid,armlength=al)
-        
-        s3=Structure(chip,start=(chip.size[0]-buffer,chip.size[1]-buffer),color=3,direction=180)
-        LShapeAlignmentMarks(s3,width=wid,armlength=al)
-        
-        s4=Structure(chip,start=(chip.size[0]-buffer,buffer),color=3,direction=90)
-        LShapeAlignmentMarks(s4,width=wid,armlength=al)
 
 class SolidNotch:
     def __init__(self,notch_length,notch_depth,superfine_offset,superfine_spacing,superfine_size,fine_offset,fine_size,rough_size,padding=0,flipped=False,pinw=None,gapw=None):
