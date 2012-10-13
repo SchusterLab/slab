@@ -86,7 +86,10 @@ class WaferMask(sdxf.Drawing):
         - etchtype 'True' is the standard version with dicing borders
     """
     
-    def __init__(self,name,diameter=50800.,flat_distance=24100.,wafer_padding=2000,chip_size=(7000.,2000.),dicing_border=200,textsize=(800,800),etchtype=True,wafer_edge=True,dashed_dicing_border=0):
+    def __init__(self,name,diameter=50800.,flat_distance=24100.,wafer_padding=2000,
+                 chip_size=(7000.,2000.),dicing_border=200,textsize=(800,800),
+                 etchtype=True,wafer_edge=True,dashed_dicing_border=0,
+                 two_layer=False,solid=False):
         sdxf.Drawing.__init__(self)
         self.name=name
         self.fileName=name+".dxf"
@@ -190,7 +193,7 @@ class WaferMask(sdxf.Drawing):
                 self.append(sdxf.Insert(chip.name+'gap', point=p, layer='gap'))
                 self.append(sdxf.Insert(chip.name+'pin', point=p, layer='pin'))
             if label:
-                chip.label_chip(self,maskid=self.name,chipid=chip.name+str(ii+1),offset=p)
+                chip.label_chip(self,maskid=self.name,chipid=chip.name+str(ii+1),author=chip.author,offset=p)
             self.num_chips+=1
         
         self.manifest.append({'chip':chip,'name':chip.name,'copies':copies,'short_desc':chip.short_description(),'long_desc':chip.long_description()})
@@ -260,7 +263,7 @@ class Chip(sdxf.Block):
     """Chip is a class which contains structures
        Perhaps it will also be used to do some error checking
     """
-    def __init__(self,name,size=(7000.,2000.),mask_id_loc=(0,0),chip_id_loc=(0,0),textsize=(160,160), two_layer=False, layer=None, solid=False, **kwargs):
+    def __init__(self,name,author='',size=(7000.,1900.),mask_id_loc=(0,1800),chip_id_loc=(0,0),author_loc=(6900,100),textsize=(160,160), two_layer=False, layer=None, solid=False,  **kwargs):
         """size is a tuple size=(xsize,ysize)"""
         self.two_layer = two_layer
         if two_layer:
@@ -281,6 +284,8 @@ class Chip(sdxf.Block):
         self.solid=solid
         self.mask_id_loc=mask_id_loc
         self.chip_id_loc=chip_id_loc
+        self.author_loc=author_loc
+        self.author=author
         self.name=name
         self.textsize=textsize
         self.left_midpt=(0,size[1]/2.)
@@ -299,12 +304,12 @@ class Chip(sdxf.Block):
         self.bottom_right=(self.bottom_midpt[0]+2500.0,self.bottom_midpt[1])
         
                     
-    def label_chip(self,drawing,maskid,chipid,offset=(0,0)):
+    def label_chip(self,drawing,maskid,chipid,author,offset=(0,0)):
         """Labels chip in drawing at locations given by mask_id_loc and chip_id_loc with an optional offset.
         Note that the drawing can be a drawing or a Block including the chip itself"""
         AlphaNumText(drawing,maskid,self.textsize,translate_pt(self.mask_id_loc,offset))
-        AlphaNumText(drawing,chipid,self.textsize,translate_pt(self.chip_id_loc,offset))        
-        
+        AlphaNumText(drawing,chipid,self.textsize,translate_pt(self.chip_id_loc,offset))  
+        AlphaNumText(drawing,author,self.textsize,translate_pt(self.author_loc,offset=(-self.textsize[0]*len(author),0)))  
     def save(self,fname=None,maskid=None,chipid=None):
         """Saves chip to .dxf, defaults naming file by the chip name, and will also label the chip, if a label is specified"""
         if fname is None:
@@ -317,6 +322,7 @@ class Chip(sdxf.Block):
         if self.two_layer:
             d.layers.append(sdxf.Layer(name='gap', color=1))
             d.layers.append(sdxf.Layer(name='pin', color=3))
+            self.label_chip(self.gap_layer,maskid,chipid,self.author)
             d.blocks.append(self.gap_layer)
             d.append(sdxf.Insert(self.gap_layer.name,point=(0,0),layer='gap'))
             d.blocks.append(self.pin_layer)
@@ -328,7 +334,7 @@ class Chip(sdxf.Block):
 
         d.blocks.append(self)
         d.append(sdxf.Insert(self.name,point=(0,0)))
-        self.label_chip(d,maskid,chipid)
+        #self.label_chip(d,maskid,chipid,self.author)
         d.saveas(fname)
         
     def short_description(self):
@@ -401,16 +407,20 @@ class Launcher:
             self.length=pad_length+taper_length
         else:
             self.length=pad_to_length
-        
+        self.pinw=150;self.gapw=75
         if not flipped:
             #input launcher
-            CPWStraight(s,length=pad_length,pinw=150,gapw=75)
-            CPWLinearTaper(s,length=taper_length,start_pinw=150,start_gapw=75,stop_pinw=pinw,stop_gapw=gapw)
+            CPWStraight(s,length=self.gapw,pinw=0,gapw=self.gapw+self.pinw/2.)
+            CPWStraight(s,length=pad_length-self.gapw,pinw=self.pinw,gapw=self.gapw)
+            CPWLinearTaper(s,length=taper_length,start_pinw=self.pinw,
+                           start_gapw=self.gapw,stop_pinw=pinw,stop_gapw=gapw)
             CPWStraight(s,length=padding)
         else:
             CPWStraight(s,length=padding)
-            CPWLinearTaper(s,length=taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=150,stop_gapw=75)
-            CPWStraight(s,length=pad_length,pinw=150,gapw=75)
+            CPWLinearTaper(s,length=taper_length,start_pinw=self.pinw,
+                           start_gapw=self.gapw,stop_pinw=pinw,stop_gapw=gapw)
+            CPWStraight(s,length=pad_length-self.gapw,pinw=self.pinw,gapw=self.gapw)
+            CPWStraight(s,length=self.gapw,pinw=0,gapw=self.gapw+self.pinw/2.)
             
         
 #===============================================================================       
@@ -487,15 +497,13 @@ class CPWStraight:
         if pinw is None: pinw=structure.__dict__['pinw']
         if gapw is None: gapw=structure.__dict__['gapw']
         pinw, gapw = float(pinw), float(gapw)
-
         if s.chip.two_layer:
             CPWStraight(s.gap_layer, length, 0, pinw/2. + gapw)
             CPWStraight(s.pin_layer, length, 0, pinw/2.)
             assert s.gap_layer.last == s.pin_layer.last
             s.last = s.gap_layer.last
             return
-
-        else:
+        else:                   
             start=structure.last
 
             gap1=[  (start[0],start[1]+pinw/2),
@@ -511,19 +519,28 @@ class CPWStraight:
                     (start[0],start[1]-pinw/2-gapw),
                     (start[0],start[1]-pinw/2)
                     ]
-
+            if pinw==0 :
+                gap1=[(start[0],start[1]-pinw/2-gapw),
+                      (start[0]+length,start[1]-pinw/2-gapw),
+                      (start[0]+length,start[1]+pinw/2+gapw),
+                      (start[0],start[1]+pinw/2+gapw),
+                      (start[0],start[1]-pinw/2-gapw)]
             gap1=rotate_pts(gap1,s.last_direction,start)
             gap2=rotate_pts(gap2,s.last_direction,start)
       
             stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
             s.last=stop
-
+            if pinw==0 and gapw==0 :#gets rid of the thin unecessary lines
+                return              # Placed behind the previous condition because
+                                    # we need the assertion of the last point.
             if s.chip.solid:
                 s.append(sdxf.Solid(gap1[:-1]))
-                s.append(sdxf.Solid(gap2[:-1]))
+                if pinw!=0:
+                    s.append(sdxf.Solid(gap2[:-1]))
 
             s.append(sdxf.PolyLine(gap1))
-            s.append(sdxf.PolyLine(gap2))
+            if pinw!=0:
+                s.append(sdxf.PolyLine(gap2))
 class CPWs2p:
     def __init__(self,s,endpoint,pinw=None,gapw=None):
         length = distance(endpoint,s.last)
@@ -664,15 +681,19 @@ class CPWQubitBox:
                           (start[0]+2*(n+1)*self.fingerw+2*(n+1)*self.finger_gapw,start[1]-self.pinw/2.-self.gapw),
                           (start[0]+2*(n+1)*self.fingerw+2*(n+1)*self.finger_gapw,start[1]-self.pinw/2.-self.gapw-self.fingerlen)
                         ])
-        
 class CPWLinearTaper:
     """A section of CPW which (linearly) tapers from one set of start_pinw and start_gapw to stop_pinw and stop_gapw over length=length"""
-    def __init__(self, structure,length,start_pinw,stop_pinw,start_gapw,stop_gapw):
+    def __init__(self, structure,length,start_pinw=None,stop_pinw=None,start_gapw=None,stop_gapw=None):
         if length==0: return
         #load attributes
         s=structure
         start=s.last
-
+        if start_pinw==None:
+            start_pinw=s.pinw
+        s.pinw=stop_pinw
+        if start_gapw==None:
+            start_gapw=s.gapw
+        s.gapw=stop_gapw
         if s.chip.two_layer:
             CPWLinearTaper(s.gap_layer, length, 0, 0, (start_pinw/2.)+start_gapw, (stop_pinw/2.)+stop_gapw)
             CPWLinearTaper(s.pin_layer, length, 0, 0, start_pinw/2., stop_pinw/2.)
@@ -710,9 +731,20 @@ class CPWLinearTaper:
             #update last anchor position
             stop=rotate_pt((start[0]+length,start[1]),s.last_direction,start)
             s.last=stop
+
+class CPWTaper:
+    def __init__(self, structure,length,ratio=1.,pinw=None,gapw=None,
+                 stop_pinw=None,stop_gapw=None):
+        if pinw==None: pinw=structure.pinw
+        if gapw==None: gapw=structure.gapw        
+        if stop_pinw==None: stop_pinw=pinw*ratio
+        if stop_gapw==None: stop_gapw=gapw*ratio
+        CPWLinearTaper(structure,length,start_pinw=pinw,start_gapw=gapw,
+                       stop_pinw=stop_pinw,stop_gapw=stop_gapw)
         
 #Inside and Outside Versions are for two layer capacitors        
-        
+#This shitty definition should be put into the trash. Useless class. 
+#Should be deleted anytime.        
 class CPWLinearTaperInside:
     """A section of CPW which (linearly) tapers from one set of start_pinw and start_gapw to stop_pinw and stop_gapw over length=length"""
     def __init__(self, structure,length,start_pinw,stop_pinw,start_gapw,stop_gapw):
@@ -896,11 +928,12 @@ class CPWWiggles:
         CPWWiggles(structure,num_wiggles,total_length,start_up=True,
                    radius=None,pinw=None,gapw=None, segments=60)
     """
-    def __init__(self,structure,num_wiggles,total_length,start_up=True,radius=None,pinw=None,gapw=None, segments=60, square=False):
+    def __init__(self,structure,num_wiggles,total_length,offset=0, start_up=True,radius=None,pinw=None,gapw=None, segments=60, square=False):
         """ 
             @param num_wiggles: a wiggle is from the center pin up/down and back
             @param total_length: The total length of the meander
             @param start_up: Start with a CCW 90 degree turn or a CW turn
+            @param Offset: Offset to the direction of the first bend. 
         """
         
         s=structure
@@ -926,6 +959,10 @@ class CPWWiggles:
             CPWBend(s,asign*90,pinw,gapw,radius, segments=segments)
             for ii in range(num_wiggles):
                 isign=2*(ii%2)-1
+                if ii==0: vlength=vlength+offset
+                elif ii/2==ii/2.: vlength=vlength+2*offset
+                if ii/2!=ii/2.:
+                    vlength=vlength-2*offset
                 CPWStraight(s,vlength,pinw,gapw)
                 CPWBend(s,isign*asign*180,pinw,gapw,radius, segments=segments)
                 CPWStraight(s,vlength,pinw,gapw)
@@ -1218,8 +1255,8 @@ class ChipBorder(Structure):
         
 class DashedChipBorder(Structure):
     """Dashed Chip border for e-beam drawing and then dicing"""
-    def __init__(self,chip,border_thickness,dash_width=40,dash_length=200,layer="border",color=1):
-        Structure.__init__(self,chip,layer=layer,color=color)
+    def __init__(self,chip,border_thickness,dash_width=40,dash_length=200,color=1):
+        Structure.__init__(self,chip.gap_layer,color=color)
 
         '''Caution: border_thickness refers to the bid dicing border. Other quantities refer to dashes.'''        
         
@@ -3343,16 +3380,23 @@ class AlphaNumText:
             point=orient_pt( (size[0],0),direction,point)
             
 class AlignmentCross:
-    def __init__(self,drawing,linewidth,size,point):
+    def __init__(self,drawing,linewidth,size,points,layer=None):
         lw=linewidth/2.
         w=size[0]/2.
         h=size[1]/2.
         pts=[ (-lw,-h), (lw,-h), (lw,-lw),(w,-lw),(w,lw),(lw,lw),(lw,h),(-lw,h),(-lw,lw),(-w,lw),(-w,-lw),(-lw,-lw),(-lw,-h)]
         
-        pts=translate_pts(pts,point)
-        
-        drawing.append(sdxf.PolyLine(pts))
-        
+        if layer!=None:
+            cross=sdxf.Block(name='cross',layer=layer)
+            cross.append(sdxf.PolyLine(pts))
+            drawing.layers.append(sdxf.Layer(name=layer, color=1))
+            drawing.blocks.append(cross)
+            for point in points:
+                drawing.append(sdxf.Insert(cross.name,point=point,layer=layer))
+        else:
+            for point in points:     
+                drawing.append(sdxf.Insert(sdxf.PolyLine(pts)),point=point)
+
 class FineAlign:
     def __init__(self,chip,buffer=60,al=60,wid=2):
         '''Draws 4 L shaped alignment marks in the corners of the chip
