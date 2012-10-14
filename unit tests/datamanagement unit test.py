@@ -55,7 +55,7 @@ def test_append_data():
 
     error=False
 
-    num_fpts=100
+    num_fpts=400
     num_tpts=1000
     freqs=linspace(1.,10.,num_fpts)
 
@@ -64,15 +64,20 @@ def test_append_data():
 #    plt.figure(1)
 #    plt.imshow(data)
 #    plt.show()
+
+    
     
     f=SlabFile(fname)
-    ds=f.create_dataset('Rabi',shape=(1,num_tpts),maxshape=(None,num_tpts))
+    f.create_dataset('Rabi',shape=(0,num_tpts),maxshape=(None,num_tpts),dtype=float64)
+    f.create_dataset('fpts', shape=(0,),maxshape=(None,),dtype=float64)
     f.close()
     for ii,d in enumerate(data):
         f=SlabFile(fname)
-        ds=f['Rabi']
-        ds.resize((ii+1,num_tpts)) 
-        ds[ii,:]=d
+        #ds=f['Rabi']
+        #ds.resize((ii+1,num_tpts)) 
+        #ds[ii,:]=d
+        f.append_line(f['Rabi'],d)
+        f.append_pt(f['fpts'],freqs[ii])
         f.close()
 
     f2=SlabFile(fname)
@@ -87,7 +92,7 @@ def test_append_data():
         
     
     
-    os.remove(fname)
+    #os.remove(fname)
 
     
     

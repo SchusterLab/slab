@@ -35,6 +35,20 @@ class SlabFile(h5py.File):
         else:
             dataset.attrs["_axes_labels"] = (x_lab, y_lab)
 
+    def append_line(self,dataset,line,axis=0):
+        shape=list(dataset.shape)
+        shape[axis]=shape[axis]+1
+        dataset.resize(shape)
+        if axis==0:
+            dataset[-1,:]=line
+        else:
+            dataset[:,-1]=line
+            
+    def append_pt(self,dataset,pt):
+        shape=list(dataset.shape)
+        shape[0]=shape[0]+1
+        dataset.resize(shape)
+        dataset[-1]=pt
         
     def save_script(self,name="_script"):
             self.attrs[name] = get_script()
