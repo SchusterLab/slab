@@ -9,6 +9,7 @@ from slab import *
 from os import *
 from numpy import *
 import matplotlib.pyplot as plt
+import time
 
 def test_slabfile():
     fname='slabfile_test.h5'
@@ -49,6 +50,7 @@ def test_slabfile():
     os.remove(fname)
     
 def test_append_data():
+    t0=time.time()
     fname='append_data_test.h5'
     try: os.remove(fname)
     except: pass
@@ -80,6 +82,7 @@ def test_append_data():
         f.append_pt(f['fpts'],freqs[ii])
         f.close()
 
+    print "Append test: %f" %(time.time()-t0)
     f2=SlabFile(fname)
     data2=array(f['Rabi'])
     f2.close()
