@@ -946,8 +946,9 @@ class CPWWiggles:
         else:
             #calculate vertical segment length:
             #total length=number of 180 degree arcs + number of vertical segs + vertical radius spacers
+            #if wiggle is even, need to add 2*offset
             #total_length=(1+num_wiggles)*(pi*radius)+2*num_wiggles*vlength+2*(num_wiggles-1)*radius
-            vlength=(total_length-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)
+            vlength=(total_length-offset*2*(num_wiggles%2)-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)
             *radius))/(2*num_wiggles)
             self.height = vlength + radius
             if vlength<0: print "Warning: length of vertical segments is less than 0, increase total_length or decrease num_wiggles"
@@ -959,15 +960,13 @@ class CPWWiggles:
             CPWBend(s,asign*90,pinw,gapw,radius, segments=segments)
             for ii in range(num_wiggles):
                 isign=2*(ii%2)-1
-                if ii==0: vlength=vlength+offset
-                elif ii/2==ii/2.: vlength=vlength+2*offset
-                if ii/2!=ii/2.:
-                    vlength=vlength-2*offset
-                CPWStraight(s,vlength,pinw,gapw)
+                if ii==0:
+                    CPWStraight(s,vlength+offset,pinw,gapw)
                 CPWBend(s,isign*asign*180,pinw,gapw,radius, segments=segments)
-                CPWStraight(s,vlength,pinw,gapw)
                 if ii<num_wiggles-1:
-                    CPWStraight(s,2*radius,pinw,gapw)
+                    CPWStraight(s,2*vlength+2*radius,pinw,gapw)
+                else: 
+                    CPWStraight(s,vlength+offset,pinw,gapw)
             CPWBend(s,-isign*asign*90,pinw,gapw,radius, segments=segments)
 
 class CPWWigglesByLength:
