@@ -38,6 +38,9 @@ class Instrument(object):
         self.address=address
         self.enabled=enabled
         
+    def get_id(self):
+        return "Default Instrument %s" % (self.name)
+        
     def query(self,cmd):
         self.write(cmd)
         time.sleep(self.query_sleep)
