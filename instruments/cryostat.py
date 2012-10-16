@@ -12,7 +12,8 @@ class Triton(SocketInstrument):
     def __init__(self,name="Triton",address='slab-fridge1.uchicago.edu',enabled=True,timeout=10):
         if ':' not in address: address+=':22518'        
         SocketInstrument.__init__(self,name,address,enabled,timeout)
-        self.query_sleep=0.1
+        #self.query_sleep=0.1
+        self.query_sleep=0.0
         self.recv_length=65536
     
     def get_status(self):
