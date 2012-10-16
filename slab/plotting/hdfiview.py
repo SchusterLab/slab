@@ -122,6 +122,7 @@ class HDFViewThread(gui.DataThread):
                     xdata, ydata = h5file.attrs["_axes"]
                     pi = make.image(data=np.array(h5file), xdata=xdata, ydata=ydata)
                 except:
+                    self.msg("Axes scaling could not be set up.")
                     pi = make.image(data=np.array(h5file)) 
                 try:
                     xlab, ylab, zlab = h5file.attrs["_axes_labels"]
