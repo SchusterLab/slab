@@ -120,21 +120,22 @@ class HDFViewThread(gui.DataThread):
             if len(h5file.shape) == 2:
                 try:
                     xdata, ydata = h5file.attrs["_axes"]
-                    pi = make.image(data=np.array(h5file), xdata=xdata, ydata=ydata)
-                except:
+                    pi = make.image(data=np.array(h5file), 
+                                    xdata=tuple(xdata), ydata=tuple(ydata))
+                except KeyError:
+                    self.msg("no _axes attribute")
                     self.msg("Axes scaling could not be set up.")
                     pi = make.image(data=np.array(h5file)) 
                 try:
                     xlab, ylab, zlab = h5file.attrs["_axes_labels"]
-                    self.gui["image_plot"].set_axis_unit(0, xlab)
-                    self.gui["image_plot"].set_axis_unit(2, ylab)
-                    self.gui["image_plot"].set_axis_unit(1, zlab)
-                except:
-                    self.gui["image_plot"].set_axis_unit(0, "")
-                    self.gui["image_plot"].set_axis_unit(2, "")
-                    self.gui["image_plot"].set_axis_unit(1, "")
-                    self.msg("Labels could not be set up")
-
+                    
+                except KeyError:
+                    xlab, ylab, zlab = "", "", ""
+                    self.msg("no _axes_labels attribute")
+                    
+                self.gui["image_plot"].set_axis_unit(2, xlab)
+                self.gui["image_plot"].set_axis_unit(0, ylab)
+                self.gui["image_plot"].set_axis_unit(1, zlab)
                 self.gui["plots_tabWidget"].setCurrentIndex(0)
                 self.gui["image_plot"].del_all_items()
                 self.gui["image_plot"].add_item(pi)
