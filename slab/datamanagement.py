@@ -23,13 +23,13 @@ class SlabFile(h5py.File):
         self.flush()
 
 
-    def set_range(dataset, xmin, xmax, ymin=None, ymax=None):
+    def set_range(self,dataset, xmin, xmax, ymin=None, ymax=None):
         if ymin is not None and ymax is not None:
             dataset.attrs["_axes"] = ((xmin, xmax), (ymin, ymax))
         else:
             dataset.attrs["_axes"] = (xmin, xmax)
     
-    def set_labels(dataset, x_lab, y_lab, z_lab=None):
+    def set_labels(self,dataset, x_lab, y_lab, z_lab=None):
         if z_lab is not None:
             dataset.attrs["_axes_labels"] = (x_lab, y_lab, z_lab)
         else:
