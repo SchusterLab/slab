@@ -66,12 +66,16 @@ class RelayBox(SerialInstrument, WebInstrument):
             port = str(port)
             f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "AI" + port)
             print f.read(1000)
-    def pulse_relay(self,port=0,pulse_width=1):                                                                                                                  
-       if self.protocol=="serial":  
-            self.query('@%s TR %d %03d' % (self.boxaddress,port,pulse_width))
-       if self.protocol=="http":
-            port = str(port)
-            urllib2.urlopen(self.address+ "/relaybox/json?"+ "TR" + port)
+            
+    def pulse_relay(self,port=0,pulse_width=1):                  
+        """ 2 parameters, First is 1-8: Relay Number, Second 001-255: Time in
+            tenths of seconds to turn ON for
+        """                                                                                            
+        if self.protocol=="serial":  
+             self.query('@%s TR %d %03d' % (self.boxaddress,port,pulse_width))
+        if self.protocol=="http":
+             port = str(port)
+             urllib2.urlopen(self.address+ "/relaybox/json?"+ "TR" + port)
             
     def keep_alive(self,time_to_live=0):
         self.query('@%s KA %d' % (self.boxaddress,time_to_live))

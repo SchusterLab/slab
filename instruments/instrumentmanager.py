@@ -25,14 +25,14 @@ class InstrumentManager(dict):
         self.config=None
         self.ns_address=ns_address
         #self.instruments={}
-        if config_path is not None:
-            self.load_config_file(config_path)
         if not server and Pyro4Loaded:
                 try:
-                    self.clean_nameserver()
+                    #self.clean_nameserver()
                     self.connect_proxies()
                 except:
                     print "Warning: Could not connect proxies!"
+        if config_path is not None:
+            self.load_config_file(config_path)
         if server and Pyro4Loaded:
                 self.serve_instruments()
         
@@ -65,7 +65,7 @@ class InstrumentManager(dict):
         
     def connect_proxies(self):
         ns=Pyro4.locateNS(self.ns_address)
-        for name,uri in ns.list().items()[1:]:
+        for name,uri in ns.list().items():
             self[name]=Pyro4.Proxy(uri)
         
     def get_settings(self):
@@ -95,7 +95,7 @@ class InstrumentManager(dict):
     def clean_nameserver(self):
         """Checks to make sure all of the names listed in server are really there"""
         ns=Pyro4.locateNS(self.ns_address)
-        for name,uri in ns.list().items()[1:]:
+        for name,uri in ns.list().items():
             try:            
                 Pyro4.Proxy(uri).get_id()
             except:
@@ -105,7 +105,7 @@ if __name__=="__main__":
     if len(sys.argv)>1:
         cp=sys.argv[1]
     else:
-        cp=r"C:\_Lib\python\slab\instruments\instrument.cfg"
+        cp=r"S:\_Data\120930 - EonHe - M005CHM3\004_AutomatedFilling\instruments.cfg"
     
     im = InstrumentManager(config_path=cp,server=True)
     #print im['fil'].get_id()
