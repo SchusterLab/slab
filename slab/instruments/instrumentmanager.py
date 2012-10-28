@@ -55,6 +55,7 @@ class InstrumentManager(dict):
 
     def serve_instruments(self):
         """inst_dict is in form {name:instrument_instance}"""
+        Pyro4.config.SERVERTYPE = "multiplex"
         daemon = Pyro4.Daemon(host=Pyro4.socketutil.getMyIpAddress())
         ns = Pyro4.locateNS(self.ns_address)
         for name, instrument_instance in self.items():
