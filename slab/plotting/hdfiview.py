@@ -7,7 +7,7 @@ from guiqwt.qtdesigner import loadui
 from guiqwt.builder import make
 from spyderlib.widgets.internalshell import InternalShell
 from slab import gui
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from copy import copy
 import os, glob, sys
 import syntax
@@ -76,7 +76,7 @@ class HDFViewThread(gui.DataThread):
             self.gui["datafiles_listWidget"].addItem(item)
 
     def load_file(self, item):
-        self.msg("load_file")
+        self.msg("load_file", item.filename)
         filename = item.filename
         self.open_file = h5py.File(filename, 'r+')
 
@@ -217,10 +217,10 @@ class HDFViewThread(gui.DataThread):
         self.x_data = None
         
     def clear_y_data(self, _trash):
-        self.y_data = None    
+        self.y_data = None
                 
 class HDFViewWindow(gui.SlabWindow, UiClass):
-    def __init__(self):
+    def __init__(self, fname=None):
         gui.SlabWindow.__init__(self, HDFViewThread)
         self.setupSlabWindow(autoparam=True)
         self.auto_register_gui()
@@ -264,13 +264,21 @@ class HDFViewWindow(gui.SlabWindow, UiClass):
         # Setup Prompt
         message = "The currently loaded file is stored as 'f'"
         self.shell = InternalShell(self, message=message)
-        #self.shell.set_font(Qt.QFont("Andale Mono"))
         self.shell.set_font(Qt.QFont("Consolas"))
         self.shell_dockWidget.setWidget(self.shell)
         self.gui["shell"] = self.shell
 
         self.start_thread()
 
+        if fname is not None:
+            self.shell.exit_interpreter()
+            directory = os.path.dirname(fname)
+            nameitem = namedtuple('pseudoitem', ('filename',))(fname)
+            self.msg(fname)
+            self.set_param("datapath", directory)
+            self.start_script("set_datapath")
+            self.start_script("load_file", nameitem)
+        
     def closeEvent(self, event):
         self.shell.exit_interpreter()
         event.accept()
@@ -289,4 +297,8 @@ class HDFViewWindow(gui.SlabWindow, UiClass):
         menu.exec_(self.datasets_treeWidget.mapToGlobal(point))
 
 if __name__ == "__main__":
-    sys.exit(gui.runWin(HDFViewWindow))
+    #fname = "S:\\_Data\\120930 - EonHe - M005CHM3\\004_AutomatedFilling\\121017_M005CHM3-AutomatedFilling_003\\M005CHM3-AutomatedFilling.h5"
+    fname = None
+    if len(sys.argv) > 1:
+        fname = sys.argv[1]
+    sys.exit(gui.runWin(HDFViewWindow, fname=fname))
