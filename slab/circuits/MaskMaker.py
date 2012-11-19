@@ -91,6 +91,7 @@ class WaferMask(sdxf.Drawing):
                  etchtype=True,wafer_edge=True,dashed_dicing_border=0,
                  two_layer=False,solid=False):
         sdxf.Drawing.__init__(self)
+        name = name.upper()
         self.name=name
         self.fileName=name+".dxf"
         self.diameter=diameter
@@ -265,6 +266,7 @@ class Chip(sdxf.Block):
     """
     def __init__(self,name,author='',size=(7000.,1900.),mask_id_loc=(0,1800),chip_id_loc=(0,0),author_loc=(6900,100),textsize=(160,160), two_layer=False, layer=None, solid=False,  **kwargs):
         """size is a tuple size=(xsize,ysize)"""
+        name = name.upper()
         self.two_layer = two_layer
         if two_layer:
             self.gap_layer = Chip(name+"gap", size, mask_id_loc, chip_id_loc,
