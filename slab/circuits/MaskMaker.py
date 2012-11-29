@@ -419,8 +419,8 @@ class Launcher:
             CPWStraight(s,length=padding)
         else:
             CPWStraight(s,length=padding)
-            CPWLinearTaper(s,length=taper_length,start_pinw=self.pinw,
-                           start_gapw=self.gapw,stop_pinw=pinw,stop_gapw=gapw)
+            CPWLinearTaper(s,length=taper_length,start_pinw=pinw,
+                           start_gapw=gapw,stop_pinw=self.pinw,stop_gapw=self.gapw)
             CPWStraight(s,length=pad_length-self.gapw,pinw=self.pinw,gapw=self.gapw)
             CPWStraight(s,length=self.gapw,pinw=0,gapw=self.gapw+self.pinw/2.)
             
@@ -1492,8 +1492,10 @@ class CPWFingerCap:
 
     def draw(self,structure):
         s=structure
+        init_pinw, init_gapw = s.pinw, s.gapw
         pinw=self.pinw
-        if self.gapw is None: self.gapw=self.pinw*s.__dict__['gapw']/s.__dict__['pinw']
+        if self.gapw is None:
+            self.gapw=self.pinw*s.gapw/s.pinw
         gapw=self.gapw
         
         CPWLinearTaper(structure,length=self.taper_length,start_pinw=s.__dict__['pinw'],
@@ -1594,7 +1596,8 @@ class CPWFingerCap:
         if structure.pinw2!=None:
             s.pinw=structure.pinw2
             structure.pinw2=None
-        CPWLinearTaper(s,length=self.taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=s.__dict__['pinw'],stop_gapw=s.__dict__['gapw'])
+        CPWLinearTaper(s,length=self.taper_length,start_pinw=pinw,
+                       start_gapw=gapw,stop_pinw=init_pinw,stop_gapw=init_gapw)
    
         
     def left_finger_points(self,finger_width,finger_length,finger_gap):      
