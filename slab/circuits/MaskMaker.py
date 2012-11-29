@@ -175,7 +175,7 @@ class WaferMask(sdxf.Drawing):
         if self.etchtype:
             ChipBorder(chip,self.dicing_border/2.)
         if self.dashed_dicing_border>0:
-            if chip.two_layer: dashlayer='gap'
+            dashlayer = 'gap' if chip.two_layer else None
             DashedChipBorder(chip,self.dicing_border/2.,layer=dashlayer)
         if chip.two_layer:
             self.layers.append(sdxf.Layer(name='gap', color=1))
@@ -3420,7 +3420,7 @@ class AlignmentCross:
                 drawing.append(sdxf.Insert(cross.name,point=point,layer=layer))
         else:
             for point in points:     
-                drawing.append(sdxf.Insert(sdxf.PolyLine(pts)),point=point)
+                drawing.append(sdxf.Insert(sdxf.PolyLine(pts),point=point))
 
 class SolidNotch:
     def __init__(self,notch_length,notch_depth,superfine_offset,superfine_spacing,superfine_size,fine_offset,fine_size,rough_size,padding=0,flipped=False,pinw=None,gapw=None):
