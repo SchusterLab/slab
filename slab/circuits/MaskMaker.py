@@ -194,7 +194,7 @@ class WaferMask(sdxf.Drawing):
                 self.append(sdxf.Insert(chip.name+'gap', point=p, layer='gap'))
                 self.append(sdxf.Insert(chip.name+'pin', point=p, layer='pin'))
             if label:
-                chip.label_chip(self,maskid=self.name,chipid=chip.name+str(ii+1),author=chip.author,offset=p)
+                chip.label_chip(self,maskid=self.name,chipid=chip.name+' '+str(100+ii+1)[-2:],author=chip.author,offset=p)
             self.num_chips+=1
         
         self.manifest.append({'chip':chip,'name':chip.name,'copies':copies,'short_desc':chip.short_description(),'long_desc':chip.long_description()})
@@ -309,9 +309,12 @@ class Chip(sdxf.Block):
     def label_chip(self,drawing,maskid,chipid,author,offset=(0,0)):
         """Labels chip in drawing at locations given by mask_id_loc and chip_id_loc with an optional offset.
         Note that the drawing can be a drawing or a Block including the chip itself"""
-        AlphaNumText(drawing,maskid,self.textsize,translate_pt(self.mask_id_loc,offset))
-        AlphaNumText(drawing,chipid,self.textsize,translate_pt(self.chip_id_loc,offset))  
-        AlphaNumText(drawing,author,self.textsize,translate_pt(self.author_loc,offset=(-self.textsize[0]*len(author),0)))  
+        if self.two_layer:
+            layer='gap'
+        else: layer='0'
+        AlphaNumText(drawing,maskid,self.textsize,translate_pt(self.mask_id_loc,offset),layer=layer)
+        AlphaNumText(drawing,chipid,self.textsize,translate_pt(self.chip_id_loc,offset),layer=layer)  
+        AlphaNumText(drawing,author,self.textsize,translate_pt(self.author_loc,offset=(-self.textsize[0]*len(author),0)),layer=layer)  
     def save(self,fname=None,maskid=None,chipid=None):
         """Saves chip to .dxf, defaults naming file by the chip name, and will also label the chip, if a label is specified"""
         if fname is None:
@@ -3379,7 +3382,7 @@ class CapDesc:
 
 class AlphaNum:
     """A polyline representation of an alphanumeric character, does not use structures"""
-    def __init__(self,drawing,letter,size,point,direction=0):
+    def __init__(self,drawing,letter,size,point,direction=0,layer='0'):
 
         if (letter=='') or (letter==' '):
             return
@@ -3388,12 +3391,12 @@ class AlphaNum:
         for pts in alphanum_dict[letter.lower()]:
             mpts = scale_pts(pts,scaled_size)
             mpts = orient_pts(mpts,direction,point)
-            drawing.append(sdxf.PolyLine(mpts))
+            drawing.append(sdxf.PolyLine(mpts,layer=layer))
         #s.last=orient_pt( (size[0],0),s.last_direction,s.last)
 
 class AlphaNumText:
     """Renders a text string in polylines, does not use structures"""
-    def __init__(self,drawing,text,size,point,centered=False,direction=0):
+    def __init__(self,drawing,text,size,point,centered=False,direction=0,layer='0'):
         self.text=text
         if text is None:
             return
@@ -3401,18 +3404,18 @@ class AlphaNumText:
             offset=(-size[0]*text.__len__()/2.,0)
             point=orient_pt(offset,direction,point)
         for letter in text:
-            AlphaNum(drawing,letter,size,point,direction)
+            AlphaNum(drawing,letter,size,point,direction,layer=layer)
             point=orient_pt( (size[0],0),direction,point)
             
 class AlignmentCross:
-    def __init__(self,drawing,linewidth,size,points,layer=None):
+    def __init__(self,drawing,linewidth,size,points,layer='0',name='cross'):
         lw=linewidth/2.
         w=size[0]/2.
         h=size[1]/2.
         pts=[ (-lw,-h), (lw,-h), (lw,-lw),(w,-lw),(w,lw),(lw,lw),(lw,h),(-lw,h),(-lw,lw),(-w,lw),(-w,-lw),(-lw,-lw),(-lw,-h)]
         
         if layer!=None:
-            cross=sdxf.Block(name='cross',layer=layer)
+            cross=sdxf.Block(name=name,layer=layer)
             cross.append(sdxf.PolyLine(pts))
             drawing.layers.append(sdxf.Layer(name=layer, color=1))
             drawing.blocks.append(cross)
