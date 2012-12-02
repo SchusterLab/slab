@@ -14,8 +14,8 @@ class HeliumManifold(RelayBox):
     DEBUG_HELIUM_MANIFOLD = True
     DEBUG_HELIUM_MANIFOLD_VERBOSE = True
     
-    gas_port=4
-    pump_port=1        
+    gas_port=1
+    pump_port=4        
     cryostat_port=8
     pressure_port=1
 
