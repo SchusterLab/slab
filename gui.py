@@ -280,6 +280,9 @@ class SlabWindow(QMainWindow):
         self.read_param_widgets()
         self._data_thread.start()
 
+    def start_script(self, method, *args):
+        self.emit(SIGNAL("RunOnDataThread"), method, *args)
+
     launcher_widget_tools = {
         QPushButton : "released",
         QDialog: "accepted",
@@ -311,7 +314,7 @@ class SlabWindow(QMainWindow):
             if isinstance(launch_widget, WidgetC):
                 getattr(launch_widget, sig_name).connect(
                     lambda *args:
-                        self.emit(SIGNAL("RunOnDataThread"), method, *args))
+                        self.start_script(method, *args))
                 print "attached method", method
                 break
         else:
