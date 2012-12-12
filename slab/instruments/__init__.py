@@ -26,5 +26,7 @@ try: from Alazar import Alazar, AlazarConfig, AlazarConstants
 except: print "Could not load Alazar card"
 try: from function_generator import FilamentDriver,BNCAWG
 except: print "Could not load BNC AWG classes"
+try: from Keithley199 import Keithley199
+except: print "Could not load Keithley199 voltmeter classes"
 
 foo = 'abc'
