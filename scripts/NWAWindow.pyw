@@ -20,7 +20,7 @@ class nwa_DataThread(DataThread):
 
     def open_datafile(self):
         try: 
-            self.file = SlabFile(os.path.join(self.params['datapath'],self.filename))
+            self.file = SlabFile(os.path.join(self.params['datapath'],self.filename), 'w')
         except Exception as e:
             self.msg("Could not open h5 file!")
             self.msg(e)
@@ -229,7 +229,7 @@ class nwa_DataThread(DataThread):
 
 class NWAWin(SlabWindow, Ui_NWAWindow):
     def __init__(self):
-        SlabWindow.__init__(self, nwa_DataThread, config_file='c:\\_Lib\\python\\slab\\scripts\\instruments.cfg')
+        SlabWindow.__init__(self, nwa_DataThread, config_file=None)
         self.setupSlabWindow(autoparam=True)
         self.register_script("run_script", self.go_button, self.abort_button)
         self.datapathButton.clicked.connect(self.selectDatapath)
@@ -293,14 +293,14 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
             self.msg(e)            
         return
 
-
-
     def selectFile(self):
         self.param_filename.setText(str(QFileDialog.getSaveFileName(self)))
         
     def selectDatapath(self):
         self.datapath=str(QFileDialog.getExistingDirectory(self,'Open Datapath',self.datapath))
-        self.param_datapath.setText(self.datapath)       
+        self.msg(self.datapath)
+        self.set_param("datapath", self.datapath)
+        #self.param_datapath.setText(self.datapath)
         
     def update_filenumber(self):
         self.datapath=self.params['datapath']
