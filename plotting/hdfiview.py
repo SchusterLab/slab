@@ -67,7 +67,7 @@ class HDFViewThread(gui.DataThread):
             self.msg("No such directory")
         if directory[-1] != "/":
             directory += "/"
-        self.h5files = glob.glob(directory + "*.h5")
+        self.h5files = sorted(glob.glob(directory + "*.h5"))
         # Write filenames to gui
         self.gui["datafiles_listWidget"].clear()
         for filename in self.h5files:
@@ -118,30 +118,32 @@ class HDFViewThread(gui.DataThread):
         if isinstance(h5file, h5py.Dataset):
             # 2D dataset handling
             if len(h5file.shape) == 2:
-                try:
-                    xdata, ydata = h5file.attrs["_axes"]
-                    pi = make.image(data=np.array(h5file), 
-                                    xdata=tuple(xdata), ydata=tuple(ydata))
-                except KeyError:
-                    self.msg("no _axes attribute")
-                    self.msg("Axes scaling could not be set up.")
-                    pi = make.image(data=np.array(h5file)) 
-                try:
-                    xlab, ylab, zlab = h5file.attrs["_axes_labels"]
-                    
-                except KeyError:
-                    xlab, ylab, zlab = "", "", ""
-                    self.msg("no _axes_labels attribute")
-                    
-                self.gui["image_plot"].set_axis_unit(2, xlab)
-                self.gui["image_plot"].set_axis_unit(0, ylab)
-                self.gui["image_plot"].set_axis_unit(1, zlab)
-                self.gui["plots_tabWidget"].setCurrentIndex(0)
-                self.gui["image_plot"].del_all_items()
-                self.gui["image_plot"].add_item(pi)
-                self.gui["image_plot"].show()
-                self.gui["image_plot"].do_autoscale()
-                self.gui["image_plot"].set_full_scale(pi)
+                if h5file.shape[0] == 1:
+                    h5file = h5file[0,:]
+                else:
+                    try:
+                        xdata, ydata = h5file.attrs["_axes"]
+                        pi = make.image(data=np.array(h5file), 
+                                        xdata=tuple(xdata), ydata=tuple(ydata))
+                    except KeyError:
+                        self.msg("no _axes attribute")
+                        self.msg("Axes scaling could not be set up.")
+                        pi = make.image(data=np.array(h5file)) 
+                    try:
+                        xlab, ylab, zlab = h5file.attrs["_axes_labels"]
+                        
+                    except Exception as e:
+                        xlab, ylab, zlab = "", "", ""
+                        self.msg(e)
+                        
+                    self.gui["image_plot"].set_axis_unit(2, xlab)
+                    self.gui["image_plot"].set_axis_unit(0, ylab)
+                    self.gui["image_plot"].set_axis_unit(1, zlab)
+                    self.gui["plots_tabWidget"].setCurrentIndex(0)
+                    self.gui["image_plot"].del_all_items()
+                    self.gui["image_plot"].add_item(pi)
+                    self.gui["image_plot"].show()
+                    self.gui["image_plot"].do_autoscale()
 
             # 1D dataset handling
             if len(h5file.shape) == 1:
@@ -237,9 +239,12 @@ class HDFViewWindow(gui.SlabWindow, UiClass):
         self.image_plot = self.image_widget.plot
         self.image_plot_layout.addWidget(self.image_widget)
         self.gui["image_plot"] = self.image_plot
-
-        self.gui["line_plot"] = self.line_plot = CurvePlot()
+        
+        len(line)
+        self.line_widget = CurveWidget()
+        self.gui["line_plot"] = self.line_plot = self.line_widget.plot #CurvePlot()
         self.line_plot_layout.addWidget(self.line_plot)
+        self.line_widget.register_all_image_tools()
 
         # Context Menu actions
         self.set_x_action = Qt.QAction("Set as x data", self)
