@@ -130,7 +130,7 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
         
     def set_target_field (self,field):
         """Sets target magnetic field to field (in Tesla)"""
-        self.query('I%08.5f' % field)
+        self.query('J%08.5f' % field)
         
     def set_current_sweeprate(self,sweeprate):
         """Sets current sweep rate in Amps/minute"""
@@ -172,6 +172,7 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
         self.ramp()
         
     def ramp_to_field(self,field, sweeprate=None):
+        'Field in Teslas, sweeprate in Amps/minute'
         self.remote()
         self.hold()
         self.set_target_field(field)
