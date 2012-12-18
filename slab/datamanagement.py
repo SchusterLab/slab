@@ -36,6 +36,15 @@ class SlabFile(h5py.File):
             dataset.attrs["_axes_labels"] = (x_lab, y_lab)
 
     def append_line(self,dataset,line,axis=0):
+        if isinstance(dataset, str):
+            try:
+                dataset = self[dataset]
+            except:
+                shape, maxshape = (0, len(line)), (None, len(line))
+                if axis == 1:
+                    shape, maxshape = (shape[1], shape[0]), (maxshape[1], maxshape[0])
+                self.create_dataset(dataset, shape=shape, maxshape=maxshape, dtype='float64')
+                dataset = self[dataset]
         shape=list(dataset.shape)
         shape[axis]=shape[axis]+1
         dataset.resize(shape)
@@ -43,12 +52,19 @@ class SlabFile(h5py.File):
             dataset[-1,:]=line
         else:
             dataset[:,-1]=line
+        self.flush()
             
     def append_pt(self,dataset,pt):
+        if isinstance(dataset, str):
+            try:
+                dataset = self[dataset]
+            except:
+                self.create_dataset(dataset, shape=(0,), maxshape=(None,), dtype='float64')
         shape=list(dataset.shape)
         shape[0]=shape[0]+1
         dataset.resize(shape)
         dataset[-1]=pt
+        self.flush()
         
     def save_script(self,name="_script"):
             self.attrs[name] = get_script()
