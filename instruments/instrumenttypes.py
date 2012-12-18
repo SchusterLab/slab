@@ -19,9 +19,6 @@ class Instrument(object):
     channel. The subclass must define the methods write and read, for
     communication over that channel
     """
-    # (Phil) Are these class variables ever set? Looks like everything used is
-    # part of the object rather than the class 
-    # (i.e. self.address vs Instrument.address)
     address=''                #Address of instrument
     name=''                   #Instrument Name
     enabled=False             #If enabled=False commands should not be sent
@@ -62,6 +59,10 @@ class Instrument(object):
         
     def set_settings(self,settings):
         print settings
+        
+    def attr(self, name):
+        "re-naming of __getattr__ which is unavailable when proxied"
+        return getattr(self, name)
 
     #def set_operation_range(self, operation_range):
     #    self.operation_range = operation_range
