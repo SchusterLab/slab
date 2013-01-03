@@ -128,9 +128,11 @@ class PlotItem(qt.QWidget):
         qt.QHBoxLayout(buttons)
         self.remove_button = qt.QPushButton('Remove')
         self.zoom_button = qt.QPushButton('Zoom')
-        #self.autoscale_check = qt.QCheckBox('autoscale')
+        self.autoscale_check = qt.QCheckBox('autoscale')
+        self.autoscale_check.setChecked(True)
         buttons.layout().addWidget(self.remove_button)
         buttons.layout().addWidget(self.zoom_button)
+        buttons.layout().addWidget(self.autoscale_check)
         self.layout().addWidget(buttons)
 
 class PlotStacker(qt.QWidget):
@@ -219,7 +221,8 @@ class PlotStacker(qt.QWidget):
             else:
                 item.set_data(data)
         plot.plot_widget.plot.replot()
-        plot.plot_widget.plot.do_autoscale()
+        if plot.autoscale_check.isChecked():
+            plot.plot_widget.plot.do_autoscale()
 
 from guiqwt.qtdesigner import loadui
 UiClass = loadui("C:\_Lib\python\slab\plotting\script_viewer.ui")
