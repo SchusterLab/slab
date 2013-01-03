@@ -101,16 +101,23 @@ class PlotItem(qt.QWidget):
         qt.QWidget.__init__(self)
         qt.QVBoxLayout(self)
         
+        toolbar = qt.QToolBar()
+        self.layout().addWidget(toolbar)
+        
         self.ident = ident
         self.rank = rank
         self.accum = accum
         
         if rank == 1:
             self.plot_widget = CurveWidget(title=ident)
+            self.plot_widget.add_toolbar(toolbar)
+            self.plot_widget.register_all_curve_tools()
             self.item = make.curve([], [], **plotkwargs)
         elif rank == 2:
             print plotkwargs
             self.plot_widget = ImageWidget(title=ident, lock_aspect_ratio=False)
+            self.plot_widget.add_toolbar(toolbar)
+            self.plot_widget.register_all_image_tools()
             self.item = make.image(np.array([[0]]), **plotkwargs)
         else:
             raise ValueError
@@ -121,6 +128,7 @@ class PlotItem(qt.QWidget):
         qt.QHBoxLayout(buttons)
         self.remove_button = qt.QPushButton('Remove')
         self.zoom_button = qt.QPushButton('Zoom')
+        #self.autoscale_check = qt.QCheckBox('autoscale')
         buttons.layout().addWidget(self.remove_button)
         buttons.layout().addWidget(self.zoom_button)
         self.layout().addWidget(buttons)
@@ -172,7 +180,7 @@ class PlotStacker(qt.QWidget):
                              
     def remove_plot(self, ident):
         widget = self.plots.pop(ident)
-        if widget.parentWidget.layout() is self.plotlist:
+        if widget.parentWidget().layout() is self.plotlist:
             self.plotlist.removeWidget(widget)
         else:
             self.zoom.removeWidget(widget)
@@ -252,7 +260,7 @@ def serve(n):
     for i in range(n):
         time.sleep(.1)
         t += .1
-        plotter.msg("time" + str(t))
+        plotter.msg("time " + str(t))
         plotter.plot(np.sin(x + t), "sin")
         plotter.plot((t, np.cos(t)), "cos")
         plotter.plot(np.tan(x + t), "tan")
