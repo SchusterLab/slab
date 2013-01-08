@@ -60,6 +60,7 @@ class SlabFile(h5py.File):
                 dataset = self[dataset]
             except:
                 self.create_dataset(dataset, shape=(0,), maxshape=(None,), dtype='float64')
+                dataset = self[dataset]
         shape=list(dataset.shape)
         shape[0]=shape[0]+1
         dataset.resize(shape)
