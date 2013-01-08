@@ -113,10 +113,20 @@ def calculate_interior_length(frequency,phase_velocity,impedance,
 
 def calculate_resonator_Q(frequency,impedance=50,Ckin=None, Ckout=None):
     
-    if Ckin is None:  in_cap=0.
-    else:             in_cap=Ckin.capacitance
-    if Ckout is None: out_cap=0.
-    else:             out_cap=Ckout.capacitance
+    if Ckin is None:
+        in_cap=0.
+    else:
+        try:
+            in_cap=Ckin.capacitance
+        except:
+            in_cap = Ckin
+    if Ckout is None:
+        out_cap=0.
+    else:
+        try:
+            out_cap=Ckout.capacitance
+        except:
+            out_cap = Ckout
     
     frequency=frequency*1e9
     qin=2.*pi*frequency*in_cap*impedance
