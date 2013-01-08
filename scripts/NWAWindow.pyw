@@ -122,7 +122,7 @@ class nwa_DataThread(DataThread):
     
             nwa.clear_averages()
             nwa.trigger_single()
-            time.sleep(nwa.query_sleep)
+            time.sleep(nwa.attr("query_sleep"))
             nwa.averaging_complete()    #Blocks!
             nwa.set_format('slog')
             
@@ -166,7 +166,7 @@ class nwa_DataThread(DataThread):
                 self.msg("aborted")
                 return
 
-        time.sleep(nwa.query_sleep)
+        time.sleep(nwa.attr("query_sleep"))
         nwa.set_timeout(old_timeout)
         nwa.set_format('mlog')
         nwa.set_trigger_average_mode(False)
@@ -220,7 +220,7 @@ class nwa_DataThread(DataThread):
                 self.do_normal_sweep(nwa,start,stop,self.params['sweep_pts'])
             elif step > minstep:
                 step=minstep
-                if (stop-start)/minstep <= nwa.MAXSWEEPPTS:
+                if (stop-start)/minstep <= nwa.attr("MAXSWEEPPTS"):
                     sweep_pts=(stop-start)/minstep 
                     self.do_normal_sweep(nwa,start,stop,sweep_pts)
                 else:
