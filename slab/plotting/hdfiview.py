@@ -153,12 +153,11 @@ class HDFViewThread(gui.DataThread):
                     x_data = range(h5file.shape[0])
                 try:
                     xlab, ylab = h5file.attrs["_axes_labels"]
-                    self.gui["line_plot"].set_axis_unit(2, xlab)
-                    self.gui["line_plot"].set_axis_unit(0, ylab)
-                except:
-                    self.gui["line_plot"].set_axis_unit(2, "")
-                    self.gui["line_plot"].set_axis_unit(0, "")
-                    self.msg("Labels could not be set up")
+                except Exception as e:
+                    xlab, ylab = "", ""
+                    self.msg("Labels could not be set up", e)
+                self.gui["line_plot"].set_axis_unit(2, xlab)
+                self.gui["line_plot"].set_axis_unit(0, ylab)
                     
                 if len(x_data) != h5file.shape[0]:
                     self.msg("Cannot broadcast shapes: x data has length", len(x_data))
@@ -240,7 +239,6 @@ class HDFViewWindow(gui.SlabWindow, UiClass):
         self.image_plot_layout.addWidget(self.image_widget)
         self.gui["image_plot"] = self.image_plot
         
-        len(line)
         self.line_widget = CurveWidget()
         self.gui["line_plot"] = self.line_plot = self.line_widget.plot #CurvePlot()
         self.line_plot_layout.addWidget(self.line_plot)
