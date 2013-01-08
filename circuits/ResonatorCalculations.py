@@ -81,18 +81,30 @@ def calculate_interior_length(frequency,phase_velocity,impedance,
     
     #resonator type is 0.5 for lambda/2 and 0.25 for lambda/4
     #harmonic 0= fundamental
-    frequency*=1e9
+    frequency *= 1e9
     
-    if Ckin is None:    in_cap=0.0
-    else:               in_cap=Ckin.capacitance
-    if Ckout is None:   out_cap=0.0
-    else:               out_cap=Ckout.capacitance
+    if Ckin is None:
+        in_cap = 0.0
+    else:
+        try:
+            in_cap = Ckin.capacitance
+        except AttributeError:
+            in_cap = Ckin
+    if Ckout is None:
+        out_cap = 0.0
+    else:
+        try:
+            out_cap = Ckout.capacitance
+        except AttributeError:
+            out_cap = Ckout
     
     #Todo: Not sure if this is 100% correct for both lambda/2 and lambda/4 may 
     #      require using something more like the length_factor to get it 
     #      right...the same for fundamentals though    
     Csum=1/(2*pi*frequency*(harmonic+1)*impedance)
     df=-frequency*(in_cap+out_cap)/(2*Csum)        #Calculate shift due to coupling capacitors
+    print in_cap, out_cap, Csum
+    print "Delta freq", df
 
     if (resonator_type==0.25): length_factor=0.25*(2*harmonic+1)
     else:                      length_factor=0.5*(harmonic+1)
@@ -100,9 +112,10 @@ def calculate_interior_length(frequency,phase_velocity,impedance,
     #length=1e6*length_factor*phase_velocity/(frequency-df)                      #Calculate total length to get shifted frequency
     #fixed by PCR and LSB, but only checked for lambda/2
     length=1e6*(length_factor*phase_velocity/frequency)*(1-(frequency/(harmonic+1))*impedance*2*(in_cap+out_cap))
-    if (not Ckin is None) and (Ckin.type=='finger'):
+    if (not isinstance(Ckin, (type(None), float, int))) and (Ckin.type=='finger'):
         length-=0.4*Ckin.finger_length #subtract input finger length
-    if (not Ckout is None) and (Ckout.type=='finger'):
+        length-=Ckin.taper_length
+    if (not isinstance(Ckout, (type(None), float, int))) and (Ckout.type=='finger'):
         length-=0.4*+Ckout.finger_length #subtract output finger length
     
     if (Ckin is not None and Ckout is not None):
@@ -160,22 +173,16 @@ def sapphire_capacitor_by_Q(frequency,Q,impedance=50,resonator_type=0.5):
     with the appropriate geometry to yield the desired Q"""
     return sapphire_capacitor_by_C(capacitance_by_Q(frequency,Q,impedance,resonator_type))
 
-def sapphire_capacitor_by_C(capacitance, taper_length=50):
-    """def sapphire_capacitor_by_C(capacitance):
-    Interpolates simulated capacitance tables to get specified capacitance values
-    Simulations done in sonnet by Leo 
-    Used eps_perp =9.27, eps_parallel = 11.34
-    
-    """
-
+def sapphire_capacitor_geometry_by_C(capacitance):
     finger_lengths = [10,20,30,40,50,60,70,80,90,100]
     caps_343_2F = [0.37612,0.652573,0.95197,1.2361,1.5183,1.80932,2.11591,2.44097,2.7851,3.15356]
     caps_343_4F = [1.82166,2.65303,3.79107,4.91664,6.05619,7.20684,8.36167,9.51948,10.6749,11.8352]
     caps_343_6F = [3.16549, 4.68083, 6.52342,8.44954, 10.4079,12.3822,14.3639,16.3536,18.3467,20.3426]
     caps_343_8F = [4.51186, 6.65667, 9.24498, 11.9754, 14.7498, 17.5535, 20.3704, 23.1956, 26.0261, 28.861]
     
-    capacitance*=1e15
     #select table
+    capacitance *= 1e15
+    
     if capacitance<=3.0:
         num_fingers=2
         cap_table=caps_343_2F
@@ -194,8 +201,19 @@ def sapphire_capacitor_by_C(capacitance, taper_length=50):
     get_length=interp1d (cap_table,finger_lengths)
     
     length=round(float(get_length(capacitance)))
-    print "Capacitance: %f, Fingers: %d, Finger Length: %f " % (capacitance, num_fingers,length)
-    return CPWFingerCap(num_fingers=num_fingers,finger_length=length,finger_width=3,finger_gap=4,taper_length = taper_length, capacitance=1e-15*capacitance)
+    return num_fingers, length
+
+    
+
+def sapphire_capacitor_by_C(capacitance, taper_length=50):
+    """
+    Interpolates simulated capacitance tables to get specified capacitance values
+    Simulations done in sonnet by Leo 
+    Used eps_perp =9.27, eps_parallel = 11.34
+    """
+    num_fingers, length = sapphire_capacitor_geometry_by_C(capacitance)
+    #print "Capacitance: %f, Fingers: %d, Finger Length: %f " % (capacitance, num_fingers,length)
+    return CPWFingerCap(num_fingers=num_fingers,finger_length=length,finger_width=3,finger_gap=4,taper_length = taper_length, capacitance=capacitance)
 
 #-------------------------------------------------------------------------------------------------------------
 # CHANNEL CAPACITORS e on He
@@ -249,7 +267,7 @@ def shunt_ext_Q (inductance,frequency, Z0 =50,resonator_type=0.5):
         return Q
 
 def shunt_inductance_by_Q (frequency,Q, Z0=50,resonator_type=0.5):
-    return Z0/(2.*pi*frequency*1e9*sqrt(Q*pi*resonator_type))
+    return Z0/(2.*pi*frequency*sqrt(Q*pi*resonator_type))
 
 def shunt_by_Q(frequency, Q, Z0=50,resonator_type=0.5):
     inductance = shunt_inductance_by_Q (frequency,Q,Z0,resonator_type)
