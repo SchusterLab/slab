@@ -40,32 +40,29 @@ class RelayBox(SerialInstrument, WebInstrument):
                 
             else: 
                 urllib2.urlopen(self.address+ "/relaybox/json?"+ "OF" + port)
-                
-            
+                           
     
     def get_relay(self,port=0):
         if self.protocol=="serial":
             ans=self.query('@%s RS %d' % (self.boxaddress,port))       
             relay_status=[x=='1' for x in bin(256+int(ans[4:-2]))[-8:]]
             relay_status.reverse()
-            if port !=0: return relay_status[port-1]
-            else: return relay_status
         if self.protocol=="http":
-           port = str(port)
-           f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "RS" + port)
-           print f.read(1000)     
+            f = urllib2.urlopen(self.address+ "/relaybox/json?RS0")
+            relay_status=[int(y[0]) for y in f.read(1000).split(':')[2:]]
+        if port !=0: return relay_status[port-1]
+        else: return relay_status
             
         
     def get_analog_input (self,port=0):
         if self.protocol=="serial":
             ans=self.query('@%s AI %d' % (self.boxaddress,port))
             analog_inputs=[int(x) for x in ans.split()[1:]]
-            if port!=0: return analog_inputs[port-1]
-            else: return analog_inputs
         if self.protocol=="http":
-            port = str(port)
-            f = urllib2.urlopen(self.address+ "/relaybox/json?"+ "AI" + port)
-            print f.read(1000)
+            f = urllib2.urlopen(self.address+ "/relaybox/json?"+"AI0")
+            analog_inputs=[int(y.split(',')[0]) for y in f.read(1000).split(':')[2:]]
+        if port!=0: return analog_inputs[port-1]
+        else: return analog_inputs
             
     def pulse_relay(self,port=0,pulse_width=1):                  
         """ 2 parameters, First is 1-8: Relay Number, Second 001-255: Time in
