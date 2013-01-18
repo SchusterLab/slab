@@ -55,18 +55,19 @@ class RFSwitch(RelayBox):
 if __name__=="__main__":
     RF_1= 'http://192.168.14.20'
     RF_2='http://192.168.14.21'
+    RF_3='http://192.168.14.22'
     
     rfs_1=RFSwitch(name="Switch1", address=RF_1)
     rfs_2=RFSwitch(name="Switch2", address=RF_2)
+    rfs_3=RFSwitch(name="Switch3", address=RF_3)
 
     for i in range(6):
-       rfs_1.activate(i+1)
-       print rfs_1.RF_Status
+       rfs_3.activate(i+1)
+       print rfs_3.RF_Status
     
     for i in range(6):
-       rfs_1.deactivate(i+1)
-       print rfs_1.RF_Status
-    
+       rfs_3.deactivate(i+1)
+       print rfs_3.RF_Status
     
     
     

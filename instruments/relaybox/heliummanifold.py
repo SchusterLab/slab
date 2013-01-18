@@ -2,7 +2,7 @@
 """
 Created on Sat Feb 18 23:39:28 2012
 
-@author: Julia
+@author: Ge
 """
 from slab.instruments import RelayBox
 import time
@@ -17,7 +17,7 @@ class HeliumManifold(RelayBox):
     gas_port=1
     pump_port=4        
     cryostat_port=8
-    pressure_port=1
+    pressure_port=7
 
     atm_level=340.6
     vacuum_offset=0.
@@ -25,6 +25,7 @@ class HeliumManifold(RelayBox):
 
     def __init__(self,name="Helium Manifold",address="COM6",enabled=True,timeout=0,puffs=0):
         RelayBox.__init__(self,name,address,enabled,timeout)
+        print "Manifold", name, "at address", address, " is initiated!"         
         self.puffs=puffs
         self.query_sleep=.1
         
@@ -132,7 +133,7 @@ class HeliumManifold(RelayBox):
 #        self.wait_for_vacuum(min_time=min_time,timeout=timeout)
 #        self.get_manifold_status()
         
-    def fill_manifold(self,fill_level=0.99,timeout=None):
+    def fill_manifold(self,fill_level=0.20,timeout=None):
         if self.DEBUG_HELIUM_MANIFOLD: print "Fill manifold to %f bar." % (fill_level)
         self.set_cryostat(False)
         self.set_pump(False)
