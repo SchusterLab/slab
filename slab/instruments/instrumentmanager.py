@@ -5,8 +5,9 @@ Created on Sat Sep 03 14:50:09 2011
 @author: Phil
 """
 import slab.instruments
-import os
-import sys
+import os,sys
+from optparse import OptionParser
+
 try:
     import Pyro4
     Pyro4Loaded = True
@@ -104,16 +105,42 @@ class InstrumentManager(dict):
         ns = Pyro4.locateNS(self.ns_address)
         for name, uri in ns.list().items():
             try:
-                Pyro4.Proxy(uri).get_id()
+                proxy=Pyro4.Proxy(uri)
+                proxy._pyroTimeout = 0.1
+                proxy.get_id()
             except:
                 ns.remove(name)
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        cp = sys.argv[1]
+def main(args):
+    parser=OptionParser()
+    parser.add_option("-f","--file",dest="filename",
+                      help="Config file to load",metavar="FILE")
+    parser.add_option("-s","--server",action="store_true",dest="server",
+                      default=False,help="Act as instrument server")
+    parser.add_option("-n","--nameserver","--ns_address",action="store",
+                      type="string",dest="ns_address",
+                      help="Address of name server (default auto-lookup)" )
+    parser.add_option("-g","--gui", action="store_true",dest="gui",default=False,
+                      help="Run Instrument Manager in gui mode")
+    parser.add_option("-i", action="store_true",dest="interact",default=False,
+                      help="interactive option not used.")
+    options,args=parser.parse_args(args)
+    #print options
+    if options.gui:
+        pass
     else:
-        cp = r"S:\_Data\120930 - EonHe - M005CHM3\004_AutomatedFilling\instruments.cfg"
+        im=InstrumentManager(config_path=options.filename,server=options.server,
+                             ns_address=options.ns_address)
+        globals().update(im)
+        globals()['im']=im
 
-    im = InstrumentManager(config_path=cp, server=True)
+if __name__ == "__main__":
+    main(sys.argv[1:])
+#    if len(sys.argv) > 1:
+#        cp = sys.argv[1]
+#    else:
+#        cp = r"S:\_Data\120930 - EonHe - M005CHM3\004_AutomatedFilling\instruments.cfg"
+#
+#    im = InstrumentManager(config_path=cp, server=True)
     #print im['fil'].get_id()
     #im.serve_instruments()

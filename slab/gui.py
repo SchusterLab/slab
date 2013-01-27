@@ -182,7 +182,7 @@ class DataThread(QObject):
         self.emit(SIGNAL(method + "done"))
 
 class SlabWindow(QMainWindow):
-    def __init__(self, DataThreadC, config_file=None):
+    def __init__(self, DataThreadC=DataThread, config_file=None):
         QMainWindow.__init__(self)
         self.instruments = ManagerProxy("instrumentMethodCalled")
         self.plots = {}

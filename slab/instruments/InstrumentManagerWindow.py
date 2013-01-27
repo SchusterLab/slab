@@ -4,34 +4,34 @@ Created on Sat Jan 19 22:18:00 2013
 
 @author: Dave
 """
-
-import h5py
+#import numpy as np
+#import h5py
 #import PyQt4.QtCore as Qt
-import numpy as np
-from guiqwt.image import *
-from guiqwt.plot import ImageWidget, CurveWidget
-from guiqwt.qtdesigner import loadui
-from guiqwt.builder import make
-from spyderlib.widgets.internalshell import InternalShell
-from slab import gui
-from collections import defaultdict, namedtuple
-from copy import copy
-import os, glob, sys,re,operator
-import Pyro4
-from slab.instruments import InstrumentManager
-from PyQt4.QtCore import QAbstractTableModel,QVariant
-from PyQt4.QtGui import QFont
-from PyQt4.QtCore import *
-from multiprocessing import Process
+#from guiqwt.builder import make
+#from guiqwt.image import *
+#from guiqwt.plot import ImageWidget, CurveWidget
+#from spyderlib.widgets.internalshell import InternalShell
+#from collections import defaultdict, namedtuple
+#from copy import copy
+#from slab.instruments import InstrumentManager
 #import syntax
 #UiClass = loadui(__file__.split(".")[0] + ".ui")
+
+from slab import gui
+import sys,operator,Pyro4
+from guiqwt.qtdesigner import loadui
+from spyderlib.widgets.externalshell.pythonshell  import ExternalPythonShell
+from PyQt4.QtCore import QAbstractTableModel,QVariant
+from PyQt4.QtGui import QFont,QFileDialog
+from PyQt4.QtCore import *
+from multiprocessing import Process
 UiClass = loadui("InstrumentManager.ui")
 
 class InstrumentManagerTableModel(QAbstractTableModel): 
     #based on http://www.saltycrane.com/blog/2007/12/pyqt-43-qtableview-qabstracttablemodel/
     def __init__(self, datain, headerdata, parent=None, *args): 
         """ datain: a list of lists
-            headerdata: a list of strings
+            headerdata:                                                                                                                                                                                                                                                                                                  a list of strings
         """
         QAbstractTableModel.__init__(self, parent, *args) 
         self.arraydata = datain
@@ -68,44 +68,38 @@ class InstrumentManagerTableModel(QAbstractTableModel):
 class InstrumentManagerThread(gui.DataThread):
     
     def start_server(self,):
-        self.params['im']=InstrumentManager()
+        #self.params['im']=InstrumentManager()
         print "start server"
 
 class InstrumentManagerWindow(gui.SlabWindow, UiClass):
     def __init__(self, fname=None):
-        gui.SlabWindow.__init__(self, InstrumentManagerThread)
+        gui.SlabWindow.__init__(self)
         self.setupSlabWindow(autoparam=True)
         self.auto_register_gui()
-
-#        self.register_param(self.datasets_treeWidget, "dataset")
-        # Connect launchers
-
-#        self.datapath_browse_pushButton.clicked.connect(self.select_datapath)
-#        self.register_script("set_datapath", self.datapath_lineEdit)
         try:
             nameserver=Pyro4.locateNS()
+            self.set_param("nameserver", nameserver)
         except:
-            nameserver="No server found"
-        self.set_param("nameserver", nameserver)
-        
-        # Setup Prompt
-        message = "All of the instruments can be accessed by name"
-        self.shell = InternalShell(self, message=message)
-        self.shell.set_font(QFont("Consolas"))
-        self.shell_dockWidget.setWidget(self.shell)
-        self.gui["shell"] = self.shell
+            self.msg("No name server found")
+            #self.set_param("nameserver", '192.168.11.17')
+        self.read_param_widgets()
 
-        self.start_thread()
-        self.msg( self.params['nameserver'])
+        self.msg('Loading Server Instrument Manager using nameserver at: %s' % (self.params['nameserver']))
+        self.servershell = ExternalPythonShell(self, fname=None, wdir=None, commands=[],
+                 interact=True, debug=False, path=[], python_args='-i -m slab.instruments.instrumentmanager ',
+                 ipython=False, arguments='-s -n %s -f %s' % (self.params['nameserver'],self.params['filename']))
+        self.servershell_dockWidget.setWidget(self.servershell)
+
+        self.clientshell = ExternalPythonShell(self, fname=None, wdir=None, commands=[],
+                 interact=True, debug=False, path=[], python_args='-i -m slab.instruments.instrumentmanager ',
+                 ipython=False, arguments='-n '+self.params['nameserver'])
+        self.clientshell_dockWidget.setWidget(self.clientshell)
+
+        #self.start_thread()
         self.createTable(r'C:\Users\Dave\Documents\instrument.cfg')
-#        if fname is not None:
-#            self.shell.exit_interpreter()
-#            directory = os.path.dirname(fname)
-#            nameitem = namedtuple('pseudoitem', ('filename',))(fname)
-#            self.msg(fname)
-#            self.set_param("datapath", directory)
-#            self.start_script("set_datapath")
-#            self.start_script("load_file", nameitem)
+        self.im_process=None
+        self.start_pushButton.clicked.connect(self.startInstrumentManager)
+        self.filename_pushButton.clicked.connect(self.selectFile)
 
     def createTable(self,config_path):
         """Loads configuration file"""
@@ -122,7 +116,9 @@ class InstrumentManagerWindow(gui.SlabWindow, UiClass):
         self.tableView.setSortingEnabled(True)
         
     def closeEvent(self, event):
-        self.shell.exit_interpreter()
+        #self.shell.exit_interpreter()
+        self.servershell.process.kill()
+        self.clientshell.process.kill()
         event.accept()
 
 #    def select_datapath(self):
@@ -132,13 +128,38 @@ class InstrumentManagerWindow(gui.SlabWindow, UiClass):
 #            self.params["datapath"] = path
 #            self.emit(Qt.SIGNAL("RunOnDataThread"), "set_datapath")
 #
-    def restartInstrumentManager(self,event):
-        def runIM(config_path=None, server=False, ns_address=None):
-            im=InstrumentManager(config_path,server,ns_address)
-        if self.im_process is not None:
-            self.im_process.terminate()
-        self.im_process=Process(target='runIM',name='IMServer',
-                                kwargs={'config_path':r'C:\Users\Dave\Documents\instrument.cfg','server':False,'ns_address':'192.168.11.17'},daemon=True)
+    def startInstrumentManager(self,event):
+        self.msg('Starting InstrumentManager')
+        self.start_pushButton.setEnabled(False)
+#        if self.im_process is not None:
+#            self.im_process.terminate()
+#            #self.shell.exit_interpreter()
+#
+#            self.shell.process.kill()
+#            self.msg('Terminated Running Processes')
+        self.servershell.arguments='-s -n %s -f %s' % (self.params['nameserver'],self.params['filename'])
+        self.clientshell.arguments='-n '+self.params['nameserver']
+        self.servershell.start_shell()
+        self.clientshell.start_shell()
+
+#        self.im_process=Process(target=runIM,name='IMServer',
+#                                kwargs={'config_path':r'C:\Users\Dave\Documents\instrument.cfg','server':True,'ns_address':'192.168.11.17'})
+#        self.im_process.daemon=True
+#        self.im_process.start()
+##        im=InstrumentManager(ns_address='192.168.11.17')
+##        ns = { 'im':im}
+##        self.shell.start_interpreter(namespace=ns)
+#
+#        self.shell.start_shell()
+#        self.msg('Launched IM server process')
+        
+    def selectFile(self):
+        self.param_filename.setText(str(QFileDialog.getOpenFileName(self)))
+        self.read_param_widgets()
+
+def runIM(config_path=None, server=False, ns_address=None):
+    #im=InstrumentManager(config_path,server,ns_address)
+    return
 
 
 if __name__ == "__main__":

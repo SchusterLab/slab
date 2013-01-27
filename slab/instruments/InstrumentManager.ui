@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Instrument Manager</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
@@ -34,13 +34,6 @@
          </property>
          <widget class="QWidget" name="dockWidgetContents_5">
           <layout class="QFormLayout" name="formLayout">
-           <item row="1" column="0">
-            <widget class="QPushButton" name="pushButton_2">
-             <property name="text">
-              <string>Restart Instrument Server</string>
-             </property>
-            </widget>
-           </item>
            <item row="0" column="0">
             <widget class="QLabel" name="label">
              <property name="text">
@@ -51,9 +44,26 @@
            <item row="0" column="1">
             <widget class="QLineEdit" name="param_nameserver">
              <property name="text">
-              <string>blah</string>
+              <string>192.168.11.17</string>
              </property>
             </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QPushButton" name="start_pushButton">
+             <property name="text">
+              <string>Start Instrument Server</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QPushButton" name="filename_pushButton">
+             <property name="text">
+              <string>Config File</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="param_filename"/>
            </item>
           </layout>
          </widget>
@@ -79,7 +89,7 @@
             <widget class="QTableView" name="tableView"/>
            </item>
            <item>
-            <widget class="QDockWidget" name="shell_dockWidget">
+            <widget class="QDockWidget" name="clientshell_dockWidget">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -90,7 +100,7 @@
               <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
              </property>
              <property name="windowTitle">
-              <string>Console</string>
+              <string>Instrument Manager Client Console</string>
              </property>
              <widget class="QWidget" name="dockWidgetContents_7"/>
             </widget>
@@ -113,17 +123,9 @@
      <height>21</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuFile">
-    <property name="title">
-     <string>File</string>
-    </property>
-    <addaction name="actionOpen_Instruments_Config"/>
-    <addaction name="actionSave_Instruments_Config"/>
-   </widget>
-   <addaction name="menuFile"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QDockWidget" name="dockWidget_8">
+  <widget class="QDockWidget" name="messages_dockWidget">
    <property name="windowTitle">
     <string>Server Messages</string>
    </property>
@@ -137,6 +139,15 @@
      </item>
     </layout>
    </widget>
+  </widget>
+  <widget class="QDockWidget" name="servershell_dockWidget">
+   <property name="windowTitle">
+    <string>Instrument Server Console</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents"/>
   </widget>
   <action name="actionOpen_Instruments_Config">
    <property name="text">
