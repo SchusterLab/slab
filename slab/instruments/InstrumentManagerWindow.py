@@ -18,14 +18,15 @@ Created on Sat Jan 19 22:18:00 2013
 #UiClass = loadui(__file__.split(".")[0] + ".ui")
 
 from slab import gui
-import sys,operator,Pyro4
+import os,sys,operator,Pyro4
 from guiqwt.qtdesigner import loadui
 from spyderlib.widgets.externalshell.pythonshell  import ExternalPythonShell
 from PyQt4.QtCore import QAbstractTableModel,QVariant
 from PyQt4.QtGui import QFont,QFileDialog
 from PyQt4.QtCore import *
 from multiprocessing import Process
-UiClass = loadui("InstrumentManager.ui")
+
+UiClass = loadui(os.path.join(os.path.dirname(__file__),"InstrumentManager.ui"))
 
 class InstrumentManagerTableModel(QAbstractTableModel): 
     #based on http://www.saltycrane.com/blog/2007/12/pyqt-43-qtableview-qabstracttablemodel/
@@ -64,27 +65,24 @@ class InstrumentManagerTableModel(QAbstractTableModel):
             self.arraydata.reverse()
         self.emit(SIGNAL("layoutChanged()"))
 
-
-class InstrumentManagerThread(gui.DataThread):
-    
-    def start_server(self,):
-        #self.params['im']=InstrumentManager()
-        print "start server"
-
 class InstrumentManagerWindow(gui.SlabWindow, UiClass):
-    def __init__(self, fname=None):
+    def __init__(self, nameserver=None, filename=None):
         gui.SlabWindow.__init__(self)
         self.setupSlabWindow(autoparam=True)
         self.auto_register_gui()
         try:
-            nameserver=Pyro4.locateNS()
-            self.set_param("nameserver", nameserver)
+            self.set_param("nameserver", str(Pyro4.locateNS()).split('@')[1].split(':')[0])
+            self.msg('Found nameserver at: ' + self.params['nameserver'])
         except:
-            self.msg("No name server found")
-            #self.set_param("nameserver", '192.168.11.17')
+            self.msg("No name server found.")
+            self.set_param("nameserver", '')
         self.read_param_widgets()
 
-        self.msg('Loading Server Instrument Manager using nameserver at: %s' % (self.params['nameserver']))
+        if nameserver is not None:
+            self.set_param('nameserver',nameserver)
+        if filename is not None:
+            self.set_param('filename',filename)
+
         self.servershell = ExternalPythonShell(self, fname=None, wdir=None, commands=[],
                  interact=True, debug=False, path=[], python_args='-i -m slab.instruments.instrumentmanager ',
                  ipython=False, arguments='-s -n %s -f %s' % (self.params['nameserver'],self.params['filename']))
@@ -94,9 +92,8 @@ class InstrumentManagerWindow(gui.SlabWindow, UiClass):
                  interact=True, debug=False, path=[], python_args='-i -m slab.instruments.instrumentmanager ',
                  ipython=False, arguments='-n '+self.params['nameserver'])
         self.clientshell_dockWidget.setWidget(self.clientshell)
-
-        #self.start_thread()
-        self.createTable(r'C:\Users\Dave\Documents\instrument.cfg')
+        #self.centralwidget.hide()
+        #self.createTable(r'C:\Users\Dave\Documents\instrument.cfg')
         self.im_process=None
         self.start_pushButton.clicked.connect(self.startInstrumentManager)
         self.filename_pushButton.clicked.connect(self.selectFile)
@@ -105,20 +102,22 @@ class InstrumentManagerWindow(gui.SlabWindow, UiClass):
         """Loads configuration file"""
         self.msg("Load Instruments.")        
         f = open(config_path, 'r')
-        table=[]
+        self.table=[]
         for line in f.readlines():
             #print line
             if line[0] != '#' and line[0] != '':
-                table.append(line.split())
+                self.table.append(line.split())
         f.close()
-        self.tableModel=InstrumentManagerTableModel(table,['Name','Class','Address'],self)
+        self.tableModel=InstrumentManagerTableModel(self.table,['Name','Class','Address'],self)
         self.tableView.setModel(self.tableModel)        
         self.tableView.setSortingEnabled(True)
         
     def closeEvent(self, event):
         #self.shell.exit_interpreter()
-        self.servershell.process.kill()
-        self.clientshell.process.kill()
+        if self.servershell.process is not None:
+            self.servershell.process.kill()
+        if self.servershell.process is not None:
+            self.clientshell.process.kill()
         event.accept()
 
 #    def select_datapath(self):
@@ -130,41 +129,31 @@ class InstrumentManagerWindow(gui.SlabWindow, UiClass):
 #
     def startInstrumentManager(self,event):
         self.msg('Starting InstrumentManager')
-        self.start_pushButton.setEnabled(False)
-#        if self.im_process is not None:
-#            self.im_process.terminate()
-#            #self.shell.exit_interpreter()
-#
-#            self.shell.process.kill()
-#            self.msg('Terminated Running Processes')
-        self.servershell.arguments='-s -n %s -f %s' % (self.params['nameserver'],self.params['filename'])
-        self.clientshell.arguments='-n '+self.params['nameserver']
-        self.servershell.start_shell()
-        self.clientshell.start_shell()
+        self.start_pushButton.setText("Restart Instrument Manager")
+        if self.servershell.process is not None:
+            self.servershell.process.kill()
+        if self.clientshell.process is not None:
+            self.clientshell.process.kill()
 
-#        self.im_process=Process(target=runIM,name='IMServer',
-#                                kwargs={'config_path':r'C:\Users\Dave\Documents\instrument.cfg','server':True,'ns_address':'192.168.11.17'})
-#        self.im_process.daemon=True
-#        self.im_process.start()
-##        im=InstrumentManager(ns_address='192.168.11.17')
-##        ns = { 'im':im}
-##        self.shell.start_interpreter(namespace=ns)
-#
-#        self.shell.start_shell()
-#        self.msg('Launched IM server process')
+        self.servershell.arguments='-s'        
+        self.clientshell.arguments=''        
+        if self.params['nameserver'] !="":
+            self.servershell.arguments+=" -n " + self.params['nameserver']
+            self.clientshell.arguments+="-n " + self.params['nameserver']
+        if self.params['filename'] !="":
+            self.servershell.arguments+=" -f " + self.params['filename']
+        else:
+            self.msg('No config file specified.  Launching client only.')
+        #self.msg('Server shell arguments: '+self.servershell.arguments)
+        #self.msg('Client shell arguments: '+self.clientshell.arguments)
+        if not (self.params['disableServer'] or self.params['filename']==''):
+            self.servershell.start_shell()
+        self.clientshell.start_shell()
+        #self.param_disableServer.setEnabled(False)
+
         
     def selectFile(self):
-        self.param_filename.setText(str(QFileDialog.getOpenFileName(self)))
-        self.read_param_widgets()
-
-def runIM(config_path=None, server=False, ns_address=None):
-    #im=InstrumentManager(config_path,server,ns_address)
-    return
-
+        self.set_param('filename',str(QFileDialog.getOpenFileName(self)))
 
 if __name__ == "__main__":
-    #fname = "S:\\_Data\\120930 - EonHe - M005CHM3\\004_AutomatedFilling\\121017_M005CHM3-AutomatedFilling_003\\M005CHM3-AutomatedFilling.h5"
-    fname = None
-    if len(sys.argv) > 1:
-        fname = sys.argv[1]
-    sys.exit(gui.runWin(InstrumentManagerWindow, fname=fname))
+    sys.exit(gui.runWin(InstrumentManagerWindow))

@@ -1,8 +1,12 @@
 from instrumenttypes import Instrument,VisaInstrument,TelnetInstrument,SocketInstrument,SerialInstrument, WebInstrument
+
+from instrumentmanager import InstrumentManager
+try: from InstrumentManagerWindow import InstrumentManagerWindow
+except: print "Could not load InstrumentManagerWindow"
+
 from nwa import E5071
 from rfgenerators import E8257D
 from cryostat import Triton
-from instrumentmanager import InstrumentManager
 from awg import *
 from spec_analyzer.spectrum_analyzer import *
 from ipsmagnet import *

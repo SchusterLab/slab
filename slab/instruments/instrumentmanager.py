@@ -125,9 +125,9 @@ def main(args):
     parser.add_option("-i", action="store_true",dest="interact",default=False,
                       help="interactive option not used.")
     options,args=parser.parse_args(args)
-    #print options
+
     if options.gui:
-        pass
+        sys.exit(slab.gui.runWin(InstrumentManagerWindow,filename=options.filename,nameserver=options.ns_address))
     else:
         im=InstrumentManager(config_path=options.filename,server=options.server,
                              ns_address=options.ns_address)
@@ -135,12 +135,10 @@ def main(args):
         globals()['im']=im
 
 if __name__ == "__main__":
+    try:
+        import slab.gui
+        from slab.instruments import InstrumentManagerWindow
+    except:
+        print "Warning: Could not import slab.gui or InstrumentManagerWindow!"
+
     main(sys.argv[1:])
-#    if len(sys.argv) > 1:
-#        cp = sys.argv[1]
-#    else:
-#        cp = r"S:\_Data\120930 - EonHe - M005CHM3\004_AutomatedFilling\instruments.cfg"
-#
-#    im = InstrumentManager(config_path=cp, server=True)
-    #print im['fil'].get_id()
-    #im.serve_instruments()
