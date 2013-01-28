@@ -83,20 +83,21 @@ class InstrumentManagerWindow(gui.SlabWindow, UiClass):
         if filename is not None:
             self.set_param('filename',filename)
 
-        self.servershell = ExternalPythonShell(self, fname=None, wdir=None, commands=[],
-                 interact=True, debug=False, path=[], python_args='-i -m slab.instruments.instrumentmanager ',
-                 ipython=False, arguments='-s -n %s -f %s' % (self.params['nameserver'],self.params['filename']))
+        self.servershell = ExternalPythonShell(self, fname=None, wdir=None, 
+                 interact=True, debug=False, path=["C:\\_Lib\\python"], python_args='-i -m slab.instruments.instrumentmanager ',
+                 arguments='-s -n %s -f %s' % (self.params['nameserver'],self.params['filename']))
         self.servershell_dockWidget.setWidget(self.servershell)
 
-        self.clientshell = ExternalPythonShell(self, fname=None, wdir=None, commands=[],
-                 interact=True, debug=False, path=[], python_args='-i -m slab.instruments.instrumentmanager ',
-                 ipython=False, arguments='-n '+self.params['nameserver'])
+        self.clientshell = ExternalPythonShell(self, fname=None, wdir=None, 
+                 interact=True, debug=False, path=["C:\\_Lib\\python"], python_args='-i -m slab.instruments.instrumentmanager ',
+                 arguments='-n '+self.params['nameserver'])
         self.clientshell_dockWidget.setWidget(self.clientshell)
         #self.centralwidget.hide()
         #self.createTable(r'C:\Users\Dave\Documents\instrument.cfg')
         self.im_process=None
         self.start_pushButton.clicked.connect(self.startInstrumentManager)
         self.filename_pushButton.clicked.connect(self.selectFile)
+        self.editInstrumentConfig_pushButton.clicked.connect(self.editInstrumentConfig)
 
     def createTable(self,config_path):
         """Loads configuration file"""
@@ -119,6 +120,14 @@ class InstrumentManagerWindow(gui.SlabWindow, UiClass):
         if self.servershell.process is not None:
             self.clientshell.process.kill()
         event.accept()
+
+    def editInstrumentConfig(self):
+        filename = self.params['filename']
+        if filename == '':
+            self.msg('Need a file to edit first!')
+        else:
+            os.startfile(filename)
+        
 
 #    def select_datapath(self):
 #        path = str(Qt.QFileDialog.getExistingDirectory(
