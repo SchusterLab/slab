@@ -115,6 +115,7 @@ class HDFViewThread(gui.DataThread):
             h5file = h5file[name]
 
         # TODO 1D, Axis Selection, etc
+        original_h5file = h5file
         if isinstance(h5file, h5py.Dataset):
             # 2D dataset handling
             if len(h5file.shape) == 2:
@@ -150,9 +151,14 @@ class HDFViewThread(gui.DataThread):
                 if hasattr(self, "x_data"):
                     x_data = self.x_data
                 else:
-                    x_data = range(h5file.shape[0])
+                    try:
+                        x0, x1 = original_h5file.attrs['_axes'][0]
+                        x_data = np.linspace(x0, x1, h5file.shape[0])
+                        self.msg('set up axes')
+                    except:
+                        x_data = range(h5file.shape[0])
                 try:
-                    xlab, ylab = h5file.attrs["_axes_labels"]
+                    xlab, ylab = original_h5file.attrs["_axes_labels"]
                 except Exception as e:
                     xlab, ylab = "", ""
                     self.msg("Labels could not be set up", e)
