@@ -528,3 +528,37 @@ def QBox(size=5, **kwargs):
         return CPWQubitBox2(10, 13, 15, 183, 154, 10, 37.4, **kwargs)
     else:
         raise ValueError(str(size)+"um not yet simulated")
+
+from copy import copy
+import matplotlib.pyplot as plt
+from matplotlib.path import Path
+import matplotlib.patches as mpatches
+def polygon(plot, _points):
+    points = copy(_points)
+    if points[0] != points[-1]:
+        points.append(points[0])
+    n_points = len(points)
+    codes = [Path.MOVETO] + ([Path.LINETO] * (n_points - 2)) + [Path.CLOSEPOLY]
+    path = Path(points, codes)
+    patch = mpatches.PathPatch(path, facecolor='blue', lw=0)
+    plot.add_patch(patch)
+
+def show_chip(chip):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    for e in chip.entities:
+        polygon(ax, e.points)
+    ax.set_xlim(-.1*chip.size[0], 1.1*chip.size[0])
+    ax.set_ylim(-.1*chip.size[1], 1.1*chip.size[1])
+    plt.show()
+        
+if __name__ == "__main__":
+    c = Chip('test')
+    s = SpacerStructure(c, start=c.left_midpt, defaults={'pinw':10, 'gapw':4.55, 'radius':50})
+    Launcher(s)
+    CPWHorizontalSpacer(s)
+    CPWWiggles(s, 4, 1500)
+    CPWHorizontalSpacer(s)
+    Launcher(s, flipped=True)
+    s.process_to_chip()
+    show_chip(c)
