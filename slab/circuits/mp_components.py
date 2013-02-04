@@ -59,16 +59,13 @@ class CPWQubitBox2:
         self.left_finger_section_length = (finger_no_left * (fingerw + finger_gapw)) - finger_gapw
         self.right_finger_section_length = (finger_no_right * (fingerw + finger_gapw)) - finger_gapw
         self.length = int_len + self.left_finger_section_length + self.right_finger_section_length
-        
-        
+
     def draw(self, s, flipped=False, qubit=False):
         if qubit:
             offset = rotate_pt((self.c_gap, 0), s.last_direction)
             new_start = s.last[0] + offset[0], s.last[1] + offset[1]
             qubit_struct = Structure(s.chip, start=new_start, layer='Qubit', color=5)
-            print s.last, "original"
-            print new_start, "new"
-
+            
         gapw = self.gapw if self.gapw else s.defaults["gapw"]
         pinw = self.pinw if self.pinw else s.defaults["pinw"]        
         finger_gapw = self.c_gap
@@ -260,8 +257,6 @@ class RightJointWiggles:
         CPWRightJoint(s, (not CCW))
         tot_span += cpwidth
         
-        print "CHECK", tot_span, total_length
-        
 
 class DoubleCPW:
     def __init__(self, s, length, inner_pin, inner_gap, outer_pin, outer_gap):
@@ -316,6 +311,7 @@ def LumpedElementResonator(s, c_fingers, l_fingers, length,
     c = 2 * c_fingers * c_length * 1e-6 * eps0 * eps_eff
     l = 2 * l_fingers * l_length * 1e-6 * mu0
     l += 2 * (tot_height - v_offset) * 1e-6 * mu0
+    
     print "Estimated c %.2e" % c
     print "Estimated l %.2e" % l
     print "Estimated freq %.2e" % (1/sqrt(l * c)/2/pi)
@@ -328,13 +324,14 @@ def ShuntedLER(s, n_fingers, finger_height, n_meanders, meander_height):
     ind(s)
     cap(s)
 
-def ground_fingers(n_fingers, length, width):
+def ground_fingers(n_fingers, length, width, align=True):
     def builder(s, empty=False):
         dist = 65
         pin, gap = s.pinw, s.gapw
         cross = alignment_cross(12, 2)
-        cross(s, (0, length + gap + pin/2. + dist))
-        cross(s, (0, -(length + gap + pin/2. + dist)))
+        if align:
+            cross(s, (0, length + gap + pin/2. + dist))
+            cross(s, (0, -(length + gap + pin/2. + dist)))
         for i in range(n_fingers):
             if empty:
                 CPWStraight(s, 2*gap + width, pinw=0, gapw=gap+length+pin/2.)
@@ -347,11 +344,39 @@ def ground_fingers(n_fingers, length, width):
                     CPWStraight(s, width, pinw=0, gapw=gap+pin/2.)
                 else:
                     CPWStraight(s, width)
-        cross(s, (0, length + gap + pin/2. + dist))
-        cross(s, (0, -(length + gap + pin/2. + dist)))
-        
-    print "Ground Fingers: Estimated Cap", eps0 * eps_eff * n_fingers * (length * 1e-6) * 2
+        if align:
+            cross(s, (0, length + gap + pin/2. + dist))
+            cross(s, (0, -(length + gap + pin/2. + dist)))
     return builder
+
+def ground_finger_contents(s, n_fingers, length, width):
+    pin, gap = s.pinw, s.gapw
+    tot_length = pin + 2*length
+    gap_width = width + 2*gap
+    Channel(s, gap, pin)
+    for _ in range(n_fingers - 1):
+        Channel(s, width, tot_length)
+        Channel(s, gap_width, pin)
+    Channel(s, width, tot_length)
+    Channel(s, gap, pin)
+
+def half_cap_contents(s, cap, flipped=False):
+    ChannelLinearTaper(cap.taper_length, s.pinw, cap.pinw)
+     
+
+def make_qubit(left_fingers, left_len, left_width, 
+               right_fingers, right_len, right_width, cgap,
+               left_cap, right_cap, fname='Qubit'):
+    c = Chip(fname)
+    s = Structure(c, defaults=global_defaults)
+    #CPWFingerCapInside()
+    left_cap.to_inner_cap().draw(s)
+    ground_finger_contents(s, left_fingers, left_len, left_width)
+    s.last = s.last[0] + cgap, s.last[1]
+    ground_finger_contents(s, right_fingers, right_len, right_width)
+    right_cap.to_inner_cap().draw(s)
+    #CPWFingerCapInside(4, 70, 8, 4, 30).draw(s)
+    c.save()
 
 def alignment_cross(size, weight=1):
     def builder(s, pos):
@@ -366,7 +391,6 @@ def alignment_cross(size, weight=1):
     return builder
 
 def test_element(name, elt_fn, d=global_defaults, caps=None, **kwargs):
-    print d
     c = Chip(name)
     s = Structure(c, start=c.midpt, defaults=d)
     if caps is not None:
@@ -528,8 +552,52 @@ def QBox(size=5, **kwargs):
         return CPWQubitBox2(10, 13, 15, 183, 154, 10, 37.4, **kwargs)
     else:
         raise ValueError(str(size)+"um not yet simulated")
+     
+from copy import copy, deepcopy
+import random    
+     
+def perforate(chip, grid_x, grid_y):
+    nx, ny = map(int, [chip.size[0] / grid_x, chip.size[1] / grid_y])
+    occupied = [[False]*ny for i in range(nx)]
+    for i in range(nx):
+        occupied[i][0] = True
+        occupied[i][-1] = True
+    for i in range(ny):
+        occupied[0][i] = True
+        occupied[-1][i] = True
+    
+    for e in chip.entities:
+        o_x_list = []
+        o_y_list = []
+        for p in e.points:
+            o_x, o_y = map(int, (p[0] / grid_x, p[1] / grid_y))
+            if 0 <= o_x < nx and 0 <= o_y < ny:
+                o_x_list.append(o_x)
+                o_y_list.append(o_y)
+        if o_x_list:
+            for x in range(min(o_x_list), max(o_x_list)+1):
+                for y in range(min(o_y_list), max(o_y_list)+1):
+                    occupied[x][y] = True
+        
+    second_pass = deepcopy(occupied)
+    for i in range(nx):
+        for j in range(ny):
+            if occupied[i][j]:
+                for ip, jp in [(i+1,j), (i-1,j), (i,j+1), (i,j-1)]:
+                    try:
+                        second_pass[ip][jp] = True
+                    except IndexError:
+                        pass
+        
+    for i in range(nx):
+        for j in range(ny):
+            if not second_pass[i][j]:
+                size = random.uniform(8, 18)
+                pos = i*grid_x + grid_x/2., j*grid_y + grid_y/2.
+                p0 = vadd(pos, (-size, -size))
+                p1 = vadd(pos, (size, size))
+                abs_rect(chip, p0, p1)
 
-from copy import copy
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import matplotlib.patches as mpatches
