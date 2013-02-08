@@ -170,7 +170,7 @@ class WaferMask(sdxf.Drawing):
 #        AlphaNumText(self,maskid,chip.textsize,pt)
 #        AlphaNumText(self,chipid,chip.textsize,pt)
         
-    def add_chip(self,chip,copies,label=True):
+    def add_chip(self,chip,copies,label=False):
         """Adds chip design 'copies' times into mask.  chip must have a unique name as it will be inserted as a block"""
         if self.etchtype:
             ChipBorder(chip,self.dicing_border/2.)
@@ -1641,6 +1641,11 @@ class CPWFingerCap:
         if q!=0:
             Q=1/(resonator_type*pi) *1/ (q**2)
         return Q
+        
+    def to_inner_cap(self):
+        return CPWFingerCapInside(self.num_fingers, self.finger_length,
+                                  self.finger_width, self.finger_gap, 
+                                  self.taper_length, self.gapw, self.capacitance)
     
 #Outside and Inside versions are for two layer capacitors
 
@@ -3423,7 +3428,7 @@ class AlignmentCross:
         if layer!=None:
             cross=sdxf.Block(name=name,layer=layer)
             cross.append(sdxf.PolyLine(pts))
-            drawing.layers.append(sdxf.Layer(name=layer, color=1))
+            drawing.layers.append(sdxf.Layer(name=layer, color=7))
             drawing.blocks.append(cross)
             for point in points:
                 drawing.append(sdxf.Insert(cross.name,point=point,layer=layer))
