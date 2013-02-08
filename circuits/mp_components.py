@@ -390,19 +390,19 @@ def alignment_cross(size, weight=1):
         s.last = to_recover
     return builder
 
-def test_element(name, elt_fn, d=global_defaults, caps=None, **kwargs):
+def test_element(name, elt_fn, d=global_defaults, caps=None, length=50, **kwargs):
     c = Chip(name)
     s = Structure(c, start=c.midpt, defaults=d)
     if caps is not None:
         try: cap = sapphire_capacitor_by_C(caps)
         except: cap = sapphire_capacitor_by_C(15e-15)
-    CPWStraight(s, 50)
+    CPWStraight(s, length)
     if caps: cap.draw(s)
     CPWStraight(s, 50)
     elt_fn(s, **kwargs)
     CPWStraight(s, 50)
     if caps: cap.draw(s)
-    CPWStraight(s, 50)
+    CPWStraight(s, length)
     c.save()
 
 def CPWEmptyTaper(s, length, start_gap, stop_gap):
@@ -619,14 +619,10 @@ def show_chip(chip):
     ax.set_xlim(-.1*chip.size[0], 1.1*chip.size[0])
     ax.set_ylim(-.1*chip.size[1], 1.1*chip.size[1])
     plt.show()
-        
-if __name__ == "__main__":
-    c = Chip('test')
-    s = SpacerStructure(c, start=c.left_midpt, defaults={'pinw':10, 'gapw':4.55, 'radius':50})
-    Launcher(s)
-    CPWHorizontalSpacer(s)
-    CPWWiggles(s, 4, 1500)
-    CPWHorizontalSpacer(s)
-    Launcher(s, flipped=True)
-    s.process_to_chip()
-    show_chip(c)
+
+def corner_crosses(chip, height, width, gap):
+    s = Structure(chip)
+    cross = alignment_cross(height, width)
+    for x in (-gap, chip.size[0] + gap):
+        for y in (-gap, chip.size[1] + gap):
+            cross(s, (x, y))
