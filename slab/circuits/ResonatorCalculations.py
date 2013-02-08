@@ -103,9 +103,7 @@ def calculate_interior_length(frequency,phase_velocity,impedance,
     #      right...the same for fundamentals though    
     Csum=1/(2*pi*frequency*(harmonic+1)*impedance)
     df=-frequency*(in_cap+out_cap)/(2*Csum)        #Calculate shift due to coupling capacitors
-    print in_cap, out_cap, Csum
-    print "Delta freq", df
-
+    
     if (resonator_type==0.25): length_factor=0.25*(2*harmonic+1)
     else:                      length_factor=0.5*(harmonic+1)
     
@@ -119,7 +117,6 @@ def calculate_interior_length(frequency,phase_velocity,impedance,
         length-=0.4*+Ckout.finger_length #subtract output finger length
     
     if (Ckin is not None and Ckout is not None):
-
         length -= Ckin.taper_length + Ckout.taper_length
 
     return length
