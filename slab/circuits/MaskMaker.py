@@ -1404,6 +1404,8 @@ class CPWInductiveShunt:
         pinw=self.pinw
         gapw=self.gapw
         
+        start_pinw, start_gapw = s.pinw, s.gapw        
+        
         self.flipped = flipped
         if pad_to_length < self.segment_length+self.taper_length: 
             self.padding=0
@@ -1460,7 +1462,7 @@ class CPWInductiveShunt:
         if self.taper_length is 0:
             CPWStraight(s, self.segment_gap, gapw=device_width)
         else:
-            CPWLinearTaper(s,length=self.taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=s.__dict__['pinw'],stop_gapw=s.__dict__['gapw'])
+            CPWLinearTaper(s,length=self.taper_length,start_pinw=pinw,start_gapw=gapw,stop_pinw=start_pinw,stop_gapw=start_gapw)
         if self.flipped: CPWStraight(s,self.padding)
         
     def ext_Q (self,frequency, impedance=50, resonator_type=0.5):
