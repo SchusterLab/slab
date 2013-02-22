@@ -275,8 +275,8 @@ def rect(s, p0, p1):
     p10 = p1[0], p0[1]
     s.append(sdxf.PolyLine(orient_pts([p0, p01, p1, p10, p0], s.last_direction, s.last)))
 
-def LumpedElementResonator(s, c_fingers, l_fingers, length, 
-                           c_width=3, c_gap=3, l_width=5, l_gap=11, v_offset=50):
+def LumpedElementResonator(s, c_fingers, l_fingers, length, c_width=3, c_gap=3,
+                           l_width=5, l_gap=11, v_offset=50, flipped=False, describe=False):
     start = s.last
     s.last = s.last[0], s.last[1] - v_offset
     c_length, l_length = length, length + c_width + c_gap - l_width - l_gap
@@ -287,35 +287,45 @@ def LumpedElementResonator(s, c_fingers, l_fingers, length,
     line_width = s.pinw + 2*s.gapw
     v_offset = v_offset - line_width/2.
     w = c_width
-    rect(s, (-w, -w), (tot_width+w, 0))                                      # Bottom
-    rect(s, (-w, tot_height), (tot_width+w, tot_height+w))                   # Top
-    rect(s, (-w, -w), (0, v_offset))                                         # Lower Left
-    rect(s, (-w, v_offset+line_width), (0, tot_height+w))                    # Upper Left
-    rect(s, (tot_width, -w), (tot_width+w, v_offset))                        # Lower Right
-    rect(s, (tot_width, v_offset+line_width), (tot_width+w, tot_height+w))   # Upper Right
+    sign = -1 if flipped else 1
+    def myrect(s, p0, p1):
+        x0, y0 = p0
+        x1, y1 = p1
+        p0 = x0, sign*y0
+        p1 = x1, sign*y1
+        rect(s, p0, p1)
+    myrect(s, (-w, -w), (tot_width+w, 0))                                     # Bottom
+    myrect(s, (-w, tot_height), (tot_width+w, tot_height+w))                  # Top
+    myrect(s, (-w, -w), (0, v_offset))                                        # Lower Left
+    myrect(s, (-w, v_offset+line_width), (0, tot_height+w))                   # Upper Left
+    myrect(s, (tot_width, -w), (tot_width+w, v_offset))                       # Lower Right
+    myrect(s, (tot_width, v_offset+line_width), (tot_width+w, tot_height+w))  # Upper Right
     l, w, g = c_length, c_width, c_gap
     for i in range(c_fingers):
-        rect(s, (l + w, 0), (l + w + g, w))
-        rect(s, (w, w), (l + w + g, w + g))
-        rect(s, (w, w + g), (w + g, 2*w + g))
-        rect(s, (w, 2*w + g), (l + w + g, 2*w + 2*g))
-        s.last = s.last[0], (s.last[1] + 2*w + 2*g)
+        myrect(s, (l + w, 0), (l + w + g, w))
+        myrect(s, (w, w), (l + w + g, w + g))
+        myrect(s, (w, w + g), (w + g, 2*w + g))
+        myrect(s, (w, 2*w + g), (l + w + g, 2*w + 2*g))
+        #s.last = s.last[0], (s.last[1] + 2*w + 2*g)
+        s.last = orient_pt((0, sign*(2*w + 2*g)), s.last_direction, s.last)
     l, w, g = l_length, l_width, l_gap
     for i in range(l_fingers):
-        rect(s, (l + w, 0), (l + w + g, 2*w + g))
-        rect(s, (0, w), (l, w + g))
-        rect(s, (w, 2*w + g), (l + w + g, 2*w + 2*g))
-        s.last = s.last[0], (s.last[1] + 2*w + 2*g)
-    s.last = start[0] + tot_width, start[1]
+        myrect(s, (l + w, 0), (l + w + g, 2*w + g))
+        myrect(s, (0, w), (l, w + g))
+        myrect(s, (w, 2*w + g), (l + w + g, 2*w + 2*g))
+        #s.last = s.last[0], (s.last[1] + 2*w + 2*g)
+        s.last = orient_pt((0, sign*(2*w + 2*g)), s.last_direction, s.last)
+    #s.last = start[0] + tot_width, start[1]
+    s.last = orient_pt((tot_width, 0), s.last_direction, start)
     
-    c = 2 * c_fingers * c_length * 1e-6 * eps0 * eps_eff
-    l = 2 * l_fingers * l_length * 1e-6 * mu0
-    l += 2 * (tot_height - v_offset) * 1e-6 * mu0
-    
-    print "Estimated c %.2e" % c
-    print "Estimated l %.2e" % l
-    print "Estimated freq %.2e" % (1/sqrt(l * c)/2/pi)
-    print "Estimated Z %.2f" % sqrt(l / c)
+    if describe:
+        c = 2 * c_fingers * c_length * 1e-6 * eps0 * eps_eff
+        l = 2 * l_fingers * l_length * 1e-6 * mu0
+        l += 2 * (tot_height - v_offset) * 1e-6 * mu0    
+        print "Estimated c %.2e" % c
+        print "Estimated l %.2e" % l
+        print "Estimated freq %.2e" % (1/sqrt(l * c)/2/pi)
+        print "Estimated Z %.2f" % sqrt(l / c)
 
 def ShuntedLER(s, n_fingers, finger_height, n_meanders, meander_height):
     cap = ground_fingers(n_fingers, finger_height, s.pinw)
@@ -325,7 +335,19 @@ def ShuntedLER(s, n_fingers, finger_height, n_meanders, meander_height):
     cap(s)
 
 def ground_fingers(n_fingers, length, width, align=True):
-    def builder(s, empty=False):
+    def ground_finger_contents(s):
+            pin, gap = s.pinw, s.gapw
+            tot_length = pin + 2*length
+            gap_width = width + 2*gap
+            Channel(s, gap, pin)
+            for _ in range(n_fingers - 1):
+                Channel(s, width, tot_length)
+                Channel(s, gap_width, pin)
+            Channel(s, width, tot_length)
+            Channel(s, gap, pin)
+    
+    
+    def builder(s, empty=False, contents_struct=None):
         dist = 65
         pin, gap = s.pinw, s.gapw
         cross = alignment_cross(12, 2)
@@ -347,22 +369,12 @@ def ground_fingers(n_fingers, length, width, align=True):
         if align:
             cross(s, (0, length + gap + pin/2. + dist))
             cross(s, (0, -(length + gap + pin/2. + dist)))
+        
+        if contents_struct is not None:
+            ground_finger_contents(contents_struct)
     return builder
 
-def ground_finger_contents(s, n_fingers, length, width):
-    pin, gap = s.pinw, s.gapw
-    tot_length = pin + 2*length
-    gap_width = width + 2*gap
-    Channel(s, gap, pin)
-    for _ in range(n_fingers - 1):
-        Channel(s, width, tot_length)
-        Channel(s, gap_width, pin)
-    Channel(s, width, tot_length)
-    Channel(s, gap, pin)
 
-def half_cap_contents(s, cap, flipped=False):
-    ChannelLinearTaper(cap.taper_length, s.pinw, cap.pinw)
-     
 
 def make_qubit(left_fingers, left_len, left_width, 
                right_fingers, right_len, right_width, cgap,
@@ -390,7 +402,7 @@ def alignment_cross(size, weight=1):
         s.last = to_recover
     return builder
 
-def test_element(name, elt_fn, d=global_defaults, caps=None, length=50, **kwargs):
+def test_element(name, elt_fn, d=global_defaults, caps=None, length=0, **kwargs):
     c = Chip(name)
     s = Structure(c, start=c.midpt, defaults=d)
     if caps is not None:
@@ -414,9 +426,20 @@ def CPWEmptyTaper(s, length, start_gap, stop_gap):
 class HalfCap(CPWFingerCap):
     def __init__(self, full_cap):
         self.__dict__.update(full_cap.__dict__)
-        
-        self.taper_length = 0
-    def draw(self, s, flipped=False):
+        self.taper_length = 0 # This is false, but convenient. Actual taper_length is a constant 50um TODO - Change this?
+    
+    def half_cap_contents(self, s, n_fingers):
+        ChannelLinearTaper(s, 50, s.pinw, self.pinw)
+        spacing = 2*(self.finger_width + self.finger_gap)
+        if bool(self.num_fingers % 2) != self.flipped:
+            n_fingers += 1
+        for i in range(n_fingers):
+            p0 = (0, self.pinw/2. - i*spacing)
+            p1 = vadd(p0, (self.finger_length, -self.finger_width))
+            rect(s, p0, p1)
+
+    def draw(self, s, flipped=False, contents_struct=None):
+        self.fingers_remaining = 0
         init_pinw, init_gapw = s.pinw, s.gapw
         self.flipped = flipped
         self.gapw = self.pinw*s.gapw/float(s.pinw)
@@ -431,6 +454,16 @@ class HalfCap(CPWFingerCap):
         else:
             CPWEmptyTaper(s, 50, self.pinw + 2*self.gapw, init_pinw + 2*init_gapw)
         s.pinw, s.gapw = init_pinw, init_gapw
+        
+        if contents_struct is not None:
+            if not flipped:
+                contents_struct.last = s.last
+                contents_struct.last_direction += 180
+            self.half_cap_contents(contents_struct, self.fingers_remaining)
+            if not flipped:
+                contents_struct.last_direction -= 180
+                contents_struct.last = s.last
+                
     def left_finger_points(self,finger_width,finger_length,finger_gap):
         if self.flipped:
             pts= [  (0,0),
@@ -442,6 +475,7 @@ class HalfCap(CPWFingerCap):
                     (0,0)
                 ]
         else:
+            self.fingers_remaining += 1
             pts= [  (0,0),
                     (0,finger_width+finger_gap),
                     (finger_length+finger_gap,finger_width+finger_gap),
@@ -451,6 +485,7 @@ class HalfCap(CPWFingerCap):
         return pts
     def right_finger_points(self,finger_width,finger_length,finger_gap):
         if self.flipped:
+            self.fingers_remaining += 1
             pts = [ (finger_length+finger_gap,0),
                     (finger_length+finger_gap,finger_width+finger_gap),
                     (0,finger_width+finger_gap),
@@ -470,7 +505,6 @@ class HalfCap(CPWFingerCap):
 
 def vadd(a,b):
     return a[0] + b[0], a[1] + b[1]
-
 
 # TODO :: Refactor out space filling and chip processing functions
 class SpacerStructure(Structure):
@@ -493,6 +527,10 @@ class SpacerStructure(Structure):
             if isinstance(pl, sdxf._Entity):
                 pts = pl.points
                 self.chip.append(sdxf.PolyLine(translate_pts(pts, (spacers_seen * spacer_len,0))))
+            elif pl[0] == "Substructure":
+                for pl2 in pl[1].pl_list:
+                    self.chip.append(sdxf.PolyLine(translate_pts(pl2.points, (spacers_seen * spacer_len, 0)),
+                                                   layer=pl[1].layer, color=pl[1].color))
             elif pl[0] == "Horizontal Spacer":
                 straight_start = (pl[1][0] + (spacer_len * spacers_seen), pl[1][1])
                 spacers_seen += 1
@@ -509,6 +547,11 @@ class SpacerStructure(Structure):
             else:
                 new_pl_list.append(pl)
         self.pl_list = new_pl_list
+    def sub_struct(self, layer, color=1):
+        s = SpacerStructure(self.chip, start=self.last, direction=self.last_direction, 
+                            defaults=self.defaults, layer=layer, color=color)
+        self.pl_list.append(('Substructure',s))
+        return s
 
 class CPWHorizontalSpacer:
     def __init__(self, structure):
