@@ -143,17 +143,26 @@ class WaferMask(sdxf.Drawing):
         self.manifest=[]
         self.num_chips=0
 
-    def randomize_layout(self):
+    def randomize_layout(self, seed=124279234):
         """Shuffle the order of the chip_points array so that chips will be inserted (pseudo-)randomly"""
-        rnd = random.Random()   
-        seed=124279234
+        random.seed(seed)
         for ii in range(10000):
             i1=rnd.randrange(self.chip_points.__len__())
             i2=rnd.randrange(self.chip_points.__len__())
             tp=self.chip_points[i1]
             self.chip_points[i1]=self.chip_points[i2]
             self.chip_points[i2]=tp
+    
+    def save_layout(self):
+        open(self.name+'_order.txt', 'w').writelines(
+            ["%f, %f" % (x, y) for x, y in self.chip_points])
         
+    def load_layout(self, fname=None):
+        if not fname:
+            fname = self.name + '_order.txt'
+        self.chip_points = \
+            [ map(float,line.split(',')) for line in open(fname, 'r').readlines() ]
+    
     def randomize_layout_seeded(self):
         """Shuffle the order of the chip_points array so that chips will be inserted (pseudo-)randomly"""
         rnd = random.Random()        
@@ -170,7 +179,7 @@ class WaferMask(sdxf.Drawing):
 #        AlphaNumText(self,maskid,chip.textsize,pt)
 #        AlphaNumText(self,chipid,chip.textsize,pt)
         
-    def add_chip(self,chip,copies,label=False):
+    def add_chip(self,chip,copies,label=False,savechip=True):
         """Adds chip design 'copies' times into mask.  chip must have a unique name as it will be inserted as a block"""
         if self.etchtype:
             ChipBorder(chip,self.dicing_border/2.)
@@ -181,8 +190,9 @@ class WaferMask(sdxf.Drawing):
             self.layers.append(sdxf.Layer(name='gap', color=1))
             self.layers.append(sdxf.Layer(name='pin', color=3))
             self.blocks.append(chip.gap_layer)
-            self.blocks.append(chip.pin_layer)    
-        self.blocks.append(chip)
+            self.blocks.append(chip.pin_layer)
+        if chip not in self.blocks:
+            self.blocks.append(chip)
         slots_remaining=self.chip_points.__len__()-self.current_point
         for ii in range (copies):
             if self.current_point>= self.chip_points.__len__():
@@ -199,7 +209,8 @@ class WaferMask(sdxf.Drawing):
         
         self.manifest.append({'chip':chip,'name':chip.name,'copies':copies,'short_desc':chip.short_description(),'long_desc':chip.long_description()})
         #print "%s\t%d\t%s" % (chip.name,copies,chip.short_description())
-        chip.save(fname=self.name+"-"+chip.name,maskid=self.name,chipid=chip.name)
+        if savechip:
+            chip.save(fname=self.name+"-"+chip.name,maskid=self.name,chipid=chip.name)
     
     
     def save_manifest(self,name=None):
@@ -497,6 +508,8 @@ class CPWStraight:
     def __init__(self, structure,length,pinw=None,gapw=None):
         """ Adds a straight section of CPW transmission line of length = length to the structure"""
         if length==0: return
+        if length < 0:
+            print "Warning -- Negative length straight section"
 
         s=structure
         if pinw is None: pinw=structure.__dict__['pinw']
