@@ -269,13 +269,21 @@ def shunt_inductance_by_Q (frequency,Q, Z0=50,resonator_type=0.5):
 def shunt_by_Q(frequency, Q, Z0=50,resonator_type=0.5):
     inductance = shunt_inductance_by_Q (frequency,Q,Z0,resonator_type)
     #print inductance
+    return shunt_by_L(inductance)
+
+def shunt_by_L(inductance):
     length=round(float(inductor_length(inductance)))
+    return shunt_by_length(length, inductance)
+
+def shunt_by_length(length, inductance=None):
     min_seg_length=20
     segment_gap=4.
     segment_width=3.
     min_seg_length=20
     max_seg_length=100
     
+    if inductance is None:
+        inductance = mu0 * length
 
     max_segments=int(floor((length-segment_gap)/(segment_gap+min_seg_length)))
     if max_segments == 0:
@@ -289,8 +297,6 @@ def shunt_by_Q(frequency, Q, Z0=50,resonator_type=0.5):
     
     shunt=CPWInductiveShunt(num_segments = num_segments , segment_length =  segment_length, segment_width = segment_width, segment_gap=segment_gap, taper_length = 50, inductance = inductance)
     return shunt
-
-
 
 if __name__=="__main__":
     phase_velocity=speedoflight/sqrt(5.7559)
