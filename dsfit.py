@@ -58,7 +58,7 @@ def lorfunc(p, x):
     """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""
     return p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)
 
-def fitlor(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+def fitlor(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",debug=False):
     """fit lorentzian:
         returns [offset,amplitude,center,hwhm]"""
     if domain is not None:
@@ -71,8 +71,8 @@ def fitlor(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
         fitparams[0]=(fitdatay[0]+fitdatay[-1])/2.
         fitparams[1]=max(fitdatay)-min(fitdatay)
         fitparams[2]=fitdatax[np.argmax(fitdatay)]
-        fitparams[3]=(max(fitdatax)-min(fitdatax))/3.
-
+        fitparams[3]=(max(fitdatax)-min(fitdatax))/10.
+    if debug==True: print fitparams
     p1 = fitgeneral(fitdatax,fitdatay,lorfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
     p1[3]=abs(p1[3])
     return p1
