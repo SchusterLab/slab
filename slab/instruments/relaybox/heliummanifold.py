@@ -17,11 +17,11 @@ class HeliumManifold(RelayBox):
     gas_port=1
     pump_port=4        
     cryostat_port=8
-    pressure_port=7
+    pressure_port=7 #port 1 if connected with COM, port 7 if as http server
 
     atm_level=340.6
     vacuum_offset=0.
-    vacuum_threshold=0.02
+    vacuum_threshold=0.03
 
     def __init__(self,name="Helium Manifold",address="COM6",enabled=True,timeout=0,puffs=0):
         RelayBox.__init__(self,name,address,enabled,timeout)
