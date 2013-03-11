@@ -34,8 +34,9 @@ class InstrumentManager(dict):
                 try:
                     #self.clean_nameserver()
                     self.connect_proxies()
-                except:
+                except Exception as e:
                     print "Warning: Could not connect proxies!"
+                    print e
         if config_path is not None:
             self.load_config_file(config_path)
         if server and Pyro4Loaded:

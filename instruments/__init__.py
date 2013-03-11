@@ -28,7 +28,7 @@ try: from voltsource import SRS900
 except: print "Could not load SRS900"
 try: from Alazar import Alazar, AlazarConfig, AlazarConstants
 except: print "Could not load Alazar card"
-try: from function_generator import FilamentDriver,BNCAWG
+try: from function_generator import BiasDriver,FilamentDriver,BNCAWG
 except: print "Could not load BNC AWG classes"
 try: from Keithley199 import Keithley199
 except: print "Could not load Keithley199 voltmeter classes"
