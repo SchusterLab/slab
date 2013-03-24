@@ -80,7 +80,10 @@ class InstrumentManager(dict):
         """Get settings from all instruments"""
         settings = []
         for k, inst in self.iteritems():
-            settings.append(inst.get_settings())
+            try:
+                settings.append(inst.get_settings())
+            except:
+                print "Warning! Could not get settings for instrument: %s" % k
         return settings
 
     def save_settings(self, path, prefix=None, params={}):

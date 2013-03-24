@@ -53,7 +53,7 @@ class LMS103(Instrument):
         self.dll=LABBRICKDLL
         self.set_test_mode(False)
         if address is not None:
-            self.init_by_serial(address)
+            self.init_by_serial(int(address))
         
     def init_by_serial(self,address):
         self.devinfo=self.get_info_by_serial(address)
@@ -65,6 +65,7 @@ class LMS103(Instrument):
         serial=int(serial)
         devinfos=LMS_get_device_info()
         for devinfo in devinfos:
+            print devinfo
             if devinfo['serial']==serial:
                 return devinfo
         print "Error Labbrick serial # %d not found! returning first device found" % serial

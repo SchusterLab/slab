@@ -1,4 +1,4 @@
 #from plotting import *
 #from Server_ui import *
-#import script_viewer
+from script_viewer import ScriptPlotter
 #print "DONE"

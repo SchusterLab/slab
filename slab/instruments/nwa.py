@@ -21,6 +21,9 @@ class E5071(SocketInstrument):
 
     def get_id(self):
         return self.query('*IDN?')
+        
+    def get_query_sleep(self):
+        return self.query_sleep
 
 #### Frequency setup
     def set_start_frequency(self,freq,channel=1):

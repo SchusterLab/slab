@@ -120,6 +120,9 @@ class BNCAWG(SocketInstrument):
         settings['id']=self.get_id()
         settings['output']=self.get_output()
         settings['frequency']=self.get_frequency()
+        settings['function']=self.get_function()
+        settings['amplitude']=self.get_amplitude()
+        settings['offset']=self.get_offset()
         return settings
 
 class FilamentDriver(BNCAWG):
