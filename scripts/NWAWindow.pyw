@@ -70,7 +70,7 @@ class nwa_DataThread(DataThread):
         self.msg(freqs[1:5])
         if self.params['save']:
             f=self.open_datafile()
-            for n, d in [("mag", mags), ("phase", phases)]:
+            for n, d in [("mag", mags), ("phase", phases),("fpts",freqs)]:
                 if n not in f:
                     ds=f.create_dataset(n,shape=(1,len(d)),maxshape=(None,len(d)))
 
@@ -148,7 +148,7 @@ class nwa_DataThread(DataThread):
             
             if self.params['save']:
                 f=self.open_datafile()
-                for n, d in [("mag", data[1]), ("phase", data[2])]:
+                for n, d in [("mag", data[1]), ("phase", data[2]),("fpts",data[0])]:
                     if n not in f:
                         ds=f.create_dataset(n,shape=(1,len(d)),maxshape=(None,total_sweep_pts+1))
                         f.set_labels(ds, "Frequency (Hz)", "Response")
