@@ -37,7 +37,7 @@ usage:
     A more complete (functional) example is given at the end of the file
 """
 
-from instruments import InstrumentManager
+from slab.instruments import InstrumentManager
 from dataanalysis import get_next_filename
 from slab.widgets import SweepDialog
 from PyQt4.Qt import *
