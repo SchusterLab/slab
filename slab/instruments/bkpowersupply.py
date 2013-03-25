@@ -29,15 +29,28 @@ class BKPowerSupply(SerialInstrument):
         SerialInstrument.write(self, 'APP:VOLT %f,%f,%f\n' %(ch1,ch2,ch3))
         
     def get_voltages(self):
-        self.query('APP:VOLT?\n')
-        return self.query('APP:VOLT?\n')        
+        ans=self.query('APP:VOLT?\n')
+        voltages=[float (s.strip()) for s in ans.split(',')]
+        return voltages   
         
     def set_currents(self,ch1,ch2,ch3):
         SerialInstrument.write(self, 'APP:CURR %f,%f,%f\n' %(ch1,ch2,ch3))
         
     def get_currents(self):
-        self.query('APP:CURR?\n')
-        return self.query('APP:CURR?\n')        
+        ans=self.query('APP:CURR?\n')
+        currents=[float (s.strip()) for s in ans.split(',')]
+        return currents     
+
+    def get_voltage(self,channel=None):
+        if channel is None: return self.get_voltages()
+        else:
+            return self.get_voltages()[channel+1]
+
+    def get_current(self,channel=None):
+        if channel is None: return self.get_currents()
+        else:
+            return self.get_voltages()[channel+1]
+
 
     def set_output(self,state):
         stat=['0','1'][state]
