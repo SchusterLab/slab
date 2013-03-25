@@ -171,7 +171,9 @@ class SlabFile(h5py.File):
 #            self.attrs["_script"] = get_script()
         #if not read-only or existing then save the script into the .h5
         #Maybe should take this automatic feature out and just do it when you want to
-        if (self.mode is not 'r') and ("_script" not in self.attrs):     
+        if 'save_script' in kwargs: save_script=kwargs['save_script']
+        else: save_script=True
+        if (self.mode is not 'r') and ("_script" not in self.attrs) and (save_script):
             self.save_script()
         self.flush()
 
