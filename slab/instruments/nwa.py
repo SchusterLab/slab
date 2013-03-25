@@ -21,9 +21,6 @@ class E5071(SocketInstrument):
 
     def get_id(self):
         return self.query('*IDN?')
-        
-    def get_query_sleep(self):
-        return self.query_sleep
 
 #### Frequency setup
     def set_start_frequency(self,freq,channel=1):
@@ -303,6 +300,26 @@ class E5071(SocketInstrument):
         ans=np.hstack(segs)
         if fname is not None:
             np.savetxt(fname,np.transpose(ans),delimiter=',')
+        return ans
+        
+    def take_one(self,fname=None):
+        """Tell Network Analyzer to take a single averaged trace and grab data, 
+        either saving it to fname or returning it.  This function does not set up
+        the format or anything else it just starts, blocks, and grabs the next trace."""
+        #print "Acquiring single trace"
+        #time.sleep(na.query_sleep*2)
+        #na.set_format()
+        #time.sleep(na.query_sleep)
+        na.clear_averages()
+        na.trigger_single()
+        time.sleep(na.get_query_sleep())
+        na.averaging_complete()
+        #na.set_format('slog')
+        if fname is not None:
+            na.save_file(fname)
+        ans=na.read_data()
+        #time.sleep(na.query_sleep)
+        #na.set_format()
         return ans
 
     def get_settings(self):
