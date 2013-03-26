@@ -27,24 +27,24 @@ utility (the green arrow)
 import zmq
 import numpy as np
 
-class ScriptPlotter(zmq.Context):
+class ScriptPlotter():
     """
     ScriptPlotter represents a connection to an active 
     ScriptViewerWindow instance. 
     """
     def __init__(self):
-        zmq.Context.__init__(self)
-        self.pub = self.socket(zmq.PUB)
-        self.meta_pub = self.socket(zmq.PUB)
-        self.text_pub = self.socket(zmq.PUB)
-        self.pub.bind("tcp://127.0.0.1:5556")
+        ctx = zmq.Context()
+        self.data_pub = ctx.socket(zmq.PUB)
+        self.meta_pub = ctx.socket(zmq.PUB)
+        self.text_pub = ctx.socket(zmq.PUB)
+        self.data_pub.bind("tcp://127.0.0.1:5556")
         self.meta_pub.bind("tcp://127.0.0.1:5557")
         self.text_pub.bind("tcp://127.0.0.1:5558")
         time.sleep(.5)
     def init_plot(self, ident, rank=1, accum=True, **kwargs):
         """
-        Initialize a plot. In general, it is not neccessary to do this, unless
-        non-default configuration of the plot is required.
+        Initialize a plot. This will remove existing plots with the same identifier,
+        as well as allow for non-default configuration options.
 
         :param ident: Identifier to associate with the new plot
         :param rank: The dimension of the data to be plotted
@@ -75,14 +75,14 @@ class ScriptPlotter(zmq.Context):
             dtype = str(A.dtype),
             shape = A.shape,
         )
-        self.pub.send_json(md, flags|zmq.SNDMORE)
-        return self.pub.send(A, flags, copy=copy, track=track)
+        self.data_pub.send_json(md, flags|zmq.SNDMORE)
+        return self.data_pub.send(A, flags, copy=copy, track=track)
 
     def close(self):
         """
         Close connections to the window
         """
-        self.pub.close()
+        self.data_pub.close()
         self.meta_pub.close()
         self.text_pub.close()
         
@@ -91,16 +91,21 @@ class ScriptPlotter(zmq.Context):
         Display a text message in the plotting window
         """
         self.text_pub.send_unicode(text)
-
+        
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, type, value, tb):
+        self.close()
 
 import slab.gui as gui
 class ScriptViewerThread(gui.DataThread):
     def start_polling(self):
         """launches zmq event loop"""
         self.ctx = zmq.Context()
-        self.sub = self.ctx.socket(zmq.SUB)
-        self.sub.connect("tcp://127.0.0.1:5556")
-        self.sub.setsockopt(zmq.SUBSCRIBE, "")
+        self.data_sub = self.ctx.socket(zmq.SUB)
+        self.data_sub.connect("tcp://127.0.0.1:5556")
+        self.data_sub.setsockopt(zmq.SUBSCRIBE, "")
         self.meta_sub = self.ctx.socket(zmq.SUB)
         self.meta_sub.setsockopt(zmq.SUBSCRIBE, "")
         self.meta_sub.connect("tcp://127.0.0.1:5557")
@@ -111,7 +116,7 @@ class ScriptViewerThread(gui.DataThread):
         self.msg("polling started")
         while not self.aborted():
             #time.sleep(.05)
-            if self.sub.poll(10):
+            if self.data_sub.poll(10):
                 self.recv_array()
             if self.meta_sub.poll(10):
                 self.recv_new_plot()
@@ -128,8 +133,8 @@ class ScriptViewerThread(gui.DataThread):
         
     def recv_array(self, flags=0, copy=True, track=False):
         """recv a numpy array"""
-        md = self.sub.recv_json(flags=flags)
-        msg = self.sub.recv(flags=flags, copy=copy, track=track)
+        md = self.data_sub.recv_json(flags=flags)
+        msg = self.data_sub.recv(flags=flags, copy=copy, track=track)
         buf = buffer(msg)
         A = np.frombuffer(buf, dtype=md['dtype'])
         try:
@@ -298,22 +303,22 @@ def view():
 
 def serve(n):
     print "Serving test data"
-    plotter = ScriptPlotter()
-    #plotter.init("sin", rank=2)
-    #plotter.init("cos", rank=1, color='r')
-    plotter.init_plot("tan", rank=1, accum=False)
-    t = 0
-    x = np.linspace(0, 2*np.pi)
-    print "starting"
-    for i in range(n):
-        time.sleep(.1)
-        t += .1
-        plotter.msg("time " + str(t))
-        plotter.plot(np.sin(x + t), "sin")
-        plotter.plot((t, np.cos(t)), "cos")
-        plotter.plot(np.tan(x + t), "tan")
-    plotter.close()
-    print "done"
+    with ScriptPlotter() as plotter:
+        plotter.init_plot("sin", rank=2)
+        plotter.init_plot("cos", rank=1, color='r')
+        plotter.init_plot("tan", rank=1, accum=False)
+        t = 0
+        x = np.linspace(0, 2*np.pi)
+        print "starting"
+        for i in range(n):
+            time.sleep(.1)
+            t += .1
+            plotter.msg("time " + str(t))
+            plotter.plot(np.sin(x + t), "sin")
+            plotter.plot((t, np.cos(t)), "cos")
+            plotter.plot(np.tan(x + t), "tan")
+        plotter.close()
+        print "done"
     
 if __name__ == "__main__":
     view()    
