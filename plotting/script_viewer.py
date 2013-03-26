@@ -2,15 +2,36 @@
 """
 script_viewer.py
 
-Created on Thu Oct 18 10:00:10 2012
+author: Phil Reinhold
 
-@author: slab
+The goal of this module is to enable plotting of various types
+of data in 'real-time', as it comes in. This module takes the
+approach of separating the GUI creation from the script. This
+has two main benefits
+
+1. Errors in the interface/plotting do not interfere with normal
+   operation of the script
+2. Multiple asynchronous scripts can all plot to the same window
+   without additional hassle
+
+This approach does require, however, that the plotting window be launched independently, and before the script has started
+
+This can be achieved by running this script with::
+
+  $ python -m slab.plotting.script_viewer
+
+Or for convenience, a shortcut is located in the launcher
+utility (the green arrow)
 """
 
 import zmq
 import numpy as np
 
 class ScriptPlotter(zmq.Context):
+    """
+    ScriptPlotter represents a connection to an active 
+    ScriptViewerWindow instance. 
+    """
     def __init__(self):
         zmq.Context.__init__(self)
         self.pub = self.socket(zmq.PUB)
@@ -20,7 +41,19 @@ class ScriptPlotter(zmq.Context):
         self.meta_pub.bind("tcp://127.0.0.1:5557")
         self.text_pub.bind("tcp://127.0.0.1:5558")
         time.sleep(.5)
-    def init(self, ident, rank=1, accum=True, **kwargs):
+    def init_plot(self, ident, rank=1, accum=True, **kwargs):
+        """
+        Initialize a plot. In general, it is not neccessary to do this, unless
+        non-default configuration of the plot is required.
+
+        :param ident: Identifier to associate with the new plot
+        :param rank: The dimension of the data to be plotted
+        :param accum: Boolean flag. If true, data is appended to existing data
+                      as it comes in. Otherwise old data is thrown out, and 
+                      replaced with new data
+        :param kwargs: additional keyword arguments to pass to 
+                       guiqwt.builder.make.curve
+        """
         self.meta_pub.send_json({'ident':ident, 
                                  'rank':rank,
                                  'accum':accum,
@@ -28,10 +61,15 @@ class ScriptPlotter(zmq.Context):
         time.sleep(.25)
     
     def plot(self, data, ident):
+        """
+        Send data to a plot. If ``ident`` is not associated with any plot
+        it is created. Accumulation is assumed, i.e., if the data is an 
+        (x,y) pair, a line plot is created, If the data is a rank-1 array,
+        an image plot is created.
+        """
         self.send_array(np.array(data), ident)
         
     def send_array(self, A, ident, flags=0, copy=False, track=False):
-        """send a numpy array with metadata"""
         md = dict(
             ident = ident,
             dtype = str(A.dtype),
@@ -39,12 +77,19 @@ class ScriptPlotter(zmq.Context):
         )
         self.pub.send_json(md, flags|zmq.SNDMORE)
         return self.pub.send(A, flags, copy=copy, track=track)
+
     def close(self):
+        """
+        Close connections to the window
+        """
         self.pub.close()
         self.meta_pub.close()
         self.text_pub.close()
         
     def msg(self, text):
+        """
+        Display a text message in the plotting window
+        """
         self.text_pub.send_unicode(text)
 
 
@@ -256,7 +301,7 @@ def serve(n):
     plotter = ScriptPlotter()
     #plotter.init("sin", rank=2)
     #plotter.init("cos", rank=1, color='r')
-    plotter.init("tan", rank=1, accum=False)
+    plotter.init_plot("tan", rank=1, accum=False)
     t = 0
     x = np.linspace(0, 2*np.pi)
     print "starting"
