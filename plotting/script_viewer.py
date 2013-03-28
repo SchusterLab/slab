@@ -67,6 +67,7 @@ class ScriptPlotter():
         :param kwargs: additional keyword arguments to pass to 
                        guiqwt.builder.make.{curve,image}
         """
+        print ident, accum
         self.meta_pub.send_json({'cmd':'init_plot',
                                  'ident':ident, 
                                  'rank':rank,
@@ -186,9 +187,11 @@ from guiqwt.plot import CurveWidget, ImageWidget
 from guiqwt.builder import make
 
 class PlotItem(qt.QWidget):
-    def __init__(self, ident, rank, accum, plotkwargs, xpts=None):
+    def __init__(self, ident, rank, accum, plotkwargs, xpts=[], ypts=[]):
         qt.QWidget.__init__(self)
         qt.QVBoxLayout(self)
+        self.layout().setSpacing(0)
+        self.layout().setContentsMargins(5,0,5,0)
         
         self.toolbar = toolbar = qt.QToolBar()
         self.layout().addWidget(toolbar)
@@ -197,6 +200,7 @@ class PlotItem(qt.QWidget):
         self.rank = rank
         self.accum = accum
         self.xpts = xpts
+        self.ypts = ypts
         self.update_count = 0
         self.collapsed = False
         
@@ -247,25 +251,19 @@ class PlotItem(qt.QWidget):
         self.buttons_widget.show()
         self.show_button.hide()        
 
-class PlotStacker(qt.QSplitter):#qt.QWidget):
+class PlotStacker(qt.QSplitter):
     def __init__(self, mainwin):
-        #qt.QWidget.__init__(self)
         qt.QSplitter.__init__(self)
         self.setStyleSheet("QSplitter::handle {border: 1px solid #CCCCCC;}")
         self.mainwin = mainwin
-        #self.setLayout(qt.QVBoxLayout())
-        #self.setLayout(qt.QHBoxLayout())
         plwidget = qt.QWidget()
         self.plwidget = plwidget
         self.plotlist = qt.QVBoxLayout(plwidget)
-        #plwidget.setSizePolicy(qt.QSizePolicy.Maximum)
-        #plwidget.setMaximumWidth(2 ** 16)
-        #self.setSizes([2**9, 2**10])
-        #self.layout().addWidget(plwidget)
+        self.plotlist.setContentsMargins(5,0,5,0)
+        self.plotlist.setSpacing(0)
         self.addWidget(plwidget)
         zoom_widget = qt.QWidget()
         self.zoom = qt.QHBoxLayout(zoom_widget)
-        #self.layout().addWidget(zoom_widget)
         self.addWidget(zoom_widget)
         self.row = 0
         self.col = 0
@@ -275,9 +273,11 @@ class PlotStacker(qt.QSplitter):#qt.QWidget):
     def add_plot(self, ident="", rank=1, accum=True, xpts=[], ypts=[], plotkwargs={}):
         if ident in self.plots:
             self.remove_plot(ident)
-        if len(ypts) > 0:
+        if len(ypts) > 0 and accum in ('x', True):
             plotkwargs['ydata'] = ypts[0], ypts[-1]
-        widget = PlotItem(ident, rank, accum, plotkwargs, xpts)
+        if len(xpts) > 0 and accum == 'y':
+            plotkwargs['xdata'] = xpts[0], xpts[-1]
+        widget = PlotItem(ident, rank, accum, plotkwargs, xpts, ypts)
         uncollapsed = lambda ident: not(self.plots[ident].collapsed)
         if len(filter(uncollapsed, self.plots.iterkeys())) > 3:
             widget.collapse()
@@ -285,7 +285,6 @@ class PlotStacker(qt.QSplitter):#qt.QWidget):
         widget.zoom_button.clicked.connect(lambda: self.zoom_plot(ident))
         self.plots[ident] = widget
         self.plotlist.addWidget(widget)
-        #if len(self.plots) is 1:
         zoom_item = self.zoom.itemAt(0)
         if zoom_item is None:
             self.zoom_plot(ident)
@@ -298,11 +297,7 @@ class PlotStacker(qt.QSplitter):#qt.QWidget):
             self.zoom.removeWidget(widget)
             self.plotlist.addWidget(widget)
             if widget.ident == ident:
-                #self.plwidget.setMaximumWidth(2 ** 16)
                 return
-        else:
-            #self.plwidget.setMaximumWidth(2 ** 9)
-            pass
         widget = self.plots[ident]
         self.plotlist.removeWidget(widget)
         self.zoom.addWidget(widget)
@@ -341,20 +336,28 @@ class PlotStacker(qt.QSplitter):#qt.QWidget):
             x = np.concatenate((x, [data[0]]))
             y = np.concatenate((y, [data[1]]))
             item.set_data(x, y)
-        elif plot.accum in (0, 1, True) and plot.rank is 2:
+        elif plot.accum in ('x', 'y', True) and plot.rank is 2:
             img = item.data
-            if plot.accum in (0, True):
+            print plot.accum
+            if plot.accum in ('x', True):
+                if img.shape == (1,1): # Yet to be properly initialized
+                    img = np.array([data]).T
+                else:
+                    img = np.vstack((img.T, data)).T
+                if len(plot.xpts) > 0:
+                    if plot.update_count > 0:
+                        item.set_xdata(plot.xpts[0], plot.xpts[plot.update_count])
+                    plot.update_count += 1 
+            else:
                 if img.shape == (1,1): # Yet to be properly initialized
                     img = np.array([data])
-                else:
-                    img = np.vstack((img, data))
-            else:
-                img = np.column_stack((img, data))
+                img = np.vstack((img, data))
+                if len(plot.ypts) > 0:
+                    if plot.update_count > 0:
+                        item.set_ydata(plot.ypts[0], plot.ypts[plot.update_count])
+                    plot.update_count += 1 
+
             item.set_data(img)
-            if len(plot.xpts) > 0:                
-                if plot.update_count > 0:
-                    item.set_xdata(plot.xpts[0], plot.xpts[plot.update_count])
-                plot.update_count += 1 
         else:
             if plot.rank is 1:
                 try:
@@ -376,7 +379,6 @@ class ScriptViewerWindow(gui.SlabWindow, UiClass):
     def __init__(self):
         gui.SlabWindow.__init__(self, ScriptViewerThread)
         self.setupSlabWindow(autoparam=True)
-        #self.auto_register_gui()
         ps = PlotStacker(self)
         splitter = qt.QSplitter()
         splitter.setStyleSheet("QSplitter::handle {border: 1px solid #CCCCCC;}")
@@ -403,7 +405,8 @@ def serve(n):
     print "Serving test data"
     with ScriptPlotter() as plotter:
         #plotter.clear_plots()
-        plotter.init_plot("sin", rank=2, xpts=np.linspace(0, 1, n), ypts=np.linspace(0, 2*np.pi))
+        #plotter.init_plot("sin", rank=2, xpts=np.linspace(0, 1, n), ypts=np.linspace(0, 2*np.pi), accum='x')
+        plotter.init_plot("sin", rank=2, ypts=np.linspace(0, 1, n), xpts=np.linspace(0, 2*np.pi), accum='y')
         plotter.init_plot("cos", rank=1, color='r')
         #plotter.clear_plot("cos")
         plotter.init_plot("tan", accum=False)
