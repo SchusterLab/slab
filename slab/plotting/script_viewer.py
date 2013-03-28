@@ -318,6 +318,10 @@ class PlotStacker(qt.QSplitter):#qt.QWidget):
             plot.item.set_data([[]])
     
     def remove_plot(self, ident):
+        if ident == "_all_plots_":
+            for i in self.plots.keys():
+                self.remove_plot(i)
+            return
         widget = self.plots.pop(ident)
         if widget.parentWidget().layout() is self.plotlist:
             self.plotlist.removeWidget(widget)
@@ -387,6 +391,7 @@ class ScriptViewerWindow(gui.SlabWindow, UiClass):
         self.start_thread()
         self.msg("initialized")
         self.start_script("start_polling")
+        self.remove_plots_button.clicked.connect(lambda: ps.remove_plot("_all_plots_"))
         
 import sys
 import time
