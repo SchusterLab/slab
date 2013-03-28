@@ -22,6 +22,18 @@ This can be achieved by running this script with::
 
 Or for convenience, a shortcut is located in the launcher
 utility (the green arrow)
+
+TODO: Implement this api
+The general plotting api is to send data via the ScriptPlotter.plot method
+
+- shape=(2,) :: an (x,y) pair for a parametric line plot
+- shape=(1,) :: a line plot where the x-value increments by 1 with each point
+- shape=(2, n>2), (n>2, 2) :: a line plot where the data is entirely replaced
+  with each update, rather than accumulating
+- shape=(n>2,) :: Adds a single trace to a image plot where the x-axis has
+  fixed dimension n
+- shape=(n>2, m>2) :: Creates an image plot which is entirely replaced with
+  each update, rather than accumulating
 """
 
 import zmq
@@ -41,10 +53,11 @@ class ScriptPlotter():
         self.meta_pub.bind("tcp://127.0.0.1:5557")
         self.text_pub.bind("tcp://127.0.0.1:5558")
         time.sleep(.5)
-    def init_plot(self, ident, rank=1, accum=True, **kwargs):
+    def init_plot(self, ident, rank=1, accum=True, xpts=[], ypts=[], **kwargs):
         """
         Initialize a plot. This will remove existing plots with the same identifier,
         as well as allow for non-default configuration options.
+        For instance, to add axes to an image plot
 
         :param ident: Identifier to associate with the new plot
         :param rank: The dimension of the data to be plotted
@@ -52,14 +65,31 @@ class ScriptPlotter():
                       as it comes in. Otherwise old data is thrown out, and 
                       replaced with new data
         :param kwargs: additional keyword arguments to pass to 
-                       guiqwt.builder.make.curve
+                       guiqwt.builder.make.{curve,image}
         """
-        self.meta_pub.send_json({'ident':ident, 
+        self.meta_pub.send_json({'cmd':'init_plot',
+                                 'ident':ident, 
                                  'rank':rank,
                                  'accum':accum,
+                                 'xpts':list(xpts),
+                                 'ypts':list(ypts),
                                  'plotkwargs':kwargs})
         time.sleep(.25)
+        
+    def zoom_plot(self, ident):
+        """
+        Specify the main plot, giving it more screen real estate.
+        By default, the first plot added is the main plot.
+        """
+        self.meta_pub.send_json({'cmd':'zoom_plot', 'ident':ident})
+
+    def clear_plots(self):
+        self.clear_plot('_all_plots_')
     
+    def clear_plot(self, ident):
+        self.meta_pub.send_json({'cmd':'clear_plot', 'ident':ident})
+        time.sleep(.25)
+        
     def plot(self, data, ident):
         """
         Send data to a plot. If ``ident`` is not associated with any plot
@@ -116,18 +146,27 @@ class ScriptViewerThread(gui.DataThread):
         self.msg("polling started")
         while not self.aborted():
             #time.sleep(.05)
-            if self.data_sub.poll(10):
-                self.recv_array()
-            if self.meta_sub.poll(10):
-                self.recv_new_plot()
-            if self.text_sub.poll(10):
-                self.msg(self.text_sub.recv_unicode())
+            try:
+                if self.data_sub.poll(10):
+                    self.recv_array()
+                if self.meta_sub.poll(10):
+                    self.recv_meta()
+                if self.text_sub.poll(10):
+                    self.msg(self.text_sub.recv_unicode())
+            except Exception as e:
+                self.msg(e)
         self.msg("polling complete")
     
-    def recv_new_plot(self):
+    def recv_meta(self):
         d = self.meta_sub.recv_json()
         try:
-            self.gui["plotstacker"].add_plot(**d)
+            cmd = d.pop('cmd')
+            if cmd == 'init_plot':
+                self.gui["plotstacker"].add_plot(**d)
+            elif cmd == 'zoom_plot':
+                self.gui["plotstacker"].zoom_plot(d['ident'])
+            elif cmd == 'clear_plot':
+                self.gui["plotstacker"].clear_plot(d['ident'])
         except Exception as e:
             self.msg(e)
         
@@ -147,16 +186,19 @@ from guiqwt.plot import CurveWidget, ImageWidget
 from guiqwt.builder import make
 
 class PlotItem(qt.QWidget):
-    def __init__(self, ident, rank, accum, plotkwargs):
+    def __init__(self, ident, rank, accum, plotkwargs, xpts=None):
         qt.QWidget.__init__(self)
         qt.QVBoxLayout(self)
         
-        toolbar = qt.QToolBar()
+        self.toolbar = toolbar = qt.QToolBar()
         self.layout().addWidget(toolbar)
         
         self.ident = ident
         self.rank = rank
         self.accum = accum
+        self.xpts = xpts
+        self.update_count = 0
+        self.collapsed = False
         
         if rank == 1:
             self.plot_widget = CurveWidget(title=ident)
@@ -164,7 +206,6 @@ class PlotItem(qt.QWidget):
             self.plot_widget.register_all_curve_tools()
             self.item = make.curve([], [], **plotkwargs)
         elif rank == 2:
-            print plotkwargs
             self.plot_widget = ImageWidget(title=ident, lock_aspect_ratio=False)
             self.plot_widget.add_toolbar(toolbar)
             self.plot_widget.register_all_image_tools()
@@ -174,46 +215,82 @@ class PlotItem(qt.QWidget):
         self.plot_widget.plot.add_item(self.item)
         self.layout().addWidget(self.plot_widget)
 
-        buttons = qt.QWidget()
+        self.buttons_widget = buttons = qt.QWidget()
         qt.QHBoxLayout(buttons)
+        self.hide_button = qt.QPushButton('Hide')
+        self.hide_button.clicked.connect(self.collapse)        
+        self.show_button = qt.QPushButton('Show ' + ident)
+        self.show_button.clicked.connect(self.expand)
+        self.show_button.hide()
         self.remove_button = qt.QPushButton('Remove')
         self.zoom_button = qt.QPushButton('Zoom')
         self.autoscale_check = qt.QCheckBox('autoscale')
         self.autoscale_check.setChecked(True)
+        buttons.layout().addWidget(self.hide_button)
         buttons.layout().addWidget(self.remove_button)
         buttons.layout().addWidget(self.zoom_button)
         buttons.layout().addWidget(self.autoscale_check)
         self.layout().addWidget(buttons)
+        self.layout().addWidget(self.show_button)
+    
+    def collapse(self):
+        self.collapsed = True
+        self.toolbar.hide()
+        self.plot_widget.hide()
+        self.buttons_widget.hide()
+        self.show_button.show()
+        
+    def expand(self):
+        self.collaped = False
+        self.toolbar.show()
+        self.plot_widget.show()
+        self.buttons_widget.show()
+        self.show_button.hide()        
 
-class PlotStacker(qt.QWidget):
+class PlotStacker(qt.QSplitter):#qt.QWidget):
     def __init__(self, mainwin):
-        qt.QWidget.__init__(self)
+        #qt.QWidget.__init__(self)
+        qt.QSplitter.__init__(self)
+        self.setStyleSheet("QSplitter::handle {border: 1px solid #CCCCCC;}")
         self.mainwin = mainwin
         #self.setLayout(qt.QVBoxLayout())
-        self.setLayout(qt.QHBoxLayout())
+        #self.setLayout(qt.QHBoxLayout())
         plwidget = qt.QWidget()
         self.plwidget = plwidget
         self.plotlist = qt.QVBoxLayout(plwidget)
         #plwidget.setSizePolicy(qt.QSizePolicy.Maximum)
-        plwidget.setMaximumWidth(2 ** 16)
-        self.layout().addWidget(plwidget)
+        #plwidget.setMaximumWidth(2 ** 16)
+        #self.setSizes([2**9, 2**10])
+        #self.layout().addWidget(plwidget)
+        self.addWidget(plwidget)
         zoom_widget = qt.QWidget()
         self.zoom = qt.QHBoxLayout(zoom_widget)
-        self.layout().addWidget(zoom_widget)
+        #self.layout().addWidget(zoom_widget)
+        self.addWidget(zoom_widget)
         self.row = 0
         self.col = 0
         self.plots = {}
         self.accum = {}
    
-    def add_plot(self, ident="", rank=1, accum=True, plotkwargs={}):
+    def add_plot(self, ident="", rank=1, accum=True, xpts=[], ypts=[], plotkwargs={}):
         if ident in self.plots:
             self.remove_plot(ident)
-        widget = PlotItem(ident, rank, accum, plotkwargs)
+        if len(ypts) > 0:
+            plotkwargs['ydata'] = ypts[0], ypts[-1]
+        widget = PlotItem(ident, rank, accum, plotkwargs, xpts)
+        uncollapsed = lambda ident: not(self.plots[ident].collapsed)
+        if len(filter(uncollapsed, self.plots.iterkeys())) > 3:
+            widget.collapse()
         widget.remove_button.clicked.connect(lambda: self.remove_plot(ident))
         widget.zoom_button.clicked.connect(lambda: self.zoom_plot(ident))
         self.plots[ident] = widget
         self.plotlist.addWidget(widget)
-    
+        #if len(self.plots) is 1:
+        zoom_item = self.zoom.itemAt(0)
+        if zoom_item is None:
+            self.zoom_plot(ident)
+            widget.expand()
+        
     def zoom_plot(self, ident):
         item = self.zoom.itemAt(0)
         if item is not None:
@@ -221,15 +298,25 @@ class PlotStacker(qt.QWidget):
             self.zoom.removeWidget(widget)
             self.plotlist.addWidget(widget)
             if widget.ident == ident:
-                self.plwidget.setMaximumWidth(2 ** 16)
+                #self.plwidget.setMaximumWidth(2 ** 16)
                 return
         else:
-            self.plwidget.setMaximumWidth(2 ** 9)
+            #self.plwidget.setMaximumWidth(2 ** 9)
+            pass
         widget = self.plots[ident]
         self.plotlist.removeWidget(widget)
         self.zoom.addWidget(widget)
         
-                             
+    def clear_plot(self, ident):
+        if ident == '_all_plots_':
+            for ident in self.plots:
+                self.clear_plot(ident)
+        plot = self.plots[ident]
+        if plot.rank is 1:
+            plot.item.set_data([],[])
+        elif plot.rank is 2:
+            plot.item.set_data([[]])
+    
     def remove_plot(self, ident):
         widget = self.plots.pop(ident)
         if widget.parentWidget().layout() is self.plotlist:
@@ -260,6 +347,10 @@ class PlotStacker(qt.QWidget):
             else:
                 img = np.column_stack((img, data))
             item.set_data(img)
+            if len(plot.xpts) > 0:                
+                if plot.update_count > 0:
+                    item.set_xdata(plot.xpts[0], plot.xpts[plot.update_count])
+                plot.update_count += 1 
         else:
             if plot.rank is 1:
                 try:
@@ -284,6 +375,8 @@ class ScriptViewerWindow(gui.SlabWindow, UiClass):
         #self.auto_register_gui()
         ps = PlotStacker(self)
         splitter = qt.QSplitter()
+        splitter.setStyleSheet("QSplitter::handle {border: 1px solid #CCCCCC;}")
+        self.setStyleSheet("QSplitter::handle {border: 1px solid #CCCCCC;}")
         self.message_box = qt.QTextBrowser()
         self.message_box.setMaximumWidth(250)
         splitter.addWidget(self.message_box)
@@ -304,12 +397,20 @@ def view():
 def serve(n):
     print "Serving test data"
     with ScriptPlotter() as plotter:
-        plotter.init_plot("sin", rank=2)
+        #plotter.clear_plots()
+        plotter.init_plot("sin", rank=2, xpts=np.linspace(0, 1, n), ypts=np.linspace(0, 2*np.pi))
         plotter.init_plot("cos", rank=1, color='r')
-        plotter.init_plot("tan", rank=1, accum=False)
+        #plotter.clear_plot("cos")
+        plotter.init_plot("tan", accum=False)
+        plotter.init_plot("dummy1", accum=False)
+        plotter.init_plot("dummy2", accum=False)
+        plotter.init_plot("dummy3", accum=False)
+        plotter.init_plot("dummy4", accum=False)
+
         t = 0
         x = np.linspace(0, 2*np.pi)
         print "starting"
+        #plotter.zoom_plot("cos")
         for i in range(n):
             time.sleep(.1)
             t += .1
