@@ -28,6 +28,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="screenshot_button">
+        <property name="text">
+         <string>Screenshot</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="start_button">
         <property name="text">
          <string>Start</string>

@@ -396,6 +396,18 @@ class ScriptViewerWindow(gui.SlabWindow, UiClass):
         self.msg("initialized")
         self.start_script("start_polling")
         self.remove_plots_button.clicked.connect(lambda: ps.remove_plot("_all_plots_"))
+        self.screenshot_button.clicked.connect(self.screenshot)
+        
+    def screenshot(self):
+        d = qt.QFileDialog()
+        filename = str(d.getSaveFileName(None, "Save Screenshot", r"S:\_Data", "Image file (*.png)"))
+        #filename = str(qt.QFileDialog.getSaveFileName(dir=r"S:\_Data"))
+        #if len(d.split('.')) == 1:
+        #    d += '.png'
+        pm = qt.QPixmap()
+        pm2 = pm.grabWidget(self.centralWidget()) # Apparently this is non-updating?
+        print filename
+        pm2.toImage().save(filename)
         
 import sys
 import time
