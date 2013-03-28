@@ -213,6 +213,8 @@ class PlotItem(qt.QWidget):
             self.plot_widget = ImageWidget(title=ident, lock_aspect_ratio=False)
             self.plot_widget.add_toolbar(toolbar)
             self.plot_widget.register_all_image_tools()
+            if 'interpolation' not in plotkwargs:
+                plotkwargs['interpolation'] = 'nearest'
             self.item = make.image(np.array([[0]]), **plotkwargs)
         else:
             raise ValueError
