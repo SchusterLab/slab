@@ -117,10 +117,11 @@ class ScriptPlotter():
         self.meta_pub.close()
         self.text_pub.close()
         
-    def msg(self, text):
+    def msg(self, *args):
         """
         Display a text message in the plotting window
         """
+        text = " ".join(map(str, args))
         self.text_pub.send_unicode(text)
         
     def __enter__(self):
