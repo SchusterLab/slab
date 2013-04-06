@@ -86,6 +86,28 @@ def gaussfunc(p, x):
     return p[0]+p[1]*math.e**(-1./2.*(x-p[2])**2/p[3]**2)
     
 
+def expfunc(p,x):
+    """p[0]+p[1]*exp(-(x-p[2])/p[3])"""
+    return p[0]+p[1]*math.e**(-(x-p[2])/p[3])
+    
+def fitexp(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+    """Fit exponential decay (p[0]+p[1]*exp(-(x-p[2])/p[3]))"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:    
+        fitparams=[0,0,0,0]
+        fitparams[0]=fitdatay[-1]
+        fitparams[1]=fitdatay[0]-fitdatay[-1]
+        fitparams[2]=(fitdatax[0]-fitdatax[-1])/5
+        
+    p1 = fitgeneral(fitdatax,fitdatay,expfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+    return p1   
+    
+
+
 def fitgauss (xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
     """fit lorentzian"""
     if domain is not None:
