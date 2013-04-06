@@ -11,11 +11,13 @@ try: import gui
 except: print "Warning: Could not import gui"
 try: import script
 except: print "Warning: Could not import script"
-try: from analysisScript import *
-except: print "Warning: Could not install analysisScript"
+#try: from analysisScript import *
+#except: print "Warning: Could not install analysisScript"
 from datamanagement import *
-try: from circuitqed import *
-except: print "Warning: Could not import circuitqed. Probably due to qutip"
+#try: from circuitqed import *
+#except: print "Warning: Could not import circuitqed. Probably due to qutip"
 #import diamond
 try: import widgets
 except: print "Warning: Could not import widgets"
+try: import awgpulses
+except: print "Warning: Could not import awgpulses"

@@ -102,7 +102,7 @@ class LMS103(Instrument):
     def get_use_internal_reference(self):
         return bool(self.dll.fnLMS_GetUseInternalRef(self.devid))
 
-    def get_use_internal_pulse_mod(self):
+    def get_use_internal_pulse_mod(self): # This is broken -- Phil
         return bool(self.dll.LMS_GetUseInternalPulseMod(self.devid))
         
     def get_power(self):
@@ -122,6 +122,9 @@ class LMS103(Instrument):
         """Set Frequency in Hz"""
         self.dll.fnLMS_SetFrequency(self.devid,U32(int(frequency/10.0)))
         
+        if (self.get_frequency()-frequency) != 0:
+            raise ValueError("Lab brick frequency error!")
+        
     def get_output(self):
         return bool(self.dll.fnLMS_GetRF_On(self.devid))
 
@@ -133,6 +136,9 @@ class LMS103(Instrument):
 
     def set_mod(self,mod=True):
         self.dll.fnLMS_EnableInternalPulseMod(self.devid,U8(mod))
+
+    def set_pulse_ext(self,mod=True):
+        self.dll.fnLMS_SetUseExternalPulseMod(self.devid,U8(mod))
 
     def get_has_fast_pulse_mode(self):
         return bool(self.dll.fnLMS_GetHasFastPulseMode(self.devid))

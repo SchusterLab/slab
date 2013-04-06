@@ -445,7 +445,8 @@ def serve(n):
         print "done"
     
 if __name__ == "__main__":
-    view()    
+    #serve(100)    
+    view()
         
             
         

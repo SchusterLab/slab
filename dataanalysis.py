@@ -164,7 +164,7 @@ def digital_homodyne(time_pts,ch1_pts,ch2_pts=None,IFfreq=1,dfactor=1.,AmpPhase=
         else:
             return dtpts,I1pts,Q1pts
  
-def heterodyne(time_pts,ch1_pts,ch2_pts,IFfreq,AmpPhase=True):
+def heterodyne(time_pts,ch1_pts,ch2_pts=None,IFfreq=1,AmpPhase=True):
     '''digital_homodyne computes I/Q or Amp/Phase as a function of time of a particular frequency component.
        @param time_pts: time of each sample
        @param ch1_pts: Scope channel 1 points 
@@ -172,7 +172,10 @@ def heterodyne(time_pts,ch1_pts,ch2_pts,IFfreq,AmpPhase=True):
        @param IFfreq: Frequency to extract info for
        @param dfactor: decimation factor number of periods to include per point
        @param AmpPhase: returns I/Q if False (default) or Amp/Phase if True
-       '''    
+       '''
+    if ch2_pts is None:
+        ch2_pts = zeros(len(time_pts))
+        
     cospts=cos(2.*pi*IFfreq*time_pts)
     sinpts=sin(2.*pi*IFfreq*time_pts)
     A1=2.*sum(cospts*ch1_pts)/len(time_pts)
