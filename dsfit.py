@@ -80,7 +80,7 @@ def fitlor(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
 def print_cavity_Q(fit):
     print fit[2]/2/fit[3]
     return fit[2]/2/fit[3]
-    
+
 def gaussfunc(p, x):
     """p[0]+p[1] exp(- (x-p[2])**2/p[3]**2/2)"""
     return p[0]+p[1]*math.e**(-1./2.*(x-p[2])**2/p[3]**2)
