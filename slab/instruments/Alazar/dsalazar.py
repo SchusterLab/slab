@@ -17,6 +17,8 @@ import sys
 from slablayout import *
 from guiqwt.pyplot import *
 from scipy.fftpack import fft,rfft
+from slab.dataanalysis import heterodyne
+from numpy import sin,cos,pi
 #import matplotlib.pyplot as mplt
 #import operator
 import time
@@ -236,6 +238,10 @@ class Alazar():
             self.handle = self.get_handle()
         if not self.handle:
             raise RuntimeError("Board could not be found")
+            
+    def close(self):
+       del self.Az
+        
             
     def get_handle(self):
         return self.Az.AlazarGetBoardBySystemID(U32(1), U32(1))
@@ -482,6 +488,9 @@ class Alazar():
                                        flags)
         for i in range (self.config.bufferCount):
             ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[i],U32(self.config.bytesPerBuffer))
+            #print ret, self.config.bytesPerBuffer
+            if ret != 512:
+                print "Failed to post Buffer", ret_to_str(ret, self.Az)
 
     def acquire_data(self):
         self.post_buffers()
@@ -553,6 +562,91 @@ class Alazar():
             return tpts[excise[0]:excise[1]],avg_data1[excise[0]:excise[1]],avg_data2[excise[0]:excise[1]]
         else:
             return tpts,avg_data1,avg_data2
+            
+    #This takes the phase from channel 2 and compensates the channel 1 signal        
+    def acquire_phase_compensated_quadratures(self, IFreq, excise=None):
+        assert self.config.ch2_enabled
+        self.post_buffers()
+        avg_cos = 0.0
+        avg_sin = 0.0
+        phase_array=np.zeros(self.config.recordsPerAcquisition, dtype=float)
+        avg_data1=np.zeros(self.config.samplesPerRecord,dtype=float)
+        avg_data2=np.zeros(self.config.samplesPerRecord,dtype=float)
+        acq_time = self.config.samplesPerRecord / (self.config.sample_rate * 1e3)
+        tpts=np.arange(self.config.samplesPerRecord)/float(self.config.sample_rate*1e3)
+        tpts_len = len(tpts)
+        cospts=cos(2.*pi*IFreq*tpts)
+        sinpts=sin(2.*pi*IFreq*tpts)
+        #avg_data2=np.zeros(self.config.samplesPerRecord,dtype=float)
+        buffersCompleted=0
+        buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
+        ret = self.Az.AlazarStartCapture(self.handle)
+        if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
+        if DEBUGALAZAR: print "Buffers per Acquisition: ", buffersPerAcquisition
+        rec_no = 0
+        while (buffersCompleted < buffersPerAcquisition):
+            if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
+            buf_idx = buffersCompleted % self.config.bufferCount
+            buffersCompleted+=1           
+            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+            if ret != 512:
+                print "Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
+                ret = self.Az.AlazarAbortAsyncRead(self.handle)
+                break       
+            for n in range(self.config.recordsPerBuffer):
+                # starting modifying here
+                o_ch1_pts = self.arrs[buf_idx][n*self.config.samplesPerRecord:(n+1)*self.config.samplesPerRecord]
+                o_ch2_pts = self.arrs[buf_idx][(n+self.config.recordsPerBuffer)*self.config.samplesPerRecord:(n+self.config.recordsPerBuffer+1)*self.config.samplesPerRecord]
+                #print np.mean(ch1_pts)
+                ch1_pts = o_ch1_pts - 128.
+                ch1_pts*=(self.config.ch1_range/128.)
+                ch2_pts = o_ch2_pts - 128.
+                ch2_pts*=(self.config.ch2_range/128.)
+            
+                cos_quad1=2.*np.sum(cospts*ch1_pts)/tpts_len
+                sin_quad1=2.*np.sum(sinpts*ch1_pts)/tpts_len
+                cos_quad2=2.*np.sum(cospts*ch2_pts)/tpts_len
+                sin_quad2=2.*np.sum(sinpts*ch2_pts)/tpts_len           
+                
+                #rec_no = n + buffersCompleted*self.config.recordsPerBuffer
+                
+                phase_array[rec_no] = np.arctan2(cos_quad2, sin_quad2)
+                #phase_array[rec_no] = 0.0
+                
+                #avg_cos += cos_quad1
+                #avg_sin += sin_quad1
+                avg_cos += cos_quad1 * np.cos(phase_array[rec_no] - phase_array[0])+sin_quad1 * np.sin(phase_array[rec_no] - phase_array[0])
+                avg_sin += sin_quad1 * np.cos(phase_array[rec_no] - phase_array[0])-cos_quad1 * np.sin(phase_array[rec_no] - phase_array[0])
+                rec_no += 1
+                avg_data1+=ch1_pts
+                avg_data2+=ch2_pts
+            #plot(self.arrs[buf_idx])
+            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+            if ret != 512:
+                print "Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az)            
+                ret = self.Az.AlazarAbortAsyncRead(self.handle)
+                break       
+            if DEBUGALAZAR: print "PostAsyncBuffer: ", ret_to_str(ret,self.Az) 
+        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+        avg_data1/=float(self.config.recordsPerAcquisition)
+        avg_data2/=float(self.config.recordsPerAcquisition)        
+        avg_data1-=128.
+        avg_data1*=(self.config.ch1_range/128.)
+        avg_data2-=128.
+        avg_data2*=(self.config.ch2_range/128.)
+        avg_cos/=float(self.config.recordsPerAcquisition)
+        avg_sin/=float(self.config.recordsPerAcquisition)
+        ret = self.Az.AlazarAbortAsyncRead(self.handle)
+               
+        if not self.config.ch2_enabled: avg_data2=np.zeros(self.config.samplesPerRecord,dtype=float)
+        
+        if DEBUGALAZAR: print "Acquisition finished."
+        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+        ret = self.Az.AlazarAbortAsyncRead(self.handle)
+        if excise is not None:
+            return tpts[excise[0]:excise[1]],avg_data1[excise[0]:excise[1]],avg_data2[excise[0]:excise[1]], phase_array
+        else:
+            return tpts,avg_data1,avg_data2,np.sqrt(avg_cos**2+avg_sin**2), phase_array
 
     def argselectdomain(self,xdata,domain):
         ind=np.searchsorted(xdata,domain)
@@ -627,6 +721,52 @@ class Alazar():
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
         return f0_data,kappa_data
         
+    def capture_buffer_async(self, buf_idx=0):
+        ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+        if ret != 512:
+            print "Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
+            ret2 = self.Az.AlazarAbortAsyncRead(self.handle)
+            #print ret_to_str(ret, self.Az)
+            return ret 
+        ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+        if ret != 512:
+            print "Abort AsyncRead, PostBuffer: ", ret_to_str(ret,self.Az)            
+            ret2 = self.Az.AlazarAbortAsyncRead(self.handle)
+            #print ret_to_str(ret, self.Az)
+            return ret         
+        return ret
+        
+    def repost_buffer(self, buf_idx=0):
+        ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+        if ret != 512:
+            print "Abort AsyncRead: ", ret_to_str(ret,self.Az)            
+            ret = self.Az.AlazarAbortAsyncRead(self.handle)
+        return ret
+        
+    def separate_channel_data(self, buf_idx=0):
+        ch1_data, ch2_data = None, None
+        for ch1_record, ch2_record in self.get_records(buf_idx):
+            if self.config.ch1_enabled:
+                if ch1_data is not None:
+                    ch1_data = np.vstack((ch1_data, ch1_record))
+                else:
+                    ch1_data = ch1_record
+            if self.config.ch2_enabled:
+                if ch2_data is not None:
+                    ch2_data = np.vstack((ch2_data, ch2_record))
+                else:
+                    ch2_data = ch2_record
+        return ch1_data, ch2_data
+            
+    
+    def get_records(self, buf_idx=0):
+        recordsPerBuffer = self.config.recordsPerBuffer
+        samplesPerRecord = self.config.samplesPerRecord
+        buf = self.arrs[buf_idx]
+        for n in range(recordsPerBuffer):
+            ch1_data = buf[n*samplesPerRecord:(n+1)*samplesPerRecord]
+            ch2_data = buf[(n+recordsPerBuffer)*samplesPerRecord:(n+recordsPerBuffer+1)*samplesPerRecord]
+            yield ch1_data, ch2_data
 #    def acquire_cavity_ringdown_data_fftw(self,excise=None,frequency_window=None):
 #        if self.config.ch2_enabled: 
 #            raise ValueError("Channel 2 must not be enabled in cavity ringdown mode!")

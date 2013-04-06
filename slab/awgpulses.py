@@ -6,7 +6,6 @@ Created on Sat Jul 02 12:01:55 2011
 """
 
 from numpy import *
-from guiqwt.pyplot import *
 
 def square_pulse(amp,length):
     return amp*ones(length)
@@ -42,32 +41,34 @@ def T1(pi_amp,pi_width,wait,total_length):
 
 #def shift_pulse_frequency(pulse, freq,phase):
 
-
-total_length=400
-sigma=3
-pi2_amp=10
-mdelay=10
-pi_amp=20
-
-numexpts=50
-
-spin_sweep=array([spin_echo(20,5,a+20,total_length) for a in range (numexpts)])
-ramsey_sweep=array([ramsey(pi2_amp,sigma,d,mdelay,total_length) for d in range (numexpts)])
-rabi_sweep=array([rabi(a,sigma,mdelay,total_length) for a in range (numexpts)])
-T1_sweep = array([T1(pi_amp,sigma,d,total_length) for d in range (numexpts)])
-
-RRTpulses=hstack((ramsey_sweep,rabi_sweep,T1_sweep,spin_sweep))
-
-
-#pulses=array([co])    
-#figure(1)
-#plot(square_pulse(10,10))
-#plot(gauss(10,3,cutoff_length=10))
-#
-#figure(2)
-#plot(ramsey(10,3,100,10,200))
-
-figure(3)
-imshow(RRTpulses)
-
-show()
+if __name__=="__main__":
+    from guiqwt.pyplot import *
+    total_length=400
+    sigma=3
+    pi2_amp=10
+    mdelay=10
+    pi_amp=20
+    
+    numexpts=50
+    
+    #spin_sweep=array([spin_echo(20,5,a+6*20,total_length) for a in range (numexpts)])
+    ramsey_sweep=array([ramsey(pi2_amp,sigma,d,mdelay,total_length) for d in range (numexpts)])
+    rabi_sweep=array([rabi(a,sigma,mdelay,total_length) for a in range (numexpts)])
+    T1_sweep = array([T1(pi_amp,sigma,d,total_length) for d in range (numexpts)])
+    
+    #RRTpulses=hstack((ramsey_sweep,rabi_sweep,T1_sweep,spin_sweep))
+    RRTpulses=hstack((ramsey_sweep,rabi_sweep,T1_sweep))
+    
+    
+    #pulses=array([co])    
+    #figure(1)
+    #plot(square_pulse(10,10))
+    #plot(gauss(10,3,cutoff_length=10))
+    #
+    #figure(2)
+    #plot(ramsey(10,3,100,10,200))
+    
+    figure(3)
+    imshow(RRTpulses)
+    
+    show()
