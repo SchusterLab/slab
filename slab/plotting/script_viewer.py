@@ -49,10 +49,15 @@ class ScriptPlotter():
         self.data_pub = ctx.socket(zmq.PUB)
         self.meta_pub = ctx.socket(zmq.PUB)
         self.text_pub = ctx.socket(zmq.PUB)
-        self.data_pub.bind("tcp://127.0.0.1:5556")
-        self.meta_pub.bind("tcp://127.0.0.1:5557")
-        self.text_pub.bind("tcp://127.0.0.1:5558")
+        #self.data_pub.bind("tcp://127.0.0.1:5556")
+        #self.meta_pub.bind("tcp://127.0.0.1:5557")
+        #self.text_pub.bind("tcp://127.0.0.1:5558")
+        self.data_pub.connect("tcp://127.0.0.1:5556")
+        self.meta_pub.connect("tcp://127.0.0.1:5557")
+        self.text_pub.connect("tcp://127.0.0.1:5558")
+        
         time.sleep(.5)
+        
     def init_plot(self, ident, rank=1, accum=True, xpts=[], ypts=[], **kwargs):
         """
         Initialize a plot. This will remove existing plots with the same identifier,
@@ -67,7 +72,6 @@ class ScriptPlotter():
         :param kwargs: additional keyword arguments to pass to 
                        guiqwt.builder.make.{curve,image}
         """
-        print ident, accum
         self.meta_pub.send_json({'cmd':'init_plot',
                                  'ident':ident, 
                                  'rank':rank,
@@ -136,14 +140,17 @@ class ScriptViewerThread(gui.DataThread):
         """launches zmq event loop"""
         self.ctx = zmq.Context()
         self.data_sub = self.ctx.socket(zmq.SUB)
-        self.data_sub.connect("tcp://127.0.0.1:5556")
+        #self.data_sub.connect("tcp://127.0.0.1:5556")
+        self.data_sub.bind("tcp://127.0.0.1:5556")
         self.data_sub.setsockopt(zmq.SUBSCRIBE, "")
         self.meta_sub = self.ctx.socket(zmq.SUB)
         self.meta_sub.setsockopt(zmq.SUBSCRIBE, "")
-        self.meta_sub.connect("tcp://127.0.0.1:5557")
+        #self.meta_sub.connect("tcp://127.0.0.1:5557")
+        self.meta_sub.bind("tcp://127.0.0.1:5557")
         self.text_sub = self.ctx.socket(zmq.SUB)
         self.text_sub.setsockopt(zmq.SUBSCRIBE, "")
-        self.text_sub.connect("tcp://127.0.0.1:5558")
+        #self.text_sub.connect("tcp://127.0.0.1:5558")
+        self.text_sub.bind("tcp://127.0.0.1:5558")
 
         self.msg("polling started")
         while not self.aborted():
@@ -341,7 +348,6 @@ class PlotStacker(qt.QSplitter):
             item.set_data(x, y)
         elif plot.accum in ('x', 'y', True) and plot.rank is 2:
             img = item.data
-            print plot.accum
             if plot.accum in ('x', True):
                 if img.shape == (1,1): # Yet to be properly initialized
                     img = np.array([data]).T
@@ -407,7 +413,6 @@ class ScriptViewerWindow(gui.SlabWindow, UiClass):
         #    d += '.png'
         pm = qt.QPixmap()
         pm2 = pm.grabWidget(self.centralWidget()) # Apparently this is non-updating?
-        print filename
         pm2.toImage().save(filename)
         
 import sys
