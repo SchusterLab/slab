@@ -282,12 +282,12 @@ class AWG81180A(SocketInstrument):
         
     def set_to_sequence(self):
         #start awg 
-        awg.select_channel(1)
-        awg.set_output(True)
-        awg.set_mode("SEQ") 
-        awg.select_channel(2)
-        awg.set_output(True)
-        awg.set_mode("SEQ") 
+        self.select_channel(1)
+        self.set_output(True)
+        self.set_mode("SEQ") 
+        self.select_channel(2)
+        self.set_output(True)
+        self.set_mode("SEQ") 
 
 try:
     from guiqwt.pyplot import *
