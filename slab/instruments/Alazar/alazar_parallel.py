@@ -66,17 +66,17 @@ def acquire_avg_data_parallel():
     Az = card.Az
     handle = card.handle
 
-    def assert_az(retCode, name):
-        pass
-        #Az.AlazarErrorToText.restype = C.c_char_p
-        #if retCode != 512:
-        #    raise AlazarException("::".join((name, str(retCode), Az.AlazarErrorToText(U32(retCode)))))    
+    def assert_az(retCode, buffers_acquired, name):
+        Az.AlazarErrorToText.restype = C.c_char_p
+        if retCode != 512:
+            raise AlazarException("::".join(map(str, 
+                (name, buffers_acquired, retCode, Az.AlazarErrorToText(U32(retCode))))))    
     
     # Initialize buffers
     buffers = [ Array(U8, bytesPerBuffer) for _ in range(bufferCount) ]
     for b in buffers:
         ret = Az.AlazarPostAsyncBuffer(handle, b.get_obj(), U32(bytesPerBuffer))
-        assert_az(ret, 'Initial Post Buffer')
+        assert_az(ret, 0, 'Initial Post Buffer')
     avg_buffer = Array(C.c_longdouble, bytesPerBuffer)
     
     # Initialize threads  
@@ -99,22 +99,8 @@ def acquire_avg_data_parallel():
 
     # Begin capture
     ret = Az.AlazarStartCapture(handle)
-    assert_az(ret, "Start Capture")
+    assert_az(ret, 0, "Start Capture")
     while buffers_acquired < (iterations * bufferCount):
-        # Current buffer rotates in a ring
-        buf_idx = buffers_acquired % bufferCount
-        buf = buffers[buf_idx]
-        
-        # Pull data to buffer
-        with buf.get_lock():
-            ret = Az.AlazarWaitAsyncBufferComplete(handle, buf.get_obj(), U32(timeout))
-            #if ret == 573: # BufferNotReady, G
-            #    continue
-            
-        buffers_acquired += 1
-        
-        # Tell worker thread to begin processing 
-        buf_ready_events[buf_idx].set()
         
         # Post all completed buffers
         while buf_post_events[buffers_completed % bufferCount].is_set():
@@ -122,8 +108,25 @@ def acquire_avg_data_parallel():
             buf = buffers[buffers_completed % bufferCount]
             with buf.get_lock():
                 ret = Az.AlazarPostAsyncBuffer(handle, buf.get_obj(), U32(bytesPerBuffer))
-                assert_az(ret, 'Post Buffer')
-            buffers_completed += 1
+                assert_az(ret, buffers_acquired, 'Post Buffer')
+            buffers_completed += 1        
+        
+        # Current buffer rotates in a ring
+        buf_idx = buffers_acquired % bufferCount
+        buf = buffers[buf_idx]
+        
+        # Pull data to buffer
+        with buf.get_lock():
+            ret = Az.AlazarWaitAsyncBufferComplete(handle, buf.get_obj(), U32(timeout))
+            if ret == 573: 
+                continue # BufferNotReady, go back and try to post some buffers.
+            else:
+                assert_az(ret, buffers_acquired, 'Wait Buffer Complete')
+            
+        buffers_acquired += 1
+        
+        # Tell worker thread to begin processing 
+        buf_ready_events[buf_idx].set()
         
         # If a second has elapsed, replot the avg_buffer
         if time.time() - start_time > plot_count:
