@@ -16,7 +16,6 @@ U8 = C.c_uint8
 U16 = C.c_uint16
 U32 = C.c_uint32
 
-use_alazar = True
 recordsPerBuffer = 100
 bytesPerRecord = None
 recordsPerAcquisition = 0x7fffffff
@@ -25,7 +24,7 @@ bytesPerBuffer = 10000
 buffersPerMerge = 10
 buffers_per_merge = 10
 bufferCount = 8
-iterations = 1000
+iterations = 10000
 timeout = 1000
 
 
@@ -50,6 +49,7 @@ def worker(buf, buf_ready_event, buf_post_event, avg_buffer, buffers_merged):
                 n = buffers_merged.value                    
                 avg_buffer_arr *= (n - 1.) / n
                 avg_buffer_arr += sum_buffer / (n*buffers_per_merge)
+                buffers_merged.value += 1
             sum_buffer.fill(0)
 
 def acquire_avg_data_parallel():
@@ -68,7 +68,7 @@ def acquire_avg_data_parallel():
     handle = card.handle
     
     # Initialize buffers
-    buffers = [ Array(U8, bytesPerBuffer) for _ in range(bufferCount) ]    
+    buffers = [ Array(U8, bytesPerBuffer) for _ in range(bufferCount) ]
     for b in buffers:
         ret = Az.AlazarPostAsyncBuffer(handle, b.get_obj(), U32(bytesPerBuffer))
         print "InitPost", ret_to_str(ret, Az)
@@ -90,10 +90,14 @@ def acquire_avg_data_parallel():
     plotter = ScriptPlotter()
     buffers_acquired, buffers_completed, plot_count = 0, 0, 0
     start_time = time.time()
+    plotter.init_plot('Data', rank=1, accum=False)
     for _ in range(iterations * bufferCount):
         buf_idx = buffers_acquired % bufferCount
         buf = buffers[buf_idx]
         with buf.get_lock():
+        ##    arr = np.frombuffer(buf.get_obj(), np.uint8)
+        ##    arr.fill(0)
+        ##    arr += np.random.randint(0, 50, bytesPerBuffer)
             ret = Az.AlazarWaitAsyncBufferComplete(handle, buf.get_obj(), U32(timeout))
             print "WaitComplete", ret_to_str(ret, Az)
         buffers_acquired += 1
@@ -112,6 +116,7 @@ def acquire_avg_data_parallel():
         # If a second has elapsed, replot the avg_buffer
         if time.time() - start_time > plot_count:
             with avg_buffer.get_lock():
+                plotter.msg(buffers_acquired, bufs_merged.value)
                 plotter.plot(np.frombuffer(avg_buffer.get_obj()), 'Data')
             plot_count += 1
 """
