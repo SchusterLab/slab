@@ -1,4 +1,4 @@
-decaysin# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Created on Wed Apr 06 15:41:58 2011
 
