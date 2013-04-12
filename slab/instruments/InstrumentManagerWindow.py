@@ -19,6 +19,7 @@ Created on Sat Jan 19 22:18:00 2013
 
 from slab import gui
 import os,sys,operator,Pyro4
+Pyro4.config.HMAC_KEY = '6551d449b0564585a9d39c0bd327dcf1'
 from guiqwt.qtdesigner import loadui
 from spyderlib.widgets.externalshell.pythonshell  import ExternalPythonShell
 from PyQt4.QtCore import QAbstractTableModel,QVariant
