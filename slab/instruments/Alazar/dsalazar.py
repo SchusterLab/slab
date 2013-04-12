@@ -266,16 +266,14 @@ class Alazar():
            
     def configure_clock(self, source=None, rate=None, edge=None):
         """
-        @param source: 'internal' to use internal clock with rate specified by
-        rate parameter. '60 MHz' for external clock with rate <= 60 MHz.
-        '1 GHz' for external clock with rate <= 1 GHz.
-        'reference' --> see Alazar documentation for AlazarSetCaptureClock
-        
-        @param rate: Rate (in KHz) for the internal clock, ignored for external
-        This will be rounded down to closest value specified by AlazarSetCaptureClock
-        documentation
-        
-        @param edge: 'rising' or 'falling'
+        :param source: 'internal' to use internal clock with rate specified by
+                       rate parameter. '60 MHz' for external clock with rate <= 60 MHz.
+                       '1 GHz' for external clock with rate <= 1 GHz.
+                       'reference' --> see Alazar documentation for AlazarSetCaptureClock
+        :param rate: Rate (in KHz) for the internal clock, ignored for external
+                     This will be rounded down to closest value specified by AlazarSetCaptureClock
+                     documentation
+        :param edge: 'rising' or 'falling'
         """
         if source is not None: self.config.clock_source= source        
         if rate is not None: self.config.clock_rate = rate   #check this to make sure it's behaving properly
@@ -324,22 +322,18 @@ class Alazar():
                  level=None, level2=None, operation=None, coupling=None, timeout=None,delay=0):
         """
         Can set up to two trigger operations to be performed
-        @param source: Where the first trigger engine should take its input.
-        'CH_A' for channel A, 'CH_B' for channel B, "external" for external source,
-        'disabled' to disable trigger engine
-        
-        @param edge: 'rising' or 'falling'
-        
-        @param level: integer in interval [-100, 100], i.e. a percent of the input range
-        at which to trigger a capture
-        
-        @param coupling: 'AC' or 'DC'
-        
-        @param operation: How to combine two enabled triggers to generate capture events
-        'or' to trigger on either engine, 'and' to trigger only when both go high,
-        'xor', 'and not' offered as well.
-        
-        @param timeout: How to 
+
+        :param source: Where the first trigger engine should take its input.
+                       'CH_A' for channel A, 'CH_B' for channel B, "external" for external source,
+                       'disabled' to disable trigger engine
+        :param edge: 'rising' or 'falling'
+        :param level: integer in interval [-100, 100], i.e. a percent of the input range
+                      at which to trigger a capture
+        :param coupling: 'AC' or 'DC'
+        :param operation: How to combine two enabled triggers to generate capture events
+                          'or' to trigger on either engine, 'and' to trigger only when both go high,
+                          'xor', 'and not' offered as well.
+        :param timeout: How long to wait for a trigger before giving up (milliseconds)
         """
         if source is not None: self.config.trigger_source1 = source
         if source2 is not None: self.config.trigger_source2 = source2
@@ -379,14 +373,11 @@ class Alazar():
         
     def configure_inputs(self, enabled1=None, coupling1=None, range1=None, filter1=None, enabled2=None, coupling2=None, range2=None, filter2=None):
         """
-        @param channel: 'CH_A' or 'CH_B'. Create two InputConfig classes for both
-        
-        @param coupling: 'AC' or 'DC'
-        
-        @param input_range: Input range in volts. rounds down to the closest value
-        provided by AlazarInputControl
-        
-        @param filter_above_20MHz: if True, enable the 20MHz BW filter
+        :param channel: 'CH_A' or 'CH_B'. Create two InputConfig classes for both
+        :param coupling: 'AC' or 'DC'
+        :param input_range: Input range in volts. rounds down to the closest value
+                            provided by AlazarInputControl
+        :param filter_above_20MHz: if True, enable the 20MHz BW filter
         """
         
         if enabled1 is not None: self.config.ch1_enabled = enabled1
