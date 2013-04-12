@@ -2,7 +2,7 @@
 """
 Created on Sat Sep 03 14:50:09 2011
 
-@author: Phil
+@author: David Schuster
 """
 import slab.instruments
 import os,sys
@@ -22,6 +22,7 @@ except:
 class InstrumentManager(dict):
     """InstrumentManager class reads configuration files and
     keeps track of listed instruments and their settings
+    :param config_path: Path to configuration file
     """
     def __init__(self, config_path=None, server=False, ns_address=None):
         """Initializes InstrumentManager using config_path if available"""

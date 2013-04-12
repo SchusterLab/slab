@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Aug 02 09:55:05 2011
-
-@author: Phil
+Oxford Triton Cryostat Controller (cryostat.py)
+===============================================
+:Author: David Schuster
 """
 from slab.instruments import SocketInstrument
 import re

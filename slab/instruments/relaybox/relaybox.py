@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jun 17 10:27:19 2011
+Relay Box (relaybox.relaybox.py)
+================================
+:Author: Ge Yang
 
 This program utilizes the pyserial library in a 32 bit environment, and can not
 be ran on a 64bit python evironment. 
@@ -9,12 +11,6 @@ The serial.read() function requires a specific size parameter. During reading
 from the relay box, a string of length varying from SSS to !#$ is generated, 
 therefore sometimes the program has to wait for the timeout. This is currently 
 source of delay in the program. 
-
-@author: Ge Yang
-
-
-
-
 """
 from slab.instruments import SerialInstrument, WebInstrument
 import urllib2

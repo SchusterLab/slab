@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Feb 15 13:45:44 2012
-
-@author: Nitrogen
+SRS900 Voltage Source (voltsource.py)
+=====================================
+:Author: David Schuster
 """
 
 from slab.instruments import SerialInstrument,VisaInstrument,Instrument
@@ -10,7 +10,7 @@ import re
 import time
 
 class SRS900(SerialInstrument,VisaInstrument):
-    
+    'Interface to the SRS900 voltage source'
     def __init__(self,name="",address='COM5',enabled=True,timeout=1):
         #if ':' not in address: address+=':22518'        
         if address[:3].upper()=='COM':

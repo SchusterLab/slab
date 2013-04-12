@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Feb 18 23:39:28 2012
-
-@author: Ge
+Helium Manifold Controller (relaybox.heliummanifold.py)
+=======================================================
+:Author: Ge
 """
 from slab.instruments import RelayBox
 import time

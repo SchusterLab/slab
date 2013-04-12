@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Bing
+BK PowerSupply (bkpowersupply.py)
+=================================
+:Author: Bing
 
+Typically, this supply is used to power the amplifier (TODO: Which?)
 """
 from slab.instruments import SerialInstrument
 import time
 
 class BKPowerSupply(SerialInstrument):
+    'Interface to the BK Precision 9130 Power Supply'
     def __init__(self,name="",address='COM11',enabled=True,timeout=0):
         SerialInstrument.__init__(self,name,address,enabled,timeout,querysleep=0.2)
         

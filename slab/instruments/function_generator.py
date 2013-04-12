@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Aug 11 19:09:25 2011
-
-@author: Phil
+BNC Function Generator (function_generator.py)
+==============================================
+:Author: David Schuster
 """
 from slab.instruments import SocketInstrument
 import time
 
 class BNCAWG(SocketInstrument):
+    'Interface to the BNC function generator'
     def __init__(self,name='BNCAWG',address='', enabled=True,timeout=0.01, recv_length=1024):
         #SocketInstrument.__init__(self,name,address,5025,enabled,timeout,recv_length)        
         if ':' in address:
