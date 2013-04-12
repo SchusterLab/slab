@@ -9,20 +9,35 @@ from PyQt4 import QtGui, QtCore
 from subprocess import Popen
 import os
 
-slab_dir = 'C:\\_Lib\\python\\slab'
+slab_dir = r'C:\_Lib\python\slab'
+
+
+def python_cmd(relpath):
+    return ['pythonw', os.path.join(slab_dir, relpath)]
+
+
+def select_dir():
+    dir = str(QtGui.QFileDialog().getExistingDirectory())
+    os.chdir(dir)
+    return []
 
 scripts = {
-    'HDF Viewer' : [os.path.join(slab_dir, 'plotting\\hdfiview.py')],
-    'Script Plotter' : [os.path.join(slab_dir, 'plotting\\script_viewer.py')],
-    'NWA Viewer' : [os.path.join(slab_dir, 'scripts\\NWAWindow.pyw')],
-    'Instrument Manager' : [os.path.join(slab_dir, 'instruments\\instrumentmanager.py'), '-g'],
-    'File Server' : [os.path.join(slab_dir, 'datamanagement.py')]
+    'HDF Viewer' : python_cmd(r'plotting\hdfiview.py'),
+    'Script Plotter' : python_cmd(r'plotting\script_viewer.py'),
+    'NWA Viewer' : python_cmd(r'scripts\NWAWindow.pyw'),
+    'Instrument Manager' : python_cmd(r'instruments\instrumentmanager.py') + ['-g'],
+    'File Server' : python_cmd('datamanagement.py'),
+    'IPython Notebook' : lambda: select_dir() + ['ipython', 'notebook', '--pylab', 'inline', '--ip=*']
 }
+
 
 def create_popen_fn(args):
     env = os.environ
-    env.update({'PYTHONPATH':'C:\\_Lib\\python'})
-    return lambda: Popen(['pythonw'] + args, env=env)
+    env.update({'PYTHONPATH':r'C:\_Lib\python'})
+    fn_type = type(lambda: 1)
+    if isinstance(args, fn_type):
+        return lambda: Popen(args(), env=env)
+    return lambda: Popen(args, env=env)
 
 if __name__ == "__main__":
     app = QtGui.QApplication([])
@@ -33,6 +48,6 @@ if __name__ == "__main__":
         button = QtGui.QPushButton(name)
         button.clicked.connect(create_popen_fn(args))
         layout.addWidget(button)
-    win.setCentralWidget(widget)    
+    win.setCentralWidget(widget)
     win.show()
     app.exec_()
