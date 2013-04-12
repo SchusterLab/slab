@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Aug 02 09:55:05 2011
-
-@author: Phil
+IPS Magnet Controller (ipsmagnet.py)
+====================================
+:Author: David Schuster
 """
 from slab.instruments import SerialInstrument,VisaInstrument
 import re

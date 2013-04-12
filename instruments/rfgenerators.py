@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Aug 11 19:09:25 2011
-
-@author: Phil
+Agilent E8257D (rfgenerators.py)
+================================
+:Author: David Schuster
 """
 
 from slab.instruments import SocketInstrument
 
 class E8257D(SocketInstrument):
+    """
+    The interface to the Agilent E8257D RF Generator, implemented on top of 
+    :py:class:`~slab.instruments.instrumenttypes.SocketInstrument`
+    """
     def __init__(self,name='E8257D',address='', enabled=True,timeout=10, recv_length=1024):
         #SocketInstrument.__init__(self,name,address,5025,enabled,timeout,recv_length)        
         if ':' in address:

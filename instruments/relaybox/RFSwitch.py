@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue May 22 14:49:01 2012
+RF Switch Controller (relaybox.RFSwitch.py)
+===========================================
+:Author: Thomas
 
 Relay Numbers(Ports) are always 1-8 unless activating multiple relays at a time.
 Ports 1-6 can be activated/deactivated
 If using USB cable, set address to appropriate COM.
 If using web access, set address to appropriate URL.
-@author: ThomasLaptop
 """
 
 from slab.instruments.relaybox import RelayBox

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun May 08 17:03:09 2011
-
-@author: Phil
+Agilent AWG81180A (awg.py)
+==========================
+:Author: David Schuster
 """
 
 from numpy import *
@@ -216,7 +216,7 @@ class AWG81180A(SocketInstrument):
         blockarraylength=str(blockarray.__len__())
         blockarraylengthposition=blockarraylength.__len__()
         cmd = commandstring+" #"+str(blockarraylengthposition)+blockarraylength
-        print "bbw cmd string: ", cmd
+        #print "bbw cmd string: ", cmd
         #self.instrument.term_chars = ""
         self.write(str(bytearray(cmd)+blockarray))
         #self.instrument.term_chars = None

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-
+KEPCO Power Supply (KEPCOPowerSupply.py)
+========================================
+:Author: David Schuster
 """
 from slab.instruments import SerialInstrument
 import time

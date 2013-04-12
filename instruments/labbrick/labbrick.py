@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Aug 10 18:16:08 2011
+Lab Brick (labbrick.labbrick.py)
+================================
 
-@author: Phil
+:Author: David Schuster
 """
 
 import ctypes as C
@@ -30,6 +31,11 @@ except:
     print "Warning could not load labbrick dll"
 
 def LMS_get_device_info():
+    """
+    Returns a dictionary of device information
+
+    :returns: {'model':Labbrick model, 'serial':Serial number, 'devid':Device ID}
+    """
     dll=LABBRICKDLL
     dll.fnLMS_SetTestMode(U8(int(False)))
     device_info_array_type = U32 * int(dll.fnLMS_GetNumDevices(None))
@@ -47,6 +53,7 @@ def LMS_get_device_info():
     return devinfos
 
 class LMS103(Instrument):
+    'The interface to the Lab Brick signal generator'
     def __init__(self,name="Labbrick",address=None,enabled=True):
         Instrument.__init__(self,name,address,enabled=True)
         #self.dll=C.CDLL(LMS103dllpath)
