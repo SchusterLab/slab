@@ -14,7 +14,8 @@ has two main benefits
 2. Multiple asynchronous scripts can all plot to the same window
    without additional hassle
 
-This approach does require, however, that the plotting window be launched independently, and before the script has started
+This approach does require, however, that the plotting window be launched independently,
+and before the script has started
 
 This can be achieved by running this script with::
 
@@ -36,8 +37,18 @@ The general plotting api is to send data via the ScriptPlotter.plot method
   each update, rather than accumulating
 """
 
+import sys
+import time
 import zmq
 import numpy as np
+import PyQt4.Qt as qt
+from guiqwt.plot import CurveWidget, ImageWidget
+from guiqwt.builder import make
+from guiqwt.qtdesigner import loadui
+import slab.gui as gui
+
+UiClass = loadui("C:\_Lib\python\slab\plotting\script_viewer.ui")
+
 
 class ScriptPlotter():
     """
@@ -49,16 +60,13 @@ class ScriptPlotter():
         self.data_pub = ctx.socket(zmq.PUB)
         self.meta_pub = ctx.socket(zmq.PUB)
         self.text_pub = ctx.socket(zmq.PUB)
-        #self.data_pub.bind("tcp://127.0.0.1:5556")
-        #self.meta_pub.bind("tcp://127.0.0.1:5557")
-        #self.text_pub.bind("tcp://127.0.0.1:5558")
         self.data_pub.connect("tcp://127.0.0.1:5556")
         self.meta_pub.connect("tcp://127.0.0.1:5557")
         self.text_pub.connect("tcp://127.0.0.1:5558")
         
         time.sleep(.5)
         
-    def init_plot(self, ident, rank=1, accum=True, xpts=[], ypts=[], **kwargs):
+    def init_plot(self, ident, trace=None, rank=1, accum=True, xpts=[], ypts=[], **kwargs):
         """
         Initialize a plot. This will remove existing plots with the same identifier,
         as well as allow for non-default configuration options.
@@ -72,13 +80,14 @@ class ScriptPlotter():
         :param kwargs: additional keyword arguments to pass to 
                        guiqwt.builder.make.{curve,image}
         """
-        self.meta_pub.send_json({'cmd':'init_plot',
-                                 'ident':ident, 
-                                 'rank':rank,
-                                 'accum':accum,
-                                 'xpts':list(xpts),
-                                 'ypts':list(ypts),
-                                 'plotkwargs':kwargs})
+        self.meta_pub.send_json({'cmd': 'init_plot',
+                                 'ident': ident,
+                                 'rank': rank,
+                                 'accum': accum,
+                                 'trace': trace,
+                                 'xpts': list(xpts),
+                                 'ypts': list(ypts),
+                                 'plotkwargs': kwargs})
         time.sleep(.25)
         
     def zoom_plot(self, ident):
@@ -86,27 +95,28 @@ class ScriptPlotter():
         Specify the main plot, giving it more screen real estate.
         By default, the first plot added is the main plot.
         """
-        self.meta_pub.send_json({'cmd':'zoom_plot', 'ident':ident})
+        self.meta_pub.send_json({'cmd': 'zoom_plot', 'ident': ident})
 
     def clear_plots(self):
         self.clear_plot('_all_plots_')
     
     def clear_plot(self, ident):
-        self.meta_pub.send_json({'cmd':'clear_plot', 'ident':ident})
+        self.meta_pub.send_json({'cmd': 'clear_plot', 'ident': ident})
         time.sleep(.25)
         
-    def plot(self, data, ident):
+    def plot(self, data, ident, trace=None):
         """
         Send data to a plot. If ``ident`` is not associated with any plot
         it is created. Accumulation is assumed, i.e., if the data is an 
         (x,y) pair, a line plot is created, If the data is a rank-1 array,
         an image plot is created.
         """
-        self.send_array(np.array(data), ident)
+        self.send_array(np.array(data), ident, trace=trace)
         
-    def send_array(self, A, ident, flags=0, copy=False, track=False):
+    def send_array(self, A, ident, trace=None, flags=0, copy=False, track=False):
         md = dict(
             ident = ident,
+            trace = trace,
             dtype = str(A.dtype),
             shape = A.shape,
         )
@@ -134,22 +144,19 @@ class ScriptPlotter():
     def __exit__(self, type, value, tb):
         self.close()
 
-import slab.gui as gui
+
 class ScriptViewerThread(gui.DataThread):
     def start_polling(self):
         """launches zmq event loop"""
         self.ctx = zmq.Context()
         self.data_sub = self.ctx.socket(zmq.SUB)
-        #self.data_sub.connect("tcp://127.0.0.1:5556")
         self.data_sub.bind("tcp://127.0.0.1:5556")
         self.data_sub.setsockopt(zmq.SUBSCRIBE, "")
         self.meta_sub = self.ctx.socket(zmq.SUB)
         self.meta_sub.setsockopt(zmq.SUBSCRIBE, "")
-        #self.meta_sub.connect("tcp://127.0.0.1:5557")
         self.meta_sub.bind("tcp://127.0.0.1:5557")
         self.text_sub = self.ctx.socket(zmq.SUB)
         self.text_sub.setsockopt(zmq.SUBSCRIBE, "")
-        #self.text_sub.connect("tcp://127.0.0.1:5558")
         self.text_sub.bind("tcp://127.0.0.1:5558")
 
         self.msg("polling started")
@@ -178,24 +185,20 @@ class ScriptViewerThread(gui.DataThread):
                 self.gui["plotstacker"].clear_plot(d['ident'])
         except Exception as e:
             self.msg(e)
-        
+
     def recv_array(self, flags=0, copy=True, track=False):
-        """recv a numpy array"""
         md = self.data_sub.recv_json(flags=flags)
         msg = self.data_sub.recv(flags=flags, copy=copy, track=track)
         buf = buffer(msg)
         A = np.frombuffer(buf, dtype=md['dtype'])
         try:
-            self.gui["plotstacker"].update_plot(md['ident'], A.reshape(md['shape']))
+            self.gui["plotstacker"].update_plot(md['ident'], A.reshape(md['shape']), md['trace'])
         except Exception as e:
             self.msg(e)
-            
-import PyQt4.Qt as qt
-from guiqwt.plot import CurveWidget, ImageWidget
-from guiqwt.builder import make
+
 
 class PlotItem(qt.QWidget):
-    def __init__(self, ident, rank, accum, plotkwargs, xpts=[], ypts=[]):
+    def __init__(self, ident, rank, accum, plotkwargs, trace=None, xpts=[], ypts=[]):
         qt.QWidget.__init__(self)
         qt.QVBoxLayout(self)
         self.layout().setSpacing(0)
@@ -212,21 +215,18 @@ class PlotItem(qt.QWidget):
         self.update_count = 0
         self.collapsed = False
         
-        if rank == 1:
+        if self.rank == 1:
             self.plot_widget = CurveWidget(title=ident)
             self.plot_widget.add_toolbar(toolbar)
             self.plot_widget.register_all_curve_tools()
-            self.item = make.curve([], [], **plotkwargs)
-        elif rank == 2:
+        elif self.rank == 2:
             self.plot_widget = ImageWidget(title=ident, lock_aspect_ratio=False)
             self.plot_widget.add_toolbar(toolbar)
             self.plot_widget.register_all_image_tools()
-            if 'interpolation' not in plotkwargs:
-                plotkwargs['interpolation'] = 'nearest'
-            self.item = make.image(np.array([[0]]), **plotkwargs)
         else:
             raise ValueError
-        self.plot_widget.plot.add_item(self.item)
+        self.items = {}
+        self.add_item(trace, plotkwargs)
         self.layout().addWidget(self.plot_widget)
 
         self.buttons_widget = buttons = qt.QWidget()
@@ -247,6 +247,23 @@ class PlotItem(qt.QWidget):
         self.layout().addWidget(buttons)
         self.layout().addWidget(self.show_button)
     
+    def add_item(self, trace, plotkwargs={}):
+        if trace in self.items:
+            self.plot_widget.plot.del_item(self.items[trace])
+        if self.rank == 1:
+            try:
+                self.items[trace] = make.curve([], [], **plotkwargs)
+            except:
+                print self.ident, trace, plotkwargs
+                raise
+        elif self.rank == 2:
+            if 'interpolation' not in plotkwargs:
+                plotkwargs['interpolation'] = 'nearest'
+            self.items[trace] = make.image(np.array([[0]]), **plotkwargs)
+        else:
+            raise ValueError
+        self.plot_widget.plot.add_item(self.items[trace])
+
     def collapse(self):
         self.collapsed = True
         self.toolbar.hide()
@@ -259,7 +276,8 @@ class PlotItem(qt.QWidget):
         self.toolbar.show()
         self.plot_widget.show()
         self.buttons_widget.show()
-        self.show_button.hide()        
+        self.show_button.hide()
+
 
 class PlotStacker(qt.QSplitter):
     def __init__(self, mainwin):
@@ -280,14 +298,22 @@ class PlotStacker(qt.QSplitter):
         self.plots = {}
         self.accum = {}
    
-    def add_plot(self, ident="", rank=1, accum=True, xpts=[], ypts=[], plotkwargs={}):
+    def add_plot(self, ident="", rank=1, trace=None, accum=True, xpts=[], ypts=[], plotkwargs={}):
+        try:
+            ident, trace = ident.split(':')
+        except ValueError:
+            pass
         if ident in self.plots:
-            self.remove_plot(ident)
+            if trace is not None:
+                self.plots[ident].add_item(trace, plotkwargs)
+                return
+            else:
+                self.remove_plot(ident)
         if len(ypts) > 0 and accum in ('x', True):
             plotkwargs['ydata'] = ypts[0], ypts[-1]
         if len(xpts) > 0 and accum == 'y':
             plotkwargs['xdata'] = xpts[0], xpts[-1]
-        widget = PlotItem(ident, rank, accum, plotkwargs, xpts, ypts)
+        widget = PlotItem(ident, rank, accum, plotkwargs, trace, xpts, ypts)
         uncollapsed = lambda ident: not(self.plots[ident].collapsed)
         if len(filter(uncollapsed, self.plots.iterkeys())) > 3:
             widget.collapse()
@@ -299,7 +325,7 @@ class PlotStacker(qt.QSplitter):
         if zoom_item is None:
             self.zoom_plot(ident)
             widget.expand()
-        
+
     def zoom_plot(self, ident):
         item = self.zoom.itemAt(0)
         if item is not None:
@@ -318,9 +344,11 @@ class PlotStacker(qt.QSplitter):
                 self.clear_plot(ident)
         plot = self.plots[ident]
         if plot.rank is 1:
-            plot.item.set_data([],[])
+            for item in plot.items.values():
+                item.set_data([],[])
         elif plot.rank is 2:
-            plot.item.set_data([[]])
+            for item in plot.items.values():
+                item.set_data([[]])
     
     def remove_plot(self, ident):
         if ident == "_all_plots_":
@@ -334,13 +362,17 @@ class PlotStacker(qt.QSplitter):
             self.zoom.removeWidget(widget)
         widget.close()
     
-    def update_plot(self, ident, data):
+    def update_plot(self, ident, data, trace=None):
         try:
             plot = self.plots[ident]
         except KeyError:
             self.add_plot(ident, rank=1 if (len(data) == 2) else 2)
             plot = self.plots[ident]
-        item = plot.item
+        try:
+            item = plot.items[trace]
+        except:
+            print ident, trace
+            raise 
         if plot.accum is True and plot.rank is 1:
             x, y = item.get_data()
             x = np.concatenate((x, [data[0]]))
@@ -371,18 +403,20 @@ class PlotStacker(qt.QSplitter):
             if plot.rank is 1:
                 try:
                     x, y = data
-                except:
+                except ValueError:
                     y = data
                     x = np.arange(len(y))
                 item.set_data(x, y)
             else:
+                if len(plot.xpts) > 0:
+                    item.set_xdata(plot.xpts[0], plot.xpts[-1])
+                if len(plot.ypts) > 0:
+                    item.set_ydata(plot.ypts[0], plot.ypts[-1])
                 item.set_data(data)
         plot.plot_widget.plot.replot()
         if plot.autoscale_check.isChecked():
             plot.plot_widget.plot.do_autoscale()
 
-from guiqwt.qtdesigner import loadui
-UiClass = loadui("C:\_Lib\python\slab\plotting\script_viewer.ui")
 
 class ScriptViewerWindow(gui.SlabWindow, UiClass):
     def __init__(self):
@@ -415,19 +449,21 @@ class ScriptViewerWindow(gui.SlabWindow, UiClass):
         pm2 = pm.grabWidget(self.centralWidget()) # Apparently this is non-updating?
         pm2.toImage().save(filename)
         
-import sys
-import time
+
 def view():
     print "Starting window"
     sys.exit(gui.runWin(ScriptViewerWindow))
+
 
 def serve(n):
     print "Serving test data"
     with ScriptPlotter() as plotter:
         #plotter.clear_plots()
         #plotter.init_plot("sin", rank=2, xpts=np.linspace(0, 1, n), ypts=np.linspace(0, 2*np.pi), accum='x')
-        plotter.init_plot("sin", rank=2, ypts=np.linspace(0, 1, n), xpts=np.linspace(0, 2*np.pi), accum='y')
-        plotter.init_plot("cos", rank=1, color='r')
+        #plotter.init_plot("trig", trace='sin', rank=1, color='r', accum=True)
+        #plotter.init_plot("trig", trace='cos', rank=1, color='b', accum=True)
+        plotter.init_plot("trig", trace="cos", rank=1, color='r', accum=False)
+        plotter.init_plot("trig", trace="sin", rank=1, color='b', accum=False)
         #plotter.clear_plot("cos")
         plotter.init_plot("tan", accum=False)
         plotter.init_plot("dummy1", accum=False)
@@ -443,8 +479,10 @@ def serve(n):
             time.sleep(.1)
             t += .1
             plotter.msg("time " + str(t))
-            plotter.plot(np.sin(x + t), "sin")
-            plotter.plot((t, np.cos(t)), "cos")
+            #plotter.plot(np.sin(t + x), "sin")
+            #plotter.plot((t, np.cos(t)), "cos")
+            plotter.plot(np.cos(x + t), "trig", "cos")
+            plotter.plot(np.sin(x + t), "trig", "sin")
             plotter.plot(np.tan(x + t), "tan")
         plotter.close()
         print "done"
@@ -452,6 +490,3 @@ def serve(n):
 if __name__ == "__main__":
     #serve(100)    
     view()
-        
-            
-        
