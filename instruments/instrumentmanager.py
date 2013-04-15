@@ -5,7 +5,9 @@ Created on Sat Sep 03 14:50:09 2011
 @author: David Schuster
 """
 import slab.instruments
-import os,sys
+import os
+import sys
+import socket
 from optparse import OptionParser
 
 try:
@@ -14,7 +16,7 @@ try:
     # Block calls from running simultaneously
     Pyro4.config.SERVERTYPE = 'multiplex'
     Pyro4.config.HMAC_KEY = '6551d449b0564585a9d39c0bd327dcf1'
-except:
+except ImportError:
     print "Warning: Pyro4 package is not present"
     print "Instrument Servers will not work."
     Pyro4Loaded = False
@@ -65,7 +67,7 @@ class InstrumentManager(dict):
     def serve_instruments(self):
         """inst_dict is in form {name:instrument_instance}"""
         Pyro4.config.SERVERTYPE = "multiplex"
-        daemon = Pyro4.Daemon()#host=Pyro4.socketutil.getMyIpAddress())
+        daemon = Pyro4.Daemon(host=socket.gethostbyname(socket.gethostname()))
         ns = Pyro4.locateNS(self.ns_address)
         for name, instrument_instance in self.items():
             uri = daemon.register(instrument_instance)
