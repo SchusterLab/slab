@@ -127,10 +127,9 @@ class LMS103(Instrument):
 
     def set_frequency(self,frequency):
         """Set Frequency in Hz"""
-        self.dll.fnLMS_SetFrequency(self.devid,U32(int(frequency/10.0)))
-        
-        if (self.get_frequency()-frequency) != 0:
-            raise ValueError("Lab brick frequency error!")
+        ret = self.dll.fnLMS_SetFrequency(self.devid,U32(int(frequency/10.0)))
+        if ret != 0:
+            raise ValueError("Lab Brick refused frequency %.2e Hz" % frequency)
         
     def get_output(self):
         return bool(self.dll.fnLMS_GetRF_On(self.devid))
