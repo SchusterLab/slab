@@ -22,45 +22,69 @@ bufferCount = 8
 iterations = 10000
 timeout = 1000
 
+
 class AlazarException(Exception):
     pass
 
-def worker(buf, buf_ready_event, buf_post_event, avg_buffer, buffers_merged):
-    arr = np.frombuffer(buf.get_obj(), U8)
-    avg_buffer_arr = np.frombuffer(avg_buffer.get_obj(), C.c_longdouble)
-    sum_buffer = np.zeros(bytesPerBuffer, np.uint32)
-    my_buffers_completed = 0
-    for _ in range(iterations):
-        buf_ready_event.wait()
 
-        buf_ready_event.clear()
-        sum_buffer += arr
-        buf_post_event.set()
-        my_buffers_completed += 1
+def average_worker(reshape_fn):
+    def _worker(buf, buf_ready_event, buf_post_event, avg_buffer, buffers_merged):
+        arr = np.frombuffer(buf.get_obj(), U8)
+        avg_buffer_arr = np.frombuffer(avg_buffer.get_obj(), C.c_longdouble)
+        sum_buffer = np.zeros(bytesPerBuffer, np.uint32)
+        my_buffers_completed = 0
+        for _ in range(iterations):
+            buf_ready_event.wait()
 
-        if my_buffers_completed % buffers_per_merge == 0:      
-            with avg_buffer.get_lock():
-                n = buffers_merged.value                    
-                avg_buffer_arr *= (n - 1.) / n
-                avg_buffer_arr += sum_buffer / (n*buffers_per_merge)
-                buffers_merged.value += 1
-            sum_buffer.fill(0)
+            buf_ready_event.clear()
+            sum_buffer += reshape_fn(arr)
+            buf_post_event.set()
+            my_buffers_completed += 1
 
-def acquire_avg_data_parallel():
+            if my_buffers_completed % buffers_per_merge == 0:
+                with avg_buffer.get_lock():
+                    n = buffers_merged.value
+                    avg_buffer_arr *= (n - 1.) / n
+                    avg_buffer_arr += sum_buffer / (n*buffers_per_merge)
+                    buffers_merged.value += 1
+                sum_buffer.fill(0)
+
+
+def single_shot_worker(processing_fn):
+    def _worker(buf, buf_ready_event, buf_post_event, result_buffer, buffers_merged):
+        arr = np.frombuffer(buf.get_obj(), U8)
+        results = []
+        my_buffers_completed = 0
+        for _ in range(iterations):
+            buf_ready_event.wait()
+            buf_ready_event.clear()
+            results.append(processing_fn(arr))
+            buf_post_event.set()
+            my_buffers_completed += 1
+
+        with result_buffer.get_lock():
+            n = buffers_merged.value
+            result_buffer[n*iterations:(n+1)*iterations] = array(results)
+            buffers_merged.value += 1
+    return _worker
+
+
+def acquire_avg_data_parallel(worker, result_shape):
     from multiprocessing import Process, Array, Value, Event
     from slab.instruments import Alazar, AlazarConfig
     from slab.plotting import ScriptPlotter
     import time
 
     # Configure card
-    config={'clock_edge': 'rising', 'clock_source': 'reference',  
-            'trigger_coupling': 'DC',  'trigger_operation': 'or', 
-            'trigger_source2': 'disabled','trigger_level2': 1.0, 'trigger_edge2': 'rising', 
-            'trigger_level1': 0.6, 'trigger_edge1': 'rising', 'trigger_source1': 'external', 
-            'ch1_enabled': True,  'ch1_coupling': 'AC', 'ch1_range': 1, 'ch1_filter': False, 
-            'ch2_enabled': False, 'ch2_coupling': 'AC','ch2_range': 1, 'ch2_filter': False,            
-            'bufferCount': bufferCount,'recordsPerBuffer': recordsPerBuffer, 'trigger_delay': 0, 'timeout': timeout,
-            'samplesPerRecord':samplesPerRecord,'recordsPerAcquisition':recordsPerAcquisition, 'sample_rate': 1000000}
+    config = {'clock_edge': 'rising', 'clock_source': 'reference',
+              'trigger_coupling': 'DC',  'trigger_operation': 'or',
+              'trigger_source2': 'disabled', 'trigger_level2': 1.0, 'trigger_edge2': 'rising',
+              'trigger_level1': 0.6, 'trigger_edge1': 'rising', 'trigger_source1': 'external',
+              'ch1_enabled': True,  'ch1_coupling': 'AC', 'ch1_range': 1, 'ch1_filter': False,
+              'ch2_enabled': False, 'ch2_coupling': 'AC', 'ch2_range': 1, 'ch2_filter': False,
+              'bufferCount': bufferCount, 'recordsPerBuffer': recordsPerBuffer, 'trigger_delay': 0,
+              'timeout': timeout, 'samplesPerRecord': samplesPerRecord, 'recordsPerAcquisition': recordsPerAcquisition,
+              'sample_rate': 1000000}
     card = Alazar(AlazarConfig(config))
     card.configure()
     Az = card.Az
@@ -86,7 +110,6 @@ def acquire_avg_data_parallel():
     workers = [ Process(target=worker, args=(b, bre, bpe, avg_buffer, bufs_merged)) 
                 for b, bre, bpe in zip(buffers, buf_ready_events, buf_post_events) ]
     
-
     for w in workers:
         w.start()
     time.sleep(1)
@@ -137,8 +160,11 @@ def acquire_avg_data_parallel():
     
     return np.frombuffer(avg_buffer.get_obj())
 
+
+
+
 if __name__ == "__main__":
     import cProfile
     #cProfile.run('acquire_avg_data_parallel()')
-    acquire_avg_data_parallel()
+    acquire_avg_data_parallel(average_worker(lambda x: x), (recordsPerBuffer,))
     print 'done'
