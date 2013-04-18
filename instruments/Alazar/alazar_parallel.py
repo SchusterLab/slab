@@ -3,6 +3,7 @@ from __future__ import division
 import ctypes as C
 import numpy as np
 import warnings
+from multiprocessing import cpu_count
 warnings.simplefilter('ignore')
 
 U8 = C.c_uint8
@@ -13,13 +14,13 @@ records_per_buffer = 10
 records_per_acquisition = 0x7fffffff
 bytes_per_sample = 1
 samples_per_record = 2**14
-buffers_per_merge = 10
-buffer_count = 8
-iterations = 100000
+buffers_per_merge = 100
+buffer_count = cpu_count()
+iterations = 10000
 timeout = 1000
 samples_per_ms = 1000000
 samples_per_second = samples_per_ms * 1e3
-seconds_per_record = 50e-6
+seconds_per_record = 17e-6
 seconds_per_buffer = seconds_per_record * records_per_buffer
 bytes_per_record = bytes_per_sample * samples_per_record
 bytes_per_buffer = bytes_per_record * records_per_buffer
@@ -65,13 +66,13 @@ def average_worker(ignored, buf, buf_ready_event, buf_post_event, avg_buffer, bu
 def average_reshape_worker(reshape_fn, buf, buf_ready_event, buf_post_event, avg_buffer, buffers_merged):
     arr = np.frombuffer(buf.get_obj(), U8)
     avg_buffer_arr = np.frombuffer(avg_buffer.get_obj(), C.c_longdouble)
-    sum_buffer = np.zeros(bytes_per_buffer, np.uint32)
+    sum_buffer = np.zeros(len(avg_buffer_arr), np.uint32)
     my_buffers_completed = 0
     for _ in range(iterations):
         buf_ready_event.wait()
 
         buf_ready_event.clear()
-        sum_buffer += reshape_fn(arr)
+        reshape_fn(sum_buffer, arr)
         buf_post_event.set()
         my_buffers_completed += 1
 
@@ -86,7 +87,6 @@ def average_reshape_worker(reshape_fn, buf, buf_ready_event, buf_post_event, avg
 def reshape_collapse_records(res, arr):
     samples_per_record = len(res)
     records_per_buffer = int(len(arr) / samples_per_record)
-    res.fill(0)
     for i in range(records_per_buffer):
         res += arr[i*samples_per_record:(i+1)*samples_per_record]
 
@@ -106,6 +106,13 @@ def single_shot_worker(proc_fun, buf, buf_ready_event, buf_post_event, result_bu
         result_buffer[n*iterations:(n+1)*iterations] = np.array(results)
         buffers_merged.value += 1
 
+from slab.instruments import AlazarConfig
+class AlazarParallelConfig(AlazarConfig):
+    buffers_per_merge = 100
+    
+    @property
+    def merges_per_acquisition(self):
+        return self.merges
 
 def acquire_avg_data_parallel(worker, proc_fun, result_shape, plot=True):
     """
@@ -150,7 +157,7 @@ def acquire_avg_data_parallel(worker, proc_fun, result_shape, plot=True):
         for b in buffers:
             ret = Az.AlazarPostAsyncBuffer(handle, b.get_obj(), U32(bytes_per_buffer))
             assert_az(ret, 0, 'Initial Post Buffer')
-        avg_buffer = Array(C.c_longdouble, bytes_per_buffer)
+        avg_buffer = Array(C.c_longdouble, result_shape)
         
         # Initialize threads  
         bufs_merged = Value(U32, 1)
@@ -179,7 +186,7 @@ def acquire_avg_data_parallel(worker, proc_fun, result_shape, plot=True):
         ret = Az.AlazarStartCapture(handle)
         assert_az(ret, 0, "Start Capture")
         unready_count = 0
-        while buffers_acquired < (iterations * buffer_count):
+        while buffers_completed < (iterations * buffer_count):
             
             # Post all completed buffers
             while buf_post_events[buffers_completed % buffer_count].is_set():
@@ -209,11 +216,14 @@ def acquire_avg_data_parallel(worker, proc_fun, result_shape, plot=True):
             buf_ready_events[buf_idx].set()
             
             # If a second has elapsed, replot the avg_buffer
-            if plot:
-                if (time.time() - start_time) / seconds_per_plot > plot_count:
-                    with avg_buffer.get_lock():
-                        plotter.msg(buffers_acquired, bufs_merged.value)
-                        plotter.plot(np.frombuffer(avg_buffer.get_obj()), 'Data')
+            if (time.time() - start_time) / seconds_per_plot > plot_count:
+                if plot:
+                        with avg_buffer.get_lock():
+                            plotter.msg(buffers_acquired, bufs_merged.value)
+                            plotter.plot(np.frombuffer(avg_buffer.get_obj()), 'Data')
+                        plot_count += 1
+                else:                
+                    print buffers_acquired, buffers_completed
                     plot_count += 1
     finally:
         Az.AlazarAbortAsyncRead(handle)
@@ -231,11 +241,287 @@ def acquire_avg_data_parallel(worker, proc_fun, result_shape, plot=True):
 
     return np.frombuffer(avg_buffer.get_obj())
 
+class AlazarConfig:
+    samplesPerRecord = 2**12
+    recordsPerBuffer = 10
+    
+    @property
+    def recordsPerAcquisition(self):
+        return self.recordsPerBuffer * self.buffersPerAcquisition
+    
+    bufferCount = cpu_count()
+    clock_source = 'external'
+    clock_edge = 'rising'
+    sample_rate = int(1e6)
+    trigger_source1 = 'external'
+    trigger_edge1 = 'rising'
+    trigger_level1 = .1
+    trigger_source2 = 'disabled'
+    trigger_edge2 = 'rising'
+    trigger_level2 = .1
+    trigger_operation = 'AND'
+    trigger_coupling = 'DC'
+    trigger_delay = 0
+    timeout = 1000
+    ch1_enabled = True
+    ch2_enabled = False
+    
+                 'trigger_delay',
+                 'timeout',
+                 'ch1_enabled',
+                 'ch1_coupling',
+                 'ch1_range',
+                 'ch1_filter',
+                 'ch2_enabled',
+                 'ch2_coupling',
+                 'ch2_range',
+                 'ch2_filter'
+    def __init__(self, config_dict=None, **kwargs):
+        config_dict = config_dict if config_dict else kwargs
+        assert all([k in self.__dict__ for k in config_dict.keys()])
+        self.__dict__.update(config_dict)
+        
+
+class Alazar():
+    def __init__(self,config=None, handle=None):
+        self.Az = C.CDLL(r'C:\Windows\SysWow64\ATSApi.dll')
+        if config is None:
+            self.config = AlazarConfig()
+        else:
+            self.config = config
+            
+        if handle:
+            self.handle = handle
+        else:
+            self.handle = self.get_handle()
+        if not self.handle:
+            raise RuntimeError("Board could not be found")
+            
+    def close(self):
+       del self.Az
+        
+            
+    def get_handle(self):
+        return self.Az.AlazarGetBoardBySystemID(U32(1), U32(1))
+        
+    def configure(self,config=None):
+        if config is not None: self.config=config
+        if self.config.samplesPerRecord<256 or (self.config.samplesPerRecord  % 64)!=0:
+            print "Warning! invalid samplesPerRecord!"
+            print "Frames will not align properly!"
+            print "Try %d or %d" % (max(256,self.config.samplesPerRecord-(self.config.samplesPerRecord  % 64)),
+                                                                 max(256,self.config.samplesPerRecord+64-(self.config.samplesPerRecord  % 64)))
+        if self.config.recordsPerAcquisition < self.config.recordsPerBuffer:
+            raise ValueError("recordsPerAcquisition: %d < recordsPerBuffer: %d" % (self.config.recordsPerAcquisition , self.config.recordsPerBuffer))
+        if DEBUGALAZAR: print "Configuring Clock"
+        self.configure_clock()
+        if DEBUGALAZAR: print "Configuring triggers"
+        self.configure_trigger()
+        if DEBUGALAZAR: print "Configuring inputs"
+        self.configure_inputs()
+        if DEBUGALAZAR: print "Configuring buffers"
+        self.configure_buffers()
+           
+    def configure_clock(self, source=None, rate=None, edge=None):
+        """
+        :param source: 'internal' to use internal clock with rate specified by
+                       rate parameter. '60 MHz' for external clock with rate <= 60 MHz.
+                       '1 GHz' for external clock with rate <= 1 GHz.
+                       'reference' --> see Alazar documentation for AlazarSetCaptureClock
+        :param rate: Rate (in KHz) for the internal clock, ignored for external
+                     This will be rounded down to closest value specified by AlazarSetCaptureClock
+                     documentation
+        :param edge: 'rising' or 'falling'
+        """
+        if source is not None: self.config.clock_source= source        
+        if rate is not None: self.config.clock_rate = rate   #check this to make sure it's behaving properly
+        if edge is not None: self.config.edge = edge 
+        
+
+        #convert clock config
+        if self.config.clock_source not in ["internal", "external", "reference"]:
+            raise ValueError("source must be one of internal, external, or reference")
+        if self.config.clock_edge not in ["rising", "falling"]:
+            raise ValueError("edge must be one of rising or falling")
+
+        if self.config.clock_source == "internal":
+            source = AlazarConstants.clock_source["internal"]
+            decimation=U32(0)
+            for (rate, value) in AlazarConstants.sample_rate:
+                if rate >= self.config.sample_rate:
+                    if rate > self.config.sample_rate:
+                        print "Warning: sample_rate not found. Using first smaller value", rate, "Khz"
+                        self.config.sample_rate = rate
+                    sample_rate = value
+                    break
+        elif self.config.clock_source == "external":
+            sample_rate = AlazarConstants.sample_rate_external
+            decimation=U32(0)
+            if self.config.sample_rate < 60000:
+                source = AlazarConstants.clock_source["60 MHz"]
+            elif self.config.sample_rate < 1000000:
+                source = AlazarConstants.clock_source["1 GHz"]
+            else:
+                raise ValueError("Not supported (yet?)")
+        elif self.config.clock_source == "reference":
+            source = AlazarConstants.clock_source["reference"]
+            sample_rate=U32(1000000000)
+            decimation=int(1e9/(self.config.sample_rate*1e3))
+            if (decimation != 1) and (decimation != 2) and (decimation != 1) and (decimation %10 != 0):
+                print "Warning: sample_rate must be 1Gs/s / 1,2,4 or a multiple of 10. Using 1Gs/s."
+                decimation=1
+            decimation=U32(decimation)
+        else:
+            raise ValueError("reference signal not implemented yet")
+        ret = self.Az.AlazarSetCaptureClock(self.handle, source, sample_rate, AlazarConstants.clock_edge[self.config.clock_edge], decimation)
+        if DEBUGALAZAR: print "ClockConfig:", ret_to_str(ret, self.Az)
+
+    def configure_trigger(self,source=None, source2=None, edge=None, edge2=None,
+                 level=None, level2=None, operation=None, coupling=None, timeout=None,delay=0):
+        """
+        Can set up to two trigger operations to be performed
+
+        :param source: Where the first trigger engine should take its input.
+                       'CH_A' for channel A, 'CH_B' for channel B, "external" for external source,
+                       'disabled' to disable trigger engine
+        :param edge: 'rising' or 'falling'
+        :param level: integer in interval [-100, 100], i.e. a percent of the input range
+                      at which to trigger a capture
+        :param coupling: 'AC' or 'DC'
+        :param operation: How to combine two enabled triggers to generate capture events
+                          'or' to trigger on either engine, 'and' to trigger only when both go high,
+                          'xor', 'and not' offered as well.
+        :param timeout: How long to wait for a trigger before giving up (milliseconds)
+        """
+        if source is not None: self.config.trigger_source1 = source
+        if source2 is not None: self.config.trigger_source2 = source2
+        if edge is not None: self.config.trigger_edge1 = edge
+        if edge2 is not None: self.config.trigger_edge2 = edge2
+        if level is not None: self.config.trigger_level1 = level
+        if level2 is not None: self.config.trigger_level2 = level2
+        
+        if not (self.config.trigger_level1 >= -100 and self.config.trigger_level1 < 100):
+            raise ValueError("Level must be value in [-100,100]")
+        if not (self.config.trigger_level2 >= -100 and self.config.trigger_level2 < 100):
+            raise ValueError("Level must be value in [-100,100]")
+        if operation is not None: self.config.trigger_operation = operation
+        if coupling is not None: self.config.trigger_coupling= coupling
+        if timeout is not None: self.config.timeout= timeout
+        if delay is not None: self.config.trigger_delay = delay
+        
+        
+        if source2 == "disabled":
+            op = AlazarConstants.single_op
+        else:
+            op = AlazarConstants.trigger_operation[self.config.trigger_operation]
+
+        ret = self.Az.AlazarSetTriggerOperation(self.handle, op,
+                AlazarConstants.trigger_engine_1, AlazarConstants.trigger_source[self.config.trigger_source1], AlazarConstants.trigger_edge[self.config.trigger_edge1], U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255)),
+                AlazarConstants.trigger_engine_2, AlazarConstants.trigger_source[self.config.trigger_source2], AlazarConstants.trigger_edge[self.config.trigger_edge2], U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255)))
+        if DEBUGALAZAR: print "Set Trigger:", ret_to_str(ret, self.Az)
+        if self.config.trigger_source1 == "external":
+            ret = self.Az.AlazarSetExternalTrigger(self.handle, AlazarConstants.trigger_ext_coupling[self.config.trigger_coupling], U32(0))
+            if DEBUGALAZAR: print "Set External Trigger:", ret_to_str(ret, self.Az)
+            
+        
+        self.triggerDelay_samples = int(self.config.trigger_delay * self.config.sample_rate*1e3 + 0.5)
+        ret = self.Az.AlazarSetTriggerDelay(self.handle, U32(self.triggerDelay_samples))
+        if DEBUGALAZAR: print "Set Trigger Delay:", ret_to_str(ret, self.Az)
+        
+        
+    def configure_inputs(self, enabled1=None, coupling1=None, range1=None, filter1=None, enabled2=None, coupling2=None, range2=None, filter2=None):
+        """
+        :param channel: 'CH_A' or 'CH_B'. Create two InputConfig classes for both
+        :param coupling: 'AC' or 'DC'
+        :param input_range: Input range in volts. rounds down to the closest value
+                            provided by AlazarInputControl
+        :param filter_above_20MHz: if True, enable the 20MHz BW filter
+        """
+        
+        if enabled1 is not None: self.config.ch1_enabled = enabled1
+        if coupling1 is not None: self.config.ch1_coupling= coupling1
+        if range1 is not None: self.config.ch1_range = range1
+        if filter1 is not None: self.config.ch1_filter
+
+        if enabled2 is not None: self.config.ch2_enabled = enabled2
+        if coupling2 is not None: self.config.ch2_coupling= coupling2
+        if range2 is not None: self.config.ch2_range = range2
+        if filter2 is not None: self.config.ch2_filter
+        
+        for (voltage, value) in AlazarConstants.input_range:
+            if self.config.ch1_range <= voltage:
+                if self.config.ch1_range < voltage:
+                    if DEBUGALAZAR: print "Warning: input range not found, using closest value,", voltage, "Volts"
+                self.config.ch1_range = voltage
+                ch1_range_value=value
+                break
+        for (voltage, value) in AlazarConstants.input_range:
+            if self.config.ch2_range <= voltage:
+                if self.config.ch2_range < voltage:
+                    if DEBUGALAZAR: print "Warning: input range not found, using closest value,", voltage, "Volts"
+                self.config.ch2_range = voltage
+                ch2_range_value=value
+                break
+
+        if self.config.ch1_enabled:  
+            ret = self.Az.AlazarInputControl(self.handle, AlazarConstants.channel["CH_A"], AlazarConstants.input_coupling[self.config.ch1_coupling], ch1_range_value, U32(2))
+            if DEBUGALAZAR: print "Input Control CH1:", ret_to_str(ret, self.Az)
+            ret = self.Az.AlazarSetBWLimit(self.handle, AlazarConstants.channel["CH_A"], AlazarConstants.input_filter[self.config.ch1_filter])
+            if DEBUGALAZAR: print "Set BW Limit:", ret_to_str(ret, self.Az)
+        if self.config.ch2_enabled:  
+            ret = self.Az.AlazarInputControl(self.handle, AlazarConstants.channel["CH_B"], AlazarConstants.input_coupling[self.config.ch2_coupling], ch2_range_value, U32(2))
+            if DEBUGALAZAR: print "Input Control CH1:", ret_to_str(ret, self.Az)
+            ret = self.Az.AlazarSetBWLimit(self.handle, AlazarConstants.channel["CH_B"], AlazarConstants.input_filter[self.config.ch2_filter])
+            if DEBUGALAZAR: print "Set BW Limit:", ret_to_str(ret, self.Az)
+
+
+    def configure_buffers(self,samplesPerRecord=None,recordsPerBuffer=None,recordsPerAcquisition=None,bufferCount=None):
+        if samplesPerRecord is not None: self.config.samplesPerRecord=samplesPerRecord
+        if recordsPerBuffer is not None: self.config.recordsPerBuffer=recordsPerBuffer
+        if recordsPerAcquisition is not None: self.config.recordsPerAcquisition=recordsPerAcquisition
+        if bufferCount is not None: self.config.bufferCount = bufferCount
+        
+        self.config.channelCount=0
+        channel=0        #Create channel flag
+        if self.config.ch1_enabled: 
+            channel= channel | 1
+            self.config.channelCount+=1
+        if self.config.ch2_enabled: 
+            channel= channel | 2
+            self.config.channelCount+=1
+        
+        pretriggers=C.c_long(0) #no pretriggering support for now
+        flags = U32 (513) #ADMA flags, should update to be more general
+        
+        ret = self.Az.AlazarSetRecordSize(self.handle,U32(0),U32(self.config.samplesPerRecord))        
+        if DEBUGALAZAR: print "Set Record Size:", ret_to_str(ret,self.Az)
+        
+        ret = self.Az.AlazarBeforeAsyncRead(self.handle,U32(channel),pretriggers,
+                                       U32(self.config.samplesPerRecord), 
+                                       U32(self.config.recordsPerBuffer),
+                                       U32(self.config.recordsPerAcquisition),
+                                       flags)
+        if DEBUGALAZAR: print "Before Read:", ret_to_str(ret,self.Az)
+
+        self.config.bytesPerBuffer=(self.config.samplesPerRecord * self.config.recordsPerBuffer * self.config.channelCount)        
+        self.bufs=[]
+        buftype=U8 * self.config.bytesPerBuffer
+        for i in range(self.config.bufferCount):
+            self.bufs.append(buftype())            
+            for j in range(self.config.bytesPerBuffer):
+                self.bufs[i][j]=U8(0)
+            #ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[i],U32(self.config.bytesPerBuffer))
+        if DEBUGALAZAR: print "Posted buffers: ", ret_to_str(ret,self.Az)
+        self.arrs=[np.ctypeslib.as_array(b) for b in self.bufs]
+
+def acquire_average_data(self, n_records, n_averages):
+    buffer_count = cpu_count()
+    
 
 def identity(x):
     return x
 
 if __name__ == "__main__":
     #import cProfile
-    acquire_avg_data_parallel(average_worker, identity, (records_per_buffer,), plot=True)
+    acquire_avg_data_parallel(average_reshape_worker, reshape_collapse_records, samples_per_record, plot=True)
     print 'done'
