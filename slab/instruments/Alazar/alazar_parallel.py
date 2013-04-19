@@ -37,10 +37,6 @@ class Bunch(object):
 
 def validate_config_parameters(config, trigger_time):
      c = Bunch(config)
-     samplesPerBuffer = c.samplesPerRecord * c.recordsPerBuffer
-     duty_cycle = samplesPerBuffer / (c.sample_rate * 1e3)
-     if duty_cycle > .7:
-         raise ValueError('Card is acquiring for %.1f of the trigger time' % duty_cycle)
 
 def average_worker(ignored, buf, buf_ready_event, buf_post_event, avg_buffer, buffers_merged):
     arr = np.frombuffer(buf.get_obj(), U8)
@@ -241,86 +237,159 @@ def acquire_avg_data_parallel(worker, proc_fun, result_shape, plot=True):
 
     return np.frombuffer(avg_buffer.get_obj())
 
+
+class AlazarConstants():
+    clock_source = {"internal" : U32(1),
+                    "reference": U32(7),
+                    "60 MHz" : U32(4),
+                    "1 GHz" : U32(5)}
+
+    sample_rate = {1000: U32(1),
+                   2000: U32(2),
+                   5000: U32(4),
+                   10000: U32(8),
+                   20000: U32(10),
+                   50000: U32(12),
+                   100000: U32(14),
+                   200000: U32(16),
+                   500000: U32(18),
+                   1000000: U32(20),
+                   2000000: U32(24),
+                   5000000: U32(26),
+                   10000000: U32(28),
+                   20000000: U32(30),
+                   50000000: U32(34),
+                   100000000: U32(36),
+                   250000000: U32(43),
+                   500000000: U32(48),
+                   1000000000: U32(53),
+                   'external': U32(64),
+                   'reference': U32(1000000000)}
+
+    _trigger_source = {"ch_a": U32(0),
+                      "ch_b": U32(1),
+                      "external": U32(2),
+                      "disabled": U32(3)}
+    trigger_source1 = _trigger_source
+    trigger_source2 = _trigger_source
+    trigger_operation = {"or": U32(2),
+                         "and": U32(3),
+                         "xor": U32(4),
+                         "and not": U32(5)}
+
+    _coupling = {"ac": U32(1), "dc": U32(2)}
+    trigger_coupling = _coupling
+    input_coupling = _coupling
+
+    trigger_single_op = U32(0)
+    trigger_engine_1 = U32(0)
+    trigger_engine_2 = U32(1)
+    _edge = {"rising": U32(1), "falling":U32(2)}
+    trigger_edge = _edge
+    clock_edge = _edge
+
+    # Channel Constants
+    channel = {"CH_A": U8(1), "CH_B": U8(2)}
+    _input_range = {0.04: U32(2), 0.1: U32(5), 0.2: U32(6),
+                    0.4: U32(6), 1: U32(10), 2: U32(11), 4: U32(12)}
+    ch1_range = _input_range
+    ch2_range = _input_range
+    #input_filter = {False: U32(0), True: U32(1)}
+
+    #ApiSuccess = 512
+
 class AlazarConfig:
     samplesPerRecord = 2**12
     recordsPerBuffer = 10
-    
-    @property
-    def recordsPerAcquisition(self):
-        return self.recordsPerBuffer * self.buffersPerAcquisition
-    
     bufferCount = cpu_count()
+    buffersPerAcquisition = 0x7fffffff
     clock_source = 'external'
     clock_edge = 'rising'
-    sample_rate = int(1e6)
+    sample_rate = 1000000
     trigger_source1 = 'external'
     trigger_edge1 = 'rising'
     trigger_level1 = .1
     trigger_source2 = 'disabled'
     trigger_edge2 = 'rising'
     trigger_level2 = .1
-    trigger_operation = 'AND'
+    trigger_operation = 'and'
     trigger_coupling = 'DC'
     trigger_delay = 0
     timeout = 1000
     ch1_enabled = True
+    ch1_coupling = 'DC'
+    ch1_range = 1
+    ch1_filter = False
     ch2_enabled = False
+    ch2_coupling = 'DC'
+    ch2_range = 1
+    ch2_filter = False
+
+    @property
+    def recordsPerAcquisition(self):
+        return self.recordsPerBuffer * self.buffersPerAcquisition
+
+    @property
+    def samplesPerBuffer(self):
+        return self.samplesPerRecord * self.recordsPerBuffer
     
-                 'trigger_delay',
-                 'timeout',
-                 'ch1_enabled',
-                 'ch1_coupling',
-                 'ch1_range',
-                 'ch1_filter',
-                 'ch2_enabled',
-                 'ch2_coupling',
-                 'ch2_range',
-                 'ch2_filter'
     def __init__(self, config_dict=None, **kwargs):
         config_dict = config_dict if config_dict else kwargs
         assert all([k in self.__dict__ for k in config_dict.keys()])
         self.__dict__.update(config_dict)
-        
+
+    def normalize(self):
+        for k, v in self.__dict__.items():
+            if isinstance(v, str):
+                self.__dict__[k] = v.lower()
+
+    def validate(self):
+        self.normalize()
+        #assert self.clock_source in ('external', 'interal', 'reference')
+        #assert all(v in ('rising', 'falling') for v in (self.clock_edge, self.trigger_edge1, self.trigger_edge2))
+        #assert all(v in ('external', 'interal', 'disabled') for v in (self.trigger_source1, self.trigger_source2))
+        #assert self.trigger_operation in ('and', 'or')
+
+        for k, v =x
+        for k, v in self.__dict__.items():
+            if isinstance(v, str):
+                potentials = getattr(AlazarConstants, k).keys()
+                if v not in potentials:
+                    raise ValueError(k + ' must be one of ' + ", ".join(potentials) + " not " + v)
+
+            if isinstance(v, (int, float)):
+                lower, upper = getattr(AlazarConstants, k)
+                if not lower < v < upper:
+                    raise ValueError(k + ' must be between %f and %f' % (lower, upper))
+
+        if self.samplesPerRecord < 256 or (self.samplesPerRecord % 64) != 0:
+            lower, upper = (max(256, self.samplesPerRecord-(self.samplesPerRecord % 64)),
+                            max(256, self.samplesPerRecord+64-(self.samplesPerRecord % 64)))
+            raise ValueError("Invalid samplesPerRecord, frames will not align properly. Try %d or %d" % (lower, upper))
 
 class Alazar():
-    def __init__(self,config=None, handle=None):
+    def __init__(self, config=None, handle=None):
         self.Az = C.CDLL(r'C:\Windows\SysWow64\ATSApi.dll')
-        if config is None:
-            self.config = AlazarConfig()
-        else:
-            self.config = config
-            
-        if handle:
-            self.handle = handle
-        else:
-            self.handle = self.get_handle()
+        self.config = config if config is not None else AlazarConfig()
+        self.handle = handle if handle is not None else self.get_handle()
+
         if not self.handle:
             raise RuntimeError("Board could not be found")
             
     def close(self):
-       del self.Az
-        
-            
+        del self.Az
+
     def get_handle(self):
         return self.Az.AlazarGetBoardBySystemID(U32(1), U32(1))
         
-    def configure(self,config=None):
-        if config is not None: self.config=config
-        if self.config.samplesPerRecord<256 or (self.config.samplesPerRecord  % 64)!=0:
-            print "Warning! invalid samplesPerRecord!"
-            print "Frames will not align properly!"
-            print "Try %d or %d" % (max(256,self.config.samplesPerRecord-(self.config.samplesPerRecord  % 64)),
-                                                                 max(256,self.config.samplesPerRecord+64-(self.config.samplesPerRecord  % 64)))
-        if self.config.recordsPerAcquisition < self.config.recordsPerBuffer:
-            raise ValueError("recordsPerAcquisition: %d < recordsPerBuffer: %d" % (self.config.recordsPerAcquisition , self.config.recordsPerBuffer))
-        if DEBUGALAZAR: print "Configuring Clock"
+    def configure(self, config=None):
+        if config is not None:
+            self.config = config
+
         self.configure_clock()
-        if DEBUGALAZAR: print "Configuring triggers"
         self.configure_trigger()
-        if DEBUGALAZAR: print "Configuring inputs"
         self.configure_inputs()
-        if DEBUGALAZAR: print "Configuring buffers"
-        self.configure_buffers()
+        #self.configure_buffers()
            
     def configure_clock(self, source=None, rate=None, edge=None):
         """
@@ -333,16 +402,14 @@ class Alazar():
                      documentation
         :param edge: 'rising' or 'falling'
         """
-        if source is not None: self.config.clock_source= source        
-        if rate is not None: self.config.clock_rate = rate   #check this to make sure it's behaving properly
-        if edge is not None: self.config.edge = edge 
-        
+        if source is not None:
+            self.config.clock_source = source
+        if rate is not None:
+            self.config.clock_rate = rate
+        if edge is not None:
+            self.config.edge = edge
 
         #convert clock config
-        if self.config.clock_source not in ["internal", "external", "reference"]:
-            raise ValueError("source must be one of internal, external, or reference")
-        if self.config.clock_edge not in ["rising", "falling"]:
-            raise ValueError("edge must be one of rising or falling")
 
         if self.config.clock_source == "internal":
             source = AlazarConstants.clock_source["internal"]
