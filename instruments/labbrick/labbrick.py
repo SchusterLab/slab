@@ -25,7 +25,8 @@ I32 = C.c_int32
 CFLT = C.c_float
 
 try:
-    LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
+    #LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
+    LMS103dllpath=r'S:\_Software and Drivers\Labbrick\ANSI SDK\vnx_fmsynth.dll'
     LABBRICKDLL=C.CDLL(LMS103dllpath)
 except:
     print "Warning could not load labbrick dll"
