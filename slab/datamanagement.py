@@ -274,7 +274,10 @@ class SlabFile(h5py.File):
 
 def get_script():
     """returns currently running script file as a string"""
-    fname=inspect.stack()[-1][1]    
+    fname=inspect.stack()[-1][1]
+    if fname == '<stdin>':
+        return fname
+        
     #print fname
     f=open(fname,'r')
     s=f.read()
@@ -297,6 +300,17 @@ def get_next_trace_number(h5file, last=0, fmt="%03d"):
     
 def open_to_next_trace(h5file, last=0, fmt="%03d"):
     return h5file[fmt % get_next_trace_number(h5file, last, fmt)]
+    
+def load_array(f,array_name):
+    
+    
+    if f[array_name].len() == 0:
+        a = []
+    else:
+        a = np.zeros(f[array_name].shape)
+        f[array_name].read_direct(a) 
+        
+    return a
     
 if __name__ == "__main__":
     app = qt.QApplication([])
