@@ -151,7 +151,7 @@ class InstrumentManagerWindow(gui.SlabWindow, UiClass):
             self.servershell.arguments+=" -n " + self.params['nameserver']
             self.clientshell.arguments+="-n " + self.params['nameserver']
         if self.params['filename'] !="":
-            self.servershell.arguments+=" -f " + self.params['filename']
+            self.servershell.arguments+=' -f "' + self.params['filename'] + '"'
         else:
             self.msg('No config file specified.  Launching client only.')
         #self.msg('Server shell arguments: '+self.servershell.arguments)
