@@ -375,8 +375,13 @@ class PlotStacker(qt.QSplitter):
             raise 
         if plot.accum is True and plot.rank is 1:
             x, y = item.get_data()
-            x = np.concatenate((x, [data[0]]))
-            y = np.concatenate((y, [data[1]]))
+            #print 'shape of data is', np.shape(data)
+            if len(np.shape(data))==1:
+                x = np.concatenate((x, [data[0]]))
+                y = np.concatenate((y, [data[1]]))
+            else:
+                x = np.concatenate((x, data[0]))
+                y = np.concatenate((y, data[1]))
             item.set_data(x, y)
         elif plot.accum in ('x', 'y', True) and plot.rank is 2:
             img = item.data
