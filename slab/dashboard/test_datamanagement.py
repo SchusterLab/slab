@@ -1,4 +1,4 @@
-from datamanagement import SlabFileRemote
+from dashboard import SlabFileRemote
 import time
 import numpy as np
 
