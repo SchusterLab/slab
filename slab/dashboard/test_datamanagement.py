@@ -3,7 +3,7 @@ import time
 import numpy as np
 
 def test():
-    f = SlabFileRemote(filename="some_file.h5")
+    f = SlabFileRemote(filename=r"S:\Phil\some_file.h5", autosave=True)
     x = np.linspace(0, 3, 50)
     #f.manager.clear_all_data()
     f.create_dataset('do not plot', plot=False)

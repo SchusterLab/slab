@@ -274,6 +274,11 @@ def rect(s, p0, p1):
     p01 = p0[0], p1[1]
     p10 = p1[0], p0[1]
     s.append(sdxf.PolyLine(orient_pts([p0, p01, p1, p10, p0], s.last_direction, s.last)))
+    
+def gds_channel(s, length, width, datatype=0, layer=0):
+    w = width/2.
+    gds_rect(s, (0, w), (length, -w), datatype, layer)
+    #s.last = vadd(s.last, s.orient_pt((length, 0)))
 
 def LumpedElementResonator(s, c_fingers, l_fingers, length, c_width=3, c_gap=3,
                            l_width=5, l_gap=11, v_offset=50, flipped=False, describe=False):
@@ -335,21 +340,28 @@ def ShuntedLER(s, n_fingers, finger_height, n_meanders, meander_height):
     cap(s)
 
 def ground_fingers(n_fingers, length, width, align=True):
-    def ground_finger_contents(s):
+    def ground_finger_contents(s, gds_info=None):
+            if gds_info is not None:
+                channel = lambda s, length, width: gds_channel(s, length, width, gds_info[0], gds_info[1])
+            else:
+                channel = Channel
+            
             pin, gap = s.pinw, s.gapw
             tot_length = pin + 2*length
             gap_width = width + 2*gap
-            Channel(s, gap, pin)
+            channel(s, gap, pin)
             for _ in range(n_fingers - 1):
-                Channel(s, width, tot_length)
-                Channel(s, gap_width, pin)
-            Channel(s, width, tot_length)
-            Channel(s, gap, pin)
+                channel(s, width, tot_length)
+                channel(s, gap_width, pin)
+            channel(s, width, tot_length)
+            channel(s, gap, pin)
     
     
-    def builder(s, empty=False, contents_struct=None):
+    def builder(s, gap=None, empty=False, contents_struct=None, gds_info=None):
         dist = 65
-        pin, gap = s.pinw, s.gapw
+        #pin, gap = s.pinw, s.gapw
+        pin = s.pinw
+        gap = gap if (gap is not None) else s.gapw
         cross = alignment_cross(12, 2)
         if align:
             cross(s, (0, length + gap + pin/2. + dist))
@@ -359,19 +371,22 @@ def ground_fingers(n_fingers, length, width, align=True):
                 CPWStraight(s, 2*gap + width, pinw=0, gapw=gap+length+pin/2.)
             else:
                 CPWStraight(s, gap, gapw=gap+length)
-                CPWStraight(s, width, pinw=pin+2*length)
+                CPWStraight(s, width, pinw=pin+2*length, gapw=gap)
                 CPWStraight(s, gap, gapw=gap+length)
             if i != (n_fingers - 1):
                 if empty:
                     CPWStraight(s, width, pinw=0, gapw=gap+pin/2.)
                 else:
-                    CPWStraight(s, width)
+                    CPWStraight(s, width, gapw=gap)
         if align:
             cross(s, (0, length + gap + pin/2. + dist))
             cross(s, (0, -(length + gap + pin/2. + dist)))
         
         if contents_struct is not None:
             ground_finger_contents(contents_struct)
+            
+        if gds_info is not None:
+            ground_finger_contents(s, gds_info=gds_info)
     return builder
 
 
@@ -390,6 +405,24 @@ def make_qubit(left_fingers, left_len, left_width,
     #CPWFingerCapInside(4, 70, 8, 4, 30).draw(s)
     c.save()
 
+import gdsii.elements as gds_elem
+def gds_rect(s, p0, p1, datatype=0, layer=0):
+    p01 = p0[0], p1[1]
+    p10 = p1[0], p0[1]
+    points = orient_pts([p0, p01, p1, p10, p0], s.last_direction, s.last)
+    elt = gds_elem.Boundary(layer, datatype, points)
+    s.gds_chip.append(elt)
+    if isinstance(s, SpacerStructure):
+        s.append(('GDS Element', elt))
+
+def gds_line(s, p0, p1, datatype=0, layer=0):
+    points = orient_pts([p0, p1], s.last_direction, s.last)
+    elt = gds_elem.Path(layer, datatype, points)
+    s.gds_chip.append(elt)
+    if isinstance(s, SpacerStructure):
+        s.append(('GDS Element', elt))
+
+ALIGNMENT_IDENTIFIER = 0
 def alignment_cross(size, weight=1):
     def builder(s, pos):
         to_recover = s.last
@@ -399,7 +432,15 @@ def alignment_cross(size, weight=1):
         w = weight/2.
         rect(s, (-w, -h), (w, h))
         rect(s, (-h, -w), (h, w))
+        if s.gds_chip is not None:
+            global ALIGNMENT_IDENTIFIER
+            ident = ALIGNMENT_IDENTIFIER
+            ALIGNMENT_IDENTIFIER += 1
+            gds_rect(s, (-h, -h), (h, h), datatype=s.gds_alignment_dt, layer=ident)
+            gds_line(s, (0, -h), (0, h), datatype=s.gds_alignment_dt, layer=ident)
+            gds_line(s, (-h, 0), (h, 0), datatype=s.gds_alignment_dt, layer=ident)
         s.last = to_recover
+        
     return builder
 
 def test_element(name, elt_fn, d=global_defaults, caps=None, length=0, **kwargs):
@@ -428,7 +469,7 @@ class HalfCap(CPWFingerCap):
         self.__dict__.update(full_cap.__dict__)
         self.taper_length = 0 # This is false, but convenient. Actual taper_length is a constant 50um TODO - Change this?
     
-    def half_cap_contents(self, s, n_fingers):
+    def half_cap_contents(self, s, n_fingers, gds_info=None):
         ChannelLinearTaper(s, 50, s.pinw, self.pinw)
         spacing = 2*(self.finger_width + self.finger_gap)
         if bool(self.num_fingers % 2) != self.flipped:
@@ -438,7 +479,7 @@ class HalfCap(CPWFingerCap):
             p1 = vadd(p0, (self.finger_length, -self.finger_width))
             rect(s, p0, p1)
 
-    def draw(self, s, flipped=False, contents_struct=None):
+    def draw(self, s, flipped=False, contents_struct=None, gds_info=None):
         self.fingers_remaining = 0
         init_pinw, init_gapw = s.pinw, s.gapw
         self.flipped = flipped
@@ -463,6 +504,9 @@ class HalfCap(CPWFingerCap):
             if not flipped:
                 contents_struct.last_direction -= 180
                 contents_struct.last = s.last
+        
+        if gds_info is not None:
+            self.half_cap_contents(s, self.fingers_remaining, gds_info=gds_info)
                 
     def left_finger_points(self,finger_width,finger_length,finger_gap):
         if self.flipped:
@@ -523,19 +567,23 @@ class SpacerStructure(Structure):
         assert delta >= 0
         spacer_len = delta / self.n_spacers if self.n_spacers else 0
         spacers_seen = 0
+        move_pts = lambda pts: translate_pts(pts, (spacers_seen*spacer_len, 0))
         for pl in self.pl_list:
             if isinstance(pl, sdxf._Entity):
                 pts = pl.points
-                self.chip.append(sdxf.PolyLine(translate_pts(pts, (spacers_seen * spacer_len,0))))
+                self.chip.append(sdxf.PolyLine(move_pts(pts)))
             elif pl[0] == "Substructure":
                 for pl2 in pl[1].pl_list:
-                    self.chip.append(sdxf.PolyLine(translate_pts(pl2.points, (spacers_seen * spacer_len, 0)),
-                                                   layer=pl[1].layer, color=pl[1].color))
+                    self.chip.append(sdxf.PolyLine(move_pts(pts), layer=pl[1].layer, color=pl[1].color))
+            elif pl[0] == "GDS Element":
+                pl[1].xy = move_pts(pl[1].xy)
             elif pl[0] == "Horizontal Spacer":
                 straight_start = (pl[1][0] + (spacer_len * spacers_seen), pl[1][1])
                 spacers_seen += 1
                 new_s = Structure(self.chip, start=straight_start, defaults=self.defaults)
                 CPWStraight(new_s, spacer_len)
+            else:
+                print "Unknown object in SpacerStructure", pl
         if spacers_seen != self.n_spacers:
             print "Not enough spacers?"
         return spacer_len

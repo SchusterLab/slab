@@ -42,7 +42,7 @@ class keydefaultdict(defaultdict):
 
 
 class DataTree(keydefaultdict):
-    def __init__(self, gui, name=None, parentpath=()):
+    def __init__(self, gui, name=None, parentpath=()): # TODO, optionally integrate file object to prevent opening and closing.
         if name is None:
             self.path = ()
         else:
@@ -62,12 +62,16 @@ class DataTree(keydefaultdict):
 
     def save_in_file(self, file_or_group):
         for key, item in self.items():
+            print 'Key', key, item
             if isinstance(item, DataTree):
+                print 'Group', key
                 if any(i.save for k, i in item.leaves()):
+                    print 'saving group'
                     file_or_group.create_group(key)
                     item.save_in_file(file_or_group[key])
             elif isinstance(item, DataTreeLeaf):
                 if item.save:
+                    print 'Dset', key
                     item.save_in_file(file_or_group)
             else:
                 raise ValueError("Can't save unknown item " + str(type(item)))
@@ -91,6 +95,14 @@ class DataTreeLeaf(object):
 
     def save_in_file(self, file_or_group):
         if self.save:
+            try:
+                print 'save in file', file_or_group, self.path, self.data.shape
+            except:
+                print self.data
+                raise
+            print file_or_group.keys()
+            if self.path[-1] in file_or_group:
+                del file_or_group[self.path[-1]]
             file_or_group[self.path[-1]] = self.data
             attrs = file_or_group[self.path[-1]].attrs
             attrs['rank'] = self.rank
@@ -107,7 +119,6 @@ class DataTreeLeaf(object):
         for name in ['rank', 'x0', 'xscale', 'xlabel', 'ylabel', 'y0', 'yscale', 'zlabel']:
             try:
                 setattr(self, name, dataset.attrs[name])
-                print 'set', name, dataset.attrs[name]
             except KeyError:
                 pass
 
@@ -260,13 +271,20 @@ class DataManager(gui.BackgroundObject):
         data = self.data.resolve_path(path)
         assert isinstance(data, DataTree)
         assert valid_h5file(path[-1])
-        with h5py.File(path[-1]) as f:
+        with h5py.File(path[-1], 'a') as f:
             for item in data.values():
                 item.save_in_file(f)
 
     def save_with_file(self, path, filename): #TODO
-        with h5py.File(filename) as f:
+        with h5py.File(filename, 'a') as h5file:
+            print 'swf', path, filename
             data = self.data.resolve_path(path)
+            f = h5file
+            for p in path[:-1]:
+                if p not in f:
+                    f = f.create_group(p)
+                else:
+                    f = f[p]
             data.save_in_file(f)
 
     def msg(self, *args):
@@ -710,8 +728,15 @@ class DataClient(object):
         return try_proxy_fn
 
 
+def SlabFile(*args, **kwargs):
+    if kwargs.pop('remote', False):
+        return SlabFileRemote(*args, **kwargs)
+    return SlabFileLocal(*args, **kwargs)
+
+
 class SlabFileRemote:
-    def __init__(self, filename=None, manager=None, context=(), **ignoredargs):
+    def __init__(self, filename=None, manager=None, context=(), autosave=False, **ignoredargs):
+        self.autosave = autosave
         if len(ignoredargs) > 0:
             print 'Warning', ', '.join(ignoredargs.keys()), 'ignored in call to SlabFileRemote'
         if manager is None:
@@ -724,6 +749,9 @@ class SlabFileRemote:
         else:
             self.context = context
 
+    def close(self):
+        self.manager._pyroRelease()
+
     def create_dataset(self, name, shape=None, data=None, **initargs):
         if data is None:
             if shape is None:
@@ -731,6 +759,8 @@ class SlabFileRemote:
             else:
                 data = np.zeros(shape)
         self.manager.set_data(self.context + (name,), data, **initargs)
+        if self.autosave:
+            self.flush(self.context + (name,))
 
     def set_range(self, x0=0, y0=None, xscale=1, yscale=None):
         if y0 is None and yscale is None:
@@ -740,12 +770,16 @@ class SlabFileRemote:
             assert None not in (y0, yscale)
             rank = 2
             self.manager.set_params(self.context, rank, x0=x0, y0=y0, xscale=xscale, yscale=yscale)
+        #if self.autosave:
+        #    self.flush(self.context)
 
     def set_labels(self, xlabel="", ylabel="", zlabel=None):
         if zlabel is None:
             self.manager.set_params(self.context, 1, xlabel=xlabel, ylabel=ylabel)
         else:
             self.manager.set_params(self.context, 2, xlabel=xlabel, ylabel=ylabel, zlabel=zlabel)
+        #if self.autosave:
+        #    self.flush(self.context)
 
     # No need to create groups with remote file, as their existence is inferred,
     # but it shouldn't cause an error either
@@ -754,7 +788,7 @@ class SlabFileRemote:
 
     def __getitem__(self, key):
         if isinstance(key, str):
-            return SlabFileRemote(self.filename, self.manager, self.context + (key,))
+            return SlabFileRemote(self.filename, self.manager, self.context + (key,), self.autosave)
         elif isinstance(key, int):
             s = slice(key, key+1, None)
             return self.manager.get_data(self.context + (key,), slice=s)[0]
@@ -763,21 +797,34 @@ class SlabFileRemote:
 
     def __setitem__(self, key, value):
         if isinstance(key, str):
-            self.manager.set_data(self.context + (key,), value)
+            context = self.context + (key,)
+            self.manager.set_data(context, value)
         elif isinstance(key, int):
+            context = self.context
             s = slice(key, key+1, None)
             self.manager.set_data(self.context, value, slice=s)
         elif isinstance(key, slice):
+            context = self.context
             self.manager.get_data(self.context, value, slice=key)
+        if self.autosave:
+            self.flush(context)
+
+    def __delitem__(self, key): # TODO
+        pass
 
     def __array__(self):
         return np.array(self[:])
         
     def append(self, new_data, show_most_recent=None):
         self.manager.append_data(self.context, new_data, show_most_recent=show_most_recent)
+        if self.autosave:
+            self.flush(self.context)
 
-    def flush(self): #TODO
-        pass
+    def flush(self, path=None):
+        if path is None:
+            self.manager.save_as_file((self.filename,))
+        else:
+            self.manager.save_with_file(path, self.filename)
 
 
 class SlabFileLocal(h5py.File):
@@ -909,11 +956,11 @@ def excepthook(excType, excValue, tracebackobj):
     errorbox = Qt.QMessageBox()
     errorbox.setText(str(notice)+str(msg)+str(versionInfo))
     errorbox.exec_()
-sys.excepthook = excepthook
 
 
 if __name__ == "__main__":
     import sys
+    sys.excepthook = excepthook
     app = Qt.QApplication([])
     win = PlotWindow()
     win.show()

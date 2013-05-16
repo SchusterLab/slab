@@ -1,13 +1,35 @@
 # -*- coding: utf-8 -*-
 """
-datamanagement.py
-Created on Fri May 18 16:07:13 2012
+:Authors: Phil Reinhold & David Schuster
 
-@author: Phil
+The preferred format for saving data permanently is the
+:py:class:`SlabFile`. This is a thin wrapper around the h5py_
+interface to the HDF5_ file format. Using a SlabFile is much like
+using a traditional python dictionary_, where the keys are strings,
+and the values are `numpy arrays`_. A typical session using SlabFiles
+in this way might look like this::
+
+  import numpy as np
+  from slab.datamanagement import SlabFile
+
+  f = SlabFile('test.h5')
+  f['xpts'] = np.linspace(0, 2*np.pi, 100)
+  f['ypts'] = np.sin(f['xpts']) 
+  f.attrs['description'] = "One period of the sine function"
+
+Notice several features of this interaction.
+
+1. Numpy arrays are inserted directly into the file by assignment, no function calls needed
+2. Datasets are retrieved from the file and used as you would a numpy array
+3. Non-array elements can be saved in the file with the aid of the 'attrs' dictionary
+
+.. _numpy arrays: http://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html
+.. _dictionary: http://docs.python.org/2/tutorial/datastructures.html#dictionaries
+.. _HDF5: http://www.hdfgroup.org/HDF5/
+.. _h5py: https://code.google.com/p/h5py/
 """
 
 import numpy as np
-import sys
 import h5py
 import inspect
 import Pyro4
@@ -213,17 +235,18 @@ class SlabFile(h5py.File):
     def _ping(self):
         return 'OK'
 
-    def set_range(self,dataset, xmin, xmax, ymin=None, ymax=None):
-        if ymin is not None and ymax is not None:
-            dataset.attrs["_axes"] = ((xmin, xmax), (ymin, ymax))
-        else:
-            dataset.attrs["_axes"] = (xmin, xmax)
+    #def set_range(self,dataset, xmin, xmax, ymin=None, ymax=None):
+    #    if ymin is not None and ymax is not None:
+    #        dataset.attrs["_axes"] = ((xmin, xmax), (ymin, ymax))
+    #    else:
+    #        dataset.attrs["_axes"] = (xmin, xmax)
+
     
-    def set_labels(self,dataset, x_lab, y_lab, z_lab=None):
-        if z_lab is not None:
-            dataset.attrs["_axes_labels"] = (x_lab, y_lab, z_lab)
-        else:
-            dataset.attrs["_axes_labels"] = (x_lab, y_lab)
+    #def set_labels(self,dataset, x_lab, y_lab, z_lab=None):
+    #    if z_lab is not None:
+    #        dataset.attrs["_axes_labels"] = (x_lab, y_lab, z_lab)
+    #    else:
+    #        dataset.attrs["_axes_labels"] = (x_lab, y_lab)
 
     def append_line(self,dataset,line,axis=0):
         if isinstance(dataset, str):
@@ -271,6 +294,20 @@ class SlabFile(h5py.File):
         for k in self[group].attrs.keys():
             d[k]=self[group].attrs[k]
         return d
+
+def set_range(dset, range_dsets, range_names=None):
+    """
+    usage:
+        ds['x'] = linspace(0, 10, 100)
+        ds['y'] = linspace(0, 1, 10)
+        ds['z'] = [ sin(x*y) for x in ds['x'] for y in ds['y'] ]
+        set_range(ds['z'], (ds['x'], ds['y']), ('x', 'y'))
+    """
+    for i, range_ds in enumerate(range_dsets):
+        dset.dims.create_scale(range_ds)
+        dset.dims[i].attach_scale(range_ds)
+        if range_names:
+            dset.dims[i].label = range_names[i]
 
 def get_script():
     """returns currently running script file as a string"""
@@ -341,5 +378,3 @@ if __name__ == "__main__":
     app.connect(app, qt.SIGNAL("lastWindowClosed()"), server.close)
     win.show()
     app.exec_()
-    
-    

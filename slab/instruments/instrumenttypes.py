@@ -2,14 +2,15 @@
 try:
     import visa
     #pass
-except:
+except Exception as e:
+    print e
     print "Warning VISA library import failed"
 import telnetlib
 import socket
 import time
 try:
     import serial
-except:
+except ImportError:
     print "Warning serial library import failed."
 
 

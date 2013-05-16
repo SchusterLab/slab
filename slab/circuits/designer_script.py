@@ -62,7 +62,13 @@ class DesignerScript(object):
                 self.write(str(arr).lower())
             else:
                 self.write(str(arr))
-                
+    
+    def insert_design(self, design_name):
+        self.write("""oProject.InsertDesign "EM Design", "%s", "", ""
+Set oDesign = oProject.SetActiveDesign("%s")
+Set oEditor = oDesign.SetActiveEditor("Layout")
+""" % (design_name, design_name))
+    
     def add_layer(self, name, layer_type, material, thickness, main=False):
         self.write("oEditor.AddStackupLayer ")
         if "main_layer" not in dir(self) or main:
@@ -218,7 +224,8 @@ class DesignerScript(object):
         self.write('oModule.ExportToFile "' + report + '", "' + fname + '"\n"')
         
     def import_dxf(self, fname):
-        self.write(ImportCommand % {"filename":fname, "dest_layer":self.main_layer})
+        stupid_fname = fname.replace('\\','/')
+        self.write(ImportCommand % {"filename":stupid_fname, "dest_layer":self.main_layer})
     
     def zoom_to_fit(self):
         self.write("oEditor.ZoomToFit\n")
@@ -630,6 +637,8 @@ Set oAnsoftApp = CreateObject("AnsoftDesigner.DesignerScript")
 Set oDesktop = oAnsoftApp.GetAppDesktop()
 oDesktop.RestoreWindow
 Set oProject = oDesktop.NewProject
+"""
+""" -- Removed for now, use insert_design
 oProject.InsertDesign "EM Design", "%(designname)s", "", ""
 Set oDesign = oProject.SetActiveDesign("%(designname)s")
 Set oEditor = oDesign.SetActiveEditor("Layout")
@@ -715,7 +724,14 @@ if __name__ == "__main__":
     ilen = calculate_interior_length(5, 3e8/np.sqrt(5.5), 50)   
     
     d = DesignerScript("test_dscript")
-    
+    directory = director
+    for n_fingers in [1, 5, 10]:
+        for n_meanders in [1, 5, 10]:
+            for length in [100, 250, 400]:
+                design_name = "_".join(map(str,[n_fingers, n_meanders, length]))
+                d.insert_design(design_name)
+                d.import_dxf()
+    d.insert_design()
     
     d.add_layer("substrate", "dielectric", "sapphire", 430)
     d.add_layer("main", "ground", "perfect conductor", 0, main=True)

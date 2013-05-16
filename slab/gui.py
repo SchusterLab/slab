@@ -486,10 +486,12 @@ def lookup(tuplelist, ident, idx=0):
         if t[idx] == ident:
             return t
 
-def runWin(WinC, *args, **kwargs):
+def runWin(WinC, maximized=True, *args, **kwargs):
     app = QApplication([])
     win = WinC(*args, **kwargs)
     win.show()
+    if maximized:
+        win.showMaximized()
     app.connect(app, SIGNAL("lastWindowClosed()"), win, SIGNAL("lastWindowClosed()"))
     app.exec_()
 
