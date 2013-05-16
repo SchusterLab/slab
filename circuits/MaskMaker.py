@@ -2,6 +2,7 @@ import sdxf
 from math import sin,cos,tan,pi,floor,asin,acos,atan,degrees,radians
 from alphanum import alphanum_dict
 import random
+import random as rnd
 from numpy import sqrt,array
    
 class MaskError:
@@ -145,34 +146,17 @@ class WaferMask(sdxf.Drawing):
 
     def randomize_layout(self, seed=124279234):
         """Shuffle the order of the chip_points array so that chips will be inserted (pseudo-)randomly"""
-        random.seed(seed)
+        rnd = random.Random()
+        rnd.seed(seed)
         for ii in range(10000):
             i1=rnd.randrange(self.chip_points.__len__())
             i2=rnd.randrange(self.chip_points.__len__())
             tp=self.chip_points[i1]
             self.chip_points[i1]=self.chip_points[i2]
             self.chip_points[i2]=tp
-    
-    def save_layout(self):
-        open(self.name+'_order.txt', 'w').writelines(
-            ["%f, %f" % (x, y) for x, y in self.chip_points])
         
-    def load_layout(self, fname=None):
-        if not fname:
-            fname = self.name + '_order.txt'
-        self.chip_points = \
-            [ map(float,line.split(',')) for line in open(fname, 'r').readlines() ]
-    
     def randomize_layout_seeded(self):
-        """Shuffle the order of the chip_points array so that chips will be inserted (pseudo-)randomly"""
-        rnd = random.Random()        
-        rnd.seed(124279234)
-        for ii in range(10000):
-            i1=rnd.randrange(self.chip_points.__len__())
-            i2=rnd.randrange(self.chip_points.__len__())
-            tp=self.chip_points[i1]
-            self.chip_points[i1]=self.chip_points[i2]
-            self.chip_points[i2]=tp
+        self.randomize_layout()
 
 #    def label_chip(self,chip,pt,maskid,chipid):
 #        """Labels chip on wafer at position pt where pt is the bottom left corner of chip"""
@@ -365,7 +349,7 @@ class Structure(object):
     defaults is a dictionary with default values that substructures can call
     """
     def __init__(self,chip,start=(0,0),direction=0,layer="structures",color=1, 
-                 defaults={}):
+                 defaults={}, gds_chip=None):
         if chip.two_layer:
             self.gap_layer = Structure(chip.gap_layer, start, direction, 'gap', 
                                        1, defaults)
@@ -379,6 +363,8 @@ class Structure(object):
         self.color=color
         self.defaults=defaults.copy()
         self.structures=[]
+        self.gds_chip = gds_chip
+        self.gds_alignment_dt = 0
         try :self.pinw=chip.pinw 
         except AttributeError: 
             try : self.pinw=self.defaults['pinw']
@@ -406,7 +392,17 @@ class Structure(object):
                 self.gap_layer.last_direction = value
                 self.pin_layer.last_direction = value
         object.__setattr__(self, name, value)
-    
+        
+    def orient_pt(self, pt):
+        return orient_pt(pt, self.last_direction, self.last)
+        
+    def orient_pts(self, pts):
+        return [self.orient_pt(p) for p in pts]
+        
+    #def generic_append(self, points, method, **kwargs):
+    #    if method == "DXF Polyline":
+    #        self.chip.append(sdxf.PolyLine(points, **kwargs))
+    #    if method == "GDS
 
 #===============================================================================       
 #  CPW COMPONENTS    
