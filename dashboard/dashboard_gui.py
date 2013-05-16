@@ -80,7 +80,6 @@ class BackgroundObject(Qt.QObject):
         self.params = {}
 
     def set_param(self, name, value):
-        print 'setting', name, value
         self.params[name] = value
         
 class SlabWindow(Qt.QMainWindow):
@@ -100,10 +99,8 @@ class SlabWindow(Qt.QMainWindow):
         self.connect(self, Qt.SIGNAL('lastWindowClosed()'), self.background_thread.exit)
 
     def register_param(self, name, widget):
-        print name, widget
         for klass, actions in widget_tools.items():
             if isinstance(widget, klass):
-                print name, klass
                 if isinstance(actions["read"], str):
                     read_action = actions["read"]
                     read_fn = lambda: \

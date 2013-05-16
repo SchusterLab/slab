@@ -350,7 +350,6 @@ class AlazarConfig:
         #assert all(v in ('external', 'interal', 'disabled') for v in (self.trigger_source1, self.trigger_source2))
         #assert self.trigger_operation in ('and', 'or')
 
-        for k, v =x
         for k, v in self.__dict__.items():
             if isinstance(v, str):
                 potentials = getattr(AlazarConstants, k).keys()

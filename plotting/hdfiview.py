@@ -98,11 +98,82 @@ class HDFViewThread(gui.DataThread):
             self.gui["script_textEdit"].setText("")
 
         # Load file into interpreter
-        self.gui["shell"].exit_interpreter()
-        ns = { 'f':self.open_file, 'np':np, 'h5py':h5py }
-        self.gui["shell"].start_interpreter(namespace=ns)
+        #self.gui["shell"].exit_interpreter()
+        #ns = { 'f':self.open_file, 'np':np, 'h5py':h5py }
+        #self.gui["shell"].start_interpreter(namespace=ns)
 
     def load_dset(self, item, column):
+        dset = self.open_file
+        for name in item.path:
+            dset = dset[name]
+        assert(isinstance(dset, h5py.Dataset))
+        if len(dset.shape) == 1:
+            self.line_plot(dset)
+        elif len(dset.shape) == 2:
+            if dset.shape[0] == 1:
+                self.line_plot(dset[0,:])
+            else:
+                self.image_plot(dset)
+        else:
+            raise NotImplementedError
+        
+    def line_plot(self, dset, add_to_plot=False):
+        self.msg("line plot")
+        self.gui['plots_tabWidget'].setCurrentIndex(1)
+        line_plot = self.gui['line_plot']
+        if not add_to_plot:
+            line_plot.del_all_items()
+        try:
+            xdata = np.array(dset.dims[0][0])
+        except Exception as e:
+            self.msg("Couldn't find x data")
+            self.msg(e)
+            xdata = np.arange(dset.shape[0])
+        try:
+            xlab = dset.dims[0].label
+        except:
+            self.msg("Couldn't find x label")
+            xlab = ""
+        try:
+            ylab = dset.name
+        except AttributeError:
+            ylab = ""
+        curve_item = make.curve(x=xdata, y=np.array(dset))
+        line_plot.add_item(curve_item)
+        line_plot.set_axis_unit(2, xlab)
+        line_plot.set_axis_unit(0, ylab)
+        line_plot.show()
+        line_plot.do_autoscale()
+
+    def image_plot(self, dset):
+        self.msg("image plot")
+        self.gui['plots_tabWidget'].setCurrentIndex(0)
+        image_plot = self.gui['image_plot']
+        try:
+            xdata = np.array(dset.dims[0][0])
+            ydata = np.array(dset.dims[1][0])
+        except Exception as e:
+            self.msg("Couldn't find x/y data")
+            self.msg(e)
+            xdata = np.arange(dset.shape[0])
+            ydata = np.arange(dset.shape[1])
+        try:
+            xlab = dset.dims[0].label
+            ylab = dset.dims[1].label
+        except:
+            self.msg("Couldn't find x/y label")
+            xlab, ylab = "", ""
+        zlab = dset.name
+        image_item = make.image(data=np.array(dset), 
+                                xdata=(xdata[0],xdata[-1]), ydata=(ydata[0],ydata[-1]))
+        image_plot.add_item(image_item)
+        image_plot.set_axis_unit(2, xlab)
+        image_plot.set_axis_unit(0, ylab)
+        image_plot.set_axis_unit(1, zlab)
+        image_plot.show()
+        image_plot.do_autoscale()
+
+    def load_dset_deprecated(self, item, column):
         # Message attribute values
         _type = item.text(1)
         if _type == "attr":
@@ -271,11 +342,13 @@ class HDFViewWindow(gui.SlabWindow, UiClass):
 
 
         # Setup Prompt
+        """
         message = "The currently loaded file is stored as 'f'"
         self.shell = InternalShell(self, message=message)
         self.shell.set_font(Qt.QFont("Consolas"))
         self.shell_dockWidget.setWidget(self.shell)
         self.gui["shell"] = self.shell
+        """
 
         self.start_thread()
 

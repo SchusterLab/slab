@@ -47,10 +47,10 @@ def calculate_resonator_frequency(length,eps_eff,impedance,resonator_type=0.5,ha
     if Ckout is None:   out_cap=0.0
     else:               out_cap=Ckout.capacitance
 
-    if (not Ckin is None) and (Ckin.type=='finger'):
-        length+=0.4*Ckin.finger_length #subtract input finger length
-    if (not Ckout is None) and (Ckout.type=='finger'):
-        length+=0.4*+Ckout.finger_length #subtract output finger length
+    #if (not Ckin is None) and (Ckin.type=='finger'):
+    #    length+=0.4*Ckin.finger_length #subtract input finger length
+    #if (not Ckout is None) and (Ckout.type=='finger'):
+    #    length+=0.4*+Ckout.finger_length #subtract output finger length
     
     #frequency=1e6*length_factor*phase_velocity/length
     #Csum=1/(2*pi*frequency*(harmonic+1)*impedance)

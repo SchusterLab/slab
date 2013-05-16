@@ -27,7 +27,6 @@ class AWG81180A(SocketInstrument):
     def select_channel(self,channel=1):    #Set Channel
         self.write(":INSTrument:SELect " + str(channel)+"\n")
         
-        
     def get_mode(self):
         return self.query(":FUNCtion:MODE?")
         
@@ -86,7 +85,6 @@ class AWG81180A(SocketInstrument):
             self.write(':TRIG:MODE NORM')
             self.write(':TRIG:SOURCE %s' % (src.upper()))
             
-
     def select_trace(self,trace=1):
         self.write((":TRACe:SELect %d\n") % trace)
     
@@ -105,7 +103,6 @@ class AWG81180A(SocketInstrument):
     def delete_all_sequences(self):
         self.write(":SEQuence:DELete:ALL")  
         
-
     def delete_all(self):
         self.delete_all_traces()
         self.delete_all_sequences()
@@ -118,7 +115,6 @@ class AWG81180A(SocketInstrument):
         for cmd in s.split(';'):
             self.write(cmd)
         
-    
     def set_couple(self,state=True):
         self.write(':INSTRUMENT:COUPLE:STATE %d' % (state))
     
