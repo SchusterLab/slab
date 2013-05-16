@@ -24,6 +24,7 @@ from slab import *
 from ScopeWindow_ui import *
 from numpy import arange,sin,cos
 from slab.instruments import Alazar, AlazarConfig
+from matplotlib import mlab
 
 class ScopeWindow(QMainWindow, Ui_ScopeWindow):
     def __init__(self, parent = None):
@@ -34,7 +35,7 @@ class ScopeWindow(QMainWindow, Ui_ScopeWindow):
         self.datapath='S:\\_Data\\'
         self.ch1_initialized=False
         self.ch2_initialized=False
-        self.time_pts=None
+        self.x_pts=None
         self.ch1_pts=None
         self.ch2_pts=None
         self.scope_settings= AlazarConfig()
@@ -52,6 +53,7 @@ class ScopeWindow(QMainWindow, Ui_ScopeWindow):
         self.saveButton.clicked.connect(self.save_data)
         self.datapathLineEdit.textChanged.connect(self.update_filenumber)
         self.prefixLineEdit.textChanged.connect(self.update_filenumber)
+        self.PSDCheckBox.stateChanged.connect(self.PSDMode)
         
         self.ctimer = QTimer()      #Setup autoupdating timer to call update_plots at 10Hz
         self.ctimer.timeout.connect(self.runScope)
@@ -69,18 +71,18 @@ class ScopeWindow(QMainWindow, Ui_ScopeWindow):
         if (self.ch1_pts is not None):   
             if not self.ch1_initialized:
                 self.ch1_initialized=True
-                self.ch1_plot = make.mcurve(self.time_pts, self.ch1_pts,label='Ch1') #Make Ch1 curve
+                self.ch1_plot = make.mcurve(self.x_pts, self.ch1_pts,label='Ch1') #Make Ch1 curve
                 self.plot.add_item(self.ch1_plot)
             
-            self.update_lineplot(self.plot,self.ch1_plot,(self.time_pts,self.ch1_pts))
+            self.update_lineplot(self.plot,self.ch1_plot,(self.x_pts,self.ch1_pts))
 
         if (self.ch2_pts is not None):   
             if not self.ch2_initialized:
                 self.ch2_initialized=True
-                self.ch2_plot = make.mcurve(self.time_pts, self.ch2_pts,label='Ch2') #Make Ch2 curve
+                self.ch2_plot = make.mcurve(self.x_pts, self.ch2_pts,label='Ch2') #Make Ch2 curve
                 self.plot.add_item(self.ch2_plot)
             
-            self.update_lineplot(self.plot,self.ch2_plot,(self.time_pts,self.ch2_pts))            
+            self.update_lineplot(self.plot,self.ch2_plot,(self.x_pts,self.ch2_pts))            
        
     def config_and_run(self):
         print self.scope_settings.get_dict()
@@ -95,8 +97,12 @@ class ScopeWindow(QMainWindow, Ui_ScopeWindow):
         
     def runScope(self):
         self.ctimer.stop()
-        self.time_pts,self.ch1_pts,self.ch2_pts=self.card.acquire_avg_data()
-        
+        self.x_pts,self.ch1_pts,self.ch2_pts=self.card.acquire_avg_data()
+        fs=1./(self.x_pts[1]-self.x_pts[0])
+        if self.PSDCheckBox.isChecked():            
+            self.ch1_pts,self.x_pts=mlab.psd(self.ch1_pts,NFFT=len(self.ch1_pts),Fs=fs)
+            self.ch2_pts,self.x_pts=mlab.psd(self.ch2_pts,NFFT=len(self.ch2_pts),Fs=fs)
+
         self.update_plots()
         if self.autoscaleCheckBox.isChecked():
             self.plot.do_autoscale()
@@ -105,9 +111,16 @@ class ScopeWindow(QMainWindow, Ui_ScopeWindow):
         if self.autosaveCheckBox.isChecked():
             self.save_data()
             
+    def PSDMode(self):
+        if self.PSDCheckBox.isChecked():            
+            self.plot.set_titles(title="Spectrum Analyzer", xlabel="Frequency", ylabel="Power")
+        else:
+            self.plot.set_titles(title="Oscilloscope", xlabel="Time", ylabel="Voltage")
+
+            
     def save_data(self):
         fname=get_next_filename(self.datapath,str(self.prefixLineEdit.text()),'.csv')
-        np.savetxt(os.path.join(self.datapath,fname),transpose(np.vstack((self.time_pts,self.ch1_pts,self.ch2_pts))),delimiter=',')
+        np.savetxt(os.path.join(self.datapath,fname),transpose(np.vstack((self.x_pts,self.ch1_pts,self.ch2_pts))),delimiter=',')
 
         
 if __name__ == "__main__":
