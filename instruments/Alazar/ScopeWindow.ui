@@ -826,6 +826,13 @@
          </widget>
         </item>
         <item>
+         <widget class="QCheckBox" name="PSDCheckBox">
+          <property name="text">
+           <string>PSD</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QCheckBox" name="x_autoscaleCheckBox">
           <property name="enabled">
            <bool>false</bool>
@@ -880,7 +887,7 @@
      <x>0</x>
      <y>0</y>
      <width>1104</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
