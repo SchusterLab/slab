@@ -215,10 +215,36 @@ class PlotItem(qt.QWidget):
         self.update_count = 0
         self.collapsed = False
         
+        autoscale_gui_default=True
         if self.rank == 1:
             self.plot_widget = CurveWidget(title=ident)
             self.plot_widget.add_toolbar(toolbar)
             self.plot_widget.register_all_curve_tools()
+            try: 
+                vmin,vmax=plotkwargs.pop('xlimit')
+                self.plot_widget.plot.set_axis_limits(2,vmin,vmax)
+                autoscale_gui_default=False
+            except:
+                pass
+            try: 
+                vmin,vmax=plotkwargs.pop('ylimit')
+                self.plot_widget.plot.set_axis_limits(0,vmin,vmax)
+                autoscale_gui_default=False
+            except:
+                pass
+            try: 
+                title=plotkwargs.pop('title')
+                self.plot_widget.set_title(title)
+            except:
+                pass
+            try:
+                background=plotkwargs.pop('background')
+                self.plot_widget.plot.grid.gridparam.background = background                
+                self.plot_widget.plot.grid.update_params()
+            except:
+                pass
+                
+
         elif self.rank == 2:
             self.plot_widget = ImageWidget(title=ident, lock_aspect_ratio=False)
             self.plot_widget.add_toolbar(toolbar)
@@ -239,7 +265,8 @@ class PlotItem(qt.QWidget):
         self.remove_button = qt.QPushButton('Remove')
         self.zoom_button = qt.QPushButton('Zoom')
         self.autoscale_check = qt.QCheckBox('autoscale')
-        self.autoscale_check.setChecked(True)
+        #print autoscale_gui_default,"<== is this true?"
+        self.autoscale_check.setChecked(autoscale_gui_default)
         buttons.layout().addWidget(self.hide_button)
         buttons.layout().addWidget(self.remove_button)
         buttons.layout().addWidget(self.zoom_button)
@@ -254,7 +281,6 @@ class PlotItem(qt.QWidget):
             try:
                 self.items[trace] = make.curve([], [], **plotkwargs)
             except:
-                print self.ident, trace, plotkwargs
                 raise
         elif self.rank == 2:
             if 'interpolation' not in plotkwargs:
