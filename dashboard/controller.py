@@ -32,6 +32,7 @@ class DataManager(BackgroundObject):
     def get_or_make_leaf(self, path, rank=None, **initargs):
         group = self.data.resolve_path(path[:-1])
         if path[-1] not in group:
+            print path
             assert rank is not None
             assert isinstance(group, DataTree)
             leaf = group.make_child_leaf(path[-1], rank, **initargs)
@@ -94,7 +95,6 @@ class DataManager(BackgroundObject):
 
     def append_data(self, name_or_path, data, show_most_recent=None, parametric=False, **initargs):
         path = helpers.canonicalize_path(name_or_path)
-        #data, rank = helpers.canonicalize_append_data(data)
 
         if parametric or isinstance(data, tuple):
             parametric = True
@@ -114,22 +114,6 @@ class DataManager(BackgroundObject):
             else:
                 leaf.data = np.vstack((leaf.data, data))
 
-        #if show_most_recent is not None:
-        #    assert isinstance(show_most_recent, bool)
-        #    if show_most_recent:
-        #        self.gui.plot_widgets[path].show_recent()
-        #    else:
-        #        self.gui.plot_widgets[path].show_accumulated()
-        #if rank == 1 and data[0] is None: # Set x value if none is given
-        #    if leaf.data is None:
-        #        data = leaf.x0, data[1]
-        #    else:
-        #        data = leaf.x0 + leaf.xscale*len(leaf.data), data[1]
-        #    # TODO: Canonicalize appended data
-        #if isinstance(leaf.data, np.ndarray):
-        #    leaf.data = np.vstack((leaf.data, np.array(data)))
-        #else:
-        #    leaf.data = np.array([data])
         if leaf.file is not None:
             leaf.save_in_file()
         if leaf.plot:
@@ -188,7 +172,7 @@ class DataManager(BackgroundObject):
     def clear_data(self, path=None, leaf=None):
         assert path is not None or leaf is not None
         if leaf is None:
-            leaf = self.get_leaf(path)
+            leaf = self.get_or_make_leaf(path)
         if leaf.rank == 1:
             leaf.data = None
         elif leaf.rank == 2:

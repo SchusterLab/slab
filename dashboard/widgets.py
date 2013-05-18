@@ -73,11 +73,11 @@ class LeafEditWidget(Qt.QFrame):
 class ItemWidget(pyqtgraph.dockarea.Dock):
     def __init__(self, ident, **kwargs):
         if len(ident) > 25:
-            name = ident[:5].strip() + ' ... ' + ident[-15:]
+            name = '... ' + ident.split('/')[-1]
         else:
             name = ident
         pyqtgraph.dockarea.Dock.__init__(self, name)
-        self.label.setFont(Qt.QFont('Helvetica', pointSize=16))
+        self.label.setFont(Qt.QFont('Helvetica', pointSize=14))
         self.ident = ident
         self.add_plot_widget(**kwargs)
         self.buttons_widget = Qt.QWidget() #QHBoxWidget()
@@ -123,7 +123,6 @@ class Rank1ItemWidget(ItemWidget):
         self.curve = None
 
     def update_plot(self, leaf, refresh_labels=False):
-
         if leaf is None or leaf.data is None:
             self.clear_plot()
             return
@@ -145,24 +144,6 @@ class Rank1ItemWidget(ItemWidget):
             self.curve = self.line_plt.plot(xdata, ydata)
         else:
             self.curve.setData(x=xdata, y=ydata)
-
-        #        try:
-        #            assert leaf.data.shape[1] == 2
-        #            _, ydata = leaf.data.T
-        #            type = 'A'
-        #        except:
-        #            ydata = leaf.data
-        #            type = 'B'
-        #        xdata = np.arange(leaf.x0, leaf.x0+(leaf.xscale*len(ydata)), leaf.xscale)
-        #    else:
-        #        try:
-        #            assert leaf.data.shape[1] == 2
-        #            xdata, ydata = leaf.data.T
-        #            type = 'C'
-        #        except:
-        #            ydata = leaf.data
-        #            xdata = np.arange(leaf.x0, leaf.x0+(leaf.xscale*len(ydata)), leaf.xscale)
-        #            type = 'D'
 
     def clear_plot(self):
         if self.curve is not None:

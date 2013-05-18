@@ -34,30 +34,30 @@ def add_x_data(arr, slice=None):
     return a
 
 
-def canonicalize_data(data, slice=None):
-    arr = np.array(data)
-    parametric = False
-    if len(arr.shape) == 1:
-        arr = add_x_data(arr, slice)
-        rank = 1
-    elif len(arr.shape) == 2:
-        if arr.shape[0] == 1:
-            arr = add_x_data(arr[0,:], slice)
-            rank = 1
-        elif arr.shape[1] == 1:
-            arr = add_x_data(arr[:,0], slice)
-            rank = 1
-        elif arr.shape[0] == 2:
-            arr = arr.T
-            rank = 1
-            parametric = True
-        elif arr.shape[1] == 2:
-            rank = 1
-        else:
-            rank = 2
-    else:
-        raise NotImplementedError
-    return arr, rank#, parametric
+#def canonicalize_data(data, slice=None):
+#    arr = np.array(data)
+#    parametric = False
+#    if len(arr.shape) == 1:
+#        arr = add_x_data(arr, slice)
+#        rank = 1
+#    elif len(arr.shape) == 2:
+#        if arr.shape[0] == 1:
+#            arr = add_x_data(arr[0,:], slice)
+#            rank = 1
+#        elif arr.shape[1] == 1:
+#            arr = add_x_data(arr[:,0], slice)
+#            rank = 1
+#        elif arr.shape[0] == 2:
+#            arr = arr.T
+#            rank = 1
+#            parametric = True
+#        elif arr.shape[1] == 2:
+#            rank = 1
+#        else:
+#            rank = 2
+#    else:
+#        raise NotImplementedError
+#    return arr, rank#, parametric
 
 
 def canonicalize_append_data(data):
