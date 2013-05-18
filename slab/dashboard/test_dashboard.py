@@ -33,8 +33,8 @@ def test_proxy_interface():
     c.save_with_file('some hierarchy', r'S:\Phil\test_programmatic_save.h5')
 
 if __name__ == "__main__":
-    #test_file_interface()
+    test_file_interface()
     #test_proxy_interface()
-    c = DataClient()
-    c.load_h5file(r'S:\Phil\some_file.h5')
+    #c = DataClient()
+    #c.load_h5file(r'S:\Phil\some_file.h5')
     print 'done'
