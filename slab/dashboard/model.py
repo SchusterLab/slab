@@ -30,6 +30,7 @@ class DataTree(keydefaultdict):
             gui.add_tree_widget(self.path)
         self.gui = gui
         keydefaultdict.__init__(self, self.make_internal_child)
+        self.attrs = {}
 
     def close(self):
         for v in self.values():
@@ -87,6 +88,7 @@ class DataTreeLeaf(object):
         self.rank = rank
         self.file = file
         self.data = data
+        self.attrs = {}
         if save is None:
             self.save = self.file is not None
         else:

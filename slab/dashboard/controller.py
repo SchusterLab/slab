@@ -120,13 +120,26 @@ class DataManager(BackgroundObject):
             self.update_plot(name_or_path, refresh_labels=(len(initargs) > 0), show_most_recent=show_most_recent)
 
     def get_data(self, name_or_path, slice=None):
+        print 'get_data', name_or_path
         path = helpers.canonicalize_path(name_or_path)
         item = self.data.resolve_path(path)
+        if not isinstance(item, DataTreeLeaf):
+            raise ValueError('Leaf not found ' + str(path))
         if slice is not None:
             x = np.array(item.data)[slice]
             return x
         else:
             return np.array(item.data)
+
+    def set_attr(self, name_or_path, item, value):
+        path = helpers.canonicalize_path(name_or_path)
+        node = self.data.resolve_path(path)
+        node.attrs[item] = value
+
+    def get_attr(self, name_or_path, item):
+        path = helpers.canonicalize_path(name_or_path)
+        node = self.data.resolve_path(path)
+        return node.attrs[item]
 
     def update_plot(self, name_or_path, refresh_labels=False, show_most_recent=None):
         path = helpers.canonicalize_path(name_or_path)

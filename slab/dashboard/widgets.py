@@ -122,7 +122,7 @@ class Rank1ItemWidget(ItemWidget):
         self.addWidget(self.line_plt)
         self.curve = None
 
-    def update_plot(self, leaf, refresh_labels=False):
+    def update_plot(self, leaf, refresh_labels=False, **kwargs):
         if leaf is None or leaf.data is None:
             self.clear_plot()
             return
@@ -141,9 +141,10 @@ class Rank1ItemWidget(ItemWidget):
             self.line_plt.plotItem.setLabels(bottom=(leaf.xlabel,), left=(leaf.ylabel,))
 
         if self.curve is None:
-            self.curve = self.line_plt.plot(xdata, ydata)
+            print xdata, ydata
+            self.curve = self.line_plt.plot(xdata, ydata, **kwargs)
         else:
-            self.curve.setData(x=xdata, y=ydata)
+            self.curve.setData(x=xdata, y=ydata, **kwargs)
 
     def clear_plot(self):
         if self.curve is not None:
