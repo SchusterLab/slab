@@ -15,7 +15,7 @@ class DataClient(object):
         self.proxy_closed = False
         self.proxy._pyroOneway.add('load_h5file')
 
-    def __enter__(self):
+    def __enter__(self, *args):
         return self
 
     def __exit__(self, *args):
@@ -68,6 +68,12 @@ class SlabFileRemote:
             self.context = (filename,)
         else:
             self.context = context
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
     def close(self):
         self.manager._pyroRelease()
@@ -133,7 +139,7 @@ class SlabFileRemote:
         pass
 
     def __array__(self):
-        return np.array(self[:])
+        return np.array(self.__getitem__(slice(0, sys.maxint, None)))
 
     def flush(self, path=None):
         if path is None:
@@ -142,10 +148,52 @@ class SlabFileRemote:
             self.manager.save_with_file(path, self.filename)
 
     def __getattr__(self, item):
+        if item is 'attrs':
+            return AttrsProxy(self.manager, self.context)
         def call_with_context(*args, **kwargs):
             getattr(self.manager, item)(self.context, *args, **kwargs)
         return call_with_context
 
+
+class AttrsProxy:
+    def __init__(self, manager, context):
+        self.manager = manager
+        self.context = context
+
+    def __setitem__(self, item, value):
+        self.manager.set_attr(self.context, item, value)
+
+    def __getitem__(self, item):
+        self.manager.get_attr(self.context, item)
+
+
+class SlabFileLocal(h5py.File):
+    pass
+
+def append_data(file_or_group, dataset_name, new_data):
+    new_data = np.array(new_data)
+    rank = len(new_data.shape) + 1
+    if dataset_name in file_or_group:
+        dataset = file_or_group[dataset_name]
+        new_shape = list(dataset.shape)
+        new_shape[0] += 1
+        dataset.resize(new_shape)
+        if rank > 1:
+            dataset.attrs['parametric'] = new_data.shape[0] == 2
+    else:
+        dataset = file_or_group.create_dataset(dataset_name,
+                                               shape=(1,) + new_data.shape,
+                                               maxshape=(None,)*rank)
+    if rank == 1:
+        dataset[-1] = new_data
+    elif rank == 2:
+        dataset[-1,:] = new_data
+    elif rank == 3:
+        dataset[-1,:,:] = new_data
+
+h5py.File.append_data = append_data
+h5py.Group.append_data = append_data
+    
     #def append_data(self, new_data, show_most_recent=None):
     #    self.manager.append_data(self.context, new_data, show_most_recent=show_most_recent)
     #        if self.autosave:
@@ -154,12 +202,36 @@ class SlabFileRemote:
     #def set_data(self, *args, **kwargs):
     #    self.manager.set_data(self.context, *args, **kwargs)
 
+#h5py_group_getitem = h5py.Group.__getitem__
 
-class SlabFileLocal(h5py.File):
-    pass
+#def get_or_make_group(file_or_group, item):
+#    if item in file_or_group:
+#        if isinstance(file_or_group, h5py.File):
+#            h5py.File.__getitem__(file_or_group, item)
+#        else:
+#            h5py_group_getitem(file_or_group, item)
+#    else:
+#        return file_or_group.create_group(item)
+
+#    def create_group(self, name):
+#        g = SlabFileLocalGroup()
+#        self[name] = g
+#        return g
 
 
-def create_dataset(file_or_group, name, show=True, plot=True, **kwargs):
-    assert show or plot
-    h5py.File.create_dataset(file_or_group, name, **kwargs)
+#class SlabFileLocalUndecided:
+#    def __init__(self, parent):
+#        self.parent = parent
 
+#    def append_data(self, new_data):
+        
+    
+#    def __setitem__(self, item, value):
+#        self.parent.(item)
+
+#class SlabFileLocalGroup(h5py.Group):
+#    pass
+
+#h5py.Group.__getitem__ = get_or_make_group
+
+    
