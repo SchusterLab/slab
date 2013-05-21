@@ -3,11 +3,12 @@ import h5py
 import Pyro4
 import numpy as np
 
-from model import DataTree, DataTreeLeaf
+from model import DataTree, DataTreeLeaf, DataTreeLeafReduced
 import helpers
 import config
 
 Pyro4.config.COMMTIMEOUT = 3.5
+Pyro4.config.DOTTEDNAMES = True
 RUNNING = True
 
 class BackgroundObject(Qt.QObject):
@@ -19,7 +20,6 @@ class BackgroundObject(Qt.QObject):
     def set_param(self, name, value):
         self.params[name] = value
 
-
 class DataManager(BackgroundObject):
     def __init__(self, path_delim='/'):
         BackgroundObject.__init__(self)
@@ -29,45 +29,45 @@ class DataManager(BackgroundObject):
     def connect_data(self):
         self.data = DataTree(self.gui)
 
-    def get_or_make_leaf(self, path, rank=None, **initargs):
+    def get_or_make_leaf(self, path, rank=None, data_tree_args={}, plot_args={}, reduced=False):
         group = self.data.resolve_path(path[:-1])
         if path[-1] not in group:
-            print path
             assert rank is not None
             assert isinstance(group, DataTree)
-            leaf = group.make_child_leaf(path[-1], rank, **initargs)
+            leaf = group.make_child_leaf(path[-1], rank, **data_tree_args)
             self.gui.add_tree_widget(path, data=True, save=leaf.save, plot=leaf.plot)
             if leaf.plot:
-                params = {'x0': leaf.x0, 'xscale': leaf.xscale, 'xlabel': leaf.xlabel, 'ylabel': leaf.ylabel}
-                if rank > 1:
-                    params.update({'y0': leaf.y0, 'yscale': leaf.yscale, 'zlabel': leaf.zlabel})
-                self.gui.add_plot_widget(path, rank, **params)
+                #params = {'x0': leaf.x0, 'xscale': leaf.xscale, 'xlabel': leaf.xlabel, 'ylabel': leaf.ylabel}
+                #if rank > 1:
+                #    params.update({'y0': leaf.y0, 'yscale': leaf.yscale, 'zlabel': leaf.zlabel})
+                self.gui.add_plot_widget(path, rank, **plot_args)
         else:
             leaf = group[path[-1]]
             assert (rank is None) or (rank == leaf.rank)
-            for key, val in initargs.items():
+            for key, val in data_tree_args.items():
                 setattr(leaf, key, val)
-            if len(initargs) > 0:
+            if len(data_tree_args) > 0:
                 self.update_plot(path, refresh_labels=True)
 
         if not isinstance(leaf, DataTreeLeaf):
             raise ValueError('path does not store a leaf, but rather a ' + str(type(leaf)))
+        if reduced:
+            return DataTreeLeafReduced(leaf)
         return leaf
 
     def set_params(self, path, rank, **initargs):
-        leaf = self.get_or_make_leaf(path, rank, **initargs)
+        data_tree_args, plot_args, curve_args = helpers.separate_init_args(initargs)
+        leaf = self.get_or_make_leaf(path, rank, data_tree_args, plot_args)
         if leaf.file is not None:
             leaf.save_in_file()
-        self.update_plot(path, refresh_labels=True)
+        self.update_plot(path, refresh_labels=True, **curve_args)
 
     def set_data(self, name_or_path, data, slice=None, parametric=False, **initargs):
         path = helpers.canonicalize_path(name_or_path)
 
         if parametric and isinstance(data, (np.ndarray, list)):
             if data.shape[1] == 2:
-                print 'A', data.shape
                 data = np.transpose(data)
-                print 'B', data.shape
 
         if parametric or isinstance(data, tuple):
             parametric = True
@@ -77,12 +77,13 @@ class DataManager(BackgroundObject):
             data = np.array(data)
             rank = len(data.shape)
 
-        print name_or_path, parametric, rank, data.shape
-
 
         assert rank in (1, 2)
 
-        leaf = self.get_or_make_leaf(path, rank=rank, parametric=parametric, **initargs)
+        data_tree_args, plot_args, curve_args = helpers.separate_init_args(initargs)
+        data_tree_args['parametric'] = parametric
+
+        leaf = self.get_or_make_leaf(path, rank, data_tree_args, plot_args)
 
         if slice is None:
             leaf.data = data
@@ -90,8 +91,8 @@ class DataManager(BackgroundObject):
             leaf.data[slice] = data
         if leaf.file is not None:
             leaf.save_in_file()
-        if leaf.plot:
-            self.update_plot(name_or_path, refresh_labels=(len(initargs) > 0))
+        #if leaf.plot:
+        self.update_plot(name_or_path, refresh_labels=(len(initargs) > 0), **curve_args)
 
     def append_data(self, name_or_path, data, show_most_recent=None, parametric=False, **initargs):
         path = helpers.canonicalize_path(name_or_path)
@@ -104,7 +105,9 @@ class DataManager(BackgroundObject):
             data = np.array(data)
             rank = len(data.shape) + 1
 
-        leaf = self.get_or_make_leaf(path, rank=rank, parametric=parametric, **initargs)
+        data_tree_args, plot_args, curve_args = helpers.separate_init_args(initargs)
+        data_tree_args['parametric'] = parametric
+        leaf = self.get_or_make_leaf(path, rank, data_tree_args, plot_args)
 
         if leaf.data is None:
             leaf.data = np.array([data])
@@ -116,11 +119,11 @@ class DataManager(BackgroundObject):
 
         if leaf.file is not None:
             leaf.save_in_file()
-        if leaf.plot:
-            self.update_plot(name_or_path, refresh_labels=(len(initargs) > 0), show_most_recent=show_most_recent)
+        #if leaf.plot:
+        self.update_plot(name_or_path, refresh_labels=(len(initargs) > 0),
+                         show_most_recent=show_most_recent, **curve_args)
 
     def get_data(self, name_or_path, slice=None):
-        print 'get_data', name_or_path
         path = helpers.canonicalize_path(name_or_path)
         item = self.data.resolve_path(path)
         if not isinstance(item, DataTreeLeaf):
@@ -141,7 +144,7 @@ class DataManager(BackgroundObject):
         node = self.data.resolve_path(path)
         return node.attrs[item]
 
-    def update_plot(self, name_or_path, refresh_labels=False, show_most_recent=None):
+    def update_plot(self, name_or_path, refresh_labels=False, show_most_recent=None, **curve_args):
         path = helpers.canonicalize_path(name_or_path)
         item = self.data.resolve_path(path)
         tree_widget = self.gui.tree_widgets[path]
@@ -154,21 +157,22 @@ class DataManager(BackgroundObject):
         if item.plot:
             if item.rank == 2:
                 self.gui.plot_widgets[path].update_plot(item,
-                        refresh_labels=refresh_labels, show_most_recent=show_most_recent)
+                        refresh_labels=refresh_labels, show_most_recent=show_most_recent, **curve_args)
             else:
-                self.gui.plot_widgets[path].update_plot(item, refresh_labels=refresh_labels)
-            self.gui.update_multiplots(path, item)
+                self.gui.plot_widgets[path].update_plot(item, refresh_labels=refresh_labels, **curve_args)
+        self.gui.update_multiplots(path, item)
 
     def save_all(self):
         raise NotImplementedError
 
     def load_h5file(self, filename, readonly=False):
         mode = 'r' if readonly else 'a'
-        with h5py.File(filename, mode) as f:
-            if not readonly:
-                # Init DataTree, otherwise DataTree will automatically try to open the file again
-                self.data[filename] = DataTree(self.gui, filename, file=f)
-            self.rec_load_file(f, (filename,), readonly)
+        f = h5py.File(filename, mode)
+        if not readonly:
+            self.data[filename] = DataTree(self.gui, filename, file=f)
+        self.rec_load_file(f, (filename,), readonly)
+        if readonly:
+            f.close()
 
     def rec_load_file(self, file, path, readonly):
         for name, ds in file.items():
@@ -222,7 +226,6 @@ class DataManager(BackgroundObject):
 
     def save_with_file(self, path, filename): #TODO
         with h5py.File(filename, 'a') as h5file:
-            print 'swf', path, filename
             data = self.data.resolve_path(path)
             f = h5file
             for p in path[:-1]:
@@ -234,6 +237,9 @@ class DataManager(BackgroundObject):
 
     def msg(self, *args):
         self.gui.msg(*args)
+
+    def gui_method(self, method, *args, **kwargs):
+        getattr(self.gui, method)(*args, **kwargs)
 
 if __name__ == "__main__":
     test_manager = DataManager()

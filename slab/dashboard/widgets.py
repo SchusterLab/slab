@@ -1,4 +1,5 @@
 from collections import defaultdict
+from copy import copy
 
 from PyQt4 import Qt
 import pyqtgraph
@@ -7,6 +8,7 @@ import numpy as np
 
 import helpers
 from plot_widgets import CrossSectionWidget
+from model import DataTreeLeaf
 
 class DataTreeLeafItem(Qt.QTreeWidgetItem):
     @property
@@ -24,6 +26,14 @@ class DataTreeLeafItem(Qt.QTreeWidgetItem):
 Qt.QTreeWidgetItem.is_leaf = lambda item: item.childCount() == 0
 Qt.QTreeWidgetItem.getChildren = lambda item: [item.child(i) for i in range(item.childCount())]
 
+class MyDockArea(pyqtgraph.dockarea.DockArea):
+    def __init__(self, *args, **kwargs):
+        pyqtgraph.dockarea.DockArea.__init__(self, *args, **kwargs)
+        self.insert_location = 'bottom'
+
+    def add_dock_auto_location(self, dock):
+        self.addDock(dock, self.insert_location)
+        self.insert_location = {'bottom':'right', 'right':'bottom'}[self.insert_location]
 
 class LeafEditWidget(Qt.QFrame):
     def __init__(self, leaf):
@@ -71,7 +81,7 @@ class LeafEditWidget(Qt.QFrame):
         return params
 
 class ItemWidget(pyqtgraph.dockarea.Dock):
-    def __init__(self, ident, **kwargs):
+    def __init__(self, ident, dock_area, **kwargs):
         if len(ident) > 25:
             name = '... ' + ident.split('/')[-1]
         else:
@@ -87,19 +97,29 @@ class ItemWidget(pyqtgraph.dockarea.Dock):
         self.clear_button = Qt.QPushButton('Clear') # Connected to manager action
         self.update_toggle = Qt.QCheckBox('Update')
         self.update_toggle.setChecked(True)
-        self.autoscale_toggle = Qt.QCheckBox('AutoScale')
-        self.autoscale_toggle.setChecked(True)
+        #self.autoscale_toggle = Qt.QCheckBox('AutoScale')
+        #self.autoscale_toggle.setChecked(True)
         self.buttons_widget.layout().addWidget(self.remove_button)
         self.buttons_widget.layout().addWidget(self.clear_button)
         self.buttons_widget.layout().addWidget(self.update_toggle)
-        self.buttons_widget.layout().addWidget(self.autoscale_toggle)
+        #self.buttons_widget.layout().addWidget(self.autoscale_toggle)
         self.addWidget(self.buttons_widget)
+        self.dock_area = dock_area
+        self.dock_area.add_dock_auto_location(self)
+        self.visible = True
 
     def update_params(self, **kwargs):
         self.__dict__.update(kwargs)
 
     def toggle_hide(self):
-        self.setVisible(not(self.isVisible()))
+        #self.setVisible(not(self.isVisible()))
+        if self.visible:
+            self.setParent(None)
+            self.label.setParent(None)
+            self.visible = False
+        else:
+            self.dock_area.add_dock_auto_location(self)
+            self.visible = True
 
     def add_plot_widget(self, **kwargs):
         raise NotImplementedError
@@ -112,8 +132,8 @@ class ItemWidget(pyqtgraph.dockarea.Dock):
 
 
 class Rank1ItemWidget(ItemWidget):
-    def __init__(self, ident, **kwargs):
-        ItemWidget.__init__(self, ident, **kwargs)
+    def __init__(self, ident, dock_area, **kwargs):
+        ItemWidget.__init__(self, ident, dock_area, **kwargs)
         self.rank = 1
 
     def add_plot_widget(self, **kwargs):
@@ -123,7 +143,7 @@ class Rank1ItemWidget(ItemWidget):
         self.curve = None
 
     def update_plot(self, leaf, refresh_labels=False, **kwargs):
-        if leaf is None or leaf.data is None:
+        if leaf is None or leaf.data is None or leaf.data.shape[0] is 0:
             self.clear_plot()
             return
 
@@ -131,8 +151,10 @@ class Rank1ItemWidget(ItemWidget):
             if leaf.parametric:
                 if leaf.data.shape[0] == 2:
                     xdata, ydata = leaf.data
-                else:
+                elif leaf.data.shape[1] == 2:
                     xdata, ydata = leaf.data.T
+                else:
+                    raise ValueError('Leaf claims to be parametric, but shape is ' + str(leaf.data.shape))
             else:
                 ydata = leaf.data
                 xdata = np.arange(leaf.x0, leaf.x0+(leaf.xscale*len(ydata)), leaf.xscale)
@@ -141,7 +163,6 @@ class Rank1ItemWidget(ItemWidget):
             self.line_plt.plotItem.setLabels(bottom=(leaf.xlabel,), left=(leaf.ylabel,))
 
         if self.curve is None:
-            print xdata, ydata
             self.curve = self.line_plt.plot(xdata, ydata, **kwargs)
         else:
             self.curve.setData(x=xdata, y=ydata, **kwargs)
@@ -162,9 +183,40 @@ class MultiplotItemWidget(Rank1ItemWidget):
         Rank1ItemWidget.update_plot(self, leaf)
 
 
+class ParametricItemWidget(Rank1ItemWidget):
+    def __init__(self, path1, path2, dock_area, **kwargs):
+        Rank1ItemWidget.__init__(self, path1[-1]+' vs '+path2[-1], dock_area, **kwargs)
+        self.transpose_toggle = Qt.QCheckBox('Transpose')
+        self.transpose_toggle.stateChanged.connect(lambda s: self.update_plot())
+        self.buttons_widget.layout().addWidget(self.transpose_toggle)
+        self.combined_leaf = DataTreeLeaf(np.array([[]]), 1, parametric=True)
+        self.leaf1_data, self.leaf2_data = [], []
+        self.path1, self.path2 = path1, path2
+
+    def update_plot(self, path=None, leaf=None):
+        if path is None:
+            self.combined_leaf.data = np.array(zip(self.leaf1_data, self.leaf2_data))
+        elif path == self.path1:
+            self.leaf1_data = leaf.data
+            self.combined_leaf.data = np.array(zip(leaf.data, self.leaf2_data))
+            self.combined_leaf.xlabel = leaf.path[-1]
+        elif path == self.path2:
+            self.leaf2_data = leaf.data
+            self.combined_leaf.data = np.array(zip(self.leaf1_data, leaf.data))
+            self.combined_leaf.ylabel = leaf.path[-1]
+        else:
+            raise ValueError(str(path) + ' is not either ' + str(self.path1) + ' or ' + str(self.path2))
+        if self.transpose_toggle.isChecked():
+            leaf = copy(self.combined_leaf)
+            leaf.data = np.array((leaf.data[:,1], leaf.data[:,0]))
+            leaf.xlabel, leaf.ylabel = leaf.ylabel, leaf.xlabel
+        else:
+            leaf = self.combined_leaf
+        Rank1ItemWidget.update_plot(self, leaf, refresh_labels=True)
+
 class Rank2ItemWidget(Rank1ItemWidget):
-    def __init__(self, ident, **kwargs):
-        Rank1ItemWidget.__init__(self, ident, **kwargs)
+    def __init__(self, ident, dock_area, **kwargs):
+        Rank1ItemWidget.__init__(self, ident, dock_area, **kwargs)
         self.rank = 2
 
         self.histogram_check = Qt.QCheckBox('Histogram')
@@ -210,6 +262,8 @@ class Rank2ItemWidget(Rank1ItemWidget):
             Rank1ItemWidget.update_plot(self, leaf.to_rank1())
             self.img_view.imageItem.show()
             self.img_view.setImage(leaf.data, pos=[leaf.x0, leaf.y0], scale=[leaf.xscale, leaf.yscale])
+            if leaf.data.shape[0] == 1:
+                self.show_recent()
 
     def clear_plot(self):
         Rank1ItemWidget.clear_plot(self)

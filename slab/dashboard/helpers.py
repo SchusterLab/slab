@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import pyqtgraph
 
 def valid_h5file(file_path):
     if not file_path.endswith(".h5"):
@@ -33,6 +34,30 @@ def add_x_data(arr, slice=None):
     a = np.vstack((np.arange(slice.start, slice.stop), arr)).T
     return a
 
+
+def take_items(d, l):
+    res = {}
+    for i in l:
+        if i in d:
+            res[i] = d[i]
+    return res
+
+
+def separate_init_args(initargs):
+    data_tree_args = ['rank', 'save', 'plot', 'parametric', 'x0', 'y0',
+                      'xscale', 'yscale', 'xlabel', 'ylabel', 'zlabel']
+    plot_args = ['title', 'labels', 'name', 'axisItems']
+    pen_args = ['color', 'width', 'style', 'cosmetic', 'hsv']
+    curve_args = ['pen', 'shadowPen', 'fillLevel', 'fillBrush', 'symbol',
+                  'symbolPen', 'symbolBrush', 'symbolSize', 'pxMode', 'antialias', 'decimate', 'name']
+
+    pen_dict = take_items(initargs, pen_args)
+    if len(pen_dict) > 0 and 'pen' not in initargs:
+        initargs['pen'] = pyqtgraph.mkPen(**pen_dict)
+
+    return (take_items(initargs, data_tree_args),
+            take_items(initargs, plot_args),
+            take_items(initargs, curve_args))
 
 #def canonicalize_data(data, slice=None):
 #    arr = np.array(data)
