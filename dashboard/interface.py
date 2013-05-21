@@ -22,15 +22,11 @@ class DataClient(object):
         self.proxy._pyroRelease()
 
     def __getattr__(self, item):
-        print item
         def try_proxy_fn(*args, **kwargs):
             if self.proxy_closed:
                 return 'proxy closed'
             try:
-                print 'calling', item
-                res = getattr(self.proxy, item)(*args, **kwargs)
-                print 'result', res
-                return res
+                return getattr(self.proxy, item)(*args, **kwargs)
             except Pyro4.errors.ConnectionClosedError:
                 print "PROXY CLOSED"
                 self.proxy_closed = True
@@ -139,7 +135,11 @@ class SlabFileRemote:
         pass
 
     def __array__(self):
-        return np.array(self.__getitem__(slice(0, sys.maxint, None)))
+        print 'a'
+        #res = np.array(self.__getitem__(slice(0, sys.maxint, None)))
+        res = self.manager.get_data(self.context, None)
+        print 'b', res
+        return res
 
     def flush(self, path=None):
         if path is None:

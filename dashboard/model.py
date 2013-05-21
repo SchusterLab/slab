@@ -80,6 +80,13 @@ class DataTree(keydefaultdict):
             else:
                 raise ValueError("Can't save unknown item " + str(type(item)))
 
+class DataTreeLeafReduced(object):
+    _items = ['path', 'rank', 'save', 'parametric', 'plot',
+               'x0', 'y0', 'xscale', 'yscale', 'xlabel', 'ylabel', 'zlabel']
+    def __init__(self, leaf):
+        for item in self._items:
+            setattr(self, item, getattr(leaf, item))
+
 
 class DataTreeLeaf(object):
     def __init__(self, path, rank=None, file=None, data=None, save=None, parametric=False,

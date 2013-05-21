@@ -2,7 +2,8 @@ import types
 from collections import defaultdict
 
 from PyQt4 import Qt
-import pyqtgraph
+#from PyQt4.QtTest import QTest
+#import pyqtgraph
 
 from controller import DataManager
 from interface import DataClient
@@ -61,7 +62,7 @@ class TempDataClient(object):
     def __getattr__(self, item):
         def call_on_data_client(*args, **kwargs):
             with DataClient() as c:
-                getattr(c, item)(*args, **kwargs)
+                return getattr(c, item)(*args, **kwargs)
         return call_on_data_client
 
 class SlabWindow(Qt.QMainWindow):
@@ -117,8 +118,9 @@ class PlotWindow(SlabWindow):
         #structure_tree_menu.addAction(change_scale_action)
 
 
-        self.dock_area = pyqtgraph.dockarea.DockArea()
-        self.dock_insert_location = 'bottom'
+        #self.dock_area = pyqtgraph.dockarea.DockArea()
+        self.dock_area = MyDockArea()
+        #self.dock_insert_location = 'bottom'
 
         self.save_button = Qt.QPushButton('Save Selection')
         self.save_button.clicked.connect(self.save_selection)
@@ -129,6 +131,9 @@ class PlotWindow(SlabWindow):
         self.remove_button = Qt.QPushButton('Remove Selection')
         self.remove_button.clicked.connect(self.remove_selection)
         self.remove_button.setEnabled(False)
+        self.parametric_button = Qt.QPushButton('Plot Pair Parametrically')
+        self.parametric_button.clicked.connect(lambda: self.add_multiplot(parametric=True))
+        self.parametric_button.setEnabled(False)
 
         self.setCentralWidget(Qt.QSplitter())
         self.sidebar = sidebar = Qt.QWidget()
@@ -137,16 +142,17 @@ class PlotWindow(SlabWindow):
         sidebar.layout().addWidget(self.save_button)
         sidebar.layout().addWidget(self.multiplot_button)
         sidebar.layout().addWidget(self.remove_button)
+        sidebar.layout().addWidget(self.parametric_button)
         self.centralWidget().addWidget(sidebar)
         self.centralWidget().addWidget(self.dock_area)
         self.centralWidget().setSizes([300, 1000])
         self.current_edit_widget = None
 
         file_menu = self.menuBar().addMenu('File')
-        file_menu.addAction('Save').triggered.connect(self.background_client.save_all)#lambda: self.background_client.save_all())
+        file_menu.addAction('Save').triggered.connect(self.background_client.save_all)
         file_menu.addAction('Load').triggered.connect(self.load)
         file_menu.addAction('Load (readonly)').triggered.connect(lambda: self.load(readonly=True))
-        file_menu.addAction('Clear').triggered.connect(self.background_client.clear_all)#lambda: self.background_client.clear_all_data())
+        file_menu.addAction('Clear').triggered.connect(self.background_client.clear_all)
 
         self.message_box = Qt.QTextEdit()
         self.message_box.setReadOnly(True)
@@ -181,25 +187,27 @@ class PlotWindow(SlabWindow):
         else:
             filename = str(Qt.QFileDialog.getSaveFileName(self, "Destination File",
                                                           config.h5file_directory, config.h5file_filter))
+            if not filename:
+                return
             for item in selection:
                 self.background_client.save_with_file(item.path, filename)
 
-    def add_multiplot(self):
+    def add_multiplot(self, parametric=False):
         selection = self.structure_tree.selectedItems()
         name = '::'.join(item.strpath for item in selection)
-        widget = MultiplotItemWidget(name)
+        if parametric:
+            widget = ParametricItemWidget(selection[0].path, selection[1].path, self.dock_area)
+        else:
+            widget = MultiplotItemWidget(name, self.dock_area)
         widget.remove_button.clicked.connect(lambda: self.remove_multiplot(name))
         self.multiplot_widgets[name] = widget
         for item in selection:
             self.multiplots[item.strpath].append(widget)
             self.background_client.update_plot(item.path)
-        self.dock_area.addDock(widget, self.dock_insert_location)
-        self.cycle_insert_location()
 
     def remove_multiplot(self, name):
-        names = name.split('::')
         widget = self.multiplot_widgets[name]
-        for n in names:
+        for n in name.split('::'):
             self.multiplots[n].remove(widget)
         widget.setParent(None)
 
@@ -210,11 +218,24 @@ class PlotWindow(SlabWindow):
     def configure_tree_buttons(self):
         selection = self.structure_tree.selectedItems()
         save = len(selection) > 0
-        multiplot = (len(selection) > 1) and all(self.plot_widgets[i.path].rank == 1 for i in selection)
+        multiplot = len(selection) > 1
+        multiplot = multiplot and all(i.is_leaf() for i in selection)
+        multiplot = multiplot and all(self.plot_widgets[i.path].rank == 1 for i in selection)
         remove = len(selection) > 0
+        parametric = len(selection) == 2
+        parametric = parametric and all(i.is_leaf() for i in selection)
+        parametric = parametric and all(self.plot_widgets[i.path].rank == 1 for i in selection)
         self.save_button.setEnabled(save)
         self.multiplot_button.setEnabled(multiplot)
         self.remove_button.setEnabled(remove)
+        self.parametric_button.setEnabled(parametric)
+
+    #def make_parametric_plot(self):
+    #    selection = self.structure_tree.selectedItems()
+    #    xpath, ypath = (i.path for i in selection)
+    #    widget = ParametricItemWidget(xpath, ypath, self.dock_area)
+    #    widget.remove_button.clicked.connect(lambda: self.)
+
 
     def remove_selection(self): #TODO
         pass
@@ -222,6 +243,8 @@ class PlotWindow(SlabWindow):
     def load(self, readonly=False):
         filename = str(Qt.QFileDialog().getOpenFileName(self, 'Load HDF5 file',
                                                         config.h5file_directory, config.h5file_filter))
+        if not filename:
+            return
         self.background_client.load_h5file(filename, readonly=readonly)
 
     def add_tree_widget(self, path, data=False, shape=(), save=True, plot=True):
@@ -244,7 +267,9 @@ class PlotWindow(SlabWindow):
 
     def toggle_item(self, item, col):
         if item.is_leaf():# and item.plot:
-            self.plot_widgets[item.path].toggle_hide()
+            widget = self.plot_widgets[item.path]
+            widget.toggle_hide()
+            self.background_client.set_params(item.path, widget.rank, plot=widget.visible)
         else:
             for child in item.getChildren():
                 self.toggle_item(child, col)
@@ -254,7 +279,7 @@ class PlotWindow(SlabWindow):
             if self.current_edit_widget is not None:
                 self.sidebar.layout().removeWidget(self.current_edit_widget)
                 self.current_edit_widget.setParent(None)
-            leaf = self.background_client.get_leaf(item.path)
+            leaf = self.background_client.get_or_make_leaf(item.path, reduced=True)
             self.current_edit_widget = LeafEditWidget(leaf)
             self.sidebar.layout().addWidget(self.current_edit_widget)
 
@@ -268,28 +293,42 @@ class PlotWindow(SlabWindow):
             raise ValueError('Plot %s already exists in window' % (path,))
         strpath = "/".join(path)
         if rank == 1:
-            item = Rank1ItemWidget(strpath, **kwargs)
+            item = Rank1ItemWidget(strpath, self.dock_area, **kwargs)
         elif rank == 2:
-            item = Rank2ItemWidget(strpath, **kwargs)
+            item = Rank2ItemWidget(strpath, self.dock_area, **kwargs)
         else:
             raise ValueError('Rank must be either 1 or 2, not ' + str(rank))
 
         item.clear_button.clicked.connect(lambda: self.background_client.clear_data(path))
+        item.remove_button.clicked.connect(lambda: self.background_client.set_params(path, rank, plot=False))
         self.register_param('update'+strpath, item.update_toggle)
         self.plot_widgets[path] = item
-        self.dock_area.addDock(item, self.dock_insert_location)
-        self.cycle_insert_location()
+        #self.dock_area.addDock(item, self.dock_insert_location)
+        #self.cycle_insert_location()
 
-    def cycle_insert_location(self):
-        self.dock_insert_location = \
-            {'bottom': 'top',
-             'top': 'right',
-             'right': 'left',
-             'left': 'bottom'}[self.dock_insert_location]
+    #def cycle_insert_location(self):
+    #    self.dock_insert_location = \
+    #        {'bottom': 'top',
+    #         'top': 'right',
+    #         'right': 'left',
+    #         'left': 'bottom'}[self.dock_insert_location]
+
+    def _test_edit_widget(self, path):
+        self.structure_tree.itemClicked.emit(self.tree_widgets[path], 0)
+
+    def _test_show_hide(self, path):
+        import time
+        self.structure_tree.itemDoubleClicked.emit(self.tree_widgets[path], 0)
+        time.sleep(1)
+        self.structure_tree.itemDoubleClicked.emit(self.tree_widgets[path], 0)
+
+    def _test_multiplot(self, paths, parametric=False):
+        for p in paths:
+            self.structure_tree.setItemSelected(self.tree_widgets[p], True)
+        self.add_multiplot(parametric=parametric)
 
     def msg(self, *args):
         self.message_box.append(', '.join(map(str, args)))
-
 
 widget_tools = {
     Qt.QSpinBox : {
