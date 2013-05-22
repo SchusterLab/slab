@@ -1,4 +1,5 @@
 import types
+import time
 from collections import defaultdict
 
 from PyQt4 import Qt
@@ -10,7 +11,6 @@ from interface import DataClient
 from widgets import *
 import helpers
 import config
-
 
 class GenericProxy(object):
     """
@@ -30,6 +30,9 @@ class GenericProxy(object):
     def __getitem__(self, item):
         return GenericProxy(self._sig_name, self._emitter, self._context + [('item', item)])
 
+    def __setitem__(self, item, value):
+        return GenericProxy(self._sig_name, self._emitter, self._context + [('setitem', (item, value))])
+
     def __call__(self, *args, **kwargs):
         self._emitter.emit(Qt.SIGNAL(self._sig_name), self._context, args, kwargs)
 
@@ -48,6 +51,9 @@ def proxify(obj, connector, sig_name):
                 except:
                     print context, current
                     raise
+            elif operation == 'setitem':
+                item, value = arg
+                current[item] = value
             else:
                 raise ValueError('Unidentified operation ' + str(operation))
         current(*args, **kwargs)
@@ -101,7 +107,7 @@ class PlotWindow(SlabWindow):
     def __init__(self):
         manager = DataManager()
         SlabWindow.__init__(self, manager)
-        manager.connect_data()
+        manager._connect_data()
         self.background_client = TempDataClient() # Don't actually call this until __init__ has returned!
 
         self.structure_tree = Qt.QTreeWidget()
@@ -111,6 +117,11 @@ class PlotWindow(SlabWindow):
         self.structure_tree.itemDoubleClicked.connect(self.toggle_item)
         self.structure_tree.itemSelectionChanged.connect(self.configure_tree_buttons)
         self.structure_tree.setSelectionMode(Qt.QAbstractItemView.ExtendedSelection)
+        self.structure_tree.setColumnWidth(0, 200)
+        self.structure_tree.setColumnWidth(1, 50)
+        self.structure_tree.setColumnWidth(2, 50)
+        self.structure_tree.setColumnWidth(3, 50)
+
         #structure_tree_menu = Qt.QMenu(self.structure_tree)
         #self.structure_tree.setContextMenuPolicy(Qt.Qt.ActionsContextMenu)
         #change_scale_action = Qt.QAction('Change Labels/Scale')
@@ -122,6 +133,12 @@ class PlotWindow(SlabWindow):
         self.dock_area = MyDockArea()
         #self.dock_insert_location = 'bottom'
 
+        self.max_plots_spinner = Qt.QSpinBox()
+        self.max_plots_spinner.setValue(6)
+        max_plots_widget = Qt.QWidget()
+        max_plots_widget.setLayout(Qt.QHBoxLayout())
+        max_plots_widget.layout().addWidget(Qt.QLabel('Maximum Plot Count'))
+        max_plots_widget.layout().addWidget(self.max_plots_spinner)
         self.save_button = Qt.QPushButton('Save Selection')
         self.save_button.clicked.connect(self.save_selection)
         self.save_button.setEnabled(False)
@@ -138,6 +155,7 @@ class PlotWindow(SlabWindow):
         self.setCentralWidget(Qt.QSplitter())
         self.sidebar = sidebar = Qt.QWidget()
         sidebar.setLayout(Qt.QVBoxLayout())
+        sidebar.layout().addWidget(max_plots_widget)
         sidebar.layout().addWidget(self.structure_tree)
         sidebar.layout().addWidget(self.save_button)
         sidebar.layout().addWidget(self.multiplot_button)
@@ -164,13 +182,11 @@ class PlotWindow(SlabWindow):
         action.setChecked(False)
         action.triggered.connect(self.message_box.setVisible)
 
-        def fail():
-            assert False
-        debug_menu.addAction('Fail').triggered.connect(fail)
-
         self.plot_widgets = {}
+        self.plot_widgets_update_log = {}
         self.tree_widgets = {}
         self.multiplot_widgets = {}
+        self.parametric_widgets = {}
         self.multiplots = defaultdict(list)
 
         self.connect(self, Qt.SIGNAL('lastWindowClosed()'), lambda: self.background_client.abort_daemon())
@@ -179,7 +195,6 @@ class PlotWindow(SlabWindow):
         self.start_thread()
         self.background.serve()
 
-    # TODO: BIG ONE, implement saving
     def save_selection(self):
         selection = self.structure_tree.selectedItems()
         if len(selection) == 1 and helpers.valid_h5file(selection[0].text(0)):
@@ -194,20 +209,25 @@ class PlotWindow(SlabWindow):
 
     def add_multiplot(self, parametric=False):
         selection = self.structure_tree.selectedItems()
-        name = '::'.join(item.strpath for item in selection)
+        paths = tuple(item.strpath for item in selection)
         if parametric:
             widget = ParametricItemWidget(selection[0].path, selection[1].path, self.dock_area)
+            self.parametric_widgets[paths] = widget
         else:
-            widget = MultiplotItemWidget(name, self.dock_area)
-        widget.remove_button.clicked.connect(lambda: self.remove_multiplot(name))
-        self.multiplot_widgets[name] = widget
+            widget = MultiplotItemWidget('::'.join(paths), self.dock_area)
+            self.multiplot_widgets[paths] = widget
+        widget.remove_button.clicked.connect(lambda: self.remove_multiplot(paths, parametric=parametric))
         for item in selection:
             self.multiplots[item.strpath].append(widget)
             self.background_client.update_plot(item.path)
+        self.regulate_plot_count()
 
-    def remove_multiplot(self, name):
-        widget = self.multiplot_widgets[name]
-        for n in name.split('::'):
+    def remove_multiplot(self, paths, parametric=False):
+        if parametric:
+            widget = self.parametric_widgets.pop(paths)
+        else:
+            widget = self.multiplot_widgets.pop(paths)
+        for n in paths:
             self.multiplots[n].remove(widget)
         widget.setParent(None)
 
@@ -270,6 +290,7 @@ class PlotWindow(SlabWindow):
             widget = self.plot_widgets[item.path]
             widget.toggle_hide()
             self.background_client.set_params(item.path, widget.rank, plot=widget.visible)
+            print 'toggled', item.path
         else:
             for child in item.getChildren():
                 self.toggle_item(child, col)
@@ -303,21 +324,26 @@ class PlotWindow(SlabWindow):
         item.remove_button.clicked.connect(lambda: self.background_client.set_params(path, rank, plot=False))
         self.register_param('update'+strpath, item.update_toggle)
         self.plot_widgets[path] = item
-        #self.dock_area.addDock(item, self.dock_insert_location)
-        #self.cycle_insert_location()
+        self.plot_widgets_update_log[path] = time.time()
+        self.regulate_plot_count()
 
-    #def cycle_insert_location(self):
-    #    self.dock_insert_location = \
-    #        {'bottom': 'top',
-    #         'top': 'right',
-    #         'right': 'left',
-    #         'left': 'bottom'}[self.dock_insert_location]
+    def regulate_plot_count(self):
+        widgets = list(self.plot_widgets.values()) + list(self.multiplot_widgets.values()) + list(self.parametric_widgets.values())
+        if len(filter(lambda w: w.visible, widgets)) > self.max_plots_spinner.value():
+            for p, t in sorted(self.plot_widgets_update_log.items(), key=lambda x: x[1]):
+                if self.plot_widgets[p].visible:
+                    self.toggle_item(self.tree_widgets[p], 0)
+                    break
+                #widget = self.plot_widgets[p]
+                #if widget.visible:
+                #    widget.toggle_hide()
+                #    break
 
     def _test_edit_widget(self, path):
         self.structure_tree.itemClicked.emit(self.tree_widgets[path], 0)
+        self.current_edit_widget.commit_button.clicked.emit(False)
 
     def _test_show_hide(self, path):
-        import time
         self.structure_tree.itemDoubleClicked.emit(self.tree_widgets[path], 0)
         time.sleep(1)
         self.structure_tree.itemDoubleClicked.emit(self.tree_widgets[path], 0)
@@ -326,6 +352,12 @@ class PlotWindow(SlabWindow):
         for p in paths:
             self.structure_tree.setItemSelected(self.tree_widgets[p], True)
         self.add_multiplot(parametric=parametric)
+
+    def _test_save_selection(self, paths):
+        for p in paths:
+            self.structure_tree.setItemSelected(self.tree_widgets[p], True)
+        self.save_selection()
+
 
     def msg(self, *args):
         self.message_box.append(', '.join(map(str, args)))

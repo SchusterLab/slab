@@ -1,3 +1,5 @@
+import time
+
 from PyQt4 import Qt
 import h5py
 import Pyro4
@@ -26,7 +28,7 @@ class DataManager(BackgroundObject):
         self.data = None
         self.delim = path_delim
 
-    def connect_data(self):
+    def _connect_data(self):
         self.data = DataTree(self.gui)
 
     def get_or_make_leaf(self, path, rank=None, data_tree_args={}, plot_args={}, reduced=False):
@@ -77,18 +79,16 @@ class DataManager(BackgroundObject):
             data = np.array(data)
             rank = len(data.shape)
 
-
-        assert rank in (1, 2)
-
         data_tree_args, plot_args, curve_args = helpers.separate_init_args(initargs)
         data_tree_args['parametric'] = parametric
 
-        leaf = self.get_or_make_leaf(path, rank, data_tree_args, plot_args)
-
         if slice is None:
+            leaf = self.get_or_make_leaf(path, rank, data_tree_args, plot_args)
             leaf.data = data
         else:
+            leaf = self.get_or_make_leaf(path, None, data_tree_args, plot_args)
             leaf.data[slice] = data
+
         if leaf.file is not None:
             leaf.save_in_file()
         #if leaf.plot:
@@ -129,8 +129,7 @@ class DataManager(BackgroundObject):
         if not isinstance(item, DataTreeLeaf):
             raise ValueError('Leaf not found ' + str(path))
         if slice is not None:
-            x = np.array(item.data)[slice]
-            return x
+            return np.array(item.data)[slice]
         else:
             return np.array(item.data)
 
@@ -155,6 +154,7 @@ class DataManager(BackgroundObject):
         tree_widget.setText(2, str(item.save))
         tree_widget.setText(3, str(item.plot))
         if item.plot:
+            self.gui.plot_widgets_update_lot[path] = time.time()
             if item.rank == 2:
                 self.gui.plot_widgets[path].update_plot(item,
                         refresh_labels=refresh_labels, show_most_recent=show_most_recent, **curve_args)
