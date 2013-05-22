@@ -1,4 +1,6 @@
 import time
+import sys
+
 import cStringIO
 import traceback
 
@@ -51,14 +53,15 @@ def excepthook(excType, excValue, tracebackobj):
     errorbox.setText(str(notice)+str(msg)+str(versionInfo))
     errorbox.exec_()
 
-
-if __name__ == "__main__":
-    import sys
+def main():
     sys.excepthook = excepthook
     app = Qt.QApplication([])
     win = PlotWindow()
     win.show()
     win.showMaximized()
     app.connect(app, Qt.SIGNAL("lastWindowClosed()"), win, Qt.SIGNAL("lastWindowClosed()"))
-    sys.exit(app.exec_())
+    return app.exec_()
 
+
+if __name__ == "__main__":
+    sys.exit(main())

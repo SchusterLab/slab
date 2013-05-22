@@ -1,4 +1,6 @@
 import sys
+import os
+
 import numpy as np
 import Pyro4
 import traceback
@@ -57,6 +59,8 @@ class SlabFileRemote:
             print 'Warning', ', '.join(ignoredargs.keys()), 'ignored in call to SlabFileRemote'
         if manager is None:
             self.manager = DataClient()
+            if filename and os.path.exists(filename):
+                self.manager.load_h5file(filename)
         else:
             self.manager = manager
         self.filename = filename
@@ -111,35 +115,25 @@ class SlabFileRemote:
     def __getitem__(self, key):
         if isinstance(key, str):
             return SlabFileRemote(self.filename, self.manager, self.context + (key,), self.autosave)
-        elif isinstance(key, int):
-            s = slice(key, key+1, None)
-            return self.manager.get_data(self.context + (key,), slice=s)[0]
-        elif isinstance(key, slice):
+        elif isinstance(key, (int, slice, tuple)):
             return self.manager.get_data(self.context, key)
+        else:
+            raise ValueError('Unknown key type ' + str(key))
 
     def __setitem__(self, key, value):
         if isinstance(key, str):
             context = self.context + (key,)
             self.manager.set_data(context, value)
-        elif isinstance(key, int):
-            context = self.context
-            s = slice(key, key+1, None)
-            self.manager.set_data(self.context, value, slice=s)
-        elif isinstance(key, slice):
-            context = self.context
+        elif isinstance(key, (int, slice, tuple)):
             self.manager.set_data(self.context, value, slice=key)
-#        if self.autosave:
-#            self.flush(context)
+        else:
+            raise ValueError('Unknown key type ' + str(key))
 
     def __delitem__(self, key): # TODO
         pass
 
     def __array__(self):
-        print 'a'
-        #res = np.array(self.__getitem__(slice(0, sys.maxint, None)))
-        res = self.manager.get_data(self.context, None)
-        print 'b', res
-        return res
+        return self.manager.get_data(self.context, None)
 
     def flush(self, path=None):
         if path is None:
@@ -150,6 +144,14 @@ class SlabFileRemote:
     def __getattr__(self, item):
         if item is 'attrs':
             return AttrsProxy(self.manager, self.context)
+        # For some reason getslice isn't properly deprecated
+        elif item is '__getslice__':
+            return lambda start, stop: self.__getitem__(slice(start, stop, None))
+        elif item is '__setslice__':
+            return lambda start, stop, value: self.__setitem__(slice(start, stop, None), value)
+        # Array creation tests for the presence of these properties, which we don't have
+        elif item in ('__array_struct__', '__array_interface__'):
+            raise AttributeError
         def call_with_context(*args, **kwargs):
             getattr(self.manager, item)(self.context, *args, **kwargs)
         return call_with_context
@@ -193,45 +195,3 @@ def append_data(file_or_group, dataset_name, new_data):
 
 h5py.File.append_data = append_data
 h5py.Group.append_data = append_data
-    
-    #def append_data(self, new_data, show_most_recent=None):
-    #    self.manager.append_data(self.context, new_data, show_most_recent=show_most_recent)
-    #        if self.autosave:
-    #            self.flush(self.context)
-
-    #def set_data(self, *args, **kwargs):
-    #    self.manager.set_data(self.context, *args, **kwargs)
-
-#h5py_group_getitem = h5py.Group.__getitem__
-
-#def get_or_make_group(file_or_group, item):
-#    if item in file_or_group:
-#        if isinstance(file_or_group, h5py.File):
-#            h5py.File.__getitem__(file_or_group, item)
-#        else:
-#            h5py_group_getitem(file_or_group, item)
-#    else:
-#        return file_or_group.create_group(item)
-
-#    def create_group(self, name):
-#        g = SlabFileLocalGroup()
-#        self[name] = g
-#        return g
-
-
-#class SlabFileLocalUndecided:
-#    def __init__(self, parent):
-#        self.parent = parent
-
-#    def append_data(self, new_data):
-        
-    
-#    def __setitem__(self, item, value):
-#        self.parent.(item)
-
-#class SlabFileLocalGroup(h5py.Group):
-#    pass
-
-#h5py.Group.__getitem__ = get_or_make_group
-
-    

@@ -1,9 +1,15 @@
-from interface import SlabFileRemote, DataClient
+if __name__ == "__main__":
+    from coverage import coverage
+    cov = coverage(data_suffix='client')
+    cov.start()
+
+from interface import SlabFile, DataClient
 import time
 import numpy as np
+import multiprocessing
 
-def test_file_interface():
-    f = SlabFileRemote(filename=r"S:\Phil\some_file.h5", autosave=True)
+def test_file_interface(remote=True):
+    f = SlabFile(filename=r"S:\Phil\some_file.h5", remote=remote)
     x = np.linspace(0, 3, 50)
     f['do not plot'].set_data((x, np.sin(x)), plot=False)
     f['do not plot'].attrs['function'] = 'sine'
@@ -15,8 +21,11 @@ def test_file_interface():
     f['test group']['test img'].set_labels(xlabel='XLABEL?', ylabel='ylabel...', zlabel='Something?')
     #f['parametric (implicit)'] = (x*np.sin(x), x*np.cos(x))
     #f['parametric (explicit)'].set_data(np.array([x*np.cos(x), x*np.sin(x)]), parametric=True)
+    f['test group']['pulse'] = np.zeros(50)
+    f['test group']['pulse'][5:25] = np.ones(20)
+    f['test group']['test img'][:,5:25] = np.ones(20)
 
-    for i in range(10):
+    for i in range(3):
         time.sleep(.5)
         x = i
         f['par x'].append_data(x*np.sin(x))
@@ -26,23 +35,29 @@ def test_file_interface():
         f['appending']['parametric'].append_data((i*np.sin(i/20.), i*np.cos(i/20.)))
         f['appending']['img'].append_data(np.random.normal(size=100), show_most_recent=True)
 
-    print f['test_ds'][0]
-    #print np.array(f['test_ds']).shape
+    print f['test group']['test ds'][1:3]
+    print f['test group']['test img'][1, :].shape
+    print np.array(f['test group']['test img']).shape
 
-    #assert np.array(f['test_ds']).shape == (2, 50)
 
-
-def test_gui_elements():
+def test_gui_elements(interactive=True):
     c = DataClient()
     x = np.linspace(0, 3, 50)
     c.set_data(('A',), x*np.sin(x))
     c.set_data(('B',), x*np.cos(x))
+    c.set_data(('C', 'D'), np.outer(x, x))
     c.gui_method('_test_edit_widget', ('A',))
-    c.gui_method('_test_show_hide', ('A',))
+    c.gui_method('_test_edit_widget', ('B',))
+    c.gui_method('_test_show_hide', ('C', 'D'))
     c.gui_method('_test_multiplot', [('A',), ('B',)])
     c.gui_method('_test_multiplot', [('A',), ('B',)], parametric=True)
     c.set_data(('A',), x*np.cos(x)) # Now test update of multiplots
     c.set_data(('B',), x*np.sin(x))
+    if interactive:
+        c.gui_method('_test_save_selection', [('A',), ('B',)])
+        c.gui_method('load')
+    c.gui_method('remove_multiplot', ('A', 'B'))
+    c.gui_method('msg', 'test string')
 
 
 def test_proxy_interface():
@@ -52,10 +67,37 @@ def test_proxy_interface():
     c.set_data(('some hierarchy', 'b'), [[1,2],[3,4]])
     c.save_with_file('some hierarchy', r'S:\Phil\test_programmatic_save.h5')
 
+def close_window():
+    c = DataClient()
+    c.gui_method('close')
+
+def target():
+    from coverage import coverage
+    cov = coverage(data_suffix='window')
+    cov.start()
+    from dashboard import main
+    main()
+    cov.stop()
+    cov.save()
+
 if __name__ == "__main__":
+    #test_file_interface(remote=False)
+
+    interactive = True
+    p = multiprocessing.Process(target=target)
+    p.start()
+    time.sleep(2)
+
     test_file_interface()
-    #test_proxy_interface()
-    test_gui_elements()
-    #c = DataClient()
-    #c.load_h5file(r'S:\Phil\some_file.h5')
+    test_gui_elements(interactive=interactive)
+    time.sleep(1)
+    if not interactive:
+        close_window()
+    cov.stop()
+    cov.save()
+
+    p.join()
+
+    cov.combine()
+    cov.html_report()
     print 'done'
