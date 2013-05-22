@@ -189,8 +189,16 @@ class PlotWindow(SlabWindow):
         self.parametric_widgets = {}
         self.multiplots = defaultdict(list)
 
-        self.connect(self, Qt.SIGNAL('lastWindowClosed()'), lambda: self.background_client.abort_daemon())
-        self.connect(self, Qt.SIGNAL('lastWindowClosed()'), self.background_thread.wait)
+        def clean_up(close_event):
+            self.background_client.abort_daemon()
+            self.wait_for_cleanup_dialog()
+            self.background_thread.wait()
+
+        self.closeEvent = clean_up
+
+        #self.connect(self, Qt.SIGNAL('lastWindowClosed()'), self.wait_for_cleanup_dialog)
+        #self.connect(self, Qt.SIGNAL('lastWindowClosed()'), lambda: self.background_client.abort_daemon())
+        #self.connect(self, Qt.SIGNAL('lastWindowClosed()'), self.background_thread.wait)
 
         self.start_thread()
         self.background.serve()
@@ -249,13 +257,6 @@ class PlotWindow(SlabWindow):
         self.multiplot_button.setEnabled(multiplot)
         self.remove_button.setEnabled(remove)
         self.parametric_button.setEnabled(parametric)
-
-    #def make_parametric_plot(self):
-    #    selection = self.structure_tree.selectedItems()
-    #    xpath, ypath = (i.path for i in selection)
-    #    widget = ParametricItemWidget(xpath, ypath, self.dock_area)
-    #    widget.remove_button.clicked.connect(lambda: self.)
-
 
     def remove_selection(self): #TODO
         pass
@@ -334,10 +335,6 @@ class PlotWindow(SlabWindow):
                 if self.plot_widgets[p].visible:
                     self.toggle_item(self.tree_widgets[p], 0)
                     break
-                #widget = self.plot_widgets[p]
-                #if widget.visible:
-                #    widget.toggle_hide()
-                #    break
 
     def _test_edit_widget(self, path):
         self.structure_tree.itemClicked.emit(self.tree_widgets[path], 0)
@@ -361,6 +358,14 @@ class PlotWindow(SlabWindow):
 
     def msg(self, *args):
         self.message_box.append(', '.join(map(str, args)))
+
+    def wait_for_cleanup_dialog(self):
+        dialog = Qt.QDialog()
+        dialog.setLayout(Qt.QVBoxLayout())
+        dialog.layout().addWidget(Qt.QLabel("Please wait while the server cleans up..."))
+        self.connect(self.background_obj, Qt.SIGNAL('server done'), dialog.accept)
+        self.connect(self.background_obj, Qt.SIGNAL('server done'), self.background_thread.exit)
+        dialog.exec_()
 
 widget_tools = {
     Qt.QSpinBox : {

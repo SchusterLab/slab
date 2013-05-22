@@ -210,11 +210,22 @@ class DataManager(BackgroundObject):
         print 'done serving'
         self.data.close()
         print "data closed"
+        self.emit(Qt.SIGNAL('server done'))
 
     def abort_daemon(self):
         global RUNNING
         RUNNING = False
         print 'Aborted!'
+
+    def wait_for_cleanup_dialog(self):
+        print 'here'
+        dialog = Qt.QMessageBox()
+        dialog.setText("Please wait while the server cleans up...")
+        self.connect(self, Qt.SIGNAL('server done'), dialog.accept)
+        #self.background_thread.finished.connect(dialog.accept)
+        print 'here2'
+        dialog.exec_()
+        print 'here3'
 
     def save_as_file(self, path): #TODO
         data = self.data.resolve_path(path)
