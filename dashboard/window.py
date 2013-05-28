@@ -191,8 +191,12 @@ class PlotWindow(SlabWindow):
 
         def clean_up(close_event):
             self.background_client.abort_daemon()
-            self.wait_for_cleanup_dialog()
-            self.background_thread.wait()
+            #self.wait_for_cleanup_dialog()
+            print 'start wait'
+            time.sleep(.5)
+            self.background_thread.quit()
+            #self.background_thread.wait()
+            print 'end wait'
 
         self.closeEvent = clean_up
 
@@ -259,7 +263,18 @@ class PlotWindow(SlabWindow):
         self.parametric_button.setEnabled(parametric)
 
     def remove_selection(self): #TODO
-        pass
+        for item in self.structure_tree.selectedItems():
+            self.background_client.remove_item(item.path)
+
+    def remove_item(self, path):
+        item = self.tree_widgets[path]
+        if item.is_leaf():
+            widget = self.plot_widgets.pop(item.path)
+            if widget.visible:
+                widget.toggle_hide()
+            widget.close()
+        root = self.structure_tree.invisibleRootItem()
+        (item.parent() or root).removeChild(item)
 
     def load(self, readonly=False):
         filename = str(Qt.QFileDialog().getOpenFileName(self, 'Load HDF5 file',
@@ -360,6 +375,10 @@ class PlotWindow(SlabWindow):
         self.message_box.append(', '.join(map(str, args)))
 
     def wait_for_cleanup_dialog(self):
+        """
+        :return: None
+        Activated when the window is closed, this displays a dialog until the background
+        """
         dialog = Qt.QDialog()
         dialog.setLayout(Qt.QVBoxLayout())
         dialog.layout().addWidget(Qt.QLabel("Please wait while the server cleans up..."))

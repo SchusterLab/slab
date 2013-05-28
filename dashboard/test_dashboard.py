@@ -36,6 +36,8 @@ def test_file_interface(remote=True):
         f['appending']['img'].append_data(np.random.normal(size=100), show_most_recent=True)
 
     print f['test group']['test ds'][1:3]
+    time.sleep(5) # Check for timeout errors
+    assert np.array(f['test group']['test ds']).shape == (50,)
     print f['test group']['test img'][1, :].shape
     print np.array(f['test group']['test img']).shape
 
@@ -82,8 +84,11 @@ def target():
 
 if __name__ == "__main__":
     #test_file_interface(remote=False)
+    import os
 
     interactive = True
+    if os.path.exists(r'S:\Phil\some_file.h5'):
+        os.remove(r'S:\Phil\some_file.h5')
     p = multiprocessing.Process(target=target)
     p.start()
     time.sleep(2)

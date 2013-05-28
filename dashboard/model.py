@@ -19,8 +19,8 @@ class keydefaultdict(defaultdict):
 
 
 class DataTree(keydefaultdict):
-    def __init__(self, gui, name=None, parentpath=(), file=None):
-        if (name is not None) and (file is None) and helpers.valid_h5file(name):
+    def __init__(self, gui, name=None, parentpath=(), file=None, open_file=True):
+        if open_file and (name is not None) and (file is None) and helpers.valid_h5file(name):
             file = h5py.File(name, 'a')
         self.file = file
         if name is None:
@@ -89,17 +89,24 @@ class DataTreeLeafReduced(object):
 
 
 class DataTreeLeaf(object):
-    def __init__(self, path, rank=None, file=None, data=None, save=None, parametric=False,
+    def __init__(self, path, rank=None, file=None, data=None, save=True, parametric=False,
                  plot=True, x0=0, xscale=1, xlabel='x', y0=0, yscale=1, ylabel='y', zlabel='z'):
         self.path = path
         self.rank = rank
         self.file = file
         self.data = data
         self.attrs = {}
-        if save is None:
-            self.save = self.file is not None
+
+        if self.file is None:
+            self.save = False # Can't save to no file
         else:
-            self.save = save
+            self.save = save # True by default
+
+        #if save is None:
+        #    self.save = self.file is not None
+        #else:
+        #    self.save = save
+
         self.parametric = parametric
         self.plot = plot
         self.x0 = x0

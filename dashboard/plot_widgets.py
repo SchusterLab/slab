@@ -7,6 +7,7 @@ class CrossSectionWidget(pg.ImageView):
         view = pg.PlotItem(labels=kwargs.pop('labels', None))
         self.trace_size = trace_size
         pg.ImageView.__init__(self, view=view, **kwargs)
+        view.setAspectLocked(lock=False)
         self.cs_layout = pg.GraphicsLayout()
         self.cs_layout.addItem(view, row=1, col=0)
         self.ui.graphicsView.setCentralItem(self.cs_layout)

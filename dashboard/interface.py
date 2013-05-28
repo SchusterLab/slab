@@ -15,7 +15,9 @@ class DataClient(object):
     def __init__(self):
         self.proxy = Pyro4.Proxy(config.manager_uri)
         self.proxy_closed = False
-        self.proxy._pyroOneway.add('load_h5file')
+        #self.proxy._pyroOneway.update(['load_h5file', 'set_data', 'append_data'])
+        #self.proxy._pyroOneway.add('abort_daemon')
+        #self.proxy._pyroTimeout = None
 
     def __enter__(self, *args):
         return self
@@ -45,16 +47,30 @@ class DataClient(object):
 
 
 def SlabFile(*args, **kwargs):
+    """
+    :param remote: If True, (False by default) return a SlabFileRemote, otherwise return a SlabFileLocal
+                    (aka. :py:class:`h5py.File`
+    :return:
+    """
     if kwargs.pop('remote', False):
         return SlabFileRemote(*args, **kwargs)
     return SlabFileLocal(*args, **kwargs)
 
 
 class SlabFileRemote:
-    def __init__(self, filename=None, manager=None, context=(), autosave=None, **ignoredargs):
-        if autosave is None:
-            autosave = filename is not None
-        self.autosave = autosave
+    """
+    Represents a file that resides within an open Dashboard window
+
+    Method calls are deferred to py:class::controller.DataManager calls i.e.
+    f['group']['dataset'].some_method(1,2,3) ==> DataManager.some_method(('group', 'dataset'), 1, 2, 3)
+    """
+    def __init__(self, filename=None, manager=None, context=(), **ignoredargs):
+        """
+        :param filename: A absolute or relative path specifying a *.h5 file to save data to.
+                         If not provided, data will not be explicitly saved.
+        :param manager: Used internally to avoid re-creating DataClient connection
+        :param context: Used internally to represent base-path
+        """
         if len(ignoredargs) > 0:
             print 'Warning', ', '.join(ignoredargs.keys()), 'ignored in call to SlabFileRemote'
         if manager is None:
@@ -78,17 +94,37 @@ class SlabFileRemote:
     def close(self):
         self.manager._pyroRelease()
 
-    def create_dataset(self, name, shape=None, data=None, **initargs):
+    def create_dataset(self, name, data=None, shape=None, **initargs):
+        """
+        Creates a zero-ed out array of a given shape. Provides compatibility with h5py.
+        The preferred method is to call set_data directly
+        :param name: Dataset identifier
+        :param data: Data to set. An array of zeros is created if not provided
+        :param shape: Shape of zero array if data is not provided
+        :param initargs:
+        :return: SlabFileRemote object representing newly created dataset
+        """
         if data is None:
             if shape is None:
                 data = np.array([0])
             else:
                 data = np.zeros(shape)
         self.manager.set_data(self.context + (name,), data, **initargs)
-#        if self.autosave:
-#            self.flush(self.context + (name,))
+        return self[name]
 
     def set_range(self, x0=0, y0=None, xscale=1, yscale=None):
+        """
+        If a dataset is provided in the form of an array of y-values or z-values, where the
+        indices correspond to an inferred equally spaced lattice, this command lets you set the
+        values of that inferred axis. For 1D plots this corresponds to x-values, whereas in 2D plots
+        this corresponds to both x-values and y-values. This command is unnecessary if the data is
+        provided 'parametrically', i.e. in (x,y) format, i.e. f[name].append_data((x, y))
+        :param x0: The x-value of the first point in the dataset
+        :param y0: The y-value of the first point in the dataset, omit for 1D datasets
+        :param xscale: The change in (spacing between) x-values from point to point
+        :param yscale: The change in (spacing between) y-values from point to point, omit for 1D datasets
+        :return: None
+        """
         if y0 is None and yscale is None:
             rank = 1
             self.manager.set_params(self.context, rank, x0=x0, xscale=xscale)
@@ -96,25 +132,27 @@ class SlabFileRemote:
             assert None not in (y0, yscale)
             rank = 2
             self.manager.set_params(self.context, rank, x0=x0, y0=y0, xscale=xscale, yscale=yscale)
-            #if self.autosave:
-            #    self.flush(self.context)
 
     def set_labels(self, xlabel="", ylabel="", zlabel=None):
+        """
+        Names the quantities associated with a particular axis. For 1D plots this is the x and y axis.
+        For 2D plots this is the x, y and z axis
+        """
         if zlabel is None:
             self.manager.set_params(self.context, 1, xlabel=xlabel, ylabel=ylabel)
         else:
             self.manager.set_params(self.context, 2, xlabel=xlabel, ylabel=ylabel, zlabel=zlabel)
-            #if self.autosave:
-            #    self.flush(self.context)
 
-    # No need to create groups with remote file, as their existence is inferred,
-    # but it shouldn't cause an error either
     def create_group(self, name):
+        """
+        Provided for compatibility purposes. Has no effect.
+         Group structure is inferred dynamically from use.
+        """
         pass
 
     def __getitem__(self, key):
         if isinstance(key, str):
-            return SlabFileRemote(self.filename, self.manager, self.context + (key,), self.autosave)
+            return SlabFileRemote(self.filename, self.manager, self.context + (key,))
         elif isinstance(key, (int, slice, tuple)):
             return self.manager.get_data(self.context, key)
         else:
