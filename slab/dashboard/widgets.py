@@ -23,7 +23,7 @@ class DataTreeLeafItem(Qt.QTreeWidgetItem):
         return '/'.join(map(str, self.path))
 
 
-Qt.QTreeWidgetItem.is_leaf = lambda item: item.childCount() == 0
+Qt.QTreeWidgetItem.is_leaf = lambda item: str(item.text(1)) != ""
 Qt.QTreeWidgetItem.getChildren = lambda item: [item.child(i) for i in range(item.childCount())]
 
 class MyDockArea(pyqtgraph.dockarea.DockArea):

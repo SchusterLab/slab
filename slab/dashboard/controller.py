@@ -9,8 +9,10 @@ from model import DataTree, DataTreeLeaf, DataTreeLeafReduced
 import helpers
 import config
 
-Pyro4.config.COMMTIMEOUT = 3.5
+#Pyro4.config.COMMTIMEOUT = 3.5
 Pyro4.config.DOTTEDNAMES = True
+Pyro4.config.SERVERTYPE = 'multiplex'
+Pyro4.config.ONEWAY_THREADED = True
 RUNNING = True
 
 class BackgroundObject(Qt.QObject):
@@ -66,7 +68,6 @@ class DataManager(BackgroundObject):
 
     def set_data(self, name_or_path, data, slice=None, parametric=False, **initargs):
         path = helpers.canonicalize_path(name_or_path)
-
         if parametric and isinstance(data, (np.ndarray, list)):
             if data.shape[1] == 2:
                 data = np.transpose(data)
@@ -93,6 +94,7 @@ class DataManager(BackgroundObject):
             leaf.save_in_file()
         #if leaf.plot:
         self.update_plot(name_or_path, refresh_labels=(len(initargs) > 0), **curve_args)
+        return ()
 
     def append_data(self, name_or_path, data, show_most_recent=None, parametric=False, **initargs):
         path = helpers.canonicalize_path(name_or_path)
@@ -162,7 +164,18 @@ class DataManager(BackgroundObject):
                 self.gui.plot_widgets[path].update_plot(item, refresh_labels=refresh_labels, **curve_args)
         self.gui.update_multiplots(path, item)
 
-    def save_all(self):
+    def remove_item(self, name_or_path):
+        path = helpers.canonicalize_path(name_or_path)
+        group = self.data.resolve_path(path[:-1])
+        del group[path[-1]]
+        self.gui.remove_item(path)
+        n = 2
+        while len(group.keys()) == 1:
+            group = self.data.resolve_path(path[:-n])
+            del group[path[-n]]
+            self.gui.remove_item(path[:-(n-1)])
+
+    def save_all(self): # TODO
         raise NotImplementedError
 
     def load_h5file(self, filename, readonly=False):
@@ -170,6 +183,8 @@ class DataManager(BackgroundObject):
         f = h5py.File(filename, mode)
         if not readonly:
             self.data[filename] = DataTree(self.gui, filename, file=f)
+        else:
+            self.data[filename] = DataTree(self.gui, filename, open_file=False)
         self.rec_load_file(f, (filename,), readonly)
         if readonly:
             f.close()
@@ -179,10 +194,13 @@ class DataManager(BackgroundObject):
             this_path = path + (name,)
             self.msg(name, type(ds))
             if isinstance(ds, h5py.Group):
+                self.msg('recursing', this_path)
                 self.rec_load_file(ds, this_path, readonly)
             else:
                 parametric = ds.attrs.get('parametric', False)
+                self.msg('set_data', this_path, type(ds), np.array(ds).shape)
                 self.set_data(this_path, np.array(ds), save=(not readonly), parametric=parametric)
+                self.msg('set_data done', this_path)
                 self.get_or_make_leaf(this_path).load_attrs_from_ds(ds)
                 self.update_plot(this_path, refresh_labels=True)
 
@@ -211,21 +229,22 @@ class DataManager(BackgroundObject):
         self.data.close()
         print "data closed"
         self.emit(Qt.SIGNAL('server done'))
+        print "sig emitted"
 
     def abort_daemon(self):
         global RUNNING
         RUNNING = False
         print 'Aborted!'
 
-    def wait_for_cleanup_dialog(self):
-        print 'here'
-        dialog = Qt.QMessageBox()
-        dialog.setText("Please wait while the server cleans up...")
-        self.connect(self, Qt.SIGNAL('server done'), dialog.accept)
-        #self.background_thread.finished.connect(dialog.accept)
-        print 'here2'
-        dialog.exec_()
-        print 'here3'
+    #def wait_for_cleanup_dialog(self):
+    #    print 'here'
+    #    dialog = Qt.QMessageBox()
+    #    dialog.setText("Please wait while the server cleans up...")
+    #    self.connect(self, Qt.SIGNAL('server done'), dialog.accept)
+    #    #self.background_thread.finished.connect(dialog.accept)
+    #    print 'here2'
+    #    dialog.exec_()
+    #    print 'here3'
 
     def save_as_file(self, path): #TODO
         data = self.data.resolve_path(path)
