@@ -962,8 +962,8 @@ class CPWWiggles:
             #total length=number of 180 degree arcs + number of vertical segs + vertical radius spacers
             #if wiggle is even, need to add 2*offset
             #total_length=(1+num_wiggles)*(pi*radius)+2*num_wiggles*vlength+2*(num_wiggles-1)*radius
-            vlength=(total_length-offset*2*(num_wiggles%2)-((1+num_wiggles)*(pi*radius)+2*(num_wiggles-1)
-            *radius))/(2*num_wiggles)
+            vlength=(total_length-offset*2*(num_wiggles%2)-((1+num_wiggles)*(pi*radius)+
+            2*(num_wiggles-1)*radius))/(2*num_wiggles)
             self.height = vlength + radius
             if vlength<0: print "Warning: length of vertical segments is less than 0, increase total_length or decrease num_wiggles"
             
