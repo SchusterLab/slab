@@ -7,6 +7,7 @@ Created on Thu Jul 12 14:35:36 2012
 
 from slab.circuits.MaskMaker import *
 from slab.circuits.ResonatorCalculations import *
+from numpy import zeros
 
 eps0 = 8.85e-12
 mu0 = 1.26e-6
@@ -280,31 +281,310 @@ def gds_channel(s, length, width, datatype=0, layer=0):
     gds_rect(s, (0, w), (length, -w), datatype, layer)
     #s.last = vadd(s.last, s.orient_pt((length, 0)))
 
-def LumpedElementResonator(s, c_fingers, l_fingers, length, c_width=3, c_gap=3,
-                           l_width=5, l_gap=11, v_offset=50, flipped=False, describe=False):
-    start = s.last
-    s.last = s.last[0], s.last[1] - v_offset
-    c_length, l_length = length, length + c_width + c_gap - l_width - l_gap
+'''
+Calculations by DCM May 2013
+Version 2 Lumped Resonator Design (two parallel C and series L)
+These calculations assume cap fingers widths and gaps of 15um
+and inductors with 5um widths and 20um gaps
+''' 
+def LumpedElementResonators_by_f_v2(s,fres,impedance, n_c_fingers, n_l_fingers, cin=0, cout=0, conn_length=20,flipped=False):
     
+    #do a first order correction for capacitive loading
+    fres = fres*(1+fres*2*pi*impedance*(cin+cout)/8)  
+    
+    print fres*2*pi*impedance*(cin+cout)/8
+    
+    lval = impedance/(fres*2*pi)/1e-9
+    cval = lval/impedance**2/1e-6*2 #note that each cap is twice the LC cap
+   
+    print lval,cval   
+   
+    #Simulations done in designer with saphhire eps = 10.8
+    #Mean of d/dw(im(Y(1,2))) 
+    #Initially (first three lengths) from 1->3 GHz, but changed to 0.2->1GHz
+    #Lengths 100,200 and 2 fingers are extrapolated
+    c_sim_length = [100,200,300,400,500,600,700,800,900]
+    c_sim_F = [2,4,6,8,10,12]
+    c_sim = zeros((len(c_sim_F),len(c_sim_length)))
+    c_sim[0] = [164./2,265./2,366./2,467./2,568./2,670./2,772./2,874./2,977./2]
+    c_sim[1] = [164.,265.,366.,467.,568.,670.,772.,874.,977.]
+    c_sim[2] = [229.,378.,527.,676.,824.,975.,1126.,1278.,1432.]
+    c_sim[3] = [296.,493.,690.,887.,1084.,1285.,1487.,1691.,1898.]
+    c_sim[4] = [358.,605.,852.,1099.,1345.,1597.,1853.,2112.,2373.]
+    c_sim[5] = [425.,721.,1017.,1313.,1611.,1912.,2227.,2543.,2865.]
+    
+    #heuristic correction factor comparing to the resonator simulations
+    c_sim *= (1.34+(0.10)*(fres-4.0e9)/6.0e9)*1.01
+    
+    print (1.34+(0.10)*(fres-4.0e9)/6.0e9)*1.01
+  
+    
+    if not (n_c_fingers in c_sim_F):
+        raise MaskError, "Incorrect specfication for the number of C fingers"
+      
+    cap_table = c_sim[(n_c_fingers-2)/2]
+    
+    if cap_table[0]>cval:
+        raise MaskError, "Need fewer cap fingers"
+        
+    if cap_table[-1]<cval:
+        raise MaskError, "Need more cap fingers"
+    
+    get_length=interp1d (cap_table,c_sim_length)
+    c_length=round(float(get_length(cval)))
+    
+    #Simulations done in designer with saphhire eps = 10.8
+    #Mean of d/dw(im(1/Y(1,2))) 
+    #0.2->1GHz    
+    l_sim_length = [300,400,500,600,700,800,900]
+    l_sim_F = [1,2,3,4,5]
+    l_sim = zeros((len(l_sim_F),len(l_sim_length)))
+    l_sim[0] = [0.418,0.521,0.622,0.723,0.825,0.925,1.03]
+    l_sim[1] = [0.704,0.895,1.08,1.27,1.46,1.65,1.84]
+    l_sim[2] = [0.989,1.267,1.54,1.82,2.09,2.36,2.63]
+    l_sim[3] = [1.273,1.637,1.99,2.35,2.71,3.05,3.41]
+    l_sim[4] = [1.555,2.004,2.445,2.88,3.31,3.74,4.17]
+    
+    
+    l_sim *= (0.89-(0.105)*(fres-4.0e9)/6.0e9)*1.01
+    
+    print (0.89-(0.105)*(fres-4.0e9)/6.0e9)*1.01
+    
+    
+    if not (n_l_fingers in l_sim_F):
+        raise MaskError, "Incorrect specfication for the number of L fingers"
+         
+    l_table = l_sim[n_l_fingers-1]
+        
+    if l_table[0]>lval:
+        raise MaskError, "Need fewer inductor fingers"
+        
+    if l_table[-1]<lval:
+        raise MaskError, "Need more inductor fingers"    
+    
+    #get the inductor length
+    get_length=interp1d (l_table,l_sim_length)
+    l_length=ceil(float(get_length(lval)))
+    
+    
+    return LumpedElementResonatorv2(s, n_c_fingers, n_l_fingers, c_length, l_length, c_width=15, c_gap=15,
+                           l_width=4, l_gap=20, conn_length=conn_length, flipped=flipped, describe=False)
 
-    tot_width = c_length + 2*c_width + c_gap
-    tot_height = c_fingers*(2*c_width + 2*c_gap) + l_fingers*(2*l_width + 2*l_gap) + l_width
-    line_width = s.pinw + 2*s.gapw
-    v_offset = v_offset - line_width/2.
-    w = c_width
-    sign = -1 if flipped else 1
+
+'''
+Calculations by DCM May 2013
+These calculations assume cap fingers widths and gaps of 15um
+and inductors with 4um widths and 20um gaps
+''' 
+def LumpedElementResonators_by_f(s,fres,impedance, n_c_fingers, n_l_fingers, v_offset=50,conn_length=20,flipped=False):
+    
+    lval = impedance/(fres*2*pi)/1e-9
+    cval = lval/impedance**2/1e-6
+    
+    print cval, lval
+    
+    #Simulations done in designer with saphhire eps = 10.8
+    #Mean of d/dw(im(Y(1,2))) 
+    #Initially (first three lengths) from 1->3 GHz, but changed to 0.2->1GHz
+    c_sim_length = [300,400,500,600,700,800,900]
+    c_sim_F = [5,6,7,8,9]
+    c_sim = zeros((len(c_sim_F),len(c_sim_length)))
+    c_sim[0] = [152.,203.,255.,298.,337.,385.,433.]
+    c_sim[1] = [188.,251.,316.,355.,414.,472.,533.]
+    c_sim[2] = [224.,300.,380.,421.,491.,561.,633.]
+    c_sim[3] = [261.,352.,447.,487.,568.,650.,735.]
+    c_sim[4] = [280.,370.,462.,554.,647.,741.,838.]
+    
+    #heuristic correction factor comparing to the resonator simulations
+    c_sim *= 1.1
+    
+    
+    if not (n_c_fingers in c_sim_F):
+        raise MaskError, "Incorrect specfication for the number of C fingers"
+      
+    cap_table = c_sim[n_c_fingers-4]
+    
+    if cap_table[0]>cval:
+        raise MaskError, "Need fewer cap fingers"
+        
+    if cap_table[-1]<cval:
+        raise MaskError, "Need more cap fingers"
+    
+    get_length=interp1d (cap_table,c_sim_length)
+    c_length=round(float(get_length(cval)))
+    
+    #Simulations done in designer with saphhire eps = 10.8
+    #Mean of d/dw(im(1/Y(1,2))) 
+    #0.2->1GHz    
+    l_sim_length = [300,400,500,600,700,800,900]
+    l_sim_F = [1,2,3,4,5]
+    l_sim = zeros((len(l_sim_F),len(l_sim_length)))
+    l_sim[0] = [0.62,0.78,0.95,1.10,1.26,1.42,1.59]
+    l_sim[1] = [0.93,1.18,1.42,1.67,1.92,2.18,2.43]
+    l_sim[2] = [1.24,1.58,1.92,2.26,2.59,2.93,3.27]
+    l_sim[3] = [1.55,1.97,2.4,2.83,3.24,3.68,4.1]
+    l_sim[4] = [1.86,2.37,2.9,3.4,3.92,4.42,4.93]
+    
+    #heuristic correction factor comparing to the resonator simulations
+    l_sim *= 1.1
+    
+    
+    if not (n_l_fingers in l_sim_F):
+        raise MaskError, "Incorrect specfication for the number of L fingers"
+         
+    l_table = l_sim[(n_l_fingers-10)/2]
+    
+    #get the inductor length
+    get_length=interp1d (l_table,l_sim_length)
+    l_length=ceil(float(get_length(lval)))
+    
+    
+    return LumpedElementResonator(s, n_c_fingers, n_l_fingers, c_length, l_length, c_width=10, c_gap=10,
+                           l_width=3, l_gap=20, v_offset=v_offset, conn_length=conn_length, flipped=flipped, describe=False)
+
+'''
+Draw the lumped element given specified parameters (new design)
+Caps to ground and a meander inductor in the center
+c_fingers: number of capacitor fingers
+l_fingers: number of inductor wiggles (defined as one "S" shaped meander)
+c_length: the capacitor finger length
+l_length: the inductor length (the long edge of the "S")
+c_width: width of the cap finger
+c_gap: cap finger gap
+l_width: width of the inductor meander line
+l_gap: gap between meanders
+v_offset: The resonator starts at the CPW and goes in one direction, this offset pushes the resonator start in the other direction
+'''
+def LumpedElementResonatorv2(s, c_fingers, l_fingers, c_length, l_length, c_width=3, c_gap=3,
+                           l_width=5, l_gap=11, conn_length=20, flipped=False, describe=False):
+    
+    
+    
+    sign = -1 if flipped else 1    
+    
+    #start with a straight CPW section
+    CPWStraight(s,conn_length)
+    
+    #create a cap to ground using "ground fingers"
+    ground_cap = ground_fingers(c_fingers, c_length, c_width, align=False, finger_gap=c_gap)
+    
+    ground_cap(s,empty=False)    
+    
+    l_ground_gap = 25 #3*l_width    
+    
+    CPWStraight(s,c_gap+l_ground_gap)
+    
+    
     def myrect(s, p0, p1):
         x0, y0 = p0
         x1, y1 = p1
         p0 = x0, sign*y0
         p1 = x1, sign*y1
         rect(s, p0, p1)
+    
+    #Draw inductor region border 
+
+    
+    
+    l, w, g = l_length, l_width, l_gap
+    
+    l_reg_width = 2*l_fingers*(w+g)+w    
+    
+    for i in [1,-1]:
+        myrect(s,(-l_ground_gap,i*s.pinw/2),(0,i*(l/2+w+l_ground_gap)))
+        myrect(s,(0,i*(l/2+w+l_ground_gap)),(l_reg_width,i*(l/2+w)))
+        myrect(s,(l_reg_width,i*(l/2+w+l_ground_gap)),(l_reg_width+l_ground_gap,i*s.pinw/2))
+   
+       
+    for i in range(l_fingers):
+        myrect(s, (w, l/2), (w + g, -(l/2+w)))
+        myrect(s, (2*w + g, -(l/2)), (2*w + 2*g, (l/2+w)))
+        
+        if i==0:
+            myrect(s, (0, -s.pinw/2), (w, -(l/2+w)))
+        
+        if i==(l_fingers-1):
+            myrect(s, (2*w + 2*g, s.pinw/2), (3*w + 2*g, (l/2+w)))
+        
+        s.last = orient_pt((2*g+2*w,0), s.last_direction, s.last)
+    
+    s.last = orient_pt((w,0), s.last_direction, s.last)
+            
+    
+    #CPWStraight(s,100,pinw=0,gapw=100)
+    CPWStraight(s,c_gap+l_ground_gap)
+       
+    
+    #create a cap to ground using "ground fingers"
+    ground_cap(s,empty=False)   
+    
+    CPWStraight(s,conn_length)
+    
+    return    
+    
+    
+
+'''
+Draw the lumped element given specified parameters
+c_fingers: number of capacitor fingers
+l_fingers: number of inductor wiggles (defined as one "S" shaped meander)
+c_length: the capacitor finger length
+l_length: the inductor length (the long edge of the "S")
+c_width: width of the cap finger
+c_gap: cap finger gap
+l_width: width of the inductor meander line
+l_gap: gap between meanders
+v_offset: The resonator starts at the CPW and goes in one direction, this offset pushes the resonator start in the other direction
+'''
+def LumpedElementResonator(s, c_fingers, l_fingers, c_length, l_length, c_width=3, c_gap=3,
+                           l_width=5, l_gap=11, v_offset=50, conn_length=20, flipped=False, describe=False):
+    
+    
+    if v_offset < 0:
+        raise MaskError, "Vertical offset of lumped resonator can only be positive"
+    
+    v_offset = v_offset + s.pinw/2+s.gapw-c_width 
+
+    sign = -1 if flipped else 1    
+    
+    #start with a straight CPW section
+    CPWStraight(s,conn_length)
+    
+    
+    start = s.last
+    
+    #offset accounding to v_offset
+    s.move(-1*sign*v_offset,s.last_direction+90)    
+        
+    #c_length, l_length = length, length + c_width + c_gap - l_width - l_gap
+    tot_c_length =  c_length + 2*c_width + c_gap
+    tot_l_length =  l_length+2*l_width+l_gap
+
+    tot_width = max(tot_c_length,tot_l_length)
+    tot_height = c_fingers*(2*c_width + 2*c_gap) + l_fingers*(2*l_width + 2*l_gap) + l_width
+    line_width = s.pinw + 2*s.gapw
+    v_offset = v_offset - line_width/2.
+    w = c_width
+    
+    def myrect(s, p0, p1):
+        x0, y0 = p0
+        x1, y1 = p1
+        p0 = x0, sign*y0
+        p1 = x1, sign*y1
+        rect(s, p0, p1)
+        
+    #Draw lumped element perimeter region
+    #Draw box on the bottom side of the CPW
     myrect(s, (-w, -w), (tot_width+w, 0))                                     # Bottom
-    myrect(s, (-w, tot_height), (tot_width+w, tot_height+w))                  # Top
     myrect(s, (-w, -w), (0, v_offset))                                        # Lower Left
-    myrect(s, (-w, v_offset+line_width), (0, tot_height+w))                   # Upper Left
     myrect(s, (tot_width, -w), (tot_width+w, v_offset))                       # Lower Right
+    
+    #Draw box on the top side of the CPW
+    myrect(s, (-w, tot_height), (tot_width+w, tot_height+w))                  # Top
+    myrect(s, (-w, v_offset+line_width), (0, tot_height+w))                   # Upper Left
     myrect(s, (tot_width, v_offset+line_width), (tot_width+w, tot_height+w))  # Upper Right
+    
+    #Draw capacitor fingers
     l, w, g = c_length, c_width, c_gap
     for i in range(c_fingers):
         myrect(s, (l + w, 0), (l + w + g, w))
@@ -313,6 +593,16 @@ def LumpedElementResonator(s, c_fingers, l_fingers, length, c_width=3, c_gap=3,
         myrect(s, (w, 2*w + g), (l + w + g, 2*w + 2*g))
         #s.last = s.last[0], (s.last[1] + 2*w + 2*g)
         s.last = orient_pt((0, sign*(2*w + 2*g)), s.last_direction, s.last)
+        
+            
+    #fill in the empty space if the cap length is not as long as the inductor length        
+    if tot_c_length < tot_l_length:
+        myrect(s,(l + w + g,0),(tot_width-l_width, -g))
+        if (tot_l_length-tot_c_length)>g:
+            for i in range(c_fingers):
+                myrect(s,(l+w+g,-2*(i+0.5)*(w+g)),(tot_width-g, -2*(i+0.5)*(w+g)-2*g-w))
+        
+    #Draw inductor fingers   
     l, w, g = l_length, l_width, l_gap
     for i in range(l_fingers):
         myrect(s, (l + w, 0), (l + w + g, 2*w + g))
@@ -320,8 +610,19 @@ def LumpedElementResonator(s, c_fingers, l_fingers, length, c_width=3, c_gap=3,
         myrect(s, (w, 2*w + g), (l + w + g, 2*w + 2*g))
         #s.last = s.last[0], (s.last[1] + 2*w + 2*g)
         s.last = orient_pt((0, sign*(2*w + 2*g)), s.last_direction, s.last)
+
+    
+    
+    #fill in the empty space if the inductor length is not 
+    #as long as the capacitor length    
+    if tot_l_length< tot_c_length:
+        myrect(s,(l+2*w+g,w),(tot_width,-l_fingers*(2*g+2*w)+w))
     #s.last = start[0] + tot_width, start[1]
+    
+    
+    
     s.last = orient_pt((tot_width, 0), s.last_direction, start)
+    CPWStraight(s,conn_length)
     
     if describe:
         c = 2 * c_fingers * c_length * 1e-6 * eps0 * eps_eff
@@ -339,7 +640,7 @@ def ShuntedLER(s, n_fingers, finger_height, n_meanders, meander_height):
     ind(s)
     cap(s)
 
-def ground_fingers(n_fingers, length, width, align=True):
+def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1):
     def ground_finger_contents(s, gds_info=None):
             if gds_info is not None:
                 channel = lambda s, length, width: gds_channel(s, length, width, gds_info[0], gds_info[1])
@@ -362,17 +663,22 @@ def ground_fingers(n_fingers, length, width, align=True):
         #pin, gap = s.pinw, s.gapw
         pin = s.pinw
         gap = gap if (gap is not None) else s.gapw
+        if finger_gap<0:
+            gap2 = gap
+        else:
+            gap2 = finger_gap
         cross = alignment_cross(12, 2)
         if align:
             cross(s, (0, length + gap + pin/2. + dist))
             cross(s, (0, -(length + gap + pin/2. + dist)))
         for i in range(n_fingers):
             if empty:
-                CPWStraight(s, 2*gap + width, pinw=0, gapw=gap+length+pin/2.)
+                pass
+                CPWStraight(s, 2*gap2 + width, pinw=0, gapw=gap+gap2+length+pin/2.)
             else:
-                CPWStraight(s, gap, gapw=gap+length)
-                CPWStraight(s, width, pinw=pin+2*length, gapw=gap)
-                CPWStraight(s, gap, gapw=gap+length)
+                CPWStraight(s, gap2, gapw=gap+gap2+length)
+                CPWStraight(s, width, pinw=pin+2.*(length+gap), gapw=gap2)
+                CPWStraight(s, gap2, gapw=gap+gap2+length)
             if i != (n_fingers - 1):
                 if empty:
                     CPWStraight(s, width, pinw=0, gapw=gap+pin/2.)
