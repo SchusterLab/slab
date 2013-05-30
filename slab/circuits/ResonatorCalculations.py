@@ -200,18 +200,117 @@ def sapphire_capacitor_geometry_by_C(capacitance):
     length=round(float(get_length(capacitance)))
     return num_fingers, length
 
+#Simulated in designer by DCM (May 20, 2013)
+#Eps uniform 10.8
+#Finger:6, Gap: 8
+#Lengths 130 and 150 extrapolated!
+def sapphire_capacitor_geometry_by_C_2(capacitance):
+    finger_lengths = [10,30,50,70,90,110,130,150]
+    caps_686_2F = [1.6,2.7,3.4,4.2,5.1,6.0,6.9,7.8]
+    caps_686_4F = [4.5,7.4,10.0,13.2,16.2,19.2,22.2,25.2]
+    caps_686_6F = [7.0,11.3,16.3,21.2,26.1,31.4,36.7,42.0]
+    caps_686_8F = [9.9,15.9,22.5,29.7,36.7,44.0,51.3,58.6]
     
+    #select table
+    capacitance *= 1e15
+    
+    if capacitance<=7.8:
+        num_fingers=2
+        cap_table=caps_686_2F
+    elif capacitance <= 25.2:
+        num_fingers=4
+        cap_table=caps_686_4F
+    elif capacitance <= 42.0:
+        num_fingers=6
+        cap_table=caps_686_6F 
+    elif capacitance <= 58.6:
+        num_fingers=8
+        cap_table=caps_686_8F 
+    else: 
+        raise MaskError, "Error do not have simulated capacitors bigger than 58.6 fF, must specify geometry manually"
+    
+    get_length=interp1d (cap_table,finger_lengths)
+    
+    length=round(float(get_length(capacitance)))
+    return num_fingers, length
+    
+#Simulated in Q3D by DCM (May 20, 2013)
+#Eps uniform 10.8, 100nm PEC
+#Finger Width and Gap 30um
+#PinW:20um, GapW: 10um
+#length 40 is extrapolated!
+def sapphire_ground_capacitor_geometry_by_C(capacitance,num_fingers=-1):
+    finger_lengths = [40,80,120,160,200,240,280]
+    caps_30_2F = [38.0, 66.4,84.,102.,119.,136.,154.]
+    caps_30_3F = [69.0, 95.,121.,146.,171.,196.,221.]
+    caps_30_4F = [91.0,124.,157.,190.,222.,255.,288.]
+    caps_30_5F = [110.0,151.5,193.,234.,273.,314.,354.]
+    caps_30_6F = [130.0,179.5,229.,278.,325.,373.,419.]
+    
+    
+    #select table
+    capacitance *= 1e15
+    
+    if num_fingers<0:
+        if capacitance<=150.0:
+            num_fingers=2
+            cap_table=caps_30_2F
+        if capacitance>150.0 and capacitance <= 220.0:
+            num_fingers=3
+            cap_table=caps_30_3F
+        if capacitance>220.0 and capacitance <= 280.0:
+            num_fingers=4
+            cap_table=caps_30_4F 
+        if capacitance>280.0 and capacitance <= 350.0:
+            num_fingers=5
+            cap_table=caps_30_5F 
+        if capacitance>350.0 and capacitance <= 415.0:
+            num_fingers=6
+            cap_table=caps_30_5F 
+        if capacitance>415.0: 
+            raise MaskError, "Error do not have simulated capacitors bigger than 415 fF, must specify geometry manually"
+    else:
+        if num_fingers==2:
+            cap_table=caps_30_2F
+        elif num_fingers==3:
+            cap_table=caps_30_3F
+        elif num_fingers==4:
+            cap_table=caps_30_4F
+        elif num_fingers==5:
+            cap_table=caps_30_5F
+        elif num_fingers==6:
+            cap_table=caps_30_6F
+        else:
+            raise MaskError, "Invalid capacitor finger number specified"
+        
+    get_length=interp1d (cap_table,finger_lengths)
+    
+    length=round(float(get_length(capacitance)))
+    return num_fingers, length
 
-def sapphire_capacitor_by_C(capacitance, taper_length=50):
+def sapphire_capacitor_by_C(capacitance, taper_length=50, cap_size=1):
+    
+    ##ADDED BY DM
+    #cap_size==1: Finger 3, Gap 4
+    #cap_size==2: Finger 6, Gap 8 
+    ##
+    
     """
     Interpolates simulated capacitance tables to get specified capacitance values
-    Simulations done in sonnet by Leo 
+    Simulations for cap_size=1 done in sonnet by Leo 
     Used eps_perp =9.27, eps_parallel = 11.34
+    
+    Simulations for cap_size=2 done in Designer by DCM 
+    Used eps=10.8
     """
-    num_fingers, length = sapphire_capacitor_geometry_by_C(capacitance)
-    #print "Capacitance: %f, Fingers: %d, Finger Length: %f " % (capacitance, num_fingers,length)
-    return CPWFingerCap(num_fingers=num_fingers,finger_length=length,finger_width=3,finger_gap=4,taper_length = taper_length, capacitance=capacitance)
-
+    if cap_size==1:
+        num_fingers, length = sapphire_capacitor_geometry_by_C(capacitance)
+        #print "Capacitance: %f, Fingers: %d, Finger Length: %f " % (capacitance, num_fingers,length)
+        return CPWFingerCap(num_fingers=num_fingers,finger_length=length,finger_width=3,finger_gap=4,taper_length = taper_length, capacitance=capacitance)
+    else:
+        num_fingers, length = sapphire_capacitor_geometry_by_C_2(capacitance)
+        #print "Capacitance: %f, Fingers: %d, Finger Length: %f " % (capacitance, num_fingers,length)
+        return CPWFingerCap(num_fingers=num_fingers,finger_length=length,finger_width=6,finger_gap=8,taper_length = taper_length, capacitance=capacitance)
 #-------------------------------------------------------------------------------------------------------------
 # CHANNEL CAPACITORS e on He
 #-------------------------------------------------------------------------------------------------------------
