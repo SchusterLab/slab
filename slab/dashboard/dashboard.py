@@ -53,10 +53,10 @@ def excepthook(excType, excValue, tracebackobj):
     errorbox.setText(str(notice)+str(msg)+str(versionInfo))
     errorbox.exec_()
 
-def main():
+def main(coverage=False):
     sys.excepthook = excepthook
     app = Qt.QApplication([])
-    win = PlotWindow()
+    win = PlotWindow(coverage=coverage)
     win.show()
     win.showMaximized()
     app.connect(app, Qt.SIGNAL("lastWindowClosed()"), win, Qt.SIGNAL("lastWindowClosed()"))

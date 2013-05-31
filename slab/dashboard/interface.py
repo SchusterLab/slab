@@ -1,5 +1,6 @@
 import sys
 import os
+import inspect
 
 import numpy as np
 import Pyro4
@@ -46,6 +47,18 @@ class DataClient(object):
         return try_proxy_fn
 
 
+def get_script():
+    """returns currently running script file as a string"""
+    fname = inspect.stack()[-1][1]
+    if fname == '<stdin>':
+        return fname
+
+    f = open(fname, 'r')
+    s = f.read()
+    f.close()
+    return s
+
+
 def SlabFile(*args, **kwargs):
     """
     :param remote: If True, (False by default) return a SlabFileRemote, otherwise return a SlabFileLocal
@@ -53,8 +66,13 @@ def SlabFile(*args, **kwargs):
     :return:
     """
     if kwargs.pop('remote', False):
-        return SlabFileRemote(*args, **kwargs)
-    return SlabFileLocal(*args, **kwargs)
+        f = SlabFileRemote(*args, **kwargs)
+    else:
+        if len(args) < 1 and 'filename' not in kwargs:
+            raise ValueError('Local Files need filename arguments')
+        f = SlabFileLocal(*args, **kwargs)
+    f.attrs['script'] = get_script()
+    return f
 
 
 class SlabFileRemote:

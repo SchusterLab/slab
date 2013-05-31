@@ -104,8 +104,9 @@ class SlabWindow(Qt.QMainWindow):
 
 
 class PlotWindow(SlabWindow):
-    def __init__(self):
+    def __init__(self, coverage=False):
         manager = DataManager()
+        manager.coverage = coverage
         SlabWindow.__init__(self, manager)
         manager._connect_data()
         self.background_client = TempDataClient() # Don't actually call this until __init__ has returned!
