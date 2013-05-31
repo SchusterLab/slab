@@ -29,6 +29,7 @@ class DataManager(BackgroundObject):
         BackgroundObject.__init__(self)
         self.data = None
         self.delim = path_delim
+        self.coverage = False
 
     def _connect_data(self):
         self.data = DataTree(self.gui)
@@ -221,6 +222,10 @@ class DataManager(BackgroundObject):
 
     def serve(self):
         print 'serving'
+        if self.coverage:
+            from coverage import coverage
+            cov = coverage(data_suffix='manager')
+            cov.start()
         with Pyro4.Daemon(host=config.manager_host, port=config.manager_port) as d:
             self.running = True
             d.register(self, config.manager_id)
@@ -228,6 +233,8 @@ class DataManager(BackgroundObject):
         print 'done serving'
         self.data.close()
         print "data closed"
+        cov.stop()
+        cov.save()
         self.emit(Qt.SIGNAL('server done'))
         print "sig emitted"
 

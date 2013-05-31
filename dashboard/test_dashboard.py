@@ -78,9 +78,10 @@ def target():
     cov = coverage(data_suffix='window')
     cov.start()
     from dashboard import main
-    main()
+    main(coverage=True)
     cov.stop()
     cov.save()
+    print 'got here'
 
 if __name__ == "__main__":
     #test_file_interface(remote=False)
