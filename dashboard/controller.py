@@ -209,6 +209,8 @@ class DataManager(BackgroundObject):
         assert path is not None or leaf is not None
         if leaf is None:
             leaf = self.get_or_make_leaf(path)
+        else:
+            path = leaf.path
         if leaf.rank == 1:
             leaf.data = None
         elif leaf.rank == 2:
