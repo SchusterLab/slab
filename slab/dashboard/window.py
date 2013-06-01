@@ -168,10 +168,10 @@ class PlotWindow(SlabWindow):
         self.current_edit_widget = None
 
         file_menu = self.menuBar().addMenu('File')
-        file_menu.addAction('Save').triggered.connect(self.background_client.save_all)
-        file_menu.addAction('Load').triggered.connect(self.load)
-        file_menu.addAction('Load (readonly)').triggered.connect(lambda: self.load(readonly=True))
-        file_menu.addAction('Clear').triggered.connect(self.background_client.clear_all)
+        file_menu.addAction('Save').triggered.connect(lambda checked: self.background_client.save_all())
+        file_menu.addAction('Load').triggered.connect(lambda checked: self.load())
+        file_menu.addAction('Load (readonly)').triggered.connect(lambda checked: self.load(readonly=True))
+        file_menu.addAction('Clear').triggered.connect(lambda checked: self.background_client.clear_all_data())
 
         self.message_box = Qt.QTextEdit()
         self.message_box.setReadOnly(True)
