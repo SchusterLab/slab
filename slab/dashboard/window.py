@@ -263,17 +263,27 @@ class PlotWindow(SlabWindow):
         self.remove_button.setEnabled(remove)
         self.parametric_button.setEnabled(parametric)
 
-    def remove_selection(self): #TODO
+    def remove_selection(self):
         for item in self.structure_tree.selectedItems():
+            # This is a little complicated. We need to remove the data from the background.
+            # Removing it from the background, however, can also be done through a client.
+            # Removing it from a client should trigger removal of the plots from the window.
+            # Therefore, the chain of control in this command is
+            # Window.remove_selection --> Background.remove_item --> Window.remove_item
+            # Sorry.
             self.background_client.remove_item(item.path)
 
     def remove_item(self, path):
         item = self.tree_widgets[path]
         if item.is_leaf():
+            print 'window.remove_item', path
             widget = self.plot_widgets.pop(item.path)
             if widget.visible:
                 widget.toggle_hide()
             widget.close()
+        #else:
+        #    for child in item.getChildren():
+        #        self.background_client.remove_item(child.path)
         root = self.structure_tree.invisibleRootItem()
         (item.parent() or root).removeChild(item)
 
