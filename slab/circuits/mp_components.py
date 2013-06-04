@@ -8,6 +8,7 @@ Created on Thu Jul 12 14:35:36 2012
 from slab.circuits.MaskMaker import *
 from slab.circuits.ResonatorCalculations import *
 from numpy import zeros
+from numpy import ones
 
 eps0 = 8.85e-12
 mu0 = 1.26e-6
@@ -640,7 +641,16 @@ def ShuntedLER(s, n_fingers, finger_height, n_meanders, meander_height):
     ind(s)
     cap(s)
 
-def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1):
+#This creates a capacitor *to ground* that has fingers coming off of a middle
+#CPW straight section. The CPW section has the same characteristics as the CPW 
+#defined in "s"
+#length: length of the finger (in each direction, i.e. total length is 2*length)
+#width: width of the metal finger
+#gap: gap between the metal finger and the ground plane
+#finger_gap: gap between fingers (i.e. width of the ground plane finger)
+#align: draw alignment marks
+#nalign: number of alignment marks
+def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1, nalign=2):
     def ground_finger_contents(s, gds_info=None):
             if gds_info is not None:
                 channel = lambda s, length, width: gds_channel(s, length, width, gds_info[0], gds_info[1])
@@ -667,10 +677,12 @@ def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1):
             gap2 = gap
         else:
             gap2 = finger_gap
-        cross = alignment_cross(12, 2)
-        if align:
-            cross(s, (0, length + gap + pin/2. + dist))
-            cross(s, (0, -(length + gap + pin/2. + dist)))
+            
+            
+        #for drawing alignment crosses
+        cross_height = length + gap + pin/2. + dist
+        finger_start = s.last
+                
         for i in range(n_fingers):
             if empty:
                 pass
@@ -684,9 +696,26 @@ def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1):
                     CPWStraight(s, width, pinw=0, gapw=gap+pin/2.)
                 else:
                     CPWStraight(s, width, gapw=gap)
+                    
+
+        finger_dist = ((s.last[0]-finger_start[0])**2+(s.last[1]-finger_start[1])**2)**0.5       
+        
         if align:
-            cross(s, (0, length + gap + pin/2. + dist))
-            cross(s, (0, -(length + gap + pin/2. + dist)))
+                        
+            make_alignment_crosses(s,12,2,nx=nalign,ny=2,direction=s.last_direction,start_pt=finger_start,dx=finger_dist/(nalign-1),dy=2*cross_height)
+            '''            
+            for i in [1,-1]:
+                s_test = Structure(None,finger_start,s.last_direction)
+                s_test.last = finger_start
+                s_test.move(length + gap + pin/2. + dist,s.last_direction+i*90)
+                for j in range(nalign):
+                    cross(s, s_test.last)
+                    s_test.move()
+                    cross(s, (0, i*(length + gap + pin/2. + dist)))
+            '''
+                    
+                
+            
         
         if contents_struct is not None:
             ground_finger_contents(contents_struct)
@@ -695,7 +724,29 @@ def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1):
             ground_finger_contents(s, gds_info=gds_info)
     return builder
 
-
+#this draws alignment crosses from start_pt to end_pt in a grid nx by ny (x is along direction)
+#omit is a nx x ny array of ones and zeros (zero is don't draw cross)
+#start point is in the *middle* of the y on the far x side
+def make_alignment_crosses(s,cross_x,cross_y,nx,ny,direction,start_pt,dx,dy,omit=None):
+    
+    if omit is None:
+        omit = ones((nx,ny))
+        
+    cross = alignment_cross(cross_x, cross_y)
+    
+    s_test = Structure(Chip("test"),start_pt,direction)
+    s_test.move(dy*(ny-1)/2,direction-90)
+    start_pt = s_test.last
+    
+    for i in range(nx):
+        s_test.last = start_pt
+        s_test.move(i*dx)
+        for j in range(ny):
+            if omit[i,j]==1:
+                cross(s,(s_test.last[0]-s.last[0],s_test.last[1]-s.last[1]))
+            s_test.move(dy,direction+90)
+            
+            
 
 def make_qubit(left_fingers, left_len, left_width, 
                right_fingers, right_len, right_width, cgap,
@@ -738,6 +789,7 @@ def alignment_cross(size, weight=1):
         w = weight/2.
         rect(s, (-w, -h), (w, h))
         rect(s, (-h, -w), (h, w))
+        '''
         if s.gds_chip is not None:
             global ALIGNMENT_IDENTIFIER
             ident = ALIGNMENT_IDENTIFIER
@@ -745,6 +797,7 @@ def alignment_cross(size, weight=1):
             gds_rect(s, (-h, -h), (h, h), datatype=s.gds_alignment_dt, layer=ident)
             gds_line(s, (0, -h), (0, h), datatype=s.gds_alignment_dt, layer=ident)
             gds_line(s, (-h, 0), (h, 0), datatype=s.gds_alignment_dt, layer=ident)
+        '''
         s.last = to_recover
         
     return builder
