@@ -194,7 +194,7 @@ class PlotWindow(SlabWindow):
             self.background_client.abort_daemon()
             #self.wait_for_cleanup_dialog()
             print 'start wait'
-            time.sleep(.5)
+            time.sleep(1)
             self.background_thread.quit()
             #self.background_thread.wait()
             print 'end wait'

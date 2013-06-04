@@ -10,7 +10,7 @@ import helpers
 import config
 
 #Pyro4.config.COMMTIMEOUT = 3.5
-Pyro4.config.DOTTEDNAMES = True
+#Pyro4.config.DOTTEDNAMES = True
 Pyro4.config.SERVERTYPE = 'multiplex'
 Pyro4.config.ONEWAY_THREADED = True
 RUNNING = True
@@ -229,15 +229,17 @@ class DataManager(BackgroundObject):
             cov = coverage(data_suffix='manager')
             cov.start()
         with Pyro4.Daemon(host=config.manager_host, port=config.manager_port) as d:
+            global RUNNING
             self.running = True
             d.register(self, config.manager_id)
             d.requestLoop(lambda: RUNNING)
         print 'done serving'
         self.data.close()
         print "data closed"
-        cov.stop()
-        cov.save()
-        self.emit(Qt.SIGNAL('server done'))
+        if self.coverage:
+            cov.stop()
+            cov.save()
+        #self.emit(Qt.SIGNAL('server done'))
         print "sig emitted"
 
     def abort_daemon(self):
