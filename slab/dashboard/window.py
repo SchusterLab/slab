@@ -312,6 +312,9 @@ class PlotWindow(SlabWindow):
 
         self.tree_widgets[path] = item
 
+    def toggle_path(self, path):
+        self.toggle_item(self.tree_widgets[path], 0)
+
     def toggle_item(self, item, col):
         if item.is_leaf():# and item.plot:
             widget = self.plot_widgets[item.path]
