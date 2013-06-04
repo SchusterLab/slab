@@ -166,15 +166,26 @@ class DataManager(BackgroundObject):
         self.gui.update_multiplots(path, item)
 
     def remove_item(self, name_or_path):
+        print 'background.remove_item', name_or_path
         path = helpers.canonicalize_path(name_or_path)
-        group = self.data.resolve_path(path[:-1])
-        del group[path[-1]]
-        self.gui.remove_item(path)
-        n = 2
-        while len(group.keys()) == 1:
-            group = self.data.resolve_path(path[:-n])
-            del group[path[-n]]
-            self.gui.remove_item(path[:-(n-1)])
+        item = self.data.resolve_path(path)
+        if isinstance(item, DataTreeLeaf):
+            print 'A', path
+            name = path[-1]
+            group_path = path[:-1]
+            group = self.data.resolve_path(group_path)
+            del group[name]
+            self.gui.remove_item(path)
+            while group_path and len(group.keys()) == 0:
+                name = group_path[-1]
+                group_path = group_path[:-1]
+                group = self.data.resolve_path(group_path)
+                del group[name]
+                self.gui.remove_item(group_path + (name,))
+        else:
+            print 'C', path
+            for name in item.keys():
+                self.remove_item(path + (name,))
 
     def save_all(self): # TODO
         raise NotImplementedError
@@ -186,7 +197,11 @@ class DataManager(BackgroundObject):
             self.data[filename] = DataTree(self.gui, filename, file=f)
         else:
             self.data[filename] = DataTree(self.gui, filename, open_file=False)
-        self.rec_load_file(f, (filename,), readonly)
+        try:
+            self.rec_load_file(f, (filename,), readonly)
+        except Exception:
+            self.remove_item(filename)
+            raise
         if readonly:
             f.close()
 
@@ -199,6 +214,9 @@ class DataManager(BackgroundObject):
                 self.rec_load_file(ds, this_path, readonly)
             else:
                 parametric = ds.attrs.get('parametric', False)
+                if 0 in ds.shape: # Length 0 arrays are buggy in h5py...
+                    self.msg('Length 0 array %s ignored' % '/'.join(this_path))
+                    continue
                 self.msg('set_data', this_path, type(ds), np.array(ds).shape)
                 self.set_data(this_path, np.array(ds), save=(not readonly), parametric=parametric)
                 self.msg('set_data done', this_path)
