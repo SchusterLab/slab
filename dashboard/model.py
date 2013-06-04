@@ -129,6 +129,7 @@ class DataTreeLeaf(object):
             if self.path[-1] in file_or_group:
                 del file_or_group[self.path[-1]]
             file_or_group[self.path[-1]] = self.data
+            file_or_group.flush()
             attrs = file_or_group[self.path[-1]].attrs
             attrs['rank'] = self.rank
             attrs['parametric'] = self.parametric

@@ -228,7 +228,7 @@ class AttrsProxy:
 class SlabFileLocal(h5py.File):
     pass
 
-def append_data(file_or_group, dataset_name, new_data):
+def _append_data(file_or_group, dataset_name, new_data):
     new_data = np.array(new_data)
     rank = len(new_data.shape) + 1
     if dataset_name in file_or_group:
@@ -249,5 +249,12 @@ def append_data(file_or_group, dataset_name, new_data):
     elif rank == 3:
         dataset[-1,:,:] = new_data
 
-h5py.File.append_data = append_data
-h5py.Group.append_data = append_data
+h5py.File.append_data = _append_data
+h5py.Group.append_data = _append_data
+
+def _flush(ds_or_group):
+    ds_or_group.file.flush()
+
+h5py.Group.flush = _flush
+h5py.Dataset.flush = _flush
+
