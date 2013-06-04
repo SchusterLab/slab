@@ -41,11 +41,12 @@ class DataManager(BackgroundObject):
             assert isinstance(group, DataTree)
             leaf = group.make_child_leaf(path[-1], rank, **data_tree_args)
             self.gui.add_tree_widget(path, data=True, save=leaf.save, plot=leaf.plot)
-            if leaf.plot:
+            self.gui.add_plot_widget(path, rank, **plot_args)
+            if not leaf.plot:
+                self.gui.toggle_path(path)
                 #params = {'x0': leaf.x0, 'xscale': leaf.xscale, 'xlabel': leaf.xlabel, 'ylabel': leaf.ylabel}
                 #if rank > 1:
                 #    params.update({'y0': leaf.y0, 'yscale': leaf.yscale, 'zlabel': leaf.zlabel})
-                self.gui.add_plot_widget(path, rank, **plot_args)
         else:
             leaf = group[path[-1]]
             assert (rank is None) or (rank == leaf.rank)
@@ -157,7 +158,7 @@ class DataManager(BackgroundObject):
         tree_widget.setText(2, str(item.save))
         tree_widget.setText(3, str(item.plot))
         if item.plot:
-            self.gui.plot_widgets_update_lot[path] = time.time()
+            self.gui.plot_widgets_update_log[path] = time.time()
             if item.rank == 2:
                 self.gui.plot_widgets[path].update_plot(item,
                         refresh_labels=refresh_labels, show_most_recent=show_most_recent, **curve_args)
