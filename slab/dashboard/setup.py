@@ -16,4 +16,5 @@ setup(windows=windows, options={'py2exe':
                                                'zmq.utils.strtypes',
                                                'scipy.sparse.csgraph._validation',
                                                'h5py.defs',
-                                               'h5py.utils']}})
+                                               'h5py.utils'],
+                                     'dll_excludes': ['MSVCP90.dll']}})
