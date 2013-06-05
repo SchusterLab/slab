@@ -80,8 +80,15 @@ class DataTree(keydefaultdict):
             else:
                 raise ValueError("Can't save unknown item " + str(type(item)))
 
+        for k, v in self.attrs.items():
+            file_or_group.attrs[k] = v
+
+    def load_attrs_from_ds(self, ds):
+        for k, v in ds.attrs.items():
+            self.attrs[k] = v
+
 class DataTreeLeafReduced(object):
-    _items = ['path', 'rank', 'save', 'parametric', 'plot',
+    _items = ['path', 'rank', 'save', 'parametric', 'plot', 'attrs',
                'x0', 'y0', 'xscale', 'yscale', 'xlabel', 'ylabel', 'zlabel']
     def __init__(self, leaf):
         for item in self._items:
@@ -123,7 +130,8 @@ class DataTreeLeaf(object):
         if self.data is None:
             return
         if file_or_group is None:
-            assert self.file is not None
+            if self.file is None:
+                raise ValueError("Cannot save %s in file, no file specified" % '/'.join(self.path))
             file_or_group = self.file
         if self.save:
             if self.path[-1] in file_or_group:
@@ -142,13 +150,20 @@ class DataTreeLeaf(object):
                 attrs['y0'] = self.y0
                 attrs['yscale'] = self.yscale
                 attrs['zlabel'] = self.zlabel
+            for key, val in self.attrs.items():
+                attrs[key] = val
 
     def load_attrs_from_ds(self, dataset):
-        for name in ['rank', 'parametric', 'x0', 'xscale', 'xlabel', 'ylabel', 'y0', 'yscale', 'zlabel']:
+        param_list = ['rank', 'parametric', 'x0', 'xscale', 'xlabel', 'ylabel', 'y0', 'yscale', 'zlabel']
+        for name in param_list:
             try:
                 setattr(self, name, dataset.attrs[name])
             except KeyError:
                 pass
+        for key, val in dataset.attrs.items():
+            #if key not in param_list:
+            self.attrs[key] = val
+
 
     def to_rank1(self, idx=-1):
         assert self.rank > 1

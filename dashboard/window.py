@@ -326,18 +326,16 @@ class PlotWindow(SlabWindow):
                 self.toggle_item(child, col)
 
     def change_edit_widget(self, item, col):
+        if self.current_edit_widget is not None:
+            self.sidebar.layout().removeWidget(self.current_edit_widget)
+            self.current_edit_widget.setParent(None)
         if item.is_leaf():
-            if self.current_edit_widget is not None:
-                self.sidebar.layout().removeWidget(self.current_edit_widget)
-                self.current_edit_widget.setParent(None)
             leaf = self.background_client.get_or_make_leaf(item.path, reduced=True)
             self.current_edit_widget = LeafEditWidget(leaf)
-            self.sidebar.layout().addWidget(self.current_edit_widget)
-
-            def update_fn():
-                params = self.current_edit_widget.to_dict()
-                self.background_client.set_params(leaf.path, leaf.rank, **params)
-            self.current_edit_widget.commit_button.clicked.connect(update_fn)
+        else:
+            attrs = self.background_client.get_all_attrs(item.path)
+            self.current_edit_widget = NodeEditWidget(item.path, attrs)
+        self.sidebar.layout().addWidget(self.current_edit_widget)
 
     def add_plot_widget(self, path, rank=1, **kwargs):
         if path in self.plot_widgets:
