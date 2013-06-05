@@ -35,50 +35,142 @@ class MyDockArea(pyqtgraph.dockarea.DockArea):
         self.addDock(dock, self.insert_location)
         self.insert_location = {'bottom':'right', 'right':'bottom'}[self.insert_location]
 
-class LeafEditWidget(Qt.QFrame):
-    def __init__(self, leaf):
+class NodeEditWidget(Qt.QFrame):
+    def __init__(self, path, attrs):
         Qt.QFrame.__init__(self)
         self.setFrameStyle(Qt.QFrame.Panel)
-        self.path = leaf.path
+        self.path = path
         self.spin_widgets = {}
         self.text_widgets = {}
+        from window import TempDataClient
+        self.background_client = TempDataClient()
 
         self.setLayout(Qt.QVBoxLayout())
         self.layout().addWidget(Qt.QLabel('Editing ' + '/'.join(self.path)))
-        self.range_area = Qt.QWidget()
-        self.range_area.setLayout(Qt.QHBoxLayout())
-        self.layout().addWidget(self.range_area)
-        self.add_spin('x0', leaf)
-        self.add_spin('xscale', leaf)
-        if leaf.rank > 1:
-            self.add_spin('y0', leaf)
-            self.add_spin('yscale', leaf)
-        self.label_area = Qt.QWidget()
-        self.label_area.setLayout(Qt.QHBoxLayout())
-        self.layout().addWidget(self.label_area)
-        self.add_edit('xlabel', leaf)
-        self.add_edit('ylabel', leaf)
-        if leaf.rank > 1:
-            self.add_edit('zlabel', leaf)
-        self.commit_button = Qt.QPushButton('Commit')
-        self.layout().addWidget(self.commit_button)
 
-    def add_spin(self, name, leaf):
-        self.range_area.layout().addWidget(Qt.QLabel(name))
-        widget = pyqtgraph.SpinBox(value=getattr(leaf, name))
-        self.spin_widgets[name] = widget
-        self.range_area.layout().addWidget(widget)
+        self.attr_list = Qt.QTreeWidget()
+        self.attr_list.setRootIsDecorated(False)
+        self.attr_list.setColumnCount(2)
+        self.attr_list.setHeaderLabels(['Name', 'Value', 'Type'])
 
-    def add_edit(self, name, leaf):
-        self.label_area.layout().addWidget(Qt.QLabel(name))
-        widget = Qt.QLineEdit(getattr(leaf, name))
-        self.text_widgets[name] = widget
-        self.label_area.layout().addWidget(widget)
+        for attr, value in attrs.items():
+            self.attr_list.addTopLevelItem(Qt.QTreeWidgetItem([attr, str(value), str(type(value))]))
 
-    def to_dict(self):
-        params = {name: spin.value() for name, spin in self.spin_widgets.items()}
-        params.update({name: edit.text() for name, edit in self.text_widgets.items()})
-        return params
+        add_attr_box = Qt.QWidget()
+        add_attr_box.setLayout(Qt.QHBoxLayout())
+        self.attr_name_edit = Qt.QLineEdit()
+        self.attr_value_edit = Qt.QLineEdit()
+        self.attr_value_edit.returnPressed.connect(self.add_attribute)
+        self.attr_list.itemClicked.connect(self.attr_clicked)
+        self.add_attr_button = Qt.QPushButton('Add Attribute')
+        self.add_attr_button = Qt.QPushButton('Add Attribute')
+        self.add_attr_button.clicked.connect(self.add_attribute)
+        add_attr_box.layout().addWidget(Qt.QLabel('name'))
+        add_attr_box.layout().addWidget(self.attr_name_edit)
+        add_attr_box.layout().addWidget(Qt.QLabel('value'))
+        add_attr_box.layout().addWidget(self.attr_value_edit)
+        add_attr_box.layout().addWidget(self.add_attr_button)
+
+        self.new_attr = True
+        self.attr_name_edit.textChanged.connect(self.check_attr_name)
+        self.layout().addWidget(self.attr_list)
+        self.layout().addWidget(add_attr_box)
+
+    def check_attr_name(self, name):
+        print self.attr_list.findItems("", Qt.Qt.MatchContains)
+        if any(i.text(0) == name for i in self.attr_list.findItems("", Qt.Qt.MatchContains)):
+            if self.new_attr:
+                self.new_attr = False
+                self.add_attr_button.setText('Update Attribute')
+        else:
+            if not self.new_attr:
+                self.new_attr = True
+                self.add_attr_button.setText('Add Attribute')
+
+
+    def attr_clicked(self, item):
+        self.attr_name_edit.setText(item.text(0))
+        self.attr_value_edit.setText(item.text(1))
+
+    def add_attribute(self):
+        name = str(self.attr_name_edit.text())
+        value = str(self.attr_value_edit.text())
+        if value.lower() in ('true', 'false'):
+            if value.lower() == 'false':
+                value = False
+            else:
+                value = True
+        else:
+            try:
+                value = int(value)
+            except ValueError:
+                try:
+                    value = float(value)
+                except ValueError:
+                    pass
+        self.background_client.set_attr(self.path, name, value)
+        if self.new_attr:
+            self.attr_list.addTopLevelItem(Qt.QTreeWidgetItem([name, str(value), str(type(value))]))
+        else:
+            i = self.attr_list.findItems(name, Qt.Qt.MatchExactly, 0)[0]
+            i.setText(1, str(value))
+        self.attr_name_edit.setText("")
+        self.attr_value_edit.setText("")
+        return name, value
+
+
+class LeafEditWidget(NodeEditWidget):
+    param_attrs = ['x0', 'y0', 'xscale', 'yscale', 'xlabel', 'ylabel', 'zlabel', 'parametric']
+    def __init__(self, leaf):
+        NodeEditWidget.__init__(self, leaf.path, leaf.attrs)
+        self.rank = leaf.rank
+
+    def add_attribute(self):
+        name, value = NodeEditWidget.add_attribute(self)
+        if name in self.param_attrs:
+            self.background_client.set_params(self.path, self.rank, **{name:value})
+    # def __init__(self, leaf):
+    #     self.rank = leaf.rank
+    #     self.range_area = Qt.QWidget()
+    #     self.range_area.setLayout(Qt.QHBoxLayout())
+    #     self.layout().addWidget(self.range_area)
+    #     self.add_spin('x0', leaf)
+    #     self.add_spin('xscale', leaf)
+    #     if leaf.rank > 1:
+    #         self.add_spin('y0', leaf)
+    #         self.add_spin('yscale', leaf)
+    #     self.label_area = Qt.QWidget()
+    #     self.label_area.setLayout(Qt.QHBoxLayout())
+    #     self.layout().addWidget(self.label_area)
+    #     self.add_edit('xlabel', leaf)
+    #     self.add_edit('ylabel', leaf)
+    #     if leaf.rank > 1:
+    #         self.add_edit('zlabel', leaf)
+    #     self.commit_button = Qt.QPushButton('Commit')
+    #     self.commit_button.clicked.connect(self.commit_params)
+    #     self.layout().addWidget(self.commit_button)
+    #     self.add_attr_widget(leaf)
+
+    # def add_spin(self, name, leaf):
+    #     self.range_area.layout().addWidget(Qt.QLabel(name))
+    #     widget = pyqtgraph.SpinBox(value=getattr(leaf, name))
+    #     self.spin_widgets[name] = widget
+    #     self.range_area.layout().addWidget(widget)
+
+    # def add_edit(self, name, leaf):
+    #     self.label_area.layout().addWidget(Qt.QLabel(name))
+    #     widget = Qt.QLineEdit(getattr(leaf, name))
+    #     self.text_widgets[name] = widget
+    #     self.label_area.layout().addWidget(widget)
+
+    # def commit_params(self):
+    #     params = self.to_dict()
+    #     self.background_client.set_params(self.path, self.rank, **params)
+
+    # def to_dict(self):
+    #     params = {name: spin.value() for name, spin in self.spin_widgets.items()}
+    #     params.update({name: edit.text() for name, edit in self.text_widgets.items()})
+    #     return params
 
 class ItemWidget(pyqtgraph.dockarea.Dock):
     def __init__(self, ident, dock_area, **kwargs):

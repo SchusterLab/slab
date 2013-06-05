@@ -37,8 +37,10 @@ class DataManager(BackgroundObject):
     def get_or_make_leaf(self, path, rank=None, data_tree_args={}, plot_args={}, reduced=False):
         group = self.data.resolve_path(path[:-1])
         if path[-1] not in group:
-            assert rank is not None
-            assert isinstance(group, DataTree)
+            if rank is None:
+                raise ValueError('Path %s not found and rank not specified' % '/'.join(path))
+            if not isinstance(group, DataTree):
+                raise RuntimeError('Trying to add name %s to existing dataset %s' % (path[-1], '/'.join(path[:-1])))
             leaf = group.make_child_leaf(path[-1], rank, **data_tree_args)
             self.gui.add_tree_widget(path, data=True, save=leaf.save, plot=leaf.plot)
             self.gui.add_plot_widget(path, rank, **plot_args)
@@ -49,6 +51,11 @@ class DataManager(BackgroundObject):
                 #    params.update({'y0': leaf.y0, 'yscale': leaf.yscale, 'zlabel': leaf.zlabel})
         else:
             leaf = group[path[-1]]
+            if not isinstance(leaf, DataTreeLeaf):
+                self.msg(leaf, type(leaf))
+                raise ValueError('Path %s exists and is not a leaf' % '/'.join(path))
+            if rank is not None and rank != leaf.rank:
+                raise ValueError('Rank of existing leaf %s = %d does not match rank given = %d' % ('/'.join(path), leaf.rank, rank))
             assert (rank is None) or (rank == leaf.rank)
             for key, val in data_tree_args.items():
                 setattr(leaf, key, val)
@@ -141,11 +148,20 @@ class DataManager(BackgroundObject):
         path = helpers.canonicalize_path(name_or_path)
         node = self.data.resolve_path(path)
         node.attrs[item] = value
+        if node.file is not None:
+            self.msg(node.file, node.path)
+            if isinstance(node, DataTreeLeaf):
+                node.file[node.path[-1]].attrs[item] = value
+            else:
+                node.file.attrs[item] = value
 
     def get_attr(self, name_or_path, item):
+        return self.get_all_attrs(name_or_path)[item]
+
+    def get_all_attrs(self, name_or_path):
         path = helpers.canonicalize_path(name_or_path)
         node = self.data.resolve_path(path)
-        return node.attrs[item]
+        return node.attrs
 
     def update_plot(self, name_or_path, refresh_labels=False, show_most_recent=None, **curve_args):
         path = helpers.canonicalize_path(name_or_path)
@@ -200,6 +216,8 @@ class DataManager(BackgroundObject):
             self.data[filename] = DataTree(self.gui, filename, open_file=False)
         try:
             self.rec_load_file(f, (filename,), readonly)
+            for k, v in f.attrs.items():
+                self.data[filename].attrs[k] = v
         except Exception:
             self.remove_item(filename)
             raise
@@ -213,6 +231,7 @@ class DataManager(BackgroundObject):
             if isinstance(ds, h5py.Group):
                 self.msg('recursing', this_path)
                 self.rec_load_file(ds, this_path, readonly)
+                self.data.resolve_path(this_path).load_attrs_from_ds(ds)
             else:
                 parametric = ds.attrs.get('parametric', False)
                 if 0 in ds.shape: # Length 0 arrays are buggy in h5py...
@@ -221,7 +240,8 @@ class DataManager(BackgroundObject):
                 self.msg('set_data', this_path, type(ds), np.array(ds).shape)
                 self.set_data(this_path, np.array(ds), save=(not readonly), parametric=parametric)
                 self.msg('set_data done', this_path)
-                self.get_or_make_leaf(this_path).load_attrs_from_ds(ds)
+                #self.get_or_make_leaf(this_path).load_attrs_from_ds(ds)
+                self.data.resolve_path(this_path).load_attrs_from_ds(ds)
                 self.update_plot(this_path, refresh_labels=True)
 
     def clear_data(self, path=None, leaf=None):
@@ -276,7 +296,7 @@ class DataManager(BackgroundObject):
     #    dialog.exec_()
     #    print 'here3'
 
-    def save_as_file(self, path): #TODO
+    def save_as_file(self, path):
         data = self.data.resolve_path(path)
         assert isinstance(data, DataTree)
         assert helpers.valid_h5file(path[-1])
@@ -284,7 +304,7 @@ class DataManager(BackgroundObject):
             for item in data.values():
                 item.save_in_file(f)
 
-    def save_with_file(self, path, filename): #TODO
+    def save_with_file(self, path, filename):
         with h5py.File(filename, 'a') as h5file:
             data = self.data.resolve_path(path)
             f = h5file
