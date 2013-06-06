@@ -12,6 +12,10 @@ U32 = C.c_uint32
 
 DEBUGALAZAR = False
 
+def int_linterp(x, a1, a2, b1, b2):
+    'Moves x from interval [a1, a2] to interval [b1, b2]'
+    return int(b1 + ((x - a1) * (b2 - b1)) / float((a2 - a1)))
+
 
 def ret_to_str(retCode, Az):
     Az.AlazarErrorToText.restype = C.c_char_p
@@ -50,35 +54,36 @@ class AlazarConstants():
                    'external': U32(64),
                    'reference': U32(1000000000)}
 
-    _trigger_source = {"ch_a": U32(0),
+    trigger_source = {"ch_a": U32(0),
                        "ch_b": U32(1),
                        "external": U32(2),
                        "disabled": U32(3)}
-    trigger_source1 = _trigger_source
-    trigger_source2 = _trigger_source
+    trigger_source1 = trigger_source
+    trigger_source2 = trigger_source
     trigger_operation = {"or": U32(2),
                          "and": U32(3),
                          "xor": U32(4),
                          "and not": U32(5)}
 
-    _coupling = {"ac": U32(1), "dc": U32(2)}
-    trigger_coupling = _coupling
-    input_coupling = _coupling
+    coupling = {"ac": U32(1), "dc": U32(2)}
+    trigger_coupling = coupling
+    input_coupling = coupling
 
     trigger_single_op = U32(0)
     trigger_engine_1 = U32(0)
     trigger_engine_2 = U32(1)
-    _edge = {"rising": U32(1), "falling": U32(2)}
-    trigger_edge = _edge
-    clock_edge = _edge
+    edge = {"rising": U32(1), "falling": U32(2)}
+    trigger_edge = edge
+    clock_edge = edge
 
     # Channel Constants
     channel = {"CH_A": U8(1), "CH_B": U8(2)}
-    _input_range = {0.04: U32(2), 0.1: U32(5), 0.2: U32(6),
+    input_range = {0.04: U32(2), 0.1: U32(5), 0.2: U32(6),
                     0.4: U32(6), 1: U32(10), 2: U32(11), 4: U32(12)}
-    ch1_range = _input_range
-    ch2_range = _input_range
-    #input_filter = {False: U32(0), True: U32(1)}
+    ch1_range = input_range
+    ch2_range = input_range
+    
+    input_filter = {False: U32(0), True: U32(1)}
 
     #ApiSuccess = 512
 
@@ -96,22 +101,26 @@ class AlazarConfig:
     @property
     def bytes_per_record(self):
         return self.bytes_per_sample * self.samples_per_record
+    bytesPerRecord = bytes_per_record
 
     @property
     def bytes_per_buffer(self):
         return self.bytes_per_record * self.records_per_buffer
+    bytesPerBuffer = bytes_per_buffer
 
     @property
     def samples_per_buffer(self):
         return self.samples_per_record * self.records_per_buffer
+    samplesPerBuffer = samples_per_buffer
 
-    recordsPerBuffer = records_per_buffer = 10
+    recordsPerBuffer = records_per_buffer = 1
     recordsPerAcquisition = records_per_acquisition = 0x7fffffff
 
     @property
     def buffers_per_acquisition(self):
-        assert (self.records_per_acquisition % self.records_per_buffer) == 0
+        #assert (self.records_per_acquisition % self.records_per_buffer) == 0
         return int(self.records_per_acquisition / self.records_per_buffer)
+    buffersPerAcquisition = buffers_per_acquisition
 
     buffers_per_merge = 100
     bufferCount = buffer_count = cpu_count()
@@ -120,6 +129,7 @@ class AlazarConfig:
     def buffers_per_worker(self):
         assert (self.records_per_acquisition % self.records_per_buffer) == 0
         return self.buffers_per_acquisition / self.buffer_count
+    buffersPerWorker = buffers_per_worker
 
     clock_source = 'external'
     clock_edge = 'rising'
@@ -129,6 +139,12 @@ class AlazarConfig:
     @property
     def seconds_per_record(self):
         return self.samples_per_record / self.samples_per_second
+    secondsPerRecord = seconds_per_record
+    
+    @property
+    def seconds_per_buffer(self):
+        return self.seconds_per_record * self.records_per_buffer
+    secondsPerBuffer = seconds_per_buffer
 
     trigger_source1 = 'external'
     trigger_edge1 = 'rising'
@@ -149,13 +165,10 @@ class AlazarConfig:
     ch2_range = 1
     ch2_filter = False
 
-    @property
-    def recordsPerAcquisition(self):
-        return self.recordsPerBuffer * self.buffersPerAcquisition
-
-    @property
-    def samplesPerBuffer(self):
-        return self.samplesPerRecord * self.recordsPerBuffer
+    #@property
+    #def records_per_acquisition(self):
+     #   return self.records_per_buffer * self.buffers_per_acquisition
+    #recordsPerAcquisition = records_per_acquisition
 
     def __init__(self, config_dict=None, **kwargs):
         config_dict = config_dict if config_dict else kwargs
@@ -163,9 +176,14 @@ class AlazarConfig:
         self.__dict__.update(config_dict)
 
     def normalize(self):
-        for k, v in self.__dict__.items():
-            if isinstance(v, str):
-                self.__dict__[k] = v.lower()
+        for k in dir(self):
+            print k, getattr(self, k)
+            if not k.startswith('__'):
+                try:
+                    setattr(self, k, getattr(self, k).lower())
+                    print 'lowered', k
+                except AttributeError:
+                    pass
 
     def validate(self):
         self.normalize()
@@ -174,16 +192,16 @@ class AlazarConfig:
         #assert all(v in ('external', 'interal', 'disabled') for v in (self.trigger_source1, self.trigger_source2))
         #assert self.trigger_operation in ('and', 'or')
 
-        for k, v in self.__dict__.items():
-            if isinstance(v, str):
-                potentials = getattr(AlazarConstants, k).keys()
-                if v not in potentials:
-                    raise ValueError(k + ' must be one of ' + ", ".join(potentials) + " not " + v)
-
-            if isinstance(v, (int, float)):
-                lower, upper = getattr(AlazarConstants, k)
-                if not lower < v < upper:
-                    raise ValueError(k + ' must be between %f and %f' % (lower, upper))
+#        for k, v in self.__dict__.items():
+#            if isinstance(v, str):
+#                potentials = getattr(AlazarConstants, k).keys()
+#                if v not in potentials:
+#                    raise ValueError(k + ' must be one of ' + ", ".join(potentials) + " not " + v)
+#
+#            if isinstance(v, (int, float)):
+#                lower, upper = getattr(AlazarConstants, k)
+#                if not lower < v < upper:
+#                    raise ValueError(k + ' must be between %f and %f' % (lower, upper))
 
         if self.records_per_acquisition != 0x7fffffff and (self.records_per_acquisition % self.records_per_buffer) != 0:
             raise ValueError("Invalid recordsPerAcquisition, needs to be a multiple of recordsPerBuffer")
@@ -216,6 +234,8 @@ class Alazar():
     def configure(self, config=None):
         if config is not None:
             self.config = config
+        
+        self.config.validate()
 
         self.configure_clock()
         self.configure_trigger()
@@ -253,14 +273,14 @@ class Alazar():
                     sample_rate = value
                     break
         elif self.config.clock_source == "external":
-            sample_rate = AlazarConstants.sample_rate_external
+            sample_rate = AlazarConstants.sample_rate['external']
             decimation = U32(0)
-            if self.config.sample_rate < 60000:
+            if self.config.sample_rate <= 60000:
                 source = AlazarConstants.clock_source["60 MHz"]
-            elif self.config.sample_rate < 1000000:
+            elif self.config.sample_rate <= 1000000:
                 source = AlazarConstants.clock_source["1 GHz"]
             else:
-                raise ValueError("Not supported (yet?)")
+                raise ValueError("Unsupported sample rate for external source, " + str(self.config.sample_rate))
         elif self.config.clock_source == "reference":
             source = AlazarConstants.clock_source["reference"]
             sample_rate = U32(1000000000)
@@ -325,7 +345,7 @@ class Alazar():
         if DEBUGALAZAR: print "Set Trigger:", ret_to_str(ret, self.Az)
         if self.config.trigger_source1 == "external":
             ret = self.Az.AlazarSetExternalTrigger(self.handle,
-                                                   AlazarConstants.trigger_ext_coupling[self.config.trigger_coupling],
+                                                   AlazarConstants.trigger_coupling[self.config.trigger_coupling],
                                                    U32(0))
             if DEBUGALAZAR: print "Set External Trigger:", ret_to_str(ret, self.Az)
 
@@ -353,14 +373,14 @@ class Alazar():
         if range2 is not None: self.config.ch2_range = range2
         if filter2 is not None: self.config.ch2_filter
 
-        for (voltage, value) in AlazarConstants.input_range:
+        for (voltage, value) in AlazarConstants.input_range.items():
             if self.config.ch1_range <= voltage:
                 if self.config.ch1_range < voltage:
                     if DEBUGALAZAR: print "Warning: input range not found, using closest value,", voltage, "Volts"
                 self.config.ch1_range = voltage
                 ch1_range_value = value
                 break
-        for (voltage, value) in AlazarConstants.input_range:
+        for (voltage, value) in AlazarConstants.input_range.items():
             if self.config.ch2_range <= voltage:
                 if self.config.ch2_range < voltage:
                     if DEBUGALAZAR: print "Warning: input range not found, using closest value,", voltage, "Volts"
@@ -433,10 +453,11 @@ class Alazar():
                                                       retCode, self.Az.AlazarErrorToText(U32(retCode))))))
 
     def __getattr__(self, item):
-        if item in self.config:
+        #f hasattr(self.config, item):
+        try:
             return getattr(self.config, item)
-        else:
-            raise AttributeError
+        except AttributeError:
+            raise AttributeError('Neither Alazar nor AlazarConfig contains item ' + item)
 
     def acquire_parallel(self, worker_cls, worker_args, result_shape, plot=False):
         """
@@ -528,18 +549,20 @@ class Alazar():
                         print buffers_acquired, buffers_completed
                         plot_count += 1
         finally:
-            self.Az.AlazarAbortAsyncRead(self.handle)
-            if buffers_completed:
-                final_time = time.time()
-                print 'Unready Count', unready_count
-                total_time = final_time - start_time
-                print 'Total time', total_time
-                actual_time_per_buffer = total_time / buffers_completed
-                print 'Time per buffer %.2e' % actual_time_per_buffer
-                errf = lambda a, b: abs(a - b) / min(a, b)
-                print 'Perceived overhead %.1f%%' % (errf(actual_time_per_buffer, seconds_per_buffer) * 100)
-            else:
-                print 'No buffers completed'
+            pass
+        
+#            self.Az.AlazarAbortAsyncRead(self.handle)
+#            if buffers_completed:
+#                final_time = time.time()
+#                print 'Unready Count', unready_count
+#                total_time = final_time - start_time
+#                print 'Total time', total_time
+#                actual_time_per_buffer = total_time / buffers_completed
+#                print 'Time per buffer %.2e' % actual_time_per_buffer
+#                errf = lambda a, b: abs(a - b) / min(a, b)
+#                print 'Perceived overhead %.1f%%' % (errf(actual_time_per_buffer, seconds_per_buffer) * 100)
+#            else:
+#                print 'No buffers completed'
 
         res = np.frombuffer(res_buffer.get_obj())
         return res
@@ -615,7 +638,7 @@ class SingleShotWorker(Worker):
 #         self.reshape_fn = reshape_fn
 #         Worker.__init__(self, *args)
 #
-#     def run(self):
+#     def run(self):http://code.google.com/p/minted/
 #         arr = np.frombuffer(self.buf.get_obj(), U8)
 #         avg_buffer_arr = np.frombuffer(avg_buffer.get_obj(), C.c_longdouble)
 #         sum_buffer = np.zeros(len(avg_buffer_arr), np.uint32)
@@ -651,6 +674,22 @@ def profile_single_shot(*args):
 
 def main():
     print 'starting'
+#    config = {'clock_edge': 'rising', 'clock_source': 'reference',  
+#            'trigger_coupling': 'DC',  'trigger_operation': 'or', 
+#            'trigger_source2': 'disabled','trigger_level2': 1.0, 'trigger_edge2': 'rising', 
+#            'trigger_level1': 0.6, 'trigger_edge1': 'rising', 'trigger_source1': 'external', 
+#            'ch1_enabled': True,  'ch1_coupling': 'AC','ch1_range':0.2, 'ch1_filter': False, 
+#            'ch2_enabled': True, 'ch2_coupling': 'AC','ch2_range': 4, 'ch2_filter': False,            
+#            'bufferCount': 10,'recordsPerBuffer': 100, 'trigger_delay': 0, 'timeout': 1000,
+#            'samplesPerRecord':self.config['read_length'],'recordsPerAcquisition': self.config['num_avgs'], 'sample_rate': 1000000
+#        }
+    import time
+    conf = AlazarConfig()
+    print hasattr(conf, 'seconds_per_buffer')
+    c = Alazar(conf)
+    c.configure()
+    time.sleep(1)
+    c.acquire_average_parallel(100)
     res = acquire_avg_data_parallel(profile_single_shot, sum_array, buffer_count*iterations, plot=True)
     print 'returning', res
 
