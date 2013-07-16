@@ -69,6 +69,7 @@ class DataManager(BackgroundObject):
         return leaf
 
     def set_params(self, path, rank, **initargs):
+        self.msg('set params', initargs)
         data_tree_args, plot_args, curve_args = helpers.separate_init_args(initargs)
         leaf = self.get_or_make_leaf(path, rank, data_tree_args, plot_args)
         if leaf.file is not None:
