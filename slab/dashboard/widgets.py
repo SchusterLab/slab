@@ -114,6 +114,7 @@ class NodeEditWidget(Qt.QFrame):
         else:
             i = self.attr_list.findItems(name, Qt.Qt.MatchExactly, 0)[0]
             i.setText(1, str(value))
+            i.setText(2, str(type(value)))
         self.attr_name_edit.setText("")
         self.attr_value_edit.setText("")
         return name, value
