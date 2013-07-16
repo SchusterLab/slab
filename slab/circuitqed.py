@@ -21,8 +21,12 @@ from numpy import pi,linspace,cos,sin,ones,transpose,reshape,array,argsort,sort,
 from numpy.linalg import eig
 
 class Schrodinger:
-
+    """Abstract class for solving the 1D and 2D Schrodinger equation 
+    using finite differences and sparse matrices"""
     def __init__(self,sparse_args=None,solve=True):
+        """ @param sparse_args arguments for the eigsh sparse solver
+            @param solve if solve=True then it will immediately construct the Hamiltonian and solve for the eigenvalues
+        """
         self.solved=False
         self.sparse_args=sparse_args
         self.solved=False
@@ -30,10 +34,17 @@ class Schrodinger:
 
     @staticmethod
     def uv(vec):
+        """normalizes a vector
+            @param vec vector to normalize
+        """
         return vec/sqrt(dot(vec,vec))
 
     @staticmethod
     def Dmat(numpts,delta=1):
+        """Derivative matrix
+            @param numpts dimension of derivative matrix
+            @param delta optional scaling of point spacing
+        """
         a=0.5/delta*ones(numpts); a[0]=0;a[-2]=0;
         #b=-2./delta**2*ones(numpts); b[0]=0;b[-1]=0;
         c=-0.5/delta*ones(numpts); c[1]=0;c[-1]=0;
@@ -41,6 +52,12 @@ class Schrodinger:
 
     @staticmethod
     def D2mat(numpts,delta=1,periodic=True):
+        """2nd Derivative matrix
+            @param numpts dimension of derivative matrix
+            @param delta spacing between points
+            @param periodic whether derivative wraps around (default True) 
+        """
+
         a=1./delta**2*ones(numpts)
         b=-2./delta**2*ones(numpts)
         c=1./delta**2*ones(numpts)
@@ -51,9 +68,12 @@ class Schrodinger:
             return sparse.spdiags([a,b,c],[-1,0,1],numpts,numpts)
 
     def Hamiltonian(self):
+        """Abstract method used by solver"""
         return None
 
     def solve(self,sparse_args=None):
+        """Constructs and solves for eigenvalues and eigenvectors of Hamiltonian
+            @param sparse_args if present used in eigsh sparse solver"""
         Hmat=self.Hamiltonian()
         if sparse_args is not None: self.sparse_args=sparse_args
         if self.sparse_args is None:
@@ -68,14 +88,20 @@ class Schrodinger:
         return self.en,self.ev
 
     def energies(self,num_levels=-1):
+        """returns eigenvalues of Hamiltonian (solves if not already solved)"""
         if not self.solved: self.solve()
         return self.en[:num_levels]
 
     def psis(self,num_levels=-1):
+        """returns eigenvectors of Hamiltonian (solves if not already solved)"""
         if not self.solved: self.solve()
         return self.ev[:num_levels]
 
     def reduced_operator(self,operator,num_levels=-1):
+        """Finds operator in eigenbasis of the hamiltonian truncated to num_levels
+        @param operator a (sparse) matrix representing an operator in the x basis
+        @num_levels number of levels to truncate Hilbert space
+        """
         if not self.solved: self.solve()
         if sparse.issparse(operator):
             return array([array([dot(psi1,operator.dot(psi2)) for psi2 in self.psis(num_levels)]) for psi1 in self.psis(num_levels)])
@@ -83,26 +109,29 @@ class Schrodinger:
             return array([array([dot(psi1,dot(operator,psi2)) for psi2 in self.psis(num_levels)]) for psi1 in self.psis(num_levels)])
 
 class Schrodinger1D(Schrodinger):
-    """x is array of locations
-       U is array of potential at x
-       KE is kinetic energy prefactor
-       num_levels (None)...number of levels for sparse solver or None for dense solve...sparse not working right yet...+
-    """
+    """1D Schrodinger solver class"""
     def __init__(self,x,U,KE=1,sparse_args=None,solve=True):
+        """@param x is array of locations
+           @param U is array of potential at x
+           @param KE is kinetic energy prefactor
+           @param num_levels (None)...number of levels for sparse solver or None for dense solve...sparse not working right yet...+
+        """
         self.x=x
         self.U=U
         self.KE=KE
         Schrodinger.__init__(self,sparse_args,solve)
 
-
     def Hamiltonian(self):
+        """Constructs Hamiltonian using the potential and Kinetic energy terms"""
         Vmat=sparse.spdiags([self.U],[0],len(self.U),len(self.U))
         Kmat=-self.KE*Schrodinger.D2mat(numpts=len(self.x),delta=self.x[1]-self.x[0])
         return Kmat+Vmat
 
-    def plot(self,num_levels=None):
+    def plot(self,num_levels=-1):
+        """Plots potential, energies, and wavefunctions
+        @param num_levels (-1 by default) number of levels to plot"""
         if not self.solved: self.solve()
-        if num_levels is None:
+        if num_levels==-1:
             num_levels=len(self.energies)-1
         plot(self.x,self.U)
         for ind in range(num_levels):
@@ -110,15 +139,18 @@ class Schrodinger1D(Schrodinger):
             plot(self.x,self.psis()[ind]/max(abs(self.psis()[ind]))*max(abs(self.energies()[ind+1]-self.energies()[ind])/2.,1)+self.energies()[ind],label="$\psi_%d$" % ind)
 
     def plot_wavefunctions(self,num_levels=-1):
+        """plots wavefunctions, for internal use"""
         for psi in self.psis(num_levels):
             plot(self.x,psi*sign(psi[1]-psi[0]),label="$\psi_%d$" % ind)
 
 class Schrodinger2D(Schrodinger):
     def __init__(self,x,y,U,KEx=1,KEy=1,sparse_args=None,solve=True):
-        """x is array of locations
-           U is array of potential at x
-           KE is kinetic energy prefactor
-           num_levels (None)...number of levels for sparse solver or None for dense solve...sparse not working right yet...+
+        """@param x is array of locations in x direction
+           @param y is array of locations in y direction
+           @param U is array of potential at x
+           @param KEx is kinetic energy prefactor in x direction
+           @param KEy is kinetic energy prefactor in y direction
+           @param num_levels (None)...number of levels for sparse solver or None for dense solve...sparse not working right yet...+
         """
         self.x=x
         self.y=y
@@ -128,6 +160,7 @@ class Schrodinger2D(Schrodinger):
         Schrodinger.__init__(self,sparse_args=sparse_args,solve=solve)
 
     def Hamiltonian(self):
+        """Constructs Hamiltonian using the potential and Kinetic energy terms"""
         U=self.U.flatten()
         Vmat=sparse.spdiags([U],[0],len(U),len(U))
         Kmat=sparse.kron(-self.KEy*Schrodinger.D2mat(len(self.y),self.y[1]-self.y[0]),sparse.identity(len(self.x))) + \
@@ -140,8 +173,10 @@ class Schrodinger2D(Schrodinger):
             psis.append(reshape(psi,(len(self.y),len(self.x))))
         return psis
 
-    def plot(self,num_levels=None):
-        if num_levels is None:
+    def plot(self,num_levels=-1):
+        """Plots potential, energies, and wavefunctions
+        @param num_levels (-1 by default) number of levels to plot"""
+        if num_levels ==-1:
             num_levels=len(self.energies())
         print self.energies(num_levels)
         figure(figsize=(20,5))
@@ -155,10 +190,22 @@ class Schrodinger2D(Schrodinger):
             xlabel(ii)
 
     def plot_potential(self):
+        """Plots potential energy landscape"""
         imshow(self.U,extent=(self.x[0],self.x[-1],self.y[0],self.y[-1]),aspect='auto',interpolation='None')
+        xlabel('x')
+        ylabel('y')
 
 class FluxQubit(Schrodinger1D):
+    """Customized 1D Schrodinger solver class for flux qubits, 
+       allows you to specify properties using conventional circuit parameters"""
     def __init__(self,Ej,El,Ec,phi,phis=None,sparse_args=None,solve=True):
+        """ 
+        @param Ej Josephson energy
+        @param El Inductance energy
+        @param Ec Charging energy
+        @param phi Flux bias phi/phi_0
+        @param phis if specified used as basis for solving (default is -2,2 with 201 pts)
+        """
         if phis is None: self.phis=2*pi*linspace(-2,2,201)
         else: self.phis=phis
 
@@ -170,9 +217,11 @@ class FluxQubit(Schrodinger1D):
         Schrodinger1D.__init__(self,x=self.phis,U=self.flux_qubit_potential(),KE=4*Ec,sparse_args=sparse_args,solve=solve)
 
     def flux_qubit_potential(self):
+        """Make Flux qubit potential from circuit parameters"""
         return -self.Ej*cos(self.phis)+self.El*(2.*pi*self.phi-self.phis)**2
 
-    def plot(self,num_levels=None):
+    def plot(self,num_levels=-1):
+        """Plot potential, energies, eigenvectors"""
         Schrodinger1D.plot(self,num_levels)
         xlabel('$\delta/2\pi$')
         ylabel('E/h (GHz)')
@@ -189,9 +238,18 @@ class FluxQubit(Schrodinger1D):
 
 
 class ZeroPi(Schrodinger2D):
-
+    """Customized version of Schrodinger2D for Zero-Pi qubit"""
     #good sparse_args={'k':6,'which':'LM','sigma':gnd_state_energy,'maxiter':None}
     def __init__(self,Ej,El,Ect,Ecp,numtpts,numphipts,numwells,sparse_args=None,solve=True):
+        """
+        @param Ej Josephson Energy
+        @param El Inductance Energy
+        @param Ect Theta Charging Energy (Ecsum)
+        @param Ecp Phi Charging Energy (Ecj)
+        @param numtpts number of points in theta direction
+        @param numphipts number of points in phi direction
+        @param numwells number of wells to simulate
+        """
         self.Ej=Ej
         self.El=El
         self.Ect=Ect
@@ -204,11 +262,11 @@ class ZeroPi(Schrodinger2D):
         Vxy+=amax(Vxy)
         Schrodinger2D.__init__(self,x=thetas,y=phis,U=Vxy,KEx=8*Ect,KEy=8*Ecp,sparse_args=sparse_args,solve=solve)
 
-    def plot(self,num_levels=None):
-        #title('Ej=%.2f GHz, El=%.2f GHz, Ect=%.2f GHz, Ecp= %.2f' % (self.Ej,self.El,self.Ect,self.Ecp))
-        #xlabel('$\phi$')
-        #ylabel('$\theta$')
-        Schrodinger2D.plot(self,num_levels)
+#    def plot(self,num_levels=None):
+#        #title('Ej=%.2f GHz, El=%.2f GHz, Ect=%.2f GHz, Ecp= %.2f' % (self.Ej,self.El,self.Ect,self.Ecp))
+#        #xlabel('$\phi$')
+#        #ylabel('$\theta$')
+#        Schrodinger2D.plot(self,num_levels)
 
 class cavity:
     def __init__(self,f0,Zc,levels=None):
