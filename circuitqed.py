@@ -5,7 +5,10 @@ Created on Fri Sep 14 09:21:37 2012
 @author: Phil
 """
 
-import qutip
+try:
+    import qutip
+except:
+    print "Warning no qutip!"
 from matplotlib.pyplot import *
 import numpy as np
 import multiprocessing
@@ -14,7 +17,7 @@ import time
 from scipy import sparse
 from scipy.sparse.linalg import eigsh
 from numpy import pi,linspace,cos,sin,ones,transpose,reshape,array,argsort,sort, \
-                  meshgrid,amax,amin
+                  meshgrid,amax,amin,dot
 from numpy.linalg import eig
 
 class Schrodinger:
@@ -265,6 +268,7 @@ def test_zeropi():
 
 def test_fluxqubit():
     flux_qubit=FluxQubit(Ej=17.,El=1.5,Ec=1.,phi=.49,solve=True)
+    print flux_qubit.n_operator(5)
     flux_qubit.plot(5)
     ylim(-10,30)
     xlim(-5,10)
