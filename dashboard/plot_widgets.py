@@ -58,12 +58,12 @@ class CrossSectionWidget(pg.ImageView):
         self.cross_section_enabled = True
 
     def hide_cross_section(self):
-        self.cs_layout.layout.removeItem(self.h_cross_section_item)
-        self.cs_layout.layout.removeItem(self.v_cross_section_item)
+        self.cs_layout.layout.scene().removeItem(self.h_cross_section_item)
+        self.cs_layout.layout.scene().removeItem(self.v_cross_section_item)
         self.h_cross_section_item.close()
         self.v_cross_section_item.close()
-        self.view.removeItem(self.h_line)
-        self.view.removeItem(self.v_line)
+        self.view.scene().removeItem(self.h_line)
+        self.view.scene().removeItem(self.v_line)
         self.cross_section_enabled = False
 
     def connect_signal(self):
