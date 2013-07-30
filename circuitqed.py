@@ -110,7 +110,7 @@ class Schrodinger:
 
 class Schrodinger1D(Schrodinger):
     """1D Schrodinger solver class"""
-    def __init__(self,x,U,KE=1,sparse_args=None,solve=True):
+    def __init__(self,x,U,KE=1,periodic=True,**kwargs):
         """@param x is array of locations
            @param U is array of potential at x
            @param KE is kinetic energy prefactor
@@ -119,26 +119,27 @@ class Schrodinger1D(Schrodinger):
         self.x=x
         self.U=U
         self.KE=KE
-        Schrodinger.__init__(self,sparse_args,solve)
+        self.periodic=periodic
+        Schrodinger.__init__(self,**kwargs)
 
     def Hamiltonian(self):
         """Constructs Hamiltonian using the potential and Kinetic energy terms"""
         Vmat=sparse.spdiags([self.U],[0],len(self.U),len(self.U))
-        Kmat=-self.KE*Schrodinger.D2mat(numpts=len(self.x),delta=self.x[1]-self.x[0])
+        Kmat=-self.KE*Schrodinger.D2mat(numpts=len(self.x),delta=self.x[1]-self.x[0],periodic=self.periodic)
         return Kmat+Vmat
 
-    def plot(self,num_levels=-1):
+    def plot(self,num_levels=10):
         """Plots potential, energies, and wavefunctions
         @param num_levels (-1 by default) number of levels to plot"""
         if not self.solved: self.solve()
         if num_levels==-1:
-            num_levels=len(self.energies)-1
+            num_levels=len(self.energies())-1
         plot(self.x,self.U)
         for ind in range(num_levels):
             plot(array([self.x[0],self.x[-1]]),array([self.energies()[ind],self.energies()[ind]]),label="$E_%d$" % ind)
             plot(self.x,self.psis()[ind]/max(abs(self.psis()[ind]))*max(abs(self.energies()[ind+1]-self.energies()[ind])/2.,1)+self.energies()[ind],label="$\psi_%d$" % ind)
 
-    def plot_wavefunctions(self,num_levels=-1):
+    def plot_wavefunctions(self,num_levels=10):
         """plots wavefunctions, for internal use"""
         for psi in self.psis(num_levels):
             plot(self.x,psi*sign(psi[1]-psi[0]),label="$\psi_%d$" % ind)
@@ -173,7 +174,7 @@ class Schrodinger2D(Schrodinger):
             psis.append(reshape(psi,(len(self.y),len(self.x))))
         return psis
 
-    def plot(self,num_levels=-1):
+    def plot(self,num_levels=10):
         """Plots potential, energies, and wavefunctions
         @param num_levels (-1 by default) number of levels to plot"""
         if num_levels ==-1:
@@ -267,6 +268,61 @@ class ZeroPi(Schrodinger2D):
 #        #xlabel('$\phi$')
 #        #ylabel('$\theta$')
 #        Schrodinger2D.plot(self,num_levels)
+
+class Rydberg(Schrodinger1D):
+    """Schrodinger1D class to evaluate Rydberg states of electrons on helium, by default Energy units are GHz and length units are nm's"""
+    def __init__(self,x=None,KE=9212.5,UE=2407.95,Efield=0.,BarrierHeight=100,BarrierWidth=0.01,level_potential=False,**kwargs):
+        """
+            @param x are points on which to evaluate potential
+            @param KE is kinetic energy scale in units of Energy*length**2 (default 9212.5 GHz/nm**2 for electrons on helium)
+            @param UE is the potential energy scale which gives potential -U/z in units of Energy*length (default 2407.95 GHz*nm)
+            @param Efield is the applied electric field in units of Energy/length
+            @param BarrierHeight how tall to make the barrier at the surface (default 1e4)
+            @param BarrierWidth how wide to make the barrier at the surface (default 0.01 nm)
+            @param level_potential determines whether to level the potential at the classical turning point in the case of negative E fields)
+        """
+        if x is None:
+            numpts=501
+            x=linspace(1e-5,600.,numpts) #all the z points
+        self.x=x
+        self.UE=UE
+        self.Efield=Efield
+        self.BarrierHeight=BarrierHeight
+        self.BarrierWidth=BarrierWidth
+        self.level_potential=level_potential
+        Schrodinger1D.__init__(self,x,U=self.make_potential(),KE=KE,periodic=False,**kwargs)
+        
+    def make_potential(self):
+        """Makes Rydberg potential"""
+        B=self.BarrierHeight
+        Bw=self.BarrierWidth
+        Bpts=B*(1+tanh(-self.x/Bw))/self.x**2 #Helium Outer shell repulsion
+        Upts=-self.UE/self.x                      #Rydberg Atom electric potential
+        Epts=self.Efield*self.x                     #Ionizing electric field 
+        Vpts=Upts+Epts+Bpts               #all the potentials combined
+        if self.level_potential:
+            vmaxind=argmax(Vpts[50:])+50
+            Vpts2=array(Vpts)
+            for ii,v in enumerate(Vpts):
+                if ii<vmaxind:
+                    Vpts2[ii]=v
+                else:
+                    Vpts2[ii]=Vpts[vmaxind]
+        else: Vpts2=Vpts
+        return Vpts2
+    
+    def plot(self,num_levels=5):
+        """Plots levels/wavefunctions with customized labels/ranges for Rydberg"""
+        Schrodinger1D.plot(self,num_levels)
+        xlabel('Electron height, z (nm)')
+        ylabel('Energy (GHz)')
+        mine=amin(self.energies(num_levels))
+        maxe=amax(self.energies(num_levels))
+        ylim(mine-(maxe-mine)*.5,maxe+(maxe-mine)*.5)
+        
+    def dipole_moment(self,psi1=0,psi2=1):
+        """Returns x matrix element between two psi's in nanometers"""
+        return dot(self.ev[psi1],self.x*self.ev[psi2])
 
 class cavity:
     def __init__(self,f0,Zc,levels=None):

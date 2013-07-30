@@ -24,3 +24,8 @@ Traceback (most recent call last):
   File "PyQt4\QtGui.pyc", line 12, in <module>
   File "PyQt4\QtGui.pyc", line 10, in __load
 ImportError: No module named QtCore
+Traceback (most recent call last):
+  File "launcher.py", line 39, in <lambda>
+  File "launcher.py", line 30, in <lambda>
+  File "launcher.py", line 21, in select_dir
+WindowsError: [Error 123] The filename, directory name, or volume label syntax is incorrect: ''

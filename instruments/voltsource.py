@@ -5,7 +5,7 @@ SRS900 Voltage Source (voltsource.py)
 :Author: David Schuster
 """
 
-from slab.instruments import SerialInstrument,VisaInstrument,Instrument
+from slab.instruments import SocketInstrument,SerialInstrument,VisaInstrument,Instrument
 import re
 import time
 
@@ -80,7 +80,72 @@ class SRS900(SerialInstrument,VisaInstrument):
             
     def get_output(self,channel=1):
         return bool(int(self.query('EXON?',channel)))
+
+class YokogawaGS200(SocketInstrument):
+    
+    def __init__(self,name='YOKO',address='', enabled=True,timeout=10, recv_length=1024):
+        #SocketInstrument.__init__(self,name,address,5025,enabled,timeout,recv_length)        
+        if ':' in address:
+            SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
+        else:
+            SocketInstrument.__init__(self,name,address+':'+str(7655),enabled,timeout,recv_length)
+    
+    def get_id(self):
+        """Get Instrument ID String"""
+        return self.query('*IDN?')
+    
+    def set_output(self,state=True):
+        """Set output mode default state=True"""
+        self.write(':OUTPUT:STATE %d' % (int(state)))
+
+    def get_output(self):
+        """Get output mode return result as bool"""
+        return bool(self.query(':OUTPUT:STATE?').strip())
+    
+    def set_mode(self,mode='voltage'):
+        """Set yoko mode, valid inputs are mode='VOLTage' or mode='CURRent' """
+        self.write(':SOURCE:FUNCTION %s' % mode)
+    
+    def get_mode(self):
+        """Get yoko mode, returns either 'CURR' or 'VOLT'"""
+        return self.query(':SOURCE:FUNCTION?').strip()
+
+    def set_level(self,level):
+        """Set yoko level"""
+        self.write(':SOURCE:LEVEL %f' % level)
+    
+    def get_level(self):
+        """Get level return as float"""
+        return float(self.query(':SOURCE:LEVEL?').strip())
         
+    def set_current(self,current):
+        """Set yoko current"""
+        if self.get_mode() == "CURR":
+            self.set_level(current)
+        else:
+            raise Exception("ERROR: Tried to set Yoko current in voltage mode")
+
+    def get_current(self):
+        """Get yoko current"""
+        if self.get_mode() == "CURR":
+            return self.get_level()        
+        else:
+            raise Exception("ERROR: Tried to set Yoko voltage in current mode")
+                    
+    def set_volt(self,voltage):
+        """Set yoko voltage"""
+        if self.get_mode() == "VOLT":
+            self.set_level(voltage)
+        else:
+            raise Exception("ERROR: Tried to set Yoko voltage in current mode")
+    
+    def get_volt(self):
+        """Get yoko voltage"""
+        if self.get_mode() == "VOLT":
+            return self.get_level()
+        else:
+            raise Exception("ERROR: Tried to set Yoko voltage in current mode")
+    
 #class SRS928(Instrument):
 #    
 #    def __init__(self,mainframe,name="",address=None,enabled=True,timeout=1):
