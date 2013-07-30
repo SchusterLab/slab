@@ -26,6 +26,8 @@ try: from KEPCOPowerSupply import KEPCOPowerSupply
 except: print "Could not load KEPCOPowerSupply"
 try: from voltsource import SRS900
 except: print "Could not load SRS900"
+try: from voltsource import YokogawaGS200
+except: print "Could not load YokogawaGS200"
 try: from Alazar import Alazar, AlazarConfig, AlazarConstants
 except: print "Could not load Alazar card"
 try: from function_generator import BiasDriver,FilamentDriver,BNCAWG
