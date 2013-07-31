@@ -203,12 +203,12 @@ class AWG81180A(SocketInstrument):
         for ii in xrange(len(data)):
             b[ii*2] = (data[ii] & 0xFF)
             b[ii*2+1] = (data[ii] & 0xFF00)>>8
-        print "Uploading trace %d to AWG" % segnum
+        #print "Uploading trace %d to AWG" % segnum
         return b
 
     def binblockwrite(self,commandstring, blockarray):
-        self.write("*OPC?")
-        response = self.read()
+        #self.write("*OPC?")
+        #response = self.read()
         blockarraylength=str(blockarray.__len__())
         blockarraylengthposition=blockarraylength.__len__()
         cmd = commandstring+" #"+str(blockarraylengthposition)+blockarraylength
@@ -216,9 +216,9 @@ class AWG81180A(SocketInstrument):
         #self.instrument.term_chars = ""
         self.write(str(bytearray(cmd)+blockarray))
         #self.instrument.term_chars = None
-        response= self.query("*OPC?")
+        #response= self.query("*OPC?")
         #print "BinBlockWrite Response: ", response
-        return response
+        #return response
 
     def select_sequence(self,seq_num=1):
         self.write(":SEQuence:SELect %d" % seq_num)
