@@ -21,6 +21,9 @@ class E5071(SocketInstrument):
 
     def get_id(self):
         return self.query('*IDN?')
+        
+    def get_query_sleep(self):
+        return self.query_sleep
 
 #### Frequency setup
     def set_start_frequency(self,freq,channel=1):
@@ -329,6 +332,16 @@ class E5071(SocketInstrument):
          "averaging":self.get_average_state(),"averages":self.get_averages()
          }
         return settings
+        
+    def configure_nwa(self,start=None,stop=None,power=None,ifbw=None,sweep_pts=None,avgs=None,defaults=True):
+        if defaults is not None:       self.set_default_state()
+        if start is not None:            self.set_start_frequency(start)
+        if stop is not None:            self.set_stop_frequency(stop)
+        if power is not None:         self.set_power(power)
+        if ifbw is not None:            self.set_ifbw(ifbw)
+        if sweep_pts is not None:   self.set_sweep_points(sweep_pts)
+        if avgs is not None:            self.set_averages(avgs)
+        
 
     def set_default_state(self):
         self.set_sweep_points()
