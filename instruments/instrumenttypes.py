@@ -30,12 +30,15 @@ class Instrument(object):
     query_sleep=0             #seconds to wait between write and read
     term_char='\n'            #character to be appended to all writes
     #operation_range={}        #map to hold the operation range
-    
+        
     def  __init__(self,name,address='',enabled=True):
         self.name=name
         self.address=address
         self.enabled=enabled
         
+    def get_name(self):
+        return self.name
+
     def get_id(self):
         return "Default Instrument %s" % (self.name)
         
