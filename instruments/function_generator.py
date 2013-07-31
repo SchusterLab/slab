@@ -35,7 +35,7 @@ class BNCAWG(SocketInstrument):
     
     def get_termination(self):
         """Set Output State On/Off"""
-        return float(self.querry('OUTPUT:LOAD?'))
+        return float(self.query('OUTPUT:LOAD?'))
         
     
     def set_function(self,ftype="sine"):
