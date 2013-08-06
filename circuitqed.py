@@ -241,27 +241,40 @@ class FluxQubit(Schrodinger1D):
 class ZeroPi(Schrodinger2D):
     """Customized version of Schrodinger2D for Zero-Pi qubit"""
     #good sparse_args={'k':6,'which':'LM','sigma':gnd_state_energy,'maxiter':None}
-    def __init__(self,Ej,El,Ect,Ecp,numtpts,numphipts,numwells,sparse_args=None,solve=True):
+    def __init__(self,Ej,El,Ecs,Ecj,numxpts,numypts,numwells,sparse_args=None,solve=True):
         """
         @param Ej Josephson Energy
         @param El Inductance Energy
-        @param Ect Theta Charging Energy (Ecsum)
-        @param Ecp Phi Charging Energy (Ecj)
-        @param numtpts number of points in theta direction
-        @param numphipts number of points in phi direction
+        @param Ecs Sum Charging Energy (Ecsum)
+        @param Ecj Junction Charging Energy (Ecj)
+        @param xpts number of points in heavy direction
+        @param ypts number of points in light direction
         @param numwells number of wells to simulate
         """
         self.Ej=Ej
         self.El=El
-        self.Ect=Ect
-        self.Ecp=Ecp
-        thetas=linspace(-pi/2,3*pi/2,numtpts)
-        phis=linspace(-2*pi*numwells/2.,2*pi*numwells/2.,numphipts)
-        T,P=meshgrid(thetas,phis)
-        Vxy=-2*Ej*cos(T)*cos(P)+El*P**2
+        self.Ecs=Ecs
+        self.Ecj=Ecj
+        self.numxpts=numxpts
+        self.numypts=numypts
+        self.numwells=numwells
+        Vxy=self.make_potential()
+        Schrodinger2D.__init__(self,x=self.x,y=self.y,U=Vxy,KEx=8*Ecs,KEy=8*Ecj,sparse_args=sparse_args,solve=solve)
+
+    def make_potential(self):
+        self.x=linspace(-pi/2,3*pi/2,self.numxpts)
+        self.y=linspace(-2*pi*self.numwells/2.,2*pi*self.numwells/2.,self.numypts)
+        X,Y=meshgrid(self.x,self.y)
+        Vxy=-2*self.Ej*cos(X)*cos(Y)+self.El*Y**2
         #Vxy=Ej*T**2+El*P**2
         Vxy+=amax(Vxy)
-        Schrodinger2D.__init__(self,x=thetas,y=phis,U=Vxy,KEx=8*Ect,KEy=8*Ecp,sparse_args=sparse_args,solve=solve)
+        return Vxy
+
+    def sparsify(self,numxpts=None,numypts=None,num_levels=10):
+        if numxpts is not None: self.numxpts=numxpts
+        if numypts is not None: self.numypts=numypts
+        self.U=self.make_potential()
+        self.sparse_args={'k':num_levels,'which':'LM','sigma':self.energies()[0],'maxiter':None}
 
 #    def plot(self,num_levels=None):
 #        #title('Ej=%.2f GHz, El=%.2f GHz, Ect=%.2f GHz, Ecp= %.2f' % (self.Ej,self.El,self.Ect,self.Ecp))
