@@ -255,35 +255,56 @@ class AWG81180A(SocketInstrument):
         self.delete_all_sequences()
         self.delete_all_traces()
         
-    def presetup_for_sequences(self,ch1_offset=0.,ch1_amp=2.0, ch2_offset=0., ch2_amp=2.0):
+    def presetup_for_sequences(self):
         #define channel properties
         self.select_channel(1)
-        self.set_output(True)
+        self.set_output(False)
+        self.select_channel(2)
+        self.set_output(False)
+        
+        self.select_channel(1)
         self.set_mode("USER")    
-        self.set_amplitude(ch1_amp)
-        #awg.set_offset(1.0)
-        self.set_offset(ch1_offset)
         self.define_sequence_advance(adv='STEP')
         self.write(':SEQuence:JUMP BUS')
         
         self.select_channel(2)
-        self.set_output(True)
         self.set_mode("USER")    
-        self.set_amplitude(ch2_amp)
-        self.set_offset(ch2_offset)
         self.define_sequence_advance(adv='STEP')
         self.write(':SEQuence:JUMP BUS')
         #put the AWG into an idle state to load pulse sequences
         self.set_trigger(src='BUS') 
         
+    def set_offset_amp(self,ch1_offset=0.,ch1_amp=2.0, ch2_offset=0., ch2_amp=2.0):
+        
+        #define channel properties
+        self.select_channel(1)
+        self.set_amplitude(ch1_amp)
+        #awg.set_offset(1.0)
+        self.set_offset(ch1_offset)
+   
+        self.select_channel(2)
+        self.set_amplitude(ch2_amp)
+        self.set_offset(ch2_offset)
+       
+        
     def set_to_sequence(self):
         #start awg 
         self.select_channel(1)
-        self.set_output(True)
         self.set_mode("SEQ") 
         self.select_channel(2)
-        self.set_output(True)
         self.set_mode("SEQ") 
+        
+    def start_sequence(self):
+        
+        self.select_channel(1)
+        self.set_output(True)
+        self.select_channel(2)
+        self.set_output(True)
+        self.set_trigger(src='EXT')
+        
+    def set_clock_all(self,clockrate):
+        self.set_clockrate(clockrate)
+        
 
 try:
     from guiqwt.pyplot import *
