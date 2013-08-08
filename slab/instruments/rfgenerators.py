@@ -6,6 +6,7 @@ Agilent E8257D (rfgenerators.py)
 """
 
 from slab.instruments import SocketInstrument
+import time
 
 class E8257D(SocketInstrument):
     """
@@ -74,6 +75,24 @@ class E8257D(SocketInstrument):
         settings['id']=self.get_id()
         return settings
         
+    def get_settled(self):
+        """Get source settled state"""
+        return bool(self.query(':OUTPut:SETTled?'))
+        
+    def wait_to_settle(self, timeout=1):
+        """Block until source settled"""
+        start=time.time()
+        while not self.get_settled() and time.time()-start<timeout: pass
+    
+    def set_internal_pulse(self,pulse_time=10e-6):
+        self.write(':SOUR:PULM:SOUR:INT FRUN')
+        self.write(':SOUR:PULM:INT:PERIOD %f S' %(pulse_time))
+        self.write(':SOUR:PULM:INT:PWIDTH %f S' %(pulse_time))
+        self.write(":SOUR:PULM:STAT ON")
+    
+    def set_ext_pulse(self):
+        self.write(':SOUR:PULM:SOUR EXT')
+        self.write(":SOUR:PULM:STAT ON")
     
 if __name__=="__main__":
     rf=E8257D(address='128.135.35.30')
