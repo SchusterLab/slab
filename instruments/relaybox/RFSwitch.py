@@ -31,22 +31,22 @@ class RFSwitch(RelayBox):
         if switch == 0: return self.RF_Status
         else:           return self.RF_Status[switch-1]
                 
-    def activate(self, switch=0):
+    def activate(self, switch=0,pulse_time=1):
         """Activate _switch_ if _switch_=0 activate all switches"""
         if switch>0:
             self.set_relay(switch, True)
-            self.pulse_relay(7)
+            self.pulse_relay(7,pulse_time)
             self.set_relay(switch, False)
             self.RF_Status[switch-1]= True
         elif switch == 0:
             for i in range(1,7):
                 self.activate(i)
       
-    def deactivate(self, switch=0):
+    def deactivate(self, switch=0,pulse_time=1):
         """Activate _switch_ if _switch_=0 activate all switches"""
         if switch>0:
             self.set_relay(switch, True)
-            self.pulse_relay(8)
+            self.pulse_relay(8,pulse_time)
             self.set_relay(switch, False)
             self.RF_Status[switch-1]= False
         elif switch == 0:

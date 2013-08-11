@@ -19,6 +19,7 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
         self.query_sleep=0.05
         self.recv_length=65536
         self.term_char='\r'
+        self.set_mode()
         self.set_extended_resolution()
         
     def read(self):

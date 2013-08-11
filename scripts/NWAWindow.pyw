@@ -4,6 +4,7 @@ Created on Sat Dec 17 17:10:50 2011
 
 @author: dave
 """
+import sys
 from slab import *
 from slab.gui import *
 #from NWAWindow_ui import *

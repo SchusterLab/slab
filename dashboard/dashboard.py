@@ -14,7 +14,7 @@ from PyQt4 import Qt
 from window import PlotWindow
 
 #import pyqtgraph
-#pyqtgraph.setConfigOption('background', 'w')
+#pyqtgraph.setConfigOption('background', 'w') 
 #pyqtgraph.setConfigOption('foreground', 'k')
 
 # http://www.riverbankcomputing.com/pipermail/pyqt/2009-May/022961.html
@@ -37,6 +37,8 @@ def excepthook(excType, excValue, tracebackobj):
 
     tbinfofile = cStringIO.StringIO()
     traceback.print_tb(tracebackobj, None, tbinfofile)
+    
+    
     tbinfofile.seek(0)
     tbinfo = tbinfofile.read()
     errmsg = '%s: \n%s' % (str(excType), str(excValue))

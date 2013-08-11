@@ -319,13 +319,13 @@ def fithanger(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=
         Qc=Qi/(ymax)
         #slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
         #offset= ymin-slope*f0
-        fitparams=[f0,Qi,Qc,0.,scale]
+        fitparams=[f0,abs(Qi),abs(Qc),0.,scale]
         #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
     fitresult=fitgeneral(fitdatax,fitdatay,hangerfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label, mark_data=mark_data, mark_fit=mark_fit)        
     if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}'.format(fitresult[0],fitresult[1],fitresult[2],fitresult[3],fitresult[4])
     return fitresult
     
-def fithangertilt(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+def fithangertilt(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,printresult=False,label="",mark_data='bo',mark_fit='r-'):
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
         fitparams = []
         returns p=[f0, Q, S21Min, Tmax]
@@ -347,9 +347,11 @@ def fithangertilt(xdata,ydata,fitparams=None,domain=None,showfit=False,showstart
         scale= ymax-ymin
         slope = (fitdatay[-1]-fitdatay[0])/(fitdatax[-1]-fitdatax[0])
         offset= ymin-slope*f0
-        fitparams=[f0,Qi,Qc,0.,slope, offset]
+        fitparams=[f0,Qi,Qc,0.0001,slope, offset]
         #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
-    return fitgeneral(fitdatax,fitdatay,hangerfunctilt,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+        fitresult=fitgeneral(fitdatax,fitdatay,hangerfunctilt,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+        if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nslope: {4}\noffset: {5}\n'.format(fitresult[0],fitresult[1],fitresult[2],fitresult[3],fitresult[4],fitresult[5])
+    return 
 
 def polynomial(p,x):
     return p[0]+p[1]*(x-p[-1])+p[2]*(x-p[-1])**2+p[3]*(x-p[-1])**3+p[4]*(x-p[-1])**4+p[5]*(x-p[-1])**5+p[6]*(x-p[-1])**6+p[7]*(x-p[-1])**7+p[8]*(x-p[-1])**8+p[9]*(x-p[-1])**9
