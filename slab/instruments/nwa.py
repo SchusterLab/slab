@@ -118,6 +118,9 @@ class E5071(SocketInstrument):
 
     def get_output(self):
         return bool(self.query(":OUTPUT?"))
+        
+    def set_measure(self,mode='S21') :
+        self.write(":CALC1:PAR1:DEF %s"  % (mode))
 
 #### File Operations
 
@@ -313,14 +316,14 @@ class E5071(SocketInstrument):
         #time.sleep(na.query_sleep*2)
         #na.set_format()
         #time.sleep(na.query_sleep)
-        na.clear_averages()
-        na.trigger_single()
-        time.sleep(na.get_query_sleep())
-        na.averaging_complete()
+        self.clear_averages()
+        self.trigger_single()
+        time.sleep(self.get_query_sleep())
+        self.averaging_complete()
         #na.set_format('slog')
         if fname is not None:
-            na.save_file(fname)
-        ans=na.read_data()
+            self.save_file(fname)
+        ans=self.read_data()
         #time.sleep(na.query_sleep)
         #na.set_format()
         return ans
@@ -333,16 +336,25 @@ class E5071(SocketInstrument):
          }
         return settings
         
-    def configure_nwa(self,start=None,stop=None,power=None,ifbw=None,sweep_pts=None,avgs=None,defaults=True):
-        if defaults is not None:       self.set_default_state()
+    def configure(self,start=None,stop=None,center=None,span=None,power=None,ifbw=None,sweep_pts=None,avgs=None,defaults=False,remote=False):
+        if defaults:       self.set_default_state()
+        if remote:                          self.set_remote_state()
         if start is not None:            self.set_start_frequency(start)
         if stop is not None:            self.set_stop_frequency(stop)
+        if center is not None:          self.set_center_frequency(center)
+        if span is not None:            self.set_span(span)
         if power is not None:         self.set_power(power)
         if ifbw is not None:            self.set_ifbw(ifbw)
         if sweep_pts is not None:   self.set_sweep_points(sweep_pts)
         if avgs is not None:            self.set_averages(avgs)
         
-
+     
+    def set_remote_state(self):
+         self.set_trigger_source('BUS')
+         self.set_trigger_average_mode(True)
+         self.set_timeout(10000)  
+         self.set_format('slog')
+     
     def set_default_state(self):
         self.set_sweep_points()
         self.set_format()

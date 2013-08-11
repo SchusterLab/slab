@@ -164,25 +164,33 @@ def digital_homodyne(time_pts,ch1_pts,ch2_pts=None,IFfreq=1,dfactor=1.,AmpPhase=
         else:
             return dtpts,I1pts,Q1pts
  
-def heterodyne(time_pts,ch1_pts,ch2_pts=None,IFfreq=1,AmpPhase=True):
-    '''digital_homodyne computes I/Q or Amp/Phase as a function of time of a particular frequency component.
+def heterodyne(time_pts,ch1_pts,ch2_pts=None,IFfreq=1,AmpPhase=True,anti_alias=True):
+    '''heterodyne computes I/Q or Amp/Phase as a function of time of a particular frequency component.
        @param time_pts: time of each sample
        @param ch1_pts: Scope channel 1 points 
        @param ch2_pts: Scope channel 2 points (optional)
        @param IFfreq: Frequency to extract info for
-       @param dfactor: decimation factor number of periods to include per point
        @param AmpPhase: returns I/Q if False (default) or Amp/Phase if True
        '''
     if ch2_pts is None:
         ch2_pts = zeros(len(time_pts))
+    
+    #anti alias makes sure that there are an integer number of IFFreq cycles in the array of points
+    if anti_alias:    
+        stop_pt=int(np.floor(len(time_pts)*(IFfreq*(time_pts[1]-time_pts[0])))/(IFfreq*(time_pts[1]-time_pts[0])))
+        print stop_pt
+    else:
+        stop_pt=len(time_pts)
         
-    cospts=cos(2.*pi*IFfreq*time_pts)
-    sinpts=sin(2.*pi*IFfreq*time_pts)
-    A1=2.*sum(cospts*ch1_pts)/len(time_pts)
-    B1=2.*sum(sinpts*ch1_pts)/len(time_pts)
-    A2=2.*sum(cospts*ch2_pts)/len(time_pts)
-    B2=2.*sum(sinpts*ch2_pts)/len(time_pts)
+    cospts=cos(2.*pi*IFfreq*time_pts[:stop_pt])
+    sinpts=sin(2.*pi*IFfreq*time_pts[:stop_pt])
+    A1=(2.*np.sum(cospts*ch1_pts[:stop_pt]))/stop_pt
+    B1=(2.*np.sum(sinpts*ch1_pts[:stop_pt]))/stop_pt
+    A2=(2.*np.sum(cospts*ch2_pts[:stop_pt]))/stop_pt
+    B2=(2.*np.sum(sinpts*ch2_pts[:stop_pt]))/stop_pt
     if AmpPhase:
         return sqrt(A1**2+B1**2), arctan2(A1,B1)*180./pi,sqrt(A2**2+B2**2), arctan2(A2,B2)*180./pi
     else:
         return A1,B1,A2,B2
+        
+

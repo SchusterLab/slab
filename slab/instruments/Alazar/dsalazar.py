@@ -96,6 +96,7 @@ class AlazarConfig1():
                     ("recordsPerBuffer","Records per Buffer",10),
                     ("recordsPerAcquisition","Total Records",10),
                     ("bufferCount","Number of Buffers",1),
+                    ("buffers_per_merge", "Buffers per Merge", 100),
                     ("clock_source","Clock Source", ["internal",("internal","internal"),("reference","reference"),("60 MHz","60 MHz"),("1 GHz","1 GHz")]),
                     ("clock_edge","Clock Edge", ["rising",("rising","Rising"),("falling","Falling")]),
                     ("sample_rate", "Sample Rate", [1000,(1,"1 kHz"),(2, "2 kHz"),(5,"5 kHz"),(10,"10 kHz"),(20,"20 kHz"),(1000,"1 MHz"),(2000,"2 MHz"),(5000, "5 MHz"),(10000,"10 MHz"),(20000,"20 MHz"),(50000, "50 MHz"),(100000, "100 MHz"),(250000,"250 MHz"),(500000,"500 MHz"),(1000000,"1 GHz")]),
@@ -141,6 +142,35 @@ class AlazarConfig1():
         for field_name in type(self)._form_fields_:
             d[field_name]=self.__getattribute__(field_name)
         return d       
+
+    @property
+    def samples_per_buffer(self):
+        print 'A'
+        return self.samplesPerRecord * self.recordsPerBuffer
+    samplesPerBuffer = samples_per_buffer
+    
+    @property
+    def buffers_per_acquisition(self):
+        #assert (self.records_per_acquisition % self.records_per_buffer) == 0
+        return int(self.recordsPerAcquisition / self.recordsPerBuffer)
+    buffersPerAcquisition = buffers_per_acquisition
+
+    @property
+    def buffers_per_worker(self):
+       # assert (self.records_per_acquisition % self.records_per_buffer) == 0
+        return self.buffers_per_acquisition / self.bufferCount
+    buffersPerWorker = buffers_per_worker
+
+    bytesPerSample = bytes_per_sample = 1
+    @property
+    def bytes_per_record(self):
+        return self.bytes_per_sample * self.samplesPerRecord
+    bytesPerRecord = bytes_per_record
+
+    @property
+    def bytes_per_buffer(self):
+        return self.bytesPerRecord * self.recordsPerBuffer
+    bytesPerBuffer = bytes_per_buffer
 
 class AlazarConfig():
     _fields_ = [ 'samplesPerRecord',
@@ -220,6 +250,7 @@ class AlazarConfig():
         self.ch2_coupling = str(widget.ch2_couplingComboBox.currentText())
         self.ch2_range = AlazarConstants.input_range_txt[str(widget.ch2_rangeComboBox.currentText())]
         self.ch2_filter = widget.ch2_filteredCheckBox.isChecked()
+        
         
 def round_samples(x, base=64):
     return int(base * round(float(x)/base))
@@ -356,6 +387,8 @@ class Alazar():
             op = AlazarConstants.single_op
         else:
             op = AlazarConstants.trigger_operation[self.config.trigger_operation]
+            
+        print 'Z', op,  AlazarConstants.trigger_engine_1, AlazarConstants.trigger_source[self.config.trigger_source1], AlazarConstants.trigger_edge[self.config.trigger_edge1], U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255)),  AlazarConstants.trigger_engine_2, AlazarConstants.trigger_source[self.config.trigger_source2], AlazarConstants.trigger_edge[self.config.trigger_edge2], U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255))
 
         ret = self.Az.AlazarSetTriggerOperation(self.handle, op,
                 AlazarConstants.trigger_engine_1, AlazarConstants.trigger_source[self.config.trigger_source1], AlazarConstants.trigger_edge[self.config.trigger_edge1], U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255)),
@@ -447,13 +480,16 @@ class Alazar():
 
         self.config.bytesPerBuffer=(self.config.samplesPerRecord * self.config.recordsPerBuffer * self.config.channelCount)        
         self.bufs=[]
+        #self.bufpts = []
         buftype=U8 * self.config.bytesPerBuffer
         for i in range(self.config.bufferCount):
-            self.bufs.append(buftype())            
+            self.bufs.append(buftype())           
+            #self.bufpts.append(C.cast(self.bufs[i], C.POINTER(U8)))
             for j in range(self.config.bytesPerBuffer):
                 self.bufs[i][j]=U8(0)
             #ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[i],U32(self.config.bytesPerBuffer))
         if DEBUGALAZAR: print "Posted buffers: ", ret_to_str(ret,self.Az)
+        
         self.arrs=[np.ctypeslib.as_array(b) for b in self.bufs]
 #        for a in self.arrs:
 #            for i in range(a.__len__()):
@@ -522,12 +558,14 @@ class Alazar():
             buf_idx = buffersCompleted % self.config.bufferCount
             buffersCompleted+=1           
             ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+            #print buf_idx
+            #print np.shape(self.arrs[buf_idx])
             if ret != 512:
                 print "Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
                 break       
             for n in range(self.config.recordsPerBuffer):
-                if self.config.ch1_enabled: avg_data1+=self.arrs[buf_idx][n*self.config.samplesPerRecord:(n+1)*self.config.samplesPerRecord]
+                if self.config.ch1_enabled: avg_data1+=self.arrs[buf_idx][(n*self.config.samplesPerRecord):((n+1)*self.config.samplesPerRecord)]
                 if self.config.ch2_enabled: avg_data2+=self.arrs[buf_idx][(n+self.config.recordsPerBuffer)*self.config.samplesPerRecord:(n+self.config.recordsPerBuffer+1)*self.config.samplesPerRecord]
             #plot(self.arrs[buf_idx])
             ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
@@ -553,7 +591,130 @@ class Alazar():
             return tpts[excise[0]:excise[1]],avg_data1[excise[0]:excise[1]],avg_data2[excise[0]:excise[1]]
         else:
             return tpts,avg_data1,avg_data2
+    
+    #this takes single shot data
+    def acquire_singleshot_data(self, IFreq, excise=None):
+        self.post_buffers()
+        single_data1=np.zeros((2,self.config.recordsPerAcquisition),dtype=float)
+        single_data2=np.zeros((2,self.config.recordsPerAcquisition),dtype=float)
+        num_pts = self.config.samplesPerRecord
+        tpts=np.arange(num_pts)/float(self.config.sample_rate*1e3)        
+        cosdata = cos(2*pi*IFreq*tpts)
+        sindata = sin(2*pi*IFreq*tpts)
+        single_record1 = 0*tpts
+        single_record2 = 0*tpts
+        recordsCompleted=0
+        buffersCompleted=0
+        buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
+        ret = self.Az.AlazarStartCapture(self.handle)
+        
+        if DEBUGALAZAR: 
+            print "Start Capture: ", ret_to_str(ret,self.Az)
+        if DEBUGALAZAR: 
+            print "Buffers per Acquisition: ", buffersPerAcquisition
             
+        while (buffersCompleted < buffersPerAcquisition):
+            if DEBUGALAZAR: 
+                print "Waiting for buffer ", buffersCompleted
+                
+            buf_idx = buffersCompleted % self.config.bufferCount
+            buffersCompleted+=1           
+            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+            if ret != 512:
+                print "Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
+                ret = self.Az.AlazarAbortAsyncRead(self.handle)
+                break       
+            for n in range(self.config.recordsPerBuffer):
+                if self.config.ch1_enabled: 
+                    single_record1=self.arrs[buf_idx][n*self.config.samplesPerRecord:(n+1)*self.config.samplesPerRecord]
+                    single_record1 = (single_record1-128.)*(self.config.ch1_range/128.)                 
+                    single_data1[0,recordsCompleted] = (2*sum(cosdata*single_record1)/num_pts)
+                    single_data1[1,recordsCompleted] = (2*sum(sindata*single_record1)/num_pts)**2
+                if self.config.ch2_enabled: 
+                    single_record2=self.arrs[buf_idx][(n+self.config.recordsPerBuffer)*self.config.samplesPerRecord:(n+self.config.recordsPerBuffer+1)*self.config.samplesPerRecord]
+                    single_record2 = (single_record2-128)*(self.config.ch2_range/128.)                    
+                    single_data2[0,recordsCompleted] = (2*sum(cosdata*single_record2)/num_pts)
+                    single_data2[1,recordsCompleted] = (2*sum(sindata*single_record2)/num_pts)
+                recordsCompleted+=1
+            #plot(self.arrs[buf_idx])
+            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+            if ret != 512:
+                print "Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az)            
+                ret = self.Az.AlazarAbortAsyncRead(self.handle)
+                break       
+            if DEBUGALAZAR: print "PostAsyncBuffer: ", ret_to_str(ret,self.Az) 
+        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+        
+        ret = self.Az.AlazarAbortAsyncRead(self.handle)
+        if not self.config.ch2_enabled: single_data2=np.zeros(self.config.samplesPerRecord,dtype=float)
+        
+        if DEBUGALAZAR: print "Acquisition finished."
+        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+        ret = self.Az.AlazarAbortAsyncRead(self.handle)
+        if excise is not None:
+            return tpts[excise[0]:excise[1]],single_data1[excise[0]:excise[1]],single_data2[excise[0]:excise[1]]
+        else:
+            return tpts,single_data1,single_data2,single_record1
+            
+    #this takes single shot data and does not process it!
+    #Exports the entire 2D array so don't take to many points!
+    def acquire_singleshot_data2(self, excise=None):
+        self.post_buffers()
+        single_data1=np.zeros((self.config.recordsPerAcquisition,self.config.samplesPerRecord),dtype=float)
+        single_data2=np.zeros((self.config.recordsPerAcquisition,self.config.samplesPerRecord),dtype=float)
+        tpts=np.arange(self.config.samplesPerRecord)/float(self.config.sample_rate*1e3)        
+        recordsCompleted=0
+        buffersCompleted=0
+        buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
+        ret = self.Az.AlazarStartCapture(self.handle)
+        
+        if DEBUGALAZAR: 
+            print "Start Capture: ", ret_to_str(ret,self.Az)
+        if DEBUGALAZAR: 
+            print "Buffers per Acquisition: ", buffersPerAcquisition
+            
+        while (buffersCompleted < buffersPerAcquisition):
+            if DEBUGALAZAR: 
+                print "Waiting for buffer ", buffersCompleted
+                
+            buf_idx = buffersCompleted % self.config.bufferCount
+            buffersCompleted+=1           
+            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+            if ret != 512:
+                print "Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
+                ret = self.Az.AlazarAbortAsyncRead(self.handle)
+                break       
+            for n in range(self.config.recordsPerBuffer):
+                if self.config.ch1_enabled: 
+                    single_data1[recordsCompleted]=self.arrs[buf_idx][n*self.config.samplesPerRecord:(n+1)*self.config.samplesPerRecord]
+                    
+                if self.config.ch2_enabled: 
+                    single_data2[recordsCompleted]=self.arrs[buf_idx][(n+self.config.recordsPerBuffer)*self.config.samplesPerRecord:(n+self.config.recordsPerBuffer+1)*self.config.samplesPerRecord]
+                    
+                recordsCompleted+=1
+            #plot(self.arrs[buf_idx])
+            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+            if ret != 512:
+                print "Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az)            
+                ret = self.Az.AlazarAbortAsyncRead(self.handle)
+                break       
+            if DEBUGALAZAR: print "PostAsyncBuffer: ", ret_to_str(ret,self.Az) 
+        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+        
+        ret = self.Az.AlazarAbortAsyncRead(self.handle)
+        
+        single_data1-= 128.
+        single_data2-= 128.
+        single_data1*=(self.config.ch1_range/128.)
+        single_data2*=(self.config.ch2_range/128.)
+        if DEBUGALAZAR: print "Acquisition finished."
+        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+        ret = self.Az.AlazarAbortAsyncRead(self.handle)
+        if excise is not None:
+            return tpts[excise[0]:excise[1]],single_data1[excise[0]:excise[1]],single_data2[excise[0]:excise[1]]
+        else:
+            return tpts,single_data1,single_data2
+        
     #This takes the phase from channel 2 and compensates the channel 1 signal        
     def acquire_phase_compensated_quadratures(self, IFreq, excise=None):
         assert self.config.ch2_enabled
@@ -758,6 +919,197 @@ class Alazar():
             ch1_data = buf[n*samplesPerRecord:(n+1)*samplesPerRecord]
             ch2_data = buf[(n+recordsPerBuffer)*samplesPerRecord:(n+recordsPerBuffer+1)*samplesPerRecord]
             yield ch1_data, ch2_data
+            
+    def assert_az(self, retCode, buffers_acquired, name):
+        self.Az.AlazarErrorToText.restype = C.c_char_p
+        if retCode != 512:
+            raise AlazarException("::".join(map(str, (name, buffers_acquired,
+                                                      retCode, self.Az.AlazarErrorToText(U32(retCode))))))
+
+    def __getattr__(self, item):
+        try:
+            return getattr(self.config, item)
+        except AttributeError:
+            print self.config.samples_per_buffer, 'Z'
+            raise AttributeError('Neither Alazar nor AlazarConfig contains item ' + item)
+
+    def acquire_parallel(self, worker_cls, worker_args, result_shape, plot=False):
+        """
+        :param worker: Function which the subordinate threads execute as their target
+        :param proc_fun: Function used by the subordinate threads to process their buffers
+        :param result_shape: Shape of the buffer which is the result of the entire acquisition.
+        """
+        from multiprocessing import Array, Value, Event
+        from slab.plotting import ScriptPlotter
+        import time
+
+        #acquire_buffer_time = self.samples_per_buffer / (self.samples_per_second)
+        #print 'Acquire buffer time %.2e' % acquire_buffer_time
+        #print 'Inter-buffer time %.2e' % self.seconds_per_buffer
+        #print 'Duty Cycle', acquire_buffer_time / self.seconds_per_buffer
+
+        try:
+            # Initialize buffers
+            buffers = [Array(U8, self.bytes_per_buffer) for _ in range(self.bufferCount)]
+            for b in buffers:
+                ret = self.Az.AlazarPostAsyncBuffer(self.handle, b.get_obj(), U32(self.bytes_per_buffer))
+                self.assert_az(ret, 0, 'Initial Post Buffer')
+
+            res_buffer = Array(C.c_longdouble, result_shape)
+
+            # Initialize threads
+            bufs_merged = Value(U32, 1)
+            buf_ready_events = [Event() for _ in range(self.bufferCount)]
+            buf_post_events = [Event() for _ in range(self.bufferCount)]
+            workers = [worker_cls(*(worker_args + (self.config, b, bre, bpe, res_buffer, bufs_merged)))
+                       for b, bre, bpe in zip(buffers, buf_ready_events, buf_post_events)]
+
+            for w in workers:
+                w.start()
+            time.sleep(1)
+
+            import atexit
+            atexit.register(lambda: [w.terminate() for w in workers])
+
+
+            # Initialize things used during capture
+            if plot:
+                plotter = ScriptPlotter()
+                plotter.init_plot('Data', rank=1, accum=False)
+            buffers_acquired, buffers_completed, plot_count = 0, 0, 0
+            start_time = time.time()
+
+            # Begin capture
+            ret = self.Az.AlazarStartCapture(self.handle)
+            self.assert_az(ret, 0, "Start Capture")
+            unready_count = 0
+            while buffers_completed < self.buffers_per_acquisition:
+
+                # Post all completed buffers
+                while buf_post_events[buffers_completed % self.bufferCount].is_set():
+                    buf_post_events[buffers_completed % self.bufferCount].clear()
+                    buf = buffers[buffers_completed % self.bufferCount]
+                    with buf.get_lock():
+                        ret = self.Az.AlazarPostAsyncBuffer(self.handle, buf.get_obj(), U32(self.bytes_per_buffer))
+                        self.assert_az(ret, buffers_acquired, 'Post Buffer')
+                    buffers_completed += 1
+
+                    # Current buffer rotates in a ring
+                buf_idx = buffers_acquired % self.bufferCount
+                buf = buffers[buf_idx]
+
+                # Pull data to buffer
+                with buf.get_lock():
+                    ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle, buf.get_obj(), U32(self.timeout))
+                    if ret == 573:
+                        unready_count += 1
+                        continue # BufferNotReady, go back and try to post some buffers.
+                    else:
+                        self.assert_az(ret, buffers_acquired, 'Wait Buffer Complete')
+
+                buffers_acquired += 1
+
+                # Tell worker thread to begin processing
+                buf_ready_events[buf_idx].set()
+
+                # If a second has elapsed, replot the avg_buffer
+                seconds_per_plot = 1.
+                if (time.time() - start_time) / seconds_per_plot > plot_count:
+                    if plot:
+                        with res_buffer.get_lock():
+                            plotter.msg(buffers_acquired, buffers_completed, bufs_merged.value)
+                            plotter.plot(np.frombuffer(res_buffer.get_obj()), 'Data')
+                        plot_count += 1
+                    else:
+                        print buffers_acquired, buffers_completed
+                        plot_count += 1
+        finally:
+            pass
+        
+#            self.Az.AlazarAbortAsyncRead(self.handle)
+#            if buffers_completed:
+#                final_time = time.time()
+#                print 'Unready Count', unready_count
+#                total_time = final_time - start_time
+#                print 'Total time', total_time
+#                actual_time_per_buffer = total_time / buffers_completed
+#                print 'Time per buffer %.2e' % actual_time_per_buffer
+#                errf = lambda a, b: abs(a - b) / min(a, b)
+#                print 'Perceived overhead %.1f%%' % (errf(actual_time_per_buffer, seconds_per_buffer) * 100)
+#            else:
+#                print 'No buffers completed'
+
+        res = np.frombuffer(res_buffer.get_obj())
+        return res
+
+    def acquire_average_parallel(self, averages, **kwargs):
+        return self.acquire_parallel(AverageWorker, (), self.samples_per_buffer)
+
+    def acquire_homodyne_single_shot(self, frequency):
+        sin_arr = np.sin(frequency * np.linspace(0, self.seconds_per_record, self.samples_per_record))
+        cos_arr = np.cos(frequency * np.linspace(0, self.seconds_per_record, self.samples_per_record))
+        records_per_buffer = self.records_per_buffer
+        proc_fun = lambda buf_arr: [(np.sum(sin_arr * arr), np.sum(cos_arr * arr)) for arr in np.split(buf_arr, records_per_buffer)]
+        self.acquire_parallel(SingleShotWorker, (proc_fun,), (self.records_per_acquisition, 2))
+
+from multiprocessing import Process
+
+class Worker(Process):
+    def __init__(self, az_config, buf, buf_ready_event, buf_post_event, res_buffer, buffers_merged):
+        Process.__init__(self)
+        self.az_config = az_config
+        self.buf = buf
+        self.buf_ready_event = buf_ready_event
+        self.buf_post_event = buf_post_event
+        self.res_buffer = res_buffer
+        self.buffers_merged = buffers_merged
+
+class AverageWorker(Worker):
+    def run(self):
+        arr = np.frombuffer(self.buf.get_obj(), U8)
+        avg_buffer_arr = np.frombuffer(self.res_buffer.get_obj(), C.c_longdouble)
+        sum_buffer = np.zeros(self.az_config.bytes_per_buffer, np.uint32)
+        my_buffers_completed = 0
+        for _ in range(self.az_config.buffers_per_worker):
+            self.buf_ready_event.wait()
+            self.buf_ready_event.clear()
+            sum_buffer += arr
+            self.buf_post_event.set()
+            my_buffers_completed += 1
+
+            if my_buffers_completed % self.az_config.buffers_per_merge == 0:
+                with self.avg_buffer.get_lock():
+                    n = self.buffers_merged.value
+                    avg_buffer_arr *= (n - 1.) / n
+                    avg_buffer_arr += sum_buffer / (n * self.az_config.buffers_per_merge)
+                    self.buffers_merged.value += 1
+                sum_buffer.fill(0)
+
+class SingleShotWorker(Worker):
+    def __init__(self, proc_fun, *args):
+        self.proc_fun = proc_fun
+        Worker.__init__(self, *args)
+
+    def run(self):
+        arr = np.frombuffer(self.buf.get_obj(), U8)
+        results = []
+        my_buffers_completed = 0
+        iterations = self.az_config.buffers_per_worker
+        for _ in range(iterations):
+            self.buf_ready_event.wait()
+            self.buf_ready_event.clear()
+            results.extend(self.proc_fun(arr))
+            self.buf_post_event.set()
+            my_buffers_completed += 1
+
+        with self.res_buffer.get_lock():
+            n = self.buffers_merged.value
+            print iterations, len(results), n, len(self.res_buffer)
+            self.res_buffer[(n - 1) * iterations:n * iterations] = np.array(results)
+            self.buffers_merged.value += 1
+
+
+
 #    def acquire_cavity_ringdown_data_fftw(self,excise=None,frequency_window=None):
 #        if self.config.ch2_enabled: 
 #            raise ValueError("Channel 2 must not be enabled in cavity ringdown mode!")
@@ -842,7 +1194,8 @@ if __name__ == "__main__":
 
     card=Alazar(ac)    
     card.configure()
-    card.acquire_data()
+    res = card.acquire_avg_data()
+    print res
 
     print "Buffer bytes: ", card.config.bytesPerBuffer
     print "Buffer length: ",card.arrs[0].__len__()

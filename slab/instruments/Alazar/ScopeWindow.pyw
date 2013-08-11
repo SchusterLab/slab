@@ -102,7 +102,8 @@ class ScopeWindow(QMainWindow, Ui_ScopeWindow):
         if self.PSDCheckBox.isChecked():            
             self.ch1_pts,self.x_pts=mlab.psd(self.ch1_pts,NFFT=len(self.ch1_pts),Fs=fs)
             self.ch2_pts,self.x_pts=mlab.psd(self.ch2_pts,NFFT=len(self.ch2_pts),Fs=fs)
-
+            self.ch1_pts=10.*np.log10(self.ch1_pts)
+            self.ch2_pts=10.*np.log10(self.ch2_pts)
         self.update_plots()
         if self.autoscaleCheckBox.isChecked():
             self.plot.do_autoscale()
