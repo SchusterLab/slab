@@ -92,7 +92,7 @@ class YokogawaGS200(SocketInstrument):
     
     def get_id(self):
         """Get Instrument ID String"""
-        return self.query('*IDN?')
+        return self.query('*IDN?').strip()
     
     def set_output(self,state=True):
         """Set output mode default state=True"""
@@ -145,6 +145,15 @@ class YokogawaGS200(SocketInstrument):
             return self.get_level()
         else:
             raise Exception("ERROR: Tried to set Yoko voltage in current mode")
+    def set_measure_state(self,state=True):
+        """Set measurement state of instrument"""
+        if state:   self.write(':SENSE:STATE ON')
+        else:       self.write(':SENSE:STATE OFF')
+        
+    def get_measure(self):
+        """Get measured value"""
+        return float(self.query(':MEASURE?').strip())
+        
     
 #class SRS928(Instrument):
 #    
@@ -157,10 +166,22 @@ class YokogawaGS200(SocketInstrument):
 #    def write(self,s):
 #        self.mainframe.write('')
         
+def test_yoko(yoko=None):
+    if yoko is None:
+        yoko=YokogawaGS200(address='10.120.35.219')
         
+    print yoko.get_id()
+    yoko.set_mode('VOLT')
+    print yoko.get_mode()
+    print yoko.get_volt()
+    yoko.set_measure_state()
+    print yoko.get_measure()
+    
 
         
 if __name__=="__main__":
-    srs=SRS900(address="COM17")
-    print srs.get_id()
-    srs.set_volt(.5,2)
+    #srs=SRS900(address="COM17")
+    #print srs.get_id()
+    #srs.set_volt(.5,2)
+    yoko=YokogawaGS200(address='10.120.35.219')
+    test_yoko(yoko)
