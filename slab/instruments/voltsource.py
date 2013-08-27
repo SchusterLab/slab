@@ -82,13 +82,10 @@ class SRS900(SerialInstrument,VisaInstrument):
         return bool(int(self.query('EXON?',channel)))
 
 class YokogawaGS200(SocketInstrument):
-    
+
+    default_port=7655    
     def __init__(self,name='YOKO',address='', enabled=True,timeout=10, recv_length=1024):
-        #SocketInstrument.__init__(self,name,address,5025,enabled,timeout,recv_length)        
-        if ':' in address:
-            SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
-        else:
-            SocketInstrument.__init__(self,name,address+':'+str(7655),enabled,timeout,recv_length)
+        SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
     
     def get_id(self):
         """Get Instrument ID String"""

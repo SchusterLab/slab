@@ -13,9 +13,8 @@ import os.path
 class E5071(SocketInstrument):
 
     MAXSWEEPPTS=1601    
-    
-    def __init__(self,name="E5071",address='nwa.circuitqed.com:5025',enabled=True):
-        if ':' not in address: address+=':5025'
+    default_port=5025
+    def __init__(self,name="E5071",address=None,enabled=True):
         SocketInstrument.__init__(self,name,address,enabled=enabled,timeout=10,recv_length=2**20)
         self.query_sleep=0.05
 

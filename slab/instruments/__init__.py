@@ -5,7 +5,7 @@ try: from InstrumentManagerWindow import InstrumentManagerWindow
 except: print "Could not load InstrumentManagerWindow"
 
 from nwa import E5071
-from rfgenerators import E8257D
+from rfgenerators import E8257D,BNC845
 from cryostat import Triton
 from awg import *
 from spec_analyzer.spectrum_analyzer import *

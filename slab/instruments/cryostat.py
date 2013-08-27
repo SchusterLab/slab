@@ -8,9 +8,9 @@ from slab.instruments import SocketInstrument
 import re
 
 class Triton(SocketInstrument):
-    
+    default_port=22518
     def __init__(self,name="Triton",address='slab-fridge1.uchicago.edu',enabled=True,timeout=10):
-        if ':' not in address: address+=':22518'        
+        #if ':' not in address: address+=':22518'        
         SocketInstrument.__init__(self,name,address,enabled,timeout)
         #self.query_sleep=0.1
         self.query_sleep=0.0
