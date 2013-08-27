@@ -50,7 +50,7 @@ def test_gui_elements(interactive=True):
     c.set_data(('C', 'D'), np.outer(x, x))
     c.gui_method('_test_edit_widget', ('A',))
     c.gui_method('_test_edit_widget', ('B',))
-    c.gui_method('_test_show_hide', ('C', 'D'))
+    #c.gui_method('_test_show_hide', ('C', 'D'))
     c.gui_method('_test_multiplot', [('A',), ('B',)])
     c.gui_method('_test_multiplot', [('A',), ('B',)], parametric=True)
     c.set_data(('A',), x*np.cos(x)) # Now test update of multiplots

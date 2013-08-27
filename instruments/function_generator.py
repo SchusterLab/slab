@@ -9,12 +9,9 @@ import time
 
 class BNCAWG(SocketInstrument):
     'Interface to the BNC function generator'
-    def __init__(self,name='BNCAWG',address='', enabled=True,timeout=0.01, recv_length=1024):
-        #SocketInstrument.__init__(self,name,address,5025,enabled,timeout,recv_length)        
-        if ':' in address:
-            SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
-        else:
-            SocketInstrument.__init__(self,name,address+':'+str(5025),enabled,timeout,recv_length)
+    default_port=5025
+    def __init__(self,name='BNCAWG',address='',enabled=True,timeout=0.01, recv_length=1024):
+        SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
     
     def get_id(self):
         """Get Instrument ID String"""

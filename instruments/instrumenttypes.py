@@ -119,15 +119,21 @@ class TelnetInstrument(Instrument):
 #        if self.enabled: self.tn.close()
         
 class SocketInstrument(Instrument):
+    default_port=23
     def __init__(self,name,address='',enabled=True,timeout=10, recv_length=1024):
         Instrument.__init__(self,name,address,enabled)
         self.protocol='socket'
         self.recv_length = recv_length       
         if len(address.split(':')) >1:
             self.port=int(address.split(':')[1])
+            self.ip=address.split(':')[0]
+        else: 
+            self.ip=address            
+            self.port=self.default_port
         if self.enabled:
             self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-            self.socket.connect((address.split(':')[0],self.port))
+            #print self.ip, self.port
+            self.socket.connect((self.ip,self.port))
 
     def set_timeout(self,timeout):
         Instrument.set_timeout(self,timeout)
