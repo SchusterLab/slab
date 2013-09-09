@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt2
 import scipy
 import scipy.fftpack
 import cmath
-plt=plt1
+plt=plt2
 
 from scipy import optimize
 

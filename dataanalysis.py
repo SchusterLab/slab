@@ -15,6 +15,8 @@ import dateutil
 import time
 #import inspect
 from datamanagement import get_script
+import matplotlib
+import matplotlib.pyplot as plt
 ###################################################
 
 #### General
@@ -24,6 +26,60 @@ def dBm_to_W(dBm):
     return 10**(dBm/10.)
 
 dBmtoW=dBm_to_W
+
+######################## Plotting helpers
+
+figureStyles=[
+    {'name':'default','width':8,'height':8./1.61,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True,'dpi':72,'transparent':False},
+    {'name':'prl1','width':3.4,'height':3.4,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True,'dpi':300},
+    {'name':'prl2','width':7,'height':3.4,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True,'dpi':300},
+    {'name':'small','width':5,'height':5./1.61,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True},
+    {'name':'medium','width':8,'height':8./1.61,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True},
+    {'name':'big','width':16,'height':16./1.61,'title_size':22,'label_size':16,'tick_size':14,'wspace':0.5,'tight':True},
+    {'name':'ppt','width':16,'height':16./1.61,'title_size':26,'label_size':18,'tick_size':16,'wspace':0.5,'tight':True}
+    ]
+figureStyleDict={}
+for style in figureStyles:
+    figureStyleDict[style['name']]=style
+
+    
+def get_figure_style(style=None):
+    """Returns profile of figure style with name _style_, if style=None returns the whole style dictionary"""
+    if style is None:
+        return figureStyleDict
+    else:
+        return figureStyleDict[style]
+    
+def figure_style(style=None,**kwargs):
+    """
+        Style figure (change dimensions, fontsizes etc, according to _style_ profile:
+        Valid profiles can be located in figureStyleDict and include: 'default', 'big', 'small', 'prl1','prl2', 'ppt'
+    """
+    matplotlib.rc('font',**{'family':'sans-serif'})
+    s=figureStyleDict['default']
+    if style is not None:
+        s.update(figureStyleDict[style])
+    s.update(kwargs)
+    f=plt.gcf()
+    ax=plt.gca()
+    plt.tight_layout()
+    f.set_figwidth(s['width'])
+    f.set_figheight(s['height'])
+    f.subplots_adjust(wspace=s['wspace'])
+    for ax in f.axes:
+        ax.title.set_fontsize(s['title_size'])
+        for item in [ax.xaxis.label, ax.yaxis.label]:
+            item.set_fontsize(s['label_size'])
+        for item in (ax.get_xticklabels()+ ax.get_yticklabels()):
+            item.set_fontsize(s['tick_size'])
+            
+def save_styled_fig(fname,style=None,**kwargs):
+    s=figureStyleDict['default']
+    if style is not None: 
+        s.update(figureStyleDict[style])
+    s.update(kwargs)
+    figure_style(style,**kwargs)
+    plt.savefig(fname, dpi=s['dpi'],transparent=s['transparent'],bbox_inches='tight')    
 
 ######################## File handling
 
