@@ -26,10 +26,41 @@ CFLT = C.c_float
 
 try:
     #LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
-    LMS103dllpath=r'S:\_Software and Drivers\Labbrick\ANSI SDK\vnx_fmsynth.dll'
-    LABBRICKDLL=C.CDLL(LMS103dllpath)
+    LMS103dllpath=r'C:\_Lib\python\slab\instruments\labbrick\vnx_fmsynth.dll'
+    LMSDLL=C.CDLL(LMS103dllpath)
 except:
-    print "Warning could not load labbrick dll"
+    print "Warning could not load LMS labbrick dll"
+
+try:
+    #LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
+    LPSdllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_dps.dll'
+    LPSDLL=C.CDLL(LPSdllpath)
+except:
+    print "Warning could not load LPS labbrick dll"
+
+
+def LPS_get_device_info():
+    """
+    Returns a dictionary of device information
+
+    :returns: {'model':Labbrick model, 'serial':Serial number, 'devid':Device ID}
+    """
+    dll=LPSDLL
+    dll.fnLPS_SetTestMode(U8(int(False)))
+    device_info_array_type = U32 * int(dll.fnLPS_GetNumDevices(None))
+    a=device_info_array_type()
+    dll.fnLPS_GetDevInfo(a)
+    devids=np.ctypeslib.as_array(a)
+    devinfos=[]
+    for devid in devids:
+        model=C.create_string_buffer(8194)
+        dll.fnLPS_GetModelName(U32(devid),model)
+        serial=int(dll.fnLPS_GetSerialNumber(U32(devid)))
+#            devstr="Device: %d\tModel: %s\tSerial: %d" % (devid,model,serial)
+#            print devstr
+        devinfos.append({"model":model,"serial":serial,"devid":U32(devid)})
+    return devinfos
+
 
 def LMS_get_device_info():
     """
@@ -37,7 +68,7 @@ def LMS_get_device_info():
 
     :returns: {'model':Labbrick model, 'serial':Serial number, 'devid':Device ID}
     """
-    dll=LABBRICKDLL
+    dll=LMSDLL
     dll.fnLMS_SetTestMode(U8(int(False)))
     device_info_array_type = U32 * int(dll.fnLMS_GetNumDevices(None))
     a=device_info_array_type()
@@ -53,12 +84,96 @@ def LMS_get_device_info():
         devinfos.append({"model":model,"serial":serial,"devid":U32(devid)})
     return devinfos
 
+class LPS802(Instrument):
+    'The interface to the Lab Brick Phase shifter'
+    dll=LPSDLL
+
+    def __init__(self,name='LPS802',address=None,enabled=True):
+        Instrument.__init__(self,name,address,enabled=True)
+        self.set_test_mode(False)
+        if address is not None:
+            self.init_by_serial(int(address))
+        else:
+            self.init_by_serial(0)
+        
+    def init_by_serial(self,address):
+        self.devinfo=self.get_info_by_serial(address)
+        self.devid=self.devinfo['devid']
+        if self.devid!= -1:
+            self.init_device()
+       
+    def get_info_by_serial(self,serial):
+        serial=int(serial)
+        devinfos=LPS_get_device_info()
+        for devinfo in devinfos:
+            #print devinfo
+            if devinfo['serial']==serial:
+                return devinfo
+        print "Error Labbrick serial # %d not found! returning first device found" % serial
+        print devinfos
+        return None
+
+    def get_num_devices(self):
+        return int(self.dll.fnLPS_GetNumDevices(None))
+  
+    def get_model_name(self):
+        model_name=C.create_string_buffer(8194)
+        self.dll.fnLPS_GetModelName(self.devid,model_name)
+        return model_name.value
+    
+    def set_test_mode(self,mode=False):
+        self.dll.fnLPS_SetTestMode(U8(int(mode)))
+        
+    def close_device(self):
+        self.dll.fnLPS_CloseDevice(self.devid)
+        
+    def init_device(self):   
+        self.dll.fnLPS_InitDevice(self.devid)
+        
+    def get_id(self):
+        return "Labbrick Phase Shifter model: %s serial #: %d" % (self.get_model_name(),self.devinfo['serial'])
+
+    def persist_settings(self):
+        self.dll.fnLPS_SaveSettings(self.devid)
+        
+    def get_min_working_frequency(self):
+        return float(self.dll.fnLPS_GetMinWorkingFrequency(self.devid))*1e5
+
+    def get_max_working_frequency(self):
+        return float(self.dll.fnLPS_GetMaxWorkingFrequency(self.devid))*1e5
+
+    def get_working_frequency(self):
+        return float(self.dll.fnLPS_GetWorkingFrequency(self.devid))*1e5
+        
+    def set_working_frequency(self,frequency):
+        self.dll.fnLPS_SetWorkingFrequency(self.devid,U32(int(frequency/1e5)))
+        
+    def get_phase(self):
+        return float(self.dll.fnLPS_GetPhaseAngle(self.devid))
+        
+    def set_phase(self,angle,frequency=None):
+        if frequency is not None:
+            self.set_working_frequency(frequency)
+        self.dll.fnLPS_SetPhaseAngle(self.devid,U32(int(angle)))
+        
+    def get_ramp_parameters(self):
+        rp={}
+        rp['start']=float(self.dll.fnLPS_GetRampStart(self.devid))
+        rp['stop']=float(self.dll.fnLPS_GetRampEnd(self.devid))
+        rp['dwell']=float(self.dll.fnLPS_GetDwellTime(self.devid)) /1000.
+        rp['step']=float(self.dll.fnLPS_GetPhaseAngleStep(self.devid))
+        rp['dwell2']=float(self.dll.fnLPS_GetDwellTimeTwo(self.devid)) /1000.
+        rp['step2']=float(self.dll.fnLPS_GetPhaseAngleStepTwo(self.devid))
+        rp['hold']=float(self.dll.fnLPS_GetHoldTime(self.devid)) /1000.
+        rp['idle']=float(self.dll.fnLPS_GetIdleTime(self.devid)) /1000.
+        return rp
+              
 class LMS103(Instrument):
     'The interface to the Lab Brick signal generator'
     def __init__(self,name="Labbrick",address=None,enabled=True):
         Instrument.__init__(self,name,address,enabled=True)
         #self.dll=C.CDLL(LMS103dllpath)
-        self.dll=LABBRICKDLL
+        self.dll=LMSDLL
         self.set_test_mode(False)
         if address is not None:
             self.init_by_serial(int(address))
@@ -249,6 +364,18 @@ if __name__=="__main__":
     #window = LabbrickWindow(address=1200)
     #window.show()
     #sys.exit(app.exec_())
-    
-    rf=LMS103(address=1200)
-    
+    testrf=False
+    if testrf:
+        rf=LMS103(address=1200)
+        
+    testLPS=True
+    if testLPS:
+        lps=LPS802(address=4823)
+        print lps.get_id()
+        print lps.get_min_working_frequency()
+        print lps.get_max_working_frequency()
+        print lps.get_working_frequency()
+        print lps.get_phase()
+        lps.set_phase(lps.get_phase()+10,6e9)
+        print lps.get_phase()
+
