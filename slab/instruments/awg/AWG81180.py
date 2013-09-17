@@ -306,11 +306,11 @@ class AWG81180A(SocketInstrument):
         self.set_clockrate(clockrate)
   
 
-class Tek5014 (SocketInstrument):
-    """Tektronix 5014 Arbitrary Waveform Class"""
-    def __init__(self,name,address='',port=4321,enabled=True,timeout=10, recv_length=1024):
-        
-        pass
+#class Tek5014 (SocketInstrument):
+#    """Tektronix 5014 Arbitrary Waveform Class"""
+#    def __init__(self,name,address='',port=4321,enabled=True,timeout=10, recv_length=1024):
+#        
+#        pass
     
       
 
