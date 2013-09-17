@@ -556,7 +556,7 @@ class Alazar():
         while (buffersCompleted < buffersPerAcquisition):
             if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
             buf_idx = buffersCompleted % self.config.bufferCount
-            buffersCompleted+=1           
+            buffersCompleted+=1      
             ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
             #print buf_idx
             #print np.shape(self.arrs[buf_idx])
