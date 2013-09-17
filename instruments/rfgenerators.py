@@ -98,10 +98,13 @@ class BNC845(SocketInstrument):
     The interface to the BNC845 RF Generator, implemented on top of 
     :py:class:`~slab.instruments.instrumenttypes.SocketInstrument`
     """
-    default_port=5025
+    default_port=18
     def __init__(self,name='BNC845',address='', enabled=True,timeout=10, recv_length=1024):
         #SocketInstrument.__init__(self,name,address,5025,enabled,timeout,recv_length)        
         SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
+        
+        #default set to external reference
+        self.set_reference_source("EXT")
     
     def get_id(self):
         """Get Instrument ID String"""
@@ -131,7 +134,8 @@ class BNC845(SocketInstrument):
     def get_phase(self):
         """Query signal phase in radians"""
         return float(self.query(':PHASE?'))
-        
+    
+    #NOTE: The BNC is a fixed output power...this does nothing!!    
     def set_power(self,power):
         """Set CW power in dBm"""
         self.write(':POWER %f' % power)
@@ -139,11 +143,14 @@ class BNC845(SocketInstrument):
     def get_power(self):
         return float(self.query(':POWER?'))
         
-    def set_reference_source(self,source='INT'):
+    def set_reference_source(self,source='INT',ref_freq=10e6):
         """Sets reference oscillator source: 'INT' or 'EXT'"""
         if source!='INT' and source!='EXT':
             raise Exception('BNC845: Invalid reference oscillator source %s, must be either INT or EXT' % source)
         self.write(':ROSCillator:SOURce %s' % source)
+        #Note that the BNC845 cannot autodetect the reference oscillator frequency
+        if source=='EXT':
+            self.write(':ROSCillator:EXTernal:FREQuency %f' % ref_freq)
         
     def get_reference_source(self):
         """Gets reference oscillator source: 'INT' or 'EXT'"""
