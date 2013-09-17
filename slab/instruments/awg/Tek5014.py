@@ -5,11 +5,12 @@ Created on Fri Aug 23 14:59:04 2013
 @author: Dave
 """
 from slab.instruments import SocketInstrument 
+from numpy import array, floor
     
 class Tek5014 (SocketInstrument):
     """Tektronix 5014 Arbitrary Waveform Class"""
     default_port=4000
-    def __init__(self,name='Tek5014',address='',enabled=True,timeout=10, recv_length=1024):
+    def __init__(self,name='Tek5014',address='',enabled=True,timeout=100, recv_length=1024):
         SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
 #        pass     
 
@@ -17,36 +18,36 @@ class Tek5014 (SocketInstrument):
         return self.query("*IDN?")
 
     def set_amplitude(self,channel,amp):
-        self.write('SOURce:%d:VOLTage:AMPLitude %f' % (channel,amp))
+        self.write('SOURce%d:VOLTage:AMPLitude %f' % (channel,amp))
 
     def get_amplitude(self,channel):
-        return float(self.query('SOURce:%d:VOLTage:AMPLitude?' % (channel)))
+        return float(self.query('SOURce%d:VOLTage:AMPLitude?' % (channel)))
         
     def set_analogHigh(self,channel,value):
-        self.write('SOURce:%d:VOLTage:HIGH %f' % (channel,value))
+        self.write('SOURce%d:VOLTage:HIGH %f' % (channel,value))
 
     def get_analogHigh(self,channel):
-        return float(self.query('SOURce:%d:VOLTage:HIGH?' % (channel)))
+        return float(self.query('SOURce%d:VOLTage:HIGH?' % (channel)))
         
     def set_analogLow(self,channel,value):
-        self.write('SOURce:%d:VOLTage:LOW %f' % (channel,value))
+        self.write('SOURce%d:VOLTage:LOW %f' % (channel,value))
 
     def get_analogLow(self,channel):
-        return float(self.query('SOURce:%d:VOLTage:LOW?' % (channel)))
+        return float(self.query('SOURce%d:VOLTage:LOW?' % (channel)))
         
     def set_DACResolution(self,channel,value):
         checkset= [8,10,14]
         if value not in checkset: raise Exception('Error: invalid DAC Resolution in Tek5014')
-        self.write('SOURce:%d:DAC:RESolution %d' %(channel,value))            
+        self.write('SOURce%d:DAC:RESolution %d' %(channel,value))            
 
     def get_DACResolution(self,channel):
-        return int(self.query('SOURce:%d:DAC:RESolution %d' %(channel,value)))
+        return int(self.query('SOURce%d:DAC:RESolution %d' %(channel)))
         
     def set_delay(self,channel,value):
-        self.write('SOURce:%d:DELay %f' % (channel,value))
+        self.write('SOURce%d:DELay %f' % (channel,value))
         
     def get_delay(self,channel):
-        return float(self.query('SOURce:%d:DELay?' % (channel)))
+        return float(self.query('SOURce%d:DELay?' % (channel)))
         
     def set_enabled(self,channel,state):
         if state in ['on','ON',True,1,'1']: 
@@ -132,10 +133,10 @@ class Tek5014 (SocketInstrument):
         return self.query('AWGControl:SNAMe?')
         
     def save_config(self,name):
-        self.write('AWGContro:SSAVe "%s"' % name)
+        self.write('AWGControl:SSAVe "%s"' % name)
         
     def open_config(self,name):
-        self.write('AWGContro:SREStore "%s"' % name)
+        self.write('AWGControl:SREStore "%s"' % name)
     
     def import_waveform(self,waveform_name,filename,file_type):
         self.write('MMEMory:IMPort "%s", "%s", "%s"' % (waveform_name,filename,file_type))
@@ -145,6 +146,9 @@ class Tek5014 (SocketInstrument):
         
     def reset(self):
         self.write('*RST')
+        
+    def clear_reg_and_queue(self):
+        self.write('*CLS')
         
     def calibrate(self):
         return self.query('*CAL?')
@@ -254,7 +258,7 @@ class Tek5014 (SocketInstrument):
     def get_loop_count(self):
         return int(self.query('SEQuence:ELEMent:LOOP:COUNt?'))
         
-    def set_waveform_name(self,index,value):
+    def set_waveform_name(self,index,name):
         self.write('SEQuence:ELEMent1:WAVeform%d "%s"' % (index,name))
     
     def get_waveform_name(self,index):
@@ -282,29 +286,111 @@ class Tek5014 (SocketInstrument):
         return self.query('SOURce1:ROSCillator:FREQuency?')
         
         
-    def pack_pattern(self,pattern,marker1,marker2):
+    def pack_pattern(self,pattern,marker1,marker2,pattern_high=1.,pattern_low=-1.):
         """AWG 5000 series binary data format
 	     m2 m1 d14 d13 d12 d11 d10 d9 d8 d7 d6 d5 d4 d3 d2 d1
 	  """
-        pattern+=2**15*marker2+2**14*marker1
-        b=bytearray(len(pattern)*2)
-        for ii,p in enumerate(pattern):
-            b[ii*2] = (p & 0xFF)
-            b[ii*2+1] = (p & 0xFF00) >>8
+        
+        #create binary data pattern from waveform given by pattern  
+        lpattern = array((pattern - pattern_low)/(pattern_high-pattern_low)*(2**14-1),dtype=long)
+        
+#        for i in range(len(pattern)):
+#            if pattern[i]<0:
+#                print "<0"
+#                pattern[i] = 0
+#                
+#            if pattern[i]>=2**14:
+#                print "Too large"
+#                pattern[i] = 2**14-1
+   
+        
+        #append marker data
+        lpattern+=2**15*marker2+2**14*marker1
+        b=bytearray(len(lpattern)*2)
+        for ii in xrange(len(lpattern)):
+            b[ii*2] = (lpattern[ii] & 0xFF)
+            b[ii*2+1] = (lpattern[ii] & 0xFF00) >>8
+            
+        return b
+
+    def pack_intpattern(self,pattern,marker1,marker2,pattern_high=1.,pattern_low=-1.):
+        """AWG 5000 series binary data format
+	     m2 m1 d14 d13 d12 d11 d10 d9 d8 d7 d6 d5 d4 d3 d2 d1
+	  """
+        
+        #create binary data pattern from waveform given by pattern  
+        #lpattern = array((pattern - pattern_low)/(pattern_high-pattern_low)*(2**14-1),dtype=long)
+        
+#        for i in range(len(pattern)):
+#            if pattern[i]<0:
+#                print "<0"
+#                pattern[i] = 0
+#                
+#            if pattern[i]>=2**14:
+#                print "Too large"
+#                pattern[i] = 2**14-1
+   
+        
+        #append marker data
+        #lpattern=pattern+2**15*marker2+2**14*marker1
+        lpattern=pattern
+        b=bytearray(len(lpattern)*2)
+        for ii in xrange(len(lpattern)):
+            b[ii*2] = (lpattern[ii] & 0xFF)
+            b[ii*2+1] = (lpattern[ii] & 0xFF00) >>8
+
+            
+        return b
+
+    def get_error_log(self):
+        done=False
+        log=''
+        while not done:
+            s=self.query('SYSTEM:ERR?')
+            done=s[0]=='0'
+            log+=s
+        return log
+
+    def set_waveform_data(self,waveform_name,waveform_data,start_index=0):
+        #waveform_data should be a byte array from pack_pattern
+        #self.write(':WLISt:WAVeform:DATA "%s", %s' % (waveform_name,str(waveform_data)))
+        self.binblockwrite('WLISt:WAVeform:DATA "%s",%d,%d,' % (waveform_name,start_index,len(waveform_data)/2), waveform_data)        
         
     def binblockwrite(self,commandstring, blockarray):
-        #self.write("*OPC?")
-        #response = self.read()
-        blockarraylength=str(blockarray.__len__())
-        blockarraylengthposition=blockarraylength.__len__()
-        cmd = commandstring+" #"+str(blockarraylengthposition)+blockarraylength
+        #response= self.query("*OPC?")
+        #print "BinBlockWrite Response: ", response
+        blockarraylength=str(len(blockarray))
+        blockarraylengthposition=len(blockarraylength)
+        cmd = commandstring+"#"+str(blockarraylengthposition)+blockarraylength
         #print "bbw cmd string: ", cmd
-        #self.instrument.term_chars = ""
-        self.write(str(bytearray(cmd)+blockarray))
+        #self.term_chars = ""
+        #print len(blockarray)
+        print cmd
+        print len(str(blockarray))
+        self.write(cmd+str(blockarray))
         #self.instrument.term_chars = None
         #response= self.query("*OPC?")
         #print "BinBlockWrite Response: ", response
         #return response
+        
+    def pre_experiment(self):
+        
+        self.stop()
+        self.reset()
+        
+    def prep_experiment(self,filename):
+        
+        self.socket.send("AWGControl:SREStore '%s' \n" % (filename))
+        for i in range(1,5):
+            self.set_enabled(i,True)
+            
+    
+    def set_amps_offsets(self,channel_amps=[1.0,1.0,1.0,1.0],channel_offsets = [0.0,0.0,0.0,0.0]):
+    
+         for i in range(1,5):
+            self.set_amplitude(i,channel_amps[i-1])
+            self.set_offset(i,channel_offsets[i-1])
+        
     
 if __name__=="__main__":
     awg=Tek5014(address='192.168.14.136')
