@@ -259,7 +259,7 @@ class ZeroPi(Schrodinger2D):
         self.numypts=numypts
         self.numwells=numwells
         Vxy=self.make_potential()
-        Schrodinger2D.__init__(self,x=self.x,y=self.y,U=Vxy,KEx=8*Ecs,KEy=8*Ecj,sparse_args=sparse_args,solve=solve)
+        Schrodinger2D.__init__(self,x=self.x,y=self.y,U=Vxy,KEx=2*Ecs,KEy=2*Ecj,sparse_args=sparse_args,solve=solve)
 
     def make_potential(self):
         self.x=linspace(-pi/2,3*pi/2,self.numxpts)
