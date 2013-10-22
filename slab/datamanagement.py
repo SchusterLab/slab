@@ -235,18 +235,18 @@ class SlabFile(h5py.File):
     def _ping(self):
         return 'OK'
 
-    #def set_range(self,dataset, xmin, xmax, ymin=None, ymax=None):
-    #    if ymin is not None and ymax is not None:
-    #        dataset.attrs["_axes"] = ((xmin, xmax), (ymin, ymax))
-    #    else:
-    #        dataset.attrs["_axes"] = (xmin, xmax)
+    def set_range(self,dataset, xmin, xmax, ymin=None, ymax=None):
+        if ymin is not None and ymax is not None:
+            dataset.attrs["_axes"] = ((xmin, xmax), (ymin, ymax))
+        else:
+            dataset.attrs["_axes"] = (xmin, xmax)
 
     
-    #def set_labels(self,dataset, x_lab, y_lab, z_lab=None):
-    #    if z_lab is not None:
-    #        dataset.attrs["_axes_labels"] = (x_lab, y_lab, z_lab)
-    #    else:
-    #        dataset.attrs["_axes_labels"] = (x_lab, y_lab)
+    def set_labels(self,dataset, x_lab, y_lab, z_lab=None):
+        if z_lab is not None:
+            dataset.attrs["_axes_labels"] = (x_lab, y_lab, z_lab)
+        else:
+            dataset.attrs["_axes_labels"] = (x_lab, y_lab)
 
     def append_line(self,dataset,line,axis=0):
         if isinstance(dataset, str):
