@@ -33,7 +33,7 @@ def zipsort(xdata,ydata):
     return np.take(xdata,inds),np.take(ydata,inds,axis=0)
     
 """Wraplter around scipy.optimize.leastsq"""
-def fitgeneral(xdata,ydata,fitfunc,fitparams,domain=None,showfit=False,showstartfit=False,label="",mark_data='bo',mark_fit='r-'):
+def fitgeneral(xdata,ydata,fitfunc,fitparams,domain=None,showfit=False,showstartfit=False,showdata=True,label="",mark_data='bo',mark_fit='r-'):
     """Uses optimize.leastsq to fit xdata ,ydata using fitfunc and adjusting fit params"""
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
@@ -46,7 +46,8 @@ def fitgeneral(xdata,ydata,fitfunc,fitparams,domain=None,showfit=False,showstart
     startparams=fitparams # Initial guess for the parameters
     bestfitparams, success = optimize.leastsq(errfunc, startparams[:], args=(fitdatax,fitdatay))
     if showfit:
-        plt.plot(fitdatax,fitdatay,mark_data,label=label+" data")
+        if showdata;
+            plt.plot(fitdatax,fitdatay,mark_data,label=label+" data")
         if showstartfit:
             plt.plot(fitdatax,fitfunc(startparams,fitdatax),label=label+" startfit")
         plt.plot(fitdatax,fitfunc(bestfitparams,fitdatax),mark_fit,label=label+" fit")
