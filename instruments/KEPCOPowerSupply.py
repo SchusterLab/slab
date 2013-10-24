@@ -61,7 +61,28 @@ class KEPCOPowerSupply(SerialInstrument):
             time.sleep(self.query_sleep)
         
     def get_current(self):
-        return float(self.query('CURR?').strip("\x13\r\n\x11"))
+        count = 0
+
+        while (count<20):
+            try:
+                current_value =  self.query('CURR?').strip("\x13\r\n\x11")
+                if type(current_value)==float:
+                    return float(current_value)
+                elif type(current_value)==str:
+                    "Converting from String to Float."
+                    current_value = float(current_value)
+                    return current_value
+                else:
+                    print  "The Machine didn't return a float"
+                    print current_value
+                    print type(current_value)
+            except:
+                    print "Getting the current again..."
+            count+=1
+            time.sleep(1)
+        raise Exception("The Machine wouldn't return a floating number. Try smacking it.")
+            
+        return float(current_value)
     
     def set_current_mode(self):
         self.write('FUNC:MODE CURR')
