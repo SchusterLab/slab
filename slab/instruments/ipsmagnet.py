@@ -52,12 +52,16 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
     def get_current(self):
         """Returns magnet current in amps"""
         return float(self.query('R0')[1:])
+
+    def get_field(self):
+        """Returns magnet field in Tesla"""
+        return float(self.query('R7')[1:])
         
     def get_volt(self):
         """Returns power supply voltage"""
         return float(self.query('R1')[1:])
         
-    def get_setpoint(self):
+    def get_current_setpoint(self):
         """Returns current set point in amps"""
         for i in range(5):        
             try:
@@ -66,6 +70,15 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
                 print "Warning: get_setpoint failed, trying again"
         raise Exception ("Error: get_setpoint failed several times giving up!")
        
+    def get_field_setpoint(self):
+        """Returns current set point in amps"""
+        for i in range(5):        
+            try:
+                return float(self.query('R8')[1:])
+            except:
+                print "Warning: get_setpoint failed, trying again"
+        raise Exception ("Error: get_setpoint failed several times giving up!")
+
        
     def get_sweeprate(self):
         """Returns current sweep rate in amp/min"""
@@ -74,7 +87,11 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
     def get_persistent_current(self):
         """returns the persistent magnet current in amps"""
         return float(self.query('R16')[1:])
-        
+
+    def get_persistent_field(self):
+        """returns the persistent magnet current in amps"""
+        return float(self.query('R18')[1:])
+
     def hold(self):
         """Hold current state"""
 #        self.remote()
@@ -117,7 +134,7 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
                 #print 'I%07.4f' % current
                 self.query('I%06.3f' % current)
                 time.sleep(0.05)
-                setpt=self.get_setpoint()
+                setpt=self.get_current_setpoint()
                 if abs(current-setpt)<tol:
                     return
                 else:
@@ -131,7 +148,53 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
         
     def set_target_field (self,field):
         """Sets target magnetic field to field (in Tesla)"""
-        self.query('J%08.5f' % field)
+        tol=.001
+        count=0
+        self.remote()
+        while (count<20):
+                        
+            print "This is attempt %s" %(float(count))
+            if count==15:
+                self.hold()
+                print "Holding the Magnet"
+            elif count==18:
+                self.query('J%08.5f' % field)
+                time.sleep(0.1)
+                setpt=self.get_field_setpoint()
+                new_tol = 0.0021
+                if abs(field-setpt)<new_tol:
+                    return
+                else:
+                    print self.name+": set_point out of tolerance range\nSet to: %f\tRead back: %f" % (field,setpt)
+                
+                
+            try:
+                self.query('J%08.5f' % field)
+                time.sleep(0.1)
+                setpt=self.get_field_setpoint()
+                if abs(field-setpt)<tol:
+                    return
+                else:
+                    print self.name+": set_point out of tolerance range\nSet to: %f\tRead back: %f" % (field,setpt)
+            except:
+                print "Warning: could not set set_point trying again..."
+            count+=1
+            self.reset_connection()
+            time.sleep(1)
+            
+            if count==19:
+                print "Can't set target field, but it's less than 2mT."
+                time.sleep(2)
+                self.query('J%08.5f' % field)
+                time.sleep(0.5)
+                setpt=self.get_field_setpoint()
+                if abs(field-setpt)<0.0021:
+                    return
+                else:
+                    print self.name+": set_point out of tolerance range\nSet to: %f\tRead back: %f" % (field,setpt)
+                
+                
+        raise Exception("Can't set target field correctly!\nSet to: %f\tRead back: %f" % (field,setpt))
         
     def set_current_sweeprate(self,sweeprate):
         """Sets current sweep rate in Amps/minute"""

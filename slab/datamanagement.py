@@ -184,6 +184,36 @@ class FileServer():
         
     def _ping(self):
         return 'OK'
+        
+class h5File(h5py.File):
+    def __init__(self, *args, **kwargs):
+        h5py.File.__init__(self, *args, **kwargs)
+    
+    def add(self, key, data):
+        try: self.create_dataset(key, shape=shape(data), maxshape=(None,),
+                                 dtype=str(data.dtype))
+        except:
+            self[key].resize(shape(data))
+            
+        dataset = self[key] 
+        try:
+            dataset[self[key].shape[0]-1,:]=data
+        except IndexError:
+            dataset[self[key].shape[0]-1]=data
+    def append(self, key, data):
+        try: self.create_dataset(key, shape=shape(data), maxshape=(None,), 
+                                 dtype=str(data.dtype))
+        except:
+            Shape = list(hf[key].shape)
+            Shape[0] = Shape[0] +1 
+            self[key].resize(newShape)
+
+        dataset = self[key] 
+        try:
+            dataset[self[key].shape[0]-1,:]=data
+        except IndexError:
+            dataset[self[key].shape[0]-1]=data
+            
 
 class SlabFile(h5py.File):
     def __init__(self, *args, **kwargs):
