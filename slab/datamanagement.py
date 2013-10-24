@@ -188,33 +188,49 @@ class FileServer():
 class h5File(h5py.File):
     def __init__(self, *args, **kwargs):
         h5py.File.__init__(self, *args, **kwargs)
+        
+    def set_range(self,dataset, xmin, xmax, ymin=None, ymax=None):
+        if ymin is not None and ymax is not None:
+            dataset.attrs["_axes"] = ((xmin, xmax), (ymin, ymax))
+        else:
+            dataset.attrs["_axes"] = (xmin, xmax)
     
     def add(self, key, data):
-        try: self.create_dataset(key, shape=shape(data), maxshape=(None,),
+        data = np.array(data)
+        try: self.create_dataset(key, shape=data.shape, 
+                                 maxshape=tuple([None]*len(data.shape)),
                                  dtype=str(data.dtype))
-        except:
-            self[key].resize(shape(data))
-            
-        dataset = self[key] 
-        try:
-            dataset[self[key].shape[0]-1,:]=data
-        except IndexError:
-            dataset[self[key].shape[0]-1]=data
-    def append(self, key, data):
-        try: self.create_dataset(key, shape=shape(data), maxshape=(None,), 
+        except RuntimeError:
+            del self[key]
+            self.create_dataset(key, shape=data.shape, 
+                                maxshape=tuple([None]*len(data.shape)),
+                                dtype=str(data.dtype))
+        self[key][...] = data
+        
+    def append(self, key, data, forceInit=False):
+        data = np.array(data)
+        try: self.create_dataset(key, shape=tuple([1]+list(data.shape)), 
+                                 maxshape=tuple([None]*(len(data.shape)+1)), 
                                  dtype=str(data.dtype))
-        except:
-            Shape = list(hf[key].shape)
+        except RuntimeError:
+            if forceInit == True:
+                del self[key]
+                self.create_dataset(key, shape=tuple([1]+list(data.shape)), 
+                                    maxshape=tuple([None]*(len(data.shape)+1)),
+                                    dtype=str(data.dtype))
+            dataset = self[key]
+            Shape = list(dataset.shape)
             Shape[0] = Shape[0] +1 
-            self[key].resize(newShape)
-
+            dataset.resize(Shape)
+            
         dataset = self[key] 
         try:
-            dataset[self[key].shape[0]-1,:]=data
-        except IndexError:
-            dataset[self[key].shape[0]-1]=data
+            dataset[-1,:] = data    
+        except TypeError:
+            dataset[-1] = data
+        #Usage require strictly same dimensionality for all data appended. 
+        #currently I don't have it setup to return a good exception, but should
             
-
 class SlabFile(h5py.File):
     def __init__(self, *args, **kwargs):
         h5py.File.__init__(self, *args, **kwargs)
@@ -311,7 +327,7 @@ class SlabFile(h5py.File):
         self.flush()
         
     def save_script(self,name="_script"):
-            self.attrs[name] = get_script()
+        self.attrs[name] = get_script()
 
     def save_settings(self,dic,group='settings'):
         if group not in self:
