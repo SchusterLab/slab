@@ -7,7 +7,10 @@ Created on Wed Apr 06 15:41:58 2011
 
 import numpy as np
 import math as math
-import guiqwt.pyplot as plt1 # Original version doesn't seem to work. Changed to a better coding style 
+try:
+    import guiqwt.pyplot as plt1 # Original version doesn't seem to work. Changed to a better coding style 
+except:
+    print "DSFIT could not import guiqwt"
 import matplotlib.pyplot as plt2
 import scipy
 import scipy.fftpack
@@ -46,7 +49,7 @@ def fitgeneral(xdata,ydata,fitfunc,fitparams,domain=None,showfit=False,showstart
     startparams=fitparams # Initial guess for the parameters
     bestfitparams, success = optimize.leastsq(errfunc, startparams[:], args=(fitdatax,fitdatay))
     if showfit:
-        if showdata;
+        if showdata:
             plt.plot(fitdatax,fitdatay,mark_data,label=label+" data")
         if showstartfit:
             plt.plot(fitdatax,fitfunc(startparams,fitdatax),label=label+" startfit")
