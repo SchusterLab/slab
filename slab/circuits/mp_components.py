@@ -762,7 +762,7 @@ def make_qubit(left_fingers, left_len, left_width,
     #CPWFingerCapInside(4, 70, 8, 4, 30).draw(s)
     c.save()
 
-import gdsii.elements as gds_elem
+#import gdsii.elements as gds_elem
 def gds_rect(s, p0, p1, datatype=0, layer=0):
     p01 = p0[0], p1[1]
     p10 = p1[0], p0[1]
