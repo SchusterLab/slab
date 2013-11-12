@@ -214,6 +214,7 @@ class WaferMask(sdxf.Drawing):
                 raise MaskError, "MaskError: Cannot add %d copies of chip '%s' Only %d slots on mask and %d remaining." % (
                     copies, chip.name, self.chip_points.__len__(), slots_remaining)
             p = self.chip_points[self.current_point]
+            print p,
             self.current_point += 1
             self.append(sdxf.Insert(chip.name, point=p))
             if chip.two_layer:
@@ -1366,7 +1367,7 @@ class CPWWiggles:
 class CoupledBend:
     """A CPW bend"""
 
-    def __init__(self, structure, turn_angle, pinw=None, gapw=None, center_gapw=None, radius=None, polyarc=True, segments=60):
+    def __init__(self, structure, turn_angle, pinw=None, gapw=None, center_gapw=None, radius=None, polyarc=True, segments=120):
         """creates a CPW bend with pinw/gapw/radius
             @param turn_angle: turn_angle is in degrees, positive is CCW, negative is CW
         """
@@ -2152,7 +2153,7 @@ class CPWFingerCap:
             #finger = translate_pts(finger, start)
             finger = orient_pts(finger, s.last_direction, start)
             for ii in range(self.num_fingers):
-                print "Writing finger", ii
+                # print "Writing finger", ii
                 if ii % 2 == 0: # Right side
                     offset = (self.finger_gap,
                               (ii * (self.finger_width + self.finger_gap)) - (center_width / 2.))
@@ -2178,7 +2179,6 @@ class CPWFingerCap:
                     s.append(sdxf.Solid(pts[:-1]))
                 else:
                     s.append(sdxf.PolyLine(pts))
-
             #draw last little box to separate sides
             pts = [(0, 0), (0, self.finger_width), (self.finger_gap, self.finger_width), (self.finger_gap, 0), (0, 0)]
             pts = translate_pts(pts, start)
@@ -2943,7 +2943,7 @@ class ChannelLauncher:
 class ChannelBend:
     """A Channel bend - adapted from CPWBend"""
 
-    def __init__(self, structure, turn_angle, channelw=None, radius=None, polyarc=True, segments=60):
+    def __init__(self, structure, turn_angle, channelw=None, radius=None, polyarc=True, segments=120):
         """creates a channel bend with channelw/radius
             @param turn_angle: turn_angle is in degrees, positive is CCW, negative is CW
         """
