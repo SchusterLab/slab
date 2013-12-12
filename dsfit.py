@@ -97,6 +97,10 @@ def expfunc(p,x):
     """p[0]+p[1]*exp(-(x-p[2])/p[3])"""
     return p[0]+p[1]*math.e**(-(x-p[2])/p[3])
     
+def pulse_errfunc(p,x):
+    """p[0]+p[1]*exp(-(x-p[2])/p[3])"""
+    return p[0]+0.5*(1-((1-p[1])**x))
+    
 def fitexp(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
     """Fit exponential decay (p[0]+p[1]*exp(-(x-p[2])/p[3]))"""
     if domain is not None:
@@ -113,6 +117,22 @@ def fitexp(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
         fitparams[3]=(fitdatax[-1]-fitdatax[0])/5.
     #print fitparams
     p1 = fitgeneral(fitdatax,fitdatay,expfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+    return p1   
+    
+def fitpulse_err(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+    """Fit pulse err decay (p[0]+p[1]*(1-p[2])^x)"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:    
+        fitparams=[0.,0.]
+        fitparams[0]=fitdatay[-1]
+        fitparams[1]=fitdatay[0]-fitdatay[-1]
+        fitparams[1]=fitdatay[0]-fitdatay[-1]
+    #print fitparams
+    p1 = fitgeneral(fitdatax,fitdatay,pulse_errfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
     return p1   
     
 
@@ -159,12 +179,36 @@ def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfi
         fitparams[3]=(max(fitdatax)-min(fitdatax))
         #fitparams[5]=fitdatax[0]
         
-        decaysin3=lambda p,x: p[0]*np.sin(2.*np.pi*p[1]*x+p[2]*np.pi/180.)*np.e**(-1.*(x-fitdatax[0])/p[3])+p[4]
+    decaysin3=lambda p,x: p[0]*np.sin(2.*np.pi*p[1]*x+p[2]*np.pi/180.)*np.e**(-1.*(x-fitdatax[0])/p[3])+p[4]
     #print "fitparams: ",fitparams
     p1 = fitgeneral(fitdatax,fitdatay,decaysin3,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
     return p1  
 
-
+def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+    """Fits sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)+p[3]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:    
+        FFT=scipy.fft(fitdatay)
+        fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
+        max_ind=np.argmax(abs(FFT[4:len(fitdatay)/2.]))+4
+        fft_val=FFT[max_ind]
+        
+        fitparams=[0,0,0,0]
+        fitparams[3]=np.mean(fitdatay)
+        fitparams[0]=(max(fitdatay)-min(fitdatay))/2.#2*abs(fft_val)/len(fitdatay)
+        fitparams[1]=fft_freqs[max_ind]
+        fitparams[2]=(cmath.phase(fft_val)-np.pi/2.)*180./np.pi
+        #fitparams[3]=(max(fitdatax)-min(fitdatax))
+        #fitparams[5]=fitdatax[0]
+        
+    sin2=lambda p,x: p[0]*np.sin(2.*np.pi*p[1]*x+p[2]*np.pi/180.)+p[3]
+    #print "fitparams: ",fitparams
+    p1 = fitgeneral(fitdatax,fitdatay,sin2,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+    return p1  
 
 def hangerfunc_old(p,x):
     """p=[f0,Q,S21Min,Tmax]
