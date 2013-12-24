@@ -9,13 +9,20 @@ from numpy import *
 from slab.instruments import *
 import time
 
+#for debug purposes
+file_output_trace = True
+debug_file = "C:\\Users\\Nitrogen\\Desktop\\agilentdebug.txt"
+
 class AWG81180A(SocketInstrument):
     default_port=5025
     def __init__(self,name,address='',enabled=True,timeout=10, recv_length=1024):
+        
+        
         SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
         self.set_couple()
-        self.set_trigger()
+        self.set_trigger(level=0.7)
         self.set_ext_ref()
+        self.set_clockrate(4.2e9)
         for ch in (1,2):
             self.select_channel(ch)
             self.set_marker(1)
@@ -84,6 +91,8 @@ class AWG81180A(SocketInstrument):
             self.write(':INIT:CONT:STATE 0')
             self.write(':TRIG:MODE NORM')
             self.write(':TRIG:SOURCE %s' % (src.upper()))
+            if level != -1:
+                self.write(':TRIG:LEV %g' % level)
             
     def select_trace(self,trace=1):
         self.write((":TRACe:SELect %d\n") % trace)
@@ -143,7 +152,9 @@ class AWG81180A(SocketInstrument):
         self.add_intsegment(self.convert_float_to_int_data(data, float_range),marker1,marker2,segnum)
 
     def add_intsegment (self,data,marker1=None, marker2=None,segnum=1):
-            
+        
+        
+        
         if len(data) % 32 != 0:
             raise RuntimeError("AWG81180A segment length not divisible by 32")
         #print "Converting waveform to bytecode"
@@ -171,6 +182,15 @@ class AWG81180A(SocketInstrument):
         for ii in xrange(len(data)):
             b[ii*2] = (data[ii] & 0xFF)
             b[ii*2+1] = (data[ii] & 0xFF00)>>8
+        
+        #output the data to a file for debug purposes
+        if file_output_trace:
+            f = open(debug_file,'a')
+            for i in range(len(data)):
+                f.write(str(b[2*i]+((b[2*i+1] & 0x3F)<<8))+',')
+            f.write('\n')
+            f.close()
+            
         print "Uploading trace %d to AWG" % segnum
         #print len(b)
         self.binblockwrite(":TRACe:DATA",b)
@@ -247,13 +267,23 @@ class AWG81180A(SocketInstrument):
         settings['mode']=self.get_mode()
         return settings
 
-    def reset(self):
+    def reset(self, sequences_only=False):
         self.select_channel(1)
         self.delete_all_sequences()
-        self.delete_all_traces()
+        if not sequences_only:
+            self.delete_all_traces()
         self.select_channel(2)
         self.delete_all_sequences()
-        self.delete_all_traces()
+        if not sequences_only:
+            self.delete_all_traces()
+            
+        if file_output_trace:
+            #clear the debug file
+            f = open(debug_file,'w')
+            f.close()
+        
+    def stop(self):
+        self.presetup_for_sequences()
         
     def presetup_for_sequences(self):
         #define channel properties
@@ -272,19 +302,25 @@ class AWG81180A(SocketInstrument):
         self.define_sequence_advance(adv='STEP')
         self.write(':SEQuence:JUMP BUS')
         #put the AWG into an idle state to load pulse sequences
-        self.set_trigger(src='BUS') 
+        self.set_trigger(src='BUS',level=-1) 
         
-    def set_offset_amp(self,ch1_offset=0.,ch1_amp=2.0, ch2_offset=0., ch2_amp=2.0):
+    def set_amps_offsets(self,channel_amps=[2.0,2.0],channel_offsets=[0.0,0.0],marker_amps=[1.0,1.0,1.0,1.0]):
         
         #define channel properties
         self.select_channel(1)
-        self.set_amplitude(ch1_amp)
+        self.set_amplitude(channel_amps[0])
         #awg.set_offset(1.0)
-        self.set_offset(ch1_offset)
+        self.set_offset(channel_offsets[0])
    
         self.select_channel(2)
-        self.set_amplitude(ch2_amp)
-        self.set_offset(ch2_offset)
+        self.set_amplitude(channel_amps[1])
+        self.set_offset(channel_offsets[1])
+        
+        #set marker's (to do)
+        
+    def prep_experiment(self):
+        
+        self.set_to_sequence()
        
         
     def set_to_sequence(self):
@@ -294,17 +330,24 @@ class AWG81180A(SocketInstrument):
         self.select_channel(2)
         self.set_mode("SEQ") 
         
-    def start_sequence(self):
+    def run(self):
         
         self.select_channel(1)
         self.set_output(True)
         self.select_channel(2)
         self.set_output(True)
-        self.set_trigger(src='EXT')
+        self.set_trigger(src='EXT',level=-1)
         
     def set_clock_all(self,clockrate):
         self.set_clockrate(clockrate)
-  
+        
+    def set_to_trace(self,ch1_trace=1,ch2_trace=2):
+        self.select_channel(1)
+        self.select_trace(ch1_trace) 
+        self.select_channel(2)
+        self.select_trace(ch2_trace) 
+        
+     
 
 #class Tek5014 (SocketInstrument):
 #    """Tektronix 5014 Arbitrary Waveform Class"""
