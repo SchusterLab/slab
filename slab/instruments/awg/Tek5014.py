@@ -373,24 +373,32 @@ class Tek5014 (SocketInstrument):
         #print "BinBlockWrite Response: ", response
         #return response
         
-    def pre_experiment(self):
+    def pre_load(self):
         
         self.stop()
         self.reset()
         
-    def prep_experiment(self,filename):
+    def load_sequence_file(self,filename):
         
         self.socket.send("AWGControl:SREStore '%s' \n" % (filename))
         for i in range(1,5):
             self.set_enabled(i,True)
+        
+    def prep_experiment(self):
+        
+        self.write("SEQuence:JUMP 1")
             
     
-    def set_amps_offsets(self,channel_amps=[1.0,1.0,1.0,1.0],channel_offsets = [0.0,0.0,0.0,0.0]):
+    def set_amps_offsets(self,channel_amps=[1.0,1.0,1.0,1.0],channel_offsets = [0.0,0.0,0.0,0.0], marker_amps=[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]):
     
          for i in range(1,5):
             self.set_amplitude(i,channel_amps[i-1])
             self.set_offset(i,channel_offsets[i-1])
-        
+            for j in range(2):
+                self.set_markerHigh(i,j+1,marker_amps[2*(i-1)+j])
+                self.set_markerLow(i,j+1,0.0)
+            
+    
     
 if __name__=="__main__":
     awg=Tek5014(address='192.168.14.136')
