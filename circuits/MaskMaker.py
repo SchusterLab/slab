@@ -380,6 +380,9 @@ class Chip(sdxf.Block):
             print d.layers
             print self.gap_layer.layer
             print self.pin_layer.layer
+        else:
+            self.label_chip(self, maskid, chipid, self.author)
+
 
         d.blocks.append(self)
         d.append(sdxf.Insert(self.name, point=(0, 0)))
@@ -511,15 +514,19 @@ class Box:
         Ge
         """
 
-    def __init__(self, structure, length, width):
+    def __init__(self, structure, length, width, offset=None):
         if length == 0 or width == 0: return
         s = structure;
         self.s = s
-        start = structure.last;
+        if offset == None:
+            start = structure.last;
+        else:
+            start = translate_pt( structure.last, rotate_pt(offset, s.last_direction, (0,0)))
         self.start = start
         self.box0 = self.box(length, width, start)
         items = [self.box0]
         self.rotNadd(s, items)
+        start = structure.last;
         stop = rotate_pt((start[0] + length, start[1]), s.last_direction, start)
         s.last = stop
 
