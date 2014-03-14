@@ -34,3 +34,5 @@ try: from function_generator import BiasDriver,FilamentDriver,BNCAWG
 except: print "Could not load BNC AWG classes"
 try: from Keithley199 import Keithley199
 except: print "Could not load Keithley199 voltmeter classes"
+try: from spectrumanalyzer import E4440
+except: print "Could not load E4440 Spectrum Analyzer"

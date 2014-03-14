@@ -15,7 +15,7 @@ class E4440(SocketInstrument):
     MAXSWEEPPTS=1601    
     default_port=5025
     def __init__(self,name="E4440",address=None,enabled=True):
-        SocketInstrument.__init__(self,name,address,enabled=enabled,timeout=10,recv_length=2**20)
+        SocketInstrument.__init__(self,name,address,enabled=enabled,timeout=1,recv_length=2**20)
         self.query_sleep=0.05
 
     def get_id(self):
@@ -35,7 +35,7 @@ class E4440(SocketInstrument):
         self.write(":SENS:FREQ:STOP %f" % (freq))
 
     def get_stop_frequency(self):
-        return float(self.query(":SENS%d:FREQ:STOP?" ))
+        return float(self.query(":SENS:FREQ:STOP?" ))
 
     def set_center_frequency(self,freq):
         self.write(":SENS:FREQ:CENTer %f" % (freq))
@@ -109,18 +109,11 @@ class E4440(SocketInstrument):
     def trigger_single (self):
         self.write(':INIT:IMM')
 
-    def set_trigger_average_mode(self,state=True):
-        if state: self.write(':TRIG:AVER ON')
-        else: self.write(':TRIG:AVER OFF')
-
-    def get_trigger_average_mode(self):
-        return bool(self.query(':TRIG:AVER?'))
-
-    def set_trigger_source (self,source="INTERNAL"):  #INTERNAL, MANUAL, EXTERNAL,BUS
-        self.write(':TRIG:SEQ:SOURCE ' + source)
+    def set_trigger_source (self,source="IMMEDIATE"):  #IMMEDIATE, LINE, EXTERNAL
+        self.write('TRIG:SOURCE ' + source)
 
     def get_trigger_source (self):  #INTERNAL, MANUAL, EXTERNAL,BUS
-        return self.query(':TRIG:SEQ:SOURCE?')
+        return self.query(':TRIGGER:SOURCE?')
 
 
 #### File Operations
@@ -146,7 +139,7 @@ class E4440(SocketInstrument):
 #        self.write(":ABOR")
         self.write(":FORM:DATA ASC")
         #self.write(":CALC1:DATA:FDAT?")
-        self.write("TRACe:DATA?")
+        self.write(":TRAC:DATA? TRACE1")
         data_str=''
         
         done=False
@@ -212,16 +205,12 @@ class E4440(SocketInstrument):
         if avgs is not None:            self.set_averages(avgs)
         
     def set_remote_state(self):
-         self.set_trigger_source('BUS')
-         self.set_trigger_average_mode(True)
-         self.set_timeout(10000)  
-         self.set_format('slog')
+         self.set_trigger_source('EXT')
+         self.set_timeout(10)  
      
     def set_default_state(self):
         self.set_sweep_points()
-        self.set_format()
         self.set_trigger_source()
-        self.set_trigger_average_mode(False)
         self.write(":INIT:CONT ON")
 
 
@@ -233,6 +222,14 @@ if __name__ =='__main__':
 #    condense_nwa_files(r'C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data','C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data\\test')
     sa=E4440("E4440",address="192.168.14.152")
     print sa.get_id()
+    print"Taking data"
+    data=sa.take_one()
+    sa.set_default_state()
+    #print data
+    from matplotlib.pyplot import *
+    #data=sa.read_data()
+    plot(data[0],data[1])
+    show()
     #print "Setting window"
 
     #from guiqwt.pyplot import *

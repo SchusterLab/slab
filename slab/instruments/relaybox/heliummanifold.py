@@ -123,12 +123,12 @@ class HeliumManifold(RelayBox):
         self.wait_for_vacuum(min_time=min_time,timeout=timeout)
         self.get_manifold_status()
         
-    def pump_cryostat(self,timeout=None):
+    def pump_cryostat(self, min_time=0, timeout=None):
         if self.DEBUG_HELIUM_MANIFOLD: print "Pump cryostat."
         self.set_gas(False)
         self.set_cryostat(False)
         self.set_pump(True)
-        self.wait_for_vacuum(timeout=timeout)
+        self.wait_for_vacuum(min_time=min_time, timeout=timeout)
         self.set_cryostat(True)
 #        self.wait_for_vacuum(min_time=min_time,timeout=timeout)
 #        self.get_manifold_status()
