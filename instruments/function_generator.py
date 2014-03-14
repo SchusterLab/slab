@@ -51,7 +51,7 @@ class BNCAWG(SocketInstrument):
         return self.query('FUNCtion?')
         
     def set_frequency(self,frequency):
-        self.write('FREQ %f' % (frequency))        
+        self.write('FREQ %f' % (float(frequency)))        
         
     def get_frequency(self):
         return float(self.query('FREQ?'))
@@ -144,7 +144,11 @@ class FilamentDriver(BNCAWG):
             
 class BiasDriver(BNCAWG):
     """
-    want a sticky response. Don't want voltage to change no matter what we do. """
+    this class is designed to allow use of the BNCAWG as a DC voltage supply.
+    internal amplifier range changes causes large spikes in the output.
+    Hence to use as DC supply, auto-range-scalling has to be turned off.
+    We want a sticky response. Don't want voltage to change no matter what we do. """
+
     def setup_driver(self,pulse_length, pulse_voltage,rest_voltage,autorange='off'):
         #set the duty cycle to 40/60, 
         #set the starting phase to be         
@@ -182,6 +186,7 @@ class BiasDriver(BNCAWG):
 #        else:
 #            self.set_burst_phase(180)
 #            self.set_amplitude((volt-offset)*2)
+
     def set_voltage(self,volt):
         phase=self.get_burst_phase()
         amp=self.get_amplitude()        
@@ -190,6 +195,7 @@ class BiasDriver(BNCAWG):
             self.set_offset(volt-amp/2.)
         else:
             self.set_offset(volt+amp/2.)
+
     def set_volt(self,volt):
         self.set_voltage(volt)
         

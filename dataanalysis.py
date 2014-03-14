@@ -156,7 +156,7 @@ def next_path_index(expt_path,prefix=''):
     return int(os.path.split(dirlist[-1])[-1].split('_')[-1])+1
     
 def get_next_filename(datapath,prefix,suffix=''):
-    ii=next_file_index(datapath,prefix)
+    ii = next_file_index(datapath, prefix)
     return "%04d_" % (ii) + prefix +suffix
 
 def make_datapath(expt_path,prefix,date_str=None):

@@ -120,28 +120,28 @@ class YokogawaGS200(SocketInstrument):
         if self.get_mode() == "CURR":
             self.set_level(current)
         else:
-            raise Exception("ERROR: Tried to set Yoko current in voltage mode")
+            raise Exception("ERROR: Need to set Yoko current in voltage mode")
 
     def get_current(self):
         """Get yoko current"""
         if self.get_mode() == "CURR":
             return self.get_level()        
         else:
-            raise Exception("ERROR: Tried to set Yoko voltage in current mode")
+            raise Exception("ERROR: Need to set Yoko voltage in current mode")
                     
     def set_volt(self,voltage):
         """Set yoko voltage"""
         if self.get_mode() == "VOLT":
             self.set_level(voltage)
         else:
-            raise Exception("ERROR: Tried to set Yoko voltage in current mode")
+            raise Exception("ERROR: Need to set Yoko voltage in current mode")
     
     def get_volt(self):
         """Get yoko voltage"""
         if self.get_mode() == "VOLT":
             return self.get_level()
         else:
-            raise Exception("ERROR: Tried to set Yoko voltage in current mode")
+            raise Exception("ERROR: Need to set Yoko voltage in current mode")
     def set_measure_state(self,state=True):
         """Set measurement state of instrument"""
         if state:   self.write(':SENSE:STATE ON')
