@@ -16,6 +16,8 @@ try:
     # Block calls from running simultaneously
     Pyro4.config.SERVERTYPE = 'multiplex'
     Pyro4.config.HMAC_KEY = '6551d449b0564585a9d39c0bd327dcf1'
+    Pyro4.config.SERIALIZER = "pickle"
+    Pyro4.config.SERIALIZERS_ACCEPTED=set(['json', 'marshal', 'serpent','pickle'])
 except ImportError:
     print "Warning: Pyro4 package is not present"
     print "Instrument Servers will not work."
