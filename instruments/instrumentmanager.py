@@ -66,6 +66,19 @@ class InstrumentManager(dict):
         fn = getattr(slab.instruments, params[1])
         return fn(name=params[0], address=params[2])
 
+    def __getattr__(self, item):
+        """Maps values to attributes.
+        Only called if there *isn't* an attribute with this name
+        """
+        try:
+            return self.__getitem__(item)
+        except KeyError:
+            raise AttributeError(item)
+            
+    def set_alias(self,name,alias):
+        """Sets an alias for an instrument"""
+        self[alias]=self[name]
+
     def serve_instruments(self):
         """inst_dict is in form {name:instrument_instance}"""
         Pyro4.config.SERVERTYPE = "multiplex"
