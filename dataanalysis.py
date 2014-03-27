@@ -140,6 +140,18 @@ def next_file_index(datapath,prefix=''):
         ii=0
     return ii
 
+def current_file_index(datapath,prefix=''):
+    """Searches directories for files of the form *_prefix* and returns current number
+        in the series"""
+
+    dirlist=glob.glob(os.path.join(datapath,'*_'+prefix+'*'))
+    dirlist.sort()
+    try:
+        ii=int(os.path.split(dirlist[-1])[-1].split('_')[0])
+    except:
+        ii=0
+    return ii
+
 def date_tag(date_str=None):
     if date_str is None:
         lt=time.localtime()
@@ -147,25 +159,41 @@ def date_tag(date_str=None):
     else:
         lt=dateutil.parser.parse(date_str)
         return "%02d%02d%02d" % (lt.year % 100,lt.month,lt.day)
-    
-def next_path_index(expt_path,prefix=''):
-    dirlist=glob.glob(os.path.join(expt_path,'*'+prefix+'*[0-9][0-9][0-9]'))
+
+
+def next_path_index(expt_path, prefix=''):
+    dirlist = glob.glob(os.path.join(expt_path, '*' + prefix + '*[0-9][0-9][0-9]'))
     if dirlist == []:
         return 0
     dirlist.sort()
-    return int(os.path.split(dirlist[-1])[-1].split('_')[-1])+1
-    
+    return int(os.path.split(dirlist[-1])[-1].split('_')[-1]) + 1
+
+def current_path_index(expt_path, prefix=''):
+    dirlist = glob.glob(os.path.join(expt_path, '*' + prefix + '*[0-9][0-9][0-9]'))
+    if dirlist == []:
+        return 0
+    dirlist.sort()
+    return int(os.path.split(dirlist[-1])[-1].split('_')[-1])
+
 def get_next_filename(datapath,prefix,suffix=''):
     ii = next_file_index(datapath, prefix)
-    return "%04d_" % (ii) + prefix +suffix
+    return "%05d_" % (ii) + prefix +suffix
 
-def make_datapath(expt_path,prefix,date_str=None):
+def get_current_filename(datapath,prefix,suffix=''):
+    ii = current_file_index(datapath, prefix)
+    return "%05d_" % (ii) + prefix +suffix
+
+
+def make_datapath(expt_path, prefix, date_str=None, new_file=False):
     """Automatically makes a new folder in the experiment folder with new index"""
-    tag=date_tag(date_str)
-    ii=next_path_index(expt_path,prefix)
-    datapath=os.path.join(expt_path,"%s_%s_%03d" % (tag,prefix,ii) )
+    tag = date_tag(date_str)
+    if new_file:
+        ii = next_path_index(expt_path, prefix)
+    else:
+        ii = current_path_index(expt_path, prefix)
+    datapath = os.path.join(expt_path, "%s_%s_%03d" % (tag, prefix, ii))
     os.mkdir(datapath)
-    if datapath[-1]!='\\': datapath+="\\"
+    if datapath[-1] != '\\': datapath += "\\"
     return datapath
     
 def current_datapath(expt_path,prefix,date_str=None):

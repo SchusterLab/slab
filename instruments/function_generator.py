@@ -36,7 +36,7 @@ class BNCAWG(SocketInstrument):
         
     
     def set_function(self,ftype="sine"):
-        ftypes={"SINE":"SIN","SQUARE":"SQU","RAMP":"RAMP","PULSE":"PULSE","NOISE":"NOISE","DC":"DC","USER":"USER"}
+        ftypes={"SINE":"SIN","SQUARE":"SQU","SQU":"SQU","RAMP":"RAMP","PULSE":"PULSE","NOISE":"NOISE","DC":"DC","USER":"USER"}
         ftype_str=ftypes[ftype.upper()]
         self.write('FUNCtion %s' % ftype_str)
     
@@ -55,7 +55,31 @@ class BNCAWG(SocketInstrument):
         
     def get_frequency(self):
         return float(self.query('FREQ?'))
-        
+
+    def set_period(self,frequency):
+        self.write('PULS:PER %f' % (float(frequency)))
+
+    def get_period(self):
+        return float(self.query('PULS:PER?'))
+
+    def set_pulse_width(self,frequency):
+        self.write('FUNC:PULS:WIDT %f' % (float(frequency)))
+
+    def get_pulse_width(self):
+        return float(self.query('FUNC:PULS:WIDT?'))
+
+    def set_pulse_duty_cycle(self,frequency):
+        self.write('FUNC:PULS:DCYC %f' % (float(frequency)))
+
+    def get_pulse_duty_cycle(self):
+        return float(self.query('FUNC:PULS:DCYC?'))
+
+    def set_pulse_transition(self,frequency):
+        self.write('FUNC:PULS:TRAN %f' % (float(frequency)))
+
+    def get_pulse_transition(self):
+        return float(self.query('FUNC:PULS:TRAN?'))
+
     def set_amplitude(self,voltage):
         self.write('VOLT %f' % voltage)
         
@@ -76,13 +100,35 @@ class BNCAWG(SocketInstrument):
         return float(self.query("VOLT:OFFSET?"))
         
     def set_trigger_source(self,source="INT"):
-        trig_types={'INT':'IMM','INTERNAL':'IMM','EXTERNAL':'EXT','EXT':'EXT','BUS':'BUS'}
+        trig_types={'INT':'IMM','INTERNAL':'IMM','EXTERNAL':'EXT','EXT':'EXT','BUS':'BUS', 'MAN':'MAN'}
         trig_type_str=trig_types[source.upper()]
         self.write('TRIG:SOURCE %s' % trig_type_str)
         
     def get_trigger_source(self):
         return self.query('TRIG:SOURCE?')
-        
+
+    def set_trigger_out(self, state):
+        if state:
+            self.write('OutPut:TRIGger %s' % "ON")
+        else :
+            self.write('OutPut:TRIGger %s' % "OFF")
+
+    def get_trigger_out(self):
+        if self.query('OutPut:TRIGger?') == '1\n':
+            return True
+        else :
+            return False
+
+    def set_trigger_slope(self, edge):
+        edge = edge.upper();
+        if edge == 'POS' or edge == 'POSITIVE':
+            self.write('OutPut:TRIGger:SLOPe %s' % "POSitive")
+        elif edge == 'NEG' or edge == 'NEGATIVE':
+            self.write('OutPut:TRIGger:SLOPe %s' % "NEGative")
+
+    def get_trigger_slope(self):
+        return self.query('OutPut:TRIGger:SLOPe?')[:-1]
+
     def trigger(self):
         self.write('TRIGGER')
         
@@ -112,7 +158,16 @@ class BNCAWG(SocketInstrument):
         
     def get_burst_state(self):
         return int(self.query('BURST:STATE?')) == 1
-        
+
+    def set_burst_mode(self, mode):
+        if mode == 'triggered':
+            self.write('BURSt:MODE TRIGgered')
+        elif mode == 'gated':
+            self.write('BURSt:MODE GATed')
+
+    def get_burst_mode(self):
+        return int(self.query('BURSt:MODE?')) == 1
+
     def get_settings(self):
         settings=SocketInstrument.get_settings(self)
         settings['id']=self.get_id()
@@ -149,26 +204,38 @@ class BiasDriver(BNCAWG):
     Hence to use as DC supply, auto-range-scalling has to be turned off.
     We want a sticky response. Don't want voltage to change no matter what we do. """
 
-    def setup_driver(self,pulse_length, pulse_voltage,rest_voltage,autorange='off'):
+    def setup_volt_source(self,pulse_length=None, pulse_voltage=None,rest_voltage=None,autorange='off'):
         #set the duty cycle to 40/60, 
         #set the starting phase to be         
 #        self.set_output(False)
-        amp=abs(pulse_voltage-rest_voltage)
-        offset=(pulse_voltage+rest_voltage)/2.
-        freq=1/(pulse_length*2)   #Need Integer     
-        if pulse_voltage<rest_voltage: 
-            phase=180
-        else: phase=0
-        self.set_autorange(autorange)        
+        self.set_autorange(autorange)
         self.set_termination(load='INFinity')
-        self.set_function('square')        
-        self.set_offset(offset)
-        self.set_amplitude(amp)
-        self.set_burst_phase(phase)        
-        self.set_frequency(freq)
+        self.set_function('square')
+        if pulse_voltage != None and rest_voltage != None:
+            self.pulse_voltage = pulse_voltage;
+            self.rest_voltage = rest_voltage;
+        if hasattr(self, 'pulse_voltage') and hasattr(self, "rest_voltage"):
+            amp=abs(pulse_voltage-rest_voltage)
+            offset=(pulse_voltage+rest_voltage)/2.
+            if pulse_voltage<rest_voltage:
+                phase=180
+            else: phase=0
+            self.set_offset(offset)
+            self.set_amplitude(amp)
+            self.set_burst_phase(phase)
+        if pulse_length!=None:
+            self.pulse_length = pulse_length;
+        if hasattr(self, 'pulse_length'):
+            freq=1/(pulse_length*2)   #Need Integer
+            self.set_frequency(freq)
         self.set_burst_state(True)
         self.set_burst_cycles(1)
+        # this is crucial. Has to set to manual trigger(bus)
+        # then trigger through the bus to make sure that the
+        # internal phase is correct. Otherwise get random
+        # phases.
         self.set_trigger_source('bus')
+        self.trigger();
         self.set_output(True)
         #self.set_autorange(autorange)
         
@@ -176,16 +243,6 @@ class BiasDriver(BNCAWG):
         for ii in range(pulses):
             self.trigger()
             time.sleep(delay)
-#    def set_voltage(self,volt):
-#        phase=self.get_burst_phase()
-#        amp=self.get_amplitude()        
-#        offset=self.get_offset()
-#        if volt < offset:
-#            self.set_burst_phase(0)
-#            self.set_amplitude((offset-volt)*2)
-#        else:
-#            self.set_burst_phase(180)
-#            self.set_amplitude((volt-offset)*2)
 
     def set_voltage(self,volt):
         phase=self.get_burst_phase()
@@ -193,8 +250,11 @@ class BiasDriver(BNCAWG):
         offset=self.get_offset()
         if phase==180:
             self.set_offset(volt-amp/2.)
-        else:
+        elif phase == 0:
             self.set_offset(volt+amp/2.)
+        else:
+            self.set_burst_phase(0);
+            self.set_voltage(volt);
 
     def set_volt(self,volt):
         self.set_voltage(volt)
