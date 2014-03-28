@@ -112,8 +112,8 @@ class E5071(SocketInstrument):
         return float(self.query(":SOURCE%d:POWER?" % channel))
 
     def set_output(self,state=True):
-        if state: self.write(":OUTPUT ON")
-        else: self.write(":OUTPUT OFF")
+        if state or str(state).upper() == 'ON': self.write(":OUTPUT ON")
+        elif state ==False or str(state).upper() == 'OFF': self.write(":OUTPUT OFF")
 
     def get_output(self):
         return bool(self.query(":OUTPUT?"))
