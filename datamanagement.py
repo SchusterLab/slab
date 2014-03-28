@@ -301,19 +301,6 @@ class SlabFile(h5py.File):
         else:
             dataset.attrs["_axes_labels"] = (x_lab, y_lab)
 
-    def add(self, key, data):
-        data = np.array(data)
-        try:
-            self.create_dataset(key, shape=data.shape,
-                                maxshape=tuple([None] * len(data.shape)),
-                                dtype=str(data.dtype))
-        except RuntimeError:
-            del self[key]
-            self.create_dataset(key, shape=data.shape,
-                                maxshape=tuple([None] * len(data.shape)),
-                                dtype=str(data.dtype))
-        self[key][...] = data
-
     def append_line(self, dataset, line, axis=0):
         if isinstance(dataset, str):
             try:
@@ -346,8 +333,20 @@ class SlabFile(h5py.File):
         dataset[-1] = pt
         self.flush()
 
+    def add_data(self, f, key, data):
+        data = np.array(data)
+        try:
+            f.create_dataset(key, shape=data.shape,
+                                maxshape=tuple([None] * len(data.shape)),
+                                dtype=str(data.dtype))
+        except RuntimeError:
+            del f[key]
+            f.create_dataset(key, shape=data.shape,
+                                maxshape=tuple([None] * len(data.shape)),
+                                dtype=str(data.dtype))
+        f[key][...] = data
 
-    def append(self, key, data, forceInit=False):
+    def append_data(self, f, key, data, forceInit=False):
         """
         the main difference between append_pt and append is thta
         append takes care of highier dimensional data, but not append_pt
@@ -355,27 +354,34 @@ class SlabFile(h5py.File):
 
         data = np.array(data)
         try:
-            self.create_dataset(key, shape=tuple([1] + list(data.shape)),
+            f.create_dataset(key, shape=tuple([1] + list(data.shape)),
                                 maxshape=tuple([None] * (len(data.shape) + 1)),
                                 dtype=str(data.dtype))
         except RuntimeError:
             if forceInit == True:
-                del self[key]
-                self.create_dataset(key, shape=tuple([1] + list(data.shape)),
+                del f[key]
+                f.create_dataset(key, shape=tuple([1] + list(data.shape)),
                                     maxshape=tuple([None] * (len(data.shape) + 1)),
                                     dtype=str(data.dtype))
-            dataset = self[key]
+            dataset = f[key]
             Shape = list(dataset.shape)
             Shape[0] = Shape[0] + 1
             dataset.resize(Shape)
 
-        dataset = self[key]
+        dataset = f[key]
         try:
             dataset[-1, :] = data
         except TypeError:
             dataset[-1] = data
             #Usage require strictly same dimensionality for all data appended.
             #currently I don't have it setup to return a good exception, but should
+
+    def add(self, key, data):
+        self.add_data(self, key, data)
+
+    def append(self, dataset, pt):
+        self.append_data(self, dataset, pt)
+
 
     def save_script(self, name="_script"):
         self.attrs[name] = get_script()
