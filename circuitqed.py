@@ -51,11 +51,12 @@ class Schrodinger:
         return sparse.spdiags([a,c],[-1,1],numpts,numpts)
 
     @staticmethod
-    def D2mat(numpts,delta=1,periodic=True):
+    def D2mat(numpts,delta=1,periodic=True,q=0):
         """2nd Derivative matrix
             @param numpts dimension of derivative matrix
             @param delta spacing between points
             @param periodic whether derivative wraps around (default True) 
+            @param q is a quasimomentum between -pi and pi, which is used if periodic=True
         """
 
         a=1./delta**2*ones(numpts)
@@ -63,7 +64,10 @@ class Schrodinger:
         c=1./delta**2*ones(numpts)
         #print "delta = %f" % (delta)
         if periodic:
-            return sparse.spdiags([c,a,b,c,c],[-numpts+1,-1,0,1,numpts-1],numpts,numpts)
+            if q ==0:
+                return sparse.spdiags([c,a,b,c,c],[-numpts+1,-1,0,1,numpts-1],numpts,numpts)
+            else:
+                return sparse.spdiags([exp(-(0.+1.j)*q)*c,a,b,c,exp((0.+1.j)*q)*c],[-numpts+1,-1,0,1,numpts-1],numpts,numpts)
         else:
             return sparse.spdiags([a,b,c],[-1,0,1],numpts,numpts)
 
