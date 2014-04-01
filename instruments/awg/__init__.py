@@ -5,4 +5,5 @@ try:
 except: print "Warning failed to import AWG81180A"
 #try:
 from Tek5014 import Tek5014
+from Tek70001 import Tek70001
 #except: print "Warning failed to import Tek5014"   
