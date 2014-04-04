@@ -36,7 +36,8 @@ figureStyles=[
     {'name':'small','width':5,'height':5./1.61,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True},
     {'name':'medium','width':8,'height':8./1.61,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True},
     {'name':'big','width':16,'height':16./1.61,'title_size':22,'label_size':16,'tick_size':14,'wspace':0.5,'tight':True},
-    {'name':'ppt','width':16,'height':16./1.61,'title_size':26,'label_size':18,'tick_size':16,'wspace':0.5,'tight':True}
+    {'name':'ppt','width':16,'height':16./1.61,'title_size':26,'label_size':18,'tick_size':16,'wspace':0.5,'tight':True},
+    {'name':'square','width':8,'height':8,'title_size':26,'label_size':18,'tick_size':16,'wspace':0.5,'tight':True}
     ]
 figureStyleDict={}
 for style in figureStyles:
