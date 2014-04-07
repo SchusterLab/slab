@@ -119,6 +119,7 @@ class WaferMask(sdxf.Drawing):
         self.buffer = self.wafer_padding # + self.dicing_border/2
         self.etchtype = etchtype
         self.dashed_dicing_border = dashed_dicing_border
+        self.solid = solid
 
         start_angle = flat_angle + 180. / pi * acos(2. * flat_distance / diameter)
         stop_angle = flat_angle - 180. / pi * acos(2. * flat_distance / diameter)
@@ -199,8 +200,8 @@ class WaferMask(sdxf.Drawing):
         if self.etchtype:
             ChipBorder(chip, self.dicing_border / 2.)
         if self.dashed_dicing_border > 0:
-            dashlayer = 'gap' if chip.two_layer else None
-            DashedChipBorder(chip, self.dicing_border / 2., layer=dashlayer)
+            dashlayer = 'gap' if chip.two_layer else '0'
+            DashedChipBorder(chip, self.dicing_border / 2., layer=dashlayer, solid = self.solid)
         if chip.two_layer:
             self.layers.append(sdxf.Layer(name='gap', color=1))
             self.layers.append(sdxf.Layer(name='pin', color=3))
@@ -229,7 +230,7 @@ class WaferMask(sdxf.Drawing):
                               'long_desc': chip.long_description()})
         #print "%s\t%d\t%s" % (chip.name,copies,chip.short_description())
         if savechip:
-            chip.save(fname=self.name + "-" + chip.name, maskid=self.name, chipid=chip.name)
+            chip.save(fname=self.name + "-" + chip.name, maskid=self.name, chipid=chip.name, do_label = label)
 
 
     def save_manifest(self, name=None):
@@ -360,7 +361,7 @@ class Chip(sdxf.Block):
         AlphaNumText(drawing, author, self.textsize,
                      translate_pt(self.author_loc, offset=(-self.textsize[0] * len(author), 0)), layer=layer)
 
-    def save(self, fname=None, maskid=None, chipid=None):
+    def save(self, fname=None, maskid=None, chipid=None, do_label = True):
         """Saves chip to .dxf, defaults naming file by the chip name, and will also label the chip, if a label is specified"""
         if fname is None:
             fname = self.name + '.dxf'
@@ -381,8 +382,10 @@ class Chip(sdxf.Block):
             print self.gap_layer.layer
             print self.pin_layer.layer
         else:
-            self.label_chip(self, maskid, chipid, self.author)
-
+            if do_label:
+                self.label_chip(self, maskid, chipid, self.author)
+            else:
+                pass
 
         d.blocks.append(self)
         d.append(sdxf.Insert(self.name, point=(0, 0)))
@@ -1607,7 +1610,7 @@ class CPWWigglesByLength:
 
 
 class CPWRightJoint:
-    "Sharp right angle"
+    "Sharp right angle. NOTE: implemented Solid (Gerwin)"
 
     def __init__(self, s, CCW=False, pinw=None, gapw=None):
         pinw = pinw if pinw else s.__dict__["pinw"]
@@ -1623,7 +1626,10 @@ class CPWRightJoint:
         outer_2 = [(ext - gapw, d), (ext - gapw, -(d + gap)), (ext, -(d + gap)), (ext, d), (ext - gapw, d)]
         for shape in [inner, outer_1, outer_2]:
             s.append(sdxf.PolyLine(orient_pts(shape, s.last_direction, s.last)))
+            if s.chip.solid:
+                s.append(sdxf.Solid(orient_pts(shape, s.last_direction, s.last)[:-1]))
         s.last = orient_pt((ext / 2., (1 if CCW else -1) * ext / 2.), s.last_direction, s.last)
+            
         if CCW:
             s.last_direction += 90
         else:
@@ -1836,7 +1842,7 @@ class ChipBorder(Structure):
 class DashedChipBorder(Structure):
     """Dashed Chip border for e-beam drawing and then dicing"""
 
-    def __init__(self, chip, border_thickness=40, dash_width=40, dash_length=200, layer='structure', color=1):
+    def __init__(self, chip, border_thickness=40, dash_width=40, dash_length=200, layer='structure', color=1, solid=True):
         Structure.__init__(self, chip, layer=layer, color=color)
 
         '''Caution: border_thickness refers to the bid dicing border. Other quantities refer to dashes.'''
@@ -1879,10 +1885,16 @@ class DashedChipBorder(Structure):
         ]
         pts4 = translate_pts(pts4, (-border_thickness, -border_thickness))
 
-        self.append(sdxf.Solid(pts1, layer=layer))
-        self.append(sdxf.Solid(pts2, layer=layer))
-        self.append(sdxf.Solid(pts3, layer=layer))
-        self.append(sdxf.Solid(pts4, layer=layer))
+        if solid:
+            self.append(sdxf.Solid(pts1, layer=layer))
+            self.append(sdxf.Solid(pts2, layer=layer))
+            self.append(sdxf.Solid(pts3, layer=layer))
+            self.append(sdxf.Solid(pts4, layer=layer))
+        else:
+            self.append(sdxf.PolyLine(pts1, layer=layer))
+            self.append(sdxf.PolyLine(pts2, layer=layer))
+            self.append(sdxf.PolyLine(pts3, layer=layer))
+            self.append(sdxf.PolyLine(pts4, layer=layer))
 
 
 class CPWGapCap:
@@ -2183,7 +2195,15 @@ class CPWFingerCap:
                 pts = translate_pts(pts, (0, ii * (self.finger_width + self.finger_gap) - self.pinw / 2.))
                 pts = rotate_pts(pts, s.last_direction, start)
                 if s.chip.solid:
-                    s.append(sdxf.Solid(pts[:-1]))
+                    if s.last_direction%180 == 0:
+                        extrapt = (pts[0][0], pts[4][1])
+                    elif s.last_direction%180 == 90:
+                        extrapt = (pts[4][0], pts[0][1])
+                    
+                    #NOTE, adapted by Gerwin.
+                    s.append(sdxf.Solid([pts[0],extrapt,pts[4],pts[5]]))
+                    s.append(sdxf.Solid([extrapt,pts[1],pts[2],pts[3]]))
+
                 else:
                     s.append(sdxf.PolyLine(pts))
             #draw last little box to separate sides
@@ -2193,7 +2213,12 @@ class CPWFingerCap:
             pts = translate_pts(pts, (((self.num_fingers + 1) % 2) * (length - self.finger_gap),
                                       (self.num_fingers - 1) * (self.finger_width + self.finger_gap) - self.pinw / 2.))
             pts = rotate_pts(pts, s.last_direction, start)
-            s.append(sdxf.PolyLine(pts))
+            #NOTE, adapted by Gerwin
+            if s.chip.solid:
+                s.append(sdxf.Solid(pts[:-1]))    
+            else:
+                s.append(sdxf.PolyLine(pts))
+
         if structure.pinw2 != None:
             s.pinw = structure.pinw2
             structure.pinw2 = None
@@ -2753,7 +2778,7 @@ class LShapeAlignmentMarks:
         s.append(sdxf.Solid(box2, layer=layer))
 
 class CrossShapeAlignmentMarks:
-    def __init__(self, structure, width, armlength, layer='structure'):
+    def __init__(self, structure, width, armlength, solid = True, layer='structure'):
         """creates an L shaped alignment marker of width and armlength for photolitho"""
         if width == 0: return
         if armlength == 0: return
@@ -2783,10 +2808,20 @@ class CrossShapeAlignmentMarks:
         stop = rotate_pt((start[0] + armlength, start[1]), s.last_direction, start)
         s.last = stop
 
-        s.append(sdxf.Solid(box1[:-1], layer=layer))
-        s.append(sdxf.Solid(box2[:-1], layer=layer))
-        s.append(sdxf.Solid(box3[:-1], layer=layer))
-        s.append(sdxf.Solid(box4[:-1], layer=layer))
+        if solid:
+            s.append(sdxf.Solid(box1[:-1], layer=layer))
+            s.append(sdxf.Solid(box2[:-1], layer=layer))
+            s.append(sdxf.Solid(box3[:-1], layer=layer))
+            s.append(sdxf.Solid(box4[:-1], layer=layer))
+        else:
+            lw = width / 2.
+            w = armlength/2.
+            h = armlength/2.
+            pts = [(-lw, -h), (lw, -h), (lw, -lw), (w, -lw), (w, lw), (lw, lw), (lw, h), (-lw, h), (-lw, lw), (-w, lw),
+                   (-w, -lw), (-lw, -lw), (-lw, -h)]
+            pts_real = translate_pts(pts, start)
+
+            s.append(sdxf.PolyLine(pts_real, layer=layer))
 
 class FineAlign:
     def __init__(self, chip, buffer=60, al=60, wid=2):
@@ -4205,7 +4240,7 @@ class AlphaNumText:
 
 
 class AlignmentCross:
-    def __init__(self, drawing, linewidth, size, points, layer='0', name='cross'):
+    def __init__(self, drawing, linewidth, size, points, solid = False, layer='0', name='cross'):
         lw = linewidth / 2.
         w = size[0] / 2.
         h = size[1] / 2.
@@ -4213,17 +4248,31 @@ class AlignmentCross:
                (-w, -lw), (-lw, -lw), (-lw, -h)]
 
         if layer != None:
-            cross = sdxf.Block(name=name, layer=layer)
+            cross = sdxf.Block(name=name.upper(), layer=layer)
             cross.append(sdxf.PolyLine(pts))
             drawing.layers.append(sdxf.Layer(name=layer, color=7))
             drawing.blocks.append(cross)
             for point in points:
-                drawing.append(sdxf.Insert(cross.name, point=point, layer=layer))
+                if solid:
+                    print "Not implemented yet..."
+                    drawing.append(sdxf.Insert(cross.name, point=point, layer=layer))
+                else:
+                    drawing.append(sdxf.Insert(cross.name, point=point, layer=layer))
         else:
             for point in points:
-                drawing.append(sdxf.Insert(sdxf.PolyLine(pts), point=point))
+                if solid:
+                    x0, y0 = point
 
+                    boxptsvert = [(x0-lw, y0-h), (x0+lw, y0-h), (x0+lw, y0+h), (x0-lw, y0+h)]
+                    boxptshorz = [(x0-w, y0-lw), (x0+w, y0-lw), (x0+w, y0+lw), (x0-w, y0+lw)]
 
+                    drawing.append(sdxf.Solid(boxptsvert))
+                    drawing.append(sdxf.Solid(boxptshorz))
+                else:
+                    drawing.append(sdxf.Insert(sdxf.PolyLine(pts), point=point))
+                    #drawing.append(sdxf.PolyLine(translate_pts(pts,point)))
+                    
+                
 class SolidNotch:
     def __init__(self, notch_length, notch_depth, superfine_offset, superfine_spacing, superfine_size, fine_offset,
                  fine_size, rough_size, padding=0, flipped=False, pinw=None, gapw=None):
