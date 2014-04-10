@@ -4,11 +4,15 @@ Created on Fri Aug 23 14:59:04 2013
 
 @author: Dave
 """
+
+#DCM: This was directly copied from the TEK5014 class
+#*SOME* methods have been updated, but don't assume they have!
+
 from slab.instruments import SocketInstrument 
 from numpy import array, floor
     
 class Tek70001 (SocketInstrument):
-    """Tektronix 5014 Arbitrary Waveform Class"""
+    """Tektronix 70001 Arbitrary Waveform Class"""
     default_port=4000
     def __init__(self,name='Tek70001',address='',enabled=True,timeout=100, recv_length=1024):
         SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
@@ -378,6 +382,10 @@ class Tek70001 (SocketInstrument):
         self.stop()
         self.reset()
         
+    def load_waveform_file(self,filename):
+        
+        self.write('MMEM:OPEN "' + filename + '"')
+        
     def load_sequence_file(self,filename):
         
         self.socket.send("AWGControl:SREStore '%s' \n" % (filename))
@@ -386,20 +394,34 @@ class Tek70001 (SocketInstrument):
         
     def prep_experiment(self):
         
-        self.write("SEQuence:JUMP 1")
+        self.write("SOUR:JUMP:FORC 1")
             
     
-    def set_amps_offsets(self,channel_amps=[1.0,1.0,1.0,1.0],channel_offsets = [0.0,0.0,0.0,0.0], marker_amps=[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]):
+    def set_amps_offsets(self,channel_amps=[1.0],channel_offsets = [0.0], marker_amps=[1.0]):
     
-         for i in range(1,5):
-            self.set_amplitude(i,channel_amps[i-1])
-            self.set_offset(i,channel_offsets[i-1])
-            for j in range(2):
-                self.set_markerHigh(i,j+1,marker_amps[2*(i-1)+j])
-                self.set_markerLow(i,j+1,0.0)
+            #Note that there is no offset!
+         
+            #The amplitude range is 0.25 --> 0.5
+            self.set_amplitude(1,channel_amps[i-1])
+            #self.set_offset(i,channel_offsets[i-1])
+            
+            #maker functions not set for now!!
             
     
-    
+    def new_sequence(self,seq_name='seq1',num_steps=1):
+        self.write('SLISt:SEQuence:NEW "' + seq_name + '",' + str(num_steps))
+        
+    def assign_seq_waveform(self,step,waveform,last_step=False,seq_name='seq1',):
+        
+        self.write('SLISt:SEQuence:STEP'+str(step)+':TASSet1:WAVeform "' + seq_name + '","' + waveform + '"')
+        
+        #setup wait trigger 
+        self.write('SLISt:SEQuence:STEP'+str(step)+':WINPUT "' + seq_name + '", ATR')        
+        
+        #setup goto
+        if last_step:
+            self.write('SLISt:SEQuence:STEP'+str(step)+':GOTO "' + seq_name + '", FIRST')
+        
 if __name__=="__main__":
-    awg=Tek5014(address='192.168.14.136')
+    awg=Tek70001(address='192.168.14.137')
     print awg.get_id()
