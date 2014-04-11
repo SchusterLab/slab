@@ -245,12 +245,13 @@ class SlabFile(h5py.File):
         #            self.attrs["_script"] = get_script()
         #if not read-only or existing then save the script into the .h5
         #Maybe should take this automatic feature out and just do it when you want to
-        if 'save_script' in kwargs:
-            save_script = kwargs['save_script']
-        else:
-            save_script = True
-        if (self.mode is not 'r') and ("_script" not in self.attrs) and (save_script):
-            self.save_script()
+        # Automatic feature taken out. Caused more trouble than convenience. Ge Yang
+        # if 'save_script' in kwargs:
+        #     save_script = kwargs['save_script']
+        # else:
+        #     save_script = True
+        # if (self.mode is not 'r') and ("_script" not in self.attrs) and (save_script):
+        #     self.save_script()
         self.flush()
 
     # Methods for proxy use    
@@ -382,9 +383,8 @@ class SlabFile(h5py.File):
     def append(self, dataset, pt):
         self.append_data(self, dataset, pt)
 
-
-    def save_script(self, name="_script"):
-        self.attrs[name] = get_script()
+    # def save_script(self, name="_script"):
+    #     self.attrs[name] = get_script()
 
     def save_settings(self, dic, group='settings'):
         if group not in self:
@@ -414,17 +414,17 @@ def set_range(dset, range_dsets, range_names=None):
             dset.dims[i].label = range_names[i]
 
 
-def get_script():
-    """returns currently running script file as a string"""
-    fname = inspect.stack()[-1][1]
-    if fname == '<stdin>':
-        return fname
-
-    #print fname
-    f = open(fname, 'r')
-    s = f.read()
-    f.close()
-    return s
+# def get_script():
+#     """returns currently running script file as a string"""
+#     fname = inspect.stack()[-1][1]
+#     if fname == '<stdin>':
+#         return fname
+#
+#     #print fname
+#     f = open(fname, 'r')
+#     s = f.read()
+#     f.close()
+#     return s
 
 
 def open_to_path(h5file, path, pathsep='/'):
