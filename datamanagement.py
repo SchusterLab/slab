@@ -414,17 +414,16 @@ def set_range(dset, range_dsets, range_names=None):
             dset.dims[i].label = range_names[i]
 
 
-# def get_script():
-#     """returns currently running script file as a string"""
-#     fname = inspect.stack()[-1][1]
-#     if fname == '<stdin>':
-#         return fname
-#
-#     #print fname
-#     f = open(fname, 'r')
-#     s = f.read()
-#     f.close()
-#     return s
+def get_script():
+    """returns currently running script file as a string"""
+    fname = inspect.stack()[-1][1]
+    if fname == '<stdin>':
+        return fname
+    #print fname
+    f = open(fname, 'r')
+    s = f.read()
+    f.close()
+    return s
 
 
 def open_to_path(h5file, path, pathsep='/'):
