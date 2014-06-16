@@ -281,6 +281,13 @@ def gds_channel(s, length, width, datatype=0, layer=0):
     w = width/2.
     gds_rect(s, (0, w), (length, -w), datatype, layer)
     #s.last = vadd(s.last, s.orient_pt((length, 0)))
+    
+#subtract the drawing in s1 from the rectangle defined by boundary
+def subtract_drawing(s1,s2,boundary):
+    
+   #to do (how?)
+   pass
+    
 
 '''
 Calculations by DCM May 2013
@@ -640,6 +647,7 @@ def ShuntedLER(s, n_fingers, finger_height, n_meanders, meander_height):
     cap(s)
     ind(s)
     cap(s)
+    
 
 #This creates a capacitor *to ground* that has fingers coming off of a middle
 #CPW straight section. The CPW section has the same characteristics as the CPW 
@@ -650,7 +658,8 @@ def ShuntedLER(s, n_fingers, finger_height, n_meanders, meander_height):
 #finger_gap: gap between fingers (i.e. width of the ground plane finger)
 #align: draw alignment marks
 #nalign: number of alignment marks
-def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1, nalign=2):
+#round_finger: rounds the end of the finger (added 3/2014)
+def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1, nalign=2, round_finger=False):
     def ground_finger_contents(s, gds_info=None):
             if gds_info is not None:
                 channel = lambda s, length, width: gds_channel(s, length, width, gds_info[0], gds_info[1])
@@ -682,20 +691,56 @@ def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1, nalign=2
         #for drawing alignment crosses
         cross_height = length + gap + pin/2. + dist
         finger_start = s.last
+        
+        
                 
         for i in range(n_fingers):
-            if empty:
-                pass
-                CPWStraight(s, 2*gap2 + width, pinw=0, gapw=gap+gap2+length+pin/2.)
-            else:
-                CPWStraight(s, gap2, gapw=gap+gap2+length)
-                CPWStraight(s, width, pinw=pin+2.*(length+gap), gapw=gap2)
-                CPWStraight(s, gap2, gapw=gap+gap2+length)
-            if i != (n_fingers - 1):
+            if round_finger:
+                round_radius = (2*gap2 + width)/2.0
                 if empty:
-                    CPWStraight(s, width, pinw=0, gapw=gap+pin/2.)
+                    pass                    
+                    CPWStraight(s, 2*gap2 + width, pinw=0, gapw=gap+gap2+length+pin/2.-round_radius)
+                    inner_radius = 0.0
                 else:
-                    CPWStraight(s, width, gapw=gap)
+                    
+                    CPWStraight(s, gap2, gapw=gap+gap2+length-round_radius)
+                    s.move(width)
+                    CPWStraight(s, gap2, gapw=gap+gap2+length-round_radius)
+                    inner_radius = width/2.0
+                    
+                make_annulus(s,orient_pt((-round_radius,gap+gap2+length+pin/2.-round_radius),s.last_direction,s.last),s.last_direction,round_radius,inner_radius,0.0,180.0)
+                make_annulus(s,orient_pt((-round_radius,-(gap+gap2+length+pin/2.-round_radius)),s.last_direction,s.last),s.last_direction+180.0,round_radius,inner_radius,0.0,180.0)
+                
+                #interconnect between fingers
+                if i != (n_fingers - 1):
+                    if empty:
+                        make_hyperbolic(s,pin/2.0+gap+width/2.0,orient_pt((width/2.0,0),s.last_direction,s.last),s.last_direction,width/2.0,180.0,360.0)
+                        make_hyperbolic(s,-(pin/2.0+gap+width/2.0),orient_pt((width/2.0,0),s.last_direction,s.last),s.last_direction,width/2.0,180.0,0.0)
+                        s.move(width)
+                        
+                    else:
+                        #CPWStraight(s, width, gapw=gap)           
+                       
+                        make_hyperbolic(s,gap+width/2.0,orient_pt((width/2.0,pin/2.0),s.last_direction,s.last),s.last_direction,width/2.0,180.0,360.0)
+                        make_hyperbolic(s,-(gap+width/2.0),orient_pt((width/2.0,-pin/2.0),s.last_direction,s.last),s.last_direction,width/2.0,180.0,0.0)                        
+                        
+                        s.move(width)
+                        
+            else:
+                if empty:
+                    pass
+                    CPWStraight(s, 2*gap2 + width, pinw=0, gapw=gap+gap2+length+pin/2.)
+                else:
+                    CPWStraight(s, gap2, gapw=gap+gap2+length)
+                    CPWStraight(s, width, pinw=pin+2.*(length+gap), gapw=gap2)
+                    CPWStraight(s, gap2, gapw=gap+gap2+length)
+                
+                #interconnect between fingers
+                if i != (n_fingers - 1):
+                    if empty:
+                        CPWStraight(s, width, pinw=0, gapw=gap+pin/2.)
+                    else:
+                        CPWStraight(s, width, gapw=gap)
                     
 
         finger_dist = ((s.last[0]-finger_start[0])**2+(s.last[1]-finger_start[1])**2)**0.5       
@@ -723,6 +768,162 @@ def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1, nalign=2
         if gds_info is not None:
             ground_finger_contents(s, gds_info=gds_info)
     return builder
+
+#This creates a meander line inductor  (created 03/2014...previously in the lumped element code)
+#n_fingers is the number of "wiggles" in the meander
+#length is the total length of the meander line
+#width is the width of the meander line
+#finger_gap is the distance between the fingers
+#ground_gap is the distance between the ground plane and the fingers
+def meander_line(n_fingers, length, width, finger_gap, ground_gap, flipped=False, round_finger=False):
+    
+    def meander_line_contents(s, gds_info=None):
+        
+            if gds_info is not None:
+                channel = lambda s, length, width: gds_channel(s, length, width, gds_info[0], gds_info[1])
+            else:
+                channel = Channel
+            
+            pin, gap = s.pinw, s.gapw
+            tot_length = pin + 2*length
+            gap_width = width + 2*gap
+            channel(s, gap, pin)
+            for _ in range(n_fingers - 1):
+                channel(s, width, tot_length)
+                channel(s, gap_width, pin)
+            channel(s, width, tot_length)
+            channel(s, gap, pin)
+    
+    
+    def builder(s, gap=None, empty=False, contents_struct=None, gds_info=None):
+        
+        sign = -1 if flipped else 1    
+        
+        #pin, gap = s.pinw, s.gapw
+        pin = s.pinw
+        gap = gap if (gap is not None) else s.gapw
+        if finger_gap<0:
+            gap2 = gap
+        else:
+            gap2 = finger_gap
+            
+          #-----------
+        def myrect(s, p0, p1):
+            x0, y0 = p0
+            x1, y1 = p1
+            p0 = x0, sign*y0
+            p1 = x1, sign*y1
+            rect(s, p0, p1)
+    
+        #Draw inductor region border 
+        l, w, g = length, width, finger_gap
+        
+        l_reg_width = 2*n_fingers*(w+g)+w    
+        
+         
+       
+        #draw meander line   
+        s.last = orient_pt((ground_gap,0),s.last_direction,s.last)
+        
+        for i in [1,-1]:
+            myrect(s,(0,i*(l/2+w+ground_gap)),(l_reg_width,i*(l/2+w)))
+           
+        
+        if round_finger:
+            
+            for i in [1,-1]:
+                #taper to the meander line
+                s.append(sdxf.PolyLine(orient_pts([(-ground_gap,i*s.pinw/2),(-ground_gap,i*(l/2+w+ground_gap)),(-ground_gap/2.0,i*(l/2+w+ground_gap)),(-ground_gap/2,i*w/2),(-ground_gap,i*s.pinw/2)],s.last_direction,s.last)))
+                myrect(s,(-ground_gap/2,i*(l/2+w)),(0,i*(l/2+w+ground_gap)))                
+                make_hyperbolic(s,i*(l/2.0+w*(1.0+i/2.0)+i*ground_gap/2.0),orient_pt((-ground_gap/2.0,-i*(l/2.0+w)),s.last_direction,s.last),s.last_direction,ground_gap/2.0+(i+1)/2.0*w,0.0,-90.0)
+                                
+                #myrect(s,(-ground_gap,i*s.pinw/2),(0,i*(l/2+w+ground_gap)))
+                
+                s.append(sdxf.PolyLine(orient_pts([(l_reg_width+ground_gap/2.0,i*w/2),(l_reg_width+ground_gap/2.0,i*(l/2+w+ground_gap)),(l_reg_width+ground_gap,i*(l/2+w+ground_gap)),(l_reg_width+ground_gap,i*s.pinw/2),(l_reg_width+ground_gap/2.0,i*w/2)],s.last_direction,s.last)))
+                myrect(s,(l_reg_width,i*(l/2+w+ground_gap)),(l_reg_width+ground_gap,i*(l/2+w)))
+                make_hyperbolic(s,i*(l/2.0+w*(1.0-i/2.0)-i*ground_gap/2.0),orient_pt((l_reg_width+ground_gap/2.0,-i*(l/2.0+w)),s.last_direction,s.last),s.last_direction,ground_gap/2.0+(1-i)/2.0*w,90.0,180.0)
+                
+            
+            for i in range(n_fingers):
+                myrect(s, (w, l/2.0-g/2.0), (w + g, -(l/2+w)))
+                make_annulus(s,orient_pt((w+g/2.0,l/2.0-g/2.0),s.last_direction,s.last),s.last_direction,g/2.0,0,180.0,0)
+                make_hyperbolic(s,-g/2.0-w,orient_pt((w+g/2.0,l/2.0+w),s.last_direction,s.last),s.last_direction,g/2.0+w,0.0,180.0)
+                
+                
+                myrect(s, (2*w + g, -(l/2-g/2.0)), (2*w + 2*g, (l/2+w)))
+                make_annulus(s,orient_pt((2*w+g*1.5,-(l/2.0-g/2.0)),s.last_direction,s.last),s.last_direction+180,g/2.0,0,180.0,0)
+                make_hyperbolic(s,g/2.0+w,orient_pt((2*w+g*1.5,-(l/2.0+w)),s.last_direction,s.last),s.last_direction,g/2.0+w,-180.0,0.0)
+                
+                
+                s.last = orient_pt((2*g+2*w,0), s.last_direction, s.last)
+            
+            s.last = orient_pt((w,0), s.last_direction, s.last)            
+            
+        else:
+            
+            for i in [1,-1]:
+                myrect(s,(-ground_gap,i*s.pinw/2),(0,i*(l/2+w+ground_gap)))
+                myrect(s,(l_reg_width,i*(l/2+w+ground_gap)),(l_reg_width+ground_gap,i*s.pinw/2))
+                   
+            
+            for i in range(n_fingers):
+                myrect(s, (w, l/2), (w + g, -(l/2+w)))
+                myrect(s, (2*w + g, -(l/2)), (2*w + 2*g, (l/2+w)))
+                
+                if i==0:
+                    myrect(s, (0, -s.pinw/2), (w, -(l/2+w)))
+                
+                if i==(n_fingers-1):
+                    myrect(s, (2*w + 2*g, s.pinw/2), (3*w + 2*g, (l/2+w)))
+                
+                s.last = orient_pt((2*g+2*w,0), s.last_direction, s.last)
+            
+            s.last = orient_pt((w,0), s.last_direction, s.last)
+    #------------------
+            
+            
+        s.last = orient_pt((ground_gap,0), s.last_direction, s.last)
+        
+        if contents_struct is not None:
+            meander_line_contents(contents_struct)
+            
+        if gds_info is not None:
+            meander_line_contents(s, gds_info=gds_info)
+    return builder
+    
+    
+#this draws an annulus segment 
+def make_annulus(s,start_pt,direction,outer_radius,inner_radius,start_angle,end_angle,segments=30):
+    
+  
+    #draw outer arc
+    pts = arc_pts(start_angle,end_angle,outer_radius,segments)
+    
+    if inner_radius > 0:
+        
+        pts += arc_pts(end_angle,start_angle,inner_radius,segments)    
+        
+        
+    #go back to the start
+    pts.append((pts[0]))
+    
+    s.append(sdxf.PolyLine(orient_pts(pts,direction,start_pt)))
+    
+    
+#this draws a hyperbolic segment (saddle)
+def make_hyperbolic(s,circle_height,start_pt,direction,radius,start_angle,end_angle,segments=30):
+    
+    
+    pts = arc_pts(start_angle,end_angle,radius,segments)
+    pts = translate_pts(pts,(0,circle_height))
+    
+    pts.append((pts[-1][0],0))
+    pts.append((pts[0][0],0))
+    pts.append(pts[0])
+    
+    s.append(sdxf.PolyLine(orient_pts(pts,direction,start_pt)))
+    
+    
 
 #this draws alignment crosses from start_pt to end_pt in a grid nx by ny (x is along direction)
 #omit is a nx x ny array of ones and zeros (zero is don't draw cross)
