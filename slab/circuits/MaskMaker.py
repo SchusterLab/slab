@@ -121,7 +121,7 @@ class WaferMask(sdxf.Drawing):
         self.dashed_dicing_border = dashed_dicing_border
         self.ndashes = ndashes
         self.dice_corner = dice_corner
-		self.solid = solid
+        self.solid = solid
 
         start_angle = flat_angle + 180. / pi * acos(2. * flat_distance / diameter)
         stop_angle = flat_angle - 180. / pi * acos(2. * flat_distance / diameter)
