@@ -101,7 +101,7 @@ class WaferMask(sdxf.Drawing):
 
     def __init__(self, name, diameter=50800., flat_angle=90., flat_distance=24100., wafer_padding=2000,
                  chip_size=(7000., 2000.), dicing_border=200, textsize=(800, 800),
-                 etchtype=True, wafer_edge=True, dashed_dicing_border=0,
+                 etchtype=True, wafer_edge=True, dashed_dicing_border=0, ndashes = 1, dice_corner = False,
                  two_layer=False, solid=False):
         sdxf.Drawing.__init__(self)
         name = name.upper()
@@ -119,7 +119,9 @@ class WaferMask(sdxf.Drawing):
         self.buffer = self.wafer_padding # + self.dicing_border/2
         self.etchtype = etchtype
         self.dashed_dicing_border = dashed_dicing_border
-        self.solid = solid
+        self.ndashes = ndashes
+        self.dice_corner = dice_corner
+		self.solid = solid
 
         start_angle = flat_angle + 180. / pi * acos(2. * flat_distance / diameter)
         stop_angle = flat_angle - 180. / pi * acos(2. * flat_distance / diameter)
@@ -200,8 +202,8 @@ class WaferMask(sdxf.Drawing):
         if self.etchtype:
             ChipBorder(chip, self.dicing_border / 2.)
         if self.dashed_dicing_border > 0:
-            dashlayer = 'gap' if chip.two_layer else '0'
-            DashedChipBorder(chip, self.dicing_border / 2., layer=dashlayer, solid = self.solid)
+            dashlayer = 'gap' if chip.two_layer else chip.layer
+            DashedChipBorder(chip, self.dicing_border / 2., dash_length = self.dashed_dicing_border, ndashes = self.ndashes, dice_corner = self.dice_corner, layer=dashlayer)
         if chip.two_layer:
             self.layers.append(sdxf.Layer(name='gap', color=1))
             self.layers.append(sdxf.Layer(name='pin', color=3))
@@ -1842,59 +1844,125 @@ class ChipBorder(Structure):
 class DashedChipBorder(Structure):
     """Dashed Chip border for e-beam drawing and then dicing"""
 
-    def __init__(self, chip, border_thickness=40, dash_width=40, dash_length=200, layer='structure', color=1, solid=True):
+    def __init__(self, chip, border_thickness=40, dash_width=40, dash_length=200, ndashes = 1, dice_corner = False, layer='structure', color=1):
         Structure.__init__(self, chip, layer=layer, color=color)
 
         '''Caution: border_thickness refers to the bid dicing border. Other quantities refer to dashes.'''
 
         chip_size = (chip.size[0] + 2 * border_thickness, chip.size[1] + 2 * border_thickness)
 
+        #add corner marks to the chip
+        if dice_corner:
+            
+            #Top-left
+            pts1 = [(0, chip_size[1]), 
+                    (dash_length+dash_width/2.,chip_size[1]),
+                    (dash_length+dash_width/2.,chip_size[1]-dash_width/2.),
+                    (dash_width/2., chip_size[1]-dash_width/2.),
+                    (dash_width/2., chip_size[1]-dash_width/2.-dash_length),
+                    (0,chip_size[1]-dash_width/2.-dash_length),
+                    (0, chip_size[1]),
+            ]
+            pts1 = translate_pts(pts1, (-border_thickness, -border_thickness))
+    
+            #Bottom-left
+            pts2 = [(0, 0), (dash_length+dash_width/2.,0),
+                    (dash_length+dash_width/2.,dash_width/2.),
+                    (dash_width/2., dash_width/2.),
+                    (dash_width/2., dash_width/2.+dash_length),
+                    (0,dash_width/2.+dash_length),
+                    (0, 0)
+            ]
+            pts2 = translate_pts(pts2, (-border_thickness, -border_thickness))
+    
+            #Bottom-right
+            pts3 = [(chip_size[0], 0), (chip_size[0]-dash_length-dash_width/2.,0),
+                    (chip_size[0]-dash_length-dash_width/2.,dash_width/2.),
+                    (chip_size[0]-dash_width/2., dash_width/2.),
+                    (chip_size[0]-dash_width/2., dash_width/2.+dash_length),
+                    (chip_size[0],dash_width/2.+dash_length),
+                    (chip_size[0], 0)
+            ]
+            pts3 = translate_pts(pts3, (-border_thickness, -border_thickness))
+    
+            #Top-right
+            pts4 = [(chip_size[0], chip_size[1]), 
+                    (chip_size[0]-dash_length-dash_width/2.,chip_size[1]),
+                    (chip_size[0]-dash_length-dash_width/2.,chip_size[1]-dash_width/2.),
+                    (chip_size[0]-dash_width/2., chip_size[1]-dash_width/2.),
+                    (chip_size[0]-dash_width/2., chip_size[1]-dash_width/2.-dash_length),
+                    (chip_size[0],chip_size[1]-dash_width/2.-dash_length),
+                    (chip_size[0], chip_size[1])
+            ]
+            pts4 = translate_pts(pts4, (-border_thickness, -border_thickness))
+#    
+            if chip.solid:
+                
+                self.append(sdxf.Solid(pts1, layer=layer))
+                self.append(sdxf.Solid(pts2, layer=layer))
+                self.append(sdxf.Solid(pts3, layer=layer))
+                self.append(sdxf.Solid(pts4, layer=layer))
+                
+            else:
+                
+                self.append(sdxf.PolyLine(pts1, layer=layer))
+                self.append(sdxf.PolyLine(pts2, layer=layer))
+                self.append(sdxf.PolyLine(pts3, layer=layer))
+                self.append(sdxf.PolyLine(pts4, layer=layer))
+
         #Top
-        pts1 = [(chip_size[0] / 2. - dash_length / 2., chip_size[1]),
-                (chip_size[0] / 2. + dash_length / 2., chip_size[1]),
-                (chip_size[0] / 2. + dash_length / 2., chip_size[1] - dash_width / 2.),
-                (chip_size[0] / 2. - dash_length / 2., chip_size[1] - dash_width / 2.),
-                (chip_size[0] / 2. - dash_length / 2., chip_size[1]),
-        ]
-        pts1 = translate_pts(pts1, (-border_thickness, -border_thickness))
-
-        #Bottom
-        pts2 = [(chip_size[0] / 2. - dash_length / 2., 0),
-                (chip_size[0] / 2. + dash_length / 2., 0),
-                (chip_size[0] / 2. + dash_length / 2., dash_width / 2.),
-                (chip_size[0] / 2. - dash_length / 2., dash_width / 2.),
-                (chip_size[0] / 2. - dash_length / 2., 0),
-        ]
-        pts2 = translate_pts(pts2, (-border_thickness, -border_thickness))
-
-        #Left
-        pts3 = [(0, chip_size[1] / 2. - dash_length / 2.),
-                (0, chip_size[1] / 2. + dash_length / 2.),
-                (dash_width / 2., chip_size[1] / 2. + dash_length / 2.),
-                (dash_width / 2., chip_size[1] / 2. - dash_length / 2.),
-                (0, chip_size[1] / 2. - dash_length / 2.),
-        ]
-        pts3 = translate_pts(pts3, (-border_thickness, -border_thickness))
-
-        #Right
-        pts4 = [(chip_size[0], chip_size[1] / 2. - dash_length / 2.),
-                (chip_size[0], chip_size[1] / 2. + dash_length / 2.),
-                (chip_size[0] - dash_width / 2., chip_size[1] / 2. + dash_length / 2.),
-                (chip_size[0] - dash_width / 2., chip_size[1] / 2. - dash_length / 2.),
-                (chip_size[0], chip_size[1] / 2. - dash_length / 2.),
-        ]
-        pts4 = translate_pts(pts4, (-border_thickness, -border_thickness))
-
-        if solid:
-            self.append(sdxf.Solid(pts1, layer=layer))
-            self.append(sdxf.Solid(pts2, layer=layer))
-            self.append(sdxf.Solid(pts3, layer=layer))
-            self.append(sdxf.Solid(pts4, layer=layer))
-        else:
-            self.append(sdxf.PolyLine(pts1, layer=layer))
-            self.append(sdxf.PolyLine(pts2, layer=layer))
-            self.append(sdxf.PolyLine(pts3, layer=layer))
-            self.append(sdxf.PolyLine(pts4, layer=layer))
+        for i in range(ndashes):
+            
+            divide_ratio = (i+1)/(ndashes+1.0)            
+            
+            pts1 = [(chip_size[0] * divide_ratio - dash_length / 2., chip_size[1]),
+                    (chip_size[0] * divide_ratio + dash_length / 2., chip_size[1]),
+                    (chip_size[0] * divide_ratio + dash_length / 2., chip_size[1] - dash_width / 2.),
+                    (chip_size[0] * divide_ratio - dash_length / 2., chip_size[1] - dash_width / 2.),
+                    (chip_size[0] * divide_ratio - dash_length / 2., chip_size[1]),
+            ]
+            pts1 = translate_pts(pts1, (-border_thickness, -border_thickness))
+    
+            #Bottom
+            pts2 = [(chip_size[0] * divide_ratio - dash_length / 2., 0),
+                    (chip_size[0] * divide_ratio + dash_length / 2., 0),
+                    (chip_size[0] * divide_ratio + dash_length / 2., dash_width / 2.),
+                    (chip_size[0] * divide_ratio - dash_length / 2., dash_width / 2.),
+                    (chip_size[0] * divide_ratio - dash_length / 2., 0),
+            ]
+            pts2 = translate_pts(pts2, (-border_thickness, -border_thickness))
+    
+            #Left
+            pts3 = [(0, chip_size[1] * divide_ratio - dash_length / 2.),
+                    (0, chip_size[1] * divide_ratio + dash_length / 2.),
+                    (dash_width / 2., chip_size[1] * divide_ratio + dash_length / 2.),
+                    (dash_width / 2., chip_size[1] * divide_ratio - dash_length / 2.),
+                    (0, chip_size[1] * divide_ratio - dash_length / 2.),
+            ]
+            pts3 = translate_pts(pts3, (-border_thickness, -border_thickness))
+    
+            #Right
+            pts4 = [(chip_size[0], chip_size[1] * divide_ratio - dash_length / 2.),
+                    (chip_size[0], chip_size[1] * divide_ratio + dash_length / 2.),
+                    (chip_size[0] - dash_width / 2., chip_size[1] * divide_ratio + dash_length / 2.),
+                    (chip_size[0] - dash_width / 2., chip_size[1] * divide_ratio - dash_length / 2.),
+                    (chip_size[0], chip_size[1] * divide_ratio - dash_length / 2.),
+            ]
+            pts4 = translate_pts(pts4, (-border_thickness, -border_thickness))
+    
+            if chip.solid:
+                
+                self.append(sdxf.Solid(pts1, layer=layer))
+                self.append(sdxf.Solid(pts2, layer=layer))
+                self.append(sdxf.Solid(pts3, layer=layer))
+                self.append(sdxf.Solid(pts4, layer=layer))
+                
+            else:
+                
+                self.append(sdxf.PolyLine(pts1, layer=layer))
+                self.append(sdxf.PolyLine(pts2, layer=layer))
+                self.append(sdxf.PolyLine(pts3, layer=layer))
+                self.append(sdxf.PolyLine(pts4, layer=layer))
 
 
 class CPWGapCap:
