@@ -538,7 +538,13 @@ class Box:
     def rotNadd(self, s, items):
         for item in items:
             item = rotate_pts(item, s.last_direction, self.start)
-            s.append(sdxf.PolyLine(item))
+            
+            if s.chip.solid:
+                s.append(sdxf.Solid(item[:-1]))
+                s.append(sdxf.Solid(item[:-1]))
+            else:
+                s.append(sdxf.PolyLine(item)) #NOTE
+
 
     def align(self, align_spacing, align_size):
         l, w = align_spacing
