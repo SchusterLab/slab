@@ -541,7 +541,6 @@ class Box:
             
             if s.chip.solid:
                 s.append(sdxf.Solid(item[:-1]))
-                s.append(sdxf.Solid(item[:-1]))
             else:
                 s.append(sdxf.PolyLine(item)) #NOTE
 
@@ -2684,7 +2683,11 @@ class CPWTee(Structure):
         center = orient_pt((feed_length / 2., 0), s.last_direction, s.last)
         for pts in shapes:
             pts = orient_pts(pts, angle, center)
-            s.append(sdxf.PolyLine(pts))
+            
+            if s.chip.solid:
+                s.append(sdxf.Solid(pts[:-1]))
+            else:
+                s.append(sdxf.PolyLine(pts))
 
         s.last = orient_pt((feed_length, 0), s.last_direction, s.last)
         lstart = orient_pt((stub_length, 0), lstart_dir, center)
