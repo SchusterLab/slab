@@ -1,7 +1,7 @@
 import sdxf
 from math import sin, cos, tan, pi, floor, asin, acos, atan, degrees, radians
 from alphanum import alphanum_dict
-import random
+import random, subprocess, time
 from numpy import sqrt, array
 
 
@@ -148,12 +148,6 @@ class WaferMask(sdxf.Drawing):
         if wafer_edge:
             self.append(sdxf.PolyLine(pts))
 
-        #self.append(sdxf.Arc((0.,0.),iradius,start_angle,stop_angle))
-        #self.append(sdxf.Line( [ stopi,stopo]))
-        #self.append(sdxf.Arc((0.,0.),oradius,start_angle,stop_angle))
-        #self.append(sdxf.Line( [ starti,starto]))
-        #self.append(sdxf.PolyLine([stopi,starti,starto,stopo]))
-
         self.chip_points = self.get_chip_points()
         self.chip_slots = self.chip_points.__len__()
         self.current_point = 0
@@ -192,10 +186,6 @@ class WaferMask(sdxf.Drawing):
             self.chip_points[i1] = self.chip_points[i2]
             self.chip_points[i2] = tp
 
-            #    def label_chip(self,chip,pt,maskid,chipid):
-            #        """Labels chip on wafer at position pt where pt is the bottom left corner of chip"""
-            #        AlphaNumText(self,maskid,chip.textsize,pt)
-            #        AlphaNumText(self,chipid,chip.textsize,pt)
 
     def add_chip(self, chip, copies, label=False, savechip=True):
         """Adds chip design 'copies' times into mask.  chip must have a unique name as it will be inserted as a block"""
@@ -217,7 +207,6 @@ class WaferMask(sdxf.Drawing):
                 raise MaskError, "MaskError: Cannot add %d copies of chip '%s' Only %d slots on mask and %d remaining." % (
                     copies, chip.name, self.chip_points.__len__(), slots_remaining)
             p = self.chip_points[self.current_point]
-            print p,
             self.current_point += 1
             self.append(sdxf.Insert(chip.name, point=p))
             if chip.two_layer:
@@ -230,7 +219,6 @@ class WaferMask(sdxf.Drawing):
 
         self.manifest.append({'chip': chip, 'name': chip.name, 'copies': copies, 'short_desc': chip.short_description(),
                               'long_desc': chip.long_description()})
-        #print "%s\t%d\t%s" % (chip.name,copies,chip.short_description())
         if savechip:
             chip.save(fname=self.name + "-" + chip.name, maskid=self.name, chipid=chip.name, do_label = label)
 
@@ -287,11 +275,6 @@ class WaferMask(sdxf.Drawing):
         #figure out offset for chips (centered on chip or between chips)
         xoffset = -max_cols / 2. * self.die_size[0]
         yoffset = -max_rows / 2. * self.die_size[1]
-        #if max_cols%2==1:
-        #    print "offset X"
-        #    xoffset+=self.chip_size[0]/2.
-        #if max_rows%2==1:
-        #    yoffset+=self.chip_size[1]/2.
 
         chip_points = []
         for ii in range(max_rows):
@@ -309,7 +292,7 @@ class Chip(sdxf.Block):
     """
 
     def __init__(self, name, author='', size=(7000., 1900.), mask_id_loc=(0, 1800), chip_id_loc=(0, 0),
-                 author_loc=(6900, 100), textsize=(160, 160), two_layer=False, layer=None, solid=False, **kwargs):
+                 author_loc=(6900, 100), textsize=(160, 160), two_layer=False, layer=None, solid=False, do_save=True, **kwargs):
         """size is a tuple size=(xsize,ysize)"""
         name = name.upper()
         self.two_layer = two_layer
@@ -318,10 +301,6 @@ class Chip(sdxf.Block):
                                   textsize, layer='gap', solid=solid)
             self.pin_layer = Chip(name + "pin", size, mask_id_loc, chip_id_loc,
                                   textsize, layer='pin', solid=solid)
-            #self.rest_layer = Chip(name, size, mask_id_loc, chip_id_loc,
-            #                       textsize, layer='rest', solid=solid)
-            #self.append = self.rest_layer.append
-
         #else:    
         if layer:
             sdxf.Block.__init__(self, name, layer=layer)
@@ -349,6 +328,8 @@ class Chip(sdxf.Block):
         self.top_right = (self.top_midpt[0] + 2500.0, self.top_midpt[1])
         self.bottom_left = (self.bottom_midpt[0] - 2500.0, self.bottom_midpt[1])
         self.bottom_right = (self.bottom_midpt[0] + 2500.0, self.bottom_midpt[1])
+
+        self.do_save = do_save
 
 
     def label_chip(self, drawing, maskid, chipid, author, offset=(0, 0)):
@@ -392,7 +373,9 @@ class Chip(sdxf.Block):
         d.blocks.append(self)
         d.append(sdxf.Insert(self.name, point=(0, 0)))
         #self.label_chip(d,maskid,chipid,self.author)
-        d.saveas(fname)
+        
+        if self.do_save:
+            d.saveas(fname)
 
     def short_description(self):
         try:
@@ -463,9 +446,11 @@ class Structure(object):
         object.__setattr__(self, name, value)
 
 
-#===============================================================================
+#####################
 #  CPW COMPONENTS    
-#===============================================================================
+#####################
+
+
 class Launcher:
     def __init__(self, structure, flipped=False, pad_length=250, taper_length=250, pad_to_length=500, pinw=None,
                  gapw=None):
@@ -508,9 +493,6 @@ class Launcher:
         except AttributeError: pass
 
 
-#===============================================================================       
-#  CPW COMPONENTS    
-#===============================================================================
 class Box:
     """A one layer box that can be launched asymetrically. Appends a box to the
         structure designated. 
@@ -637,9 +619,6 @@ class CoupledStraight:
 
             stop = rotate_pt((start[0] + length, start[1]), s.last_direction, start)
             s.last = stop
-            #if pinw == 0 and gapw == 0:#gets rid of the thin unecessary lines
-            #    return # Placed behind the previous condition because
-            # we need the assertion of the last point.
             if s.chip.solid:
                 if gapw != 0:
                     s.append(sdxf.Solid(gap1[:-1]))
@@ -657,7 +636,9 @@ class CoupledStraight:
         s.center_gapw=center_gapw
 
 class CPWStraight:
-    """A straight section of CPW transmission line"""
+    """
+    A straight section of CPW transmission line
+    """
 
     def __init__(self, structure, length, pinw=None, gapw=None):
         """ Adds a straight section of CPW transmission line of length = length to the structure"""
@@ -715,34 +696,10 @@ class CPWStraight:
                 s.append(sdxf.PolyLine(gap2))
 
 
-class CPWs2p:
-    def __init__(self, s, endpoint, pinw=None, gapw=None):
-        length = distance(endpoint, s.last)
-        if length == 0: return
-        CPWStraight(s, length, pinw=pinw, gapw=gapw)
-        self.length = length
-
-
-class Coupled2p:
-    def __init__(self, s, endpoint, pinw=None, gapw=None, center_gapw=None):
-        length = distance(endpoint, s.last)
-        if length == 0: return
-        CoupledStraight(s, length, pinw=pinw, gapw=gapw, center_gapw=center_gapw)
-        self.length = length
-
-
-class CPWConnect:
-    def __init__(self, s1, s2, pinw=None, gapw=None):
-        CPWs2p(s1, s2.last, pinw, gapw)
-
-
-class CoupledConnect:
-    def __init__(self, s1, s2, pinw=None, gapw=None, center_gapw=None):
-        Coupled2p(s1, s2.last, pinw, gapw, center_gapw)
-
-
 class CPWQubitBox:
-    """A straight section of CPW transmission line with fingers in the ground plane to add a capacitor"""
+    """
+    A straight section of CPW transmission line with fingers in the ground plane to add a capacitor
+    """
 
     def __init__(self, structure, fingerlen, fingerw, finger_gapw, finger_no, int_len=10, pinw=None, gapw=None,
                  align=True, small=10, medium=20, big=50):
@@ -813,9 +770,6 @@ class CPWQubitBox:
         self.s.append(sdxf.PolyLine(self.pin))
 
         #Adds the proper alignment marks
-
-        #s1 = Structure(self,start=start,color=3,direction=0)
-
 
         small_box = [(-small / 2., -small / 2.),
                      (-small / 2., +small / 2.),
@@ -904,6 +858,9 @@ class CPWQubitBox:
         ])
 
 class ThreePinTaper:
+    """
+    Needs description
+    """
     def __init__(self, structure, length, pinw=None, gapw=None, center_pinw=None, center_gapw=None, stop_pinw=None,
                  stop_gapw=None, stop_center_pinw=None, stop_center_gapw=None):
         if length == 0: return
@@ -992,6 +949,7 @@ class ThreePinTaper:
         s.center_pinw = stop_center_pinw
         s.center_gapw = stop_center_gapw
 
+
 class CoupledTaper:
     def __init__(self, structure, length, pinw=None, gapw=None, center_gapw=None, stop_pinw=None, stop_gapw=None,
                  stop_center_gapw=None):
@@ -1070,8 +1028,11 @@ class CoupledTaper:
         s.gapw = stop_gapw
         s.center_gapw = stop_center_gapw
 
+
 class CPWLinearTaper:
-    """A section of CPW which (linearly) tapers from one set of start_pinw and start_gapw to stop_pinw and stop_gapw over length=length"""
+    """
+    A section of CPW which (linearly) tapers from one set of start_pinw and start_gapw to stop_pinw and stop_gapw over length=length
+    """
 
     def __init__(self, structure, length, start_pinw=None, stop_pinw=None, start_gapw=None, stop_gapw=None):
         if length == 0: return
@@ -1135,11 +1096,15 @@ class CPWTaper:
         structure.pinw = stop_pinw
         structure.gapw = stop_gapw
 
+
 #Inside and Outside Versions are for two layer capacitors        
 #This shitty definition should be put into the trash. Useless class. 
 #Should be deleted anytime.        
 class CPWLinearTaperInside:
-    """A section of CPW which (linearly) tapers from one set of start_pinw and start_gapw to stop_pinw and stop_gapw over length=length"""
+    """
+    A section of CPW which (linearly) tapers from one set of start_pinw and start_gapw to stop_pinw and 
+    stop_gapw over length=length
+    """
 
     def __init__(self, structure, length, start_pinw, stop_pinw, start_gapw, stop_gapw):
         if length == 0: return
@@ -1172,7 +1137,9 @@ class CPWLinearTaperInside:
 
 
 class CPWBend:
-    """A CPW bend"""
+    """
+    A CPW bend
+    """
 
     def __init__(self, structure, turn_angle, pinw=None, gapw=None, radius=None, polyarc=True, segments=60):
         """creates a CPW bend with pinw/gapw/radius
@@ -1254,8 +1221,6 @@ class CPWBend:
 
     def arc_bend(self):
 
-    #print "start: %d, stop: %d" % (start_angle,stop_angle)
-
         if self.turn_angle > 0:
             self.astart_angle = self.start_angle - 90
             self.astop_angle = self.stop_angle - 90
@@ -1313,27 +1278,45 @@ class CPWBend:
 
 
 class CPWL(Chip):
+    """
+    Combination of CPWStraight, CPWBend and another CPWStraight. 
+    d1: length of the first straight segment
+    t1: turn angle of the bend
+    r1: bend radius of the bend
+    d2: length of the second straight element
+    """
     def __init__(self, s, d1, t1, r1, d2, pinw=None, gapw=None):
         CPWStraight(s, d1, pinw, gapw)
         CPWBend(s, t1, pinw, gapw, r1)
         CPWStraight(s, d2, pinw, gapw)
 
-#class TaperedCPWFingerCap:
-#    def __init__(self, structure,num_fingers,finger_length=None,finger_width=None,finger_gap=None,gapw=None):
+
 class CPWSturn(Chip):
-    def __init__(self, s, d1, t1, r1, d2, t2, r2, d3, pinw=None, Gapw=None):
-        CPWStraight(s, d1)
-        CPWBend(s, t1, radius=r1)
-        CPWStraight(s, d2)
-        CPWBend(s, t2, radius=r2)
-        CPWStraight(s, d3)
+    """
+    Combination of CPWStraight, CPWBend, CPWStraight, CPWBend and another CPWStraight.
+    d1: length of the first straight segment
+    t1: turn angle of the first bend
+    r1: bend radius of the first bend
+    d2: length of the second straight element
+    t2: turn angle of the second bend
+    r2: bend radius of the second bend
+    """
+    def __init__(self, s, d1, t1, r1, d2, t2, r2, d3, pinw=None, gapw=None):
+        CPWStraight(s, d1, pinw = pinw, gapw = gapw)
+        CPWBend(s, t1, radius=r1, pinw = pinw, gapw = gapw)
+        CPWStraight(s, d2, pinw = pinw, gapw = gapw)
+        CPWBend(s, t2, radius=r2, pinw = pinw, gapw = gapw)
+        CPWStraight(s, d3, pinw = pinw, gapw = gapw)
         s.L_last = d1 + d2 + d3 + (t1 * r1 + t2 * r2) * pi / 180
 
 
 class CPWWiggles:
-    """CPW Wiggles (meanders)
-        CPWWiggles(structure,num_wiggles,total_length,start_up=True,
-                   radius=None,pinw=None,gapw=None, segments=60)
+    """
+    CPW Wiggles (meanders)
+    num_wiggles: a wiggle is from the center pin up/down and back
+    total_length: The total length of the meander
+    start_up: Start with a CCW 90 degree turn or a CW turn
+    radius: Radius of the bend
     """
 
     def __init__(self, structure, num_wiggles, total_length, offset=0, start_up=True, radius=None, pinw=None, gapw=None,
@@ -1382,7 +1365,11 @@ class CPWWiggles:
             CPWBend(s, -isign * asign * 90, pinw, gapw, radius, segments=segments)
 
 class CoupledBend:
-    """A CPW bend"""
+    """
+    A CPW bend
+    turn_angle: angle in degrees
+    radius: radius of curvature
+    """
 
     def __init__(self, structure, turn_angle, pinw=None, gapw=None, center_gapw=None, radius=None, polyarc=True, segments=120):
         """creates a CPW bend with pinw/gapw/radius
@@ -1469,11 +1456,6 @@ class CoupledBend:
             self.center = rotate_pt((self.start[0], self.start[1] + self.asign * self.radius), self.start_angle,
                                     self.start)
 
-            #if polyarc:
-            #    self.poly_arc_bend()
-            #else:
-            #    self.arc_bend()
-
             self.structure.last = rotate_pt(self.start, self.stop_angle - self.start_angle, self.center)
             self.structure.last_direction = self.stop_angle
 
@@ -1495,12 +1477,9 @@ class CoupledBend:
         self.structure.append(sdxf.PolyLine(translate_pts(pts2, self.center)))
 
 
-
-
 class CoupledWiggles:
-    """CPW Wiggles (meanders)
-        CPWWiggles(structure,num_wiggles,total_length,start_up=True,
-                   radius=None,pinw=None,gapw=None, segments=60)
+    """
+    CPW Wiggles (meanders)
     """
 
     def __init__(self, structure, num_wiggles, total_length, offset=0, start_up=True, radius=None, pinw=None, gapw=None,
@@ -1549,8 +1528,10 @@ class CoupledWiggles:
                     CoupledStraight(s, vlength + offset, pinw, gapw, center_gapw)
             CoupledBend(s, -isign * asign * 90, pinw, gapw, center_gapw, radius, segments=segments)
 
+
 class CPWWigglesByLength:
-    """An updated version of CPWWiggles which is more general.  
+    """
+    An updated version of CPWWiggles which is more general.  
     Specifies a meander by length but allows for starting at different angles 
     and also allows meanders which are symmetric or asymmetric about the center pin.
     """
@@ -1617,7 +1598,9 @@ class CPWWigglesByLength:
 
 
 class CPWRightJoint:
-    "Sharp right angle. NOTE: implemented Solid (Gerwin)"
+    """
+    Sharp right angle.
+    """
 
     def __init__(self, s, CCW=False, pinw=None, gapw=None):
         pinw = pinw if pinw else s.__dict__["pinw"]
@@ -1644,14 +1627,15 @@ class CPWRightJoint:
 
 
 class RightJointWiggles:
-    "Square Wiggles, speed up your simulations!"
+    """
+    Square Wiggles, speed up your simulations!
+    """
 
     def __init__(self, s, total_length, num_wiggles, radius):
         pinw = s.__dict__["pinw"]
         gapw = s.__dict__["gapw"]
         cpwidth = pinw + 2 * gapw
         hlength = (2 * radius) - cpwidth
-        #vlength = ((total_length - ((num_wiggles-1)*cpwidth))/ float(2*num_wiggles)) - hlength - (2*cpwidth)
         vlength = (total_length - (num_wiggles * hlength) - (((3 * num_wiggles) + 1) * cpwidth)) / (2 * num_wiggles)
 
         assert hlength > 0 and vlength > 0
@@ -1664,7 +1648,6 @@ class RightJointWiggles:
             CCW = (ii % 2) != 0
             CPWStraight(s, vlength, pinw, gapw)
             tot_span += vlength
-            #CPWBend(s,isign*asign*180,pinw,gapw,radius, segments=segments)
             CPWRightJoint(s, CCW)
             tot_span += cpwidth
             CPWStraight(s, hlength)
@@ -1679,11 +1662,10 @@ class RightJointWiggles:
         CPWRightJoint(s, (not CCW))
         tot_span += cpwidth
 
-        #print "CHECK", tot_span, total_length
-
 
 class ChannelWigglesByLength:
-    """An updated version of CPWWiggles which is more general.  
+    """
+    An updated version of CPWWiggles which is more general.  
     Specifies a meander by length but allows for starting at different angles 
     and also allows meanders which are symmetric or asymmetric about the center pin.
     """
@@ -1745,7 +1727,9 @@ class ChannelWigglesByLength:
 
 
 class CPWWigglesByArea:
-    """CPW Wiggles which fill an area specified by (length,width)"""
+    """
+    CPW Wiggles which fill an area specified by (length,width)
+    """
 
     def __init__(self, structure, length, width, start_up=True, radius=None, pinw=None, gapw=None):
         s = structure
@@ -1770,38 +1754,15 @@ class CPWWigglesByArea:
         self.properties = {'num_wiggles': num_wiggles, 'padding': padding, 'vlength': vlength,
                            'total_length': total_length}
 
-        CPWStraight(s, padding / 2., pinw, gapw)
-        CPWWiggles(s, num_wiggles, total_length, start_up, radius, pinw, gapw)
-        CPWStraight(s, padding / 2., pinw, gapw)
-
-
-class CPWPaddedWiggles:
-    def __init__(self, structure, length, width, cpw_length, start_up=True, radius=None, pinw=None, gapw=None):
-        s = structure
-        if pinw is None:
-            pinw = s.__dict__['pinw']
-        if gapw is None:
-            gapw = s.__dict__['gapw']
-        if radius is None:
-            radius = s.__dict__['radius']
-
-        if cpw_length < length + (2 * pi - 4) * radius:
-            raise MaskError, "Error in CPWPaddedWiggles: cpw_length=%f needs less than one wiggle!" % (cpw_length)
-
-        #calculate maximum length possible in area
-        num_wiggles = int(floor(length / (2 * radius) - 1))
-        padding = length - 2 * (num_wiggles + 1) * radius
-        vlength = (width - 4 * radius) / 2.
-        max_length = (1 + num_wiggles) * (pi * radius) + 2 * num_wiggles * vlength + 2 * (num_wiggles - 1) * radius
-        if cpw_length > max_length:
-            raise MaskError, "Error in CPWPaddedWiggles: cpw_length=%f > max_length=%f that can be fit into alotted area!" % (
-                cpw_length, max_length)
-
-            #to be finished
+        CPWStraight(s, padding / 2., pinw = pinw, gapw = gapw)
+        CPWWiggles(s, num_wiggles, total_length, start_up, radius = radius, pinw = pinw, gapw = gapw)
+        CPWStraight(s, padding / 2., pinw = pinw, gapw = gapw)
 
 
 class ChipBorder(Structure):
-    """Chip border for dicing"""
+    """
+    Chip border for dicing
+    """
 
     def __init__(self, chip, border_thickness, layer="border", color=1):
         Structure.__init__(self, chip, layer=layer, color=color)
@@ -1847,7 +1808,9 @@ class ChipBorder(Structure):
 
 
 class DashedChipBorder(Structure):
-    """Dashed Chip border for e-beam drawing and then dicing"""
+    """
+    Dashed Chip border for e-beam drawing and then dicing
+    """
 
     def __init__(self, chip, border_thickness=40, dash_width=40, dash_length=200, ndashes = 1, dice_corner = False, layer='structure', color=1):
         Structure.__init__(self, chip, layer=layer, color=color)
@@ -1971,7 +1934,11 @@ class DashedChipBorder(Structure):
 
 
 class CPWGapCap:
-    """A CPW gap capacitor (really just a gap in the CPW center pin with no padding)"""
+    """
+    A CPW gap capacitor (really just a gap in the CPW center pin with no padding)
+    The argument capacitance is only used for calculating the external q, and has 
+    no implications when drawing the geometry. 
+    """
 
     def __init__(self, gap, pinw=None, gapw=None, capacitance=0.0):
         self.type = 'gap'
@@ -1996,15 +1963,6 @@ class CPWGapCap:
         pinw = self.pinw
         gapw = self.gapw
 
-        ##        gpoints=[   (start[0],start[1]+pinw/2.+gapw),
-        ##                    (start[0]+self.gap,start[1]+pinw/2.+gapw),
-        ##                    (start[0]+self.gap,start[1]-pinw/2.-gapw),
-        ##                    (start[0],start[1]-pinw/2.-gapw),
-        ##                    (start[0],start[1]+pinw/2.+gapw)
-        ##                ]
-        ##                
-        ##        gpoints=rotate_pts(gpoints,s.last_direction,start)
-
         gpoints = [(0, pinw / 2. + gapw),
                    (self.gap, pinw / 2. + gapw),
                    (self.gap, -pinw / 2. - gapw),
@@ -2014,13 +1972,10 @@ class CPWGapCap:
 
         gpoints = orient_pts(gpoints, s.last_direction, start)
 
-
-
         #create polylines and append to drawing
         s.append(sdxf.PolyLine(gpoints))
 
         #update last anchor position
-        #stop=rotate_pt((start[0]+self.gap,start[1]),s.last_direction,start)
         s.last = orient_pt((self.gap, 0), s.last_direction, start)
 
     def ext_Q(frequency, impedance=50, resonator_type=0.5):
@@ -2035,7 +1990,13 @@ class CPWGapCap:
 
 
 class CPWInductiveShunt:
-    """An inductive shunt"""
+    """
+    An inductive shunt. 
+    num_segments: Number of 'fingers' that stick out
+    segment_length: Length of a finger
+    segment_width: width of a finger
+    segment gap: gap between two fingers
+    """
 
     def __init__(self, num_segments, segment_length, segment_width, segment_gap, taper_length=0, pinw=None,
                  inductance=0.0):
@@ -2057,7 +2018,6 @@ class CPWInductiveShunt:
 
 
     def description(self):
-        #print self.type,self.inductance,self.num_segments,self.segment_length,self.segment_width,self.segment_gap,self.pinw,self.gapw
         return "type:\t%s\tAssumed Inductance:\t%f pH\t# of segments:\t%d\tSegment length:\t%f\tSegment width:\t%f\tSegment gap:\t%f\tTotal inductor length:\t%f\tPin width:\t%f\tGap width:\t%f\tTaper length:\t%f" % (
             self.type, self.inductance * 1e12, self.num_segments, self.segment_length, self.segment_width,
             self.segment_gap, self.segment_length * self.num_segments + (self.num_segments + 1) * self.segment_gap,
@@ -2070,7 +2030,10 @@ class CPWInductiveShunt:
         pinw = self.pinw
         gapw = self.gapw
 
-        start_pinw, start_gapw = s.pinw, s.gapw
+        try:
+            start_pinw, start_gapw = s.pinw, s.gapw
+        except:
+            start_pinw, start_gapw = pinw, gapw
 
         self.flipped = flipped
         if pad_to_length < self.segment_length + self.taper_length:
@@ -2083,8 +2046,10 @@ class CPWInductiveShunt:
             device_width = s.gapw + self.num_segments * (self.segment_width + self.segment_gap)
             CPWStraight(s, self.segment_gap, gapw=device_width)
         else:
-            CPWLinearTaper(s, length=self.taper_length, start_pinw=s.__dict__['pinw'], start_gapw=s.__dict__['gapw'],
-                           stop_pinw=pinw, stop_gapw=gapw)
+            CPWLinearTaper(s, length=self.taper_length, start_pinw=start_pinw, start_gapw=start_gapw,
+                          stop_pinw=pinw, stop_gapw=gapw)
+            #CPWLinearTaper(s, length=self.taper_length, start_pinw=s.__dict__['pinw'], start_gapw=s.__dict__['gapw'],
+            #               stop_pinw=pinw, stop_gapw=gapw)
         start = structure.last
 
         if self.num_segments > 0:
@@ -2153,7 +2118,9 @@ def rectangle_points(size, orientation=0, center=(0, 0)):
 
 
 class CPWFingerCap:
-    """A CPW finger capacitor"""
+    """
+    A CPW finger capacitor
+    """
 
     def __init__(self, num_fingers, finger_length, finger_width, finger_gap, taper_length=0, gapw=None,
                  capacitance=0.0):
@@ -2273,7 +2240,6 @@ class CPWFingerCap:
                     elif s.last_direction%180 == 90:
                         extrapt = (pts[4][0], pts[0][1])
                     
-                    #NOTE, adapted by Gerwin.
                     s.append(sdxf.Solid([pts[0],extrapt,pts[4],pts[5]]))
                     s.append(sdxf.Solid([extrapt,pts[1],pts[2],pts[3]]))
 
@@ -2286,7 +2252,7 @@ class CPWFingerCap:
             pts = translate_pts(pts, (((self.num_fingers + 1) % 2) * (length - self.finger_gap),
                                       (self.num_fingers - 1) * (self.finger_width + self.finger_gap) - self.pinw / 2.))
             pts = rotate_pts(pts, s.last_direction, start)
-            #NOTE, adapted by Gerwin
+            
             if s.chip.solid:
                 s.append(sdxf.Solid(pts[:-1]))    
             else:
@@ -2340,7 +2306,9 @@ class CPWFingerCap:
 #Outside and Inside versions are for two layer capacitors
 
 class CPWFingerCapInside:
-    """A CPW finger capacitor"""
+    """
+    A CPW finger capacitor.
+    """
 
     def __init__(self, num_fingers, finger_length, finger_width, finger_gap, taper_length=0, gapw=None,
                  capacitance=0.0):
@@ -2454,7 +2422,9 @@ class CPWFingerCapInside:
 
 
 class CPWLCoupler:
-    """A structure which is coupled to a CPW via an L coupler, used for medium to high Q hangers"""
+    """
+    A structure which is coupled to a CPW via an L coupler, used for medium to high Q hangers
+    """
 
     def __init__(self, coupler_length, separation, flipped=False, padding_type=None, pad_to_length=None, pinw=None,
                  gapw=None, radius=None, spinw=None, sgapw=None, capacitance=0.0):
@@ -2520,7 +2490,7 @@ class CPWLCoupler:
         #make the coupler
         CPWGapCap(gap=self.gapw).draw(cs)
         CPWStraight(cs, self.coupler_length)
-        CPWBend(cs, -90 * flip_sign)
+        CPWBend(cs, -90 * flip_sign, radius = self.radius)
 
         return cs
 
@@ -2536,8 +2506,8 @@ class CPWLCoupler:
 
 
 class ChannelCouplerLayer:
-    """This is the channel version of the CPWLCoupler for use in two layer masks."""
-    """A structure which is coupled to a CPW via an L coupler, used for medium to high Q hangers"""
+    """This is the channel version of the CPWLCoupler for use in two layer masks.
+    A structure which is coupled to a CPW via an L coupler, used for medium to high Q hangers"""
 
     def __init__(self, coupler_length, separation, flipped=False, padding_type=None, pad_to_length=None, pinw=None,
                  gapw=None, radius=None, spinw=None, sgapw=None, capacitance=0.0, L2=False):
@@ -2624,7 +2594,9 @@ class ChannelCouplerLayer:
 
 
 class CPWTee(Structure):
-    """CPWTee makes a Tee structure with padding"""
+    """
+    CPWTee makes a Tee structure with padding
+    """
 
     def __init__(self, structure, stub_length=None, feed_length=None, flipped=False, pinw=None, gapw=None, spinw=None,
                  sgapw=None):
@@ -2699,7 +2671,9 @@ class CPWTee(Structure):
 
 
 class FingerCoupler(Structure):
-    """Finger coupler a CPWTee plus finger capacitor...not used yet..."""
+    """
+    Finger coupler a CPWTee plus finger capacitor...not used yet...
+    """
 
     def __init__(self, structure, cap_desc, stub_length=None, padding_length=None, flipped=False, pinw=None, gapw=None,
                  taper_length=0, spinw=None, sgapw=None):
@@ -2713,7 +2687,9 @@ class FingerCoupler(Structure):
 
 
 class CapStar:
-    """A straight section of CPW transmission line"""
+    """
+    A straight section of CPW transmission line
+    """
 
     def __init__(self, structure, number, cap, pinw=None, gapw=None):
 
@@ -2825,7 +2801,10 @@ class CapStar:
 
 class LShapeAlignmentMarks:
     def __init__(self, structure, width, armlength, layer='structure'):
-        """creates an L shaped alignment marker of width and armlength for photolitho"""
+        """
+        Creates an L shaped alignment marker of width and armlength for photolithography
+        Note, currently only draws a solid shape. Polyline needs to be implemented. 
+        """
         if width == 0: return
         if armlength == 0: return
 
@@ -2854,9 +2833,12 @@ class LShapeAlignmentMarks:
         s.append(sdxf.Solid(box1, layer=layer))
         s.append(sdxf.Solid(box2, layer=layer))
 
+
 class CrossShapeAlignmentMarks:
     def __init__(self, structure, width, armlength, solid = True, layer='structure'):
-        """creates an L shaped alignment marker of width and armlength for photolitho"""
+        """
+        Creates an L shaped alignment marker of width and armlength for photolithography.
+        """
         if width == 0: return
         if armlength == 0: return
 
@@ -2900,6 +2882,7 @@ class CrossShapeAlignmentMarks:
 
             s.append(sdxf.PolyLine(pts_real, layer=layer))
 
+
 class FineAlign:
     def __init__(self, chip, buffer=60, al=60, wid=2):
         '''Draws 4 + shaped alignment marks in the corners of the chip
@@ -2925,7 +2908,6 @@ class FineAlign:
         #LShapeAlignmentMarks(s4, width=wid, armlength=al, layer=layer)
 
 
-#---------------------------------------------------------------------------- 
 class ArrowAlignmentMarks_L1:
     def __init__(self, structure, height, width, buffer=30):
         """creates an arrow/triangle of height and base width for alignment"""
@@ -2944,7 +2926,7 @@ class ArrowAlignmentMarks_L1:
 
         s.append(sdxf.PolyLine(triangle))
 
-#---------------------------------------------------------------------------- 
+
 class ArrowAlignmentMarks_L2:
     def __init__(self, structure, height, width, buffer=30):
         """creates an arrow/triangle of height and base width for alignment"""
@@ -2970,9 +2952,11 @@ class ArrowAlignmentMarks_L2:
         s.append(sdxf.PolyLine(box))
         s.append(sdxf.PolyLine(triangle))
 
-#----------------------------------------------------------------------------
+
 class Channel:
-    """A simple channel of given width and length"""
+    """
+    A simple channel of given width and length
+    """
 
     def __init__(self, structure, length, channelw, solid=None):
         """ Adds a channel of width=channelw and of length = length to the structure"""
@@ -3004,9 +2988,12 @@ class Channel:
         else:
             s.append(sdxf.PolyLine(ch1))
 
-#----------------------------------------------------------------------------
+
 class ChannelLinearTaper:
-    """A section of channel which (linearly) tapers from width=start_channelw to stop_channelw over length=length"""
+    """
+    A section of channel which (linearly) tapers from width=start_channelw to stop_channelw over length=length
+    Only solid drawing is implemented. Polyline should be implemented as well. 
+    """
 
     def __init__(self, structure, length, start_channelw, stop_channelw):
         if length == 0: return
@@ -3033,10 +3020,12 @@ class ChannelLinearTaper:
         stop = rotate_pt((start[0] + length, start[1]), s.last_direction, start)
         s.last = stop
 
-#-------------------------------------------------------------------------------------------------
+
 class ChannelLauncher:
-    """creates a channel launcher with a pad of length=pad_length and width=padwidth and a taper of length=taper_length which
-        linearly tapers from padwidth to channelwidth"""
+    """
+    Creates a channel launcher with a pad of length=pad_length and width=padwidth and a taper of length=taper_length which
+    linearly tapers from padwidth to channelwidth
+    """
 
     def __init__(self, structure, flipped=False, pad_length=500, taper_length=400, pad_to_length=1000, padwidth=300,
                  channelwidth=None):
@@ -3058,9 +3047,11 @@ class ChannelLauncher:
             ChannelLinearTaper(s, length=taper_length, start_channelw=channelwidth, stop_channelw=padwidth)
             Channel(s, length=pad_length, channelw=padwidth)
 
-#-------------------------------------------------------------------------------------------------
+
 class ChannelBend:
-    """A Channel bend - adapted from CPWBend"""
+    """
+    A Channel bend - adapted from CPWBend
+    """
 
     def __init__(self, structure, turn_angle, channelw=None, radius=None, polyarc=True, segments=120):
         """creates a channel bend with channelw/radius
@@ -3111,8 +3102,6 @@ class ChannelBend:
 
     def arc_bend(self):
 
-    #print "start: %d, stop: %d" % (start_angle,stop_angle)
-
         if self.turn_angle > 0:
             self.astart_angle = self.start_angle - 90
             self.astop_angle = self.stop_angle - 90
@@ -3122,25 +3111,11 @@ class ChannelBend:
             self.astart_angle = self.stop_angle + 90
             self.astop_angle = self.start_angle + 90
 
-            #make endlines for inner arc
-            #start first gap
-            #points1=[   (self.start[0],self.start[1]+self.pinw/2.),
-            #   (self.start[0],self.start[1]+self.pinw/2.+self.gapw)
-            #]
-
         points1 = [(self.start[0], self.start[1] + self.gapw),
                    (self.start[0], self.start[1] - self.gapw)
         ]
         points1 = rotate_pts(points1, self.start_angle, self.start)
         points2 = rotate_pts(points1, self.stop_angle - self.start_angle, self.center)
-
-        #start 2nd gap
-        #points3=[   (self.start[0],self.start[1]-self.pinw/2.),
-        #     (self.start[0],self.start[1]-self.pinw/2.-self.gapw)
-        # ]
-        #points3=rotate_pts(points3,self.start_angle,self.start)
-        #points4=rotate_pts(points3,self.stop_angle-self.start_angle,self.center)
-
 
         #make inner arcs
         self.structure.append(sdxf.Line(points1))
@@ -3148,12 +3123,6 @@ class ChannelBend:
         self.structure.append(
             sdxf.Arc(self.center, self.radius + self.pinw / 2. + self.gapw, self.astart_angle, self.astop_angle))
         self.structure.append(sdxf.Line(points2))
-
-
-        #self.structure.append(sdxf.Line(points3))
-        #self.structure.append(sdxf.Arc(self.center,self.radius-self.pinw/2.,self.astart_angle,self.astop_angle))
-        #self.structure.append(sdxf.Arc(self.center,self.radius-self.pinw/2.-self.gapw,self.astart_angle,self.astop_angle))
-        #self.structure.append(sdxf.Line(points4))            
 
 
     def poly_arc_bend(self):
@@ -3171,14 +3140,15 @@ class ChannelBend:
         pts2.extend(arc_pts(self.astop_angle, self.astart_angle, self.radius - self.gapw, self.segments))
         pts2.append(pts2[0])
 
-        #print pts2
-
         #self.structure.append(sdxf.PolyLine(translate_pts(pts1,self.center)))
         self.structure.append(sdxf.PolyLine(translate_pts(pts2, self.center)))
 
 #-------------------------------------------------------------------------------------------------
 class ChannelBendSolid:
-    """A Channel bend - adapted from CPWBend"""
+    """
+    A Channel bend - adapted from CPWBend.
+    This should not be a separate class. Should be incorporated in ChannelBend. Gerwin
+    """
 
     def __init__(self, structure, turn_angle, channelw=None, radius=None, polyarc=True, segments=150.):
         """creates a channel bend with channelw/radius
@@ -3217,12 +3187,6 @@ class ChannelBendSolid:
         self.astop_angle = self.stop_angle - self.asign * 90
         #calculate location of Arc center
         self.center = rotate_pt((self.start[0], self.start[1] + self.asign * self.radius), self.start_angle, self.start)
-
-        '''if polyarc: self.poly_arc_bend()
-        else:       self.arc_bend()'''
-
-
-
 
         #ri is inner radius, ro is outer        
         ri = radius - channelw / 2.
@@ -3275,79 +3239,11 @@ class ChannelBendSolid:
         self.structure.last = rotate_pt(self.start, self.stop_angle - self.start_angle, self.center)
         self.structure.last_direction = self.stop_angle
 
-        '''self.structure.append(sdxf.Solid(translate_pts(basic,self.center)))
-        self.structure.append(sdxf.Solid(rotate_pts(translate_pts(basic,self.center),theta_deg,self.center)))'''
 
-
-    '''def arc_bend(self):    
-            
-        #print "start: %d, stop: %d" % (start_angle,stop_angle)
-        
-        if self.turn_angle>0:
-            self.astart_angle=self.start_angle-90
-            self.astop_angle=self.stop_angle-90
-            #calculate location of Arc center
-            self.center=rotate_pt( (self.start[0],self.start[1]+self.radius),self.start_angle,self.start)
-        else:
-            self.astart_angle=self.stop_angle+90
-            self.astop_angle=self.start_angle+90
-   
-        #make endlines for inner arc
-        #start first gap
-        #points1=[   (self.start[0],self.start[1]+self.pinw/2.),
-                 #   (self.start[0],self.start[1]+self.pinw/2.+self.gapw)
-                #]
-                
-        points1=[   (self.start[0],self.start[1]+self.gapw),
-                    (self.start[0],self.start[1]-self.gapw)
-                ]
-        points1=rotate_pts(points1,self.start_angle,self.start)
-        points2=rotate_pts(points1,self.stop_angle-self.start_angle,self.center)
-        
-        #start 2nd gap
-        #points3=[   (self.start[0],self.start[1]-self.pinw/2.),
-               #     (self.start[0],self.start[1]-self.pinw/2.-self.gapw)
-               # ]
-        #points3=rotate_pts(points3,self.start_angle,self.start)
-        #points4=rotate_pts(points3,self.stop_angle-self.start_angle,self.center)
-
-        
-        #make inner arcs
-        self.structure.append(sdxf.Line(points1))
-        self.structure.append(sdxf.Arc(self.center,self.radius+self.pinw/2.,self.astart_angle,self.astop_angle))
-        self.structure.append(sdxf.Arc(self.center,self.radius+self.pinw/2.+self.gapw,self.astart_angle,self.astop_angle))
-        self.structure.append(sdxf.Line(points2))
-        
-        
-        #self.structure.append(sdxf.Line(points3))
-        #self.structure.append(sdxf.Arc(self.center,self.radius-self.pinw/2.,self.astart_angle,self.astop_angle))
-        #self.structure.append(sdxf.Arc(self.center,self.radius-self.pinw/2.-self.gapw,self.astart_angle,self.astop_angle))
-        #self.structure.append(sdxf.Line(points4))            
-            
-
-    def poly_arc_bend(self):
-    
-        #lower gap
-        """pts1=arc_pts(self.astart_angle,self.astop_angle,self.radius+self.pinw/2.+self.gapw,self.segments)
-        pts1.extend(arc_pts(self.astop_angle,self.astart_angle,self.radius+self.pinw/2.,self.segments))
-        pts1.append(pts1[0])
-       
-        pts2=arc_pts(self.astart_angle,self.astop_angle,self.radius-self.pinw/2.,self.segments)
-        pts2.extend(arc_pts(self.astop_angle,self.astart_angle,self.radius-self.pinw/2.-self.gapw,self.segments))
-        pts2.append(pts2[0])"""
-        
-        pts2=arc_pts(self.astart_angle,self.astop_angle,self.radius+self.gapw,self.segments)
-        pts2.extend(arc_pts(self.astop_angle,self.astart_angle,self.radius-self.gapw,self.segments))
-        pts2.append(pts2[0])
-        
-        print pts2
-      
-        #self.structure.append(sdxf.PolyLine(translate_pts(pts1,self.center)))
-        self.structure.append(sdxf.PolyLine(translate_pts(pts2,self.center)))'''
-
-#-------------------------------------------------------------------------------------------------
 class ChannelWiggles:
-    """Channel Wiggles (meanders) = adapted from CPWWiggles"""
+    """
+    Channel Wiggles (meanders) = adapted from CPWWiggles
+    """
 
     def __init__(self, structure, num_wiggles, total_length, start_up=True, radius=None, channelw=None,
                  endbending1=True, endbending2=True, inverted=False):
@@ -3396,9 +3292,11 @@ class ChannelWiggles:
         if endbending2:
             ChannelBendSolid(s, -isign * asign * 90, channelw, radius)
 
-#-------------------------------------------------------------------------------------------------
+
 class ChannelTee(Structure):
-    """ChannelTee makes a Tee structure with padding"""
+    """
+    ChannelTee makes a Tee structure with padding
+    """
 
     def __init__(self, structure, stub_length=None, feed_length=None, flipped=False, channelw=None):
         """
@@ -3452,11 +3350,11 @@ class ChannelTee(Structure):
                            defaults=s.__dict__)
         self.defaults['channelw'] = channelw
 
-        #----------------------------------------------------------------------------------
-
 
 class CenterPinTee(Structure):
-    """CCDChannelTee makes a Tee structure with microchannels attached"""
+    """
+    CCDChannelTee makes a Tee structure with microchannels attached
+    """
 
     def __init__(self, structure, stub_length=None, feed_length=None, flipped=False, pinw=None, gapw=None, spinw=None,
                  sgapw=None, notchwidth=10, couplinglength=100, channelwidth=8):
@@ -3472,7 +3370,6 @@ class CenterPinTee(Structure):
         if gapw is None: gapw = s.__dict__['gapw']
         if spinw is None: spinw = s.__dict__['pinw']
         if sgapw is None: sgapw = s.__dict__['gapw']
-        #print "pinw: %f, gapw: %f, spinw: %f, sgapw: %f" % (pinw,gapw,spinw,sgapw)
 
         #minimum feed_length is
         if (feed_length is None) or (feed_length < 2 * gapw + pinw):
@@ -3481,7 +3378,6 @@ class CenterPinTee(Structure):
         #minimum stub_length is 
         if (stub_length is None) or (stub_length < gapw + spinw):
             stub_length = gapw + spinw / 2
-            #print "pinw: %f, gapw: %f, spinw: %f, sgapw: %f" % (pinw,gapw,spinw,sgapw)
 
         start = s.last
         start_dir = s.last_direction
@@ -3530,13 +3426,13 @@ class CenterPinTee(Structure):
         self.defaults['pinw'] = pinw
         self.defaults['gapw'] = gapw
 
-        #-------------------------------------------------------------------------------------------------
-
 
 class CCDChannelTee(Structure):
-    """CCDChannelTee makes a tee structure with microchannels attached;
-        This is the first layer structure, i.e. everything that's connected
-        to the center pin of the cavity, second layer see below"""
+    """
+    CCDChannelTee makes a tee structure with microchannels attached;
+    This is the first layer structure, i.e. everything that's connected
+    to the center pin of the cavity, second layer see below
+    """
 
     def __init__(self, structure, stub_length=None, feed_length=None, flipped=False, pinw=None, gapw=None, spinw=None,
                  sgapw=None, ccdwidth=100, ccdlength=100, channelwidth=8):
@@ -3650,12 +3546,12 @@ class CCDChannelTee(Structure):
         self.defaults['pinw'] = pinw
         self.defaults['gapw'] = gapw
 
-        #-------------------------------------------------------------------------------------------------
-
 
 class CCDChannelTeeL2(Structure):
-    """CCDChannelTee makes a tee structure with microchannels attached
-        this is the second layer for the thin electrodes"""
+    """
+    CCDChannelTee makes a tee structure with microchannels attached
+    this is the second layer for the thin electrodes
+    """
 
     def __init__(self, structure, stub_length=None, feed_length=None, flipped=False, pinw=None, gapw=None, spinw=None,
                  sgapw=None, ccdwidth=100, ccdlength=100, channelwidth=8, electrodewidth=3):
@@ -3746,14 +3642,14 @@ class CCDChannelTeeL2(Structure):
         self.defaults['pinw'] = pinw
         self.defaults['gapw'] = gapw
 
-        #-------------------------------------------------------------------------------------------------
-
 
 class ChannelReservoirL1(Structure):
-    """ChannelReservoir - first layer
-        width=total width of reservoir
-        length=total length of reservoir
-        channelw=width of individual channels"""
+    """
+    ChannelReservoir - first layer
+    width: total width of reservoir
+    length: total length of reservoir
+    channelw: width of individual channels
+    """
 
     def __init__(self, structure, flipped=False, width=100, length=100, channelw=8):
         s = structure
@@ -3806,13 +3702,14 @@ class ChannelReservoirL1(Structure):
         Structure.__init__(self, s.chip, start=lstart, direction=lstart_dir, layer=s.layer, color=s.color,
                            defaults=s.__dict__)
 
-#-------------------------------------------------------------------------------------------------
 
 class ChannelReservoirL2(Structure):
-    """ChannelReservoir - second layer
-        width=total width of reservoir
-        length=total length of reservoir
-        channelw=width of individual channels"""
+    """
+    ChannelReservoir - second layer
+    width: total width of reservoir
+    length: total length of reservoir
+    channelw: width of individual channels
+    """
 
     def __init__(self, structure, flipped=False, width=100, length=100, channelw=8, electrodewidth=2):
         s = structure
@@ -3869,7 +3766,6 @@ class ChannelReservoirL2(Structure):
         Structure.__init__(self, s.chip, start=lstart, direction=lstart_dir, layer=s.layer, color=s.color,
                            defaults=s.__dict__)
 
-#-------------------------------------------------------------------------------------------------
 
 class ChannelFingerCap:
     """A Channel finger capacitor
@@ -4025,7 +3921,9 @@ class ChannelFingerCap:
 #Second version of ChannelFingerCap with symmetric ends                
 
 class ChannelFingerCapSym:
-    """A Channel finger capacitor"""
+    """
+    A Channel finger capacitor. 
+    """
 
     def __init__(self, num_fingers, finger_length, finger_width, finger_gap, taper_length=10, channelw=2,
                  capacitance=0.0):
@@ -4055,7 +3953,8 @@ class ChannelFingerCapSym:
                 (0,self.capw/2.)
             ]'''
 
-        #Calculates how many fingers should go on each side of the capacitor. segmentLen is length of a finger plus the gap between fingers on one side. It's how far down we must move each iteration.
+        #Calculates how many fingers should go on each side of the capacitor. segmentLen is length of a finger 
+        #plus the gap between fingers on one side. It's how far down we must move each iteration.
         noLeftFingers = self.num_fingers / 2 + (self.num_fingers % 2)
         #fingerSpacing = finger_width + 2*finger_gap
         #segmentLen = fingerSpacing + finger_gap
@@ -4169,10 +4068,12 @@ class ChannelFingerCapSym:
             self.finger_gap, self.capw, self.taper_length
         )
 
-#Draws capacitor sheath from dimensions of interior cap
 
 class ChannelFingerCapSheath:
-    """A Channel finger capacitor"""
+    """
+    Draws capacitor sheath from dimensions of interior cap
+    A Channel finger capacitor. 
+    """
 
     def __init__(self, structure, cap, channelw=10, pinw=2):
         self.type = 'Channel finger cap sheath'
@@ -4193,8 +4094,9 @@ class ChannelFingerCapSheath:
 #-------------------------------------------------------------------------------------------------    
 
 class ForkCoupler(Structure):
-    """makes a fork-shaped structure of electrodes
-        fork_width is the total width of the fork"""
+    """
+    Creates a fork-shaped structure of electrodes fork_width is the total width of the fork
+    """
 
     def __init__(self, structure, fork_width=None, fork_length=None, flipped=False, finger_width=None, channelw=None):
         """
@@ -4248,20 +4150,14 @@ class ForkCoupler(Structure):
         Structure.__init__(self, s.chip, start=lstart, direction=lstart_dir, layer=s.layer, color=s.color,
                            defaults=s.__dict__)
 
-        #s.last=orient_pt((0,0),s.last_direction,s.last)
-        #lstart=orient_pt((0,0),s.last_direction,s.last)
 
-        #Structure.__init__(self,s.chip,start=lstart,direction=0,layer=s.layer,color=s.color,defaults=s.__dict__)
-        #self.defaults['channelw']=channelw    
-
-
-#=======================================================================
-# MISC COMPONENTS/CLASSES
-#=======================================================================
-
+############################
+### MISC COMPONENTS/CLASSES
+############################
 
 class CapDesc:
-    """Description of a capacitor, including physical geometry and simulated capacitance
+    """
+    Description of a capacitor, including physical geometry and simulated capacitance
        valid types are ('gap','finger','L') 
        !deprecated!
     """
@@ -4286,7 +4182,9 @@ class CapDesc:
 
 
 class AlphaNum:
-    """A polyline representation of an alphanumeric character, does not use structures"""
+    """
+    A polyline representation of an alphanumeric character, does not use structures
+    """
 
     def __init__(self, drawing, letter, size, point, direction=0, layer='0'):
 
@@ -4302,7 +4200,9 @@ class AlphaNum:
 
 
 class AlphaNumText:
-    """Renders a text string in polylines, does not use structures"""
+    """
+    Renders a text string in polylines, does not use structures
+    """
 
     def __init__(self, drawing, text, size, point, centered=False, direction=0, layer='0'):
         self.text = text
@@ -4438,10 +4338,177 @@ def arc_pts(start_angle, stop_angle, radius, segments=360):
         pts.append(p)
     return pts
     
+
+###################################################
+# Useful tools to connect two points with eachother
+###################################################
+
+
+class CPWs2p:
+    """
+    Connects s to coordinate "endpoint" with a CPWStraight piece.
+    """
+    def __init__(self, s, endpoint, pinw=None, gapw=None):
+        length = distance(endpoint, s.last)
+        if length == 0: return
+        CPWStraight(s, length, pinw=pinw, gapw=gapw)
+        self.length = length
+
+
+class Coupled2p:
+    """
+    Connects s to coordinate "endpoint" with a CoupledStraight piece.
+    """
+    def __init__(self, s, endpoint, pinw=None, gapw=None, center_gapw=None):
+        length = distance(endpoint, s.last)
+        if length == 0: return
+        CoupledStraight(s, length, pinw=pinw, gapw=gapw, center_gapw=center_gapw)
+        self.length = length
+
+
+class CPWConnect:
+    """
+    Connects two structures using CPWStraight
+    """
+    def __init__(self, s1, s2, pinw=None, gapw=None):
+        CPWs2p(s1, s2.last, pinw, gapw)
+
+
+class CoupledConnect:
+    """
+    Connects two structures using CoupledConnect 
+    """
+    def __init__(self, s1, s2, pinw=None, gapw=None, center_gapw=None):
+        Coupled2p(s1, s2.last, pinw, gapw, center_gapw)
+
+
+def CreateCatalogue():
+    """
+    The purpose of this piece of code is to create a test chip that has all the 
+    different structures on it available in the MaskMaker module
+    """
+    #Overall parameters
+    cpw_pinw = 5
+    cpw_gapw = 5
+    N = 210
+
+    #Close DWG Viewer
+    subprocess.Popen(r'taskkill /F /im "dwgviewr.exe"')
+    time.sleep(0.1)
     
+    #Set up a wafer with chips that have size 2000 x 2000, Normal chip size is 7000 x 1900 mm 
+    m = WaferMask('MaskMaker_Catalogue', flat_angle=90., flat_distance=24100., wafer_padding=3.3e3, chip_size=(2000, 2000),
+                  dicing_border=500, etchtype=False, wafer_edge=True,
+                  dashed_dicing_border=50, ndashes = 3, dice_corner = True)
+    
+    #Define all the chips
+    for idx in range(N):
+        globals()['c%d'%idx] = Chip('CHIP%d'%idx, author='', size=m.chip_size, mask_id_loc=(100, 1720), 
+                chip_id_loc=(100, 100), two_layer=False, solid=False, do_save=False)
+        globals()['c%d'%idx].struct = Structure(globals()['c%d'%idx], start=(875,875) , direction=0, layer = '0')
+        globals()['c%d'%idx].textsize = (80, 80)
+        globals()['c%d'%idx].struct.pinw = cpw_pinw
+        globals()['c%d'%idx].struct.gapw = cpw_gapw
+
+    #All the functions that are defined are now written to chips
+    Launcher(c0.struct, pinw = cpw_pinw, gapw = cpw_gapw); c0.label = 'Launcher'
+    Box(c1.struct, 250, 250);  c1.label = 'Box'
+    CoupledStraight(c2.struct, length = 250, pinw = cpw_pinw, gapw = cpw_gapw, center_gapw = 10); c2.label = 'CoupledStraight'
+    CPWStraight(c3.struct, length = 250, pinw = cpw_pinw, gapw = cpw_gapw); c3.label = 'CPWStraight' 
+    CPWQubitBox(c4.struct, 250, 5, 5, 20, pinw = cpw_pinw, gapw = cpw_gapw); c4.label = 'CPWQubitBox'
+    ThreePinTaper(c5.struct, 250, pinw = cpw_pinw, gapw = cpw_gapw, center_pinw = 0.5*cpw_pinw, center_gapw = 0.5*cpw_gapw,
+            stop_pinw = 4*cpw_pinw, stop_gapw = 4*cpw_gapw, stop_center_pinw = 2*cpw_pinw, 
+            stop_center_gapw = 2*cpw_gapw); c5.label = 'ThreePinTaper'
+    CoupledTaper(c6.struct, 250, pinw = cpw_pinw, gapw = cpw_gapw, center_gapw = 0.5*cpw_gapw,
+            stop_pinw = 4*cpw_pinw, stop_gapw = 4*cpw_gapw, stop_center_gapw = 2*cpw_gapw); c6.label = 'CoupledTaper'
+    CPWLinearTaper(c7.struct, 250, start_pinw = cpw_pinw, stop_pinw = 4*cpw_pinw, start_gapw = cpw_gapw, 
+            stop_gapw = 4*cpw_gapw); c7.label = 'CPWLinearTaper'
+    CPWTaper(c8.struct, 250, pinw = cpw_pinw, gapw = cpw_gapw, stop_pinw = 4*cpw_pinw, 
+            stop_gapw = 4*cpw_gapw); c8.label = 'CPWTaper'
+    CPWLinearTaperInside(c9.struct, 250, start_pinw = cpw_pinw, start_gapw = cpw_gapw, 
+            stop_pinw = 4*cpw_pinw, stop_gapw = 4*cpw_gapw); c9.label = 'CPWLinearTaperInside'
+    CPWBend(c10.struct, 315, pinw = cpw_pinw, gapw = cpw_gapw, radius = 250); c10.label = 'CPWBend'
+    CPWL(c11.struct, 50, 45, 100, 100 ,pinw = cpw_pinw, gapw = cpw_gapw); c11.label = 'CPWL'
+    CPWSturn(c12.struct, 100, 45, 50, 50, -45, 50, 100, pinw = cpw_pinw, gapw = cpw_gapw); c12.label = 'CPWSturn'
+    CPWWiggles(c13.struct, 4, 2000, radius = 20, pinw = cpw_pinw, gapw = cpw_gapw); c13.label = 'CPWWiggles'
+    CoupledBend(c14.struct, 135, pinw = cpw_pinw, gapw = cpw_gapw, center_gapw = 0.5*cpw_gapw, 
+            radius = 250); c14.label = 'CoupledBend'
+    CoupledWiggles(c15.struct, 4, 2000, radius = 20, pinw = cpw_pinw, gapw = cpw_gapw, 
+            center_gapw = 0.5*cpw_gapw); c15.label = 'CoupledWiggles'
+    CPWWigglesByLength(c16.struct, 4, 2000, start_bend_angle = 0, radius = 20, pinw = cpw_pinw, 
+            gapw = cpw_gapw); c16.label = 'CPWWigglesByLength'
+    CPWRightJoint(c17.struct, pinw = cpw_pinw, gapw = cpw_gapw); c17.label = 'CPWRightJoint'
+    RightJointWiggles(c18.struct, 2000, 5, 10); c18.label = 'RightJointWiggles'
+    ChannelWigglesByLength(c19.struct, 4, 2000, start_bend_angle = 0, radius = 20, 
+            channelw = 10); c19.label = 'ChannelWigglesByLength'
+    CPWWigglesByArea(c20.struct, 500, 500, radius = 20, pinw = cpw_pinw, gapw = cpw_gapw); c20.label = 'CPWWigglesByArea'
+    #CPWPaddedWiggles(c21.struct, 500, 500, 2000, radius = 20, pinw = cpw_pinw, 
+    #        gapw = cpw_gapw); c21.label = 'CPWPaddedWiggles'
+    GapCap = CPWGapCap(250, pinw = cpw_pinw, gapw = cpw_gapw); GapCap.draw(c22.struct); c22.label = 'CPWGapCap'
+    IndSh = CPWInductiveShunt(20, 5, 5, 5, taper_length = 100, pinw = cpw_pinw); 
+    IndSh.draw(c23.struct); c23.label = 'CPWInductiveShunt'
+    FinCap = CPWFingerCap(10, 250, 5, 5, gapw = cpw_gapw); FinCap.draw(c24.struct); c24.label = 'CPWFingerCap'
+    FCapIn = CPWFingerCapInside(10, 250, 5, 5, gapw = cpw_gapw); FCapIn.draw(c25.struct); c25.label = 'CPWFingerCapInside'
+    CPLC = CPWLCoupler(250, 30, pinw = cpw_pinw, gapw = cpw_gapw, radius = 20, spinw = cpw_pinw, 
+            sgapw = cpw_gapw); CPLC.draw(c26.struct); c26.label = 'CPWLCoupler'
+    #ChannelCouplerLayer
+    CPWTee(c28.struct, stub_length = 50, feed_length = 100, pinw = cpw_pinw, gapw = cpw_gapw, 
+            spinw = cpw_pinw, sgapw = cpw_gapw); c28.label = 'CPWTee'
+    #FingerCoupler(c29.struct, 10, stub_length = 50, padding_length = 100, pinw = cpw_pinw, gapw = cpw_gapw ,
+    #       spinw = cpw_pinw, sgapw = cpw_gapw); c29.label = 'FingerCoupler'
+    CapStar(c30.struct, 20, CPWFingerCap(10, 250, 5, 5, gapw = cpw_gapw), 
+            pinw = cpw_pinw, gapw = cpw_gapw); c30.label = 'CapStar'
+    LShapeAlignmentMarks(c31.struct, 100, 300, layer = '0'); c31.label = 'LShapeAlignmentMarks'
+    CrossShapeAlignmentMarks(c32.struct, 100, 300, solid = c32.solid, layer = '0'); c32.label = 'CrossShapeAlignmentMarks'
+    FineAlign(c33); c33.label = 'FineAlign'
+    ArrowAlignmentMarks_L1(c34.struct, 100, 250); c34.label = 'ArrowAlignmentMarks_L1'
+    ArrowAlignmentMarks_L2(c35.struct, 100, 250); c35.label = 'ArrowAlignmentMarks_L2'
+    Channel(c36.struct, 500, 25); c36.label = 'Channel'
+    ChannelLinearTaper(c37.struct, 500, start_channelw = 100, stop_channelw = 25); c37.label = 'ChannelLinearTaper'
+    ChannelLauncher(c38.struct, channelwidth = 25); c38.label = 'ChannelLauncher'
+    ChannelBend(c39.struct, 135, channelw = 25, radius = 250); c39.label = 'ChannelBend'
+    ChannelBendSolid(c40.struct, 135, channelw = 25, radius = 250); c40.label = 'ChannelBendSolid'
+    ChannelWiggles(c41.struct, 4, 2000, radius = 20, channelw = 25); c41.label = 'ChannelWiggles'
+    ChannelTee(c42.struct, stub_length = 50, feed_length = 100, channelw = 25); c42.label = 'ChannelTee'
+    CenterPinTee(c43.struct, stub_length = 50, feed_length = 100, pinw = cpw_pinw, gapw = cpw_gapw, 
+            spinw = cpw_pinw, sgapw = cpw_gapw); c43.label = 'CenterPinTee'
+    CCDChannelTee(c44.struct, stub_length = 50, feed_length = 400, pinw = cpw_pinw, gapw = cpw_gapw, 
+            spinw = cpw_pinw, sgapw = cpw_gapw, channelwidth = 25, 
+            ccdwidth = 200, ccdlength = 300); c44.label = 'CCDChannelTee'
+    CCDChannelTeeL2(c45.struct, stub_length = 50, feed_length = 400, pinw = cpw_pinw, gapw = cpw_gapw,
+            spinw = cpw_pinw, sgapw = cpw_gapw, channelwidth = 25, 
+            ccdwidth = 200, ccdlength = 300); c45.label = 'CCDChannelTeeL2'
+    ChannelReservoirL1(c46.struct, width = 250, length = 250, channelw = 25); c46.label = 'ChannelReservoirL1'
+    ChannelReservoirL2(c47.struct, width = 250, length = 250, channelw =  25, 
+            electrodewidth = 5); c47.label = 'ChannelReservoirL2'
+    CFC = ChannelFingerCap(25, 250, 5, 5, channelw = 5); CFC.draw(c48.struct); c48.label = 'ChannelFingerCap'
+    ForkCoupler(c49.struct, fork_width = 50, fork_length = 100, finger_width = 50, channelw = 25); c49.label = 'ForkCoupler'
+    #AlignmentCross(c50, 50, (250,250), [c50.struct.last], layer = '0'); c50.label = 'AlignmentCross'
+    #SolNot = SolidNotch(50, 25)
 
 
-            
+    #Add chips to the wafer mask
+    for idx in range(N):
+        try:
+            globals()['c%d'%idx].label_chip(globals()['c%d'%idx], '', globals()['c%d'%idx].label, '')
+        except:
+            pass
+
+        m.add_chip(globals()['c%d'%idx], 1)
+    
+    m.save()
+    time.sleep(0.1)
+
+    subprocess.Popen(
+            r'"C:\Program Files\Autodesk\DWG TrueView 2013\dwgviewr.exe" "' + os.getcwd() + '\\' + 'MaskMaker_Catalogue.dxf" ')
+
+
+    
+if __name__ == '__main__':
+    CreateCatalogue()
+
+
+  
             
             
             
