@@ -641,124 +641,125 @@ class LabLogo:
         """
         This is the lab logo originally designed by Kaitlyn Lee.   Everything is based on the logo width (read "x-axis length").
         You should simply need to put the desired width along with desired location (which is measured from the bottom left corner of the logo I think...)
-        """"
-            aspect_ratio = 1/10.0
-            logo_height = logo_width*aspect_ratio
-            logo_offset = 5*1e2
-            logo_starting_direction = 270
-            #Note: The 59.375 is a correction for the logo_width =750. Not generalized.
-            logo_starting_point=(logo_starting_point[0]-logo_width/2.,logo_starting_point[1]-59.375)
-            pi = 3.14159265359
+        """
 
-            
+        aspect_ratio = 1/10.0
+        logo_height = logo_width*aspect_ratio
+        logo_offset = 5*1e2
+        logo_starting_direction = 270
+        #Note: The 59.375 is a correction for the logo_width =750. Not generalized.
+        logo_starting_point=(logo_starting_point[0]-logo_width/2.,logo_starting_point[1]-59.375)
+        pi = 3.14159265359
 
-            structure.last = logo_starting_point
-            structure.last_direction = logo_starting_direction
-            logo_gapw = 4.0
-            
-            small_capw = 0.4*logo_height
-            medium_capw = 0.6* logo_height
-            large_capw = 0.9*logo_height
-            cap_spacing = logo_height/15.0
-            cap_thickness = logo_height/15.0            
-            rad = 10.0
-            junction_size = 0.9*logo_height
-            junction_angle = 45.0
-            junction_gapw = logo_gapw/1.5
-            inductor_gapw = junction_gapw/2.
-            inductor_rad = 100.
-            structure.last = logo_starting_point
-            
-            CPWStraight(structure,logo_height/8.0,pinw = 0, gapw = large_capw/2.)          
-            CPWStraight(structure,logo_height/4.0,pinw=0,gapw=logo_gapw/2.)
-            CPWBend(structure,90,pinw=0,gapw= logo_gapw/2.,radius=rad)
-            CPWStraight(structure,logo_width,pinw=0, gapw = logo_gapw/2.)
+        
 
-            
-            return_point = structure.last
-            return_direction = structure.last_direction
+        structure.last = logo_starting_point
+        structure.last_direction = logo_starting_direction
+        logo_gapw = 4.0
+        
+        small_capw = 0.4*logo_height
+        medium_capw = 0.6* logo_height
+        large_capw = 0.9*logo_height
+        cap_spacing = logo_height/15.0
+        cap_thickness = logo_height/15.0            
+        rad = 10.0
+        junction_size = 0.9*logo_height
+        junction_angle = 45.0
+        junction_gapw = logo_gapw/1.5
+        inductor_gapw = junction_gapw/2.
+        inductor_rad = 100.
+        structure.last = logo_starting_point
+        
+        CPWStraight(structure,logo_height/8.0,pinw = 0, gapw = large_capw/2.)          
+        CPWStraight(structure,logo_height/4.0,pinw=0,gapw=logo_gapw/2.)
+        CPWBend(structure,90,pinw=0,gapw= logo_gapw/2.,radius=rad)
+        CPWStraight(structure,logo_width,pinw=0, gapw = logo_gapw/2.)
 
-            bottom_branch_point = (structure.last[0]-logo_width/6.,structure.last[1]-logo_gapw/2.)
-            structure.last = bottom_branch_point
-            structure.last_direction+=-90
-            CPWStraight(structure,logo_height/3.0,pinw=0,gapw =logo_gapw/2.0)
-            CPWBend(structure,-90, pinw=0, gapw=logo_gapw/2.0,radius=rad)
-            CPWStraight(structure, logo_width/4.0, pinw=0,gapw=logo_gapw/2.0)
-            CPWStraight(structure, logo_height/15.0, pinw=0, gapw= large_capw/4.0)
-            structure.last = (structure.last[0]-cap_spacing,structure.last[1])
-            CPWStraight(structure, logo_height/15.0, pinw=0, gapw= large_capw/2.5)
-            structure.last = (structure.last[0]-cap_spacing,structure.last[1])
-            CPWLinearTaper(structure,logo_height/4.0,start_pinw=0,stop_pinw=0, start_gapw = large_capw/6.0,stop_gapw=0.0)
+        
+        return_point = structure.last
+        return_direction = structure.last_direction
 
-
-            structure.last = return_point
-            structure.last_direction = return_direction
+        bottom_branch_point = (structure.last[0]-logo_width/6.,structure.last[1]-logo_gapw/2.)
+        structure.last = bottom_branch_point
+        structure.last_direction+=-90
+        CPWStraight(structure,logo_height/3.0,pinw=0,gapw =logo_gapw/2.0)
+        CPWBend(structure,-90, pinw=0, gapw=logo_gapw/2.0,radius=rad)
+        CPWStraight(structure, logo_width/4.0, pinw=0,gapw=logo_gapw/2.0)
+        CPWStraight(structure, logo_height/15.0, pinw=0, gapw= large_capw/4.0)
+        structure.last = (structure.last[0]-cap_spacing,structure.last[1])
+        CPWStraight(structure, logo_height/15.0, pinw=0, gapw= large_capw/2.5)
+        structure.last = (structure.last[0]-cap_spacing,structure.last[1])
+        CPWLinearTaper(structure,logo_height/4.0,start_pinw=0,stop_pinw=0, start_gapw = large_capw/6.0,stop_gapw=0.0)
 
 
-            CPWBend(structure,90,pinw=0,gapw= logo_gapw/2.,radius=rad)
-            CPWStraight(structure,logo_height,pinw=0, gapw = logo_gapw/2.)
-            ###Junction Drawing
-            return_point = structure.last
-            return_direction = structure.last_direction
-            
-            left_junction_point = (structure.last[0]-sin(junction_angle*pi/180.0)*junction_size/2.0,structure.last[1]-logo_height/2.0+cos(junction_angle*pi/180.0)*junction_size/2.0)
-            structure.last = left_junction_point
-            structure.last_direction+=180+junction_angle
-            CPWStraight(structure,junction_size,pinw=0,gapw=junction_gapw/2.0)
-            
-            right_junction_point = (structure.last[0]-2*sin(junction_angle*pi/180.0)*junction_size/2.0,structure.last[1])
-            structure.last_direction+=90
-            structure.last = right_junction_point
-            CPWStraight(structure,junction_size,pinw=0,gapw=junction_gapw/2.0)
-            
-            structure.last = return_point
-            structure.last_direction = return_direction
-            
-            CPWBend(structure,90,pinw=0,gapw= logo_gapw/2.,radius=rad)
-            CPWStraight(structure,logo_width,pinw=0, gapw = logo_gapw/2.)
-            
-            #top branch time
-            return_point = structure.last
-            return_direction = structure.last_direction
-                        
-            top_branch_point = (structure.last[0]+logo_width/6.0, structure.last[1]+logo_gapw/2.)
-            structure.last_direction+=-90
-            structure.last = top_branch_point          
-            #top branch stuff
+        structure.last = return_point
+        structure.last_direction = return_direction
 
-            CPWStraight(structure,logo_height/4.0,pinw=0,gapw =logo_gapw/2.0)
-            CPWBend(structure,-90, pinw=0, gapw=logo_gapw/2.0,radius=rad)
-            CPWStraight(structure, logo_width/6.0, pinw=0,gapw=logo_gapw/2.0)
-            CPWStraight(structure, cap_thickness, pinw=0, gapw= small_capw/2.0)
-            structure.last = (structure.last[0]+cap_spacing,structure.last[1])
-            CPWStraight(structure, cap_thickness, pinw=0, gapw= small_capw/2.0)
-            CPWStraight(structure, logo_width/6.0, pinw=0,gapw=logo_gapw/2.0)
-            CPWStraight(structure, cap_thickness, pinw=0, gapw= medium_capw/2.0)            
-            structure.last = (structure.last[0]+cap_spacing,structure.last[1])
-            CPWStraight(structure, cap_thickness, pinw=0, gapw= small_capw/2.0)
-            CPWStraight(structure, logo_width/6.0, pinw=0,gapw=logo_gapw/2.0)
-            CPWStraight(structure, cap_thickness, pinw=0, gapw= small_capw/2.0)
-            structure.last = (structure.last[0]+cap_spacing,structure.last[1])
-            CPWStraight(structure,cap_thickness, pinw=0, gapw= medium_capw/2.0)
-            structure.last = (structure.last[0]+cap_spacing,structure.last[1])            
-            CPWLinearTaper(structure,logo_height/4.0,start_pinw=0,stop_pinw=0, start_gapw = large_capw/6.0,stop_gapw=0.0)
-            
-            
-            structure.last = return_point
-            structure.last_direction = return_direction
-         
-            structure.last = return_point
-            structure.last_direction = return_direction
-            
-            
-            CPWBend(structure,90,pinw=0,gapw= logo_gapw/2.,radius=rad)
-            CPWStraight(structure,logo_height/4.0,pinw=0, gapw = logo_gapw/2.)
-            CPWStraight(structure,logo_height/8.0,pinw = 0, gapw = large_capw/2.)
-            text_starting_point = (logo_starting_point[0]+logo_width/2.,logo_starting_point[1]-logo_height/4.)
-            AlphaNumText(structure, text=" Schuster Lab", size=(50, 50), point=text_starting_point, centered=True,layer='0')
-            structure.last = (structure.last[0]+522,structure.last[1]-50+12.5)
-            structure.last_direction +=180
-            CPWStraight(structure,12.5,pinw=0,gapw=12.5/2.)
+
+        CPWBend(structure,90,pinw=0,gapw= logo_gapw/2.,radius=rad)
+        CPWStraight(structure,logo_height,pinw=0, gapw = logo_gapw/2.)
+        ###Junction Drawing
+        return_point = structure.last
+        return_direction = structure.last_direction
+        
+        left_junction_point = (structure.last[0]-sin(junction_angle*pi/180.0)*junction_size/2.0,structure.last[1]-logo_height/2.0+cos(junction_angle*pi/180.0)*junction_size/2.0)
+        structure.last = left_junction_point
+        structure.last_direction+=180+junction_angle
+        CPWStraight(structure,junction_size,pinw=0,gapw=junction_gapw/2.0)
+        
+        right_junction_point = (structure.last[0]-2*sin(junction_angle*pi/180.0)*junction_size/2.0,structure.last[1])
+        structure.last_direction+=90
+        structure.last = right_junction_point
+        CPWStraight(structure,junction_size,pinw=0,gapw=junction_gapw/2.0)
+        
+        structure.last = return_point
+        structure.last_direction = return_direction
+        
+        CPWBend(structure,90,pinw=0,gapw= logo_gapw/2.,radius=rad)
+        CPWStraight(structure,logo_width,pinw=0, gapw = logo_gapw/2.)
+        
+        #top branch time
+        return_point = structure.last
+        return_direction = structure.last_direction
+                    
+        top_branch_point = (structure.last[0]+logo_width/6.0, structure.last[1]+logo_gapw/2.)
+        structure.last_direction+=-90
+        structure.last = top_branch_point          
+        #top branch stuff
+
+        CPWStraight(structure,logo_height/4.0,pinw=0,gapw =logo_gapw/2.0)
+        CPWBend(structure,-90, pinw=0, gapw=logo_gapw/2.0,radius=rad)
+        CPWStraight(structure, logo_width/6.0, pinw=0,gapw=logo_gapw/2.0)
+        CPWStraight(structure, cap_thickness, pinw=0, gapw= small_capw/2.0)
+        structure.last = (structure.last[0]+cap_spacing,structure.last[1])
+        CPWStraight(structure, cap_thickness, pinw=0, gapw= small_capw/2.0)
+        CPWStraight(structure, logo_width/6.0, pinw=0,gapw=logo_gapw/2.0)
+        CPWStraight(structure, cap_thickness, pinw=0, gapw= medium_capw/2.0)            
+        structure.last = (structure.last[0]+cap_spacing,structure.last[1])
+        CPWStraight(structure, cap_thickness, pinw=0, gapw= small_capw/2.0)
+        CPWStraight(structure, logo_width/6.0, pinw=0,gapw=logo_gapw/2.0)
+        CPWStraight(structure, cap_thickness, pinw=0, gapw= small_capw/2.0)
+        structure.last = (structure.last[0]+cap_spacing,structure.last[1])
+        CPWStraight(structure,cap_thickness, pinw=0, gapw= medium_capw/2.0)
+        structure.last = (structure.last[0]+cap_spacing,structure.last[1])            
+        CPWLinearTaper(structure,logo_height/4.0,start_pinw=0,stop_pinw=0, start_gapw = large_capw/6.0,stop_gapw=0.0)
+        
+        
+        structure.last = return_point
+        structure.last_direction = return_direction
+     
+        structure.last = return_point
+        structure.last_direction = return_direction
+        
+        
+        CPWBend(structure,90,pinw=0,gapw= logo_gapw/2.,radius=rad)
+        CPWStraight(structure,logo_height/4.0,pinw=0, gapw = logo_gapw/2.)
+        CPWStraight(structure,logo_height/8.0,pinw = 0, gapw = large_capw/2.)
+        text_starting_point = (logo_starting_point[0]+logo_width/2.,logo_starting_point[1]-logo_height/4.)
+        AlphaNumText(structure, text=" Schuster Lab", size=(50, 50), point=text_starting_point, centered=True,layer='0')
+        structure.last = (structure.last[0]+522,structure.last[1]-50+12.5)
+        structure.last_direction +=180
+        CPWStraight(structure,12.5,pinw=0,gapw=12.5/2.)
 
 class ExtendedFluxLine:
     "This is the split flux bias design with the option to extend the flux line from the ground plane."
