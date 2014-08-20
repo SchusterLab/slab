@@ -177,6 +177,19 @@ class BNCAWG(SocketInstrument):
         settings['amplitude']=self.get_amplitude()
         settings['offset']=self.get_offset()
         return settings
+        
+    #setup the BNC as the master trigger for the 
+    #qubit experiment
+    def set_exp_trigger(self):
+        
+        self.set_output(False)
+        self.set_function('PULSE')
+        self.set_frequency(5e4)
+        self.set_offset(0.)
+        self.set_amplitude(1.5)
+        self.write('FUNCtion:PULSe:TRANsition 5e-9')
+        self.write('FUNCtion:PULSe:WIDTh 50e-9')
+        self.set_output(True)
 
 class FilamentDriver(BNCAWG):
     

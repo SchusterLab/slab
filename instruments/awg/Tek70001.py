@@ -380,7 +380,12 @@ class Tek70001 (SocketInstrument):
     def pre_load(self):
         
         self.stop()
-        self.reset()
+        self.clear_waveforms_seqs()
+        
+    def clear_waveforms_seqs(self):
+        
+        self.write('SLISt:SEQuence:DEL ALL')
+        self.write('WLISt:WAVeform:DEL ALL')
         
     def load_waveform_file(self,filename):
         
@@ -394,7 +399,10 @@ class Tek70001 (SocketInstrument):
         
     def prep_experiment(self):
         
+        #load sequence        
+        self.write('SOUR:CASS:SEQ "seq1",1')
         self.write("SOUR:JUMP:FORC 1")
+        self.operation_complete()
             
     
     def set_amps_offsets(self,channel_amps=[1.0],channel_offsets = [0.0], marker_amps=[1.0]):
@@ -402,7 +410,7 @@ class Tek70001 (SocketInstrument):
             #Note that there is no offset!
          
             #The amplitude range is 0.25 --> 0.5
-            self.set_amplitude(1,channel_amps[i-1])
+            self.set_amplitude(1,channel_amps[0])
             #self.set_offset(i,channel_offsets[i-1])
             
             #maker functions not set for now!!

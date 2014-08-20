@@ -99,7 +99,7 @@ class YokogawaGS200(SocketInstrument):
         """Get output mode return result as bool"""
         return bool(self.query(':OUTPUT:STATE?').strip())
     
-    def set_mode(self,mode='voltage'):
+    def set_mode(self,mode='current'):
         """Set yoko mode, valid inputs are mode='VOLTage' or mode='CURRent' """
         self.write(':SOURCE:FUNCTION %s' % mode)
     
@@ -109,27 +109,33 @@ class YokogawaGS200(SocketInstrument):
 
     def set_level(self,level):
         """Set yoko level"""
-        self.write(':SOURCE:LEVEL %f' % level)
+        self.write(':SOURCE:LEVEL %s' % level)
     
     def get_level(self):
         """Get level return as float"""
         return float(self.query(':SOURCE:LEVEL?').strip())
         
-    def set_current(self,current):
-        """Set yoko current"""
+    def set_current(self,current,channel=0):
+        #channel does nothing...for compatibility with the SRS
+        """Set yoko current (in Amps!)"""
         if self.get_mode() == "CURR":
-            self.set_level(current)
+            if current > .01:
+                raise Exception("ERROR: Current too high (above 10 mA)")
+            else:
+                curr_str = '%smA' %(current*1e3)
+                self.set_level(curr_str)
         else:
             raise Exception("ERROR: Need to set Yoko current in voltage mode")
 
     def get_current(self):
-        """Get yoko current"""
+        """Get yoko current (in Amps!)"""
         if self.get_mode() == "CURR":
             return self.get_level()        
         else:
             raise Exception("ERROR: Need to set Yoko voltage in current mode")
                     
-    def set_volt(self,voltage):
+    def set_volt(self,voltage,channel=0):
+        #channel does nothing...for compatibility with the SRS
         """Set yoko voltage"""
         if self.get_mode() == "VOLT":
             self.set_level(voltage)
@@ -168,7 +174,7 @@ def test_yoko(yoko=None):
         yoko=YokogawaGS200(address='10.120.35.219')
         
     print yoko.get_id()
-    yoko.set_mode('VOLT')
+    yoko.set_mode('current')
     print yoko.get_mode()
     print yoko.get_volt()
     yoko.set_measure_state()
