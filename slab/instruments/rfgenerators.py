@@ -88,9 +88,12 @@ class E8257D(SocketInstrument):
         self.write(":SOUR:PULM:STAT ON")
         self.set_mod()
     
-    def set_ext_pulse(self):
+    def set_ext_pulse(self,mod=True):
         self.write(':SOUR:PULM:SOUR EXT')
-        self.write(":SOUR:PULM:STAT ON")
+        if mod:
+            self.write(":SOUR:PULM:STAT ON")
+        else:
+            self.write(":SOUR:PULM:STAT OFF")
         self.set_mod()
         
 class BNC845(SocketInstrument):
@@ -139,6 +142,8 @@ class BNC845(SocketInstrument):
     def set_power(self,power):
         """Set CW power in dBm"""
         self.write(':POWER %f' % power)
+        print "BNC845 is fixed output power - 13dBm"
+        
         
     def get_power(self):
         return float(self.query(':POWER?'))
@@ -168,7 +173,10 @@ class BNC845(SocketInstrument):
         
     def get_settled(self):
         """Get source settled state"""
-        return bool(self.query(':OUTPut:SETTled?'))
+        #return bool(self.query(':OUTPut:SETTled?'))
+        #no call for the BNC845 to tell if the output has settled
+        #data sheet says the frequency settles in <100us
+        return True        
         
     def wait_to_settle(self, timeout=1):
         """Block until source settled"""
