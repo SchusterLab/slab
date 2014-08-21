@@ -152,13 +152,13 @@ class Schrodinger1D(Schrodinger):
         if not self.solved: self.solve()
         if num_levels == -1:
             num_levels = len(self.energies()) - 1
-        plot(self.x, self.U)
+        plot(self.x/(2*pi), self.U)
         for ind in range(num_levels):
-            plot(array([self.x[0], self.x[-1]]), array([self.energies()[ind], self.energies()[ind]]),
+            plot(array([self.x[0], self.x[-1]])/(2*pi), array([self.energies()[ind], self.energies()[ind]]),
                  label="$E_%d$" % ind)
             if psi_size is None:
                 psize=max(abs(self.energies()[ind + 1] - self.energies()[ind]) / 2., 1)/ max(abs(self.psis()[ind]))
-            plot(self.x, self.psis()[ind] * psize + self.energies()[ind],
+            plot(self.x/(2*pi), self.psis()[ind] * psize + self.energies()[ind],
                  label="$\psi_%d$" % ind)
 
     def plot_wavefunctions(self, num_levels=10):
@@ -258,13 +258,14 @@ class FluxQubit(Schrodinger1D):
 
     def flux_qubit_potential(self):
         """Make Flux qubit potential from circuit parameters"""
-        return -self.Ej * cos(self.phis - 2. * pi * self.phi) + self.El * (self.phis) ** 2
+        return -self.Ej * cos(self.phis - 2. * pi * self.phi) + self.El/2. * (self.phis) ** 2
 
     def plot(self, num_levels=10,**kwargs):
         """Plot potential, energies, eigenvectors"""
         Schrodinger1D.plot(self, num_levels,**kwargs)
         xlabel('$\delta/2\pi$')
         ylabel('E/h (GHz)')
+        ylim(min(self.flux_qubit_potential()),min(2*self.energies(num_levels)[-1],max(self.flux_qubit_potential())))
         title('Ej=%.2f GHz, El=%.2f GHz, Ec=%.2f GHz, $\Phi=%.2f \, \Phi_0$' % (self.Ej, self.El, self.Ec, self.phi))
 
     def phi_operator(self, num_levels=-1):
