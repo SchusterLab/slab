@@ -1,6 +1,9 @@
 
 try:
     import visa
+    if 'Instrument' not in dir(visa):
+        visa.Instrument=visa.instrument
+
     #pass
 except Exception as e:
     print e
