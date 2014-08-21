@@ -5,13 +5,15 @@ Created on Fri Aug 23 14:59:04 2013
 @author: Dave
 """
 from slab.instruments import SocketInstrument 
+import numpy as np
 from numpy import array, floor
     
 class Tek5014 (SocketInstrument):
     """Tektronix 5014 Arbitrary Waveform Class"""
     default_port=4000
-    def __init__(self,name='Tek5014',address='',enabled=True,timeout=100, recv_length=1024):
+    def __init__(self,name='Tek5014',address='',enabled=True,timeout=1000, recv_length=1024):
         SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
+        self._loaded_waveforms = []
 #        pass     
 
     def get_id(self):
@@ -398,7 +400,103 @@ class Tek5014 (SocketInstrument):
                 self.set_markerHigh(i,j+1,marker_amps[2*(i-1)+j])
                 self.set_markerLow(i,j+1,0.0)
             
-    
+    ###############################################
+    # Waveform loading functions  --- from phil
+    ###############################################
+
+    def get_bindata(self, data, m1=None, m2=None):
+        '''
+        Convert floating point data into 14 bit integers.
+        '''
+        absmax = np.max(np.abs(data))
+        if absmax > 1:
+            raise ValueError('Unable to convert data with absolute value larger than 1')
+
+        # 0 corresponds to minus full-scale + (1 / 2**14)
+        # 2**13-1 = 8191 corresponds to zero
+        # 2**14-1 = 16383 corresponds to plus full-scale
+        bytemem = np.round(data * (2**13-2)) + (2**13-1)
+        bytemem = bytemem.astype(np.uint16)
+
+        if m1 is not None:
+            if len(data) != len(m1):
+                raise ValueError('Data and marker1 should have same length')
+            bytemem |= 1<<14 * m1.astype(np.bool)
+        if m2 is not None:
+            if len(data) != len(m2):
+                raise ValueError('Data and marker2 should have same length')
+            bytemem |= 1<<15 * m2.astype(np.bool)
+
+        return bytemem
+
+    # add custom waveform as file, not correct
+    def add_file(self, fn, data):
+        bindata = self.get_bindata(data)
+        cmd = ('MMEM:DATA "%s",#6%06d'%(fn,2*len(data))) + bindata.tostring() + '\n'
+        self.write(cmd)
+
+    def add_waveform(self, wname, data, m1=None, m2=None, replace=True, return_cmd=False):
+        '''
+        Add waveform <wname> to AWG with content <data> and marker content
+        <m1> and <m2>.
+        '''
+        if not replace and wname in self._loaded_waveforms:
+            return None
+        #logging.info('Adding waveform %s (%d bytes)', wname, len(data))
+        self._loaded_waveforms.append(wname)
+
+        bindata = self.get_bindata(data, m1, m2)
+        cmd = 'WLIST:WAV:DEL "%s";' % wname
+        cmd += ':WLIST:WAV:NEW "%s",%d,INT;' % (wname, len(data))
+        cmd += ':WLIST:WAV:DATA "%s",0,%d,#6%06d' % (wname, len(bindata), 2*len(bindata))
+        cmd += bindata.tostring() + '\n'
+        #logging.info(self.get_error())
+
+        if return_cmd:
+            return cmd
+
+        cmd += ':OUTP?'
+        old_timeout=self.get_timeout()
+        self.set_timeout(60)
+        self.query(cmd)
+        self.set_timeout(old_timeout)
+
+    ###############################################
+    # Sequence functions
+    ###############################################
+
+    def do_get_seq_pos(self):
+        return int(self.query('AWGC:SEQ:POS?'))
+
+    def clear_sequence(self):
+        '''
+        Clear the sequence memory.
+        '''
+        self.write('SEQ:LENG 0\n')
+
+    def setup_sequence(self, n_el, reset=True, loop=True):
+        self.set_run_mode('SEQ')
+        old_timeout=self.get_timeout()
+        self.set_timeout(60000)
+        self.get_enabled()
+        if reset:
+            self.write('SEQ:LENG 0\n')
+            self.get_enabled()
+        self.write('SEQ:LENG %d\n' % n_el)
+        self.get_enabled()
+        self.set_timeout(old_timeout)
+
+        if loop:
+            self.write('SEQ:ELEM%d:GOTO:STATE ON' % n_el)
+            self.write('SEQ:ELEM%d:GOTO:INDEX 1' % n_el)
+
+    def set_seq_element(self, ch, el, wname, repeat=1, trig=False):
+        self.write('SEQ:ELEM%d:WAV%d "%s"' % (el, ch, wname))
+        if repeat > 1:
+            self.write('SEQ:ELEM%d:LOOP:COUNT %d' % (el, repeat))
+        if trig:
+            self.write('SEQ:ELEM%d:TWAIT 1' % (el,))
+
     
 if __name__=="__main__":
     awg=Tek5014(address='192.168.14.136')
