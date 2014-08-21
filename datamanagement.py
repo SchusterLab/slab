@@ -35,6 +35,7 @@ import inspect
 import Pyro4
 import threading
 import PyQt4.Qt as qt
+import datetime
 
 
 def get_SlabFile(fname, local=False):
@@ -233,21 +234,21 @@ class h5File(h5py.File):
             dataset[-1, :] = data
         except TypeError:
             dataset[-1] = data
-            #Usage require strictly same dimensionality for all data appended.
-            #currently I don't have it setup to return a good exception, but should
+            # Usage require strictly same dimensionality for all data appended.
+            # currently I don't have it setup to return a good exception, but should
 
 
 class SlabFile(h5py.File):
     def __init__(self, *args, **kwargs):
         h5py.File.__init__(self, *args, **kwargs)
-        #self.attrs["_script"] = open(sys.argv[0], 'r').read()
-        #        if self.mode is not 'r':
-        #            self.attrs["_script"] = get_script()
-        #if not read-only or existing then save the script into the .h5
-        #Maybe should take this automatic feature out and just do it when you want to
+        # self.attrs["_script"] = open(sys.argv[0], 'r').read()
+        # if self.mode is not 'r':
+        # self.attrs["_script"] = get_script()
+        # if not read-only or existing then save the script into the .h5
+        # Maybe should take this automatic feature out and just do it when you want to
         # Automatic feature taken out. Caused more trouble than convenience. Ge Yang
         # if 'save_script' in kwargs:
-        #     save_script = kwargs['save_script']
+        # save_script = kwargs['save_script']
         # else:
         #     save_script = True
         # if (self.mode is not 'r') and ("_script" not in self.attrs) and (save_script):
@@ -334,17 +335,46 @@ class SlabFile(h5py.File):
         dataset[-1] = pt
         self.flush()
 
+    def note(self, note):
+        """Add a timestamped note to HDF file, in a dataset called 'notes'"""
+        ts = datetime.datetime.now()
+        try:
+            ds = self['notes']
+        except:
+            ds = self.create_dataset('notes', (0,), maxshape=(None,), dtype=h5py.new_vlen(str))
+
+        shape = list(ds.shape)
+        shape[0] = shape[0] + 1
+        ds.resize(shape)
+        ds[-1] = str(ts) + ' -- ' + note
+        self.flush()
+
+    def get_notes(self, one_string=False, print_notes=False):
+        """Returns notes embedded in HDF file if present.
+        @param one_string=False if True concatenates them all together
+        @param print_notes=False if True prints all the notes to stdout
+        """
+        try:
+            notes = list(self['notes'])
+        except:
+            notes= []
+        if print_notes:
+            print '\n'.join(notes)
+        if one_string:
+            notes = '\n'.join(notes)
+        return notes
+
     def add_data(self, f, key, data):
         data = np.array(data)
         try:
             f.create_dataset(key, shape=data.shape,
-                                maxshape=tuple([None] * len(data.shape)),
-                                dtype=str(data.dtype))
+                             maxshape=tuple([None] * len(data.shape)),
+                             dtype=str(data.dtype))
         except RuntimeError:
             del f[key]
             f.create_dataset(key, shape=data.shape,
-                                maxshape=tuple([None] * len(data.shape)),
-                                dtype=str(data.dtype))
+                             maxshape=tuple([None] * len(data.shape)),
+                             dtype=str(data.dtype))
         f[key][...] = data
 
     def append_data(self, f, key, data, forceInit=False):
@@ -356,14 +386,14 @@ class SlabFile(h5py.File):
         data = np.array(data)
         try:
             f.create_dataset(key, shape=tuple([1] + list(data.shape)),
-                                maxshape=tuple([None] * (len(data.shape) + 1)),
-                                dtype=str(data.dtype))
+                             maxshape=tuple([None] * (len(data.shape) + 1)),
+                             dtype=str(data.dtype))
         except RuntimeError:
             if forceInit == True:
                 del f[key]
                 f.create_dataset(key, shape=tuple([1] + list(data.shape)),
-                                    maxshape=tuple([None] * (len(data.shape) + 1)),
-                                    dtype=str(data.dtype))
+                                 maxshape=tuple([None] * (len(data.shape) + 1)),
+                                 dtype=str(data.dtype))
             dataset = f[key]
             Shape = list(dataset.shape)
             Shape[0] = Shape[0] + 1
@@ -374,8 +404,8 @@ class SlabFile(h5py.File):
             dataset[-1, :] = data
         except TypeError:
             dataset[-1] = data
-            #Usage require strictly same dimensionality for all data appended.
-            #currently I don't have it setup to return a good exception, but should
+            # Usage require strictly same dimensionality for all data appended.
+            # currently I don't have it setup to return a good exception, but should
 
     def add(self, key, data):
         self.add_data(self, key, data)
@@ -384,7 +414,7 @@ class SlabFile(h5py.File):
         self.append_data(self, dataset, pt)
 
     # def save_script(self, name="_script"):
-    #     self.attrs[name] = get_script()
+    # self.attrs[name] = get_script()
 
     def save_settings(self, dic, group='settings'):
         if group not in self:
@@ -419,7 +449,7 @@ def get_script():
     fname = inspect.stack()[-1][1]
     if fname == '<stdin>':
         return fname
-    #print fname
+    # print fname
     f = open(fname, 'r')
     s = f.read()
     f.close()
