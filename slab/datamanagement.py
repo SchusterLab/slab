@@ -250,9 +250,9 @@ class SlabFile(h5py.File):
         # if 'save_script' in kwargs:
         # save_script = kwargs['save_script']
         # else:
-        #     save_script = True
+        # save_script = True
         # if (self.mode is not 'r') and ("_script" not in self.attrs) and (save_script):
-        #     self.save_script()
+        # self.save_script()
         self.flush()
 
     # Methods for proxy use    
@@ -357,7 +357,7 @@ class SlabFile(h5py.File):
         try:
             notes = list(self['notes'])
         except:
-            notes= []
+            notes = []
         if print_notes:
             print '\n'.join(notes)
         if one_string:
@@ -415,18 +415,27 @@ class SlabFile(h5py.File):
 
     # def save_script(self, name="_script"):
     # self.attrs[name] = get_script()
-
-    def save_settings(self, dic, group='settings'):
+    def save_dict(self, dict, group='/'):
         if group not in self:
             self.create_group(group)
-        for k in dic.keys():
-            self[group].attrs[k] = dic[k]
+        for k in dict.keys():
+            self[group].attrs[k] = dict[k]
 
-    def load_settings(self, group='settings'):
+    def get_dict(self, group='/'):
         d = {}
         for k in self[group].attrs.keys():
             d[k] = self[group].attrs[k]
         return d
+
+    get_attrs = get_dict
+    save_attrs = save_dict
+
+
+    def save_settings(self, dic, group='settings'):
+        self.save_dict(dic, group)
+
+    def load_settings(self, group='settings'):
+        self.get_dict(group)
 
 
 def set_range(dset, range_dsets, range_names=None):
