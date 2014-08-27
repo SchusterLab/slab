@@ -336,7 +336,7 @@ class Tek5014(VisaInstrument):
 
     def load_sequence_file(self, filename):
 
-        self.socket.send("AWGControl:SREStore '%s' \n" % (filename))
+        self.write("AWGControl:SREStore '%s' \n" % (filename))
         for i in range(1, 5):
             self.set_enabled(i, True)
 
