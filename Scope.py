@@ -5,7 +5,7 @@ Created on Mon May 16 18:29:46 2011
 @author: Phil
 """
 from gui import *
-from TestAlazarApi import *
+from instruments.Alazar.TestAlazarApi import *
 
 class ScopeDataSet(DataSet):
     bgm1=BeginGroup("Acquisition Properties")
