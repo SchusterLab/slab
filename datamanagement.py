@@ -435,7 +435,8 @@ class SlabFile(h5py.File):
         self.save_dict(dic, group)
 
     def load_settings(self, group='settings'):
-        self.get_dict(group)
+        return self.get_dict(group)
+        
 
 
 def set_range(dset, range_dsets, range_names=None):
