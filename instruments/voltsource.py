@@ -99,7 +99,7 @@ class YokogawaGS200(SocketInstrument):
         """Get output mode return result as bool"""
         return bool(self.query(':OUTPUT:STATE?').strip())
     
-    def set_mode(self,mode='current'):
+    def set_mode(self,mode):
         """Set yoko mode, valid inputs are mode='VOLTage' or mode='CURRent' """
         self.write(':SOURCE:FUNCTION %s' % mode)
     
