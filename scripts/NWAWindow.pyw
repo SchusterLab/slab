@@ -274,11 +274,12 @@ class NWAWin(SlabWindow, Ui_NWAWindow):
     def load_defaults(self):
         try: 
             settings_file= SlabFile('c:\\_Lib\\python\\slab\\scripts\\NWAWindow_defaults.h5','r')
+            d=settings_file.load_settings('settings')
         except Exception as e:
             self.msg("Could not open NWAWindow_defaults.h5!")
+            d={}
             self.msg(e)            
             return
-        d=settings_file.load_settings('settings')
         for k in d.keys():
             self.set_param(k,d[k])
             #self.msg(k,': ',str(self.params[k]))
