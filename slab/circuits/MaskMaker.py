@@ -4590,6 +4590,16 @@ def arc_pts(start_angle, stop_angle, radius, segments=360):
     return pts
     
 
+def taper_arc_pts(start_angle,stop_angle,start_radius,stop_radius,segments=360):
+    pts = []
+    for ii in range(segments):
+        theta = (start_angle + ii / (segments - 1.) * (stop_angle - start_angle)) * pi / 180.
+        radius = (start_radius + ii / (segments - 1.) * (stop_radius- start_radius)) 
+        p = (radius * cos(theta), radius * sin(theta))
+        pts.append(p)
+    return pts
+        
+
 ###################################################
 # Useful tools to connect two points with eachother
 ###################################################
