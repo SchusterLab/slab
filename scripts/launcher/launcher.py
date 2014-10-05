@@ -24,6 +24,7 @@ def select_dir():
 scripts = {
     'HDF Viewer' : python_cmd(r'plotting\hdfiview.py'),
     'Script Plotter' : python_cmd(r'plotting\script_viewer.py'),
+    'LivePlot' : python_cmd(r'..\liveplot\window.py'),
     'NWA Viewer' : python_cmd(r'scripts\NWAWindow.pyw'),
     'Instrument Manager' : python_cmd(r'instruments\instrumentmanager.py') + ['-g'],
     'File Server' : python_cmd('datamanagement.py'),
