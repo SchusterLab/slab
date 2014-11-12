@@ -287,26 +287,10 @@ def subtract_drawing(s1,s2,boundary):
     
    #to do (how?)
    pass
-    
 
-'''
-Calculations by DCM May 2013
-Version 2 Lumped Resonator Design (two parallel C and series L)
-These calculations assume cap fingers widths and gaps of 15um
-and inductors with 5um widths and 20um gaps
-''' 
-def LumpedElementResonators_by_f_v2(s,fres,impedance, n_c_fingers, n_l_fingers, cin=0, cout=0, conn_length=20,flipped=False):
-    
-    #do a first order correction for capacitive loading
-    fres = fres*(1+fres*2*pi*impedance*(cin+cout)/8)  
-    
-    print fres*2*pi*impedance*(cin+cout)/8
-    
-    lval = impedance/(fres*2*pi)/1e-9
-    cval = lval/impedance**2/1e-6*2 #note that each cap is twice the LC cap
-   
-    print lval,cval   
-   
+#cap fingers widths and gaps of 15um
+def ground_finger_c(n_c_fingers,cval,fres):
+
     #Simulations done in designer with saphhire eps = 10.8
     #Mean of d/dw(im(Y(1,2))) 
     #Initially (first three lengths) from 1->3 GHz, but changed to 0.2->1GHz
@@ -341,6 +325,11 @@ def LumpedElementResonators_by_f_v2(s,fres,impedance, n_c_fingers, n_l_fingers, 
     get_length=interp1d (cap_table,c_sim_length)
     c_length=round(float(get_length(cval)))
     
+    return c_length
+    
+#inductors with 5um widths and 20um gaps
+def meander_l(n_l_fingers,lval,fres):
+    
     #Simulations done in designer with saphhire eps = 10.8
     #Mean of d/dw(im(1/Y(1,2))) 
     #0.2->1GHz    
@@ -373,6 +362,63 @@ def LumpedElementResonators_by_f_v2(s,fres,impedance, n_c_fingers, n_l_fingers, 
     #get the inductor length
     get_length=interp1d (l_table,l_sim_length)
     l_length=ceil(float(get_length(lval)))
+    
+    return l_length
+
+def LumpedElementResonators_by_f_v3(s,fres,impedance,n_c_fingers,n_l_fingers,cin=0,cout=0,conn_length=20,flipped=False,draw_square=False,round_finger_exceptions=None):
+    
+    #do a first order correction for capacitive loading
+    fres = fres*(1+fres*2*pi*impedance*(cin+cout)/8)  
+    
+    print fres*2*pi*impedance*(cin+cout)/8
+    
+    lval = impedance/(fres*2*pi)/1e-9
+    cval = lval/impedance**2/1e-6 
+   
+    print lval,cval   
+   
+    c_length = ground_finger_c(n_c_fingers,cval,fres)
+    l_length = meander_l(n_l_fingers,lval,fres)
+    
+    #start with a straight CPW section
+    #CPWStraight(s,conn_length)
+    
+    c_gap = 15.
+    
+    #create a cap to ground using "ground fingers"
+    ground_cap = ground_fingers(n_c_fingers, c_length, 15., align=False, finger_gap=c_gap, round_finger= not draw_square,round_finger_exceptions=round_finger_exceptions)
+    
+    ground_cap(s,empty=False)    
+    
+    l_ground_gap = 25 #3*l_width    
+    
+    CPWStraight(s,c_gap+l_ground_gap+conn_length)
+    
+    
+    meander_line(n_l_fingers, l_length, width=4, finger_gap=20, ground_gap=l_ground_gap, flipped=flipped, round_finger= not draw_square)(s)
+
+'''
+Calculations by DCM May 2013
+Version 2 Lumped Resonator Design (two parallel C and series L)
+These calculations assume cap fingers widths and gaps of 15um
+and inductors with 5um widths and 20um gaps
+''' 
+def LumpedElementResonators_by_f_v2(s,fres,impedance, n_c_fingers, n_l_fingers, cin=0, cout=0, conn_length=20,flipped=False):
+    
+    #do a first order correction for capacitive loading
+    fres = fres*(1+fres*2*pi*impedance*(cin+cout)/8)  
+    
+    print fres*2*pi*impedance*(cin+cout)/8
+    
+    lval = impedance/(fres*2*pi)/1e-9
+    cval = lval/impedance**2/1e-6*2 #note that each cap is twice the LC cap
+   
+    print lval,cval   
+   
+    c_length = ground_finger_c(n_c_fingers,cval,fres)
+    
+    
+    l_length = meander_l(n_l_fingers,lval,fres)
     
     
     return LumpedElementResonatorv2(s, n_c_fingers, n_l_fingers, c_length, l_length, c_width=15, c_gap=15,
@@ -659,7 +705,7 @@ def ShuntedLER(s, n_fingers, finger_height, n_meanders, meander_height):
 #align: draw alignment marks
 #nalign: number of alignment marks
 #round_finger: rounds the end of the finger (added 3/2014)
-def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1, nalign=2, round_finger=False):
+def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1, nalign=2, round_finger=False, round_finger_exceptions=None):
     def ground_finger_contents(s, gds_info=None):
             if gds_info is not None:
                 channel = lambda s, length, width: gds_channel(s, length, width, gds_info[0], gds_info[1])
@@ -675,7 +721,8 @@ def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1, nalign=2
                 channel(s, gap_width, pin)
             channel(s, width, tot_length)
             channel(s, gap, pin)
-    
+            
+            
     
     def builder(s, gap=None, empty=False, contents_struct=None, gds_info=None):
         dist = 65
@@ -692,6 +739,10 @@ def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1, nalign=2
         cross_height = length + gap + pin/2. + dist
         finger_start = s.last
         
+        if (round_finger_exceptions is None) and round_finger:
+            round_finger_array = ones((2,n_fingers))
+        elif round_finger:
+            round_finger_array = round_finger_exceptions
         
                 
         for i in range(n_fingers):
@@ -707,9 +758,11 @@ def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1, nalign=2
                     s.move(width)
                     CPWStraight(s, gap2, gapw=gap+gap2+length-round_radius)
                     inner_radius = width/2.0
-                    
-                make_annulus(s,orient_pt((-round_radius,gap+gap2+length+pin/2.-round_radius),s.last_direction,s.last),s.last_direction,round_radius,inner_radius,0.0,180.0)
-                make_annulus(s,orient_pt((-round_radius,-(gap+gap2+length+pin/2.-round_radius)),s.last_direction,s.last),s.last_direction+180.0,round_radius,inner_radius,0.0,180.0)
+                
+                if round_finger_array[1,i]==1:
+                    make_annulus(s,orient_pt((-round_radius,gap+gap2+length+pin/2.-round_radius),s.last_direction,s.last),s.last_direction,round_radius,inner_radius,0.0,180.0)
+                if round_finger_array[0,i]==1:
+                    make_annulus(s,orient_pt((-round_radius,-(gap+gap2+length+pin/2.-round_radius)),s.last_direction,s.last),s.last_direction+180.0,round_radius,inner_radius,0.0,180.0)
                 
                 #interconnect between fingers
                 if i != (n_fingers - 1):
@@ -720,7 +773,7 @@ def ground_fingers(n_fingers, length, width, align=True, finger_gap=-1, nalign=2
                         
                     else:
                         #CPWStraight(s, width, gapw=gap)           
-                       
+                      
                         make_hyperbolic(s,gap+width/2.0,orient_pt((width/2.0,pin/2.0),s.last_direction,s.last),s.last_direction,width/2.0,180.0,360.0)
                         make_hyperbolic(s,-(gap+width/2.0),orient_pt((width/2.0,-pin/2.0),s.last_direction,s.last),s.last_direction,width/2.0,180.0,0.0)                        
                         
@@ -833,8 +886,8 @@ def meander_line(n_fingers, length, width, finger_gap, ground_gap, flipped=False
             
             for i in [1,-1]:
                 #taper to the meander line
-                s.append(sdxf.PolyLine(orient_pts([(-ground_gap,i*s.pinw/2),(-ground_gap,i*(l/2+w+ground_gap)),(-ground_gap/2.0,i*(l/2+w+ground_gap)),(-ground_gap/2,i*w/2),(-ground_gap,i*s.pinw/2)],s.last_direction,s.last)))
-                myrect(s,(-ground_gap/2,i*(l/2+w)),(0,i*(l/2+w+ground_gap)))                
+                s.append(sdxf.PolyLine(orient_pts([(-ground_gap,i*s.pinw/2.),(-ground_gap,i*(l/2+w+ground_gap)),(-ground_gap/2.0,i*(l/2+w+ground_gap)),(-ground_gap/2.,i*w/2),(-ground_gap,i*s.pinw/2)],s.last_direction,s.last)))
+                myrect(s,(-ground_gap/2.,i*(l/2+w)),(0,i*(l/2+w+ground_gap)))                
                 make_hyperbolic(s,i*(l/2.0+w*(1.0+i/2.0)+i*ground_gap/2.0),orient_pt((-ground_gap/2.0,-i*(l/2.0+w)),s.last_direction,s.last),s.last_direction,ground_gap/2.0+(i+1)/2.0*w,0.0,-90.0)
                                 
                 #myrect(s,(-ground_gap,i*s.pinw/2),(0,i*(l/2+w+ground_gap)))
@@ -847,12 +900,14 @@ def meander_line(n_fingers, length, width, finger_gap, ground_gap, flipped=False
             for i in range(n_fingers):
                 myrect(s, (w, l/2.0-g/2.0), (w + g, -(l/2+w)))
                 make_annulus(s,orient_pt((w+g/2.0,l/2.0-g/2.0),s.last_direction,s.last),s.last_direction,g/2.0,0,180.0,0)
-                make_hyperbolic(s,-g/2.0-w,orient_pt((w+g/2.0,l/2.0+w),s.last_direction,s.last),s.last_direction,g/2.0+w,0.0,180.0)
+                make_hyperbolic(s,-g/2.0-w,orient_pt((w+g/2.0,l/2.0+w),s.last_direction,s.last),s.last_direction,g/2.0+w,0.0,90.0)
+                make_hyperbolic(s,-g/2.0-w,orient_pt((w+g/2.0,l/2.0+w),s.last_direction,s.last),s.last_direction,g/2.0+w,90.0,180.0)
                 
                 
                 myrect(s, (2*w + g, -(l/2-g/2.0)), (2*w + 2*g, (l/2+w)))
                 make_annulus(s,orient_pt((2*w+g*1.5,-(l/2.0-g/2.0)),s.last_direction,s.last),s.last_direction+180,g/2.0,0,180.0,0)
-                make_hyperbolic(s,g/2.0+w,orient_pt((2*w+g*1.5,-(l/2.0+w)),s.last_direction,s.last),s.last_direction,g/2.0+w,-180.0,0.0)
+                make_hyperbolic(s,g/2.0+w,orient_pt((2*w+g*1.5,-(l/2.0+w)),s.last_direction,s.last),s.last_direction,g/2.0+w,-180.0,-90.0)
+                make_hyperbolic(s,g/2.0+w,orient_pt((2*w+g*1.5,-(l/2.0+w)),s.last_direction,s.last),s.last_direction,g/2.0+w,-90.0,0.0)
                 
                 
                 s.last = orient_pt((2*g+2*w,0), s.last_direction, s.last)
@@ -924,6 +979,34 @@ def make_hyperbolic(s,circle_height,start_pt,direction,radius,start_angle,end_an
     s.append(sdxf.PolyLine(orient_pts(pts,direction,start_pt)))
     
     
+
+#This will round the end of a finger!
+def round_finger(s,gapw=None,pinw=None):
+    
+    if gapw is None:
+        gapw = s.gapw
+    
+    if pinw is None:
+        pinw = s.pinw
+        
+    #draw upper rect
+    s.move(pinw/2.+gapw/2.,s.last_direction+90)
+    CPWStraight(s,pinw/2.,pinw=0,gapw=gapw/2.)
+    #s.move(pinw/2.)
+    s.move(gapw/2.,s.last_direction-90)
+    s.move(-pinw/2.)
+    make_hyperbolic(s,-pinw/2.,s.last,s.last_direction,pinw/2.,90.,0.)
+    
+
+    s.move(pinw+gapw/2.,s.last_direction-90.)
+    CPWStraight(s,pinw/2.,pinw=0,gapw=gapw/2.)
+    s.move(gapw/2.,s.last_direction+90)
+    s.move(-pinw/2.)    
+    make_hyperbolic(s,pinw/2.,s.last,s.last_direction,pinw/2.,-90.,0.)
+    
+    s.move(pinw/2.,s.last_direction+90)
+    s.move(pinw/2.)
+   
 
 #this draws alignment crosses from start_pt to end_pt in a grid nx by ny (x is along direction)
 #omit is a nx x ny array of ones and zeros (zero is don't draw cross)
@@ -1207,8 +1290,11 @@ def QBox(size=5, **kwargs):
 from copy import copy, deepcopy
 import random    
      
-def perforate(chip, grid_x, grid_y):
-    nx, ny = map(int, [chip.size[0] / grid_x, chip.size[1] / grid_y])
+def perforate(chip, grid_x, grid_y,xmax=-1):
+    if xmax == -1:
+        nx, ny = map(int, [chip.size[0] / grid_x, chip.size[1] / grid_y])
+    else:
+        nx, ny = map(int, [xmax / grid_x, chip.size[1] / grid_y])
     occupied = [[False]*ny for i in range(nx)]
     for i in range(nx):
         occupied[i][0] = True
