@@ -115,12 +115,37 @@ class YokogawaGS200(SocketInstrument):
         """Get level return as float"""
         return float(self.query(':SOURCE:LEVEL?').strip())
         
-    def set_current(self,current,channel=0):
+    def set_range(self, r):
+        """set range of current/voltage"""
+        self.write(':SOURCE:RANGE %f' % r)
+
+    def get_range(self):
+        """set range of current/voltage"""
+        return float(self.query(':SOURCE:RANGE?'))
+
+    def set_current_limit(self, lim):
+        """set current limit"""
+        self.write(':SOURCE:PROTECTION:CURRENT %f' % lim)
+
+    def get_current_limit(self):
+        """get current limit"""
+        return float(self.query(':SOURCE:PROTECTION:CURRENT?'))
+
+    def set_voltage_limit(self, lim):
+        """set voltage limit"""
+        self.write(':SOURCE:PROTECTION:VOLT %f' % lim)
+
+    def get_voltage_limit(self):
+        """get voltage limit"""
+        return float(self.query(':SOURCE:PROTECTION:VOLT?'))
+
+        
+    def set_current(self,current,channel=0,safety_level=.01):
         #channel does nothing...for compatibility with the SRS
         """Set yoko current (in Amps!)"""
         if self.get_mode() == "CURR":
-            if current > .01:
-                raise Exception("ERROR: Current too high (above 10 mA)")
+            if current > safety_level:
+                raise Exception("ERROR: Current too high (above %f mA)" % safety_level)
             else:
                 curr_str = '%smA' %(current*1e3)
                 self.set_level(curr_str)
