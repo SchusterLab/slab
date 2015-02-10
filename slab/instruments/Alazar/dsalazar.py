@@ -15,7 +15,10 @@ import ctypes as C
 import numpy as np
 import sys
 from slablayout import *
-from guiqwt.pyplot import *
+try:
+    from guiqwt.pyplot import *
+except:
+    print "Warning unable to import guiqwt.pyplot"
 from scipy.fftpack import fft,rfft
 from slab.dataanalysis import heterodyne
 from numpy import sin,cos,pi
@@ -276,7 +279,7 @@ class Alazar():
             
     def get_handle(self):
         return self.Az.AlazarGetBoardBySystemID(U32(1), U32(1))
-        
+
     def configure(self,config=None):
         if config is not None: self.config=config
         if self.config.samplesPerRecord<256 or (self.config.samplesPerRecord  % 64)!=0:
@@ -1199,11 +1202,12 @@ if __name__ == "__main__":
 
     print "Buffer bytes: ", card.config.bytesPerBuffer
     print "Buffer length: ",card.arrs[0].__len__()
-    ion()
-    figure(1)
-    plot(card.arrs[0])
-    figure(2)
-    plot(card.arrs[0][:2048])
-    figure(3)
-    plot(card.arrs[-1][:2048])
-    show()
+
+    # ion()
+    # figure(1)
+    # plot(card.arrs[0])
+    # figure(2)
+    # plot(card.arrs[0][:2048])
+    # figure(3)
+    # plot(card.arrs[-1][:2048])
+    # show()

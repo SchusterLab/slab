@@ -4,9 +4,11 @@ Created on Fri Aug 23 14:59:04 2013
 
 @author: Dave
 """
-from slab.instruments import VisaInstrument
+from slab.instruments import VisaInstrument,InstrumentManager
 import numpy as np
-from numpy import array, floor
+from numpy import array, floor, zeros
+from collections import namedtuple
+from TekPattern import write_Tek_file
 
 
 class Tek5014(VisaInstrument):
@@ -397,7 +399,7 @@ class Tek5014(VisaInstrument):
         '''
         if not replace and wname in self._loaded_waveforms:
             return None
-        #logging.info('Adding waveform %s (%d bytes)', wname, len(data))
+        # logging.info('Adding waveform %s (%d bytes)', wname, len(data))
         self._loaded_waveforms.append(wname)
 
         bindata = self.get_bindata(data, m1, m2)
@@ -453,6 +455,73 @@ class Tek5014(VisaInstrument):
             self.write('SEQ:ELEM%d:LOOP:COUNT %d' % (el, repeat))
         if trig:
             self.write('SEQ:ELEM%d:TWAIT 1' % (el,))
+
+#### Creating pattern files
+class Tek5014Sequence:
+    def __init__(self, waveform_length, sequence_length):
+        self.waveforms = zeros((4,sequence_length, waveform_length))
+        self.markers = zeros((4,2,sequence_length, waveform_length))
+        self.sequence_length = sequence_length
+        self.waveform_length = waveform_length
+
+    # this loads into the TEK
+    def load_into_awg(self, filename, awg_name=None):
+
+        # filename is where to build the sequence file
+
+        # create AWG data file
+        awgdata = dict()
+        key_names = ['ch12', 'ch34']
+        for i in range(1, 5):
+            for j in range(1, 3):
+                key_names.append('ch{0}m{1}'.format(i, j))
+
+        for i in range(len(key_names)):
+            awgdata[key_names[i]] = dict()
+            awgdata[key_names[i]]['wfLib'] = dict()
+            awgdata[key_names[i]]['linkList'] = list()
+
+
+
+        #add wf's to awgdata
+
+        #analog
+        #This goes through all the waveforms and combines channels 1 and 2 and 3 and 4
+        for i in range(2):
+            data_key = 'ch{0}{1}'.format(2 * i + 1, 2 * i + 2)
+            for j in range(self.sequence_length):
+                awgdata[data_key]['wfLib'][str(j)] = self.waveforms[2 * i][j] + (self.waveforms[2 * i + 1][j]) * 1j
+
+            #create sequence
+            for j in range(self.sequence_length):
+                awgdata[data_key]['linkList'].append(list())
+                awgdata[data_key]['linkList'][j].append(namedtuple('a', 'key isTimeAmp length repeat'))
+                awgdata[data_key]['linkList'][j][0].key = "{0:g}".format((j + 1) % self.sequence_length)  #go to next waveform (or beginning)
+                awgdata[data_key]['linkList'][j][0].isTimeAmp = False
+
+        for i in range(4):
+            for j in range(2):
+                marker_key = 'ch{0}m{1}'.format(i + 1, j + 1)
+                for k in range(self.sequence_length):
+                    awgdata[marker_key]['wfLib'][str(k)] = self.markers[i][j][k]
+
+                #create sequence
+                for k in range(self.sequence_length):
+                    awgdata[marker_key]['linkList'].append(list())
+                    awgdata[marker_key]['linkList'][k].append(namedtuple('a', 'key isTimeAmp length repeat'))
+                    awgdata[marker_key]['linkList'][k][0].key = "{0:g}".format((k + 1) % self.sequence_length)
+                    awgdata[marker_key]['linkList'][k][0].isTimeAmp = False
+
+
+        write_Tek_file(awgdata, filename, 'seq1', None, False)
+
+        #load the file into the TEK
+        if awg_name is not None:
+            im = InstrumentManager()
+            awg = im[awg_name]
+            awg.pre_load()
+            awg.load_sequence_file(filename)
+
 
 
 if __name__ == "__main__":
