@@ -288,63 +288,6 @@ class Tek70001 (SocketInstrument):
         
     def get_reference_oscillator_frequency(self):
         return self.query('SOURce1:ROSCillator:FREQuency?')
-        
-        
-    def pack_pattern(self,pattern,marker1,marker2,pattern_high=1.,pattern_low=-1.):
-        """AWG 5000 series binary data format
-	     m2 m1 d14 d13 d12 d11 d10 d9 d8 d7 d6 d5 d4 d3 d2 d1
-	  """
-        
-        #create binary data pattern from waveform given by pattern  
-        lpattern = array((pattern - pattern_low)/(pattern_high-pattern_low)*(2**14-1),dtype=long)
-        
-#        for i in range(len(pattern)):
-#            if pattern[i]<0:
-#                print "<0"
-#                pattern[i] = 0
-#                
-#            if pattern[i]>=2**14:
-#                print "Too large"
-#                pattern[i] = 2**14-1
-   
-        
-        #append marker data
-        lpattern+=2**15*marker2+2**14*marker1
-        b=bytearray(len(lpattern)*2)
-        for ii in xrange(len(lpattern)):
-            b[ii*2] = (lpattern[ii] & 0xFF)
-            b[ii*2+1] = (lpattern[ii] & 0xFF00) >>8
-            
-        return b
-
-    def pack_intpattern(self,pattern,marker1,marker2,pattern_high=1.,pattern_low=-1.):
-        """AWG 5000 series binary data format
-	     m2 m1 d14 d13 d12 d11 d10 d9 d8 d7 d6 d5 d4 d3 d2 d1
-	  """
-        
-        #create binary data pattern from waveform given by pattern  
-        #lpattern = array((pattern - pattern_low)/(pattern_high-pattern_low)*(2**14-1),dtype=long)
-        
-#        for i in range(len(pattern)):
-#            if pattern[i]<0:
-#                print "<0"
-#                pattern[i] = 0
-#                
-#            if pattern[i]>=2**14:
-#                print "Too large"
-#                pattern[i] = 2**14-1
-   
-        
-        #append marker data
-        #lpattern=pattern+2**15*marker2+2**14*marker1
-        lpattern=pattern
-        b=bytearray(len(lpattern)*2)
-        for ii in xrange(len(lpattern)):
-            b[ii*2] = (lpattern[ii] & 0xFF)
-            b[ii*2+1] = (lpattern[ii] & 0xFF00) >>8
-
-            
-        return b
 
     def get_error_log(self):
         done=False
@@ -354,28 +297,6 @@ class Tek70001 (SocketInstrument):
             done=s[0]=='0'
             log+=s
         return log
-
-    def set_waveform_data(self,waveform_name,waveform_data,start_index=0):
-        #waveform_data should be a byte array from pack_pattern
-        #self.write(':WLISt:WAVeform:DATA "%s", %s' % (waveform_name,str(waveform_data)))
-        self.binblockwrite('WLISt:WAVeform:DATA "%s",%d,%d,' % (waveform_name,start_index,len(waveform_data)/2), waveform_data)        
-        
-    def binblockwrite(self,commandstring, blockarray):
-        #response= self.query("*OPC?")
-        #print "BinBlockWrite Response: ", response
-        blockarraylength=str(len(blockarray))
-        blockarraylengthposition=len(blockarraylength)
-        cmd = commandstring+"#"+str(blockarraylengthposition)+blockarraylength
-        #print "bbw cmd string: ", cmd
-        #self.term_chars = ""
-        #print len(blockarray)
-        print cmd
-        print len(str(blockarray))
-        self.write(cmd+str(blockarray))
-        #self.instrument.term_chars = None
-        #response= self.query("*OPC?")
-        #print "BinBlockWrite Response: ", response
-        #return response
         
     def pre_load(self):
         

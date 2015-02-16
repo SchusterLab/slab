@@ -47,6 +47,25 @@ class E8257D(SocketInstrument):
         """Query CW Frequency"""
         return float(self.query(':FREQUENCY?'))
 
+    def set_sweep(self,start,stop,numpts,dwell):
+        """Sets up frequency sweeping parameters"""
+        self.write(':FREQUENCY:START %f;:FREQUENCY:STOP %f; :SWEEP:POINTS %f; :SWEEP:DWELL %f' % (start,stop,numpts,dwell))
+
+    def get_sweep(self):
+        """Gets current frequency sweeping parameters"""
+        return [float(s) for s in (self.query(':FREQUENCY:START?'),self.query(':FREQUENCY:STOP?'), self.query(':SWEEP:POINTS?'),self.query(':SWEEP:DWELL?'))]
+
+    def set_sweep_mode(self,enabled=True):
+        """Set's up source for sweep mode"""
+        if enabled:
+            self.write(':LIST:TYPE STEP; :LIST:TRIG:SOURCE EXT; :FREQuency:MODE SWEEP')
+        else:
+            self.write(':FREQ:MODE CW; :LIST:TRIG:SOURCE CONT')
+
+    def set_cw_mode(self):
+        """Set generator into CW mode"""
+        self.write(':FREQ:MODE CW; :LIST:TRIG:SOURCE CONT')
+
     def set_phase(self,phase):
         """Set signal Phase in radians"""
         self.write(':PHASE %f' % phase)
@@ -61,7 +80,7 @@ class E8257D(SocketInstrument):
         
     def get_power(self):
         return float(self.query(':POWER?'))
-        
+
     def get_settings(self):
         settings=SocketInstrument.get_settings(self)
         settings['frequency']=self.get_frequency()
@@ -215,14 +234,17 @@ def test_BNC845(rf=None):
     
 def test_8257D (rf=None):   
     if rf is None:
-        rf=E8257D(address='128.135.35.30')
+        rf=E8257D(address='192.168.14.131')
     print rf.query('*IDN?')
     rf.set_output(False)
     rf.set_frequency(10e9)
     print "Frequency: %f" % rf.get_frequency()
     rf.set_power(-10)
     print "Power: %f" % rf.get_power()
+    rf.set_sweep(start=1e9,stop=2e9,numpts=101,dwell=10e-3)
+    rf.set_sweep_mode()
     
 if __name__=="__main__":
-    #test_8257D()
-    test_BNC845()
+    test_8257D()
+    #test_BNC845()
+
