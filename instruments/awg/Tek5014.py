@@ -522,8 +522,6 @@ class Tek5014Sequence:
             awg.pre_load()
             awg.load_sequence_file(filename)
 
-
-
 if __name__ == "__main__":
     awg = Tek5014(address='192.168.14.136')
     print awg.get_id()
