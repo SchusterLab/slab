@@ -8,8 +8,27 @@ SRS900 Voltage Source (voltsource.py)
 from slab.instruments import SocketInstrument,SerialInstrument,VisaInstrument,Instrument
 import re
 import time
+from numpy import linspace
 
-class SRS900(SerialInstrument,VisaInstrument):
+class VoltageSource:
+
+    def ramp_volt (self, v, sweeprate=1, channel=1):
+        start=self.get_volt()
+        stop=v
+        start_t=time.time()
+        self.set_volt(start,channel)
+        time.sleep(self.query_sleep)
+        step_t=time.time()-start_t
+        total_t=abs(stop-start)/sweeprate
+        steps=total_t/step_t
+
+        for ii in linspace(start,stop,steps):
+            self.set_volt(ii,channel)
+            time.sleep(self.query_sleep)
+
+
+
+class SRS900(SerialInstrument,VisaInstrument,VoltageSource):
     'Interface to the SRS900 voltage source'
     def __init__(self,name="",address='COM5',enabled=True,timeout=1):
         #if ':' not in address: address+=':22518'        
@@ -81,7 +100,7 @@ class SRS900(SerialInstrument,VisaInstrument):
     def get_output(self,channel=1):
         return bool(int(self.query('EXON?',channel)))
 
-class YokogawaGS200(SocketInstrument):
+class YokogawaGS200(SocketInstrument,VoltageSource):
 
     default_port=7655    
     def __init__(self,name='YOKO',address='', enabled=True,timeout=10, recv_length=1024):
