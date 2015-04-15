@@ -23,9 +23,15 @@ import matplotlib.pyplot as plt
 
 def dBm_to_W(dBm):
     """convert dBm to Watts"""
-    return 10**(dBm/10.)
+    return 10.**(dBm/10.)*1e-3
 
 dBmtoW=dBm_to_W
+
+def dBm_to_V(dBm):
+    """convert dBm to V"""
+    return sqrt(dBm_to_W(dBm)*50)*sqrt(2)
+
+dBmtoV=dBm_to_V
 
 ######################## Plotting helpers
 
