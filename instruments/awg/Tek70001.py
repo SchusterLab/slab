@@ -8,16 +8,20 @@ Created on Fri Aug 23 14:59:04 2013
 #DCM: This was directly copied from the TEK5014 class
 #*SOME* methods have been updated, but don't assume they have!
 
-from slab.instruments import SocketInstrument 
+from slab.instruments import VisaInstrument 
 from numpy import array, floor
     
-class Tek70001 (SocketInstrument):
+class Tek70001(VisaInstrument):
     """Tektronix 70001 Arbitrary Waveform Class"""
-    default_port=4000
-    def __init__(self,name='Tek70001',address='',enabled=True,timeout=100, recv_length=1024):
-        SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
-#        pass     
+    # default_port=4000
+    def __init__(self, name='Tek70001', address='', enabled=True):
+        address = address.upper()
 
+        if address[:5] != 'TCPIP':
+            address = 'TCPIP::' + address + '::INSTR'
+        VisaInstrument.__init__(self, name, address, enabled)
+        self.term_char=''
+        
     def get_id(self):
         return self.query("*IDN?")
 
