@@ -1,0 +1,125 @@
+
+        <head>
+          <meta charset="UTF-8">
+        </head>
+        <style>
+        * {
+          font-family: "Times New Roman";
+        }
+
+        td, th {
+          padding: 3px 7px 2px 7px;
+        }
+
+        th {
+          font-size: 1.1em;
+          text-align: left;
+          padding-top: 5px;
+          padding-bottom: 4px;
+        }
+        </style>
+        <body><h1>Simple AR sample program</h1>
+
+<p>ATS-SDK version 7.0.0</p>
+
+<p>© 2003-2015 Alazar Technologies, Inc.</p>
+
+<h2>Introduction</h2>
+
+<p>This sample program demonstrates how to make a simple
+AR acquisition. The sample program is part of the
+AlazarTech SDK, and is documented in the 'AlazarTech SDK Programmer's
+Guide'.</p>
+
+<h2>System requirements</h2>
+
+<p>Python 2.7.8 and above, as well as 3.4.0 and above are supported for
+running this sample program. In addition to the standard Python
+installation, the NumPy library is required. This sample code is
+tested with NumPy 1.8.2.</p>
+
+<p>The AlazarTech ATS310 drivers version 5.7.7
+of later are required to run the sample program. They can be
+downloaded from <a href="http://www.alazartech.com/support/downloads.htm">our
+website</a>.</p>
+
+<p>ATS310 has a PCI bus interface capable of sustained data
+transfers up to 133 MB/s.</p>
+
+<h2>Getting started</h2>
+
+<p>To get the most from an AlazarTech ATS310 digitizer board, a
+programmer should:</p>
+
+<ol>
+<li><p>Read the "ATS310 User Guide". It provides an overview of
+the digitizer board's hardware features, as well as it's
+specifications.</p></li>
+<li><p>Read the "AlazarTech SDK Programmer's Guide". It describes how to
+program the digitizier hardware to make an acquisition, and to
+transfer sample data into application buffers.</p></li>
+</ol>
+
+<h2>Code overview</h2>
+
+<p>The program is divided into three major parts:</p>
+
+<h3>1. Obtain a board handle</h3>
+
+<p>This code obtains a handle to a board specified by its system and
+board identifiers. See section 2.1 <em>Addressing a board</em> of the
+AlazarTech SDK Programmer's Guide for more information about using
+board identifiers and handles.</p>
+
+<h3>2. Configure the board</h3>
+
+<p>The code in the <code>ConfigureBoard()</code> function calls AlazarTech API
+functions to configure the time base, analog inputs, and trigger
+system of the board specified by its handle.</p>
+
+<p>An application must call these API functions as required before making
+an acquisition. However, if the application continues to make other
+acquisitions, it does not need to call these functions again unless a
+parameter changes.</p>
+
+<p>See section 2.2 <em>Configuring a board</em> of the AlazarTech SDK
+Programmer's Guide for more information about how to configure a
+board.</p>
+
+<h3>3. Acquiring data</h3>
+
+<p>It calls <code>AlazarRead()</code> to transfer buffers from board to host memory.</p>
+
+<h2>Modifying the sample program</h2>
+
+<p>The ATS310_AR.py file contains the code to configure a board, make an
+acquisition, transfer sample data to application buffers and
+optionally save sample data to file.</p>
+
+<p>Acquisition parameters should be modified to suit the application. All
+of the lines containing such parameters are labeled with <code>TODO</code>
+comments. Search for there lines in the source files, and modify them
+as required.</p>
+
+<h2>Building the sample program</h2>
+
+<p>Since Python is an interpreted language, the code sample does not have
+to be compiled before being run. Simply make sure that you have all
+the required libraries, then open a command prompt in the directory
+where the code sample is and run <code>python ATS310_AR.py</code>.</p>
+
+<h2>Contact us</h2>
+
+<p>If you have any questions or comments, or need assistance, contact us.</p>
+
+<ul>
+<li>Web:    <a href="http://www.alazartech.com">www.alazartech.com</a></li>
+<li>Email:  <a href="mailto:support@alazartech.com">support@alazartech.com</a></li>
+<li>Phone:  514-426-4899</li>
+<li>Fax:    514-426-2723</li>
+<li>Mail:   Alazar Technologies Inc.
+       6600 Trans-Canada Highway, Suite 310
+       Pointe-Claire, QC
+       Canada H9R 4S2</li>
+</ul>
+</body>

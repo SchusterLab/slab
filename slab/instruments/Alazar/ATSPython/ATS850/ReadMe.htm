@@ -1,0 +1,133 @@
+
+        <head>
+          <meta charset="UTF-8">
+        </head>
+        <style>
+        * {
+          font-family: "Times New Roman";
+        }
+
+        td, th {
+          padding: 3px 7px 2px 7px;
+        }
+
+        th {
+          font-size: 1.1em;
+          text-align: left;
+          padding-top: 5px;
+          padding-bottom: 4px;
+        }
+        </style>
+        <body><h1>ATS850 Python sample programs</h1>
+
+<p>ATS-SDK version 6.2.0</p>
+
+<p>© 2003-2015 Alazar Technologies, Inc.</p>
+
+<h2>Introduction</h2>
+
+<p>This folder contains sample programs that demonstrate how to make the
+various types of acquisitions supported by an AlazarTech
+ATS850 8-bit 50 MS/s digitizer board with
+a PCI host bus interface. The sample programs are part of the
+AlazarTech SDK, and are documented in the “AlazarTech SDK Programmer’s
+Guide”.</p>
+
+<h2>System requirements</h2>
+
+<p>Python 2.7.8 and above, as well as 3.4.0 and above are supported for
+running these sample programs. In addition to the standard Python
+installation, the NumPy library is required. This sample code is
+tested with NumPy 1.8.2.</p>
+
+<p>The AlazarTech ATS850 drivers version 5.7.7
+of later are required to run the sample program. They can be
+downloaded from <a href="http://www.alazartech.com/support/downloads.htm">our
+website</a>.</p>
+
+<p>ATS850 has a PCI bus interface capable of sustained data
+transfers up to 133 MB/s.</p>
+
+<p>Many sample programs require a trigger input signal. Connect a 500
+mVpp, 1kHz sine wave from a function generator to the CH A connector
+of the digitizer board before running these programs. If a suitable
+trigger signal is not supplied, an acquisition timeout internal will
+expire before the board receives the number of trigger events required
+to make the acquisition and, as a result, the acquisition will fail
+with a timeout error.</p>
+
+<h2>Getting started</h2>
+
+<p>To get the most from an AlazarTech ATS850 digitizer board, a
+programmer should:</p>
+
+<ol>
+<li><p>Read the "ATS850 User Guide". It provides an overview of
+the digitizer board's hardware features, as well as it's
+specifications.</p></li>
+<li><p>Read the "AlazarTech SDK Programmer's Guide". It describes how to
+program the digitizier hardware to make an acquisition, and to
+transfer sample data into application buffers.</p></li>
+</ol>
+
+<h2>Single-port acquisitions</h2>
+
+<p>A single-port acquisition allows a board to acquire to on-board memory
+and, after the acquisition is complete, transfer sample data from
+on-board memory to application buffers.</p>
+
+<p>Single-port acquisitions should be used when:</p>
+
+<ul>
+<li><p>The application can tolerate missing trigger events while it
+transfers data from on-board memory, and re-arms a board for
+another acquisition.</p></li>
+<li><p>The average data acquisition data rate that is greater than the
+maximum PCIe bus transfer rate.</p></li>
+</ul>
+
+<p>Single-port acquisitions should not be used for imaging applications
+such as: ultrasonic testing, OCT, RADAR, and LIDAR. These applications
+should use Dual-port AutoDMA acquisitions described below.
+Single-port samples</p>
+
+<h2>Single-port samples</h2>
+
+<p>The samples in the “SinglePort” directory demonstrate how to make
+single-port acquisitions. Most programmers should begin with the
+“SinglePort\AR” sample.</p>
+
+<ul>
+<li><a href=""../../Samples_Python/ATS850/AR/ReadMe.htm"">ATS850_AR.py</a> : This sample acquires records to on-board memory, and calls AlazarRead to transfer entire records from on-board memory to an application buffer. It demonstrates a basic single-port acquisition.</li>
+</ul>
+
+<h2>Utility samples</h2>
+
+<p>The following sample programs demonstrate how to get informatin about
+a board.</p>
+
+<ul>
+<li><a href="../AlazarSysInfo/ReadMe.htm">AlazarSysInfo</a> : This sample calls a
+number of status and information API functions to display detailed
+information about digitizer boards. This information includes:
+sample size in bits, memory size in samples per channel, serial
+number, and latest calibration date. It demonstrates how to obtain
+a board handle, use the status and information API functions, and
+control the LED on a board’s PCIe mounting bracket.</li>
+</ul>
+
+<h2>Contact us</h2>
+
+<p>If you have any questions or comments, or need assistance, contact us.</p>
+
+<ul>
+<li>Web:    <a href="http://www.alazartech.com">www.alazartech.com</a></li>
+<li>Email:  <a href="mailto:support@alazartech.com">support@alazartech.com</a></li>
+<li>Phone:  514-426-4899</li>
+<li>Fax:    514-426-2723</li>
+<li>Mail:   Alazar Technologies Inc.
+       6600 Trans-Canada Highway, Suite 310
+       Pointe-Claire, QC
+       Canada H9R 4S2</li>
+</ul>
+</body>
