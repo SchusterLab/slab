@@ -26,6 +26,7 @@ from numpy import sin,cos,pi
 #import operator
 import time
 #import fftw3
+import os
 
 U8 = C.c_uint8
 U8P = C.POINTER(U8)
@@ -48,6 +49,68 @@ def int_linterp(x, a1, a2, b1, b2):
 def ret_to_str(retCode, Az):
     Az.AlazarErrorToText.restype = C.c_char_p
     return Az.AlazarErrorToText(U32(retCode))   
+
+class DMABuffer:
+    '''Buffer suitable for DMA transfers.
+
+    AlazarTech digitizers use direct memory access (DMA) to transfer
+    data from digitizers to the computer's main memory. This class
+    abstracts a memory buffer on the host, and ensures that all the
+    requirements for DMA transfers are met.
+
+    DMABuffers export a 'buffer' member, which is a NumPy array view
+    of the underlying memory buffer
+
+    Args:
+
+      bytes_per_sample (int): The number of bytes per samples of the
+      data. This varies with digitizer models and configurations.
+
+      size_bytes (int): The size of the buffer to allocate, in bytes.
+
+    '''
+    def __init__(self, bytes_per_sample, size_bytes):
+        self.size_bytes = size_bytes
+
+        cSampleType = U8
+        npSampleType = np.uint8
+        if bytes_per_sample > 1:
+            cSampleType = U16
+            npSampleType = np.uint16
+
+        self.addr = None
+        if os.name == 'nt':
+            MEM_COMMIT = 0x1000
+            PAGE_READWRITE = 0x4
+            C.windll.kernel32.VirtualAlloc.argtypes = [C.c_void_p, C.c_long, C.c_long, C.c_long]
+            C.windll.kernel32.VirtualAlloc.restype = C.c_void_p
+            self.addr = C.windll.kernel32.VirtualAlloc(
+                0, C.c_long(size_bytes), MEM_COMMIT, PAGE_READWRITE)
+        elif os.name == 'posix':
+            C.libc.valloc.argtypes = [C.c_long]
+            C.libc.valloc.restype = C.c_void_p
+            self.addr = libc.valloc(size_bytes)
+            print("Allocated data : " + str(self.addr))
+        else:
+            raise Exception("Unsupported OS")
+
+
+        ctypes_array = (cSampleType * (size_bytes // bytes_per_sample)).from_address(self.addr)
+        self.buffer = np.frombuffer(ctypes_array, dtype=npSampleType)
+        pointer, read_only_flag = self.buffer.__array_interface__['data']
+
+    def __exit__(self):
+        if os.name == 'nt':
+            MEM_RELEASE = 0x8000
+            windll.kernel32.VirtualFree.argtypes = [C.c_void_p, C.c_long, C.c_long]
+            windll.kernel32.VirtualFree.restype = C.c_int
+            windll.kernel32.VirtualFree(C.c_void_p(self.addr), 0, MEM_RELEASE);
+        elif os.name == 'posix':
+            libc.free(self.addr)
+        else:
+            raise Exception("Unsupported OS")
+
+
 
 class AlazarConstants():
     # Clock Constants
@@ -481,19 +544,26 @@ class Alazar():
                                        flags)
         if DEBUGALAZAR: print "Before Read:", ret_to_str(ret,self.Az)
 
-        self.config.bytesPerBuffer=(self.config.samplesPerRecord * self.config.recordsPerBuffer * self.config.channelCount)        
+        #self.config.bytesPerBuffer=(self.config.samplesPerRecord * self.config.recordsPerBuffer * self.config.channelCount)
         self.bufs=[]
         #self.bufpts = []
-        buftype=U8 * self.config.bytesPerBuffer
+        #buftype=U8 * self.config.bytesPerBuffer
+        #memorySize_samples, bitsPerSample = self.getChannelInfo()
+        #self.config.bytesPerSample = (bitsPerSample.value + 7) // 8
+        self.config.bytesPerSample = 1
+        self.config.bytesPerRecord = self.config.bytesPerSample * self.config.samplesPerRecord
+        self.config.bytesPerBuffer = self.config.bytesPerRecord * self.config.recordsPerBuffer * self.config.channelCount
+
         for i in range(self.config.bufferCount):
-            self.bufs.append(buftype())           
+            #self.bufs.append(buftype())        #changing to alazar code
+            self.bufs.append(DMABuffer(self.config.bytesPerSample, self.config.bytesPerBuffer))
             #self.bufpts.append(C.cast(self.bufs[i], C.POINTER(U8)))
-            for j in range(self.config.bytesPerBuffer):
-                self.bufs[i][j]=U8(0)
+            #for j in range(self.config.bytesPerBuffer):
+            #    self.bufs[i].buffer[j]=U8(0)
             #ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[i],U32(self.config.bytesPerBuffer))
         if DEBUGALAZAR: print "Posted buffers: ", ret_to_str(ret,self.Az)
         
-        self.arrs=[np.ctypeslib.as_array(b) for b in self.bufs]
+        self.arrs=[np.ctypeslib.as_array(b.buffer) for b in self.bufs]
 #        for a in self.arrs:
 #            for i in range(a.__len__()):
 #                a[i]=0
@@ -517,35 +587,10 @@ class Alazar():
                                        U32(self.config.recordsPerAcquisition),
                                        flags)
         for i in range (self.config.bufferCount):
-            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[i],U32(self.config.bytesPerBuffer))
+            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[i].addr,U32(self.bufs[i].size_bytes))
             #print ret, self.config.bytesPerBuffer
             if ret != 512:
                 print "Failed to post Buffer", ret_to_str(ret, self.Az)
-
-    def acquire_data(self):
-        self.post_buffers()
-        #self.avg_data=np.zeros(self.config.samplesPerRecord * self.config.recordsPerBuffer * self.config.channelCount,dtype=float)
-        buffersCompleted=0
-        buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
-        ret = self.Az.AlazarStartCapture(self.handle)
-        if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
-        if DEBUGALAZAR: print "Buffers per Acquisition: ", buffersPerAcquisition
-        while (buffersCompleted < buffersPerAcquisition):
-            if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
-            buf_idx = buffersCompleted % self.config.bufferCount
-            buffersCompleted+=1           
-            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
-            if DEBUGALAZAR: print "WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
-            if ret_to_str(ret,self.Az) == "ApiWaitTimeout":
-                ret = self.Az.AlazarAbortAsyncRead(self.handle)
-                if DEBUGALAZAR: print "Abort AsyncRead: ", ret_to_str(ret,self.Az)            
-                break
-            if buffersCompleted < buffersPerAcquisition:            
-                ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
-                if DEBUGALAZAR: print "PostAsyncBuffer: ", ret_to_str(ret,self.Az)            
-            #self.avg_data+=self.arrs[buf_idx]
-        #self.avg_data=self.avg_data/buffersCompleted
-        ret = self.Az.AlazarAbortAsyncRead(self.handle)
            
     def acquire_avg_data(self, excise=None):
         self.post_buffers()
@@ -595,6 +640,67 @@ class Alazar():
         else:
             return tpts,avg_data1,avg_data2
 
+    #added by ds on 4/22/2015
+    def acquire_data_by_record(self, start_function=None,excise=None):
+        """Acquire average data, but keep the records aligned
+           @start_function:  a callback function to start the AWG's or whatever is doing the triggering
+           @excise: (start,stop) range to clip the data out
+        """
+        self.post_buffers()
+        num_chs = 0
+        if self.config.ch1_enabled: num_chs+=1
+        if self.config.ch2_enabled: num_chs+=1
+        data=np.zeros(num_chs*self.config.samplesPerRecord*self.config.recordsPerAcquisition,dtype=float)
+        buffersCompleted=0
+        buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
+        ret = self.Az.AlazarStartCapture(self.handle)
+        start_function()
+        if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
+        if DEBUGALAZAR: print "Buffers per Acquisition: ", buffersPerAcquisition
+        currentIndex=0
+        while (buffersCompleted < buffersPerAcquisition):
+            if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
+            buf_idx = buffersCompleted % self.config.bufferCount
+
+            buffersCompleted+=1
+            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx].addr,U32(self.config.timeout))
+            #print buf_idx
+            #print np.shape(self.arrs[buf_idx])
+            if ret != 512:
+                print "Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az)
+                ret = self.Az.AlazarAbortAsyncRead(self.handle)
+                break
+            nextIndex=currentIndex+num_chs*self.config.samplesPerRecord*self.config.recordsPerBuffer
+            data[currentIndex:nextIndex]=self.arrs[buf_idx]
+            currentIndex=nextIndex
+            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx].addr,U32(self.bufs[buf_idx].size_bytes))
+            if ret != 512:
+                print "Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az)
+                ret = self.Az.AlazarAbortAsyncRead(self.handle)
+                break
+            if DEBUGALAZAR: print "PostAsyncBuffer: ", ret_to_str(ret,self.Az)
+        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+
+        ret = self.Az.AlazarAbortAsyncRead(self.handle)
+        data-=128.
+        data*=(self.config.ch1_range/128.)
+        if num_chs == 2:
+            data1,data2=data.reshape((num_chs,self.config.recordsPerBuffer,self.config.samplesPerRecord))
+        else:
+            data1=data.reshape((self.config.recordsPerAcquisition,self.config.samplesPerRecord))
+            data2=np.zeros((self.config.recordsPerAcquisition,self.config.samplesPerRecord))
+        tpts=np.arange(self.config.samplesPerRecord)/float(self.config.sample_rate*1e3)
+
+        if DEBUGALAZAR: print "Acquisition finished."
+        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+        ret = self.Az.AlazarAbortAsyncRead(self.handle)
+        if excise is not None:
+            tpts=tpts[excise[0]:excise[1]]
+            data1=data1[:][excise[0]:excise[1]]
+            data2=data2[:][excise[0]:excise[1]]
+        return tpts,data1,data2
+
+
     #added by ds on 4/17/2015
     def acquire_avg_data_by_record(self, start_function=None,excise=None):
         """Acquire average data, but keep the records aligned
@@ -638,17 +744,18 @@ class Alazar():
         if num_chs == 2:
             avg_data1,avg_data2=avg_data.reshape((num_chs,self.config.recordsPerBuffer,self.config.samplesPerRecord))
         else:
-            avg_data1=avg_data
-            avg_data2=np.zeros(len(avg_data))
+            avg_data1=avg_data.reshape((self.config.recordsPerBuffer,self.config.samplesPerRecord))
+            avg_data2=np.zeros((self.config.recordsPerBuffer,self.config.samplesPerRecord))
         tpts=np.arange(self.config.samplesPerRecord)/float(self.config.sample_rate*1e3)
 
         if DEBUGALAZAR: print "Acquisition finished."
         if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
         if excise is not None:
-            return tpts[excise[0]:excise[1]],avg_data1[excise[0]:excise[1]],avg_data2[excise[0]:excise[1]]
-        else:
-            return tpts,avg_data1,avg_data2
+            tpts=tpts[excise[0]:excise[1]]
+            avg_data1=avg_data1[:][excise[0]:excise[1]]
+            avg_data2=avg_data2[:][excise[0]:excise[1]]
+        return tpts,avg_data1,avg_data2
 
     #added by ds on 4/17/2015
     def acquire_singleshot_data(self, start_function=None, excise=None):
@@ -995,6 +1102,14 @@ class Alazar():
             #print ret_to_str(ret, self.Az)
             return ret         
         return ret
+
+    def getChannelInfo(self):
+        '''Get the on-board memory in samples per channe and sample size in bits per sample'''
+        memorySize_samples = U32(0)
+        bitsPerSample = U8(0)
+        self.Az.AlazarGetChannelInfo(self.handle, byref(memorySize_samples), byref(bitsPerSample))
+        return (memorySize_samples, bitsPerSample)
+
         
     def repost_buffer(self, buf_idx=0):
         ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
