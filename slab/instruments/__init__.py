@@ -39,3 +39,5 @@ try: from spectrumanalyzer import E4440
 except: print "Could not load E4440 Spectrum Analyzer"
 try: from cryocon import Cryocon
 except: print "Could not load Cryocon instrument driver"
+try: from DigitalAttenuator import DigitalAttenuator
+except: print "Could not load Digital Attenuator instrument driver"
