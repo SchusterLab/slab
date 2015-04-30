@@ -21,6 +21,7 @@ class Tek70001(VisaInstrument):
             address = 'TCPIP::' + address + '::INSTR'
         VisaInstrument.__init__(self, name, address, enabled)
         self.term_char=''
+        self.instrument.timeout=100
         
     def get_id(self):
         return self.query("*IDN?")

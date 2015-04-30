@@ -605,7 +605,7 @@ class Alazar():
             if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
             buf_idx = buffersCompleted % self.config.bufferCount
             buffersCompleted+=1      
-            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx].addr,U32(self.config.timeout))
             #print buf_idx
             #print np.shape(self.arrs[buf_idx])
             if ret != 512:
@@ -616,7 +616,7 @@ class Alazar():
                 if self.config.ch1_enabled: avg_data1+=self.arrs[buf_idx][(n*self.config.samplesPerRecord):((n+1)*self.config.samplesPerRecord)]
                 if self.config.ch2_enabled: avg_data2+=self.arrs[buf_idx][(n+self.config.recordsPerBuffer)*self.config.samplesPerRecord:(n+self.config.recordsPerBuffer+1)*self.config.samplesPerRecord]
             #plot(self.arrs[buf_idx])
-            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx].addr,U32(self.config.bytesPerBuffer))
             if ret != 512:
                 print "Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az)            
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -722,7 +722,7 @@ class Alazar():
             if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
             buf_idx = buffersCompleted % self.config.bufferCount
             buffersCompleted+=1
-            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx].addr,U32(self.config.timeout))
             #print buf_idx
             #print np.shape(self.arrs[buf_idx])
             if ret != 512:
@@ -730,7 +730,7 @@ class Alazar():
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
                 break
             avg_data+=self.arrs[buf_idx]
-            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx].addr,U32(self.config.bytesPerBuffer))
             if ret != 512:
                 print "Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az)
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -753,8 +753,8 @@ class Alazar():
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
         if excise is not None:
             tpts=tpts[excise[0]:excise[1]]
-            avg_data1=avg_data1[:][excise[0]:excise[1]]
-            avg_data2=avg_data2[:][excise[0]:excise[1]]
+            avg_data1=avg_data1.T[excise[0]:excise[1]].T
+            avg_data2=avg_data2.T[excise[0]:excise[1]].T
         return tpts,avg_data1,avg_data2
 
     #added by ds on 4/17/2015
@@ -781,7 +781,7 @@ class Alazar():
             if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
             buf_idx = buffersCompleted % self.config.bufferCount
             buffersCompleted+=1
-            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx].addr,U32(self.config.timeout))
             #print buf_idx
             #print np.shape(self.arrs[buf_idx])
             if ret != 512:
@@ -792,7 +792,7 @@ class Alazar():
                 for ch in range(num_chs):
                     ss_data[ch][recordsCompleted]=np.sum(self.arrs[buf_idx][((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[0]:((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[1]])
                 recordsCompleted+=1
-            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx].addr,U32(self.config.bytesPerBuffer))
             if ret != 512:
                 print "Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az)
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -834,7 +834,7 @@ class Alazar():
                 
             buf_idx = buffersCompleted % self.config.bufferCount
             buffersCompleted+=1           
-            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx].addr,U32(self.config.timeout))
             if ret != 512:
                 print "Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -852,7 +852,7 @@ class Alazar():
                     single_data2[1,recordsCompleted] = (2*sum(sindata*single_record2)/num_pts)
                 recordsCompleted+=1
             #plot(self.arrs[buf_idx])
-            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx].addr,U32(self.config.bytesPerBuffer))
             if ret != 512:
                 print "Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az)            
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -894,7 +894,7 @@ class Alazar():
                 
             buf_idx = buffersCompleted % self.config.bufferCount
             buffersCompleted+=1           
-            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx].addr,U32(self.config.timeout))
             if ret != 512:
                 print "Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -908,7 +908,7 @@ class Alazar():
                     
                 recordsCompleted+=1
             #plot(self.arrs[buf_idx])
-            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx].addr,U32(self.config.bytesPerBuffer))
             if ret != 512:
                 print "Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az)            
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -955,7 +955,7 @@ class Alazar():
             if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
             buf_idx = buffersCompleted % self.config.bufferCount
             buffersCompleted+=1           
-            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+            ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx].addr,U32(self.config.timeout))
             if ret != 512:
                 print "Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -988,7 +988,7 @@ class Alazar():
                 avg_data1+=ch1_pts
                 avg_data2+=ch2_pts
             #plot(self.arrs[buf_idx])
-            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+            ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx].addr,U32(self.config.bytesPerBuffer))
             if ret != 512:
                 print "Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az)            
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -1089,13 +1089,13 @@ class Alazar():
         return f0_data,kappa_data
         
     def capture_buffer_async(self, buf_idx=0):
-        ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
+        ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx].addr,U32(self.config.timeout))
         if ret != 512:
             print "Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
             ret2 = self.Az.AlazarAbortAsyncRead(self.handle)
             #print ret_to_str(ret, self.Az)
             return ret 
-        ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+        ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx].addr,U32(self.config.bytesPerBuffer))
         if ret != 512:
             print "Abort AsyncRead, PostBuffer: ", ret_to_str(ret,self.Az)            
             ret2 = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -1112,7 +1112,7 @@ class Alazar():
 
         
     def repost_buffer(self, buf_idx=0):
-        ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
+        ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx].addr,U32(self.config.bytesPerBuffer))
         if ret != 512:
             print "Abort AsyncRead: ", ret_to_str(ret,self.Az)            
             ret = self.Az.AlazarAbortAsyncRead(self.handle)

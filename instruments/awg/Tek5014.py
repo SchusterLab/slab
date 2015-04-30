@@ -10,6 +10,10 @@ from numpy import array, floor, zeros
 from collections import namedtuple
 from TekPattern import write_Tek_file
 
+#comment out if not debugging
+#from liveplot import LivePlotClient
+#lp=LivePlotClient()
+
 
 class Tek5014(VisaInstrument):
     """Tektronix 5014 Arbitrary Waveform Class"""
@@ -496,7 +500,7 @@ class Tek5014Sequence:
             for j in range(self.sequence_length):
                 awgdata[data_key]['linkList'].append(list())
                 awgdata[data_key]['linkList'][j].append(namedtuple('a', 'key isTimeAmp length repeat'))
-                awgdata[data_key]['linkList'][j][0].key = "{0:g}".format((j + 1) % self.sequence_length)  #go to next waveform (or beginning)
+                awgdata[data_key]['linkList'][j][0].key = "{0:g}".format((j ) % self.sequence_length)  #go to next waveform (or beginning)
                 awgdata[data_key]['linkList'][j][0].isTimeAmp = False
 
         for i in range(4):
@@ -509,10 +513,10 @@ class Tek5014Sequence:
                 for k in range(self.sequence_length):
                     awgdata[marker_key]['linkList'].append(list())
                     awgdata[marker_key]['linkList'][k].append(namedtuple('a', 'key isTimeAmp length repeat'))
-                    awgdata[marker_key]['linkList'][k][0].key = "{0:g}".format((k + 1) % self.sequence_length)
+                    awgdata[marker_key]['linkList'][k][0].key = "{0:g}".format((k) % self.sequence_length)
                     awgdata[marker_key]['linkList'][k][0].isTimeAmp = False
 
-
+        #lp.plot_y('debug',array(awgdata['ch12']['wfLib']['100'],dtype=float))
         write_Tek_file(awgdata, filename, 'seq1', None, False)
 
         #load the file into the TEK
