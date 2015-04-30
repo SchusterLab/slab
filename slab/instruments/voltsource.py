@@ -15,15 +15,19 @@ class VoltageSource:
     def ramp_volt(self, v, sweeprate=1, channel=1):
         start = self.get_volt()
         stop = v
+        if stop == start: return
         start_t = time.time()
         self.set_volt(start, channel=channel)
         time.sleep(self.query_sleep)
         step_t = time.time() - start_t
+        #print start,stop, start_t,step_t
         total_t = abs(stop - start) / sweeprate
-        steps = total_t / step_t
+        steps = max(total_t / step_t,2)
+        #print start,stop,start_t,step_t, total_t, steps
 
-        for ii in linspace(start, stop, steps):
+        for ii in linspace(start, stop, steps)[1:]:
             self.set_volt(ii, channel=channel)
+            #print ii
             time.sleep(self.query_sleep)
 
 
@@ -106,6 +110,7 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
 
     def __init__(self, name='YOKO', address='', enabled=True, timeout=10, recv_length=1024):
         SocketInstrument.__init__(self, name, address, enabled, timeout, recv_length)
+        self.query_sleep=0.01
 
     def get_id(self):
         """Get Instrument ID String"""

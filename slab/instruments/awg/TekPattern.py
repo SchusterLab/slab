@@ -24,6 +24,10 @@ import h5py
 import numpy as np
 import StringIO
 
+#comment if not debugging
+#from liveplot import LivePlotClient
+#lp=LivePlotClient()
+
 MAX_WAVEFORM_VALUE = 2**13-1 #maximum waveform value i.e. 14bit DAC
 
 def write_field(FID, fieldName, data, dataType):
@@ -221,10 +225,13 @@ def write_Tek_file(awgData, fileName, seqName, options=None, do_string_IO=False)
     
     #Now write the waveforms (i.e. extract out the waveform data from the dictionaries)
     wfs = range(4)
+
+
     for ct in range(numSeqs):
         wfs[0], wfs[1] = merge_waveform(ct, awgData['ch12'], awgData['ch1m1'], awgData['ch1m2'], awgData['ch2m1'], awgData['ch2m2'])
         wfs[2], wfs[3] = merge_waveform(ct, awgData['ch34'], awgData['ch3m1'], awgData['ch3m2'], awgData['ch4m1'], awgData['ch4m2'])
 
+        #lp.append_z('debug2',np.array(wfs[0],dtype=float))
         #On the Tek, all four channels need to have the same length
         maxLength = max(map(lambda wf : wf.size, wfs))
         for wfct in range(4):
