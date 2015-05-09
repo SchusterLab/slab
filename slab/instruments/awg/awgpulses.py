@@ -16,7 +16,17 @@ def delay(length):
 def gauss(amp,sigma,cutoff_length=None):
     if cutoff_length is None: cutoff_length=3*sigma
     return amp*exp(-1.0*arange (-cutoff_length,cutoff_length)**2.0/(2.0*sigma**2.0))
- 
+
+def smooth_square(pulse_center, smooth_time, flat_time, pulse_height,total_length):
+
+    arr=arange(0,total_length)
+    pulse = zeros(total_length)
+
+    pulse += pulse_height*(exp(-1.0*(arr-(pulse_center-flat_time/2))**2.0/(2.0*smooth_time**2.0))-exp(-2.0))/(1.0-exp(-2.0))*(arr<=(pulse_center-flat_time/2))*(arr>=(pulse_center-flat_time/2-2*smooth_time))
+    pulse += pulse_height*(exp(-1.0*(arr-(pulse_center+flat_time/2))**2.0/(2.0*smooth_time**2.0))-exp(-2.0))/(1.0-exp(-2.0))*(arr>=(pulse_center+flat_time/2))*(arr<=(pulse_center+flat_time/2+2*smooth_time))
+    pulse += pulse_height*((arr>=(pulse_center-flat_time/2))*(arr<=(pulse_center+flat_time/2)))
+    return pulse
+
 def pad_left(arr, length):
     return append(zeros(length-size(arr)),arr)
     

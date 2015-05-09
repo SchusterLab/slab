@@ -9,6 +9,7 @@ import numpy as np
 from numpy import array, floor, zeros
 from collections import namedtuple
 from TekPattern import write_Tek_file
+import time
 
 #comment out if not debugging
 #from liveplot import LivePlotClient
@@ -18,12 +19,12 @@ from TekPattern import write_Tek_file
 class Tek5014(VisaInstrument):
     """Tektronix 5014 Arbitrary Waveform Class"""
     # default_port=4000
-    def __init__(self, name='Tek5014', address='', enabled=True):
+    def __init__(self, name='Tek5014', address='', enabled=True,timeout = 50):
         address = address.upper()
 
         if address[:5] != 'TCPIP':
             address = 'TCPIP::' + address + '::INSTR'
-        VisaInstrument.__init__(self, name, address, enabled)
+        VisaInstrument.__init__(self, name, address, enabled, timeout)
         self._loaded_waveforms = []
 
     def get_id(self):
@@ -347,8 +348,12 @@ class Tek5014(VisaInstrument):
             self.set_enabled(i, True)
 
     def prep_experiment(self):
-
         self.write("SEQuence:JUMP 1")
+
+    def stop_and_prep(self):
+        self.stop()
+        self.prep_experiment()
+        #self.run()
 
 
     def set_amps_offsets(self, channel_amps=[1.0, 1.0, 1.0, 1.0], channel_offsets=[0.0, 0.0, 0.0, 0.0],

@@ -111,9 +111,10 @@ class E8257D(SocketInstrument):
         self.write(':SOUR:PULM:SOUR EXT')
         if mod:
             self.write(":SOUR:PULM:STAT ON")
+            self.set_mod(True)
         else:
             self.write(":SOUR:PULM:STAT OFF")
-        self.set_mod()
+            self.set_mod(False)
         
 class BNC845(SocketInstrument):
     """
