@@ -762,7 +762,7 @@ class Alazar():
         return tpts,avg_data1,avg_data2
 
     #added by ds on 4/17/2015
-    def acquire_singleshot_data(self, start_function=None, excise=None):
+    def acquire_singleshot_data(self, prep_function=None,start_function=None, excise=None):
         """Acquire a single number (sum of data in excise window) for each record
            @start_function:  a callback function to start the AWG's or whatever is doing the triggering
            @excise: (start,stop) range to clip the data out if None uses whole record
@@ -777,6 +777,7 @@ class Alazar():
         buffersCompleted=0
         recordsCompleted=0
         buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
+        prep_function()
         ret = self.Az.AlazarStartCapture(self.handle)
         start_function()
         if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)

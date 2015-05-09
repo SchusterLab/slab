@@ -1,5 +1,5 @@
 from instruments import InstrumentManager
-from datamanagement import SlabFile, h5File
+from datamanagement import SlabFile, h5File,AttrDict
 try:
     from plotting import ScriptPlotter
 except:
