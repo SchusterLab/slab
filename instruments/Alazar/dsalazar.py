@@ -641,7 +641,7 @@ class Alazar():
             return tpts,avg_data1,avg_data2
 
     #added by ds on 4/22/2015
-    def acquire_data_by_record(self, start_function=None,excise=None):
+    def acquire_data_by_record(self, prep_function=None, start_function=None,excise=None):
         """Acquire average data, but keep the records aligned
            @start_function:  a callback function to start the AWG's or whatever is doing the triggering
            @excise: (start,stop) range to clip the data out
@@ -653,6 +653,7 @@ class Alazar():
         data=np.zeros(num_chs*self.config.samplesPerRecord*self.config.recordsPerAcquisition,dtype=float)
         buffersCompleted=0
         buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
+        prep_function()
         ret = self.Az.AlazarStartCapture(self.handle)
         start_function()
         if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
@@ -685,7 +686,7 @@ class Alazar():
         data-=128.
         data*=(self.config.ch1_range/128.)
         if num_chs == 2:
-            data1,data2=data.reshape((num_chs,self.config.recordsPerBuffer,self.config.samplesPerRecord))
+            data1,data2=data.reshape((num_chs,self.config.recordsPerAcquisition,self.config.samplesPerRecord))
         else:
             data1=data.reshape((self.config.recordsPerAcquisition,self.config.samplesPerRecord))
             data2=np.zeros((self.config.recordsPerAcquisition,self.config.samplesPerRecord))
@@ -702,7 +703,7 @@ class Alazar():
 
 
     #added by ds on 4/17/2015
-    def acquire_avg_data_by_record(self, start_function=None,excise=None):
+    def acquire_avg_data_by_record(self, prep_function = None, start_function=None,excise=None):
         """Acquire average data, but keep the records aligned
            @start_function:  a callback function to start the AWG's or whatever is doing the triggering
            @excise: (start,stop) range to clip the data out
@@ -714,6 +715,7 @@ class Alazar():
         avg_data=np.zeros(num_chs*self.config.samplesPerRecord*self.config.recordsPerBuffer,dtype=float)
         buffersCompleted=0
         buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
+        prep_function()
         ret = self.Az.AlazarStartCapture(self.handle)
         start_function()
         if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
@@ -737,15 +739,17 @@ class Alazar():
                 break
             if DEBUGALAZAR: print "PostAsyncBuffer: ", ret_to_str(ret,self.Az)
         if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
-        avg_data/=float(self.config.recordsPerAcquisition)
+        avg_data/=float(buffersPerAcquisition)
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
         avg_data-=128.
-        avg_data*=(self.config.ch1_range/128.)
+
         if num_chs == 2:
             avg_data1,avg_data2=avg_data.reshape((num_chs,self.config.recordsPerBuffer,self.config.samplesPerRecord))
         else:
             avg_data1=avg_data.reshape((self.config.recordsPerBuffer,self.config.samplesPerRecord))
             avg_data2=np.zeros((self.config.recordsPerBuffer,self.config.samplesPerRecord))
+        avg_data1*=(self.config.ch1_range/128.)
+        avg_data2*=(self.config.ch2_range/128.)
         tpts=np.arange(self.config.samplesPerRecord)/float(self.config.sample_rate*1e3)
 
         if DEBUGALAZAR: print "Acquisition finished."

@@ -78,10 +78,11 @@ class Instrument(object):
     #    return self.operation_range
 
 class VisaInstrument(Instrument):
-    def __init__(self,name,address='',enabled=True, **kwargs):
+    def __init__(self,name,address='',enabled=True, timeout=0, **kwargs):
         Instrument.__init__(self,name,address,enabled)
         if self.enabled:
             self.protocol='VISA'
+            self.timeout=timeout
             address=address.upper()
             print address
 #            if address[:5]=="GPIB":
