@@ -653,9 +653,9 @@ class Alazar():
         data=np.zeros(num_chs*self.config.samplesPerRecord*self.config.recordsPerAcquisition,dtype=float)
         buffersCompleted=0
         buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
-        prep_function()
+        if prep_function is not None: prep_function()
         ret = self.Az.AlazarStartCapture(self.handle)
-        start_function()
+        if start_function is not None: start_function()
         if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
         if DEBUGALAZAR: print "Buffers per Acquisition: ", buffersPerAcquisition
         currentIndex=0
@@ -715,9 +715,9 @@ class Alazar():
         avg_data=np.zeros(num_chs*self.config.samplesPerRecord*self.config.recordsPerBuffer,dtype=float)
         buffersCompleted=0
         buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
-        prep_function()
+        if prep_function is not None: prep_function()
         ret = self.Az.AlazarStartCapture(self.handle)
-        start_function()
+        if start_function is not None: start_function()
         if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
         if DEBUGALAZAR: print "Buffers per Acquisition: ", buffersPerAcquisition
         while (buffersCompleted < buffersPerAcquisition):
@@ -777,9 +777,9 @@ class Alazar():
         buffersCompleted=0
         recordsCompleted=0
         buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
-        prep_function()
+        if prep_function is not None: prep_function()
         ret = self.Az.AlazarStartCapture(self.handle)
-        start_function()
+        if start_function is not None: start_function()
         if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
         if DEBUGALAZAR: print "Buffers per Acquisition: ", buffersPerAcquisition
         while (buffersCompleted < buffersPerAcquisition):
