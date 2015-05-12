@@ -17,6 +17,16 @@ def gauss(amp,sigma,cutoff_length=None):
     if cutoff_length is None: cutoff_length=3*sigma
     return amp*exp(-1.0*arange (-cutoff_length,cutoff_length)**2.0/(2.0*sigma**2.0))
 
+def gauss_new(pulse_center, sigma, pulse_height, total_length, cutoff_length=None):
+    if cutoff_length is None:
+        cutoff_length = 3*sigma
+    arr = arange(0,total_length)
+    pulse = zeros(total_length)
+
+    pulse += pulse_height*(exp(-1.0*(arr-pulse_center)**2.0/(2.0*sigma**2.0)))*(arr<=(pulse_center+cutoff_length))*(arr>=(pulse_center-cutoff_length))
+
+    return pulse
+
 def smooth_square(pulse_center, smooth_time, flat_time, pulse_height,total_length):
 
     arr=arange(0,total_length)

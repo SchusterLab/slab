@@ -91,7 +91,7 @@ class VisaInstrument(Instrument):
 #                self.instrument=visa.instrument(addnum)
 #                
 #            else:
-        self.instrument=visa.Instrument(address, **kwargs)
+        self.instrument=visa.Instrument(address, timeout=timeout, **kwargs)
             
     def write(self, s):
         if self.enabled: self.instrument.write(s+self.term_char)
