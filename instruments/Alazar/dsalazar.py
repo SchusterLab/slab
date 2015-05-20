@@ -324,18 +324,19 @@ def round_samples(x, base=64):
 class Alazar():
     def __init__(self,config=None, handle=None):
         self.Az = C.CDLL(r'C:\Windows\SysWow64\ATSApi.dll')
-        if config is None:
-            self.config = AlazarConfig()
-        else:
-            self.config = AlazarConfig(config)
-            self.configure()
-            
         if handle:
             self.handle = handle
         else:
             self.handle = self.get_handle()
         if not self.handle:
             raise RuntimeError("Board could not be found")
+
+        if config is None:
+            self.config = AlazarConfig()
+        else:
+            self.configure( AlazarConfig(config))
+            
+
             
     def close(self):
        del self.Az
