@@ -441,6 +441,36 @@ def write_Tek70001_waveform_file(filename, waveform):
 
     FID.close()
 
+def load_into_tek2(self,folder,awg_str):
+
+        im = InstrumentManager()
+        awg = im[awg_str]
+
+        awg.pre_load()
+
+        #make waveform files
+        for j in range(len(self.analogwf[4])):
+
+            filename = os.path.join(folder,'A'+str(j)+'.wfmx')
+
+            #code in 'TekPattern2'
+            create_waveform_file(filename,self.analogwf[4][j].pulse)
+
+            print "Loading Waveform File" + filename + " into TEK70001"
+
+            #add file
+            awg.load_waveform_file(filename)
+            awg.operation_complete()
+
+        #add new sequence
+        awg.new_sequence(num_steps=len(self.analog_seq_table[4]))
+
+        for j in range(len(self.analog_seq_table[4])):
+
+            #assign waveform
+            print "A{:g}".format(self.analog_seq_table[4][j])
+            awg.assign_seq_waveform(step=j+1,waveform="A{:g}".format(self.analog_seq_table[4][j]),last_step=((j+1)==len(self.analog_seq_table[4])))
+
 
 if __name__ == "__main__":
     awg = Tek70001(address='192.168.14.137')
