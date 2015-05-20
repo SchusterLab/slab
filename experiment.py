@@ -25,38 +25,49 @@ class Experiment:
         """
 
         self.__dict__.update(kwargs)
-        self.path=path
-        self.prefix=prefix
+        self.path = path
+        self.prefix = prefix
         if config_file is None:
-            self.config_file=None
+            self.config_file = None
         self.im = InstrumentManager()
         self.plotter = LivePlotClient()
-        #self.dataserver= dataserver_client()
+        # self.dataserver= dataserver_client()
         self.fname = os.path.join(path, get_next_filename(path, prefix, suffix='.h5'))
 
         self.load_config()
 
-
     def load_config(self):
         if self.config_file is None:
             self.config_file = os.path.join(self.expt_path, self.prefix + ".json")
-
         try:
-            self.cfg = AttrDict(json.load(open(self.config_file, 'r')))
+            if self.config_file[:-3] == '.h5':
+                with SlabFile(self.config_file) as f: cfg_str=f['config']
+            else:
+                with open(self.config_file, 'r') as fid: cfg_str = AttrDict(json.load(fid))
+
+            self.cfg=json.loads(cfg_str)
         except:
             self.cfg = None
 
         if self.cfg is not None:
             for alias, inst in self.cfg['aliases'].iter_items():
-                setattr(self, alias, expt.im['inst'])
+                setattr(self, alias, self.im['inst'])
 
-    def datafile(self, group = None, remote=False):
+    def save_config(self):
+        if self.config_file[:-3] != '.h5':
+            with open(self.config_file, 'w') as fid:
+                json.dump(self.cfg, fid)
+
+    def datafile(self, group=None, remote=False):
         """returns a SlabFile instance
            proxy functionality not implemented yet"""
-        f= SlabFile(self.fname)
-        if group is None:
-            return f
-        else:
-            return f.require_group(group)
+        f = SlabFile(self.fname)
+        if group is not None:
+            f = f.require_group(group)
+        if 'config' not in f.keys():
+            f['config'] = json.dumps(self.cfg)
+
+    def go(self):
+        pass
 
 
