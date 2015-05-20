@@ -13,7 +13,8 @@ import numpy as np
 from numpy import array, floor
 import StringIO
 import io
-    
+import os
+
 class Tek70001(VisaInstrument):
     """Tektronix 70001 Arbitrary Waveform Class"""
     # default_port=4000
@@ -23,9 +24,9 @@ class Tek70001(VisaInstrument):
         if address[:5] != 'TCPIP':
             address = 'TCPIP::' + address + '::INSTR'
         VisaInstrument.__init__(self, name, address, enabled)
-        self.term_char=''
-        self.instrument.timeout=100
-        
+        self.term_char = ''
+        self.instrument.timeout = 100
+
     def get_id(self):
         return self.query("*IDN?")
 
@@ -356,7 +357,7 @@ class Tek70001(VisaInstrument):
 
     def prep_experiment(self):
 
-        #load sequence        
+        # load sequence
         self.write('SOUR:CASS:SEQ "seq1",1')
         self.write("SOUR:JUMP:FORC 1")
         self.operation_complete()
@@ -441,35 +442,24 @@ def write_Tek70001_waveform_file(filename, waveform):
 
     FID.close()
 
-def load_into_tek2(self,folder,awg_str):
 
-        im = InstrumentManager()
-        awg = im[awg_str]
-
+def write_Tek70001_sequence(waveforms, path, prefix, awg=None):
+    if awg is not None:
         awg.pre_load()
+        awg.new_sequence(num_steps=len(waveforms))
 
-        #make waveform files
-        for j in range(len(self.analogwf[4])):
+    # make waveform files
+    for j, wf in enumerate(waveforms):
+        filename = os.path.join(path, prefix + str(j) + '.wfmx')
 
-            filename = os.path.join(folder,'A'+str(j)+'.wfmx')
+        write_Tek70001_waveform_file(filename, wf)
 
-            #code in 'TekPattern2'
-            create_waveform_file(filename,self.analogwf[4][j].pulse)
-
-            print "Loading Waveform File" + filename + " into TEK70001"
-
-            #add file
+        print "Loading Waveform File" + filename + " into TEK70001"
+        if awg is not None:
             awg.load_waveform_file(filename)
             awg.operation_complete()
-
-        #add new sequence
-        awg.new_sequence(num_steps=len(self.analog_seq_table[4]))
-
-        for j in range(len(self.analog_seq_table[4])):
-
-            #assign waveform
-            print "A{:g}".format(self.analog_seq_table[4][j])
-            awg.assign_seq_waveform(step=j+1,waveform="A{:g}".format(self.analog_seq_table[4][j]),last_step=((j+1)==len(self.analog_seq_table[4])))
+            awg.assign_seq_waveform(step=j + 1, waveform="A{:g}".format(j),
+                                    last_step=((j + 1) == len(waveforms)))
 
 
 if __name__ == "__main__":

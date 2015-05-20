@@ -375,7 +375,7 @@ class SlabFile(h5py.File):
             f.create_dataset(key, shape=data.shape,
                              maxshape=tuple([None] * len(data.shape)),
                              dtype=str(data.dtype))
-        # f[key][...] = data
+        f[key][...] = data
 
     def append_data(self, f, key, data, forceInit=False):
         """

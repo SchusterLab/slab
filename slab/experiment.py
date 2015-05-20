@@ -65,7 +65,8 @@ class Experiment:
         if group is not None:
             f = f.require_group(group)
         if 'config' not in f.keys():
-            f['config'] = json.dumps(self.cfg)
+             f.attrs['config'] = json.dumps(self.cfg)
+        return f
 
     def go(self):
         pass

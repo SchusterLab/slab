@@ -1,8 +1,9 @@
 __author__ = 'dave'
 import numpy as np
 
-from slab.instruments.awg import write_Tek5014_file, write_Tek70001_waveform_file
+from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence
 from slab.instruments import InstrumentManager
+import os
 
 
 class PulseSequence:
@@ -38,24 +39,32 @@ class PulseSequence:
     def get_marker_times(self, name):
         return self.marker_info[name]['tpts']
 
-    def write_sequence(self, file_prefix, upload=False):
+    def write_sequence(self, path, file_prefix, upload=False):
         write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence}
         for awg in self.awg_info:
-            write_function[awg['type']](awg, file_prefix, upload)
+            write_function[awg['type']](awg, path, file_prefix, upload)
 
-    def write_Tek5014_sequence(self, awg, file_prefix, upload=False):
-        waveforms=[self.waveforms[waveform['name']] for waveform in awg['waveforms']]
-        markers=[self.markers[marker['name']] for marker in awg['markers']]
-        write_Tek5014_file(waveforms,markers,file_prefix+'.awg',self.name)
+    def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False):
+        waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
+        markers = [self.markers[marker['name']] for marker in awg['markers']]
+        write_Tek5014_file(waveforms, markers, os.path.join(path,file_prefix + '.awg'), self.name)
 
         if upload:
             im = InstrumentManager()
             im[awg['name']].pre_load()
-            im[awg['name']].load_sequence_file(file_prefix+'.awg',force_reload=True)
+            im[awg['name']].load_sequence_file(os.path.join(path,file_prefix + '.awg'), force_reload=True)
             im[awg['name']].prep_experiment()
 
-    def write_Tek70001_sequence(self, awg, file_prefix, upload=False):
-        pass
+    def write_Tek70001_sequence(self, awg, path, file_prefix, upload=False):
+        waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
+        # markers=[self.markers[marker['name']] for marker in awg['markers']]
+        if upload:
+            tek7 = InstrumentManager()[awg['name']]
+        else:
+            tek7 = None
+        for waveform in waveforms:
+            write_Tek70001_sequence(waveform, path, file_prefix, awg=tek7)
+
 
     def build_sequence(self):
         """Abstract method to be implemented by specific sequences, fills out waveforms and markers"""
