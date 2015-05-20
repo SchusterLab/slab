@@ -5,7 +5,7 @@ from liveplot import LivePlotClient
 import os.path
 import json
 
-from slab import SlabFile, InstrumentManager, get_next_filename
+from slab import SlabFile, InstrumentManager, get_next_filename, AttrDict
 
 
 class Experiment:
@@ -28,7 +28,7 @@ class Experiment:
         self.path = path
         self.prefix = prefix
         if config_file is not None:
-            self.config_file = os.path.join(path,config_file)
+            self.config_file = os.path.join(path, config_file)
         else:
             self.config_file = None
         self.im = InstrumentManager()
@@ -43,11 +43,13 @@ class Experiment:
             self.config_file = os.path.join(self.path, self.prefix + ".json")
 
         if self.config_file[:-3] == '.h5':
-            with SlabFile(self.config_file) as f: cfg_str=f['config']
+            with SlabFile(self.config_file) as f:
+                cfg_str = f['config']
         else:
-            with open(self.config_file, 'r') as fid: cfg_str = fid.read()
+            with open(self.config_file, 'r') as fid:
+                cfg_str = fid.read()
 
-        self.cfg=json.loads(cfg_str)
+        self.cfg = AttrDict(json.loads(cfg_str))
 
         if self.cfg is not None:
             for alias, inst in self.cfg['aliases'].iteritems():
@@ -65,7 +67,7 @@ class Experiment:
         if group is not None:
             f = f.require_group(group)
         if 'config' not in f.keys():
-             f.attrs['config'] = json.dumps(self.cfg)
+            f.attrs['config'] = json.dumps(self.cfg)
         return f
 
     def go(self):
