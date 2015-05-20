@@ -594,7 +594,8 @@ def write_Tek5014_file(waveforms, markers, filename, seq_name, options=None, do_
     write_field(FID, 'VERSION', 1, 'int16')
 
     # Default to the fastest sampling rate
-    write_field(FID, 'SAMPLING_RATE', 1.2e9, 'double')
+    if 'clock_speed' not in options: options['clock_speed']=1.2e9
+    write_field(FID, 'SAMPLING_RATE', options['clock_speed'], 'double')
 
     # Run mode (1 = continuous, 2 = triggered, 3 = gated, 4 = sequence)
     # If we only have one step then there is no sequence
