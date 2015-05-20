@@ -327,7 +327,8 @@ class Alazar():
         if config is None:
             self.config = AlazarConfig()
         else:
-            self.config = config
+            self.config = AlazarConfig(config)
+            self.configure()
             
         if handle:
             self.handle = handle
