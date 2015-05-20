@@ -59,6 +59,7 @@ class Experiment:
         if self.config_file[:-3] != '.h5':
             with open(self.config_file, 'w') as fid:
                 json.dump(self.cfg, fid)
+            self.datafile().attrs['config'] = json.dumps(self.cfg)
 
     def datafile(self, group=None, remote=False):
         """returns a SlabFile instance
@@ -66,7 +67,7 @@ class Experiment:
         f = SlabFile(self.fname)
         if group is not None:
             f = f.require_group(group)
-        if 'config' not in f.keys():
+        if 'config' not in f.attrs:
             f.attrs['config'] = json.dumps(self.cfg)
         return f
 
