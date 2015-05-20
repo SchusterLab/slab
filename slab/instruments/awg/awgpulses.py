@@ -27,10 +27,35 @@ def gauss_new(pulse_center, sigma, pulse_height, total_length, cutoff_length=Non
 
     return pulse
 
+def gauss_sideband(pulse_center, sigma, pulse_height, total_length,frequency, phase, cutoff_length=None):
+    clock_rate=1.2e9
+    if cutoff_length is None:
+        cutoff_length = 3*sigma
+    arr = arange(0,total_length)
+    pulse = zeros(total_length)
+
+    pulse += pulse_height*(exp(-1.0*(arr-pulse_center)**2.0/(2.0*sigma**2.0)))*(cos(2*pi*frequency*(arr-pulse_center)/clock_rate+phase))*(arr<=(pulse_center+cutoff_length))*(arr>=(pulse_center-cutoff_length))
+
+    return pulse
+
+def square_sideband(pulse_center, smooth_time, flat_time, pulse_height, total_length,frequency, phase):
+    clock_rate=1.2e9
+
+    arr = arange(0,total_length)
+    pulse = zeros(total_length)
+
+    pulse += pulse_height*(exp(-1.0*(arr-(pulse_center-flat_time/2))**2.0/(2.0*smooth_time**2.0))-exp(-2.0))/(1.0-exp(-2.0))*(cos(2*pi*frequency*(arr-pulse_center)/clock_rate+phase))*(arr<=(pulse_center-flat_time/2))*(arr>=(pulse_center-flat_time/2-2*smooth_time))
+    pulse += pulse_height*(exp(-1.0*(arr-(pulse_center+flat_time/2))**2.0/(2.0*smooth_time**2.0))-exp(-2.0))/(1.0-exp(-2.0))*(cos(2*pi*frequency*(arr-pulse_center)/clock_rate+phase))*(arr>=(pulse_center+flat_time/2))*(arr<=(pulse_center+flat_time/2+2*smooth_time))
+    pulse += pulse_height*((arr>=(pulse_center-flat_time/2))*(arr<=(pulse_center+flat_time/2)))*(cos(2*pi*frequency*(arr-pulse_center)/clock_rate+phase))
+    return pulse
+
 def smooth_square(pulse_center, smooth_time, flat_time, pulse_height,total_length):
 
     arr=arange(0,total_length)
     pulse = zeros(total_length)
+
+    if flat_time ==0 :
+        return pulse
 
     pulse += pulse_height*(exp(-1.0*(arr-(pulse_center-flat_time/2))**2.0/(2.0*smooth_time**2.0))-exp(-2.0))/(1.0-exp(-2.0))*(arr<=(pulse_center-flat_time/2))*(arr>=(pulse_center-flat_time/2-2*smooth_time))
     pulse += pulse_height*(exp(-1.0*(arr-(pulse_center+flat_time/2))**2.0/(2.0*smooth_time**2.0))-exp(-2.0))/(1.0-exp(-2.0))*(arr>=(pulse_center+flat_time/2))*(arr<=(pulse_center+flat_time/2+2*smooth_time))

@@ -5,7 +5,7 @@ from liveplot import LivePlotClient
 import os.path
 import json
 
-from slab import SlabFile, InstrumentManager, get_next_filename, AttrDict
+from slab import SlabFile, InstrumentManager, get_next_filename
 
 
 class Experiment:
@@ -27,7 +27,9 @@ class Experiment:
         self.__dict__.update(kwargs)
         self.path = path
         self.prefix = prefix
-        if config_file is None:
+        if config_file is not None:
+            self.config_file = os.path.join(path,config_file)
+        else:
             self.config_file = None
         self.im = InstrumentManager()
         self.plotter = LivePlotClient()
@@ -38,20 +40,18 @@ class Experiment:
 
     def load_config(self):
         if self.config_file is None:
-            self.config_file = os.path.join(self.expt_path, self.prefix + ".json")
-        try:
-            if self.config_file[:-3] == '.h5':
-                with SlabFile(self.config_file) as f: cfg_str=f['config']
-            else:
-                with open(self.config_file, 'r') as fid: cfg_str = AttrDict(json.load(fid))
+            self.config_file = os.path.join(self.path, self.prefix + ".json")
 
-            self.cfg=json.loads(cfg_str)
-        except:
-            self.cfg = None
+        if self.config_file[:-3] == '.h5':
+            with SlabFile(self.config_file) as f: cfg_str=f['config']
+        else:
+            with open(self.config_file, 'r') as fid: cfg_str = fid.read()
+
+        self.cfg=json.loads(cfg_str)
 
         if self.cfg is not None:
-            for alias, inst in self.cfg['aliases'].iter_items():
-                setattr(self, alias, self.im['inst'])
+            for alias, inst in self.cfg['aliases'].iteritems():
+                setattr(self, alias, self.im[inst])
 
     def save_config(self):
         if self.config_file[:-3] != '.h5':

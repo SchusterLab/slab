@@ -25,7 +25,7 @@ def square(t, a, t0, w, sigma=0):
         return a * (
             (t >= t0) * (t < t0 + w) +  # Normal square pulse
             (t < t0) * np.exp(-(t - t0) ** 2 / (2 * sigma ** 2)) +  # leading gaussian edge
-            (t >= t0 + w) * np.exp(-(t - t0 + w) ** 2 / (2 * sigma ** 2))  # trailing edge
+            (t >= t0 + w) * np.exp(-(t - (t0 + w)) ** 2 / (2 * sigma ** 2))  # trailing edge
         )
     else:
         return a * (t >= t0) * (t < t0 + w)
