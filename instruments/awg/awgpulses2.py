@@ -9,7 +9,10 @@ def sideband(t, i, q, freq=0, phase=0):
 
 
 def gauss(t, a, t0, sigma):
-    return a * np.exp(-1.0 * (t - t0) ** 2 / (2 * sigma ** 2))
+    if sigma >0:
+        return a * np.exp(-1.0 * (t - t0) ** 2 / (2 * sigma ** 2))
+    else:
+        return 0*(t-t0)
 
 
 def dgauss(t, a, t0, sigma):
