@@ -30,6 +30,24 @@ class VoltageSource:
             #print ii
             time.sleep(self.query_sleep)
 
+    def ramp_current(self, current, sweeprate=1, channel=1):
+        start = self.get_current()
+        stop = current
+        if stop == start: return
+        start_t = time.time()
+        self.set_current(start, channel=channel)
+        time.sleep(self.query_sleep)
+        step_t = time.time() - start_t
+        #print start,stop, start_t,step_t
+        total_t = abs(stop - start) / sweeprate
+        steps = max(total_t / step_t,2)
+        #print start,stop,start_t,step_t, total_t, steps
+
+        for ii in linspace(start, stop, steps)[1:]:
+            self.set_current(ii, channel=channel)
+            #print ii
+            time.sleep(self.query_sleep)
+
 
 class SRS900(SerialInstrument, VisaInstrument, VoltageSource):
     'Interface to the SRS900 voltage source'
