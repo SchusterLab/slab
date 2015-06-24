@@ -1,11 +1,9 @@
-from instrumenttypes import Instrument,VisaInstrument,TelnetInstrument,SocketInstrument,SerialInstrument, WebInstrument
-
+from instrumenttypes import Instrument, VisaInstrument, TelnetInstrument, SocketInstrument, SerialInstrument, WebInstrument
 from instrumentmanager import InstrumentManager
 try: from InstrumentManagerWindow import InstrumentManagerWindow
 except: print "Could not load InstrumentManagerWindow"
 
 from nwa import E5071
-from spectrumanalyzer import E4440
 from rfgenerators import E8257D,BNC845
 from cryostat import Triton
 from awg import *
@@ -40,4 +38,8 @@ except: print "Could not load E4440 Spectrum Analyzer"
 try: from cryocon import Cryocon
 except: print "Could not load Cryocon instrument driver"
 try: from DigitalAttenuator import DigitalAttenuator
-except: print "Could not load Digital Attenuator instrument driver"
+except: print "Could not load Digital Attenuator driver"
+try: from HeaterSwitch import HeaterSwitch
+except: print "Could not load Heater Switch Driver"
+try: from Omega16i import Omega16i
+except: print "Could not load Omega 16i driver"
