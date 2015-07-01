@@ -3,6 +3,7 @@ from instrumentmanager import InstrumentManager
 try: from InstrumentManagerWindow import InstrumentManagerWindow
 except: print "Could not load InstrumentManagerWindow"
 
+from spectrumanalyzer import E4440
 from nwa import E5071
 from rfgenerators import E8257D,BNC845
 from cryostat import Triton
@@ -11,7 +12,7 @@ from spec_analyzer.spectrum_analyzer import *
 from ipsmagnet import *
 from TestInstruments import EchoInstrument,RandomInstrument
 
-try: from labbrick.labbrick import LMS_get_device_info,LMS103,LPS802,LabbrickWindow
+try: from labbrick.labbrick import LMS_get_device_info,LMS103,LPS802,LabbrickWindow,LDA602
 except: print "Could not load labbrick"
 try: from relaybox.relaybox import RelayBox
 except: print "Could not load relaybox"
