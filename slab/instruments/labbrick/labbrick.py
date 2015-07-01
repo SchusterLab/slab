@@ -25,6 +25,12 @@ I32 = C.c_int32
 CFLT = C.c_float
 
 try:
+    LDA602dllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_atten.dll'
+    LDADLL=C.CDLL(LDA602dllpath)
+except:
+    print "Warning could not load LDA labbrick dll, check that dll located at '%s'" % LDA602dllpath
+
+try:
     #LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
     LMS103dllpath=r'C:\_Lib\python\slab\instruments\labbrick\vnx_fmsynth.dll'
     LMSDLL=C.CDLL(LMS103dllpath)
@@ -83,6 +89,113 @@ def LMS_get_device_info():
 #            print devstr
         devinfos.append({"model":model,"serial":serial,"devid":U32(devid)})
     return devinfos
+
+
+def LDA_get_device_info():
+    """
+    Returns a dictionary of device information
+
+    :returns: {'model':Labbrick model, 'serial':Serial number, 'devid':Device ID}
+    """
+    dll=LDADLL
+    dll.fnLDA_SetTestMode(U8(int(False)))
+    device_info_array_type = U32 * int(dll.fnLDA_GetNumDevices(None))
+    a=device_info_array_type()
+    dll.fnLDA_GetDevInfo(a)
+    devids=np.ctypeslib.as_array(a)
+    devinfos=[]
+    for devid in devids:
+        model=C.create_string_buffer(8194)
+        dll.fnLDA_GetModelName(U32(devid),model)
+        serial=int(dll.fnLDA_GetSerialNumber(U32(devid)))
+#            devstr="Device: %d\tModel: %s\tSerial: %d" % (devid,model,serial)
+#            print devstr
+        devinfos.append({"model":model,"serial":serial,"devid":U32(devid)})
+    return devinfos
+
+
+class LDA602(Instrument):
+    'The interface to the Lab Brick Phase shifter'
+    dll=LDADLL
+
+    def __init__(self,name='LDA602',address=9083,enabled=True):
+        Instrument.__init__(self,name,address,enabled=True)
+        self.set_test_mode(False)
+        if address is not None:
+            self.init_by_serial(int(address))
+        else:
+            self.init_by_serial(0)
+
+    def init_by_serial(self,address):
+        self.devinfo=self.get_info_by_serial(address)
+        self.devid=self.devinfo['devid']
+        if self.devid!= -1:
+            self.init_device()
+
+    def get_info_by_serial(self,serial):
+        serial=int(serial)
+        devinfos=LDA_get_device_info()
+        for devinfo in devinfos:
+            #print devinfo
+            if devinfo['serial']==serial:
+                return devinfo
+        print "Error Labbrick serial # %d not found! returning first device found" % serial
+        print devinfos
+        return None
+
+    def get_num_devices(self):
+        return int(self.dll.fnLDA_GetNumDevices(None))
+
+    def get_model_name(self):
+        model_name=C.create_string_buffer(8194)
+        self.dll.fnLDA_GetModelName(self.devid,model_name)
+        return model_name.value
+
+    def set_test_mode(self,mode=False):
+        self.dll.fnLDA_SetTestMode(U8(int(mode)))
+
+    def close_device(self):
+        self.dll.fnLDA_CloseDevice(self.devid)
+
+    def init_device(self):
+        self.dll.fnLDA_InitDevice(self.devid)
+
+    def get_id(self):
+        return "Labbrick Phase Shifter model: %s serial #: %d" % (self.get_model_name(),self.devinfo['serial'])
+
+    def set_attenuation(self, attenuation):
+        """
+        :param attenuation: Attenuation in dB, may range from 0.5 dB to 63 dB in steps of 0.5 dB.
+        :return:
+        """
+        if attenuation>63 or attenuation<0:
+            print "%.2f dB falls outside the range (0 - 63 dB). Setting to attenuation to 63 dB" % attenuation
+            attenuation = 63
+
+        self.dll.fnLDA_SetAttenuation(self.devid, U32(int(attenuation/0.25)))
+
+    def set_rf_on(self, status):
+        """
+        :param status: This function allows rapid switching of the attenuator from its set value “on” (status = TRUE) to its
+        maximum attenuation (status = FALSE).
+        :return:
+        """
+        self.dll.fnLDA_SetRFOn(self.devid, U8(int(status)))
+
+    def get_attenuation(self):
+        """
+        :return: Attenuation of the device in dB
+        """
+        return float(self.dll.fnLDA_GetAttenuation(self.devid))*0.25
+
+    def get_rf_on(self):
+        """
+        :return: Returns an integer value which is 1 when the attenuator is “on”, or 0 when the
+        attenuator has been set “off” by the set_rf_on function
+        """
+        return float(self.dll.fnLDA_GetRF_On(self.devid))
+
+
 
 class LPS802(Instrument):
     'The interface to the Lab Brick Phase shifter'
