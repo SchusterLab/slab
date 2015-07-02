@@ -27,6 +27,7 @@ class Experiment:
         self.__dict__.update(kwargs)
         self.path = path
         self.prefix = prefix
+        self.cfg = None
         if config_file is not None:
             self.config_file = os.path.join(path, config_file)
         else:
@@ -41,16 +42,17 @@ class Experiment:
     def load_config(self):
         if self.config_file is None:
             self.config_file = os.path.join(self.path, self.prefix + ".json")
+        try:
+            if self.config_file[:-3] == '.h5':
+                with SlabFile(self.config_file) as f:
+                    cfg_str = f['config']
+            else:
+                with open(self.config_file, 'r') as fid:
+                    cfg_str = fid.read()
 
-        if self.config_file[:-3] == '.h5':
-            with SlabFile(self.config_file) as f:
-                cfg_str = f['config']
-        else:
-            with open(self.config_file, 'r') as fid:
-                cfg_str = fid.read()
-
-        self.cfg = AttrDict(json.loads(cfg_str))
-
+            self.cfg = AttrDict(json.loads(cfg_str))
+        except:
+            pass
         if self.cfg is not None:
             for alias, inst in self.cfg['aliases'].iteritems():
                 setattr(self, alias, self.im[inst])
