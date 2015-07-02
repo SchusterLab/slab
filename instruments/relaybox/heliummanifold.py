@@ -45,6 +45,18 @@ class HeliumManifold(RelayBox):
         status_str="gas: %s / Pump: %s / cryostat: %s / Pressure: %f bar" % (str(self.gas_state),str(self.pump_state),str(self.cryostat_state),self.pressure)
         if self.DEBUG_HELIUM_MANIFOLD_VERBOSE: print status_str
         return status_str
+
+    def get_manifold_status_bits(self):
+        """
+
+        :return: a 1 for which output is open, a 0 for the output that is closed
+        Order: gas, pump, cryostat
+        """
+        relay_states=self.get_relay()
+        self.gas_state=relay_states[self.gas_port-1]
+        self.pump_state=relay_states[self.pump_port-1]
+        self.cryostat_state=relay_states[self.cryostat_port-1]
+        return self.gas_state, self.pump_state, self.cryostat_state
     
     def set_gas(self,state=False,override=False):
         if self.DEBUG_HELIUM_MANIFOLD_VERBOSE: print "Set gas: %s"% str(state)
