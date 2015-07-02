@@ -11,7 +11,7 @@ import time
 
 #for debug purposes
 file_output_trace = True
-debug_file = "C:\\Users\\Nitrogen\\Desktop\\agilentdebug.txt"
+debug_file = "C:\\Users\\Phil\\Desktop\\agilentdebug.txt"
 
 class AWG81180A(SocketInstrument):
     default_port=5025
