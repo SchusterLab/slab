@@ -183,11 +183,12 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
         return float(self.query(':SOURCE:PROTECTION:VOLT?'))
 
 
-    def set_current(self, current, channel=0, safety_level=.01):
+    def set_current(self, current, channel=0, safety_level=None):
         # channel does nothing...for compatibility with the SRS
         """Set yoko current (in Amps!)"""
+
         if self.get_mode() == "CURR":
-            if current > safety_level:
+            if safety_level is not None and current > safety_level:
                 raise Exception("ERROR: Current too high (above %f mA)" % safety_level)
             else:
                 curr_str = '%smA' % (current * 1e3)
