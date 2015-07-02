@@ -196,9 +196,6 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
         #        'current':self.get_current(),'persistent field':self.get_persistent_current(),
         #        'volt':self.get_volt(),'setpoint':self.get_setpoint(),'sweeprate':self.get_sweeprate()}
                 
-
-
-
 class KEPCOPowerSupply(SerialInstrument):
     
     def __init__(self,name="Kepco",address='COM4',enabled=True,timeout=1):
