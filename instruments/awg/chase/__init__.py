@@ -86,7 +86,6 @@ class DAx22000(Instrument):
         return chaseDLL.DAx22000_CreateSegments(C.c_uint32(self.addr), C.c_uint32(chan), C.c_uint32(len(segments)),
                                                 C.c_uint32(begin_val), C.c_uint32(end_val), seglist, C.c_bool(True))
 
-
     def soft_trigger(self):
         return chaseDLL.DAx22000_SoftTrigger(C.c_int32(self.addr))
 
@@ -106,9 +105,11 @@ class DAx22000(Instrument):
     def run(self, trigger_now=False):
         return chaseDLL.DAx22000_Run(C.c_int32(self.addr), C.c_bool(trigger_now))
 
-
     def stop(self):
         return chaseDLL.DAx22000_Stop(C.c_int32(self.addr))
+
+    def close(self):
+        return chaseDLL.DAx22000_Close(C.c_int32(self.addr))
 
 
 
