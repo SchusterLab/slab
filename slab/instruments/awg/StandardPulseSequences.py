@@ -4,11 +4,6 @@ from slab.instruments.awg.PulseSequence import *
 from slab.instruments.awg import awgpulses2 as ap2
 from numpy import arange, linspace
 
-from liveplot import LivePlotClient
-
-lp=LivePlotClient()
-
-
 class RabiSequence(PulseSequence):
     def __init__(self, awg_info, rabi_cfg, readout_cfg):
         """

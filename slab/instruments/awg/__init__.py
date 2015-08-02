@@ -12,6 +12,10 @@ try:
     from Tek70001 import Tek70001, write_Tek70001_waveform_file, write_Tek70001_sequence
 except:
     print "Warning failed to import Tek70001"
+try:
+    from chase import DAx22000,DAx22000Segment
+except:
+    print "Warning failed to import Chase DAx22000"
 
 import awgpulses, awgpulses2
 
