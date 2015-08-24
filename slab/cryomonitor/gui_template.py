@@ -59,12 +59,19 @@ class MyWindow(gui.SlabWindow, Ui_MainWindow):
         self.pushButton_close_2.clicked.connect(self.close_pump)
         self.pushButton_close_3.clicked.connect(self.close_cryo)
 
+        self.pushButton_CleanManifold.clicked.connect(self.clean_manifold)
+
         # Temperature
-        self.label_temp_MCRuO2.setText(str(M.fridge.get_temperature('MC RuO2')))
-        self.label_temp_50K.setText(str(M.fridge.get_temperature('PT1 Plate')))
-        self.label_temp_4K.setText(str(M.fridge.get_temperature('PT2 Plate')))
-        self.label_temp_Still.setText(str(M.fridge.get_temperature('Still')))
-        self.label_temp_100mK.setText(str(M.fridge.get_temperature('100mK Plate')))
+        self.set_temperature_labels()
+
+        # Pressure
+        self.set_pressure_labels()
+
+        # Heman
+        self.set_heman_labels()
+
+        # Cleaning
+        self.label_cleaning_status.setText("<font style='color: %s'>%s</font>"%('Black', ""))
 
         #self.resize(800,600)
         #self.setGeometry(0, 0, 800, 600)
@@ -91,7 +98,16 @@ class MyWindow(gui.SlabWindow, Ui_MainWindow):
         gui.QApplication.processEvents()
 
     def set_temperature_labels(self):
-        self.label_temp_MCRuO2.setText(str(M.fridge.get_temperature('MC RuO2')))
+        MC_cernox = M.fridge.get_temperature('MC cernox')
+        MC_RuO2 = M.fridge.get_temperature('MC RuO2')
+
+        if MC_cernox < 2:
+            color = 'Red'
+        else:
+            color = 'Black'
+
+        self.label_temp_MCCernox.setText("<font style='color: %s'>%s</font>"%(color,MC_cernox))
+        self.label_temp_MCRuO2.setText(str(MC_RuO2))
         self.label_temp_50K.setText(str(M.fridge.get_temperature('PT1 Plate')))
         self.label_temp_4K.setText(str(M.fridge.get_temperature('PT2 Plate')))
         self.label_temp_Still.setText(str(M.fridge.get_temperature('Still')))
@@ -134,6 +150,22 @@ class MyWindow(gui.SlabWindow, Ui_MainWindow):
         M.heman.set_gas(False)
         time.sleep(0.1)
         self.set_heman_labels()
+
+    def clean_manifold(self):
+        current_status = M.heman.get_manifold_status_bits()
+        noof_cleans = np.int(self.spinBox_noof_cleans.value())
+        print noof_cleans
+        self.label_cleaning_status.setText("<font style='color: %s'>%s</font>"%('Red', "Cleaning..."))
+        gui.QApplication.processEvents()
+        M.heman.clean_manifold(noof_cleans)
+
+        # Leave the manifold as we started
+        M.heman.set_gas(np.bool(current_status[0]))
+        M.heman.set_pump(np.bool(current_status[1]))
+        M.heman.set_cryostat(np.bool(current_status[2]))
+
+        self.set_heman_labels()
+        self.label_cleaning_status.setText("<font style='color: %s'>%s</font>"%('Black', "Cleaning completed"))
 
     def do_plot(self):
         self.running=True
