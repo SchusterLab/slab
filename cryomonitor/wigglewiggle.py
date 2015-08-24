@@ -11,14 +11,17 @@ from numpy import *
 from data_cache import dataCacheProxy
 import shutil, time
 import msvcrt
-from liveplot import LivePlotClient
+try:
+    from liveplot import LivePlotClient
+except:
+    print "Error in loading liveplot"
 
 class wigglewiggle():
     def __init__(self, msmtname, datapath, scriptname,
                  scriptpath=r'S:\_Data\141224 - M011 Helium Channels v4\experiment_M011_HeliumChannels'):
 
         self.im = InstrumentManager()
-        self.plotter = LivePlotClient()
+        #self.plotter = LivePlotClient()
 
         # ############################################
         # ### SETTINGS FOR THE PATH, SAVING ETC. #####
