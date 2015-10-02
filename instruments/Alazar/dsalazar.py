@@ -15,10 +15,10 @@ import ctypes as C
 import numpy as np
 import sys
 from slablayout import *
-try:
-    from guiqwt.pyplot import *
-except:
-    print "Warning unable to import guiqwt.pyplot"
+# try:
+#     from guiqwt.pyplot import *
+# except:
+#     print "Warning unable to import guiqwt.pyplot"
 from scipy.fftpack import fft,rfft
 from slab.dataanalysis import heterodyne
 from numpy import sin,cos,pi

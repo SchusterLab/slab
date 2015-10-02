@@ -37,18 +37,44 @@ usage:
     A more complete (functional) example is given at the end of the file
 """
 
+#important to import ipython stuff before any other gui things or everything breaks
+from IPython.qt.console.rich_ipython_widget import RichIPythonWidget
+from IPython.qt.manager import QtKernelManager
+from IPython.lib import guisupport
+
 from slab.instruments import InstrumentManager
 from dataanalysis import get_next_filename
-from slab.widgets import SweepDialog
+#from slab.widgets import SweepDialog
 from PyQt4.Qt import *
-#import PyQt4.Qwt5 as Qwt
+try:
+    from PyQt4.QtCore import QString
+except ImportError:
+    # QString is not defined in newer versions
+    QString = str
+from PyQt4.QtGui import QFileDialog
+from PyQt4.QtCore import QTimer
+
+
 from PyQt4 import uic
 import numpy as np
-#from time import sleep
-import csv, os, inspect, time
+import inspect, time
 
 DEBUG = False
 
+def loadui(fname):
+    return uic.loadUiType(fname)[0]
+
+class IPythonWidget(RichIPythonWidget):
+    def __init__(self, parent=None, **kwargs):
+        super(self.__class__, self).__init__(parent)
+        self.app = app = guisupport.get_app_qt4()
+
+        self.kernel_manager = QtKernelManager()
+        self.kernel_manager.start_kernel()
+        self.kernel_manager.kernel.gui = 'qt4'
+        self.kernel_client=self.kernel_manager.client()
+        self.kernel_client.start_channels()
+        self.confirm_restart=False
 
 class Bunch(object):
     def __init__(self, adict):

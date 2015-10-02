@@ -306,10 +306,10 @@ class AWG81180A(SocketInstrument):
         self.set_clockrate(clockrate)
         
 
-try:
-    from guiqwt.pyplot import *
-except:
-    print "Could not load guiqwt"
+# try:
+#     from guiqwt.pyplot import *
+# except:
+#     print "Could not load guiqwt"
         
 if __name__=="__main__":
 #    a=mod(arange(32*2048),2048)
