@@ -19,6 +19,6 @@ except:
 
 import awgpulses, awgpulses2
 
-from PulseSequence import PulseSequence, PulseSequenceArray
+#from PulseSequence import PulseSequence, PulseSequenceArray
 
-import StandardPulseSequences
+#import StandardPulseSequences
