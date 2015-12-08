@@ -2,7 +2,7 @@
 """
 Keithley199 Voltage Source (Keithley199.py)
 ===========================================
-:Author: David Schuster
+:Author: Gerwin Koolstra
 """
 from slab.instruments import SerialInstrument,VisaInstrument
 import re
