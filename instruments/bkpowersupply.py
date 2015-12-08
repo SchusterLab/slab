@@ -48,18 +48,58 @@ class BKPowerSupply(SerialInstrument):
     def get_voltage(self,channel=None):
         if channel is None: return self.get_voltages()
         else:
-            return self.get_voltages()[channel+1]
+            return self.get_voltages()[channel-1]
 
     def get_current(self,channel=None):
         if channel is None: return self.get_currents()
         else:
             return self.get_voltages()[channel+1]
 
+    def set_output(self, state, channel='all'):
+        """
+        Sets the output of channel to "state" (True/False). channel may be any
+        of the following: ['all', 1, 2, 3]. channel may be a list or a single integer.
+        Example usage:
+        * set_output([True, False], channel=[1,2])
+        * set_output([True]*3, channel=[1,2,3])
+        * set_output(True, channel='all')
+        * set_output(False, channel=1)
+        """
+        if channel == 'all':
+            for k in range(3):
+                if type(state) == list:
+                    stat=['0','1'][state[k]]
+                else:
+                    stat=['0','1'][state]
 
-    def set_output(self,state):
-        stat=['0','1'][state]
-        SerialInstrument.write(self,'OUTP '+stat+'\n')
-        
+                SerialInstrument.write(self,'INST CH%d'%(k+1))
+                SerialInstrument.write(self,'OUTP '+stat+'\n')
+        elif type(channel) == list:
+            for k, chan in enumerate(channel):
+                stat=['0','1'][state[k]]
+
+                if chan in [1,2,3]:
+                    SerialInstrument.write(self,'INST CH%d'%chan)
+                    SerialInstrument.write(self,'OUTP '+stat+'\n')
+                else:
+                    print "Channel should be 1, 2 or 3"
+        elif channel in ['all', 1, 2, 3]:
+            stat=['0','1'][state]
+            SerialInstrument.write(self,'INST CH%d'%channel)
+            SerialInstrument.write(self,'OUTP '+stat+'\n')
+
+    def get_output(self):
+        """
+        Returns output state of the channels.
+        """
+        outputs = list()
+        for k in range(3):
+            SerialInstrument.write(self,'INST CH%d'%(k+1))
+            x = SerialInstrument.query(self,'CHAN:OUTP?')
+            outputs.append(int(x[0]))
+
+        return outputs
+
     def Remote(self):
         SerialInstrument.write(self,'SYST:REM\n')
         
