@@ -20,7 +20,7 @@ class SR844(VisaInstrument):
         # Time constants and slopes
         self.tc = np.array([1E-4, 3E-4, 1E-3, 3E-3, 1E-2, 3E-2, 1E-1, 3E-1,
                             1.0, 3.0, 10., 30., 100., 300., 1E3, 3E3, 1E4, 3E4])
-        self.slopes = [6, 12, 18, 24]
+        self.slopes = np.array([6, 12, 18, 24])
 
         self.sensitivities = np.arange(-127, 23, 10)
         self.displaych1 = ["X", "R [Volts rms]", "R [dBm]", "X noise", "AUX IN"]
@@ -207,15 +207,15 @@ class SR844(VisaInstrument):
     def get_ch1_display(self):
         return self.displaych1[np.int(self.query("DDEF? 1"))]
 
-    def set_ch2_display(self):
+    def set_ch2_display(self, quantity):
         """
         Sets the display for the ch2 output
         :param quantity: may be 0, 1, 2, 3, 4 according to
-        0 : X
-        1 : R [Volts rms]
-        2 : R [dBm]
-        3 : X noise
-        4 : AUX IN
+        0 : Y
+        1 : theta
+        2 : Y Noise [Volts]
+        3 : Y Noise [dBm]
+        4 : AUX IN 2
         :return:
         """
         if quantity in range(5):
