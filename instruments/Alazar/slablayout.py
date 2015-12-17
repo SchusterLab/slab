@@ -57,8 +57,10 @@ from PyQt4.QtGui import (QWidget, QLineEdit, QComboBox, QLabel, QSpinBox,
                          QApplication, QStackedWidget, QDateEdit, QDateTimeEdit,
                          QFont, QFontComboBox, QFontDatabase, QGridLayout)
 
-from PyQt4.QtCore import (Qt, SIGNAL, SLOT, QSize, QString,
+from PyQt4.QtCore import (Qt, SIGNAL, SLOT, QSize,
                           pyqtSignature, pyqtProperty)
+QString = str
+
 import datetime
 
 
