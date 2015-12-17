@@ -44,3 +44,5 @@ try: from HeaterSwitch import HeaterSwitch
 except: print "Could not load Heater Switch Driver"
 try: from Omega16i import Omega16i
 except: print "Could not load Omega 16i driver"
+try: from lockin import SR844
+except: print "Could not load SR844 driver"

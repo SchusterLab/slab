@@ -14,7 +14,7 @@ import os
 import h5py
 from guiqwt.qtdesigner import loadui
 from slab.datamanagement import *
-Ui_NWAWindow = loadui("c:\\_Lib\\python\\slab\\scripts\\NWAWindow.ui")
+Ui_NWAWindow = loadui(r"C:\_Lib\slab\scripts\NWAWindow.ui")
 import inspect
 
 class nwa_DataThread(DataThread):

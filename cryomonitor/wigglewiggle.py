@@ -101,9 +101,6 @@ class wigglewiggle():
         datafoldername = timestamp + '_' + measurement_name
         os.mkdir(os.path.join(datapath, date, datafoldername))
 
-        shutil.copy(os.path.join(self.scriptpath, self.scriptname),
-                    os.path.join(datapath, date, datafoldername, self.scriptname))
-
         return os.path.join(datapath, date, datafoldername)
 
 
