@@ -18,14 +18,13 @@ import os
 class Tek70001(VisaInstrument):
     """Tektronix 70001 Arbitrary Waveform Class"""
     # default_port=4000
-    def __init__(self, name='Tek70001', address='', enabled=True):
+    def __init__(self, name='Tek70001', address='', timeout=10000, enabled=True):
         address = address.upper()
 
         if address[:5] != 'TCPIP':
             address = 'TCPIP::' + address + '::INSTR'
-        VisaInstrument.__init__(self, name, address, enabled)
+        VisaInstrument.__init__(self, name, address, enabled, timeout)
         self.term_char = ''
-        self.instrument.timeout = 100
 
     def get_id(self):
         return self.query("*IDN?")
@@ -458,7 +457,7 @@ def write_Tek70001_sequence(waveforms, path, prefix, awg=None):
         if awg is not None:
             awg.load_waveform_file(filename)
             awg.operation_complete()
-            awg.assign_seq_waveform(step=j + 1, waveform="A{:g}".format(j),
+            awg.assign_seq_waveform(step=j + 1, waveform=prefix+str(j),
                                     last_step=((j + 1) == len(waveforms)))
 
 

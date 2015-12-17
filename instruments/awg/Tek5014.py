@@ -342,7 +342,6 @@ class Tek5014(VisaInstrument):
 
 
     def pre_load(self):
-
         self.stop()
         self.reset()
 
@@ -352,11 +351,11 @@ class Tek5014(VisaInstrument):
         if (self.current_sequence_hash != sequence_hash) or force_reload:
             self.current_sequence_hash = sequence_hash
             self.write("AWGControl:SREStore '%s' \n" % (filename))
-            for i in range(1, 5):
-                self.set_enabled(i, True)
 
     def prep_experiment(self):
         self.write("SEQuence:JUMP 1")
+        for i in range(1, 5):
+            self.set_enabled(i, True)
 
     def stop_and_prep(self):
         self.stop()
@@ -581,8 +580,6 @@ def write_Tek5014_file(waveforms, markers, filename, seq_name, options=None, do_
 
     num_seqs = max(len(waveforms[0]), len(waveforms[1]), len(waveforms[2]), len(waveforms[3]))
 
-    print "num seqs" + str(num_seqs)
-
     # Open the file
     if do_string_io:
         FID = StringIO.StringIO()
@@ -630,6 +627,7 @@ def write_Tek5014_file(waveforms, markers, filename, seq_name, options=None, do_
     # Now write the waveforms (i.e. extract out the waveform data from the dictionaries)
     for seqct in range(num_seqs):
         # On the Tek, all four channels need to have the same length
+        print "x",
         for wfct in range(4):
             data = pack_waveform(waveforms[wfct][seqct], markers[2 * wfct][seqct], markers[2 * wfct + 1][seqct])
             write_waveform(FID, '{0}Ch{1}{2:03d}'.format(seq_name, wfct + 1, seqct + 1), 4 * seqct + 1 + wfct, data)
@@ -652,8 +650,8 @@ def write_Tek5014_file(waveforms, markers, filename, seq_name, options=None, do_
 
     if do_string_io:
         return FID.getvalue()
-
     FID.close()
+    print "\nFinished writing sequence with %d steps to %s" % (num_seqs,filename)
 
 
 #### Creating pattern files

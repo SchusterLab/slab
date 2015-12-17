@@ -761,6 +761,8 @@ class Alazar():
             tpts=tpts[excise[0]:excise[1]]
             avg_data1=avg_data1.T[excise[0]:excise[1]].T
             avg_data2=avg_data2.T[excise[0]:excise[1]].T
+        avg_data = None
+        del avg_data
         return tpts,avg_data1,avg_data2
 
     #added by ds on 4/17/2015

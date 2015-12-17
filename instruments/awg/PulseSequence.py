@@ -33,15 +33,14 @@ class PulseSequence:
             for waveform in awg['waveforms']:
                 waveform_length=self.waveform_info[waveform['name']]['length']
                 waveform_clk_length = round_samples( waveform_length* awg['clock_speed'],awg['min_samples'],awg['min_increment'])
-                print waveform_clk_length
                 self.waveforms[waveform['name']] = np.zeros((self.sequence_length, waveform_clk_length))
-                self.waveform_info[waveform['name']]['tpts'] = np.linspace(0., waveform_length,waveform_clk_length)
+                self.waveform_info[waveform['name']]['tpts'] = np.linspace(0., (waveform_clk_length-1)/awg['clock_speed'],waveform_clk_length)
 
             for marker in awg['markers']:
                 marker_length=self.marker_info[marker['name']]['length']
                 marker_clk_length = round_samples( marker_length* awg['clock_speed'],awg['min_samples'],awg['min_increment'])
                 self.markers[marker['name']] = np.zeros((self.sequence_length, marker_clk_length))
-                self.marker_info[marker['name']]['tpts'] = np.linspace(0., marker_length,marker_clk_length)
+                self.marker_info[marker['name']]['tpts'] = np.linspace(0., (marker_clk_length-1)/awg['clock_speed'],marker_clk_length)
 
     def set_all_lengths(self, length):
         for name in self.marker_info.keys():
@@ -65,7 +64,7 @@ class PulseSequence:
     def write_sequence(self, path, file_prefix, upload=False):
         write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence}
         for awg in self.awg_info:
-            write_function[awg['type']](awg, path, file_prefix, upload)
+            write_function[awg['type']](awg, path, file_prefix, awg['upload'])
 
     def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
@@ -75,7 +74,9 @@ class PulseSequence:
         if upload:
             im = InstrumentManager()
             im[awg['name']].pre_load()
+            #print "Sequence preloaded"
             im[awg['name']].load_sequence_file(os.path.join(path, file_prefix + '.awg'), force_reload=True)
+            print "Sequence file uploaded"
             im[awg['name']].prep_experiment()
 
     def write_Tek70001_sequence(self, awg, path, file_prefix, upload=False):
@@ -83,10 +84,13 @@ class PulseSequence:
         # markers=[self.markers[marker['name']] for marker in awg['markers']]
         if upload:
             tek7 = InstrumentManager()[awg['name']]
+            for waveform in waveforms:
+                write_Tek70001_sequence(waveform, path, file_prefix, awg=tek7)
+            tek7.prep_experiment()
+            tek7.run()
         else:
             tek7 = None
-        for waveform in waveforms:
-            write_Tek70001_sequence(waveform, path, file_prefix, awg=tek7)
+
 
 
     def build_sequence(self):

@@ -372,8 +372,12 @@ class LMS103(Instrument):
     def set_mod(self,mod=True):
         self.dll.fnLMS_EnableInternalPulseMod(self.devid,U8(mod))
 
-    def set_pulse_ext(self,mod=True):
+    def set_ext_pulse(self,mod=True):
         self.dll.fnLMS_SetUseExternalPulseMod(self.devid,U8(mod))
+        if mod:
+            self.set_mod(True)
+        else:
+            self.set_mod(False)
 
     def get_has_fast_pulse_mode(self):
         return bool(self.dll.fnLMS_GetHasFastPulseMode(self.devid))

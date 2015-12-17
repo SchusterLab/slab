@@ -156,14 +156,21 @@ def main(args):
                              ns_address=options.ns_address)
         globals().update(im)
         globals()['im']=im
-        globals()['plotter']=liveplot.LivePlotClient()
+        try:
+            globals()['plotter']=liveplot.LivePlotClient()
+        except:
+            print "Warning: Couldn't load liveplotter"
 
 if __name__ == "__main__":
     try:
         import slab.gui
-        import liveplot
         from slab.instruments import InstrumentManagerWindow
     except:
         print "Warning: Could not import slab.gui or InstrumentManagerWindow!"
+    try:
+        import liveplot
+    except:
+        print "Warning: Could not load liveplot"
+
 
     main(sys.argv[1:])

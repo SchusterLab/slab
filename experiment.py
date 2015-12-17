@@ -11,7 +11,7 @@ from slab import SlabFile, InstrumentManager, get_next_filename, AttrDict
 class Experiment:
     """Base class for all experiments"""
 
-    def __init__(self, path='', prefix='data', config_file=None, **kwargs):
+    def __init__(self, path='', prefix='data', config_file=None, liveplot_enabled=True, **kwargs):
         """ Initializes experiment class
             @param path - directory where data will be stored
             @param prefix - prefix to use when creating data files
@@ -33,7 +33,8 @@ class Experiment:
         else:
             self.config_file = None
         self.im = InstrumentManager()
-        self.plotter = LivePlotClient()
+        if liveplot_enabled:
+            self.plotter = LivePlotClient()
         # self.dataserver= dataserver_client()
         self.fname = os.path.join(path, get_next_filename(path, prefix, suffix='.h5'))
 
@@ -63,10 +64,12 @@ class Experiment:
                 json.dump(self.cfg, fid)
             self.datafile().attrs['config'] = json.dumps(self.cfg)
 
-    def datafile(self, group=None, remote=False):
+    def datafile(self, group=None, remote=False, data_file = None):
         """returns a SlabFile instance
            proxy functionality not implemented yet"""
-        f = SlabFile(self.fname)
+        if data_file ==None:
+            data_file = self.fname
+        f = SlabFile(data_file)
         if group is not None:
             f = f.require_group(group)
         if 'config' not in f.attrs:
