@@ -25,21 +25,21 @@ I32 = C.c_int32
 CFLT = C.c_float
 
 try:
-    LDA602dllpath=r'C:\_Lib\slab\instruments\labbrick\VNX_atten.dll'
+    LDA602dllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_atten.dll'
     LDADLL=C.CDLL(LDA602dllpath)
 except:
     print "Warning could not load LDA labbrick dll, check that dll located at '%s'" % LDA602dllpath
 
 try:
     #LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
-    LMS103dllpath=r'C:\_Lib\slab\instruments\labbrick\vnx_fmsynth.dll'
+    LMS103dllpath=r'C:\_Lib\python\slab\instruments\labbrick\vnx_fmsynth.dll'
     LMSDLL=C.CDLL(LMS103dllpath)
 except:
     print "Warning could not load LMS labbrick dll, check that dll located at '%s'" % LMS103dllpath
 
 try:
     #LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
-    LPSdllpath=r'C:\_Lib\slab\instruments\labbrick\VNX_dps.dll'
+    LPSdllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_dps.dll'
     LPSDLL=C.CDLL(LPSdllpath)
 except:
     print "Warning could not load LPS labbrick dll, check that dll located at '%s'" % LPSdllpath
