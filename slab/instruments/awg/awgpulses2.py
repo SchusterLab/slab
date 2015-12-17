@@ -4,8 +4,8 @@ import numpy as np
 
 
 def sideband(t, i, q, freq=0, phase=0):
-    return ( np.cos(2 * np.pi * (freq * t + phase)) * i - np.sin(2 * np.pi * (freq * t + phase)) * q,
-             np.sin(2 * np.pi * (freq * t + phase)) * i + np.cos(2 * np.pi * (freq * t + phase)) * q)
+    return ( np.cos(2 * np.pi * (freq/1.0e9 * t )) * i - np.cos(2 * np.pi * (freq/1.0e9 * t)) * q,
+             np.cos(2 * np.pi * (freq/1.0e9 * t )+ phase*np.pi/180.0) * i + np.cos(2 * np.pi * (freq/1.0e9 * t ) + phase*np.pi/180.0) * q)
 
 
 def gauss(t, a, t0, sigma):

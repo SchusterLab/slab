@@ -30,7 +30,7 @@ class VoltageSource:
             #print ii
             time.sleep(self.query_sleep)
 
-    def ramp_current(self, current, sweeprate=1, channel=1):
+    def ramp_current(self, current, sweeprate=0.005, channel=1):
         start = self.get_current()
         stop = current
         if stop == start: return

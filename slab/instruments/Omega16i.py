@@ -3,7 +3,7 @@ __author__ = 'ge'
 from slab.instruments import SocketInstrument
 
 class Omega16i(SocketInstrument):
-    default_port = 2000
+    default_port = 5000
 
     def __init__(self, name="Omega16i", address=None, enabled = True ):
         SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=10, recv_length=2**20)
@@ -13,5 +13,5 @@ class Omega16i(SocketInstrument):
         return "Omega 16i"
 
     def get_pressure(self, ch = '1'):
-        return self.query("*01X01")
+        return self.query("*X01")
 

@@ -70,7 +70,7 @@ class DAx22000(Instrument):
                                                      arr,
                                                      C.c_bool(triggered))
 
-    def create_segments(self, chan, segments, loops=0, begin_val=1047, end_val=2047, triggered=True):
+    def create_segments(self, chan, segments, loops=0, begin_val=2047, end_val=2047, triggered=True):
 
         seglisttype = SegmentStruct * len(segments)
 
