@@ -493,12 +493,6 @@ def SNT_func(p, v):
     qe, kb = (1.6e-19, 1.38e-23)
     return GB * kb * (Tn + .5 * (qe * (v - voff) / kb) / np.tanh(qe * (v - voff) / (2 * kb * T)))
 
-        fitparams=[0,0,0,0]
-        fitparams[0]= 0
-        fitparams[1]=(max(fitdatay)-min(fitdatay))/(max(fitdatax)-min(fitdatax))#2*abs(fft_val)/len(fitdatay)
-        fitparams[2]= 0
-        fitparams[3]= 0
-        #fitparams[5]=fitdatax[0]
 
 def fit_SNT(xdata, ydata, fitparams=None, domain=None, showfit=False, showstartfit=False, label='', debug=False):
     """fit Shot Noise Thermometer curve:
@@ -534,11 +528,8 @@ def polynomial2(p,x):
     return p[0]+p[1]*(x-p[-1])+p[2]*(x-p[-1])**2
 
 def polynomial(p, x):
-    return p[0] + p[1] * (x - p[-1]) + p[2] * (x - p[-1]) ** 2 + p[3] * (x - p[-1]) ** 3 + p[4] * (x - p[-1]) ** 4 + p[
-                                                                                                                         5] * (
-                                                                                                                              x -
-                                                                                                                              p[
-                                                                                                                                  -1]) ** 5 + \
+    return p[0] + p[1] * (x - p[-1]) + p[2] * (x - p[-1]) ** 2 + p[3] * (x - p[-1]) ** 3 + p[4] * (x - p[-1]) ** 4 + \
+           p[5] * (x - p[-1]) ** 5 + \
            p[6] * (x - p[-1]) ** 6 + p[7] * (x - p[-1]) ** 7 + p[8] * (x - p[-1]) ** 8 + p[9] * (x - p[-1]) ** 9
 
 
