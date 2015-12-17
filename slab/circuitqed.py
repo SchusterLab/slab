@@ -230,13 +230,63 @@ class Schrodinger2D(Schrodinger):
         xlabel('x')
         ylabel('y')
 
+class Fluxonium(Schrodinger1D):
+    """Customized 1D Schrodinger solver class for flux qubits,
+       allows you to specify properties using conventional circuit parameters"""
+
+    def __init__(self, Ej, El, Ec, phi, phiL, d, periodic=False,q=0,phis=None, sparse_args=None, solve=True):
+        """
+        @param Ej Josephson energy
+        @param El Inductance energy
+        @param Ec Charging energy
+        @param phi Flux bias phi/phi_0
+        @param phis if specified used as basis for solving (default is -2,2 with 201 pts)
+        """
+        if phis is None:
+            self.phis = 2 * pi * linspace(-2, 2, 201)
+        else:
+            self.phis = phis
+
+        self.Ej = Ej
+        self.El = El
+        self.Ec = Ec
+        self.phi = phi
+        self.phiL = phiL
+        self.d = d
+
+
+        Schrodinger1D.__init__(self, x=self.phis, U=self.fluxonium_potential(), KE=4 * Ec, periodic=periodic,q=q,sparse_args=sparse_args,
+                               solve=solve)
+
+    def fluxonium_potential(self):
+        """Flux qubit with a squid loop; the phi here is phi_j and not phi_l unlike in the flux_qubit"""
+        return -0.5*(self.Ej * ((1+self.d)*cos(self.phis - 2. * pi * self.phi - 2. * pi * self.phiL) + (1-self.d)*cos(self.phis-2. * pi * self.phiL))) + self.El/2. * (self.phis) ** 2
+        #return -0.5*(self.Ej * cos(self.phis - 2. * pi * self.phi) + self.Ej * cos(self.phis)) + self.El/2. * (self.phis-self.phiL)** 2
+
+    def plot(self, num_levels=10,**kwargs):
+        """Plot potential, energies, eigenvectors"""
+        Schrodinger1D.plot(self, num_levels,**kwargs)
+        xlabel('$\delta/2\pi$')
+        ylabel('E/h (GHz)')
+        ylim(min(self.fluxonium_potential()),min(2*self.energies(num_levels)[-1],max(self.fluxonium_potential())))
+        title('(Ej=%.2f , El=%.2f , Ec=%.2f)GHz , ($\Phi_J=%.2f $,$\Phi_L=%.2f \,) \Phi_0$ ' % (self.Ej, self.El, self.Ec, self.phi,self.phiL))
+
+    def phi_operator(self, num_levels=-1):
+        """phi matrix element <0|phi|1> in eigenbasis"""
+        phi_mat = sparse.spdiags([self.phis], [0], len(self.phis), len(self.phis))
+        return self.reduced_operator(phi_mat, num_levels)
+
+    def n_operator(self, num_levels=-1):
+        """number matrix element <0|n|1> in eigenbasis"""
+        return self.reduced_operator(Schrodinger.Dmat(len(self.phis), self.phis[1] - self.phis[0]), num_levels)
+
 
 class FluxQubit(Schrodinger1D):
     """Customized 1D Schrodinger solver class for flux qubits, 
        allows you to specify properties using conventional circuit parameters"""
 
     def __init__(self, Ej, El, Ec, phi, periodic=False,q=0,phis=None, sparse_args=None, solve=True):
-        """ 
+        """
         @param Ej Josephson energy
         @param El Inductance energy
         @param Ec Charging energy
@@ -259,6 +309,7 @@ class FluxQubit(Schrodinger1D):
     def flux_qubit_potential(self):
         """Make Flux qubit potential from circuit parameters"""
         return -self.Ej * cos(self.phis - 2. * pi * self.phi) + self.El/2. * (self.phis) ** 2
+
 
     def plot(self, num_levels=10,**kwargs):
         """Plot potential, energies, eigenvectors"""

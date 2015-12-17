@@ -9,7 +9,7 @@ from PyQt4 import QtGui, QtCore
 from subprocess import Popen
 import os
 
-slab_dir = r'C:\_Lib\python\slab'
+slab_dir = r'C:\_Lib\slab'
 
 
 def python_cmd(relpath):
@@ -34,7 +34,7 @@ scripts = {
 
 def create_popen_fn(args):
     env = os.environ
-    env.update({'PYTHONPATH':r'C:\_Lib\python'})
+    env.update({'PYTHONPATH':r'C:\_Lib'})
     fn_type = type(lambda: 1)
     if isinstance(args, fn_type):
         return lambda: Popen(args(), env=env)

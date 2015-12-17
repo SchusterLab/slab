@@ -4,11 +4,154 @@ Created on Mon Aug 01 21:26:31 2011
 
 @author: Dave
 """
-from slab.instruments import SocketInstrument
+from slab.instruments import SocketInstrument, VisaInstrument
 import time
 import numpy as np
 import glob
 import os.path
+
+
+class HP3577A(VisaInstrument):
+    MAXSWEEPPTS = 1601
+    default_port = 5025
+
+    def __init__(self,name="HP3577A",address='GPIB0::9::INSTR',enabled=True,timeout=None):
+        VisaInstrument.__init__(self,name,address,enabled, term_chars='\r')
+        self.query_sleep=0.5
+        self.recv_length=65536
+        self.term_char='\r'
+
+        #set up continuous sweep, linear sweep
+        #self.write('SM1')
+        #time.sleep(0.1)
+        #self.write('ST1')
+
+    def set_start_frequency(self, start_frequency):
+        """
+        :param start_frequency: Start frequency in Hz
+        """
+        return self.write('FRA %.6f MHZ' % (start_frequency/1E6))
+
+    def set_stop_frequency(self, stop_frequency):
+        """
+        :param stop_frequency: Stop frequency in Hz
+        """
+        return self.write('FRB %.6f MHZ' % (stop_frequency/1E6))
+
+    def set_center_frequency(self, center_frequency):
+        """
+        :param center_frequency: Center frequency in Hz
+        """
+        return self.write('FRC %.6f MHZ' % (center_frequency/1E6))
+
+    def set_span(self, span):
+        """
+        :param span: Span in Hz
+        """
+        return self.write('FRS %.6f MHZ' % (span/1E6))
+
+    def set_power(self, power):
+        """
+        :param power: Power in dBm
+        """
+        return self.write('SAM %.2f DBM' % power)
+
+    def set_input(self, input):
+        """
+        :param input: one of the following: R, A, B, AR, BR, D1, D2, D3, D4
+        """
+        if input in ['R', 'A', 'B']:
+            return self.write('IN%s' % input)
+        elif input in ['AR', 'BR', 'D1', 'D2', 'D3', 'D4']:
+            return self.write('I%s' % input)
+
+    def set_resolution_bw(self, bw):
+        """
+        :param bw:  bandwidth in Hz (1, 10, 100, 1000)
+        """
+        return self.write('BW%d' % int(1+np.log10(bw)))
+
+    def set_averaging(self, N):
+        """
+        :param N: Number of averages (2**2 -- 2**8)
+        """
+        if N == 1:
+            return self.write('AV0')
+        else:
+            return self.write('AV%d' % (int(np.log10(N)/np.log10(2))-1))
+
+    def take_one(self, number_of_averages, verbose=False):
+        """
+        Take a spectrum
+        :return:
+        """
+        # start with a blank sheet
+        self.set_averaging(1)
+        self.set_averaging(number_of_averages)
+
+        self.write('DF7; FM1')
+        N = 0
+        N_old = 0
+        while N <= number_of_averages:
+            self.write('DAN')
+            time.sleep(0.1)
+            N = float(self.read())
+            time.sleep(1)
+            if N > N_old and verbose:
+                print "%d/%d" % (N, number_of_averages)
+            N_old = N
+
+        self.write('DT1')
+        time.sleep(3)
+        print "reading magnitude..."
+        rawlogmag = self.read()
+        logmag =  map(float, rawlogmag.split(','))
+
+        self.write('DF5')
+        N = 0
+        N_old = 0
+        while N <= number_of_averages:
+            self.write('DAN')
+            time.sleep(0.1)
+            N = float(self.read())
+            if N > N_old and verbose:
+                print "%d/%d" % (N, number_of_averages)
+            time.sleep(1)
+            N_old = N
+
+        self.write('DT1')
+        time.sleep(3)
+        print "reading phase..."
+        rawphase = self.read()
+        phase =  map(float, rawphase.split(','))
+
+        fminch1, fmaxch1, fminch2, fmaxch2, amp = self.get_status()
+        freq = np.linspace(fminch1, fmaxch1, len(phase))
+
+        return freq, logmag, phase
+
+    def get_status(self):
+        """
+        :return: power in dBm
+        """
+        self.write('DCH')
+        time.sleep(0.5)
+
+        refch1, amplvlch1, refch2, amplvlch2, mrkrfch1, \
+        mrkrampch1, mrkrfch2, mrkrampch2, startfch1, stopfch1, \
+        startfch2, stopfch2, sourceamp, delayap, entryblock = self.read().split(',')
+
+        time.sleep(0.2)
+        #print startfch1, stopfch1, startfch2, stopfch2
+
+        startf1 = float(re.sub("\D", "", startfch1))/1E3
+        stopf1 = float(re.sub("\D", "", stopfch1))/1E3
+        startf2 = float(re.sub("\D", "", startfch2))/1e3
+        stopf2 = float(re.sub("\D", "", stopfch2))/1e3
+        amp = re.sub("\D", "", sourceamp)
+
+        return startf1, stopf1, startf2, stopf2, amp
+
 
 class E5071(SocketInstrument):
 
@@ -183,7 +326,7 @@ class E5071(SocketInstrument):
         self.trigger_single()
         time.sleep(self.query_sleep)
         self.averaging_complete()    #Blocks!
-        self.set_format('slog')
+        self.set_format('SLOG ')
         if fname is not None:
             self.save_file(fname)
         ans=self.read_data()
