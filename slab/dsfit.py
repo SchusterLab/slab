@@ -175,24 +175,35 @@ def fitpulse_err(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartf
                     showstartfit=showstartfit, label=label)
     return p1   
     
+def gaussfunc_nooffset(p, x):
+    """p[0] exp(- (x-p[1])**2/p[2]**2/2)"""
+    return p[0]*math.e**(-1./2.*(x-p[1])**2/p[2]**2)
 
 
-def fitgauss (xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
-    """fit lorentzian"""
+def fitgauss(xdata,ydata,fitparams=None,no_offset=False,domain=None,showfit=False,showstartfit=False,label=""):
+    """
+    no_offset = True:   p[1] exp(- (x-p[2])**2/p[3]**2/2)
+    no_offset = False:  p[0]+p[1] exp(- (x-p[2])**2/p[3]**2/2)
+    """
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
     else:
         fitdatax=xdata
         fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         fitparams=[0,0,0,0]
         fitparams[0]=(fitdatay[0]+fitdatay[-1])/2.
         fitparams[1]=max(fitdatay)-min(fitdatay)
         fitparams[2]=fitdatax[np.argmax(fitdatay)]
         fitparams[3]=(max(fitdatax)-min(fitdatax))/3.
 
-    p1 = fitgeneral(fitdatax, fitdatay, gaussfunc, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
-                    label=label)
+    if no_offset:
+        fitfunc = gaussfunc_nooffset
+        fitparams = fitparams[1:]
+    else:
+        fitfunc = gaussfunc
+
+    p1 = fitgeneral(fitdatax,fitdatay,fitfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
     return p1   
     
 def decaysin(p,x):
