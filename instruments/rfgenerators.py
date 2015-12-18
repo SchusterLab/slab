@@ -215,7 +215,7 @@ class BNC845(SocketInstrument):
         self.write(':SOUR:PULM:INT:PWIDTH %f S' %(period))
         self.set_pulse_state(state)
     
-    def set_ext_pulse(self,state=True):
+    def set_ext_pulse(self,state=True, mod=False):
         self.write(':SOUR:PULM:SOUR EXT')
         self.set_pulse_state(state)
         

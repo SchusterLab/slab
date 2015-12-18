@@ -11,6 +11,7 @@ Pyro4.config.HMAC_KEY = '6551d449b0564585a9d39c0bd327dcf1'
 from PyQt4.QtGui import QFileDialog
 from PyQt4.QtCore import *
 from PyQt4 import uic
+import time
 
 UiClass = uic.loadUiType(os.path.join(os.path.dirname(__file__), "InstrumentManager.ui"))[0]
 
@@ -54,24 +55,30 @@ class InstrumentManagerTableModel(QAbstractTableModel):
 
 
 class InstrumentManagerWindow(gui.SlabWindow, UiClass):
-    def init_kernels(self, restart=False):
-        if restart:
-            self.clientshell.restart_kernel("reloading client", now=True)
-            self.servershell.restart_kernel("reloading server", now=True)
+    def init_kernels(self, restartServer=False, restartClient=False):
         if self.params['nameserver'] == "":
             ns = "None"
         else:
             ns = r'"%s"' % self.params['nameserver']
-        if not (self.params['disableServer'] or self.params['filename']==''):
-            self.servershell.execute(source="from slab.instruments import InstrumentManager", hidden=True)
-            self.servershell.execute(
-                source="im=InstrumentManager(config_path='%s', server=True, ns_address=%s)" % (self.params['filename'], ns))
-        else:
-            self.msg('Launching client only.')
 
-        self.clientshell.execute(source="%pylab inline", hidden=True)
-        self.clientshell.execute(source="from slab.instruments import InstrumentManager", hidden=True)
-        self.clientshell.execute(source="im=InstrumentManager(ns_address=%s)" % (ns))
+        if restartServer:
+            self.servershell.restart_kernel("reloading server", now=True)
+            self.servershell.reset(clear=True)
+            time.sleep(2)
+            if not (self.params['disableServer'] or self.params['filename'] == ''):
+                self.servershell.execute(source="from slab.instruments import InstrumentManager", hidden=True)
+                self.servershell.execute(
+                    source="im=InstrumentManager(config_path='%s', server=True, ns_address=%s)" % (
+                        self.params['filename'], ns))
+            else:
+                self.msg('Launching client only.')
+
+        if restartClient:
+            self.clientshell.restart_kernel("reloading client", now=True)
+            time.sleep(2)
+            self.clientshell.execute(source="%pylab inline", hidden=True)
+            self.clientshell.execute(source="from slab.instruments import InstrumentManager", hidden=True)
+            self.clientshell.execute(source="im=InstrumentManager(ns_address=%s)" % (ns))
 
     def __init__(self, nameserver=None, filename=None):
         gui.SlabWindow.__init__(self)
@@ -96,7 +103,8 @@ class InstrumentManagerWindow(gui.SlabWindow, UiClass):
         self.clientshell_dockWidget.setWidget(self.clientshell)
 
         self.im_process = None
-        self.start_pushButton.clicked.connect(self.startInstrumentManager)
+        self.start_pushButton.clicked.connect(self.startInstrumentManagerServer)
+        self.start_clientButton.clicked.connect(self.startInstrumentManagerClient)
         self.filename_pushButton.clicked.connect(self.selectFile)
         self.editInstrumentConfig_pushButton.clicked.connect(self.editInstrumentConfig)
 
@@ -117,7 +125,6 @@ class InstrumentManagerWindow(gui.SlabWindow, UiClass):
     def closeEvent(self, event):
         pass
 
-
     def editInstrumentConfig(self):
         filename = self.params['filename']
         if filename == '':
@@ -125,11 +132,15 @@ class InstrumentManagerWindow(gui.SlabWindow, UiClass):
         else:
             os.startfile(filename)
 
+    def startInstrumentManagerServer(self, event):
+        self.msg('Starting InstrumentManager Server')
+        self.start_pushButton.setText("Restart Server")
+        self.init_kernels(restartServer=True)
 
-    def startInstrumentManager(self, event):
-        self.msg('Starting InstrumentManager')
-        self.start_pushButton.setText("Restart Instrument Manager")
-        self.init_kernels(restart=True)
+    def startInstrumentManagerClient(self, event):
+        self.msg('Starting InstrumentManager Client')
+        self.start_clientButton.setText("Restart Client")
+        self.init_kernels(restartClient=True)
 
     def selectFile(self):
         self.set_param('filename', str(QFileDialog.getOpenFileName(self)))
