@@ -11,6 +11,8 @@ from awg import *
 from spec_analyzer.spectrum_analyzer import *
 from ipsmagnet import *
 from TestInstruments import EchoInstrument,RandomInstrument
+from TDS7104 import TekTDS7104
+from RCA18 import MCRCA18
 
 try: from labbrick.labbrick import LMS_get_device_info,LMS103,LPS802,LabbrickWindow,LDA602
 except: print "Could not load labbrick"
