@@ -1,159 +1,21 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Aug 01 21:26:31 2011
-
-@author: Dave
-"""
+#
+# ======================================================
+#
+# reference the programming manual here: http://na.support.keysight.com/pna/help/index.html?id=1000001808-1:epsg:man
+# and specifically here: New Programming Commands:
+# http://na.support.keysight.com/pna/help/latest/help.htm
+#
+# ======================================================
+#
+__author__ = 'Ge Yang'
 from slab.instruments import SocketInstrument, VisaInstrument
 import time
 import numpy as np
 import glob
 import os.path
+import re
 
-
-class HP3577A(VisaInstrument):
-    MAXSWEEPPTS = 1601
-    default_port = 5025
-
-    def __init__(self, name="HP3577A", address='GPIB0::9::INSTR', enabled=True, timeout=None):
-        VisaInstrument.__init__(self, name, address, enabled, term_chars='\r')
-        self.query_sleep = 0.5
-        self.recv_length = 65536
-        self.term_char = '\r'
-
-        # set up continuous sweep, linear sweep
-        # self.write('SM1')
-        # time.sleep(0.1)
-        # self.write('ST1')
-
-    def set_start_frequency(self, start_frequency):
-        """
-        :param start_frequency: Start frequency in Hz
-        """
-        return self.write('FRA %.6f MHZ' % (start_frequency / 1E6))
-
-    def set_stop_frequency(self, stop_frequency):
-        """
-        :param stop_frequency: Stop frequency in Hz
-        """
-        return self.write('FRB %.6f MHZ' % (stop_frequency / 1E6))
-
-    def set_center_frequency(self, center_frequency):
-        """
-        :param center_frequency: Center frequency in Hz
-        """
-        return self.write('FRC %.6f MHZ' % (center_frequency / 1E6))
-
-    def set_span(self, span):
-        """
-        :param span: Span in Hz
-        """
-        return self.write('FRS %.6f MHZ' % (span / 1E6))
-
-    def set_power(self, power):
-        """
-        :param power: Power in dBm
-        """
-        return self.write('SAM %.2f DBM' % power)
-
-    def set_input(self, input):
-        """
-        :param input: one of the following: R, A, B, AR, BR, D1, D2, D3, D4
-        """
-        if input in ['R', 'A', 'B']:
-            return self.write('IN%s' % input)
-        elif input in ['AR', 'BR', 'D1', 'D2', 'D3', 'D4']:
-            return self.write('I%s' % input)
-
-    def set_resolution_bw(self, bw):
-        """
-        :param bw:  bandwidth in Hz (1, 10, 100, 1000)
-        """
-        return self.write('BW%d' % int(1 + np.log10(bw)))
-
-    def set_averaging(self, N):
-        """
-        :param N: Number of averages (2**2 -- 2**8)
-        """
-        if N == 1:
-            return self.write('AV0')
-        else:
-            return self.write('AV%d' % (int(np.log10(N) / np.log10(2)) - 1))
-
-    def take_one(self, number_of_averages, verbose=False):
-        """
-        Take a spectrum
-        :return:
-        """
-        # start with a blank sheet
-        self.set_averaging(1)
-        self.set_averaging(number_of_averages)
-
-        self.write('DF7; FM1')
-        N = 0
-        N_old = 0
-        while N <= number_of_averages:
-            self.write('DAN')
-            time.sleep(0.1)
-            N = float(self.read())
-            time.sleep(1)
-            if N > N_old and verbose:
-                print "%d/%d" % (N, number_of_averages)
-            N_old = N
-
-        self.write('DT1')
-        time.sleep(3)
-        print "reading magnitude..."
-        rawlogmag = self.read()
-        logmag = map(float, rawlogmag.split(','))
-
-        self.write('DF5')
-        N = 0
-        N_old = 0
-        while N <= number_of_averages:
-            self.write('DAN')
-            time.sleep(0.1)
-            N = float(self.read())
-            if N > N_old and verbose:
-                print "%d/%d" % (N, number_of_averages)
-            time.sleep(1)
-            N_old = N
-
-        self.write('DT1')
-        time.sleep(3)
-        print "reading phase..."
-        rawphase = self.read()
-        phase = map(float, rawphase.split(','))
-
-        fminch1, fmaxch1, fminch2, fmaxch2, amp = self.get_status()
-        freq = np.linspace(fminch1, fmaxch1, len(phase))
-
-        return freq, logmag, phase
-
-    def get_status(self):
-        """
-        :return: power in dBm
-        """
-        self.write('DCH')
-        time.sleep(0.5)
-
-        refch1, amplvlch1, refch2, amplvlch2, mrkrfch1, \
-        mrkrampch1, mrkrfch2, mrkrampch2, startfch1, stopfch1, \
-        startfch2, stopfch2, sourceamp, delayap, entryblock = self.read().split(',')
-
-        time.sleep(0.2)
-        # print startfch1, stopfch1, startfch2, stopfch2
-
-        startf1 = float(re.sub("\D", "", startfch1)) / 1E3
-        stopf1 = float(re.sub("\D", "", stopfch1)) / 1E3
-        startf2 = float(re.sub("\D", "", startfch2)) / 1e3
-        stopf2 = float(re.sub("\D", "", stopfch2)) / 1e3
-        amp = re.sub("\D", "", sourceamp)
-
-        return startf1, stopf1, startf2, stopf2, amp
-
-
-class E5071(SocketInstrument):
+class N5242A(SocketInstrument):
     MAXSWEEPPTS = 1601
     default_port = 5025
 
@@ -219,41 +81,42 @@ class E5071(SocketInstrument):
         self.write(":SENS%d:average:clear" % channel)
 
     def set_ifbw(self, bw, channel=1):
-        self.write(":SENS%d:BANDwidth:RESolution %f" % (channel, bw))
+        self.write("sens%d:bwid %f" % (channel, bw))
 
     def get_ifbw(self, channel=1):
-
-        return float(self.query(":SENS%d:BANDwidth:RESolution?" % (channel)))
+        return float(self.query("SENS%d:bwid?" % (channel)))
 
     def averaging_complete(self):
         # if self.query("*OPC?") == '+1\n': return True
         self.write("*OPC?")
         self.read()
 
-    #        else: return False
-
-    def trigger_single(self):
+    def trigger_single (self):
         self.write(':TRIG:SING')
 
-    def set_trigger_average_mode(self, state=True):
-        if state:
-            self.write(':TRIG:AVER ON')
-        else:
-            self.write(':TRIG:AVER OFF')
+    # Looks like this is not availbale on PNAX
+    # def set_trigger_average_mode(self,state=True):
+    #     if state: self.write(':TRIG:AVER ON')
+    #     else: self.write(':TRIG:AVER OFF')
 
-    def get_trigger_average_mode(self):
-        return bool(self.query(':TRIG:AVER?'))
+    # Looks like PNAX does not have get trig average mode.
+    # def get_trigger_average_mode(self):
+    #     return bool(self.query(':TRIG:AVER?'))
 
-    def set_trigger_source(self, source="INTERNAL"):  # INTERNAL, MANUAL, EXTERNAL,BUS
-        self.write(':TRIG:SEQ:SOURCE ' + source)
+    def set_trigger_source(self, source="immediate"):  # IMMEDIATE, MANUAL, EXTERNAL
+        allowed_sources =  ['ext', 'imm', 'man', 'immediate', 'external', 'manual']
+        if source.lower() not in allowed_sources:
+            raise "source need to be one of " + allowed_sources
+        self.write(':TRIG:SEQ:SOUR ' + source)
 
     def get_trigger_source(self):  # INTERNAL, MANUAL, EXTERNAL,BUS
-        return self.query(':TRIG:SEQ:SOURCE?')
+        return self.query(':TRIG:SEQ:SOUR?')
 
     #### Source
 
     def set_power(self, power, channel=1):
-        self.write(":SOURCE%d:POWER %f" % (channel, power))
+        # print ":SOURCE:POWER%d %f" % (channel, power)
+        self.write(":SOURCE%d:POWER%d %f" % (channel, channel, power))
 
     def get_power(self, channel=1):
         return float(self.query(":SOURCE%d:POWER?" % channel))
@@ -270,30 +133,60 @@ class E5071(SocketInstrument):
     def set_measure(self, mode='S21'):
         self.write(":CALC1:PAR1:DEF %s" % (mode))
 
-    #### File Operations
 
+    #### Trace Operations
+    def set_active_trace(self, channel=1, trace=1, fast=False):
+        """
+        set the active trace, which is required by the
+        following commands [get_format, set_format]
+
+        The fast option is OPTIONAL. The PNA display is
+        NOT updated. Therefore, do not use this argument when
+        an operator is using the PNA display. Otherwise, sending
+        this argument results in much faster sweep speeds. There
+        is NO other reason to NOT send this argument.
+        """
+        query_string = "CALC%d:PAR:MNUM %d" % (channel, trace)
+        if fast:
+            query_string += ",fast"
+        # print query_string
+        self.write(query_string)
+
+    def get_active_trace(self, channel=1):
+        """set the active trace, need to run after the active trace is set."""
+        query_string = "calculate%d:parameter:mnumber:select?" % channel
+        # print query_string
+        return int(self.query(query_string))
+
+    def set_format(self, trace_format='MLOG', trace=1):
+        """set_format: need to run after the active trace is set.
+        valid options are
+        {MLOGarithmic|PHASe|GDELay| SLINear|SLOGarithmic|SCOMplex|SMITh|SADMittance|PLINear|PLOGarithmic|POLar|MLINear|SWR|REAL| IMAGinary|UPHase|PPHase}
+        """
+        self.write("CALC%d:FORM %s" % (trace, trace_format))
+
+    def get_format(self, trace=1):
+        """set_format: need to run after active trace is set.
+        valid options are
+        {MLOGarithmic|PHASe|GDELay| SLINear|SLOGarithmic|SCOMplex|SMITh|SADMittance|PLINear|PLOGarithmic|POLar|MLINear|SWR|REAL| IMAGinary|UPHase|PPHase}
+        """
+        return self.query("CALC%d:FORM?" % (trace))
+
+    #### File Operations
     def save_file(self, fname):
         self.write('MMEMORY:STORE:FDATA \"' + fname + '\"')
-
-    def set_format(self, trace_format='MLOG', channel=1):
-        """set_format: valid options are
-        {MLOGarithmic|PHASe|GDELay| SLINear|SLOGarithmic|SCOMplex|SMITh|SADMittance|PLINear|PLOGarithmic|POLar|MLINear|SWR|REAL| IMAGinary|UPHase|PPHase}
-        """
-        self.write(":CALC:FORMAT " + trace_format)
-
-    def get_format(self, channel=1):
-        """set_format: valid options are
-        {MLOGarithmic|PHASe|GDELay| SLINear|SLOGarithmic|SCOMplex|SMITh|SADMittance|PLINear|PLOGarithmic|POLar|MLINear|SWR|REAL| IMAGinary|UPHase|PPHase}
-        """
-        return self.query(":CALC:FORMAT?")
 
     def read_data(self, channel=1):
         """Read current NWA Data, return fpts,mags,phases"""
         #        self.write(":CALC1:PAR1:SEL")
         #        self.write(":INIT1:CONT OFF")
         #        self.write(":ABOR")
-        self.write(":FORM:DATA ASC")
-        self.write(":CALC1:DATA:FDAT?")
+        #        self.write(":FORM:DATA ASC")
+        # self.write(":CALC1:DATA:FDAT?")
+        #        self.write(":CALC1:DATA? FDATA")
+        # self.write("CALC:PAR 'CH1_S11_1',S21")
+        # self.write("CALC:PAR:SEL 'CH1_S11_1'")
+        self.write("CALC:DATA? FDATA")
         data_str = ''
 
         done = False
@@ -323,7 +216,7 @@ class E5071(SocketInstrument):
         self.set_trigger_source('BUS')
         time.sleep(self.query_sleep * 2)
         old_timeout = self.get_timeout()
-        #        old_format=self.get_format()
+        # old_format=self.get_format()
         self.set_timeout(10000)
         self.set_format()
         time.sleep(self.query_sleep)
@@ -338,7 +231,7 @@ class E5071(SocketInstrument):
             self.save_file(fname)
         ans = self.read_data()
         time.sleep(self.query_sleep)
-        #       self.set_format(old_format)
+        self.set_format(old_format)
         self.set_timeout(old_timeout)
         self.set_trigger_average_mode(old_avg_mode)
         self.set_trigger_source('INTERNAL')
@@ -362,13 +255,13 @@ class E5071(SocketInstrument):
 
         # Set Save old settings and set up for automated data taking
         time.sleep(self.query_sleep)
+        return [0, 0, 0]
+
         old_format = self.get_format()
         old_timeout = self.get_timeout()
-        old_avg_mode = self.get_trigger_average_mode()
 
         self.set_timeout(10000)
-        self.set_trigger_average_mode(True)
-        self.set_trigger_source('BUS')
+        self.set_trigger_source('Ext')
         self.set_format('slog')
 
         self.set_span(segspan)
@@ -393,7 +286,7 @@ class E5071(SocketInstrument):
         self.set_format(old_format)
         self.set_timeout(old_timeout)
         self.set_trigger_average_mode(old_avg_mode)
-        self.set_trigger_source('INTERNAL')
+        self.set_trigger_source('IMM')
 
         return np.hstack(segs)
 
@@ -458,23 +351,18 @@ class E5071(SocketInstrument):
         return ans
 
     def take_one(self, fname=None):
-        """Tell Network Analyzer to take a single averaged trace and grab data, 
+        """Tell Network Analyzer to take a single averaged trace and grab data,
         either saving it to fname or returning it.  This function does not set up
         the format or anything else it just starts, blocks, and grabs the next trace."""
-        # print "Acquiring single trace"
-        # time.sleep(na.query_sleep*2)
-        # na.set_format()
-        # time.sleep(na.query_sleep)
+        self.write('SENS:SWE:MODE HOLD')
+        self.write('SENS:SWE:GRO:COUN %d' % 5)
         self.clear_averages()
-        self.trigger_single()
         time.sleep(self.get_query_sleep())
         self.averaging_complete()
-        # na.set_format('slog')
+        print "finished averaging"
         if fname is not None:
             self.save_file(fname)
         ans = self.read_data()
-        # time.sleep(na.query_sleep)
-        # na.set_format()
         return ans
 
     def get_settings(self):
@@ -499,17 +387,20 @@ class E5071(SocketInstrument):
         if avgs is not None:            self.set_averages(avgs)
 
     def set_remote_state(self):
-        self.set_trigger_source('BUS')
-        self.set_trigger_average_mode(True)
-        self.set_timeout(10000)
-        self.set_format('slog')
+        pass
+        # self.set_trigger_source('BUS')
+        # self.set_trigger_average_mode(True)
+        # self.set_timeout(10000)
+        # self.set_format('slog')
 
     def set_default_state(self):
-        self.set_sweep_points()
-        self.set_format()
-        self.set_trigger_source()
-        self.set_trigger_average_mode(False)
-        self.write(":INIT1:CONT ON")
+        # under construction
+        pass
+        # self.set_sweep_points()
+        # self.set_format()
+        # self.set_trigger_source()
+        # self.set_trigger_average_mode(False)
+        # self.write(":INIT1:CONT ON")
 
 
 def condense_nwa_files(datapath, prefix):
@@ -565,6 +456,8 @@ def nwa_watch_temperature_sweep(na, fridge, datapath, fileprefix, windows, power
             na.save_file("%s%04d-%3d-%s-%3.3f.csv" % (datapath, count, ii, fileprefix, Temperature))
             time.sleep(delay)
 
+def nwa_API_test(na):
+    pass
 
 def nwa_test1(na):
     """Read NWA data and plot results"""
@@ -581,27 +474,39 @@ def nwa_test1(na):
     plot(fpts / 1e9, phases)
     show()
 
+def api_test(na):
+    """Test segmented Sweep"""
+    print "test ===> set_default_state()"
+    na.set_default_state()
+    print "test ===> set_power(1, -20)"
+    na.set_power(-20, 1)
+    print "test ===> set_ifbw(1e3)"
+    na.set_ifbw(1e3)
+    print "test ===> get_ifbw()"
+    print na.get_ifbw()
+    print "test ===> set_averages(1)"
+    na.set_averages(1)
 
-def nwa_test2(na):
+    # Important Note: you have to set an active trace before setting the format of a trace.
+    print "test ===> set_active_trace(1)"
+    na.set_active_trace(1, 1, True)
+    print "test ===> set_active_trace(1)"
+    na.get_active_trace()
+    print "test ===> get_format(1)"
+    na.get_format(1)
+
+
+def nwa_segment_sweep_test(na):
     """Test segmented Sweep"""
     na.set_default_state()
-    na.set_power(-20)
+    na.set_power(-35, 1)
     na.set_ifbw(1e3)
     na.set_averages(1)
 
-    freqs, mags, phases = na.segmented_sweep(9e9, 15e9, 50e3)
+    na.get_start_frequency()
+    na.get_stop_frequency()
 
-    figure(1)
-    subplot(2, 1, 1)
-    xlabel("Frequency (GHz)")
-    ylabel("Transmission, S21 (dB)")
-    plot(freqs / 1e9, mags)
-    subplot(2, 1, 2)
-    xlabel("Frequency (GHz)")
-    ylabel("Transmitted Phase (deg)")
-    plot(freqs / 1e9, phases)
-    show()
-
+    freqs, mags, phases = na.segmented_sweep(2.45e9, 2.55e9, 50e3)
 
 def nwa_test3(na):
     na.set_trigger_average_mode(False)
@@ -639,14 +544,11 @@ def convert_nwa_files_to_hdf(nwa_file_dir, h5file, sweep_min, sweep_max, sweep_l
 
 if __name__ == '__main__':
     #    condense_nwa_files(r'C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data','C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data\\test')
-    na = E5071("E0571", address="192.168.14.130")
+    na = N5242A("N5242A", address="192.168.14.242")
     print na.get_id()
+    print "Setting window"
 
-
-# print "Setting window"
-
-# from guiqwt.pyplot import *
-# nwa_test2(na)
-#    nwa_test2(na)
-# nwa_test2(na)
-
+    api_test(na)
+    nwa_segment_sweep_test(na)
+    # nwa_test3(na)
+    # nwa_test3(na)
