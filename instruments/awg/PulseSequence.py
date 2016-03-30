@@ -82,6 +82,7 @@ class PulseSequence:
     def write_Tek70001_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
         # markers=[self.markers[marker['name']] for marker in awg['markers']]
+
         if upload:
             tek7 = InstrumentManager()[awg['name']]
             for waveform in waveforms:

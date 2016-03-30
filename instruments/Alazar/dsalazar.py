@@ -99,6 +99,18 @@ class DMABuffer:
         self.buffer = np.frombuffer(ctypes_array, dtype=npSampleType)
         pointer, read_only_flag = self.buffer.__array_interface__['data']
 
+
+    def release(self):
+        if os.name == 'nt':
+            MEM_RELEASE = 0x8000
+            C.windll.kernel32.VirtualFree.argtypes = [C.c_void_p, C.c_long, C.c_long]
+            C.windll.kernel32.VirtualFree.restype = C.c_int
+            C.windll.kernel32.VirtualFree(C.c_void_p(self.addr), 0, MEM_RELEASE);
+        elif os.name == 'posix':
+            libc.free(self.addr)
+        else:
+            raise Exception("Unsupported OS")
+
     def __exit__(self):
         if os.name == 'nt':
             MEM_RELEASE = 0x8000
@@ -339,7 +351,8 @@ class Alazar():
 
             
     def close(self):
-       del self.Az
+        self.release_buffers()
+        del self.Az
         
             
     def get_handle(self):
@@ -593,7 +606,11 @@ class Alazar():
             #print ret, self.config.bytesPerBuffer
             if ret != 512:
                 print "Failed to post Buffer", ret_to_str(ret, self.Az)
-           
+
+    def release_buffers(self):
+        for buf in self.bufs:
+            buf.release()
+
     def acquire_avg_data(self, excise=None):
         self.post_buffers()
         avg_data1=np.zeros(self.config.samplesPerRecord,dtype=float)

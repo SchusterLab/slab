@@ -1,8 +1,8 @@
 
 try:
     import visa
-    # if 'Instrument' not in dir(visa):
-    #     visa.Instrument=visa.instrument
+    if 'Instrument' not in dir(visa):
+        visa.Instrument=visa.instrument
 
     #pass
 except Exception as e:
@@ -91,8 +91,7 @@ class VisaInstrument(Instrument):
 #                self.instrument=visa.instrument(addnum)
 #                
 #            else:
-        rm = visa.ResourceManager()
-        self.instrument=rm.open_resource(address) #, timeout=timeout, **kwargs)
+        self.instrument=visa.Instrument(address, timeout=timeout, **kwargs)
             
     def write(self, s):
         if self.enabled: self.instrument.write(s+self.term_char)
