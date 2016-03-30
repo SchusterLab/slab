@@ -229,6 +229,7 @@ def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfi
         fitparams[1]=fft_freqs[max_ind]
         fitparams[2]=(cmath.phase(fft_val)-np.pi/2.)*180./np.pi
         fitparams[3]=(max(fitdatax)-min(fitdatax))
+
         #fitparams[5]=fitdatax[0]
         
     decaysin3 = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (
@@ -237,6 +238,37 @@ def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfi
     p1 = fitgeneral(fitdatax, fitdatay, decaysin3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
     return p1  
+
+def fitdecaydoublesin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+    """Fits decaying sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:
+        FFT=scipy.fft(fitdatay)
+        fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
+        max_ind=np.argmax(abs(FFT[4:len(fitdatay)/2.]))+4
+        fft_val=FFT[max_ind]
+
+        fitparams=[0,0,0,0,0,0,0,0]
+        fitparams[4]=np.mean(fitdatay)
+        fitparams[0]=(max(fitdatay)-min(fitdatay))/2.#2*abs(fft_val)/len(fitdatay)
+        fitparams[1]=fft_freqs[max_ind]
+        fitparams[6]=fft_freqs[max_ind]-0.001
+        fitparams[2]=(cmath.phase(fft_val)-np.pi/2.)*180./np.pi
+        fitparams[3]=(max(fitdatax)-min(fitdatax))
+        fitparams[5] = fitparams[0]
+        #fitparams[5]=fitdatax[0]
+
+    decaydoublesin3 = lambda p, x: p[0] * (np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) + p[5]* np.sin(2. * np.pi * p[6] * x + p[7] * np.pi / 180.) )* np.e ** (
+    -1. * (x - fitdatax[0]) / p[3]) + p[4]
+    #print "fitparams: ",fitparams
+    p1 = fitgeneral(fitdatax, fitdatay, decaydoublesin3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
+                    label=label)
+    return p1
+
 
 def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
     """Fits sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)+p[3]"""
@@ -532,6 +564,26 @@ def polynomial(p, x):
            p[5] * (x - p[-1]) ** 5 + \
            p[6] * (x - p[-1]) ** 6 + p[7] * (x - p[-1]) ** 7 + p[8] * (x - p[-1]) ** 8 + p[9] * (x - p[-1]) ** 9
 
+def linear(p,x):
+    return p[0]+p[1]*(x)
+
+def fitlinear(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+    """Fits decaying sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:
+        fitparams=[1,1]
+        fitparams[0] = array(fitdatay)[0]
+        fitparams[1] = (float(fitdatay[-1])-float(fitdatay[0]))/( float(fitdatax[-1])-float(fitdatax[0]))
+
+
+    p1 = fitgeneral(fitdatax, fitdatay, linear, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
+                    label=label)
+    return p1
+
 
 def fitbackground(xdata,ydata,fitparams=None, showfit=False,showstartfit=False,label=""):
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
@@ -728,7 +780,7 @@ def fitdecayrabi(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartf
         # max_ind=np.argmax(abs(FFT[4:len(fitdatay)/2.]))+4
         # fft_val=FFT[max_ind]
 
-        fitparams=[0,0,0,0,0]
+        fitparams=[0,0,0,0,0,0]
         fitparams[0]= min(fitdatay)
         fitparams[1]= max(fitdatay) - min(fitdatay)
         # print fitparams[1]
@@ -760,4 +812,33 @@ def fitdoubleexp(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartf
         fitparams[5]=(fitdatax[-1]-fitdatax[0])/5
     #print fitparams
     p1 = fitgeneral(fitdatax,fitdatay,doubleexpfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+    return p1
+
+
+def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+    """Fits decaying sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:
+        FFT=scipy.fft(fitdatay)
+        fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
+        max_ind=np.argmax(abs(FFT[4:len(fitdatay)/2.]))+4
+        fft_val=FFT[max_ind]
+
+        fitparams=[0,0,0,0]
+        fitparams[3]=np.mean(fitdatay)
+        fitparams[0]=(max(fitdatay)-min(fitdatay))/2.#2*abs(fft_val)/len(fitdatay)
+        fitparams[1]=fft_freqs[max_ind]
+        fitparams[2]=(cmath.phase(fft_val)-np.pi/2.)*180./np.pi
+        fitparams[3]=(max(fitdatax)-min(fitdatax))
+
+        #fitparams[5]=fitdatax[0]
+
+    sin3 = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) + p[3]
+    #print "fitparams: ",fitparams
+    p1 = fitgeneral(fitdatax, fitdatay, sin3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
+                    label=label)
     return p1
