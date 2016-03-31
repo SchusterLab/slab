@@ -13,5 +13,5 @@ class Omega16i(SocketInstrument):
         return "Omega 16i"
 
     def get_pressure(self, ch = '1'):
-        return self.query("*X01")
+        return self.query("*X0"+ch.upper())
 
