@@ -11,13 +11,13 @@ import numpy as np
 
 class Keithley199(VisaInstrument):
     
-    def __init__(self,name="keithley199",address='GPIB0::26::INSTR',enabled=True,timeout=10):
+    def __init__(self,name="keithley199",address='GPIB0::26::INSTR',enabled=True,timeout=1):
         #if ':' not in address: address+=':22518'        
         
         VisaInstrument.__init__(self,name,address,enabled, term_chars='\r')
         self.query_sleep=0.05
         self.recv_length=65536
-        self.term_char='\r'
+        self.term_char='\r' 
     
     def get_id(self):
         return self.query('*IDN?')

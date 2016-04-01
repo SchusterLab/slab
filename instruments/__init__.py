@@ -49,6 +49,3 @@ try: from Omega16i import Omega16i
 except: print "Could not load Omega 16i driver"
 try: from lockin import SR844
 except: print "Could not load SR844 driver"
-try: from PressureGauge import PressureGauge
-except: print "Could not load Pressure Gauge driver"
-
