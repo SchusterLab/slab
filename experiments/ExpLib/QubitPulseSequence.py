@@ -46,7 +46,7 @@ class QubitPulseSequence(PulseSequence):
                 if jj ==0:
                     self.psb.idle(10)
                 if jj ==1:
-                    self.psb.append('q','pi', self.pulse_type)
+                    self.psb.append('q','cal_pi', self.pulse_type)
                 self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
                 total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
                 self.total_flux_pulse_span_length_list.append(self.psb.get_total_flux_pulse_span_length())

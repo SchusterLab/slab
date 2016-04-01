@@ -329,6 +329,7 @@ def run_multimode_sequential_experiment(expt_name):
         i=7
         j=0
         frequency_stabilization()
+        adc = prepare_alazar(cfg, expt_name)
         for freq in freq_pts:
             # i+=1
 
@@ -336,7 +337,7 @@ def run_multimode_sequential_experiment(expt_name):
                 if j%10 == 0:
                     frequency_stabilization()
                 j+=1
-                adc = prepare_alazar(cfg, expt_name)
+
                 prefix1 = 'Multimode_DC_Offset_'
                 prefix2 = str(i)
                 prefix3 = '_Experiment'
@@ -344,12 +345,12 @@ def run_multimode_sequential_experiment(expt_name):
                 data_file = os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
                 expt = MultimodeDCOffsetExperiment(path=datapath, data_file=data_file, adc=adc,amp = amp, freq= freq, data_prefix = prefix, liveplot_enabled=True)
                 expt.go()
-                adc.close()
                 expt = None
                 print
                 del expt
                 gc.collect()
 
+        adc.close()
 
     if not experiment_started:
         close_match = difflib.get_close_matches(expt_name, expt_list)

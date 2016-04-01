@@ -242,7 +242,8 @@ class HalfPiYPhaseOptimizationSequence(QubitPulseSequence):
             #print str(key) + ": " + str(value)
         if 'qubit_dc_offset' in self.extra_args:
             self.qubit_dc_offset = self.extra_args['qubit_dc_offset']
-            self.pulse_cfg['qubit_dc_offset'] =  self.qubit_dc_offset
+            self.pulse_cfg['qubit_dc_offset_pi'] =  self.qubit_dc_offset
+            self.pulse_cfg['fix_phase'] =  True
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
 
     def define_points(self):
@@ -253,10 +254,12 @@ class HalfPiYPhaseOptimizationSequence(QubitPulseSequence):
 
 
     def define_pulses(self,pt):
+        # for i in arange(21):
+        #     self.psb.append('q','half_pi', self.pulse_type, phase=0)
+        # self.psb.append('q','half_pi', self.pulse_type,phase=pt)
         self.psb.append('q','half_pi', self.pulse_type, phase=0)
-        # self.psb.append('q','half_pi', self.pulse_type, phase=9+90)
-        # self.psb.append('q','half_pi', self.pulse_type, phase=18+90)
-        self.psb.append('q','half_pi', self.pulse_type,phase=pt)
+        self.psb.append('q','pi', self.pulse_type,phase=pt)
+        self.psb.append('q','half_pi', self.pulse_type,phase=0)
 
 class TomographySequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -401,10 +404,10 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
 
     def define_parameters(self):
         self.pulse_type =  self.expt_cfg['pulse_type']
-        # self.clifford_pulse_1_list = ['0','half_pi_y','pi_y','neg_half_pi_y']
-        # self.clifford_pulse_2_list = ['0','half_pi','pi','neg_half_pi','half_pi_z','neg_half_pi_z']
-        self.clifford_pulse_1_list = ['half_pi','neg_half_pi','half_pi_y','neg_half_pi_y']
-        self.clifford_pulse_2_list = ['pi','pi_y']
+        self.clifford_pulse_1_list = ['0','half_pi_y','pi_y','neg_half_pi_y']
+        self.clifford_pulse_2_list = ['0','half_pi','pi','neg_half_pi','half_pi_z','neg_half_pi_z']
+        # self.clifford_pulse_1_list = ['half_pi','neg_half_pi','half_pi_y','neg_half_pi_y']
+        # self.clifford_pulse_2_list = ['pi','pi_y']
 
 
         self.clifford_inv_pulse_1_list = ['0','neg_half_pi_y','pi_y','half_pi_y']
@@ -432,10 +435,22 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
         for i in arange(len(self.clifford_inv_pulse_2_list)):
             self.C_gen[i] = self.expmat(self.Pauli[clist1[i]],clist2[i])
 
+        self.random_cliffords_1 = [random.randint(0,len(self.clifford_pulse_1_list)-1) for r in range(len(self.expt_pts))]
+        # self.random_cliffords_1 = 2*np.ones(len(self.expt_pts)).astype(int)
+        self.random_cliffords_2 = [random.randint(0,len(self.clifford_pulse_2_list)-1) for r in range(len(self.expt_pts))]
+        # self.random_cliffords_2 = 2*np.ones(len(self.expt_pts)).astype(int)### no z pulse
+        # self.random_cliffords_2 = [random.randint(0,4) for r in range(len(self.expt_pts))] ### no z pulse
+
+        print [self.clifford_pulse_1_list[jj] for jj in self.random_cliffords_1]
+        print [self.clifford_pulse_2_list[jj] for jj in self.random_cliffords_2]
 
 
     def final_pulse_dictionary(self,R_input):
         g_e_random = random.randint(0,1)
+
+
+        found = 0
+
 
         for zz in range(4):
             R = ((1j)**zz)*R_input
@@ -444,51 +459,55 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
                     C1 = self.P_gen[ii]
                     C2 = self.C_gen[jj]
                     C = np.dot(C2,C1)
+
+
                     if np.allclose(np.real(R),np.real(C)) and np.allclose(np.imag(R),np.imag(C)):
-                        print "FOUND!: " +str(ii) +", " +str(jj)
+                        found +=1
+
+                        print "---" + str(self.n)
+                        print self.clifford_inv_pulse_2_list[jj]
+                        print self.clifford_inv_pulse_1_list[ii]
+
                         if jj == 4:
-                            self.psb.append('q','half_pi', self.pulse_type)
+                            self.psb.append('q','neg_half_pi', self.pulse_type)
                             self.psb.append('q','neg_half_pi_y', self.pulse_type)
-                            self.psb.append('q','neg_half_pi', self.pulse_type)
-                        elif jj == 5:
                             self.psb.append('q','half_pi', self.pulse_type)
-                            self.psb.append('q','half_pi_y', self.pulse_type)
+                        elif jj == 5:
                             self.psb.append('q','neg_half_pi', self.pulse_type)
+                            self.psb.append('q','half_pi_y', self.pulse_type)
+                            self.psb.append('q','half_pi', self.pulse_type)
                         else:
                             self.psb.append('q',self.clifford_inv_pulse_2_list[jj], self.pulse_type)
 
 
                         self.psb.append('q',self.clifford_inv_pulse_1_list[ii], self.pulse_type)
 
-        print "========================================"
+        if found == 0 :
+            print "Error! Some pulse's inverse was not found."
+        elif found > 1:
+            print "Error! Non unique inverse."
 
 
     def define_pulses(self,pt):
-        n = pt
-        for ii in range(1,n):
-            # random_cliffords_1 = (np.ones(ii)).astype(int)#[random.randint(0,len(self.clifford_pulse_1_list)-1) for r in range(ii)]
-            # random_cliffords_2 = (np.zeros(ii)).astype(int)#[random.randint(0,len(self.clifford_pulse_2_list)-1) for r in range(ii)]
-            random_cliffords_1 = [random.randint(0,len(self.clifford_pulse_1_list)-1) for r in range(ii)]
-            random_cliffords_2 = [random.randint(0,len(self.clifford_pulse_2_list)-1) for r in range(ii)]
-            R = self.I
-            for jj in range(ii):
+        self.n = pt
+        # random_cliffords_1 = [random.randint(0,len(self.clifford_pulse_1_list)-1) for r in range(n)]
+        # random_cliffords_2 = [random.randint(0,len(self.clifford_pulse_2_list)-1) for r in range(n)]
+        R = self.I
+        for jj in range(self.n):
+            C1 = self.P_gen[self.random_cliffords_1[jj]]
+            self.psb.append('q',self.clifford_pulse_1_list[self.random_cliffords_1[jj]], self.pulse_type)
+            C2 = self.C_gen[self.random_cliffords_2[jj]]
+            if self.random_cliffords_2[jj] == 4:
+                self.psb.append('q','neg_half_pi', self.pulse_type)
+                self.psb.append('q','half_pi_y', self.pulse_type)
+                self.psb.append('q','half_pi', self.pulse_type)
+            elif self.random_cliffords_2[jj] == 5:
+                self.psb.append('q','neg_half_pi', self.pulse_type)
+                self.psb.append('q','neg_half_pi_y', self.pulse_type)
+                self.psb.append('q','half_pi', self.pulse_type)
+            else:
+                self.psb.append('q',self.clifford_pulse_2_list[self.random_cliffords_2[jj]], self.pulse_type)
 
-                C1 = self.P_gen[random_cliffords_1[jj]]
-                self.psb.append('q',self.clifford_pulse_1_list[random_cliffords_1[jj]], self.pulse_type)
-                C2 = self.C_gen[random_cliffords_2[jj]]
-                if random_cliffords_2[jj] == 4:
-                    self.psb.append('q','half_pi', self.pulse_type)
-                    self.psb.append('q','half_pi_y', self.pulse_type)
-                    self.psb.append('q','neg_half_pi', self.pulse_type)
-                elif random_cliffords_2[jj] == 5:
-                    self.psb.append('q','half_pi', self.pulse_type)
-                    self.psb.append('q','neg_half_pi_y', self.pulse_type)
-                    self.psb.append('q','neg_half_pi', self.pulse_type)
-                else:
-                    self.psb.append('q',self.clifford_pulse_2_list[random_cliffords_2[jj]], self.pulse_type)
-
-                C = np.dot(C2,C1)
-                R = np.dot(C,R)
-            print "#################################"
-            print R
-            self.final_pulse_dictionary(R)
+            C = np.dot(C2,C1)
+            R = np.dot(C,R)
+        self.final_pulse_dictionary(R)

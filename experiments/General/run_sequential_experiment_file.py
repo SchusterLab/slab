@@ -217,41 +217,23 @@ def run_sequential_experiment(expt_name):
         gc.collect()
 
     if expt_name.lower() == 'offset_phase_calibration_experiment':
-        qubit_dc_offset_list = linspace(-2e6,2e6,10)
+        qubit_dc_offset_list_pi = linspace(-0.25e6,0.25e6,5)
 
         experiment_started = True
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import HalfPiYPhaseOptimizationExperiment
         # Do Frequency Calibration
-        for qubit_dc_offset in qubit_dc_offset_list:
+        frequency_stabilization()
+        for qubit_dc_offset in qubit_dc_offset_list_pi:
 
             expt = HalfPiYPhaseOptimizationExperiment(path=datapath, qubit_dc_offset = qubit_dc_offset)
             expt.go()
             expt.save_config()
-
+            del expt
+            gc.collect()
 
 
     if expt_name.lower() == 'frequency_calibration':
-        experiment_started = True
-        from slab.experiments.General.SingleQubitPulseSequenceExperiment import RamseyExperiment
-        # Do Frequency Calibration
-        expt = RamseyExperiment(path=datapath)
-        expt.go()
-        offset_freq_1 = expt.offset_freq
-        flux_1 = expt.flux
-        est_flux_slope = expt.freq_flux_slope
-        est_flux_2 = round(flux_1 -offset_freq_1/ est_flux_slope,4)
-
-        expt = RamseyExperiment(path=datapath, flux = est_flux_2)
-        expt.go()
-        offset_freq_2 = expt.offset_freq
-        flux_2 = est_flux_2
-        freq_flux_slope = (offset_freq_1-offset_freq_2)/(flux_1-flux_2)
-        flux_final = round(flux_2 - offset_freq_2/freq_flux_slope,4)
-        flux_offset = round(flux_final- flux_1,5)
-
-        expt = RamseyExperiment(path=datapath, flux = flux_final, freq_flux_slope=freq_flux_slope, flux_offset = flux_offset)
-        expt.go()
-        expt.save_config()
+        frequency_stabilization()
 
     if expt_name.lower() == 'rabi_sweep':
         experiment_started = True

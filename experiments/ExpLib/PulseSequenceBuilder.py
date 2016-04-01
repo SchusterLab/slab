@@ -48,7 +48,7 @@ class PulseSequenceBuilder():
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']
-            if name == "pi":
+            if name == "pi" or name == "cal_pi":
                 amp = self.pulse_cfg[type]['pi_a']
                 length = self.pulse_cfg[type]['pi_length']
                 freq = self.pulse_cfg[type]['iq_freq']
@@ -270,14 +270,28 @@ class PulseSequenceBuilder():
                                                                self.pulse_cfg)
                     elif pulse.type == "gauss":
                         pulse_info = self.cfg['pulse_info']
-                        # qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
-                        #                                       self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse)
-                        if pulse.name == "pi":
-                            qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
+
+                        if pulse.name == "cal_pi":
+                            if pulse_info['fix_cal_pi']:
+                                qubit_dc_offset = pulse_info['qubit_dc_offset_pi']
+                                qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
+                                                                  self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)
+                            else:
+                                qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse)
-                        else:
+
+                        elif pulse.name[:2] == 'pi':
+                            if pulse_info['fix_pi']:
+                                qubit_dc_offset = pulse_info['qubit_dc_offset_pi']
+                                qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
+                                                                  self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)
+                            else:
+                                qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
+                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse)
+                        elif pulse.name[:7] == 'half_pi':
+                            qubit_dc_offset = pulse_info['qubit_dc_offset']
                             qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
-                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info)
+                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)
                     else:
                         raise ValueError('Wrong pulse type has been defined')
                     if pulse_defined:

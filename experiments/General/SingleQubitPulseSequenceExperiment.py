@@ -276,8 +276,8 @@ class HalfPiYPhaseOptimizationExperiment(QubitPulseSequenceExperiment):
         self.extra_args = {}
         for key, value in kwargs.iteritems():
             self.extra_args[key] = value
-
-        self.qubit_dc_offset = self.extra_args['qubit_dc_offset']
+        if 'qubit_dc_offset' in self.extra_args:
+            self.qubit_dc_offset = self.extra_args['qubit_dc_offset']
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                               PulseSequence=HalfPiYPhaseOptimizationSequence, pre_run=self.pre_run,
@@ -288,7 +288,10 @@ class HalfPiYPhaseOptimizationExperiment(QubitPulseSequenceExperiment):
 
 
     def post_run(self, expt_pts, expt_avg_data):
-        pass
+        if 'qubit_dc_offset' in self.extra_args:
+            self.cfg['pulse_info']['fix_phase'] =  False
+        else:
+            pass
 
 
 class TomographyExperiment(QubitPulseSequenceExperiment):
