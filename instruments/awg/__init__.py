@@ -17,6 +17,11 @@ try:
 except:
     print "Warning failed to import Chase DAx22000"
 
+try:
+    from PXDAC4800 import write_PXDAC4800_file
+except:
+    print "Warning failed to import PXDAC4800"
+
 import awgpulses, awgpulses2
 
 #from PulseSequence import PulseSequence, PulseSequenceArray
