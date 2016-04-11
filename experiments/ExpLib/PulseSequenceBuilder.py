@@ -37,7 +37,7 @@ class PulseSequenceBuilder():
         self.pulse_span_length_list_temp = []
         self.qubit_cfg = cfg['qubit']
 
-    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None, **kwargs):
+    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None,addphase=None, **kwargs):
         '''
         Append a pulse in the pulse sequence.
         '''
@@ -54,50 +54,66 @@ class PulseSequenceBuilder():
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']
+                if addphase != None:
+                    phase = self.pulse_cfg[type]['phase']+addphase
             if name == "half_pi":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']
+                if addphase != None:
+                    phase = self.pulse_cfg[type]['phase']+addphase
             if name == "neg_half_pi":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']+180
+                if addphase != None:
+                    phase = self.pulse_cfg[type]['phase']+180+addphase
             if name == "pi_y":
                 amp = self.pulse_cfg[type]['pi_a']
                 length = self.pulse_cfg[type]['pi_length']
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['y_phase']
+                if addphase != None:
+                    phase = self.pulse_cfg[type]['y_phase']+addphase
             if name == "half_pi_y":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['y_phase']
+                if addphase != None:
+                    phase = self.pulse_cfg[type]['y_phase']+addphase
             if name == "neg_half_pi_y":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['y_phase']+180
+                if addphase != None:
+                    phase = self.pulse_cfg[type]['y_phase']+180+addphase
+
             if name == "pi_q_ef":
                 amp = self.pulse_cfg[type]['pi_ef_a']
                 length = self.pulse_cfg[type]['pi_ef_length']
                 freq = self.pulse_cfg[type]['iq_freq']+self.qubit_cfg['alpha']
                 if phase == None:
                     phase = 0
-
+                if addphase != None:
+                    phase = addphase
             if name == "half_pi_q_ef":
                 amp = self.pulse_cfg[type]['pi_ef_a']
                 length = self.pulse_cfg[type]['half_pi_ef_length']
                 freq = self.pulse_cfg[type]['iq_freq']+self.qubit_cfg['alpha']
                 if phase == None:
                     phase = 0
-
+                if addphase != None:
+                    phase = addphase
+                    
             pulse_span_length = ap.get_pulse_span_length(self.pulse_cfg, type, length)
             if self.flux_pulse_started:
                 self.pulse_span_length_list_temp.append(pulse_span_length)
@@ -288,7 +304,8 @@ class PulseSequenceBuilder():
                             else:
                                 qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse)
-                        elif pulse.name[:7] == 'half_pi':
+                        # elif pulse.name[:7] == 'half_pi' or pulse.name[:11] == 'neg_half_pi':
+                        else:
                             qubit_dc_offset = pulse_info['qubit_dc_offset']
                             qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)

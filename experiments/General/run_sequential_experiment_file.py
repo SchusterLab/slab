@@ -78,9 +78,58 @@ def frequency_stabilization():
             print "Large change in flux is required; please do so manually"
             pass
 
+def pulse_calibration():
+    datapath = os.getcwd() + '\data'
+    config_file = os.path.join(datapath, "..\\config" + ".json")
+    with open(config_file, 'r') as fid:
+        cfg_str = fid.read()
+
+    cfg = AttrDict(json.loads(cfg_str))
+    experiment_started = True
+    from slab.experiments.General.SingleQubitPulseSequenceExperiment import RamseyExperiment
+    from slab.experiments.General.SingleQubitPulseSequenceExperiment import RabiExperiment
+    expt = RamseyExperiment(path=datapath)
+    expt.go()
+    if (abs(expt.offset_freq) < 50e3):
+        pass
+    else:
+        print expt.flux
+        flux_offset = -expt.offset_freq/(expt.freq_flux_slope)
+        print flux_offset
+        if (abs(flux_offset) < 0.000002):
+            flux2 = expt.flux + flux_offset
+            print flux2
+            expt = RamseyExperiment(path=datapath, flux = flux2)
+            expt.go()
+            offset_freq2 = expt.offset_freq
+            flux_offset2 = -expt.offset_freq/(expt.freq_flux_slope)
+            flux3 = flux2 + flux_offset2
+            if (abs(offset_freq2) < 50e3):
+                print "Great success! Frequency calibrated"
+                expt.save_config()
+            else:
+                if (abs(flux_offset2) < 0.000002):
+                    expt = RamseyExperiment(path=datapath, flux = flux3)
+                    expt.go()
+                    if (abs(expt.offset_freq) < 100e3):
+                        print "Frequency calibrated"
+                        expt.save_config()
+                    else:
+                        print "Try again: not converged after 2 tries"
+                else:
+                    print "Large change in flux is required; please do so manually"
+                    pass
+        else:
+            print "Large change in flux is required; please do so manually"
+            pass
 
 
-
+        expt = RabiExperiment(path=datapath)
+        expt.go()
+        print "ge pi and pi/2 pulses recalibrated"
+        expt.save_config()
+        del expt
+        gc.collect()
 
 def run_sequential_experiment(expt_name):
     import os
@@ -139,6 +188,18 @@ def run_sequential_experiment(expt_name):
 
 
             expt = EFRamseyExperiment(path=datapath)
+            expt.go()
+            del expt
+            gc.collect()
+
+    if expt_name.lower() == 'sequential_randomized_benchmarking':
+        experiment_started = True
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import SingleQubitRandomizedBenchmarkingExperiment
+
+        for i in arange(10):
+            if i%3 == 0:
+                pulse_calibration()
+            expt = SingleQubitRandomizedBenchmarkingExperiment(path=datapath)
             expt.go()
             del expt
             gc.collect()
@@ -217,20 +278,23 @@ def run_sequential_experiment(expt_name):
         gc.collect()
 
     if expt_name.lower() == 'offset_phase_calibration_experiment':
-        qubit_dc_offset_list_pi = linspace(-0.25e6,0.25e6,5)
+        qubit_dc_offset_list_pi = array([0,0,0,1.7e6, 1.7e6,1.7e6,1.8e6,1.8e6,1.8e6,1.9e6,1.9e6,1.9e6,2e6,2e6,2e6])
 
         experiment_started = True
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import HalfPiYPhaseOptimizationExperiment
         # Do Frequency Calibration
-        frequency_stabilization()
+        # frequency_stabilization()
+        j=0
         for qubit_dc_offset in qubit_dc_offset_list_pi:
+            if j > 0 and j%3 == 0:
+                frequency_stabilization()
 
             expt = HalfPiYPhaseOptimizationExperiment(path=datapath, qubit_dc_offset = qubit_dc_offset)
             expt.go()
             expt.save_config()
             del expt
             gc.collect()
-
+            j+=1
 
     if expt_name.lower() == 'frequency_calibration':
         frequency_stabilization()

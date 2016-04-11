@@ -242,7 +242,10 @@ class HalfPiYPhaseOptimizationSequence(QubitPulseSequence):
             #print str(key) + ": " + str(value)
         if 'qubit_dc_offset' in self.extra_args:
             self.qubit_dc_offset = self.extra_args['qubit_dc_offset']
-            self.pulse_cfg['qubit_dc_offset_pi'] =  self.qubit_dc_offset
+            if cfg['halfpiyphaseoptimization']['test_pi']:
+                self.pulse_cfg['qubit_dc_offset_pi'] =  self.qubit_dc_offset
+            else:
+                self.pulse_cfg['qubit_dc_offset'] =  self.qubit_dc_offset
             self.pulse_cfg['fix_phase'] =  True
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
 
@@ -253,13 +256,30 @@ class HalfPiYPhaseOptimizationSequence(QubitPulseSequence):
         self.pulse_type =  self.expt_cfg['pulse_type']
 
 
+
     def define_pulses(self,pt):
-        # for i in arange(21):
-        #     self.psb.append('q','half_pi', self.pulse_type, phase=0)
-        # self.psb.append('q','half_pi', self.pulse_type,phase=pt)
-        self.psb.append('q','half_pi', self.pulse_type, phase=0)
-        self.psb.append('q','pi', self.pulse_type,phase=pt)
-        self.psb.append('q','half_pi', self.pulse_type,phase=0)
+        if self.expt_cfg['test_pi']:
+            self.psb.append('q','half_pi', self.pulse_type, phase=0)
+            self.psb.append('q','pi', self.pulse_type,phase=pt)
+            self.psb.append('q','half_pi', self.pulse_type,phase=0)
+        elif self.expt_cfg['test_test_1']:
+            for i in arange(self.expt_cfg['number']):
+                self.psb.append('q','half_pi', self.pulse_type, phase=i*pt)
+        elif self.expt_cfg['test_test_2']:
+            for i in arange(self.expt_cfg['number']-1):
+                self.psb.append('q','half_pi', self.pulse_type, phase=i*self.expt_cfg['offset_phase'])
+            self.psb.append('q','half_pi', self.pulse_type, phase= pt)
+        elif self.expt_cfg['test_test_3']:
+            # Do for odd number
+            for i in arange(self.expt_cfg['number']-1):
+                if i%2 ==0:
+                    self.psb.append('q','half_pi', self.pulse_type, addphase=i*self.expt_cfg['offset_phase'])
+                else:
+                    self.psb.append('q','half_pi_y', self.pulse_type, addphase=i*self.expt_cfg['offset_phase'])
+            self.psb.append('q','half_pi', self.pulse_type, phase= pt)
+        else:
+            self.psb.append('q','half_pi', self.pulse_type, phase=0)
+            self.psb.append('q','half_pi', self.pulse_type,phase= pt)
 
 class TomographySequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -406,6 +426,477 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.clifford_pulse_1_list = ['0','half_pi_y','pi_y','neg_half_pi_y']
         self.clifford_pulse_2_list = ['0','half_pi','pi','neg_half_pi','half_pi_z','neg_half_pi_z']
+
+        self.clifford_inv_pulse_1_list = ['0','half_pi_y','pi_y','neg_half_pi_y']
+        self.clifford_inv_pulse_2_list = ['0','half_pi','pi','neg_half_pi','half_pi_z','neg_half_pi_z']
+
+        ## Clifford and Pauli operators
+        self.I = np.array([[1,0],[0,1]])
+        self.X = np.array([[0,1],[1,0]])
+        self.Y = np.array([[0,-1j],[1j,0]])
+        self.Z = np.array([[1,0],[0,-1]])
+
+        self.Pauli = [self.I,self.X,self.Y,self.Z]
+
+        self.P_gen = np.empty([len(self.clifford_pulse_1_list),2,2],dtype=np.complex64)
+        self.C_gen = np.empty([len(self.clifford_pulse_2_list),2,2],dtype=np.complex64)
+
+        self.P_gen[0] = self.I
+        self.P_gen[1] = self.expmat(self.Y,np.pi/2)
+        self.P_gen[2] = self.expmat(self.Y, np.pi)
+        self.P_gen[3] = self.expmat(self.Y,-np.pi/2)
+
+        self.znumber=0
+        clist1 = [0,1,1,1,3,3] # index of IXYZ
+        clist2 = [0, np.pi/2,np.pi,-np.pi/2,np.pi/2,-np.pi/2]
+
+        for i in arange(len(self.clifford_pulse_2_list)):
+            self.C_gen[i] = self.expmat(self.Pauli[clist1[i]],clist2[i])
+
+        self.random_cliffords_1 = [random.randint(0,len(self.clifford_pulse_1_list)-1) for r in range(len(self.expt_pts))]
+        self.random_cliffords_2 = [random.randint(0,len(self.clifford_pulse_2_list)-1) for r in range(len(self.expt_pts))]
+
+
+        print [self.clifford_pulse_1_list[jj] for jj in self.random_cliffords_1]
+        print [self.clifford_pulse_2_list[jj] for jj in self.random_cliffords_2]
+
+
+    def define_pulses(self,pt):
+        self.n = pt
+
+        R = self.I
+        self.znumber=0
+        for jj in range(self.n):
+            C1 = self.P_gen[self.random_cliffords_1[jj]]
+            self.psb.append('q',self.clifford_pulse_1_list[self.random_cliffords_1[jj]], self.pulse_type, addphase=self.znumber*90)
+            C2 = self.C_gen[self.random_cliffords_2[jj]]
+            if self.random_cliffords_2[jj] == 4:
+                if self.expt_cfg['z_phase']:
+                    self.znumber-=1
+                    self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+                else:
+                    self.psb.append('q','neg_half_pi', self.pulse_type)
+                    self.psb.append('q','half_pi_y', self.pulse_type)
+                    self.psb.append('q','half_pi', self.pulse_type)
+            elif self.random_cliffords_2[jj] == 5:
+                if self.expt_cfg['z_phase']:
+                    self.znumber+=1
+                    self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+                else:
+                    self.psb.append('q','neg_half_pi', self.pulse_type)
+                    self.psb.append('q','neg_half_pi_y', self.pulse_type)
+                    self.psb.append('q','half_pi', self.pulse_type)
+            else:
+                self.psb.append('q',self.clifford_pulse_2_list[self.random_cliffords_2[jj]], self.pulse_type, addphase=self.znumber*90)
+
+            C = np.dot(C2,C1)
+            R = np.dot(C,R)
+        self.final_pulse_dictionary(R)
+
+    def final_pulse_dictionary(self,R_input):
+        g_e_random = random.randint(0,1)
+
+        found = 0
+
+        for zz in range(4):
+            R = ((1j)**zz)*R_input
+            # inversepulselist2 = []
+            # inversepulselist1 = []
+            for ii in range(len(self.clifford_inv_pulse_1_list)):
+                for jj in range(len(self.clifford_inv_pulse_2_list)):
+                    C1 = self.P_gen[ii]
+                    C2 = self.C_gen[jj]
+                    C = np.dot(C2,C1)
+
+                    if np.allclose(np.real(self.I),np.real(np.dot(C,R))) and np.allclose(np.imag(self.I),np.imag(np.dot(C,R))):
+                        found +=1
+                        print "---" + str(self.n)
+                        print "Number of z pulses in creation sequence %s" %(self.znumber)
+                        print self.clifford_inv_pulse_1_list[ii]
+                        print self.clifford_inv_pulse_2_list[jj]
+                        self.psb.append('q',self.clifford_inv_pulse_1_list[ii], self.pulse_type, addphase=self.znumber*90)
+
+                        if jj == 4:
+                            if self.expt_cfg['z_phase']:
+                                self.znumber-=1
+                                self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+                            else:
+                                self.psb.append('q','neg_half_pi', self.pulse_type)
+                                self.psb.append('q','half_pi_y', self.pulse_type)
+                                self.psb.append('q','half_pi', self.pulse_type)
+                        elif jj == 5:
+                            if self.expt_cfg['z_phase']:
+                                self.znumber+=1
+                                self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+                            else:
+                                self.psb.append('q','neg_half_pi', self.pulse_type)
+                                self.psb.append('q','neg_half_pi_y', self.pulse_type)
+                                self.psb.append('q','half_pi', self.pulse_type)
+                        else:
+                            self.psb.append('q',self.clifford_inv_pulse_2_list[jj], self.pulse_type, addphase=self.znumber*90)
+
+        if found == 0 :
+            print "Error! Some pulse's inverse was not found."
+        elif found > 1:
+            print "Error! Non unique inverse."
+
+
+
+# To test phase fixing
+class RandomizedBenchmarkingTestPhaseOffsetSequence(QubitPulseSequence):
+    def __init__(self,name, cfg, expt_cfg,**kwargs):
+        self.pulse_cfg = cfg['pulse_info']
+        self.expt_cfg = expt_cfg
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
+
+    def expmat(self, mat, theta):
+        return np.cos(theta/2)*self.I - 1j*np.sin(theta/2)*mat
+
+    def R_q(self,theta,phi):
+        return np.cos(theta/2.0)*self.I -1j*np.sin(theta/2.0)*(np.cos(phi)*self.X + np.sin(phi)*self.Y)
+
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pulse_type =  self.expt_cfg['pulse_type']
+        self.clifford_pulse_list = ['0','half_pi_y','pi_y','neg_half_pi_y','half_pi','pi','neg_half_pi','half_pi_z','neg_half_pi_z']
+
+        self.clifford_inv_pulse_1_list = ['0','half_pi_y','pi_y','neg_half_pi_y']
+        self.clifford_inv_pulse_2_list = ['0','half_pi','pi','neg_half_pi','half_pi_z','neg_half_pi_z']
+
+        ## Clifford and Pauli operators
+        self.I = np.array([[1,0],[0,1]])
+        self.X = np.array([[0,1],[1,0]])
+        self.Y = np.array([[0,-1j],[1j,0]])
+        self.Z = np.array([[1,0],[0,-1]])
+
+        self.Pauli = [self.I,self.X,self.Y,self.Z]
+
+        self.P_gen = np.empty([len(self.clifford_inv_pulse_1_list),2,2],dtype=np.complex64)
+        self.C_gen = np.empty([len(self.clifford_inv_pulse_2_list),2,2],dtype=np.complex64)
+        self.C_all = np.empty([len(self.clifford_pulse_list),2,2],dtype=np.complex64)
+
+        self.P_gen[0] = self.I
+        self.P_gen[1] = self.expmat(self.Y,np.pi/2)
+        self.P_gen[2] = self.expmat(self.Y, np.pi)
+        self.P_gen[3] = self.expmat(self.Y,-np.pi/2)
+
+        self.znumber=0
+        self.xnumber=0
+        self.offset_phase = 7.0
+
+        clist1 = [0,1,1,1,3,3] # index of IXYZ
+        clist2 = [0, np.pi/2,np.pi,-np.pi/2,np.pi/2,-np.pi/2]
+
+        clist1all = [0,2,2,2,1,1,1,3,3] # index of IXYZ
+        clist2all = [0,np.pi/2,np.pi,-np.pi/2 , np.pi/2,np.pi,-np.pi/2,np.pi/2,-np.pi/2]
+
+        for i in arange(len(self.clifford_inv_pulse_2_list)):
+            self.C_gen[i] = self.expmat(self.Pauli[clist1[i]],clist2[i])
+
+
+        for i in arange(len(self.clifford_pulse_list)):
+            self.C_all[i] = self.expmat(self.Pauli[clist1all[i]],clist2all[i])
+
+        # self.pulse_list = 7*np.ones(len(self.expt_pts)).astype(int)
+
+        self.pulse_list = np.concatenate((np.array([4]),4*np.ones(len(self.expt_pts)-1)),axis=0).astype(int)
+
+        print [self.clifford_pulse_list[jj] for jj in self.pulse_list]
+
+
+    def define_pulses(self,pt):
+        self.n = pt
+
+        R = self.I
+        self.znumber=0
+        self.xnumber=0
+        for jj in range(self.n):
+            print self.xnumber
+            C = self.C_all[self.pulse_list[jj]]
+
+            if self.pulse_list[jj] == 7:
+                if self.expt_cfg['z_phase']:
+                    self.znumber-=1
+                    self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+                else:
+                    self.psb.append('q','neg_half_pi', self.pulse_type)
+                    self.psb.append('q','half_pi_y', self.pulse_type)
+                    self.psb.append('q','half_pi', self.pulse_type)
+
+            elif self.pulse_list[jj] == 8:
+                if self.expt_cfg['z_phase']:
+                    self.znumber+=1
+                    self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+                else:
+                    self.psb.append('q','neg_half_pi', self.pulse_type)
+                    self.psb.append('q','neg_half_pi_y', self.pulse_type)
+                    self.psb.append('q','half_pi', self.pulse_type)
+
+            elif ((self.pulse_list[jj] == 1) or  (self.pulse_list[jj] == 3) or (self.pulse_list[jj] == 4) or (self.pulse_list[jj] == 6)):
+                self.psb.append('q',self.clifford_pulse_list[self.pulse_list[jj]], self.pulse_type,addphase=self.xnumber*self.offset_phase + self.znumber*90)
+                self.xnumber +=1
+            elif self.pulse_list[jj] == 2:
+                self.psb.append('q','half_pi_y', self.pulse_type,addphase=self.xnumber*self.offset_phase+ self.znumber*90)
+                self.xnumber +=1
+                self.psb.append('q','half_pi_y', self.pulse_type,addphase=self.xnumber*self.offset_phase+ self.znumber*90)
+                self.xnumber +=1
+            elif self.pulse_list[jj] == 5:
+                self.psb.append('q','half_pi', self.pulse_type,addphase=self.xnumber*self.offset_phase+ self.znumber*90)
+                self.xnumber +=1
+                self.psb.append('q','half_pi', self.pulse_type,addphase=self.xnumber*self.offset_phase+ self.znumber*90)
+                self.xnumber +=1
+            # print self.xnumber*self.offset_phase
+            R = np.dot(C,R)
+
+
+        self.final_pulse_dictionary(R)
+
+
+    def final_pulse_dictionary(self,R_input):
+        g_e_random = random.randint(0,1)
+
+        found = 0
+
+
+        for zz in range(4):
+            R = ((1j)**zz)*R_input
+            # inversepulselist2 = []
+            # inversepulselist1 = []
+            for ii in range(len(self.clifford_inv_pulse_1_list)):
+                for jj in range(len(self.clifford_inv_pulse_2_list)):
+                    C1 = self.P_gen[ii]
+                    C2 = self.C_gen[jj]
+                    C = np.dot(C2,C1)
+
+                    if np.allclose(np.real(self.I),np.real(np.dot(C,R))) and np.allclose(np.imag(self.I),np.imag(np.dot(C,R))):
+                        found +=1
+                        print "---" + str(self.n)
+                        print "Number of z pulses in creation sequence %s" %(self.znumber)
+                        print "Number of x pulses in creation sequence %s" %(self.xnumber)
+                        print "Inverting pulse 1 -" +  self.clifford_inv_pulse_1_list[ii]
+                        print "Inverting pulse 2 -" + self.clifford_inv_pulse_2_list[jj]
+                        if (ii == 1) or (ii==3):
+                            self.psb.append('q',self.clifford_inv_pulse_1_list[ii], self.pulse_type, addphase=self.znumber*90 + self.xnumber*self.offset_phase)
+                            self.xnumber +=1
+                        elif ii == (2):
+                            self.psb.append('q','half_pi_y', self.pulse_type,addphase=self.xnumber*self.offset_phase+ self.znumber*90)
+                            self.xnumber +=1
+                            self.psb.append('q','half_pi_y', self.pulse_type,addphase=self.xnumber*self.offset_phase+ self.znumber*90)
+                            self.xnumber +=1
+                        else:
+                            self.psb.append('q',self.clifford_inv_pulse_1_list[ii], self.pulse_type, addphase=self.znumber*90)
+                        if jj == 4:
+                            if self.expt_cfg['z_phase']:
+                                self.znumber-=1
+                                self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+                            else:
+                                self.psb.append('q','neg_half_pi', self.pulse_type)
+                                self.psb.append('q','half_pi_y', self.pulse_type)
+                                self.psb.append('q','half_pi', self.pulse_type)
+                        elif jj == 5:
+                            if self.expt_cfg['z_phase']:
+                                self.znumber+=1
+                                self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+
+                            else:
+                                self.psb.append('q','neg_half_pi', self.pulse_type)
+                                self.psb.append('q','neg_half_pi_y', self.pulse_type)
+                                self.psb.append('q','half_pi', self.pulse_type)
+
+
+                        elif (jj == 1) or (jj == 3):
+                            self.psb.append('q',self.clifford_inv_pulse_2_list[jj], self.pulse_type, addphase=self.znumber*90 + self.xnumber*self.offset_phase)
+                            self.xnumber +=1
+                        elif jj == 2:
+                            self.psb.append('q','half_pi', self.pulse_type,addphase=self.xnumber*self.offset_phase+ self.znumber*90)
+                            self.xnumber +=1
+                            self.psb.append('q','half_pi', self.pulse_type,addphase=self.xnumber*self.offset_phase+ self.znumber*90)
+                            self.xnumber +=1
+                        else:
+                             self.psb.append('q',self.clifford_inv_pulse_2_list[jj], self.pulse_type, addphase=self.znumber*90)
+
+
+
+        if found == 0 :
+            print "Error! Some pulse's inverse was not found."
+        elif found > 1:
+            print "Error! Non unique inverse."
+        print "Number of x pulses in full sequence %s" %(self.xnumber)
+
+
+
+class RandomizedBenchmarkingTestSequence(QubitPulseSequence):
+    def __init__(self,name, cfg, expt_cfg,**kwargs):
+        self.pulse_cfg = cfg['pulse_info']
+        self.expt_cfg = expt_cfg
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
+
+    def expmat(self, mat, theta):
+        return np.cos(theta/2)*self.I - 1j*np.sin(theta/2)*mat
+
+    def R_q(self,theta,phi):
+        return np.cos(theta/2.0)*self.I -1j*np.sin(theta/2.0)*(np.cos(phi)*self.X + np.sin(phi)*self.Y)
+
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pulse_type =  self.expt_cfg['pulse_type']
+        self.clifford_pulse_list = ['0','half_pi_y','pi_y','neg_half_pi_y','half_pi','pi','neg_half_pi','half_pi_z','neg_half_pi_z']
+
+        self.clifford_inv_pulse_1_list = ['0','half_pi_y','pi_y','neg_half_pi_y']
+        self.clifford_inv_pulse_2_list = ['0','half_pi','pi','neg_half_pi','half_pi_z','neg_half_pi_z']
+
+        ## Clifford and Pauli operators
+        self.I = np.array([[1,0],[0,1]])
+        self.X = np.array([[0,1],[1,0]])
+        self.Y = np.array([[0,-1j],[1j,0]])
+        self.Z = np.array([[1,0],[0,-1]])
+
+        self.Pauli = [self.I,self.X,self.Y,self.Z]
+
+        self.P_gen = np.empty([len(self.clifford_inv_pulse_1_list),2,2],dtype=np.complex64)
+        self.C_gen = np.empty([len(self.clifford_inv_pulse_2_list),2,2],dtype=np.complex64)
+        self.C_all = np.empty([len(self.clifford_pulse_list),2,2],dtype=np.complex64)
+
+        self.P_gen[0] = self.I
+        self.P_gen[1] = self.expmat(self.Y,np.pi/2)
+        self.P_gen[2] = self.expmat(self.Y, np.pi)
+        self.P_gen[3] = self.expmat(self.Y,-np.pi/2)
+
+        self.znumber=0
+
+        clist1 = [0,1,1,1,3,3] # index of IXYZ
+        clist2 = [0, np.pi/2,np.pi,-np.pi/2,np.pi/2,-np.pi/2]
+
+        clist1all = [0,2,2,2,1,1,1,3,3] # index of IXYZ
+        clist2all = [0,np.pi/2,np.pi,-np.pi/2 , np.pi/2,np.pi,-np.pi/2,np.pi/2,-np.pi/2]
+
+        for i in arange(len(self.clifford_inv_pulse_2_list)):
+            self.C_gen[i] = self.expmat(self.Pauli[clist1[i]],clist2[i])
+
+
+        for i in arange(len(self.clifford_pulse_list)):
+            self.C_all[i] = self.expmat(self.Pauli[clist1all[i]],clist2all[i])
+
+        # self.pulse_list = 7*np.ones(len(self.expt_pts)).astype(int)
+
+        self.pulse_list = np.concatenate((np.array([4]),4*np.ones(len(self.expt_pts)-1)),axis=0).astype(int)
+
+        print [self.clifford_pulse_list[jj] for jj in self.pulse_list]
+
+
+    def define_pulses(self,pt):
+        self.n = pt
+
+        R = self.I
+        self.znumber=0
+        for jj in range(self.n):
+            C = self.C_all[self.pulse_list[jj]]
+
+            if self.pulse_list[jj] == 7:
+                if self.expt_cfg['z_phase']:
+                    self.znumber-=1
+                    self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+                else:
+                    self.psb.append('q','neg_half_pi', self.pulse_type)
+                    self.psb.append('q','half_pi_y', self.pulse_type)
+                    self.psb.append('q','half_pi', self.pulse_type)
+
+            elif self.pulse_list[jj] == 8:
+                if self.expt_cfg['z_phase']:
+                    self.znumber+=1
+                    self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+                else:
+                    self.psb.append('q','neg_half_pi', self.pulse_type)
+                    self.psb.append('q','neg_half_pi_y', self.pulse_type)
+                    self.psb.append('q','half_pi', self.pulse_type)
+            else:
+                self.psb.append('q',self.clifford_pulse_list[self.pulse_list[jj]], self.pulse_type,addphase=self.znumber*90)
+
+            R = np.dot(C,R)
+
+
+        self.final_pulse_dictionary(R)
+
+
+    def final_pulse_dictionary(self,R_input):
+        g_e_random = random.randint(0,1)
+
+        found = 0
+
+
+        for zz in range(4):
+            R = ((1j)**zz)*R_input
+            # inversepulselist2 = []
+            # inversepulselist1 = []
+            for ii in range(len(self.clifford_inv_pulse_1_list)):
+                for jj in range(len(self.clifford_inv_pulse_2_list)):
+                    C1 = self.P_gen[ii]
+                    C2 = self.C_gen[jj]
+                    C = np.dot(C2,C1)
+
+                    if np.allclose(np.real(self.I),np.real(np.dot(C,R))) and np.allclose(np.imag(self.I),np.imag(np.dot(C,R))):
+                        found +=1
+                        print "---" + str(self.n)
+                        print "Number of z pulses in creation sequence %s" %(self.znumber)
+                        print self.clifford_inv_pulse_1_list[ii]
+                        print self.clifford_inv_pulse_2_list[jj]
+
+                        self.psb.append('q',self.clifford_inv_pulse_1_list[ii], self.pulse_type, addphase=self.znumber*90)
+
+                        if jj == 4:
+                            if self.expt_cfg['z_phase']:
+                                self.znumber-=1
+                                self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+                            else:
+                                self.psb.append('q','neg_half_pi', self.pulse_type)
+                                self.psb.append('q','half_pi_y', self.pulse_type)
+                                self.psb.append('q','half_pi', self.pulse_type)
+                        elif jj == 5:
+                            if self.expt_cfg['z_phase']:
+                                self.znumber+=1
+                                self.psb.idle(self.pulse_cfg['gauss']['half_pi_length'])
+
+                            else:
+                                self.psb.append('q','neg_half_pi', self.pulse_type)
+                                self.psb.append('q','neg_half_pi_y', self.pulse_type)
+                                self.psb.append('q','half_pi', self.pulse_type)
+
+                        else:
+                            self.psb.append('q',self.clifford_inv_pulse_2_list[jj], self.pulse_type,addphase=self.znumber*90)
+
+
+
+
+        if found == 0 :
+            print "Error! Some pulse's inverse was not found."
+        elif found > 1:
+            print "Error! Non unique inverse."
+        print "Number of z pulses in full sequence %s" %(self.znumber)
+
+
+class RandomizedBenchmarkingOldSequence(QubitPulseSequence):
+    def __init__(self,name, cfg, expt_cfg,**kwargs):
+        self.pulse_cfg = cfg['pulse_info']
+        self.expt_cfg = expt_cfg
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
+
+    def expmat(self, mat, theta):
+        return np.cos(theta/2)*self.I - 1j*np.sin(theta/2)*mat
+
+    def R_q(self,theta,phi):
+        return np.cos(theta/2.0)*self.I -1j*np.sin(theta/2.0)*(np.cos(phi)*self.X + np.sin(phi)*self.Y)
+
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pulse_type =  self.expt_cfg['pulse_type']
+        self.clifford_pulse_1_list = ['0','half_pi_y','pi_y','neg_half_pi_y']
+        self.clifford_pulse_2_list = ['0','half_pi','pi','neg_half_pi','half_pi_z','neg_half_pi_z']
         # self.clifford_pulse_1_list = ['half_pi','neg_half_pi','half_pi_y','neg_half_pi_y']
         # self.clifford_pulse_2_list = ['pi','pi_y']
 
@@ -421,8 +912,8 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
 
         self.Pauli = [self.I,self.X,self.Y,self.Z]
 
-        self.P_gen = np.empty([len(self.clifford_inv_pulse_1_list),2,2],dtype=np.complex64)
-        self.C_gen = np.empty([len(self.clifford_inv_pulse_2_list),2,2],dtype=np.complex64)
+        self.P_gen = np.empty([len(self.clifford_pulse_1_list),2,2],dtype=np.complex64)
+        self.C_gen = np.empty([len(self.clifford_pulse_2_list),2,2],dtype=np.complex64)
 
         self.P_gen[0] = self.I
         self.P_gen[1] = self.expmat(self.Y,np.pi/2)
@@ -454,6 +945,8 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
 
         for zz in range(4):
             R = ((1j)**zz)*R_input
+            # inversepulselist2 = []
+            # inversepulselist1 = []
             for ii in range(len(self.clifford_inv_pulse_1_list)):
                 for jj in range(len(self.clifford_inv_pulse_2_list)):
                     C1 = self.P_gen[ii]
@@ -465,6 +958,8 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
                         found +=1
 
                         print "---" + str(self.n)
+                        # inversepulselist2.append(self.clifford_inv_pulse_2_list[jj])
+                        # inversepulselist1.append(self.clifford_inv_pulse_1_list[ii])
                         print self.clifford_inv_pulse_2_list[jj]
                         print self.clifford_inv_pulse_1_list[ii]
 
@@ -486,7 +981,8 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
             print "Error! Some pulse's inverse was not found."
         elif found > 1:
             print "Error! Non unique inverse."
-
+        # print inversepulselist1
+        # print inversepulselist2
 
     def define_pulses(self,pt):
         self.n = pt
