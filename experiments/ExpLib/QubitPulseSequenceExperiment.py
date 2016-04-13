@@ -40,6 +40,11 @@ class QubitPulseSequenceExperiment(Experiment):
         else:
             self.prep_tek2 = False
 
+        if 'trigger_period' in self.extra_args:
+            self.trigger_period = self.extra_args['trigger_period']
+            print "Trigger period has been set to %s microseconds"%(self.trigger_period*1e6)
+        else:
+            self.trigger_period = self.cfg['expt_trigger']['period']
 
         if 'adc' in self.extra_args:
             self.adc = self.extra_args['adc']
@@ -94,6 +99,8 @@ class QubitPulseSequenceExperiment(Experiment):
         self.drive.set_ext_pulse(mod=True)
         self.drive.set_output(True)
         self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
+
+        self.trigger.set_period(self.trigger_period)
 
         try:
             self.cfg['freq_flux']['flux']=self.extra_args['flux']
@@ -182,6 +189,8 @@ class QubitPulseSequenceExperiment(Experiment):
                 f.add('expt_avg_data', expt_avg_data)
                 f.add('expt_pts', self.expt_pts)
                 f.close()
+
+        adc.close()
 
         if self.post_run is not None:
             self.post_run(self.expt_pts, expt_avg_data)

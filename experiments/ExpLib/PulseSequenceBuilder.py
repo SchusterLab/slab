@@ -44,7 +44,8 @@ class PulseSequenceBuilder():
         if target == "q":
             if name == "0":
                 amp = 0
-                length = self.pulse_cfg[type]['pi_length']
+                # length = self.pulse_cfg[type]['pi_length']
+                length = 0
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']

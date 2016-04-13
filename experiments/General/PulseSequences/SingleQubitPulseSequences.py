@@ -420,7 +420,10 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
         return np.cos(theta/2.0)*self.I -1j*np.sin(theta/2.0)*(np.cos(phi)*self.X + np.sin(phi)*self.Y)
 
     def define_points(self):
-        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+        if self.expt_cfg['knill_length_list']:
+            self.expt_pts = np.array([2,3,4,5,6,8,10,12,16,20,24,32,40,48,64,80,96])
+        else:
+            self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
 
     def define_parameters(self):
         self.pulse_type =  self.expt_cfg['pulse_type']
@@ -453,9 +456,11 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
         for i in arange(len(self.clifford_pulse_2_list)):
             self.C_gen[i] = self.expmat(self.Pauli[clist1[i]],clist2[i])
 
-        self.random_cliffords_1 = [random.randint(0,len(self.clifford_pulse_1_list)-1) for r in range(len(self.expt_pts))]
-        self.random_cliffords_2 = [random.randint(0,len(self.clifford_pulse_2_list)-1) for r in range(len(self.expt_pts))]
-
+        self.random_cliffords_1 = [random.randint(0,len(self.clifford_pulse_1_list)-1) for r in range(max(self.expt_pts))]
+        self.random_cliffords_2 = [random.randint(0,len(self.clifford_pulse_2_list)-1) for r in range(max(self.expt_pts))]
+        #
+        # self.random_cliffords_1 =  np.concatenate((np.array([1]),1*np.ones(len(self.expt_pts)-1)),axis=0).astype(int)
+        # self.random_cliffords_2 =  np.concatenate((np.array([0]),0*np.ones(len(self.expt_pts)-1)),axis=0).astype(int)
 
         print [self.clifford_pulse_1_list[jj] for jj in self.random_cliffords_1]
         print [self.clifford_pulse_2_list[jj] for jj in self.random_cliffords_2]
@@ -468,7 +473,14 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
         self.znumber=0
         for jj in range(self.n):
             C1 = self.P_gen[self.random_cliffords_1[jj]]
-            self.psb.append('q',self.clifford_pulse_1_list[self.random_cliffords_1[jj]], self.pulse_type, addphase=self.znumber*90)
+            if (self.random_cliffords_1[jj] == 2):
+                if self.expt_cfg['split_pi']:
+                    self.psb.append('q','half_pi_y', self.pulse_type, addphase=self.znumber*90)
+                    self.psb.append('q','half_pi_y', self.pulse_type, addphase=self.znumber*90)
+                else:
+                    self.psb.append('q',self.clifford_pulse_1_list[self.random_cliffords_1[jj]], self.pulse_type, addphase=self.znumber*90)
+            else:
+                self.psb.append('q',self.clifford_pulse_1_list[self.random_cliffords_1[jj]], self.pulse_type, addphase=self.znumber*90)
             C2 = self.C_gen[self.random_cliffords_2[jj]]
             if self.random_cliffords_2[jj] == 4:
                 if self.expt_cfg['z_phase']:
@@ -486,6 +498,12 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
                     self.psb.append('q','neg_half_pi', self.pulse_type)
                     self.psb.append('q','neg_half_pi_y', self.pulse_type)
                     self.psb.append('q','half_pi', self.pulse_type)
+            elif (self.random_cliffords_2[jj] == 2):
+                if self.expt_cfg['split_pi']:
+                    self.psb.append('q','half_pi', self.pulse_type, addphase=self.znumber*90)
+                    self.psb.append('q','half_pi', self.pulse_type, addphase=self.znumber*90)
+                else:
+                    self.psb.append('q',self.clifford_pulse_2_list[self.random_cliffords_2[jj]], self.pulse_type, addphase=self.znumber*90)
             else:
                 self.psb.append('q',self.clifford_pulse_2_list[self.random_cliffords_2[jj]], self.pulse_type, addphase=self.znumber*90)
 
@@ -514,7 +532,11 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
                         print "Number of z pulses in creation sequence %s" %(self.znumber)
                         print self.clifford_inv_pulse_1_list[ii]
                         print self.clifford_inv_pulse_2_list[jj]
-                        self.psb.append('q',self.clifford_inv_pulse_1_list[ii], self.pulse_type, addphase=self.znumber*90)
+                        if (ii == 2) and self.expt_cfg['split_pi']:
+                            self.psb.append('q','half_pi_y', self.pulse_type, addphase=self.znumber*90)
+                            self.psb.append('q','half_pi_y', self.pulse_type, addphase=self.znumber*90)
+                        else:
+                            self.psb.append('q',self.clifford_inv_pulse_1_list[ii], self.pulse_type, addphase=self.znumber*90)
 
                         if jj == 4:
                             if self.expt_cfg['z_phase']:
@@ -532,6 +554,10 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
                                 self.psb.append('q','neg_half_pi', self.pulse_type)
                                 self.psb.append('q','neg_half_pi_y', self.pulse_type)
                                 self.psb.append('q','half_pi', self.pulse_type)
+
+                        elif (jj == 2) and self.expt_cfg['split_pi']:
+                            self.psb.append('q','half_pi', self.pulse_type, addphase=self.znumber*90)
+                            self.psb.append('q','half_pi', self.pulse_type, addphase=self.znumber*90)
                         else:
                             self.psb.append('q',self.clifford_inv_pulse_2_list[jj], self.pulse_type, addphase=self.znumber*90)
 
@@ -543,10 +569,16 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
 
 
 # To test phase fixing
-class RandomizedBenchmarkingTestPhaseOffsetSequence(QubitPulseSequence):
+class SingleQubitErrorAmplificationPhaseOffsetSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
         self.pulse_cfg = cfg['pulse_info']
         self.expt_cfg = expt_cfg
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
+        if 'c0' in self.extra_args:
+            self.c0 = self.extra_args['c0']
+            self.ci = self.extra_args['ci']
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
 
     def expmat(self, mat, theta):
@@ -584,7 +616,8 @@ class RandomizedBenchmarkingTestPhaseOffsetSequence(QubitPulseSequence):
 
         self.znumber=0
         self.xnumber=0
-        self.offset_phase = 7.0
+        self.offset_phase = self.pulse_cfg['gauss']['offset_phase']
+        print "Offset phase = %s"%(self.offset_phase)
 
         clist1 = [0,1,1,1,3,3] # index of IXYZ
         clist2 = [0, np.pi/2,np.pi,-np.pi/2,np.pi/2,-np.pi/2]
@@ -599,9 +632,23 @@ class RandomizedBenchmarkingTestPhaseOffsetSequence(QubitPulseSequence):
         for i in arange(len(self.clifford_pulse_list)):
             self.C_all[i] = self.expmat(self.Pauli[clist1all[i]],clist2all[i])
 
-        # self.pulse_list = 7*np.ones(len(self.expt_pts)).astype(int)
+        if 'c0' in self.extra_args:
+            pass
+        else:
+            self.c0 = self.expt_cfg['c0']
+            self.ci = self.expt_cfg['ci']
 
-        self.pulse_list = np.concatenate((np.array([4]),4*np.ones(len(self.expt_pts)-1)),axis=0).astype(int)
+        p1  = -1
+        p2  = -1
+        for i in arange(len(self.clifford_pulse_list)):
+            if self.clifford_pulse_list[i] == self.c0:
+                p1 = i
+            if self.clifford_pulse_list[i] == self.ci:
+                p2 = i
+        if (p1 ==-1) or (p2 ==-1):
+            print "Error: One of your pulses does not exist"
+
+        self.pulse_list = np.concatenate((np.array([p1]),p2*np.ones(len(self.expt_pts)-1)),axis=0).astype(int)
 
         print [self.clifford_pulse_list[jj] for jj in self.pulse_list]
 
@@ -727,10 +774,17 @@ class RandomizedBenchmarkingTestPhaseOffsetSequence(QubitPulseSequence):
 
 
 
-class RandomizedBenchmarkingTestSequence(QubitPulseSequence):
+class SingleQubitErrorAmplifcationSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
         self.pulse_cfg = cfg['pulse_info']
         self.expt_cfg = expt_cfg
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
+        if 'c0' in self.extra_args:
+            self.c0 = self.extra_args['c0']
+            self.ci = self.extra_args['ci']
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
 
     def expmat(self, mat, theta):
@@ -782,8 +836,23 @@ class RandomizedBenchmarkingTestSequence(QubitPulseSequence):
             self.C_all[i] = self.expmat(self.Pauli[clist1all[i]],clist2all[i])
 
         # self.pulse_list = 7*np.ones(len(self.expt_pts)).astype(int)
+        if 'c0' in self.extra_args:
+            pass
+        else:
+            self.c0 = self.expt_cfg['c0']
+            self.ci = self.expt_cfg['ci']
 
-        self.pulse_list = np.concatenate((np.array([4]),4*np.ones(len(self.expt_pts)-1)),axis=0).astype(int)
+        p1  = -1
+        p2  = -1
+        for i in arange(len(self.clifford_pulse_list)):
+            if self.clifford_pulse_list[i] == self.c0:
+                p1 = i
+            if self.clifford_pulse_list[i] == self.ci:
+                p2 = i
+        if (p1 ==-1) or (p2 ==-1):
+            print "Error: One of your pulses does not exist"
+
+        self.pulse_list = np.concatenate((np.array([p1]),p2*np.ones(len(self.expt_pts)-1)),axis=0).astype(int)
 
         print [self.clifford_pulse_list[jj] for jj in self.pulse_list]
 

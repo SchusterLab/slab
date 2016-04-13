@@ -78,7 +78,7 @@ def frequency_stabilization():
             print "Large change in flux is required; please do so manually"
             pass
 
-def pulse_calibration():
+def pulse_calibration(phase_exp=True):
     datapath = os.getcwd() + '\data'
     config_file = os.path.join(datapath, "..\\config" + ".json")
     with open(config_file, 'r') as fid:
@@ -88,7 +88,9 @@ def pulse_calibration():
     experiment_started = True
     from slab.experiments.General.SingleQubitPulseSequenceExperiment import RamseyExperiment
     from slab.experiments.General.SingleQubitPulseSequenceExperiment import RabiExperiment
-    expt = RamseyExperiment(path=datapath)
+    from slab.experiments.General.SingleQubitPulseSequenceExperiment import HalfPiYPhaseOptimizationExperiment
+
+    expt = RamseyExperiment(path=datapath,trigger_period = 0.0002)
     expt.go()
     if (abs(expt.offset_freq) < 50e3):
         pass
@@ -124,12 +126,20 @@ def pulse_calibration():
             pass
 
 
-        expt = RabiExperiment(path=datapath)
+    expt = RabiExperiment(path=datapath)
+    expt.go()
+    print "ge pi and pi/2 pulses recalibrated"
+    expt.save_config()
+    if phase_exp:
+        expt = HalfPiYPhaseOptimizationExperiment(path=datapath)
         expt.go()
-        print "ge pi and pi/2 pulses recalibrated"
+        print "Offset phase recalibrated"
         expt.save_config()
         del expt
         gc.collect()
+    else:
+        pass
+
 
 def run_sequential_experiment(expt_name):
     import os
@@ -192,17 +202,51 @@ def run_sequential_experiment(expt_name):
             del expt
             gc.collect()
 
+    if expt_name.lower() == 'sequential_error_amplification':
+        experiment_started = True
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import SingleQubitErrorAmplificationExperiment
+
+        for i in arange(5):
+            pulse_calibration(phase_exp=False)
+            expt = SingleQubitErrorAmplificationExperiment(path=datapath, trigger_period=0.001, c0 = "pi",ci= "half_pi" )
+            expt.go()
+            expt.save_config()
+            del expt
+            gc.collect()
+        for i in arange(5):
+            pulse_calibration(phase_exp=False)
+            expt = SingleQubitErrorAmplificationExperiment(path=datapath, trigger_period=0.001, c0 = "pi",ci= "pi" )
+            expt.go()
+            expt.save_config()
+            del expt
+            gc.collect()
+        for i in arange(5):
+            pulse_calibration(phase_exp=False)
+            expt = SingleQubitErrorAmplificationExperiment(path=datapath, trigger_period=0.001, c0 = "half_pi",ci= "pi" )
+            expt.go()
+            expt.save_config()
+            del expt
+            gc.collect()
+
+        for i in arange(5):
+            pulse_calibration(phase_exp=False)
+            expt = SingleQubitErrorAmplificationExperiment(path=datapath, trigger_period=0.001, c0 = "half_pi",ci= "half_pi" )
+            expt.go()
+            expt.save_config()
+            del expt
+            gc.collect()
+
     if expt_name.lower() == 'sequential_randomized_benchmarking':
         experiment_started = True
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import SingleQubitRandomizedBenchmarkingExperiment
 
-        for i in arange(10):
-            if i%3 == 0:
-                pulse_calibration()
-            expt = SingleQubitRandomizedBenchmarkingExperiment(path=datapath)
+        for i in arange(32):
+            pulse_calibration(phase_exp=False)
+            expt = SingleQubitRandomizedBenchmarkingExperiment(path=datapath, trigger_period=0.001)
             expt.go()
             del expt
             gc.collect()
+
 
     if expt_name.lower() == 'tomography_tune_up_experiment':
         experiment_started = True
@@ -298,6 +342,9 @@ def run_sequential_experiment(expt_name):
 
     if expt_name.lower() == 'frequency_calibration':
         frequency_stabilization()
+
+    if expt_name.lower() == 'pulse_calibration':
+        pulse_calibration(phase_exp=True)
 
     if expt_name.lower() == 'rabi_sweep':
         experiment_started = True

@@ -66,15 +66,17 @@ class RabiExperiment(QubitPulseSequenceExperiment):
             if (self.cfg['pulse_info']['save_to_file']):
 
                 if (self.cfg['pulse_info']['calibrate_amp']):
-                     if(self.pi_length < self.cfg['pulse_info']['gauss']['pi_length']):
-                        self.cfg['pulse_info']['gauss']['a'] =  (self.cfg['pulse_info']['gauss']['a'])*(self.pi_length/(self.cfg['pulse_info']['gauss']['pi_length']))
+                     temp =  around((self.cfg['pulse_info']['gauss']['a'])*(self.pi_length/(self.cfg['pulse_info']['gauss']['pi_length'])),3)
+                     error = 0.005
+                     if abs(temp-self.cfg['pulse_info']['gauss']['a'])< error:
+                         print "Pulse well calibrated!"
+                     if temp > 1 + error:
+                        print "Increase pi length"
+                        pass
                      else:
-                         temp = (self.cfg['pulse_info']['gauss']['a'])*((self.cfg['pulse_info']['gauss']['pi_length'])/self.pi_length)
-                         if(temp > 1):
-                             print "Increase pi length"
-                             pass
-                         else:
-                            self.cfg['pulse_info']['gauss']['a'] =  temp
+                        self.cfg['pulse_info']['gauss']['a'] =  temp
+                        self.cfg['pulse_info']['gauss']['pi_a'] = temp
+                        self.cfg['pulse_info']['gauss']['half_pi_a'] = temp
                 else:
                     self.cfg['pulse_info']['gauss']['pi_length'] = self.pi_length
                     self.cfg['pulse_info']['gauss']['half_pi_length'] =  self.half_pi_length
@@ -98,11 +100,16 @@ class T1Experiment(QubitPulseSequenceExperiment):
 
 class RamseyExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Ramsey', config_file='..\\config.json', **kwargs):
+        self.extra_args = {}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                               PulseSequence=RamseySequence, pre_run=self.pre_run,
                                               post_run=self.post_run, **kwargs)
 
     def pre_run(self):
+
         self.drive.set_frequency(
             self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         print self.cfg['pulse_info'][self.pulse_type]['iq_freq']
@@ -305,8 +312,13 @@ class HalfPiYPhaseOptimizationExperiment(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         if 'qubit_dc_offset' in self.extra_args:
             self.cfg['pulse_info']['fix_phase'] =  False
-        else:
-            pass
+        xdata = expt_pts
+        ydata = expt_avg_data
+        fitparams = [(max(ydata)-min(ydata))/(2.0),1/360.0,90,mean(ydata)]
+        fitdata=fitsin(xdata[:],ydata[:],fitparams=fitparams,showfit=False)
+        self.cfg['pulse_info']['gauss']['offset_phase'] = around((-(fitdata[2]%180) + 90),2)
+        print "Offset Phase = %s" %(self.cfg['pulse_info']['gauss']['offset_phase'])
+
 
 
 class TomographyExperiment(QubitPulseSequenceExperiment):
@@ -514,7 +526,7 @@ class SingleQubitRandomizedBenchmarkingExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='SingleQubit_RB', config_file='..\\config.json', **kwargs):
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                              PulseSequence=RandomizedBenchmarkingTestPhaseOffsetSequence, pre_run=self.pre_run,
+                                              PulseSequence=RandomizedBenchmarkingSequence, pre_run=self.pre_run,
                                               post_run=self.post_run, **kwargs)
 
     def pre_run(self):
@@ -522,10 +534,49 @@ class SingleQubitRandomizedBenchmarkingExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
-        # slab_file = SlabFile(self.data_file)
-        # with slab_file as f:
-        #     f.append_pt('pulse_length', self.pulse_length)
-        #     f.append_pt('pulse_amp', self.pulse_amp)
-        #     f.append_line('sweep_expt_avg_data', expt_avg_data)
-        #     f.append_line('sweep_expt_pts', expt_pts)
-        #     f.close()
+
+
+class SingleQubitErrorAmplificationExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='SingleQubit_Error_Amplification', config_file='..\\config.json', **kwargs):
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
+        if 'c0' in self.extra_args:
+            self.c0 = self.extra_args['c0']
+            self.ci = self.extra_args['ci']
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=SingleQubitErrorAmplifcationSequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+    def pre_run(self):
+        pass
+
+    def post_run(self, expt_pts, expt_avg_data):
+        if 'c0' in self.extra_args:
+            self.extra_args['c0'] = self.c0
+            self.extra_args['ci'] = self.ci
+        else:
+            pass
+
+class SingleQubitErrorAmplificationPhaseOffsetExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='SingleQubit_Error_Amplification_Phase_Offset', config_file='..\\config.json', **kwargs):
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
+        if 'c0' in self.extra_args:
+            self.c0 = self.extra_args['c0']
+            self.ci = self.extra_args['ci']
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=SingleQubitErrorAmplificationPhaseOffsetSequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+    def pre_run(self):
+        pass
+
+    def post_run(self, expt_pts, expt_avg_data):
+        if 'c0' in self.extra_args:
+            self.extra_args['c0'] = self.c0
+            self.extra_args['ci'] = self.ci
+        else:
+            pass
