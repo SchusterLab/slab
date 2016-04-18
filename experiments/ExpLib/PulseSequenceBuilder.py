@@ -259,6 +259,7 @@ class PulseSequenceBuilder():
         self.origin = self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer)
         self.uses_tek2 = False
         for ii in range(len(pulse_sequence_matrix)):
+
             self.markers_readout[ii] = ap.square(self.mtpts, 1, self.origin + self.measurement_delay,
                                                  self.measurement_width)
             self.markers_card[ii] = ap.square(self.mtpts, 1,
@@ -280,6 +281,7 @@ class PulseSequenceBuilder():
             for jj in range(len(pulse_sequence_matrix[ii]) - 1, -1, -1):
                 pulse_defined = True
                 pulse = pulse_sequence_matrix[ii][jj]
+
                 if pulse.target == "q":
                     if pulse.type == "square":
                         qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,

@@ -44,7 +44,10 @@ class QubitPulseSequenceExperiment(Experiment):
             self.trigger_period = self.extra_args['trigger_period']
             print "Trigger period has been set to %s microseconds"%(self.trigger_period*1e6)
         else:
-            self.trigger_period = self.cfg['expt_trigger']['period']
+            try:
+                self.trigger_period = self.cfg['expt_trigger']['period']
+            except:
+                print("error in setting trigger time")
 
         if 'adc' in self.extra_args:
             self.adc = self.extra_args['adc']
@@ -190,11 +193,12 @@ class QubitPulseSequenceExperiment(Experiment):
                 f.add('expt_pts', self.expt_pts)
                 f.close()
 
-        adc.close()
+
 
         if self.post_run is not None:
             self.post_run(self.expt_pts, expt_avg_data)
 
+        adc.close()
     def awg_prep(self):
         self.awg.stop_and_prep()
         if self.prep_tek2:

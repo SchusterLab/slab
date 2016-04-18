@@ -205,36 +205,38 @@ def run_sequential_experiment(expt_name):
     if expt_name.lower() == 'sequential_error_amplification':
         experiment_started = True
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import SingleQubitErrorAmplificationExperiment
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import SingleQubitErrorAmplificationPhaseOffsetExperiment
 
         for i in arange(5):
-            pulse_calibration(phase_exp=False)
-            expt = SingleQubitErrorAmplificationExperiment(path=datapath, trigger_period=0.001, c0 = "pi",ci= "half_pi" )
+            pulse_calibration(phase_exp=True)
+            expt = SingleQubitErrorAmplificationPhaseOffsetExperiment(path=datapath, trigger_period=0.001, c0 = "half_pi",ci= "half_pi" )
             expt.go()
             expt.save_config()
             del expt
             gc.collect()
         for i in arange(5):
-            pulse_calibration(phase_exp=False)
-            expt = SingleQubitErrorAmplificationExperiment(path=datapath, trigger_period=0.001, c0 = "pi",ci= "pi" )
+            pulse_calibration(phase_exp=True)
+            expt = SingleQubitErrorAmplificationPhaseOffsetExperiment(path=datapath, trigger_period=0.001, c0 = "pi",ci= "half_pi" )
             expt.go()
             expt.save_config()
             del expt
             gc.collect()
         for i in arange(5):
-            pulse_calibration(phase_exp=False)
-            expt = SingleQubitErrorAmplificationExperiment(path=datapath, trigger_period=0.001, c0 = "half_pi",ci= "pi" )
+            pulse_calibration(phase_exp=True)
+            expt = SingleQubitErrorAmplificationPhaseOffsetExperiment(path=datapath, trigger_period=0.001, c0 = "pi",ci= "pi" )
+            expt.go()
+            expt.save_config()
+            del expt
+            gc.collect()
+        for i in arange(5):
+            pulse_calibration(phase_exp=True)
+            expt = SingleQubitErrorAmplificationPhaseOffsetExperiment(path=datapath, trigger_period=0.001, c0 = "half_pi",ci= "pi" )
             expt.go()
             expt.save_config()
             del expt
             gc.collect()
 
-        for i in arange(5):
-            pulse_calibration(phase_exp=False)
-            expt = SingleQubitErrorAmplificationExperiment(path=datapath, trigger_period=0.001, c0 = "half_pi",ci= "half_pi" )
-            expt.go()
-            expt.save_config()
-            del expt
-            gc.collect()
+
 
     if expt_name.lower() == 'sequential_randomized_benchmarking':
         experiment_started = True
@@ -247,6 +249,16 @@ def run_sequential_experiment(expt_name):
             del expt
             gc.collect()
 
+    if expt_name.lower() == 'sequential_randomized_benchmarking_phase_offset':
+        experiment_started = True
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import SingleQubitRandomizedBenchmarkingPhaseOffsetExperiment
+
+        for i in arange(32):
+            pulse_calibration(phase_exp=True)
+            expt = SingleQubitRandomizedBenchmarkingPhaseOffsetExperiment(path=datapath, trigger_period=0.001)
+            expt.go()
+            del expt
+            gc.collect()
 
     if expt_name.lower() == 'tomography_tune_up_experiment':
         experiment_started = True

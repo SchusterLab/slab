@@ -4,6 +4,7 @@ from slab import *
 from slab.instruments.Alazar import Alazar
 from slab.experiments.General.PulseSequences.PulseProbeSequence import *
 from numpy import mean, arange
+from tqdm import tqdm
 
 
 class PulseProbeExperiment(Experiment):
@@ -21,8 +22,8 @@ class PulseProbeExperiment(Experiment):
         self.pulse_sequence.write_sequence(os.path.join(self.path, '../sequences/'), prefix, upload=True)
 
         self.cfg['alazar']['samplesPerRecord'] = 2 ** (self.cfg['readout']['width'] - 1).bit_length()
-        self.cfg['alazar']['recordsPerBuffer'] = 200
-        self.cfg['alazar']['recordsPerAcquisition'] = 20000
+        self.cfg['alazar']['recordsPerBuffer'] = 100
+        self.cfg['alazar']['recordsPerAcquisition'] = 10000
 
         return
 
@@ -53,23 +54,34 @@ class PulseProbeExperiment(Experiment):
         for freq in self.expt_pts:
             self.drive.set_frequency(freq)
 
-            tpts, ch1_pts, ch2_pts = adc.acquire_avg_data()
+            expt_data_ch1 = None
+            expt_data_ch2 = None
+            expt_data_mag = None
+            for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['averages'] / 100))):
+                tpts, ch1_pts, ch2_pts = adc.acquire_avg_data()
+
+                mag = sqrt(ch1_pts ** 2 + ch2_pts ** 2)
 
 
+                if expt_data_ch1 is None:
+                    expt_data_ch1 = ch1_pts
+                    expt_data_ch2 = ch2_pts
+                else:
+                    expt_data_ch1 = (expt_data_ch1 * ii + ch1_pts) / (ii + 1.0)
+                    expt_data_ch2 = (expt_data_ch2 * ii + ch2_pts) / (ii + 1.0)
+            expt_mag = sqrt(expt_data_ch1 ** 2 + expt_data_ch2 ** 2)
 
-            mag = sqrt(ch1_pts**2+ch2_pts**2)
-
-            self.plotter.append_xy('avg_pulse_probe_freq_scan1', freq, mean(ch1_pts[0:]))
-            self.plotter.append_xy('avg_pulse_probe_freq_scan2', freq, mean(ch2_pts[0:]))
-            self.plotter.append_xy('avg_pulse_probe_freq_mag', freq, mean(mag[0:]))
-            self.plotter.append_z('scope1',ch1_pts)
-            self.plotter.append_z('scope2',ch2_pts)
-            self.plotter.append_z('scope_mag',mag)
+            self.plotter.append_xy('readout_avg_freq_scan1', freq, mean(expt_data_ch1[0:]))
+            self.plotter.append_xy('readout_avg_freq_scan2', freq, mean(expt_data_ch2[0:]))
+            self.plotter.append_xy('readout_avg_freq_scan_mag', freq, mean(expt_mag[0:]))
+            self.plotter.append_z('scope1',expt_data_ch1)
+            self.plotter.append_z('scope2',expt_data_ch2)
+            self.plotter.append_z('scope_mag',expt_mag)
 
             with self.datafile() as f:
                 f.append_pt('freq', freq)
-                f.append_pt('ch1_mean', mean(ch1_pts[0:]))
-                f.append_pt('ch2_mean', mean(ch2_pts[0:]))
-                f.append_pt('mag_mean', mean(mag[0:]))
+                f.append_pt('ch1_mean', mean(expt_data_ch1[0:]))
+                f.append_pt('ch2_mean', mean(expt_data_ch2[0:]))
+                f.append_pt('mag_mean', mean(expt_mag[0:]))
 
 

@@ -535,6 +535,18 @@ class SingleQubitRandomizedBenchmarkingExperiment(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         pass
 
+class SingleQubitRandomizedBenchmarkingPhaseOffsetExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='SingleQubit_RB_Phase_Offset', config_file='..\\config.json', **kwargs):
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=RandomizedBenchmarkingPhaseOffsetSequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+    def pre_run(self):
+        pass
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
 
 class SingleQubitErrorAmplificationExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='SingleQubit_Error_Amplification', config_file='..\\config.json', **kwargs):
@@ -561,6 +573,7 @@ class SingleQubitErrorAmplificationExperiment(QubitPulseSequenceExperiment):
 
 class SingleQubitErrorAmplificationPhaseOffsetExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='SingleQubit_Error_Amplification_Phase_Offset', config_file='..\\config.json', **kwargs):
+        self.extra_args={}
         for key, value in kwargs.iteritems():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)

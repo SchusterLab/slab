@@ -439,6 +439,17 @@ class MultimodeSingleResonatorTomography(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         pass
 
+class MultimodeSingleResonatorRandomizedBenchmarkingExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_single_resonator_randomized_benchmarking', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeSingleResonatorRandomizedBenchmarkingSequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
 
 class MultimodeTwoResonatorTomography(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_two_Resonator_Tomography', config_file='..\\config.json', **kwargs):
