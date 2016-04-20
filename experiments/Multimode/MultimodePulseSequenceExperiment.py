@@ -100,7 +100,6 @@ class MultimodeCalibrateOffsetExperiment(QubitPulseSequenceExperiment):
         if self.cfg['multimode_calibrate_offset_experiment']['calibrate_sidebands']:
             print "Analyzing Multimode Rabi Data"
             fitdata = fitdecaysin(expt_pts[5:], expt_avg_data[5:])
-            fitdata = fitdecaysin(expt_pts[5:], expt_avg_data[5:])
 
             if (-fitdata[2]%180 - 90)/(360*fitdata[1]) < 0:
                 self.flux_pi_length = (-fitdata[2]%180 + 90)/(360*fitdata[1])
@@ -122,7 +121,7 @@ class MultimodeCalibrateOffsetExperiment(QubitPulseSequenceExperiment):
                     self.cfg['multimodes'][self.mode]['flux_pi_length'] =   self.flux_pi_length
                     self.cfg['multimodes'][self.mode]['flux_2pi_length'] =  self.flux_2pi_length
 
-        elif self.cfg['multimode_calibrate_ef_sideband_experiment']['calibrate_offsets']:
+        elif self.cfg['multimode_calibrate_offset_experiment']['calibrate_offsets']:
 
 
             print "Analyzing Ramsey Data"
@@ -147,9 +146,9 @@ class MultimodeCalibrateEFSidebandExperiment(QubitPulseSequenceExperiment):
         self.extra_args = {}
         for key, value in kwargs.iteritems():
             self.extra_args[key] = value
-
-        self.exp = self.extra_args['exp']
-        self.mode = self.extra_args['mode']
+        if 'mode' in self.extra_args:
+            self.exp = self.extra_args['exp']
+            self.mode = self.extra_args['mode']
         self.dc_offset_guess_ef =  self.extra_args['dc_offset_guess_ef']
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -161,7 +160,7 @@ class MultimodeCalibrateEFSidebandExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
 
-        if self.cfg['multimode_calibrate_ef_sideband_experiment']['calibrate_sidebands']:
+        if self.exp =="multimode_ef_rabi":
             print "Analyzing EF Rabi Data"
             fitdata = fitdecaysin(expt_pts[5:], expt_avg_data[5:])
 
@@ -183,7 +182,7 @@ class MultimodeCalibrateEFSidebandExperiment(QubitPulseSequenceExperiment):
                     self.cfg['multimodes'][self.mode]['flux_pi_length_ef'] =   self.flux_pi_length_ef
                     self.cfg['multimodes'][self.mode]['flux_2pi_length_ef'] =  self.flux_2pi_length_ef
 
-        elif self.cfg['multimode_calibrate_ef_sideband_experiment']['calibrate_offsets']:
+        else:
 
             print "Analyzing Ramsey Data"
             fitdata = fitdecaysin(expt_pts, expt_avg_data)
@@ -490,6 +489,18 @@ class MultimodeThreeModeCorrelationExperiment(QubitPulseSequenceExperiment):
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                                     PulseSequence=MultimodeThreeModeCorrelationSequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
+
+class MultimodeCPhaseAmplificationExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='Multimode_CPhase_Amplification_Experiment', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeCPhaseAmplificationSequence, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
 
     def pre_run(self):

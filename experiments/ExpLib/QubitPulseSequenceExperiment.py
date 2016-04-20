@@ -198,7 +198,7 @@ class QubitPulseSequenceExperiment(Experiment):
         if self.post_run is not None:
             self.post_run(self.expt_pts, expt_avg_data)
 
-        adc.close()
+
     def awg_prep(self):
         self.awg.stop_and_prep()
         if self.prep_tek2:

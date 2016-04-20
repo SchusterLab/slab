@@ -84,13 +84,14 @@ def pulse_calibration(phase_exp=True):
     with open(config_file, 'r') as fid:
         cfg_str = fid.read()
 
+    lp_enable=False
     cfg = AttrDict(json.loads(cfg_str))
     experiment_started = True
     from slab.experiments.General.SingleQubitPulseSequenceExperiment import RamseyExperiment
     from slab.experiments.General.SingleQubitPulseSequenceExperiment import RabiExperiment
     from slab.experiments.General.SingleQubitPulseSequenceExperiment import HalfPiYPhaseOptimizationExperiment
 
-    expt = RamseyExperiment(path=datapath,trigger_period = 0.0002)
+    expt = RamseyExperiment(path=datapath,trigger_period = 0.0002, liveplot_enabled=lp_enable)
     expt.go()
     if (abs(expt.offset_freq) < 50e3):
         pass
@@ -101,7 +102,7 @@ def pulse_calibration(phase_exp=True):
         if (abs(flux_offset) < 0.000002):
             flux2 = expt.flux + flux_offset
             print flux2
-            expt = RamseyExperiment(path=datapath, flux = flux2)
+            expt = RamseyExperiment(path=datapath, flux = flux2,liveplot_enabled=lp_enable)
             expt.go()
             offset_freq2 = expt.offset_freq
             flux_offset2 = -expt.offset_freq/(expt.freq_flux_slope)
@@ -111,7 +112,7 @@ def pulse_calibration(phase_exp=True):
                 expt.save_config()
             else:
                 if (abs(flux_offset2) < 0.000002):
-                    expt = RamseyExperiment(path=datapath, flux = flux3)
+                    expt = RamseyExperiment(path=datapath, flux = flux3,liveplot_enabled=lp_enable)
                     expt.go()
                     if (abs(expt.offset_freq) < 100e3):
                         print "Frequency calibrated"
@@ -126,12 +127,12 @@ def pulse_calibration(phase_exp=True):
             pass
 
 
-    expt = RabiExperiment(path=datapath)
+    expt = RabiExperiment(path=datapath,liveplot_enabled=lp_enable)
     expt.go()
     print "ge pi and pi/2 pulses recalibrated"
     expt.save_config()
     if phase_exp:
-        expt = HalfPiYPhaseOptimizationExperiment(path=datapath)
+        expt = HalfPiYPhaseOptimizationExperiment(path=datapath,liveplot_enabled=lp_enable)
         expt.go()
         print "Offset phase recalibrated"
         expt.save_config()
