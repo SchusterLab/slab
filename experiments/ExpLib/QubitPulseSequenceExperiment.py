@@ -183,14 +183,19 @@ class QubitPulseSequenceExperiment(Experiment):
 
             # print ii * min(self.cfg[self.expt_cfg_name]['averages'], 100)
 
-            if self.data_file != None:
-                self.slab_file = SlabFile(self.data_file)
-            else:
+            if self.data_file == None:
                 self.slab_file = self.datafile()
+                with self.slab_file as f:
+                    f.add('expt_2d', expt_data)
+                    f.add('expt_avg_data', expt_avg_data)
+                    f.add('expt_pts', self.expt_pts)
+                    f.close()
+
+        if self.data_file != None:
+            self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
-                f.add('expt_2d', expt_data)
-                f.add('expt_avg_data', expt_avg_data)
-                f.add('expt_pts', self.expt_pts)
+                f.append_line('expt_avg_data', expt_avg_data)
+                f.append_line('expt_pts', self.expt_pts)
                 f.close()
 
 
