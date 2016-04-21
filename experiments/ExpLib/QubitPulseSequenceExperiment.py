@@ -49,8 +49,10 @@ class QubitPulseSequenceExperiment(Experiment):
             except:
                 print("error in setting trigger time")
 
+        self.adc_predefined = False
         if 'adc' in self.extra_args:
             self.adc = self.extra_args['adc']
+            self.adc_predefined = True
         else:
             self.adc = None
 
@@ -198,6 +200,9 @@ class QubitPulseSequenceExperiment(Experiment):
                 f.append_line('expt_pts', self.expt_pts)
                 f.close()
 
+
+        if not self.adc_predefined:
+            adc.close()
 
 
         if self.post_run is not None:

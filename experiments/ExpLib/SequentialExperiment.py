@@ -7,10 +7,14 @@ import gc
 
 class SequentialExperiment():
     def __init__(self):
-        pass
+        self.expt = None
 
 
     def run(self,exp):
+
+        if self.expt is not None:
+            del self.expt
+            gc.collect()
 
         expt_name = exp[0]
         expt_kwargs = exp[1]
@@ -23,8 +27,9 @@ class SequentialExperiment():
         if 'seq_post_run' in expt_kwargs:
             expt_kwargs['seq_post_run'](self)
 
-        del self.expt
-        gc.collect()
+    def save_config(self):
+        self.expt.save_config()
+
 
 
 
