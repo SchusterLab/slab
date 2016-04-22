@@ -4,6 +4,7 @@ from slab import *
 from slab.instruments.Alazar import Alazar
 from slab.experiments.ExpLib.QubitPulseSequenceExperiment import *
 from numpy import mean, arange
+from slab.dsfit import *
 
 
 class MultimodeRabiExperiment(QubitPulseSequenceExperiment):
@@ -394,6 +395,10 @@ class MultimodeCNOTExperiment(QubitPulseSequenceExperiment):
 
 class MultimodePi_PiExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_Pi_Pi_Experiment', config_file='..\\config.json', **kwargs):
+        if 'mode' in kwargs:
+            self.id = kwargs['mode']
+        else:
+            self.id = self.cfg[self.expt_cfg_name]['id']
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                                     PulseSequence=MultimodePi_PiSequence, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
@@ -402,7 +407,11 @@ class MultimodePi_PiExperiment(QubitPulseSequenceExperiment):
         self.tek2 = InstrumentManager()["TEK2"]
 
     def post_run(self, expt_pts, expt_avg_data):
-        pass
+        expected_period = 360.
+        find_phase = 'max' #'max' or 'min'
+        x_at_extremum = sin_phase(expt_pts,expt_avg_data,expected_period,find_phase)
+        print 'Phase at %s: %s degrees' %(find_phase,x_at_extremum)
+        self.cfg['multimodes'][self.id]['pi_pi_offset_phase'] = x_at_extremum
 
 class CPhaseOptimizationSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_cphase_optimization_sweep', config_file='..\\config.json', **kwargs):

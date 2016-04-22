@@ -1,7 +1,10 @@
 __author__ = 'Nelson'
 
 from slab.experiments.ExpLib.SequentialExperiment import *
+from slab import *
+import os
 import json
+
 
 datapath = os.getcwd() + '\data'
 config_file = os.path.join(datapath, "..\\config" + ".json")
@@ -50,19 +53,17 @@ def frequency_stabilization(seq_exp):
 
 def pulse_calibration(seq_exp,phase_exp=True):
     frequency_stabilization(seq_exp)
-    seq_exp.run(('Rabi',{}))
+    seq_exp.run(('Rabi',{'update_config':True}))
     print "ge pi and pi/2 pulses recalibrated"
-    seq_exp.expt.save_config()
 
     if phase_exp:
-        seq_exp.run(('HalfPiYPhaseOptimization',{}))
+        seq_exp.run(('HalfPiYPhaseOptimization',{'update_config':True}))
         print "Offset phase recalibrated"
-        seq_exp.expt.save_config()
     pass
 
 
-def run_seq_experiment(expt_name):
-    seq_exp = SequentialExperiment()
+def run_seq_experiment(expt_name,lp_enable=True):
+    seq_exp = SequentialExperiment(lp_enable)
 
     if expt_name.lower() == 'testing':
         prefix = 'Testing'

@@ -1145,6 +1145,18 @@ class MultimodePi_PiSequence(QubitPulseSequence):
         self.qubit_cfg = cfg['qubit']
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
+
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+
+        if 'mode' in self.extra_args:
+            self.id = self.extra_args['mode']
+        else:
+            self.id = self.expt_cfg['id']
+
+        print "Target id: " +str(self.id)
+
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
 
 
@@ -1157,9 +1169,7 @@ class MultimodePi_PiSequence(QubitPulseSequence):
         self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
         ef_freq = self.qubit_cfg['frequency']+self.qubit_cfg['alpha']
         self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-ef_freq)
-        self.id1 = self.expt_cfg['id1']
-        self.id2 = self.expt_cfg['id2']
-        self.id = self.expt_cfg['id']
+
         self.offset_phase = self.pulse_cfg['gauss']['offset_phase']
 
 
@@ -1897,6 +1907,13 @@ class MultimodeSingleResonatorRandomizedBenchmarkingSequence(QubitPulseSequence)
         self.pulse_cfg = cfg['pulse_info']
         self.expt_cfg = expt_cfg
         self.multimode_cfg = cfg['multimodes']
+        if 'mode' in kwargs:
+            self.id = kwargs['mode']
+        else:
+            self.id = self.expt_cfg['id']
+
+        print "Target id: " +str(self.id)
+
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
 
     def expmat(self, mat, theta):
@@ -1912,7 +1929,6 @@ class MultimodeSingleResonatorRandomizedBenchmarkingSequence(QubitPulseSequence)
             self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
 
     def define_parameters(self):
-        self.id = self.expt_cfg['id']
         self.flux_pulse_type = self.multimode_cfg[int(self.id)]['flux_pulse_type']
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.clifford_pulse_1_list = ['0','half_pi_y','pi_y','neg_half_pi_y']
@@ -1962,8 +1978,8 @@ class MultimodeSingleResonatorRandomizedBenchmarkingSequence(QubitPulseSequence)
         # self.random_cliffords_1 =  np.concatenate((np.array([0]),0*np.ones(max(self.expt_pts)-1)),axis=0).astype(int)
         # self.random_cliffords_2 =  np.concatenate((np.array([1]),1*np.ones(max(self.expt_pts)-1)),axis=0).astype(int)
 
-        print [self.clifford_pulse_1_list[jj] for jj in self.random_cliffords_1]
-        print [self.clifford_pulse_2_list[jj] for jj in self.random_cliffords_2]
+        # print [self.clifford_pulse_1_list[jj] for jj in self.random_cliffords_1]
+        # print [self.clifford_pulse_2_list[jj] for jj in self.random_cliffords_2]
 
 
     def define_pulses(self,pt):
@@ -2039,10 +2055,10 @@ class MultimodeSingleResonatorRandomizedBenchmarkingSequence(QubitPulseSequence)
 
                     if np.allclose(np.real(self.I),np.real(np.dot(C,R))) and np.allclose(np.imag(self.I),np.imag(np.dot(C,R))):
                         found +=1
-                        print "---" + str(self.n)
-                        print "Number of z pulses in creation sequence %s" %(self.znumber)
-                        print self.clifford_inv_pulse_1_list[ii]
-                        print self.clifford_inv_pulse_2_list[jj]
+                        # print "---" + str(self.n)
+                        # print "Number of z pulses in creation sequence %s" %(self.znumber)
+                        # print self.clifford_inv_pulse_1_list[ii]
+                        # print self.clifford_inv_pulse_2_list[jj]
                         self.psb.append('q,mm'+str(self.id),'pi_ge',phase= self.multimode_cfg[self.id]['pi_pi_offset_phase'])
                         if (ii == 2) and self.expt_cfg['split_pi']:
                             self.psb.append('q','half_pi_y', self.pulse_type, addphase=self.xnumber*self.offset_phase+self.znumber*90)
@@ -2086,7 +2102,7 @@ class MultimodeSingleResonatorRandomizedBenchmarkingSequence(QubitPulseSequence)
         elif found > 1:
             print "Error! Non unique inverse."
 
-        print "Total number of half pi pulses = %s"%(self.xnumber)
+        #print "Total number of half pi pulses = %s"%(self.xnumber)
 
 
 class MultimodeCPhaseAmplificationSequence(QubitPulseSequence):

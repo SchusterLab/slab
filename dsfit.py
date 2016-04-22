@@ -297,6 +297,29 @@ def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
     return p1  
 
 
+def sin_phase(xdata,ydata,expected_period,find_phase):
+    #initial fit guesses
+    fitparams=[0,0,0,0]
+    fitparams[0]=(max(ydata)-min(ydata))/2. #Amplitude
+    fitparams[1]= 1/expected_period #Frequency (for phase sweeps)
+    fitparams[2]=0.0 #Phase
+    fitparams[3]=np.mean(ydata) #Offset
+
+    fits=fitsin(xdata,ydata,fitparams=fitparams,showfit=False,label='fitting')
+
+    if find_phase == 'max':
+        correction = 90.0*np.sign(fits[0])
+    elif find_phase =='min':
+        correction = -90.0*np.sign(fits[0])
+    else:
+        raise NameError('What do you want from me?')
+
+    x_at_extremum = np.around((-fits[2]+correction)/(360.*fits[1]),decimals=2)
+
+    return x_at_extremum
+
+
+
 
 
 def hangerfunc_old(p,x):

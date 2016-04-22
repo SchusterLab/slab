@@ -1,10 +1,10 @@
 __author__ = 'Nelson'
 
 
-lp_enable = True
+
 
 import numpy as np
-def run_experiment(expt_name, **kwargs):
+def run_experiment(expt_name,lp_enable = True, **kwargs):
     import os
     import difflib
 
@@ -104,11 +104,6 @@ def run_experiment(expt_name, **kwargs):
     if expt_name.lower() == 'error_amplification_phase_offset':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import SingleQubitErrorAmplificationPhaseOffsetExperiment
         expt = SingleQubitErrorAmplificationPhaseOffsetExperiment(path=datapath, liveplot_enabled = lp_enable,trigger_period = 0.001, **kwargs)
-
-    if expt == None:
-        close_match = difflib.get_close_matches(expt_name, expt_list)
-        print "No experiment found for: " + expt_name
-        print "Do you mean: " + close_match[0] + "?"
 
     if expt != None:
         expt.go()
