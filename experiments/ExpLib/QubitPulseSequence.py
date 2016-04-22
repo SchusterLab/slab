@@ -3,6 +3,7 @@ __author__ = 'Nelson'
 from slab.instruments.awg.PulseSequence import *
 from numpy import arange, linspace
 from slab.experiments.ExpLib.PulseSequenceBuilder import *
+from slab import *
 
 from liveplot import LivePlotClient
 
@@ -74,6 +75,16 @@ class QubitPulseSequence(PulseSequence):
 
         self.markers['readout pulse'], self.markers['card trigger'], self.waveforms['qubit drive I'], self.waveforms[
             'qubit drive Q'], self.waveforms['qubit 1 flux'], self.markers['qubit buffer'], self.markers['ch3m1'] = generated_sequences
+
+        with SlabFile('sequences\pulse_sequence.h5') as f:
+            f.add('readout pulse', self.markers['readout pulse'])
+            f.add('card trigger', self.markers['card trigger'])
+            f.add('qubit drive I', self.waveforms['qubit drive I'])
+            f.add('qubit drive Q', self.waveforms['qubit drive Q'])
+            f.add('qubit 1 flux', self.waveforms['qubit 1 flux'])
+            f.add('qubit buffer', self.markers['qubit buffer'])
+            f.add('ch3m1', self.markers['ch3m1'])
+            f.close()
 
     def reshape_data(self, data):
         return np.reshape(data, (self.sequence_length, self.waveform_length))
