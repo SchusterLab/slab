@@ -1,2 +1,6 @@
 # IDE meta files
 .idea
+# pyc files
+.pyc
+
+*.pyc
