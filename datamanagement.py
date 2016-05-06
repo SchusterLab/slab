@@ -305,6 +305,7 @@ class SlabFile(h5py.File):
             dataset.attrs["_axes_labels"] = (x_lab, y_lab)
 
     def append_line(self, dataset, line, axis=0):
+        if isinstance(dataset,unicode): dataset=str(dataset)
         if isinstance(dataset, str):
             try:
                 dataset = self[dataset]
@@ -324,7 +325,8 @@ class SlabFile(h5py.File):
         self.flush()
 
     def append_pt(self, dataset, pt):
-        if isinstance(dataset, str):
+        if isinstance(dataset,unicode): dataset=str(dataset)
+        if isinstance(dataset, str) :
             try:
                 dataset = self[dataset]
             except:

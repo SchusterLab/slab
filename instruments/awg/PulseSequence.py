@@ -1,7 +1,8 @@
 __author__ = 'dave'
 import numpy as np
 
-from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence
+from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence, write_PXDAC4800_file
+from slab.instruments.awg.PXDAC4800 import PXDAC4800
 from slab.instruments import InstrumentManager
 import os
 
@@ -62,9 +63,12 @@ class PulseSequence:
         return self.marker_info[name]['tpts']
 
     def write_sequence(self, path, file_prefix, upload=False):
-        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence}
+        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence, 'PXDAC4800':self.write_PXDAC4800_sequence}
         for awg in self.awg_info:
-            write_function[awg['type']](awg, path, file_prefix, awg['upload'])
+            try:
+                write_function[awg['type']](awg, path, file_prefix, awg['upload'])
+            except KeyError:
+                print "Error in writing pulse to awg named: " + str(awg['type'])
 
     def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
@@ -76,20 +80,33 @@ class PulseSequence:
             im[awg['name']].pre_load()
             #print "Sequence preloaded"
             im[awg['name']].load_sequence_file(os.path.join(path, file_prefix + '.awg'), force_reload=True)
-            print "Sequence file uploaded"
+            print "Sequence file uploaded to Tek5014"
             im[awg['name']].prep_experiment()
 
     def write_Tek70001_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
         # markers=[self.markers[marker['name']] for marker in awg['markers']]
+
         if upload:
             tek7 = InstrumentManager()[awg['name']]
             for waveform in waveforms:
                 write_Tek70001_sequence(waveform, path, file_prefix, awg=tek7)
+            print "Sequence file uploaded to Tek70001"
             tek7.prep_experiment()
             tek7.run()
         else:
             tek7 = None
+
+    def write_PXDAC4800_sequence(self, awg, path, file_prefix, upload=False):
+        waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
+        markers = [self.markers[marker['name']] for marker in awg['markers']]
+        write_PXDAC4800_file(waveforms, markers, os.path.join(path, file_prefix + '.rd16'), self.name,awg['iq_offsets'])
+        if upload:
+            PXDAC4800().load_sequence_file(os.path.join(path, file_prefix + '.rd16'))
+            print "Sequence file uploaded"
+            print "Waveform length: " + str(len(waveforms[0][0]))
+            PXDAC4800.waveform_length = len(waveforms[0][0])
+            PXDAC4800().run_experiment()
 
 
 

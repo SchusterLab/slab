@@ -1,0 +1,95 @@
+{
+  "pulse_probe": {
+    "a": 1.0, "stop": 5000000000.0, "start": 4420000000.0, "step": 250000.0, "pulse_type": "square",
+    "pulse_probe_len": 1000, "averages": 1000, "num_pts": null
+  }, "flux_pulse_info": {"square": {"ramp_sigma": 10}}, "mm_flux_sideband_two_modes_swap_sweep": {
+  "dc_offset_freq_1": -36000000.0, "dc_offset_freq_2": -19000000.0, "freq_num_pts": null, "freq_step": 1000000.0,
+  "start_length": 0, "start": 0, "flux_pi_length_1": 90, "flux_pi_length_2": 100, "flux_w": 400, "pulse_type": "gauss",
+  "stop_length": 3000, "power": 13, "stop": 8, "flux_a_1": 0.25, "flux_a_2": 0.25, "step": 0.08, "sweep_type": "amp",
+  "freq": 0, "measure_mode": 1, "flux_freq_1": 2574000000.0, "flux_freq_2": 2732000000.0, "length_step": 30,
+  "averages": 50000, "num_pts": null
+}, "ef_rabi": {"a": 1.0, "stop": 200, "start": 0, "step": 2, "pulse_type": "gauss", "ge_pi": false, "averages": 100000},
+  "alazar": {
+    "clock_edge": "rising", "trigger_delay": 0, "ch1_filter": true, "ch1_enabled": true, "samplesPerRecord": 4096,
+    "bufferCount": 20, "trigger_edge1": "rising", "trigger_edge2": "rising", "ch2_range": 0.5, "timeout": 100000,
+    "trigger_level2": 0.5, "trigger_level1": 0.65, "ch2_coupling": "DC", "trigger_coupling": "DC", "ch2_filter": false,
+    "trigger_operation": "or", "ch1_coupling": "DC", "trigger_source2": "disabled", "trigger_source1": "external",
+    "recordsPerAcquisition": 10000, "sample_rate": 1000000, "clock_source": "reference", "ch1_range": 0.5,
+    "ch2_enabled": true, "recordsPerBuffer": 100
+  }, "freq_flux": {"slope": 5957217136.756238, "volt_offset": 0.0004699999999998254, "flux_volt": 3.1000}, "awgs": [
+  {
+    "min_increment": 16, "name": "TEK", "clock_speed": 1.2, "upload": true, "markers": [
+    {"delay": 0.0, "high": 1.0, "name": "card trigger", "low": 0.0},
+    {"delay": 0.0, "high": 1.0, "name": "readout pulse", "low": 0.0},
+    {"delay": 0.0, "high": 1.0, "name": "qubit flux buffer", "low": 0.0},
+    {"delay": 0.0, "high": 1.0, "name": "qubit buffer", "low": 0.0},
+    {"delay": 0.0, "high": 1.0, "name": "ch3m1", "low": 0.0}, {"delay": 0.0, "high": 1.0, "name": "ch3m2", "low": 0.0},
+    {"delay": 0.0, "high": 1.0, "name": "ch4m1", "low": 0.0}, {"delay": 0.0, "high": 1.0, "name": "ch4m2", "low": 0.0}
+  ], "waveforms": [
+    {"delay": 0.0, "name": "qubit drive I", "amplitude": 1.0, "offset": 0.008},
+    {"delay": 0.0, "name": "qubit drive Q", "amplitude": 1.0, "offset": -0.008},
+    {"delay": 0.0, "name": "ch3", "amplitude": 1.0, "offset": 0.008},
+    {"delay": 0.0, "name": "ch4", "amplitude": 1.0, "offset": -0.008}
+  ], "min_samples": 256, "type": "Tek5014"
+  }, {
+    "min_increment": 16, "name": "TEK2", "clock_speed": 50.0, "upload": false, "markers": [],
+    "waveforms": [{"delay": 0.0, "name": "qubit 1 flux", "amplitude": 1.0, "offset": 0.0}], "min_samples": 256,
+    "type": "Tek70001"
+  }
+], "aliases": {
+  "readout_atten": "atten", "drive": "LB3", "readout": "RF2", "awg": "TEK", "readout_shifter": "LBPHASE1",
+  "flux_volt": "YOKO1"
+}, "rabi": {
+  "a": 1, "iq_freq": 50000000.0, "stop": 400, "step": 4, "start": 0, "calibrate_pulse": false, "pulse_type": "gauss",
+  "averages": 10000
+}, "mm_flux_sideband_t2": {
+  "power": 13, "flux_a": 0.25, "stop_length": 2500, "flux_freq": 2956000000.0, "stop": 0.5, "freq_num_pts": null,
+  "start": 0, "flux_w": 400, "step": 0.005, "pulse_type": "gauss", "sweep_type": "amp", "freq_step": 1000000.0,
+  "start_length": 0, "dc_offset_freq": -30000000.0, "length_step": 25, "freq": 0, "averages": 10000, "num_pts": null,
+  "flux_pi_length": 230
+}, "spin_echo": {
+  "stop": 2000, "start": 200, "step": 20.0, "pulse_type": "gauss", "ramsey_freq": 5000000.0, "averages": 10000
+}, "buffer": {"tek1_start_end": 500, "tek2_trigger_delay": 1300, "marker_start": 100}, "mm_flux_sideband": {
+  "power": 13, "start": 0, "freq": 0, "stop_length": 1000, "stop": 0.5, "freq_num_pts": null, "flux_w": 400,
+  "step": 0.001, "start_freq": 2515000000.0, "pulse_type": "gauss", "sweep_type": "amp", "freq_step": 1000000.0,
+  "start_length": 0, "stop_freq": 3000000000.0, "length_step": 10, "averages": 5000, "num_pts": null
+}, "pulse_info": {
+  "square": {
+    "a": 1.0, "iq_freq": 0, "ramp_sigma": 10, "calibrated_time": "testing", "half_pi_length": 88.12558259553845,
+    "pi_length": 220.0
+  }, "gauss": {
+    "a": 1, "iq_freq": 50000000.0, "ramp_sigma": 10, "calibrated_time": "2015-08-19 18:29:24", "half_pi_length": 19,
+    "phase": 0, "pi_length": 38
+  }
+}, "readout": {
+  "dig_atten": 0.0, "card_trig_width": 100, "power": 16, "start_phase": 40, "delay": 100, "width": 3500,
+  "window": [500, 3000], "frequency": 5079000000.0, "phase_slope": 5.1428e-05, "card_delay": 100,
+  "bare_frequency": 5077000000.0
+}, "mm_flux_sideband_t1": {
+  "power": 13, "flux_a": 0.25, "freq": 0, "stop_length": 2000, "flux_freq": 2956000000.0, "stop": 0.5,
+  "freq_num_pts": null, "start": 0, "flux_w": 400, "step": 0.005, "pulse_type": "gauss", "sweep_type": "amp",
+  "freq_step": 1000000.0, "start_length": 0, "length_step": 20, "averages": 10000, "num_pts": null,
+  "flux_pi_length": 140
+}, "ramsey": {
+  "stop": 1200, "start": 200, "step": 10.0, "pulse_type": "gauss", "ramsey_freq": 5000000.0, "averages": 10000
+}, "histogram": {
+  "atten_step": 0.5, "power": 13, "freq_start": 5075000000.0, "num_pts": null, "atten_stop": 30,
+  "freq_stop": 5081000000.0, "freq_step": 50000.0, "pulse_type": "gauss", "atten_start": 0.0, "repeats": 50,
+  "averages": 100, "num_bins": 400
+}, "cw_drive": {"start": 4300000000.0, "step": 1000000.0, "stop": 5000000000.0, "iq_offsets": [1, 1, 0, 0]},
+  "vacuum_rabi": {"start": 5075000000.0, "step": 100000.0, "stop": 5090000000.0}, "drive": {"power": 13},
+  "t1": {"stop": 10000, "start": 100, "step": 100.0, "pulse_type": "gauss", "averages": 50000}, "cal": {
+  "pi_width": 100, "drive_man_atten": 0, "iq_amps": [1, 1, 1, 1], "buffer": 200, "excited_signal": 1, "drive_power": 13,
+  "pi_amp": 1.0, "iq_offsets": [-0.02, -0.062, 0, 0], "pi2_amp": 0.5, "sigma": 5
+}, "qubit": {"alpha": -200000000.0, "frequency":4423372783.5}, "multimodes": [
+  {
+    "a": 0.25, "qubit_freq": 4400000000.0, "flux_pulse_type": "square", "dc_offset_freq": -36000000.0,
+    "flux_pulse_freq": 2574000000.0, "id": 0, "flux_pi_length": 90
+  }, {
+    "a": 0.25, "qubit_freq": 4400000000.0, "flux_pulse_type": "square", "dc_offset_freq": -19000000.0,
+    "flux_pulse_freq": 2732000000.0, "id": 1, "flux_pi_length": 100
+  }
+], "multimode_rabi": {
+  "a": 1.0, "iq_freq": 0, "stop": 200, "start": 0, "step": 2, "pulse_type": "gauss", "averages": 10000
+}
+}
