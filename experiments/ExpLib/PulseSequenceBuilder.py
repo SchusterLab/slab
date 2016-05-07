@@ -107,7 +107,7 @@ class PulseSequenceBuilder():
                 if addphase != None:
                     phase = addphase
             if name == "half_pi_q_ef":
-                amp = self.pulse_cfg[type]['pi_ef_a']
+                amp = self.pulse_cfg[type]['half_pi_ef_a']
                 length = self.pulse_cfg[type]['half_pi_ef_length']
                 freq = self.pulse_cfg[type]['iq_freq']+self.qubit_cfg['alpha']
                 if phase == None:

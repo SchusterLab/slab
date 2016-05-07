@@ -42,15 +42,15 @@ class RamseySequence(QubitPulseSequence):
 
     def define_pulses(self,pt):
         self.psb.append('q','half_pi', self.pulse_type)
-        self.psb.idle(pt)
-        # self.psb.append('q','general', "square", amp=1.0, length=pt,freq=-200e6)
-        self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
+        if self.expt_cfg['echo']:
 
-        # # Does not work because of introducing phase in definition of half_pi
-        #
-        # self.psb.append('q','general', self.pulse_type, amp=self.pulse_cfg[self.pulse_type]['half_pi_a'], length=self.pulse_cfg[self.pulse_type]['half_pi_length'],freq=self.pulse_cfg[self.pulse_type]['iq_freq'], phase= 0)
-        # self.psb.idle(pt)
-        # self.psb.append('q','general', self.pulse_type, amp=self.pulse_cfg[self.pulse_type]['half_pi_a'], length=self.pulse_cfg[self.pulse_type]['half_pi_length'],freq=self.pulse_cfg[self.pulse_type]['iq_freq'], phase= self.pulse_cfg[self.pulse_type]['phase']+ 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
+            self.psb.idle(pt/2.0)
+            self.psb.append('q','pi')
+            self.psb.idle(pt/2.0)
+        else:
+            self.psb.idle(pt)
+
+        self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
 
 
 class SpinEchoSequence(QubitPulseSequence):
@@ -100,7 +100,8 @@ class EFRabiSequence(QubitPulseSequence):
         #self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.ef_sideband_freq)
         #self.psb.idle(4*pt)
         self.psb.append('q','pi', self.pulse_type)
-
+        if self.expt_cfg['cal_ef']:
+            self.psb.append('q','pi_q_ef')
 
 class EFRamseySequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -115,17 +116,22 @@ class EFRamseySequence(QubitPulseSequence):
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
         ef_freq = self.qubit_cfg['frequency']+self.qubit_cfg['alpha']
-        self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-ef_freq + self.expt_cfg['ramsey_freq'])
+        self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-ef_freq)
 
     def define_pulses(self,pt):
         if self.expt_cfg['ge_pi']:
             self.psb.append('q','pi', self.pulse_type)
-        #self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.ef_sideband_freq)
-        self.psb.append('q','general', self.ef_pulse_type,amp=self.expt_cfg['a'],length = self.expt_cfg['half_pi_ef'], freq=self.ef_sideband_freq )
-        self.psb.idle(pt)
-        self.psb.append('q','general', self.ef_pulse_type,amp=self.expt_cfg['a'],length = self.expt_cfg['half_pi_ef'],freq=self.ef_sideband_freq )
+        self.psb.append('q','half_pi_q_ef')
+        if self.expt_cfg['echo']:
+            self.psb.idle(pt/2.0)
+            self.psb.append('q','pi_q_ef')
+            self.psb.idle(pt/2.0)
+        else:
+            self.psb.idle(pt)
+        self.psb.append('q','half_pi_q_ef',phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
         self.psb.append('q','pi', self.pulse_type)
-
+        if self.expt_cfg['cal_ef']:
+            self.psb.append('q','pi_q_ef')
 
 class EFT1Sequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -145,7 +151,7 @@ class EFT1Sequence(QubitPulseSequence):
     def define_pulses(self,pt):
         if self.expt_cfg['ge_pi']:
             self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q','general', self.ef_pulse_type,amp=self.expt_cfg['a'],length = self.expt_cfg['pi_ef'], freq=self.ef_sideband_freq )
+        self.psb.append('q','pi_q_ef')
         self.psb.idle(pt)
         self.psb.append('q','pi', self.pulse_type)
 

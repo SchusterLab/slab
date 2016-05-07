@@ -219,22 +219,14 @@ class EFRamseyExperiment(QubitPulseSequenceExperiment):
         pass
         print "Analyzing EF Ramsey Data"
         fitdata = fitdecaysin(expt_pts, expt_avg_data)
-
-        # self.offset_freq =self.cfg['ramsey']['ramsey_freq'] - fitdata[1] * 1e9
-        #self.flux_volt = self.cfg['freq_flux']['flux_volt']
-        #self.freq_flux_slope = self.cfg['freq_flux']['slope']
-
-        suggested_anharm = self.cfg['qubit']['alpha'] +(fitdata[1] * 1e9 - self.cfg['ef_ramsey']['ramsey_freq'])
-
+        self.offset_freq =fitdata[1] * 1e9 - self.cfg['ef_ramsey']['ramsey_freq']
+        # Sign for offset frequency changed on 4/28/2016
+        self.suggested_anharm = self.cfg['qubit']['alpha'] -self.offset_freq
         print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
         print "T2*ef: " + str(fitdata[3]) + " ns"
-        #if round(self.offset_freq/ self.freq_flux_slope,4)==0.0000:
-        #   print "Qubit frequency is well calibrated."
-        #else:
-        print "Suggested Anharmonicity: " + str(suggested_anharm)
-        #  print "Or Suggested Flux Voltage: " +str(round(self.flux_volt -self.offset_freq/ self.freq_flux_slope,4))
+        print "Suggested Anharmonicity: " + str(self.suggested_anharm)
         if (self.cfg['pulse_info']['save_to_file']):
-                self.cfg['qubit']['alpha'] = suggested_anharm
+                self.cfg['qubit']['alpha'] = self.suggested_anharm
 
 class EFT1Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_T1', config_file='..\\config.json', **kwargs):

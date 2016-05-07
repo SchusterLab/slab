@@ -325,7 +325,7 @@ def run_multimode_sequential_experiment(expt_name):
         calibrate_sideband = False
         save_to_file = True
         # mode_pts = array([0, 1, 3, 4, 5, 6, 9])
-        mode_pts = array([6])
+        mode_pts = array([4])
 
 
 
@@ -389,9 +389,9 @@ def run_multimode_sequential_experiment(expt_name):
         experiment_started = True
         from slab.experiments.Multimode.MultimodePulseSequenceExperiment import MultimodeCalibrateEFSidebandExperiment
 
-        mode_pts = array([1])
+        mode_pts = array([6,9])
 
-        calibrate_sideband = True
+        calibrate_sideband = False
         save_to_file = True
         for ii, mode_num in enumerate(mode_pts):
 
