@@ -5,67 +5,7 @@ from numpy import arange
 import json
 from slab import *
 import gc
-from run_sequential_experiment_file import frequency_stabilization,pulse_calibration
-
-def prepare_alazar(cfg, expt_name, expt = None):
-    if expt == None:
-        cfg['alazar']['samplesPerRecord'] = 2 ** (cfg['readout']['width'] - 1).bit_length()
-        sequence_length = int((cfg[expt_name.lower()]['stop']-cfg[expt_name.lower()]['start'])/cfg[expt_name.lower()]['step'])
-        if (cfg[expt_name.lower()]['use_pi_calibration']):
-            sequence_length+=2
-
-        cfg['alazar']['recordsPerBuffer'] = sequence_length
-        cfg['alazar']['recordsPerAcquisition'] = int(
-            sequence_length * min(cfg[expt_name.lower()]['averages'], 100))
-        print "Prep Card"
-        adc = Alazar(cfg['alazar'])
-    else:
-        cfg['alazar']['samplesPerRecord'] = 2 ** (cfg['readout']['width'] - 1).bit_length()
-        sequence_length = int((cfg[expt_name.lower()][expt]['stop']-cfg[expt_name.lower()][expt]['start'])/cfg[expt_name.lower()][expt]['step'])
-        if (cfg[expt_name.lower()]['use_pi_calibration']):
-            sequence_length+=2
-
-        cfg['alazar']['recordsPerBuffer'] = sequence_length
-        cfg['alazar']['recordsPerAcquisition'] = int(
-            sequence_length * min(cfg[expt_name.lower()][expt]['averages'], 100))
-        print "Prep Card"
-        adc = Alazar(cfg['alazar'])
-    return adc
-
-def multimode_pulse_calibration():
-    datapath = os.getcwd() + '\data'
-    config_file = os.path.join(datapath, "..\\config" + ".json")
-    with open(config_file, 'r') as fid:
-        cfg_str = fid.read()
-
-    cfg = AttrDict(json.loads(cfg_str))
-    experiment_started = True
-    from slab.experiments.Multimode.MultimodePulseSequenceExperiment import MultimodeCalibrateOffsetExperiment
-
-    save_to_file = True
-    # mode_pts = array([0, 1, 3, 4, 5, 6, 9])
-    mode_num=1
-
-
-    adc = prepare_alazar(cfg, 'multimode_calibrate_offset_experiment', 'multimode_rabi')
-    prefix = 'multimode_rabi_mode_' + str(mode_num) + '_experiment'
-    data_file = os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
-    expt = MultimodeCalibrateOffsetExperiment(path=datapath, data_file=data_file, adc=adc,
-                                              exp='multimode_rabi', dc_offset_guess=0, mode=mode_num,
-                                              data_prefix = prefix,
-                                              liveplot_enabled=True)
-    expt.go()
-    if save_to_file:
-        expt.save_config()
-        print "Saved Multimode Rabi pi and 2pi lengths to the config file"
-    else:
-        pass
-
-    adc.close()
-    expt = None
-
-    del expt
-    gc.collect()
+from run_sequential_experiment_file import frequency_stabilization
 
 
 def run_multimode_sequential_experiment(expt_name):
@@ -113,10 +53,6 @@ def run_multimode_sequential_experiment(expt_name):
 
     experiment_started = False
 
-    if  expt_name.lower() == 'calibrate_multimode':
-        experiment_started = True
-        multimode_pulse_calibration()
-
     if expt_name.lower() == 'multimode_rabi_sweep':
         experiment_started = True
         cfg['alazar']['samplesPerRecord'] = 2 ** (cfg['readout']['width'] - 1).bit_length()
@@ -155,7 +91,6 @@ def run_multimode_sequential_experiment(expt_name):
             'step']
         if (cfg[expt_name.lower()]['use_pi_calibration']):
             sequence_length += 2
-
         cfg['alazar']['recordsPerBuffer'] = sequence_length
         cfg['alazar']['recordsPerAcquisition'] = int(
             sequence_length * min(cfg[expt_name.lower()]['averages'], 100))
@@ -322,10 +257,10 @@ def run_multimode_sequential_experiment(expt_name):
         experiment_started = True
         from slab.experiments.Multimode.MultimodePulseSequenceExperiment import MultimodeCalibrateOffsetExperiment
 
-        calibrate_sideband = False
+        calibrate_sideband = True
         save_to_file = True
-        # mode_pts = array([0, 1, 3, 4, 5, 6, 9])
-        mode_pts = array([6])
+        mode_pts = array([0, 1, 3, 4, 5, 6, 9])
+        # mode_pts = array([1])
 
 
 
@@ -383,68 +318,6 @@ def run_multimode_sequential_experiment(expt_name):
 
                 gc.collect()
 
-
-    if expt_name.lower() == 'multimode_calibrate_ef_sideband_experiment':
-
-        experiment_started = True
-        from slab.experiments.Multimode.MultimodePulseSequenceExperiment import MultimodeCalibrateEFSidebandExperiment
-
-        mode_pts = array([1])
-
-        calibrate_sideband = True
-        save_to_file = True
-        for ii, mode_num in enumerate(mode_pts):
-
-            if calibrate_sideband:
-
-                adc = prepare_alazar(cfg, expt_name, 'multimode_ef_rabi')
-                prefix = 'multimode_ef_rabi_mode_' + str(mode_num) + '_experiment'
-                data_file = os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
-                expt = MultimodeCalibrateEFSidebandExperiment(path=datapath, data_file=data_file, adc=adc,
-                                                              exp='multimode_ef_rabi', dc_offset_guess_ef=0,
-                                                              mode=mode_num, liveplot_enabled=True)
-                expt.go()
-                expt.save_config()
-                adc.close()
-                expt = None
-                print
-                del expt
-                gc.collect()
-
-                print "Calibrated ge sideband for mode %s" %(mode_num)
-            else:
-
-                adc = prepare_alazar(cfg, expt_name, 'short_multimode_ef_ramsey')
-                prefix = 'multimode_ef_ramsey_mode_' + str(mode_num) + '_experiment'
-                data_file = os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
-                expt = MultimodeCalibrateEFSidebandExperiment(path=datapath, data_file=data_file, adc=adc,
-                                                              exp='short_multimode_ef_ramsey', dc_offset_guess_ef=0,
-                                                              mode=mode_num, liveplot_enabled=True)
-                expt.go()
-                print expt.suggested_dc_offset_freq_ef
-                dc_offset_guess_ef = expt.suggested_dc_offset_freq_ef
-                adc.close()
-                expt = None
-                print
-                del expt
-                gc.collect()
-
-                adc = prepare_alazar(cfg, expt_name, 'long_multimode_ef_ramsey')
-                prefix = 'long_multimode_ef_ramsey_mode_' + str(mode_num) + '_experiment'
-                data_file = os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
-                expt = MultimodeCalibrateEFSidebandExperiment(path=datapath, data_file=data_file, adc=adc,
-                                                              exp='long_multimode_ef_ramsey', mode=mode_num,
-                                                              dc_offset_guess_ef=dc_offset_guess_ef,
-                                                              liveplot_enabled=True)
-                expt.go()
-                print expt.suggested_dc_offset_freq_ef
-                expt.save_config()
-                expt = None
-                adc.close()
-                gc.collect()
-
-
-
     if expt_name.lower() == 'multimode_dc_offset_experiment':
 
         experiment_started = True
@@ -479,24 +352,14 @@ def run_multimode_sequential_experiment(expt_name):
 
         adc.close()
 
-
-
-    if expt_name.lower() == 'sequential_single_mode_randomized_benchmarking':
-        experiment_started = True
-        from slab.experiments.Multimode.MultimodePulseSequenceExperiment import MultimodeSingleResonatorRandomizedBenchmarkingExperiment
-
-        for i in arange(32):
-            pulse_calibration(phase_exp=True)
-            multimode_pulse_calibration()
-            expt = MultimodeSingleResonatorRandomizedBenchmarkingExperiment(liveplot_enabled=False, path=datapath, trigger_period=0.001)
-            expt.go()
-            del expt
-            gc.collect()
-
     if not experiment_started:
         close_match = difflib.get_close_matches(expt_name, expt_list)
         print "No experiment found for: " + expt_name
         print "Do you mean: " + close_match[0] + "?"
+
+
+
+
 
 
 

@@ -6,6 +6,7 @@ from slab.experiments.General.PulseSequences.SingleQubitPulseSequences import *
 from slab.experiments.Multimode.PulseSequences.MultimodePulseSequence import *
 from numpy import mean, arange
 from tqdm import tqdm
+from slab.instruments.awg.PXDAC4800 import PXDAC4800
 
 
 class QubitPulseSequenceExperiment(Experiment):
@@ -40,19 +41,9 @@ class QubitPulseSequenceExperiment(Experiment):
         else:
             self.prep_tek2 = False
 
-        if 'trigger_period' in self.extra_args:
-            self.trigger_period = self.extra_args['trigger_period']
-            print "Trigger period has been set to %s microseconds"%(self.trigger_period*1e6)
-        else:
-            try:
-                self.trigger_period = self.cfg['expt_trigger']['period']
-            except:
-                print("error in setting trigger time")
 
-        self.adc_predefined = False
         if 'adc' in self.extra_args:
             self.adc = self.extra_args['adc']
-            self.adc_predefined = True
         else:
             self.adc = None
 
@@ -96,16 +87,18 @@ class QubitPulseSequenceExperiment(Experiment):
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=True)
+        self.readout.set_output(True)
         self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (
             self.cfg['readout']['frequency'] - self.cfg['readout']['bare_frequency']), self.cfg['readout']['frequency'])
 
         self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         self.drive.set_power(self.cfg['drive']['power'])
-        self.drive.set_ext_pulse(mod=True)
+        self.drive.set_ext_pulse(mod=False)
         self.drive.set_output(True)
-        self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
-
-        self.trigger.set_period(self.trigger_period)
+        try:
+            self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
+        except:
+            print "Digital attenuator not loaded."
 
         try:
             self.cfg['freq_flux']['flux']=self.extra_args['flux']
@@ -123,12 +116,18 @@ class QubitPulseSequenceExperiment(Experiment):
             pass
 
 
-        if self.cfg['freq_flux']['current']:
-            self.flux_volt.ramp_current(self.cfg['freq_flux']['flux'])
-        elif self.cfg['freq_flux']['voltage']:
-            self.flux_volt.ramp_volt(self.cfg['freq_flux']['flux'])
+        try:
+            if self.cfg['freq_flux']['current']:
+                self.flux_volt.ramp_current(self.cfg['freq_flux']['flux'])
+            elif self.cfg['freq_flux']['voltage']:
+                self.flux_volt.ramp_volt(self.cfg['freq_flux']['flux'])
+        except:
+            print "Voltage source not loaded."
 
-        self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
+        try:
+            self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
+        except:
+            print "self.awg not loaded."
 
         if self.pre_run is not None:
             self.pre_run()
@@ -143,7 +142,7 @@ class QubitPulseSequenceExperiment(Experiment):
         current_data = None
         for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['averages'] / 100))):
             tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg_prep,
-                                                                    start_function=self.awg.run,
+                                                                    start_function=self.awg_run,
                                                                     excise=self.cfg['readout']['window'])
 
             mag = sqrt(ch1_pts**2+ch2_pts**2)
@@ -185,33 +184,21 @@ class QubitPulseSequenceExperiment(Experiment):
 
             # print ii * min(self.cfg[self.expt_cfg_name]['averages'], 100)
 
-            if self.data_file == None:
+            if self.data_file != None:
+                self.slab_file = SlabFile(self.data_file)
+            else:
                 self.slab_file = self.datafile()
-                with self.slab_file as f:
-                    f.add('expt_2d', expt_data)
-                    f.add('expt_avg_data', expt_avg_data)
-                    f.add('expt_pts', self.expt_pts)
-                    f.close()
-
-        if self.data_file != None:
-            self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
-                f.append_line('expt_avg_data', expt_avg_data)
-                f.append_line('expt_pts', self.expt_pts)
+                f.add('expt_2d', expt_data)
+                f.add('expt_avg_data', expt_avg_data)
+                f.add('expt_pts', self.expt_pts)
                 f.close()
-
-
-        if not self.adc_predefined:
-            adc.close()
-
 
         if self.post_run is not None:
             self.post_run(self.expt_pts, expt_avg_data)
 
-
     def awg_prep(self):
-        self.awg.stop_and_prep()
-        if self.prep_tek2:
-            self.tek2.stop()
-            self.tek2.prep_experiment()
-            self.tek2.run()
+        PXDAC4800().stop()
+
+    def awg_run(self):
+        PXDAC4800().run_experiment()

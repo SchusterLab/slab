@@ -80,7 +80,7 @@ class PulseSequence:
             im[awg['name']].pre_load()
             #print "Sequence preloaded"
             im[awg['name']].load_sequence_file(os.path.join(path, file_prefix + '.awg'), force_reload=True)
-            print "Sequence file uploaded to Tek5014"
+            print "Sequence file uploaded"
             im[awg['name']].prep_experiment()
 
     def write_Tek70001_sequence(self, awg, path, file_prefix, upload=False):
@@ -91,7 +91,6 @@ class PulseSequence:
             tek7 = InstrumentManager()[awg['name']]
             for waveform in waveforms:
                 write_Tek70001_sequence(waveform, path, file_prefix, awg=tek7)
-            print "Sequence file uploaded to Tek70001"
             tek7.prep_experiment()
             tek7.run()
         else:

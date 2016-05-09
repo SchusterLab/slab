@@ -280,47 +280,22 @@ def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
     if fitparams is None:    
         FFT=scipy.fft(fitdatay)
         fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
-        max_ind=np.argmax(abs(FFT[1:len(fitdatay)/2.]))+1
+        max_ind=np.argmax(abs(FFT[4:len(fitdatay)/2.]))+4
         fft_val=FFT[max_ind]
         
         fitparams=[0,0,0,0]
         fitparams[3]=np.mean(fitdatay)
         fitparams[0]=(max(fitdatay)-min(fitdatay))/2.#2*abs(fft_val)/len(fitdatay)
         fitparams[1]=fft_freqs[max_ind]
-
         fitparams[2]=(cmath.phase(fft_val)-np.pi/2.)*180./np.pi
-
+        #fitparams[3]=(max(fitdatax)-min(fitdatax))
+        #fitparams[5]=fitdatax[0]
+        
     sin2=lambda p,x: p[0]*np.sin(2.*np.pi*p[1]*x+p[2]*np.pi/180.)+p[3]
     #print "fitparams: ",fitparams
     p1 = fitgeneral(fitdatax, fitdatay, sin2, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
     return p1  
-
-
-def sin_phase(xdata,ydata,expected_period,find_phase):
-    #initial fit guesses
-    fitparams=[0,0,0,0]
-    fitparams[0]=(max(ydata)-min(ydata))/2. #Amplitude
-    fitparams[1]= 1/expected_period #Frequency (for phase sweeps)
-    fitparams[2]=0.0 #Phase
-    fitparams[3]=np.mean(ydata) #Offset
-
-    fits=fitsin(xdata,ydata,fitparams=fitparams,showfit=False,label='fitting')
-
-    if find_phase == 'max':
-        correction = 90.0*np.sign(fits[0])
-    elif find_phase =='min':
-        correction = -90.0*np.sign(fits[0])
-    else:
-        raise NameError('What do you want from me?')
-
-    x_at_extremum = np.around((-fits[2]+correction)/(360.*fits[1]),decimals=2)
-
-    return x_at_extremum
-
-
-
-
 
 def hangerfunc_old(p,x):
     """p=[f0,Q,S21Min,Tmax]

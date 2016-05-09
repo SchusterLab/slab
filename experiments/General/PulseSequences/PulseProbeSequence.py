@@ -4,7 +4,7 @@ __author__ = 'Nelson'
 from slab.instruments.awg.PulseSequence import *
 from slab.experiments.ExpLib import awgpulses as ap
 from numpy import arange, linspace
-from slab.experiments.ExpLib.TEK1PulseOrganizer import *
+#from slab.experiments.ExpLib.TEK1PulseOrganizer import *
 
 class PulseProbeSequence(PulseSequence):
     def __init__(self, awg_info, pulse_probe_cfg, readout_cfg, pulse_cfg, buffer_cfg):
@@ -77,11 +77,11 @@ class PulseProbeSequence(PulseSequence):
             self.waveforms['qubit drive I'][ii] = ap.sideband(wtpts,
                                                                ap.gauss(wtpts, a, self.origin - 3 * pulse_probe_len,
                                                                          pulse_probe_len), np.zeros(len(wtpts)),
-                                                               self.fe_sideband_freq, self.phase)[0]
+                                                               0, 0)[0]
             self.waveforms['qubit drive Q'][ii] = ap.sideband(wtpts,
                                                                ap.gauss(wtpts, a, self.origin - 3 * pulse_probe_len,
                                                                          pulse_probe_len), np.zeros(len(wtpts)),
-                                                               self.fe_sideband_freq, self.phase)[1]
+                                                               0, 0)[1]
             self.markers['qubit buffer'][ii] = ap.square(mtpts, 1, self.origin - 6 * pulse_probe_len - self.marker_start_buffer,
                                                            6 * pulse_probe_len + self.marker_start_buffer)
 

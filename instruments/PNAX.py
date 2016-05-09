@@ -18,9 +18,10 @@ class N5242A(SocketInstrument):
     MAXSWEEPPTS = 1601
     default_port = 5025
 
-    def __init__(self, name="E5071", address=None, enabled=True, **kwargs):
-        SocketInstrument.__init__(self, name, address, enabled=enabled, recv_length=2 ** 20, **kwargs)
+    def __init__(self, name="E5071", address=None, enabled=True, timeout=10, **kwargs):
+        SocketInstrument.__init__(self, name, address, enabled=enabled, recv_length=2 ** 20, timeout=timeout, **kwargs)
         self.query_sleep = 0.05
+        self.query_timeout = timeout
 
         # In order to avoid errors, this needs to be run first.
         self.set_active_trace(channel=1, trace=1, fast=False)
@@ -239,7 +240,7 @@ class N5242A(SocketInstrument):
             timeout = self.query_timeout
         done = False
         while done is False:
-            buffer_str = self.read(timeout)
+            buffer_str = self.read()
             # print "buffer_str", buffer_str
             yield buffer_str
             if buffer_str[-1] == eof_char:

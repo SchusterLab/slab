@@ -4,7 +4,6 @@ from slab import *
 from slab.instruments.Alazar import Alazar
 from slab.experiments.ExpLib.QubitPulseSequenceExperiment import *
 from numpy import mean, arange
-from slab.dsfit import *
 
 
 class MultimodeRabiExperiment(QubitPulseSequenceExperiment):
@@ -98,8 +97,9 @@ class MultimodeCalibrateOffsetExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
 
-        if self.exp=="multimode_rabi":
+        if self.cfg['multimode_calibrate_offset_experiment']['calibrate_sidebands']:
             print "Analyzing Multimode Rabi Data"
+            fitdata = fitdecaysin(expt_pts[5:], expt_avg_data[5:])
             fitdata = fitdecaysin(expt_pts[5:], expt_avg_data[5:])
 
             if (-fitdata[2]%180 - 90)/(360*fitdata[1]) < 0:
@@ -122,7 +122,7 @@ class MultimodeCalibrateOffsetExperiment(QubitPulseSequenceExperiment):
                     self.cfg['multimodes'][self.mode]['flux_pi_length'] =   self.flux_pi_length
                     self.cfg['multimodes'][self.mode]['flux_2pi_length'] =  self.flux_2pi_length
 
-        else:
+        elif self.cfg['multimode_calibrate_ef_sideband_experiment']['calibrate_offsets']:
 
 
             print "Analyzing Ramsey Data"
@@ -147,9 +147,9 @@ class MultimodeCalibrateEFSidebandExperiment(QubitPulseSequenceExperiment):
         self.extra_args = {}
         for key, value in kwargs.iteritems():
             self.extra_args[key] = value
-        if 'mode' in self.extra_args:
-            self.exp = self.extra_args['exp']
-            self.mode = self.extra_args['mode']
+
+        self.exp = self.extra_args['exp']
+        self.mode = self.extra_args['mode']
         self.dc_offset_guess_ef =  self.extra_args['dc_offset_guess_ef']
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -161,7 +161,7 @@ class MultimodeCalibrateEFSidebandExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
 
-        if self.exp =="multimode_ef_rabi":
+        if self.cfg['multimode_calibrate_ef_sideband_experiment']['calibrate_sidebands']:
             print "Analyzing EF Rabi Data"
             fitdata = fitdecaysin(expt_pts[5:], expt_avg_data[5:])
 
@@ -183,7 +183,7 @@ class MultimodeCalibrateEFSidebandExperiment(QubitPulseSequenceExperiment):
                     self.cfg['multimodes'][self.mode]['flux_pi_length_ef'] =   self.flux_pi_length_ef
                     self.cfg['multimodes'][self.mode]['flux_2pi_length_ef'] =  self.flux_2pi_length_ef
 
-        else:
+        elif self.cfg['multimode_calibrate_ef_sideband_experiment']['calibrate_offsets']:
 
             print "Analyzing Ramsey Data"
             fitdata = fitdecaysin(expt_pts, expt_avg_data)
@@ -395,10 +395,6 @@ class MultimodeCNOTExperiment(QubitPulseSequenceExperiment):
 
 class MultimodePi_PiExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_Pi_Pi_Experiment', config_file='..\\config.json', **kwargs):
-        if 'mode' in kwargs:
-            self.id = kwargs['mode']
-        else:
-            self.id = self.cfg[self.expt_cfg_name]['id']
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                                     PulseSequence=MultimodePi_PiSequence, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
@@ -407,11 +403,7 @@ class MultimodePi_PiExperiment(QubitPulseSequenceExperiment):
         self.tek2 = InstrumentManager()["TEK2"]
 
     def post_run(self, expt_pts, expt_avg_data):
-        expected_period = 360.
-        find_phase = 'max' #'max' or 'min'
-        x_at_extremum = sin_phase(expt_pts,expt_avg_data,expected_period,find_phase)
-        print 'Phase at %s: %s degrees' %(find_phase,x_at_extremum)
-        self.cfg['multimodes'][self.id]['pi_pi_offset_phase'] = x_at_extremum
+        pass
 
 class CPhaseOptimizationSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_cphase_optimization_sweep', config_file='..\\config.json', **kwargs):
@@ -447,17 +439,6 @@ class MultimodeSingleResonatorTomography(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         pass
 
-class MultimodeSingleResonatorRandomizedBenchmarkingExperiment(QubitPulseSequenceExperiment):
-    def __init__(self, path='', prefix='multimode_single_resonator_randomized_benchmarking', config_file='..\\config.json', **kwargs):
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeSingleResonatorRandomizedBenchmarkingSequence, pre_run=self.pre_run,
-                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
-
-    def pre_run(self):
-        self.tek2 = InstrumentManager()["TEK2"]
-
-    def post_run(self, expt_pts, expt_avg_data):
-        pass
 
 class MultimodeTwoResonatorTomography(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_two_Resonator_Tomography', config_file='..\\config.json', **kwargs):
@@ -498,18 +479,6 @@ class MultimodeThreeModeCorrelationExperiment(QubitPulseSequenceExperiment):
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                                     PulseSequence=MultimodeThreeModeCorrelationSequence, pre_run=self.pre_run,
-                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
-
-    def pre_run(self):
-        self.tek2 = InstrumentManager()["TEK2"]
-
-    def post_run(self, expt_pts, expt_avg_data):
-        pass
-
-class MultimodeCPhaseAmplificationExperiment(QubitPulseSequenceExperiment):
-    def __init__(self, path='', prefix='Multimode_CPhase_Amplification_Experiment', config_file='..\\config.json', **kwargs):
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeCPhaseAmplificationSequence, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
 
     def pre_run(self):

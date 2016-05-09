@@ -213,7 +213,7 @@ class Schrodinger2D(Schrodinger):
         @param num_levels (-1 by default) number of levels to plot"""
         if num_levels == -1:
             num_levels = len(self.energies())
-        print self.energies(num_levels)-self.energies()[0]
+        print self.energies(num_levels)
         figure(figsize=(20, 5))
         subplot(1, num_levels + 1, 1)
         self.plot_potential()

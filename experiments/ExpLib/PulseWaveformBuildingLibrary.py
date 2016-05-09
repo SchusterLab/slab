@@ -27,8 +27,8 @@ def gauss(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_locatio
 def gauss_phase_fix(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse,pulse_info,qubit_dc_offset):
 
     if pulse_info['fix_phase']:
-        # print "Phase of qubit pulse is being fixed"
-        # print "qubit DC offset is %s" %(qubit_dc_offset)
+        print "Phase of qubit pulse is being fixed"
+        print "qubit DC offset is %s" %(qubit_dc_offset)
         qubit_waveforms = ap.sideband(wtpts,
                                  ap.gauss(wtpts, pulse.amp,
                                           origin - pulse_location - 0.5*pulse.span_length,
