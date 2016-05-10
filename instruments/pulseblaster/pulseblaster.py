@@ -83,6 +83,12 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,card_trig_len,r
 
     # Trigger the board
     pb_reset()
+    # run_pulseblaster()
+
+    #pb_close()
+
+def run_pulseblaster():
     pb_start()
 
-    pb_close()
+def stop_pulseblaster():
+    pb_stop()

@@ -86,8 +86,9 @@ class PXDAC4800:
         filePath = CHARP(waveform_file_name+'\0')
         # fileSize= U32(os.path.getsize(filePath))
 
+        print "Loading.."
         dll._LoadFileIntoRamAXD48(pHandle, offset, U32(0), filePath, U32(0), U32(0), offset)
-
+        print "Loaded!"
         pPlaybackBytes = U32P(U32(0))
         dll._GetActiveMemoryRegionXD48(pHandle, None, pPlaybackBytes)
         PlaybackBytes = pPlaybackBytes.contents

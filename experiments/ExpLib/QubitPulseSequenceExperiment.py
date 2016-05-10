@@ -7,6 +7,7 @@ from slab.experiments.Multimode.PulseSequences.MultimodePulseSequence import *
 from numpy import mean, arange
 from tqdm import tqdm
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
+from slab.instruments.pulseblaster.pulseblaster import *
 
 
 class QubitPulseSequenceExperiment(Experiment):
@@ -88,8 +89,12 @@ class QubitPulseSequenceExperiment(Experiment):
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=True)
         self.readout.set_output(True)
-        self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (
-            self.cfg['readout']['frequency'] - self.cfg['readout']['bare_frequency']), self.cfg['readout']['frequency'])
+
+        try:
+            self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (
+                self.cfg['readout']['frequency'] - self.cfg['readout']['bare_frequency']), self.cfg['readout']['frequency'])
+        except:
+            print "Digital phase shifter not loaded."
 
         self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         self.drive.set_power(self.cfg['drive']['power'])
@@ -198,7 +203,9 @@ class QubitPulseSequenceExperiment(Experiment):
             self.post_run(self.expt_pts, expt_avg_data)
 
     def awg_prep(self):
+        stop_pulseblaster()
         PXDAC4800().stop()
 
     def awg_run(self):
         PXDAC4800().run_experiment()
+        run_pulseblaster()

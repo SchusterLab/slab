@@ -335,7 +335,8 @@ def round_samples(x, base=64):
 
 class Alazar():
     def __init__(self,config=None, handle=None):
-        self.Az = C.CDLL(r'C:\Windows\SysWow64\ATSApi.dll')
+        # self.Az = C.CDLL(r'C:\Windows\SysWow64\ATSApi.dll')
+        self.Az = C.CDLL(r'C:\Windows\SysWow64\ATSApi64.dll')
         if handle:
             self.handle = handle
         else:
