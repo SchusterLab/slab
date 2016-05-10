@@ -4,7 +4,8 @@ from slab.instruments.awg.PulseSequence import *
 from slab.experiments.ExpLib import awgpulses as ap
 from numpy import arange, linspace
 from slab.experiments.ExpLib.PulseWaveformBuildingLibrary import *
-
+from slab.instruments.pulseblaster.pulseblaster import start_pulseblaster
+import math
 from liveplot import LivePlotClient
 
 
@@ -24,6 +25,7 @@ class PulseSequenceBuilder():
     def __init__(self, cfg):
         buffer_cfg = cfg['buffer']
         self.cfg = cfg
+        self.exp_period_ns = cfg['expt_trigger']['period_ns']
         self.start_end_buffer = buffer_cfg['tek1_start_end']
         self.marker_start_buffer = buffer_cfg['marker_start']
         self.marker_end_buffer = buffer_cfg['marker_end']
@@ -239,8 +241,12 @@ class PulseSequenceBuilder():
         For each pulse sequence, location of readout and card is fixed.
         Pulses are appended backward, from the last pulse to the first pulse.
         '''
-        self.origin = self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer)
+        def roundup1000(x):
+            return int(math.ceil(x / 1000.0)) * 1000
+        self.origin = roundup1000(self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer))
         self.uses_tek2 = False
+        awg_trig_len=100
+        start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin + self.measurement_delay, self.card_trig_width, self.measurement_width)
         for ii in range(len(pulse_sequence_matrix)):
             self.markers_readout[ii] = ap.square(self.mtpts, 1, self.origin + self.measurement_delay,
                                                  self.measurement_width)

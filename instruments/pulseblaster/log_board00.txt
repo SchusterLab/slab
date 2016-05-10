@@ -1,0 +1,141 @@
+Logfile created: Mon May 09 15:01:25 2016
+
+SpinAPI version: 20150129_x86_64
+Current Board #: 0
+================================================================================================
+TIME     FUNCTION                  MESSAGE   
+================================================================================================
+15:01:25 os_count_boards          Registering WinDriver...
+15:01:25 RegisterWinDriver        Using WinDriver version 1031.
+15:01:25 RegisterWinDriver        lic.dwLicense:  0x2051dfc
+15:01:25 RegisterWinDriver        lic.dwLicense2: 0x88
+15:01:25 RegisterWinDriver        license setup succeeded
+15:01:25 os_usb_count_devices     os_usb_count_devices: Enumerating USB Devices...
+
+15:01:25 os_usb_count_devices     os_usb_count_devices: Enumeration Completed. Found 0 Devices.
+
+15:01:25 pb_count_boards          pb_count_boards(): Detected 1 boards in your system.
+
+15:01:25 pb_init                  Entering pb_init. cur_board = 0
+
+15:01:25 os_usb_count_devices     os_usb_count_devices: Enumerating USB Devices...
+
+15:01:25 os_usb_count_devices     os_usb_count_devices: Enumeration Completed. Found 0 Devices.
+
+15:01:25 pb_count_boards          pb_count_boards(): Detected 1 boards in your system.
+
+15:01:25 do_os_init               do_os_init: board # 0
+
+15:01:25 do_os_init               do_os_init: num_pci_boards: 1
+
+15:01:25 do_os_init               do_os_init: num_usb_devices: 0
+
+15:01:25 do_os_init               do_os_init: initializing pci
+
+15:01:25 os_init                  card_num: 0
+
+15:01:25 os_init                  PciScanCards found 1 SpinCore cards, 0 other cards.
+15:01:25 os_init                  Support:
+
+15:01:25 os_init                  	5920
+15:01:25 os_init                  	8852
+15:01:25 os_init                  	8873
+15:01:25 os_init                  	8874
+15:01:25 os_init                  	8875
+15:01:25 os_init                  	8876
+15:01:25 os_init                  	8878
+15:01:25 os_init                  	8879
+15:01:25 os_init                  	8890
+15:01:25 os_init                  	887A
+15:01:25 os_init                  	887C
+15:01:25 get_caps                 dev_id=0x8878
+15:01:25 get_caps                 Detected PulseBlasterESR board (r 0x110b)
+15:01:25 pb_start_programming     pb_start_programming (device=0)
+15:01:25 pb_start_programming     pb_start_programming: reset
+
+15:01:25 pb_outp                   pb_outp: addr 0, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 2, data a. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 3, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 4, data 0. Using the direct protocol.
+15:01:25 pb_inst_pbonly64         pb_inst_pbonly: inst=7, inst_data=10,length=10.000000, flags=0x00000001
+
+15:01:25 pb_inst_direct           pb_inst_direct: OPCODE=0x87, flags=0x00000001, delay=2
+
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 1. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 87. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 2. Using the direct protocol.
+15:01:25 pb_inst_pbonly64         pb_inst_pbonly: inst=7, inst_data=190,length=10.000000, flags=0x00000000
+
+15:01:25 pb_inst_direct           pb_inst_direct: OPCODE=0xbc7, flags=0x00000000, delay=2
+
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data b. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data c7. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 2. Using the direct protocol.
+15:01:25 pb_inst_pbonly64         pb_inst_pbonly: inst=7, inst_data=10,length=10.000000, flags=0x00000006
+
+15:01:25 pb_inst_direct           pb_inst_direct: OPCODE=0x87, flags=0x00000006, delay=2
+
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 6. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 87. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 2. Using the direct protocol.
+15:01:25 pb_inst_pbonly64         pb_inst_pbonly: inst=7, inst_data=90,length=10.000000, flags=0x00000004
+
+15:01:25 pb_inst_direct           pb_inst_direct: OPCODE=0x587, flags=0x00000004, delay=2
+
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 4. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 5. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 87. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 2. Using the direct protocol.
+15:01:25 pb_inst_pbonly64         pb_inst_pbonly: inst=6, inst_data=0,length=197000.000000, flags=0x00000000
+
+15:01:25 pb_inst_direct           pb_inst_direct: OPCODE=0x6, flags=0x00000000, delay=98497
+
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 6. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 1. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data 80. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 6, data c1. Using the direct protocol.
+15:01:25 pb_stop_programming      pb_stop_programming: (device=0)
+15:01:25 pb_outp                   pb_outp: addr 7, data 0. Using the direct protocol.
+15:01:25 pb_reset                 pb_reset():
+15:01:25 pb_outp                   pb_outp: addr 0, data 0. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 2, data ff. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 3, data ff. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 4, data ff. Using the direct protocol.
+15:01:25 pb_outp                   pb_outp: addr 7, data 0. Using the direct protocol.
+15:01:25 pb_start                 pb_start():
+15:01:25 pb_outp                   pb_outp: addr 1, data 0. Using the direct protocol.
+15:01:25 do_os_close              do_os_close: closing pci
+
