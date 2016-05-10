@@ -6,3 +6,5 @@
 *.pyc
 
 *.pyc
+# Instrument cfg
+instruments/instrument.cfg
