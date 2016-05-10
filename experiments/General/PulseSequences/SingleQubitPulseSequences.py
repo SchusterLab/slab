@@ -43,7 +43,7 @@ class RamseySequence(QubitPulseSequence):
     def define_pulses(self,pt):
         self.psb.append('q','half_pi', self.pulse_type)
         if self.expt_cfg['echo']:
-
+            print "Ramsey being run with single echo pulse"
             self.psb.idle(pt/2.0)
             self.psb.append('q','pi')
             self.psb.idle(pt/2.0)

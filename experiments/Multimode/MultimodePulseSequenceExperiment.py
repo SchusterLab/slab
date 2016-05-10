@@ -652,6 +652,13 @@ class MultimodeCNOTAmplificationExperiment(QubitPulseSequenceExperiment):
 
 class Multimode_State_Dep_Shift_Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_State_Dep_Shift', config_file='..\\config.json', **kwargs):
+
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+        self.mode = self.extra_args['mode']
+        self.exp = self.extra_args['exp']
+
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                                     PulseSequence=Multimode_State_Dep_Shift_Sequence, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
@@ -660,12 +667,43 @@ class Multimode_State_Dep_Shift_Experiment(QubitPulseSequenceExperiment):
         self.tek2 = InstrumentManager()["TEK2"]
 
     def post_run(self, expt_pts, expt_avg_data):
-        print "Analyzing Ramsey Data"
-        fitdata = fitdecaysin(expt_pts, expt_avg_data)
 
-        self.offset_freq =self.cfg['multimode_state_dep_shift']['ramsey_freq'] - fitdata[1] * 1e9
+        if self.exp == 1 or self.exp==2:
+
+            print "Analyzing Rabi Data"
+
+            xdata = expt_pts
+            ydata = expt_avg_data
+            FFT=scipy.fft(ydata)
+            fft_freqs=scipy.fftpack.fftfreq(len(ydata),xdata[1]-xdata[0])
+            max_ind=np.argmax(abs(FFT[2:len(ydata)/2.]))+2
+            fft_val=FFT[max_ind]
+
+            fitparams=[0,0,0,0,0]
+            fitparams[4]=np.mean(ydata)
+            fitparams[0]=(max(ydata)-min(ydata))/2.#2*abs(fft_val)/len(fitdatay)
+            fitparams[1]=fft_freqs[max_ind]
+            fitparams[2]=-90.0
+            fitparams[3]=(max(xdata)-min(xdata))
+            fitdata=fitdecaysin(xdata[:],ydata[:],fitparams=fitparams,showfit=False)
+
+            self.pi_length = around(1/fitdata[1]/2,decimals=2)
+            self.half_pi_length =around(1/fitdata[1]/4,decimals=2)
+            print 'Rabi pi: %s ns' % (self.pi_length)
+            print 'Rabi pi/2: %s ns' % (self.half_pi_length)
+            print 'T1*: %s ns' % (fitdata[3])
 
 
-        print "State dependent shift = " + str(self.offset_freq) + "MHz"
-        print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
-        print "T2*: " + str(fitdata[3]) + " ns"
+        else:
+
+            print "Analyzing Ramsey Data"
+            fitdata = fitdecaysin(expt_pts, expt_avg_data)
+
+            self.offset_freq =self.cfg['multimode_state_dep_shift']['ramsey_freq'] - fitdata[1] * 1e9
+
+
+            print "State dependent shift = " + str(self.offset_freq) + "MHz"
+            print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
+            print "T2*: " + str(fitdata[3]) + " ns"
+
+            self.cfg['multimodes'][self.mode]['shift'] =   self.offset_freq

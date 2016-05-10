@@ -37,7 +37,7 @@ class PulseSequenceBuilder():
         self.pulse_span_length_list_temp = []
         self.qubit_cfg = cfg['qubit']
 
-    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None,addphase=None, **kwargs):
+    def append(self, target, name, type='gauss', amp=0, length=0, freq=None, phase=None,addphase=None, **kwargs):
         '''
         Append a pulse in the pulse sequence.
         '''
@@ -52,7 +52,8 @@ class PulseSequenceBuilder():
             if name == "pi" or name == "cal_pi":
                 amp = self.pulse_cfg[type]['pi_a']
                 length = self.pulse_cfg[type]['pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                if freq == None:
+                    freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']
                 if addphase != None:
@@ -60,7 +61,8 @@ class PulseSequenceBuilder():
             if name == "half_pi":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                if freq == None:
+                    freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']
                 if addphase != None:
@@ -68,7 +70,8 @@ class PulseSequenceBuilder():
             if name == "neg_half_pi":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                if freq == None:
+                    freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']+180
                 if addphase != None:
@@ -76,7 +79,8 @@ class PulseSequenceBuilder():
             if name == "pi_y":
                 amp = self.pulse_cfg[type]['pi_a']
                 length = self.pulse_cfg[type]['pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                if freq == None:
+                    freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['y_phase']
                 if addphase != None:
@@ -84,7 +88,8 @@ class PulseSequenceBuilder():
             if name == "half_pi_y":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                if freq == None:
+                    freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['y_phase']
                 if addphase != None:
@@ -92,7 +97,8 @@ class PulseSequenceBuilder():
             if name == "neg_half_pi_y":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                if freq == None:
+                    freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['y_phase']+180
                 if addphase != None:
@@ -101,7 +107,8 @@ class PulseSequenceBuilder():
             if name == "pi_q_ef":
                 amp = self.pulse_cfg[type]['pi_ef_a']
                 length = self.pulse_cfg[type]['pi_ef_length']
-                freq = self.pulse_cfg[type]['iq_freq']+self.qubit_cfg['alpha']
+                if freq == None:
+                    freq = self.pulse_cfg[type]['iq_freq']+self.qubit_cfg['alpha']
                 if phase == None:
                     phase = 0
                 if addphase != None:
@@ -109,7 +116,8 @@ class PulseSequenceBuilder():
             if name == "half_pi_q_ef":
                 amp = self.pulse_cfg[type]['half_pi_ef_a']
                 length = self.pulse_cfg[type]['half_pi_ef_length']
-                freq = self.pulse_cfg[type]['iq_freq']+self.qubit_cfg['alpha']
+                if freq == None:
+                    freq = self.pulse_cfg[type]['iq_freq']+self.qubit_cfg['alpha']
                 if phase == None:
                     phase = 0
                 if addphase != None:
@@ -176,7 +184,8 @@ class PulseSequenceBuilder():
 
         self.pulse_sequence_list.append(pulse_info)
         self.total_pulse_span_length += length
-        self.total_flux_pulse_span_length += length
+        if self.flux_pulse_started:
+            self.pulse_span_length_list_temp.append(length)
 
     def get_pulse_sequence(self):
         '''
@@ -250,7 +259,7 @@ class PulseSequenceBuilder():
         self.markers_ch3m1 = markers_ch3m1
 
 
-    def build(self, pulse_sequence_matrix, total_pulse_span_length_list):
+    def build(self, pulse_sequence_matrix, total_flux_pulse_span_length_list):
         '''
         Parse the pulse sequence matrix generated previously.
         For each pulse sequence, location of readout and card is fixed.
@@ -274,7 +283,7 @@ class PulseSequenceBuilder():
                                                         0, 0)[0]
             self.markers_qubit_buffer[ii] = ap.square(self.mtpts, 0, 0, 0)
             pulse_location = 0
-            flux_pulse_location = total_pulse_span_length_list[ii]
+            flux_pulse_location = total_flux_pulse_span_length_list[ii]
             flux_pulse_started = False
             flux_end_location = 0
             # The range defined in this way means having the for loop with index backward.
@@ -365,7 +374,7 @@ class PulseSequenceBuilder():
 
             if self.uses_tek2:
                 self.markers_ch3m1[ii] = ap.square(self.mtpts, 1,
-                                                self.origin - flux_end_location - total_pulse_span_length_list[
+                                                self.origin - flux_end_location - total_flux_pulse_span_length_list[
                                                     ii] - self.tek2_trigger_delay,
                                                 self.card_trig_width)
         return (self.markers_readout,

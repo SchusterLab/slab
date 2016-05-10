@@ -58,23 +58,43 @@ def  run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
     if expt_name.lower() == 'multimode_pi_pi_phase_calibration':
         multimode_pi_pi_phase_calibration(seq_exp,kwargs['mode'])
 
+    if expt_name.lower() == 'multimode_cphase_calibration':
+        frequency_stabilization(seq_exp)
+        seq_exp.run('multimode_qubit_mode_cz_offset_experiment',{'mode':kwargs['mode'],'mode2':kwargs['mode2'],'offset_exp':0,'load_photon':0,'update_config':True})
+        seq_exp.run('multimode_qubit_mode_cz_offset_experiment',{'mode':kwargs['mode'],'mode2':kwargs['mode2'],'offset_exp':1,'load_photon':0,'update_config':True})
+        for offset_exp in arange(2,5):
+            for load_photon in arange(2):
+                seq_exp.run('multimode_qubit_mode_cz_offset_experiment',{'mode':kwargs['mode'],'mode2':kwargs['mode2'],'offset_exp':offset_exp,'load_photon':load_photon,'update_config':True})
+
+    if expt_name.lower() == 'sequential_state_dep_shift_calibration':
+        modelist = array([1,3,4,5,6,9])
+        for mode in modelist:
+            pulse_calibration(seq_exp,phase_exp=False)
+            seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':0,'update_config':True})
+            seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':1,'update_config':True})
+            seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':2,'update_config':True})
+
 
     if expt_name.lower() == 'multimode_ge_calibration_all':
         multimode_pulse_calibration(seq_exp,kwargs['mode'])
         multimode_dc_offset_recalibration(seq_exp,kwargs['mode'])
         multimode_pi_pi_phase_calibration(seq_exp,kwargs['mode'])
 
+    if expt_name.lower() == 'multimode_ef_calibration_all':
+        multimode_ef_pulse_calibration(seq_exp,kwargs['mode'])
+        multimode_ef_dc_offset_recalibration(seq_exp,kwargs['mode'])
+
 
     if expt_name.lower() == 'sequential_multimode_calibration':
 
         modelist = array([1,3,4,5,6,9])
-        for i in arange(len(modelist)):
+        for mode in modelist:
             pulse_calibration(seq_exp)
-            multimode_pulse_calibration(seq_exp,modelist[i])
-            multimode_dc_offset_recalibration(seq_exp,modelist[i])
-            multimode_ef_pulse_calibration(seq_exp,modelist[i])
-            multimode_ef_dc_offset_recalibration(seq_exp,modelist[i])
-            multimode_pi_pi_phase_calibration(seq_exp,modelist[i])
+            multimode_pulse_calibration(seq_exp,mode)
+            multimode_dc_offset_recalibration(seq_exp,mode)
+            multimode_ef_pulse_calibration(seq_exp,mode)
+            multimode_ef_dc_offset_recalibration(seq_exp,mode)
+            multimode_pi_pi_phase_calibration(seq_exp,mode)
 
 
     if expt_name.lower() == 'sequential_dc_offset_recalibration':
@@ -87,15 +107,10 @@ def  run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
     if expt_name.lower() == 'multimode_rabi_scan':
 
-        # freqlist = array([2.19257e9,2.292e9,2.362089e9,2.546e9, 2.725e9,2.895e9])
-        # freqspan = linspace(-7,17,25)
-        # amplist = array([0.75,0.75,0.75,0.75,0.75,0.75])
-        # modelist = array([1,3,4,5,6,9])
-
-        freqlist = array([2.558e9,2.733e9,2.895e9])
-        freqspan = linspace(-7,7,15)
-        amplist = array([0.75,0.75,0.75])
-        modelist = array([5,6,9])
+        freqlist = array([2.19257e9,2.292e9,2.362089e9,2.546e9, 2.725e9,2.895e9])
+        freqspan = linspace(-1,29,30)
+        amplist = array([1,1,1,1,1,1])
+        modelist = array([1,3,4,5,6,9])
 
         for i in arange(len(modelist)):
             frequency_stabilization(seq_exp)
@@ -107,16 +122,21 @@ def  run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
     if expt_name.lower() == 'multimode_ef_rabi_scan':
 
-        freqlist = array([2.58e9,2.942e9,3.116e9])
-        freqspan = linspace(-7,7,15)
-        amplist = array([0.4,0.8,0.65])
-        modelist = array([4,6,9])
-
-
-        # freqlist = array([2.414e9,2.504e9,2.58e9,2.762e9,2.942e9,3.116e9])
+        # freqlist = array([2.58e9,2.942e9,3.116e9])
         # freqspan = linspace(-7,7,15)
-        # amplist = array([0.25,0.65,0.4,0.8,0.8,0.65])
-        # modelist = array([1,3,4,5,6,9])
+        # amplist = array([0.4,0.8,0.65])
+        # modelist = array([4,6,9])
+        #
+        #
+        freqlist = array([2.414e9,2.514e9,2.583e9,2.762e9,2.946e9,3.116e9])
+        freqspan = linspace(-1,29,30)
+        amplist = array([1,1,1,1,1,1])
+        modelist = array([1,3,4,5,6,9])
+
+        # freqlist = array([2.514e9,2.762e9])
+        # freqspan = linspace(-9,10,20)
+        # amplist = array([0.65,0.65])
+        # modelist = array([3,5])
 
         for i in arange(len(modelist)):
             frequency_stabilization(seq_exp)
