@@ -106,7 +106,7 @@ class PXDAC4800:
         # print "Stopping Ram Playback."
         PXDAC4800.dll.EndRamPlaybackXD48(PXDAC4800.pHandle)
 
-def write_PXDAC4800_file(waveforms, markers, filename, seq_name, offsets=[0,0], options=None, do_string_io=False):
+def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=[0,0], options=None, do_string_io=False):
     """
     Main function for writing a PXDAC4800 AWG format file (.rd16 binary file).
     """
@@ -134,8 +134,8 @@ def write_PXDAC4800_file(waveforms, markers, filename, seq_name, offsets=[0,0], 
     ch2_offset = offsets[1] / unit_volt
 
     # generate waveforms
-    defined_waveform_ch1_flatten = [y for x in waveforms[0] for y in x]#waveforms[0]
-    defined_waveform_ch2_flatten = [y for x in markers[0] for y in x]#markers[0]
+    defined_waveform_ch1_flatten = [y for x in waveforms[0] for y in x]
+    defined_waveform_ch2_flatten = [y for x in waveforms[1] for y in x]
 
     defined_waveform_ch1_flatten_offset = [x*max_output_volt/unit_volt+ch1_offset for x in defined_waveform_ch1_flatten]
     defined_waveform_ch2_flatten_offset = [x*max_output_volt/unit_volt+ch2_offset for x in defined_waveform_ch2_flatten]
