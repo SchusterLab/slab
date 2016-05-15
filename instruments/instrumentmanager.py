@@ -48,23 +48,35 @@ class InstrumentManager(dict):
         if server and Pyro4Loaded:
                 self.serve_instruments()
 
+    def line_is_comment_or_empty(self, line=""):
+        _line = line.strip();
+        if len(_line) == 0 or _line[0] == "#":
+            return True
+        else : return False
+
+    def parse_config_string(self, line):
+        params = line.split();
+        print params;
+        name, instrument_class, address = params;
+        return name, instrument_class, address;
+
     def load_config_file(self, config_path):
         """Loads configuration file"""
         print "Loaded Instruments: ",
         f = open(config_path, 'r')
         for line in f.readlines():
-            if line[0] != '#' and line[0] != '':
-                name = line.split()[0]
-                print name,
+            isComment = self.line_is_comment_or_empty(line);
+            if not isComment:
+                name = self.parse_config_string(line)[0]
                 self[name] = self.load_instrument(line)
         print "!"
 
     def load_instrument(self, config_string):
         """Loads instrument based on config_string (Name\tAddress\tType)"""
         #print config_string
-        params = config_string.split()
-        fn = getattr(slab.instruments, params[1])
-        return fn(name=params[0], address=params[2])
+        name, in_class, addr = self.parse_config_string(config_string);
+        fn = getattr(slab.instruments, in_class)
+        return fn(name=name, address=addr)
 
     def __getattr__(self, item):
         """Maps values to attributes.
