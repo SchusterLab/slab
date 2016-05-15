@@ -56,7 +56,6 @@ class InstrumentManager(dict):
 
     def parse_config_string(self, line):
         params = line.split();
-        print params;
         name, instrument_class, address = params;
         return name, instrument_class, address;
 
