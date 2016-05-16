@@ -6,6 +6,7 @@ BNC Function Generator (function_generator.py)
 """
 from slab.instruments import SocketInstrument
 import time
+import numpy as np
 
 
 class BNCAWG(SocketInstrument):
@@ -37,7 +38,6 @@ class BNCAWG(SocketInstrument):
     def get_termination(self):
         """Set Output State On/Off"""
         return float(self.query('OUTPUT:LOAD?'))
-
 
     def set_function(self, ftype="sine"):
         ftypes = {"SINE": "SIN", "SQUARE": "SQU", "SQU": "SQU", "RAMP": "RAMP", "PULSE": "PULSE", "NOISE": "NOISE",
@@ -191,6 +191,26 @@ class BNCAWG(SocketInstrument):
     def get_symmetry(self):
         return int(self.query('FUNCtion:RAMP:SYMMetry?'))
 
+    def send_waveform(self, vData, Vpp=2):
+        """Rescale and send waveform data to the Tek"""
+        # get range and scale to U16
+        vI16 = self.scale_waveform_to_I16(vData, Vpp)
+        length = len(vI16)
+        # create data as string with header
+        sLen = '%d' % (2 * length)
+        sHead = ':DATA:DAC VOLATILE, #%d%s' % (len(sLen), sLen)
+        # write header + data
+        self.write(sHead + vI16.tostring())
+        # select volatile waveform
+        self.write(':FUNC:USER VOLATILE')
+
+    def scale_waveform_to_I16(self, vData, dVpp):
+        """Scales the waveform and returns data in a string of I16"""
+        # clip waveform and store in-place
+        np.clip(vData, -dVpp / 2., dVpp / 2., vData)
+        vI16 = np.array(2047 * vData / (dVpp / 2.), dtype=np.int16)
+        return vI16
+
     def get_settings(self):
         settings = SocketInstrument.get_settings(self)
         settings['id'] = self.get_id()
@@ -200,11 +220,11 @@ class BNCAWG(SocketInstrument):
         settings['amplitude'] = self.get_amplitude()
         settings['offset'] = self.get_offset()
         return settings
-        
-    #setup the BNC as the master trigger for the 
-    #qubit experiment
+
+    # setup the BNC as the master trigger for the
+    # qubit experiment
     def set_exp_trigger(self):
-        
+
         self.set_output(False)
         self.set_function('PULSE')
         self.set_frequency(5e4)
@@ -242,8 +262,8 @@ class BiasDriver(BNCAWG):
     We want a sticky response. Don't want voltage to change no matter what we do. """
 
     def setup_volt_source(self, pulse_length=None, pulse_voltage=None, rest_voltage=None, autorange='off'):
-        #set the duty cycle to 40/60, 
-        #set the starting phase to be         
+        # set the duty cycle to 40/60,
+        # set the starting phase to be
         #        self.set_output(False)
         self.set_autorange(autorange)
         self.set_termination(load='INFinity')
@@ -264,7 +284,7 @@ class BiasDriver(BNCAWG):
         if pulse_length != None:
             self.pulse_length = pulse_length;
         if hasattr(self, 'pulse_length'):
-            freq = 1 / (pulse_length * 2)  #Need Integer
+            freq = 1 / (pulse_length * 2)  # Need Integer
             self.set_frequency(freq)
         self.set_burst_state(True)
         self.set_burst_cycles(1)
@@ -275,7 +295,7 @@ class BiasDriver(BNCAWG):
         self.set_trigger_source('bus')
         self.trigger();
         self.set_output(True)
-        #self.set_autorange(autorange)
+        # self.set_autorange(autorange)
 
     def pulse_voltage(self, pulses=1, delay=0):
         for ii in range(pulses):
@@ -299,6 +319,6 @@ class BiasDriver(BNCAWG):
 
 
 if __name__ == "__main__":
-    #bnc=BNCAWG(address='192.168.14.133')
+    # bnc=BNCAWG(address='192.168.14.133')
     filament = FilamentDriver(address='192.168.14.133')
     print filament.query('*IDN?')
