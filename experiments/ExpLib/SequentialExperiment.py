@@ -23,9 +23,9 @@ class SequentialExperiment():
         if 'data_file' in expt_kwargs:
             data_file = expt_kwargs['data_file']
             for key in expt_kwargs:
-                if isinstance(expt_kwargs[key],numbers.Number):
+                if isinstance(expt_kwargs[key],numbers.Number) and not key == 'update_config':
                     with SlabFile(data_file) as f:
-                        f.append_pt(key, expt_kwargs[key])
+                        f.append_pt(key, float(expt_kwargs[key]))
                         f.close()
 
         if 'seq_pre_run' in expt_kwargs:

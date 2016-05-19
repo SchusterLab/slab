@@ -67,26 +67,26 @@ def ef_pulse_calibration(seq_exp):
 
 
 def ef_frequency_calibration(seq_exp):
-    seq_exp.run('ef_Rabi',{'update_config':True})
-    print "ef pi and pi/2 pulses recalibrated"
+    # seq_exp.run('ef_Rabi',{'update_config':True})
+    # print "ef pi and pi/2 pulses recalibrated"
 
     seq_exp.run('ef_Ramsey',{})
-    if abs(seq_exp.expt.offset_freq) < 50e6:
+    if abs(seq_exp.expt.offset_freq) < 50e3:
         print "Anharmonicity well calibrated: no change!"
 
-    elif  abs(seq_exp.expt.offset_freq) > 50e6 and abs(seq_exp.expt.offset_freq) < 500e6:
+    elif  abs(seq_exp.expt.offset_freq) > 50e3 and abs(seq_exp.expt.offset_freq) < 1e6:
         seq_exp.expt.save_config()
-        print "Alpha changed by + %s Hz"%(seq.exp.expt.offset_freq)
+        print "Alpha changed by + %s kHz"%(seq_exp.expt.offset_freq/1e3)
 
     else:
-        print "Anharmonicity suggested change > 250 kHz: Rerunnig EF Ramsey"
+        print "Anharmonicity suggested change > 1 MHz: Rerunnig EF Ramsey"
         seq_exp.run('ef_Ramsey',{})
-        if abs(seq_exp.expt.offset_freq) > 500e6:
+        if abs(seq_exp.expt.offset_freq) > 2e6:
             print "Large anharmonicity change suggested again: check manually"
         else:
             seq_exp.expt.save_config()
             print "Something wierd about previous ef Ramsey: new anharmonicity saved to config"
-            print "Alpha changed by +  %s Hz"%(seq.exp.expt.offset_freq)
+            print "Alpha changed by +  %s kHz"%(seq_exp.expt.offset_freq/1e3)
 
 
 
@@ -100,5 +100,11 @@ def run_seq_experiment(expt_name,lp_enable=True):
         pulse_calibration(seq_exp)
 
     if expt_name.lower() == 'ef_pulse_calibration':
+        ef_frequency_calibration(seq_exp)
         ef_pulse_calibration(seq_exp)
 
+    if expt_name.lower() == 'repeated_ef_ramsey':
+        ef_pulse_calibration(seq_exp)
+        for i in arange(5):
+            frequency_stabilization(seq_exp)
+            seq_exp.run('EF_Ramsey',{'update_config':False})

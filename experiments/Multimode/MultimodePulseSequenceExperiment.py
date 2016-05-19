@@ -440,6 +440,105 @@ class Multimode_Qubit_Mode_CZ_Offset_Experiment(QubitPulseSequenceExperiment):
             self.cfg['multimodes'][self.id]['qubit_mode_ef_offset_1'] = x_at_extremum
 
 
+class Multimode_Qubit_Mode_CZ_V2_Offset_Experiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_qubit_mode_cz_v2_offset', config_file='..\\config.json', **kwargs):
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=Multimode_Qubit_Mode_CZ_V2_Offset_Sequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+        if 'mode' in kwargs:
+            self.id = self.extra_args['mode']
+        else:
+            self.id = self.cfg[self.expt_cfg_name]['id']
+
+        if 'offset_exp' in self.extra_args:
+            self.offset_exp = self.extra_args['offset_exp']
+        else:
+            self.offset_exp = self.cfg[self.expt_cfg_name]['offset_exp']
+
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+
+        expected_period = 360.
+        if self.offset_exp==0:
+            find_phase = 'max' #'max' or 'min'
+            x_at_extremum = sin_phase(expt_pts,expt_avg_data,expected_period,find_phase)
+            print 'Phase at %s: %s degrees' %(find_phase,x_at_extremum)
+            self.cfg['multimodes'][self.id]['cz_dc_phase'] = x_at_extremum
+
+            if self.data_file:
+                slab_file = SlabFile(self.data_file)
+                with slab_file as f:
+                    f.append_pt('offset_exp_0_phase', x_at_extremum)
+                    f.close()
+
+        if self.offset_exp==1:
+            find_phase = 'min' #'max' or 'min'
+            x_at_extremum = sin_phase(expt_pts,expt_avg_data,expected_period,find_phase)
+            print 'Phase at %s: %s degrees' %(find_phase,x_at_extremum)
+            self.cfg['multimodes'][self.id]['cz_phase'] = x_at_extremum
+
+            if self.data_file:
+                slab_file = SlabFile(self.data_file)
+                with slab_file as f:
+                    f.append_pt('offset_exp_1_phase', x_at_extremum)
+                    f.close()
+
+class Multimode_Mode_Mode_CZ_V2_Offset_Experiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_mode_mode_cz_v2_offset', config_file='..\\config.json', **kwargs):
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=Multimode_Mode_Mode_CZ_V2_Offset_Sequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+        if 'mode' in kwargs:
+            self.id = self.extra_args['mode']
+        else:
+            self.id = self.cfg[self.expt_cfg_name]['id']
+
+        if 'mode2' in kwargs:
+            self.id2 = self.extra_args['mode2']
+        else:
+            self.id2 = self.cfg[self.expt_cfg_name]['id2']
+
+        if 'offset_exp' in self.extra_args:
+            self.offset_exp = self.extra_args['offset_exp']
+        else:
+            self.offset_exp = self.cfg[self.expt_cfg_name]['offset_exp']
+
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+
+        expected_period = 360.
+        if self.offset_exp==0:
+            find_phase = 'max' #'max' or 'min'
+            x_at_extremum = sin_phase(expt_pts,expt_avg_data,expected_period,find_phase)
+            print 'Phase at %s: %s degrees' %(find_phase,x_at_extremum)
+            self.cfg['mode_mode_offset']['cz_dc_phase'][self.id][self.id2] = x_at_extremum
+
+            if self.data_file:
+                slab_file = SlabFile(self.data_file)
+                with slab_file as f:
+                    f.append_pt('2modes_offset_exp_0_phase', x_at_extremum)
+                    f.close()
+
+        if self.offset_exp==1:
+            find_phase = 'min' #'max' or 'min'
+            x_at_extremum = sin_phase(expt_pts,expt_avg_data,expected_period,find_phase)
+            print 'Phase at %s: %s degrees' %(find_phase,x_at_extremum)
+            self.cfg['mode_mode_offset']['cz_phase'][self.id][self.id2] = x_at_extremum
+
+            if self.data_file:
+                slab_file = SlabFile(self.data_file)
+                with slab_file as f:
+                    f.append_pt('2modes_offset_exp_1_phase', x_at_extremum)
+                    f.close()
+
 class MultimodePi_PiExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_Pi_Pi_Experiment', config_file='..\\config.json', **kwargs):
 
@@ -658,6 +757,8 @@ class Multimode_State_Dep_Shift_Experiment(QubitPulseSequenceExperiment):
             self.extra_args[key] = value
         self.mode = self.extra_args['mode']
         self.exp = self.extra_args['exp']
+        self.qubit_shift_ge = self.extra_args['qubit_shift_ge']
+        self.qubit_shift_ef = self.extra_args['qubit_shift_ef']
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                                     PulseSequence=Multimode_State_Dep_Shift_Sequence, pre_run=self.pre_run,
@@ -689,10 +790,44 @@ class Multimode_State_Dep_Shift_Experiment(QubitPulseSequenceExperiment):
 
             self.pi_length = around(1/fitdata[1]/2,decimals=2)
             self.half_pi_length =around(1/fitdata[1]/4,decimals=2)
-            print 'Rabi pi: %s ns' % (self.pi_length)
-            print 'Rabi pi/2: %s ns' % (self.half_pi_length)
-            print 'T1*: %s ns' % (fitdata[3])
 
+            if self.qubit_shift_ge == 1:
+                print 'Rabi pi: %s ns' % (self.pi_length)
+                print 'Rabi pi/2: %s ns' % (self.half_pi_length)
+                print 'T1*: %s ns' % (fitdata[3])
+            elif self.qubit_shift_ef == 1:
+                print 'Rabi ef pi: %s ns' % (self.pi_length)
+                print 'Rabi ef pi/2: %s ns' % (self.half_pi_length)
+                print 'T1*: %s ns' % (fitdata[3])
+
+        elif self.exp == 6:
+            print "Analyzing EF Rabi Data"
+            fitdata = fitdecaysin(expt_pts[2:], expt_avg_data[2:])
+
+            if (-fitdata[2]%180 - 90)/(360*fitdata[1]) < 0:
+                print fitdata[0]
+                self.flux_pi_length_ef = (-fitdata[2]%180 + 90)/(360*fitdata[1])
+                self.flux_2pi_length_ef = (-fitdata[2]%180 + 270)/(360*fitdata[1])
+                print "Flux pi length EF =" + str(self.flux_pi_length_ef)
+                print "Flux 2pi length EF =" + str(self.flux_2pi_length_ef)
+
+
+        elif self.exp == 3 or self.exp ==4 or self.exp ==5:
+
+            print "Analyzing offset phase in presence of photon in mode %s" %(self.mode)
+
+            xdata = expt_pts
+            ydata = expt_avg_data
+            fitparams = [(max(ydata)-min(ydata))/(2.0),1/360.0,90,mean(ydata)]
+            fitdata=fitsin(xdata[:],ydata[:],fitparams=fitparams,showfit=False)
+            if self.exp == 3:
+                self.cfg['multimodes'][self.mode]['qubit_offset_phase'] = around((-(fitdata[2]%180) + 90),2)
+                print "Offset Phase = %s" %(self.cfg['multimodes'][self.mode]['qubit_offset_phase'])
+            elif self.exp ==4:
+                self.cfg['multimodes'][self.mode]['qubit_offset_phase_2'] = around((-(fitdata[2]%180) + 90),2)
+                print "Offset Phase = %s" %(self.cfg['multimodes'][self.mode]['qubit_offset_phase_2'])
+            else:
+                print "Offset Phase = %s" %(around((-(fitdata[2]%180) + 90),2))
 
         else:
 
@@ -706,4 +841,7 @@ class Multimode_State_Dep_Shift_Experiment(QubitPulseSequenceExperiment):
             print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
             print "T2*: " + str(fitdata[3]) + " ns"
 
-            self.cfg['multimodes'][self.mode]['shift'] =   self.offset_freq
+            if self.qubit_shift_ge == 1:
+                self.cfg['multimodes'][self.mode]['shift'] =   self.offset_freq
+            elif self.qubit_shift_ef ==1:
+                self.cfg['multimodes'][self.mode]['shift_ef'] =   self.offset_freq

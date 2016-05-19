@@ -38,7 +38,65 @@ def multimode_ef_dc_offset_recalibration(seq_exp, mode):
     seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'long_multimode_ef_ramsey','dc_offset_guess_ef':cfg['multimodes'][mode]['dc_offset_freq_ef'],'mode':mode,'update_config':True})
 
 
-def  run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
+def multimode_ge_calibration_all(seq_exp, kwargs):
+    frequency_stabilization(seq_exp)
+    multimode_pulse_calibration(seq_exp, kwargs['mode'])
+    multimode_dc_offset_recalibration(seq_exp, kwargs['mode'])
+    multimode_pi_pi_phase_calibration(seq_exp, kwargs['mode'])
+
+
+def multimode_cz_calibration(seq_exp, mode):
+    pulse_calibration(seq_exp)
+    multimode_pulse_calibration(seq_exp, mode)
+    ef_frequency_calibration(seq_exp)
+    ef_pulse_calibration(seq_exp)
+    seq_exp.run('multimode_qubit_mode_cz_v2_offset_experiment',
+                {'mode': mode, 'offset_exp': 0, 'update_config': True})
+    seq_exp.run('multimode_qubit_mode_cz_v2_offset_experiment',
+                {'mode': mode, 'offset_exp': 1, 'update_config': True})
+
+def multimode_cz_2modes_calibration(seq_exp, mode, mode2, data_file_2):
+
+
+    frequency_stabilization(seq_exp)
+    # pulse_calibration(seq_exp)
+    #
+    # multimode_pulse_calibration(seq_exp, mode)
+    # multimode_pulse_calibration(seq_exp, mode2)
+    # multimode_pi_pi_phase_calibration(seq_exp,mode2)
+
+    ef_frequency_calibration(seq_exp)
+    # ef_pulse_calibration(seq_exp)
+
+    seq_exp.run('multimode_qubit_mode_cz_v2_offset_experiment',
+                {'mode': mode, 'offset_exp': 0, 'update_config': True, "data_file": data_file_2})
+    seq_exp.run('multimode_qubit_mode_cz_v2_offset_experiment',
+                {'mode': mode, 'offset_exp': 1, 'update_config': True, "data_file": data_file_2})
+
+    seq_exp.run('multimode_mode_mode_cz_v2_offset_experiment',
+                {'mode': mode, 'mode2': mode2, 'offset_exp': 0, 'update_config': True, "data_file": data_file_2})
+    seq_exp.run('multimode_mode_mode_cz_v2_offset_experiment',
+                {'mode': mode, 'mode2': mode2, 'offset_exp': 1, 'update_config': True, "data_file": data_file_2})
+
+
+def multimode_cz_test(seq_exp, mode ,data_file ):
+    multimode_cz_calibration(seq_exp, mode)
+    seq_exp.run('multimode_qubit_mode_cz_v2_offset_experiment', {'mode': mode
+        , 'offset_exp': 3, 'load_photon': False, "data_file": data_file})
+    seq_exp.run('multimode_qubit_mode_cz_v2_offset_experiment', {'mode': mode
+        , 'offset_exp': 3, 'load_photon': True, "data_file": data_file})
+
+
+def multimode_cz_2modes_test(seq_exp, mode, mode2 ,data_file,data_file_2 ):
+    multimode_cz_2modes_calibration(seq_exp, mode, mode2,data_file_2)
+
+    seq_exp.run('multimode_mode_mode_cz_v2_offset_experiment',
+                {'mode': mode, 'mode2': mode2, 'offset_exp': 3, 'load_photon': False, 'update_config': True, "data_file": data_file})
+    seq_exp.run('multimode_mode_mode_cz_v2_offset_experiment',
+                {'mode': mode, 'mode2': mode2, 'offset_exp': 3, 'load_photon': True, 'update_config': True, "data_file": data_file})
+
+
+def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
     seq_exp = SequentialExperiment(lp_enable)
     prefix = expt_name.lower()
     data_file = get_data_filename(prefix)
@@ -59,26 +117,91 @@ def  run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         multimode_pi_pi_phase_calibration(seq_exp,kwargs['mode'])
 
     if expt_name.lower() == 'multimode_cphase_calibration':
-        frequency_stabilization(seq_exp)
-        seq_exp.run('multimode_qubit_mode_cz_offset_experiment',{'mode':kwargs['mode'],'mode2':kwargs['mode2'],'offset_exp':0,'load_photon':0,'update_config':True})
-        seq_exp.run('multimode_qubit_mode_cz_offset_experiment',{'mode':kwargs['mode'],'mode2':kwargs['mode2'],'offset_exp':1,'load_photon':0,'update_config':True})
-        for offset_exp in arange(2,5):
-            for load_photon in arange(2):
-                seq_exp.run('multimode_qubit_mode_cz_offset_experiment',{'mode':kwargs['mode'],'mode2':kwargs['mode2'],'offset_exp':offset_exp,'load_photon':load_photon,'update_config':True})
+
+        pulse_calibration(seq_exp)
+        multimode_pulse_calibration(seq_exp,mode=kwargs['mode'])
+        multimode_dc_offset_recalibration(seq_exp,mode=kwargs['mode'])
+        multimode_ef_pulse_calibration(seq_exp,mode=kwargs['mode'])
+        multimode_ef_dc_offset_recalibration(seq_exp,mode=kwargs['mode'])
+        multimode_pulse_calibration(seq_exp,mode=kwargs['mode2'])
+        multimode_pi_pi_phase_calibration(seq_exp,mode=kwargs['mode2'])
+
+        for i in arange(4):
+            frequency_stabilization(seq_exp)
+            seq_exp.run('multimode_qubit_mode_cz_offset_experiment',{'mode':kwargs['mode'],'mode2':kwargs['mode2'],'offset_exp':0,'load_photon':0,'update_config':True})
+            seq_exp.run('multimode_qubit_mode_cz_offset_experiment',{'mode':kwargs['mode'],'mode2':kwargs['mode2'],'offset_exp':1,'load_photon':0,'update_config':True})
+            for offset_exp in arange(2,4):
+                for load_photon in arange(2):
+                    frequency_stabilization(seq_exp)
+                    seq_exp.run('multimode_qubit_mode_cz_offset_experiment',{'mode':kwargs['mode'],'mode2':kwargs['mode2'],'offset_exp':offset_exp,'load_photon':load_photon,'update_config':True})
+
 
     if expt_name.lower() == 'sequential_state_dep_shift_calibration':
         modelist = array([1,3,4,5,6,9])
         for mode in modelist:
             pulse_calibration(seq_exp,phase_exp=False)
-            seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':0,'update_config':True})
-            seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':1,'update_config':True})
-            seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':2,'update_config':True})
+            seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':0,'qubit_shift_ge':0,'qubit_shift_ef':1,'update_config':True})
+
+    if expt_name.lower() == 'cphase_segment_tests':
+        modelist = array([4])
+        pulse_calibration(seq_exp,phase_exp=True)
+        multimode_pi_pi_phase_calibration(seq_exp,mode=6)
+        multimode_ef_pulse_calibration(seq_exp,mode=4)
+        for j in arange(3):
+            for mode in modelist:
+                for subexp in arange(5):
+                    seq_exp.run('multimode_state_dep_shift',{'mode':mode,'mode2':6,'exp':6,'qubit_shift_ge':0,'qubit_shift_ef':1,'subexp':subexp,'update_config':True})
+                    frequency_stabilization(seq_exp)
+
+    if expt_name.lower() == 'sequential_state_dep_pulse_phase_calibration':
+        modelist = array([6])
+
+        pulse_calibration(seq_exp)
+        multimode_pulse_calibration(seq_exp,mode=6)
+        multimode_pi_pi_phase_calibration(seq_exp,mode=6)
+        multimode_ef_pulse_calibration(seq_exp,mode=4)
+        for j in arange(3):
+            for mode in modelist:
+                for load_photon in arange(2):
+                    seq_exp.run('multimode_state_dep_shift',{'mode':mode,'mode2':4,'exp':5,'qubit_shift_ge':1,'qubit_shift_ef':0,'load_photon':load_photon,'update_config':True})
+                    frequency_stabilization(seq_exp)
+            # seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':3,'update_config':True})
+            # seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':4,'update_config':True})
+
+
+    if expt_name.lower() == 'multimode_cz_calibration':
+        multimode_cz_calibration(seq_exp, kwargs['mode'])
+
+    if expt_name.lower() == 'multimode_cz_2modes_calibration':
+        multimode_cz_2modes_calibration(seq_exp, kwargs['mode'],kwargs['mode2'])
+
+
+    if expt_name.lower() == 'multimode_cz_test':
+        multimode_cz_test(seq_exp, kwargs['mode'], data_file)
+
+    if expt_name.lower() == 'multimode_cz_2modes_test':
+        multimode_cz_2modes_test(seq_exp, kwargs['mode'],kwargs['mode2'], data_file)
+
+    if expt_name.lower() == 'sequential_multimode_cz_test':
+        modelist = array([1,5,6,9])
+        for mode in modelist:
+            multimode_cz_test(seq_exp, mode, data_file)
+
+
+    if expt_name.lower() == 'sequential_multimode_cz_2modes_test':
+
+        data_file_2 = get_data_filename("sequential_multimode_cz_2modes_calibration")
+
+        modelist = array([1,5,6,9])
+        for mode in modelist:
+            for mode2 in modelist:
+                if not mode == mode2:
+                    multimode_cz_2modes_test(seq_exp, mode, mode2, data_file, data_file_2)
+
 
 
     if expt_name.lower() == 'multimode_ge_calibration_all':
-        multimode_pulse_calibration(seq_exp,kwargs['mode'])
-        multimode_dc_offset_recalibration(seq_exp,kwargs['mode'])
-        multimode_pi_pi_phase_calibration(seq_exp,kwargs['mode'])
+        multimode_ge_calibration_all(seq_exp,kwargs)
 
     if expt_name.lower() == 'multimode_ef_calibration_all':
         multimode_ef_pulse_calibration(seq_exp,kwargs['mode'])

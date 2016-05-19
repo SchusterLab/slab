@@ -61,6 +61,12 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
     if expt_name.lower()=='multimode_qubit_mode_cz_offset_experiment':
         expt=Multimode_Qubit_Mode_CZ_Offset_Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower()=='multimode_qubit_mode_cz_v2_offset_experiment':
+        expt=Multimode_Qubit_Mode_CZ_V2_Offset_Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_mode_mode_cz_v2_offset_experiment':
+        expt=Multimode_Mode_Mode_CZ_V2_Offset_Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower()=='multimode_state_dep_shift':
         expt=Multimode_State_Dep_Shift_Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
