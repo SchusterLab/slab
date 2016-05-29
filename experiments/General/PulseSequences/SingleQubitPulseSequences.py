@@ -50,7 +50,7 @@ class RamseySequence(QubitPulseSequence):
         else:
             self.psb.idle(pt)
 
-        self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
+        self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9)+self.pulse_cfg[self.pulse_type]['offset_phase'])
 
 
 class SpinEchoSequence(QubitPulseSequence):
@@ -359,6 +359,28 @@ class RabiSweepSequence(QubitPulseSequence):
 
     def define_pulses(self,pt):
         self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'])
+
+
+class EFRabiSweepSequence(QubitPulseSequence):
+
+    def __init__(self,name, cfg, expt_cfg, **kwargs):
+        self.pulse_cfg = cfg['pulse_info']
+
+        ef_freq = kwargs['ef_freq']
+        self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-ef_freq)
+
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses, **kwargs)
+
+
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pulse_type =  self.expt_cfg['pulse_type']
+
+    def define_pulses(self,pt):
+        self.psb.append('q','pi', self.pulse_type)
+        self.psb.append('q','general', self.ef_pulse_type, amp=self.pulse_cfg[self.expt_cfg['ef_pulse_type']]['pi_ef_a'], length=pt,freq=self.ef_sideband_freq)
 
 
 class RabiRamseyT1FluxSweepSequence(QubitPulseSequence):

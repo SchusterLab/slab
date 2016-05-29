@@ -228,6 +228,12 @@ class EFRamseyExperiment(QubitPulseSequenceExperiment):
         if (self.cfg['pulse_info']['save_to_file']):
                 self.cfg['qubit']['alpha'] = self.suggested_anharm
 
+        if self.data_file:
+            slab_file = SlabFile(self.data_file)
+            with slab_file as f:
+                f.append_pt('suggested_anharm', self.suggested_anharm)
+                f.close()
+
 class EFT1Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_T1', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -407,13 +413,27 @@ class RabiSweepExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         # print self.data_file
-        slab_file = SlabFile(self.data_file)
-        with slab_file as f:
-            f.append_pt('drive_freq', self.drive_freq)
-            f.append_line('sweep_expt_avg_data', expt_avg_data)
-            f.append_line('sweep_expt_pts', expt_pts)
+        pass
 
-            f.close()
+
+class EFRabiSweepExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='EF_Rabi_Sweep', config_file='..\\config.json', **kwargs):
+        self.extra_args = {}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+        self.drive_freq = self.extra_args['drive_freq']
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=EFRabiSweepSequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+
+    def pre_run(self):
+        pass
+
+
+    def post_run(self, expt_pts, expt_avg_data):
+        # print self.data_file
+        pass
 
 
 class RabiRamseyT1FluxSweepExperiment(QubitPulseSequenceExperiment):

@@ -136,11 +136,28 @@ class MultimodeCalibrateOffsetExperiment(QubitPulseSequenceExperiment):
             print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
             print "T2*: " + str(fitdata[3]) + " ns"
             print self.cfg['multimode_calibrate_offset_experiment'][self.exp]
-            if self.cfg['multimode_calibrate_offset_experiment'][self.exp]['save_to_file']:
-                print "Saving DC offset to config for mode " + str(self.mode)
-                print self.cfg['multimodes'][self.mode]['dc_offset_freq']
-                self.cfg['multimodes'][self.mode]['dc_offset_freq'] = self.suggested_dc_offset_freq
-                print self.cfg['multimodes'][self.mode]['dc_offset_freq']
+
+            print "Saving DC offset to config for mode " + str(self.mode)
+            print self.cfg['multimodes'][self.mode]['dc_offset_freq']
+            self.cfg['multimodes'][self.mode]['dc_offset_freq'] = self.suggested_dc_offset_freq
+            print self.cfg['multimodes'][self.mode]['dc_offset_freq']
+
+
+class MultimodeQubitModeCrossKerrExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='Multimode_Qubit_Mode_Cross_Kerr', config_file='..\\config.json', **kwargs):
+        self.extra_args = {}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeQubitModeCrossKerrSequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
 
 
 class MultimodeCalibrateEFSidebandExperiment(QubitPulseSequenceExperiment):
@@ -198,11 +215,10 @@ class MultimodeCalibrateEFSidebandExperiment(QubitPulseSequenceExperiment):
             print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
             print "T2: " + str(fitdata[3]) + " ns"
             print self.cfg['multimode_calibrate_ef_sideband_experiment'][self.exp]
-            if self.cfg['multimode_calibrate_ef_sideband_experiment'][self.exp]['save_to_file']:
-                print "Saving ef DC offset to config for mode " + str(self.mode)
-                print self.cfg['multimodes'][self.mode]['dc_offset_freq_ef']
-                self.cfg['multimodes'][self.mode]['dc_offset_freq_ef'] = self.suggested_dc_offset_freq_ef
-                print self.cfg['multimodes'][self.mode]['dc_offset_freq_ef']
+            print "Saving ef DC offset to config for mode " + str(self.mode)
+            print self.cfg['multimodes'][self.mode]['dc_offset_freq_ef']
+            self.cfg['multimodes'][self.mode]['dc_offset_freq_ef'] = self.suggested_dc_offset_freq_ef
+            print self.cfg['multimodes'][self.mode]['dc_offset_freq_ef']
 
 
 class MultimodeEFRamseyExperiment(QubitPulseSequenceExperiment):
@@ -537,6 +553,59 @@ class Multimode_Mode_Mode_CZ_V2_Offset_Experiment(QubitPulseSequenceExperiment):
                 slab_file = SlabFile(self.data_file)
                 with slab_file as f:
                     f.append_pt('2modes_offset_exp_1_phase', x_at_extremum)
+                    f.close()
+
+
+class Multimode_AC_Stark_Shift_Offset_Experiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_ac_stark_shift', config_file='..\\config.json', **kwargs):
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=Multimode_AC_Stark_Shift_Offset_Sequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+        if 'mode' in kwargs:
+            self.id = self.extra_args['mode']
+        else:
+            self.id = self.cfg[self.expt_cfg_name]['id']
+
+        if 'mode2' in kwargs:
+            self.id2 = self.extra_args['mode2']
+        else:
+            self.id2 = self.cfg[self.expt_cfg_name]['id2']
+
+        if 'offset_exp' in self.extra_args:
+            self.offset_exp = self.extra_args['offset_exp']
+        else:
+            self.offset_exp = self.cfg[self.expt_cfg_name]['offset_exp']
+
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+
+        expected_period = 360.
+        if self.offset_exp==0:
+            find_phase = 'max' #'max' or 'min'
+            x_at_extremum = sin_phase(expt_pts,expt_avg_data,expected_period,find_phase)
+            print 'Phase at %s: %s degrees' %(find_phase,x_at_extremum)
+            #self.cfg['mode_mode_offset']['cz_dc_phase'][self.id][self.id2] = x_at_extremum
+
+            if self.data_file:
+                slab_file = SlabFile(self.data_file)
+                with slab_file as f:
+                    f.append_pt('offset_exp_0_phase', x_at_extremum)
+                    f.close()
+
+        if self.offset_exp==1:
+            find_phase = 'max' #'max' or 'min'
+            x_at_extremum = sin_phase(expt_pts,expt_avg_data,expected_period,find_phase)
+            print 'Phase at %s: %s degrees' %(find_phase,x_at_extremum)
+            #self.cfg['mode_mode_offset']['cz_phase'][self.id][self.id2] = x_at_extremum
+
+            if self.data_file:
+                slab_file = SlabFile(self.data_file)
+                with slab_file as f:
+                    f.append_pt('offset_exp_1_phase', x_at_extremum)
                     f.close()
 
 class MultimodePi_PiExperiment(QubitPulseSequenceExperiment):

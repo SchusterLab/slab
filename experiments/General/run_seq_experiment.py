@@ -92,6 +92,8 @@ def ef_frequency_calibration(seq_exp):
 
 def run_seq_experiment(expt_name,lp_enable=True):
     seq_exp = SequentialExperiment(lp_enable)
+    prefix = expt_name.lower()
+    data_file = get_data_filename(prefix)
 
     if expt_name.lower() == 'frequency_stabilization':
         frequency_stabilization(seq_exp)
@@ -104,7 +106,22 @@ def run_seq_experiment(expt_name,lp_enable=True):
         ef_pulse_calibration(seq_exp)
 
     if expt_name.lower() == 'repeated_ef_ramsey':
-        ef_pulse_calibration(seq_exp)
-        for i in arange(5):
+        #ef_pulse_calibration(seq_exp)
+        for i in arange(15):
             frequency_stabilization(seq_exp)
             seq_exp.run('EF_Ramsey',{'update_config':False})
+
+    if expt_name.lower() == 'sequential_single_qubit_rb':
+        for i in arange(32):
+            pulse_calibration(seq_exp,phase_exp=True)
+            seq_exp.run('randomized_benchmarking_phase_offset',{"data_file":data_file})
+
+    if expt_name.lower() == 'rabi_sweep':
+        drive_freq_pts = arange(4.71e9,4.74e9,1e6)
+        for ii, drive_freq in enumerate(drive_freq_pts):
+            seq_exp.run('rabi_sweep',{"drive_freq":drive_freq, "data_file":data_file})
+
+    if expt_name.lower() == 'ef_rabi_sweep':
+        ef_freq_pts = arange(4.52e9,4.54e9,1e6)
+        for ii, ef_freq in enumerate(ef_freq_pts):
+            seq_exp.run('ef_rabi_sweep',{"ef_freq":ef_freq, "data_file":data_file})
