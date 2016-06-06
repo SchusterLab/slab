@@ -102,6 +102,33 @@ class N5242A(SocketInstrument):
             query = "SENS:SWE:GRO:COUN %d" % count
             self.write(query)
 
+    def set_frequency_offset_mode_state(self, state):
+        if state:
+            s='1'
+        else:
+            s='0'
+        self.write('SENSE:FOM:STATE ' + s)
+
+
+    def setup_two_tone_measurement(self, read_frequency=None, read_power=None, probe_start=None, probe_stop=None, probe_power=None ):
+
+        self.write('SENSE:FOM:RANGE4:COUPLED 1')
+        if probe_start is not None:
+            self.write('SENSE:FOM:RANGE1:FREQUENCY:START %f' % probe_start)
+        if probe_stop is not None:
+            self.write('SENSE:FOM:RANGE1:FREQUENCY:STOP %f' % probe_stop)
+
+        self.write('SENSE:FOM:RANGE2:COUPLED 0')
+        if read_frequency is not None:
+            self.write('SENSE:FOM:RANGE2:FREQUENCY:START %f' % read_frequency)
+            self.write('SENSE:FOM:RANGE2:FREQUENCY:STOP %f' % read_frequency)
+
+        self.set_frequency_offset_mode_state(True)
+
+        if read_power is not None:
+            self.set_power(read_power, channel=1, port=1)
+        if probe_power is not None:
+            self.set_power(probe_power, channel=1, port=3)
 
     #### Averaging
     def set_averages(self, averages, channel=1):
@@ -199,12 +226,12 @@ class N5242A(SocketInstrument):
 
     #### Source
 
-    def set_power(self, power, channel=1):
+    def set_power(self, power, channel=1, port=1):
         # print ":SOURCE:POWER%d %f" % (channel, power)
-        self.write(":SOURCE%d:POWER%d %f" % (channel, channel, power))
+        self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
 
-    def get_power(self, channel=1):
-        return float(self.query(":SOURCE%d:POWER?" % channel))
+    def get_power(self, channel=1, port=1):
+        return float(self.query(":SOURCE%d:POWER%d?" % (channel, port)))
 
     def set_output(self, state=True):
         if state or str(state).upper() == 'ON':
