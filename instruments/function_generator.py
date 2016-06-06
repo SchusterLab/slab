@@ -236,19 +236,20 @@ class BNCAWG(SocketInstrument):
 
 
 class FilamentDriver(BNCAWG):
-    def setup_driver(self, amplitude, offset, frequency, pulse_length):
+    def setup_driver(self, amplitude, offset, frequency, duration):
         self.set_output(False)
         self.set_amplitude(amplitude)
         self.set_offset(offset)
         self.set_frequency(frequency)
 
         self.set_burst_state(True)
-        self.set_burst_cycles(round(pulse_length * frequency))
+        self.set_burst_cycles(round(duration * frequency))
         self.set_trigger_source('bus')
 
         self.set_output(True)
 
     def fire_filament(self, pulses=1, delay=0):
+        # print "firing filament\r"
         for ii in range(pulses):
             self.trigger()
             time.sleep(delay)
@@ -261,7 +262,7 @@ class BiasDriver(BNCAWG):
     Hence to use as DC supply, auto-range-scalling has to be turned off.
     We want a sticky response. Don't want voltage to change no matter what we do. """
 
-    def setup_volt_source(self, pulse_length=None, pulse_voltage=None, rest_voltage=None, autorange='off'):
+    def setup_volt_source(self, duration=None, pulse_voltage=None, rest_voltage=None, autorange='off'):
         # set the duty cycle to 40/60,
         # set the starting phase to be
         #        self.set_output(False)
@@ -281,10 +282,10 @@ class BiasDriver(BNCAWG):
             self.set_offset(offset)
             self.set_amplitude(amp)
             self.set_burst_phase(phase)
-        if pulse_length != None:
-            self.pulse_length = pulse_length;
-        if hasattr(self, 'pulse_length'):
-            freq = 1 / (pulse_length * 2)  # Need Integer
+        if duration != None:
+            self.duration = duration;
+        if hasattr(self, 'duration'):
+            freq = 1 / (duration * 2)  # Need Integer
             self.set_frequency(freq)
         self.set_burst_state(True)
         self.set_burst_cycles(1)
@@ -314,9 +315,16 @@ class BiasDriver(BNCAWG):
             self.set_burst_phase(0);
             self.set_voltage(volt);
 
+        self._volt = volt
+
     def set_volt(self, volt):
         self.set_voltage(volt)
 
+    def get_volt(self):
+        if hasattr(self, '_volt'):
+            return self._volt
+        else:
+            return None
 
 if __name__ == "__main__":
     # bnc=BNCAWG(address='192.168.14.133')
