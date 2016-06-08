@@ -140,8 +140,9 @@ class BNCAWG(SocketInstrument):
     def set_burst_cycles(self, cycles=1):
         self.write('BURST:NCYCLES %d' % cycles)
 
-    def get_burst_cycles(self, ):
-        return int(self.query('BURST:NCYCLES?'))
+    def get_burst_cycles(self):
+        answer = self.query('BURST:NCYCLES?').strip()
+        return int(float(answer))
 
     def set_burst_period(self, period):
         self.write('BURSt:INTernal:PERiod %f' % period)
