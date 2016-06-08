@@ -122,6 +122,8 @@ class N5242A(SocketInstrument):
         if read_frequency is not None:
             self.write('SENSE:FOM:RANGE2:FREQUENCY:START %f' % read_frequency)
             self.write('SENSE:FOM:RANGE2:FREQUENCY:STOP %f' % read_frequency)
+            self.write('SENSE:FOM:RANGE3:FREQUENCY:START %f' % read_frequency)
+            self.write('SENSE:FOM:RANGE3:FREQUENCY:STOP %f' % read_frequency)
 
         self.set_frequency_offset_mode_state(True)
 
