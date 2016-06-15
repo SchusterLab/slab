@@ -110,27 +110,46 @@ class N5242A(SocketInstrument):
         self.write('SENSE:FOM:STATE ' + s)
 
 
-    def setup_two_tone_measurement(self, read_frequency=None, read_power=None, probe_start=None, probe_stop=None, probe_power=None ):
+    def setup_two_tone_measurement(self, read_frequency=None, read_power=None, probe_start=None, probe_stop=None, probe_power=None, two_tone=True ):
+        if two_tone:
+            print "TWO TONE ON"
+            self.write('SENSE:FOM:RANGE4:COUPLED 1')
+            if probe_start is not None:
+                self.write('SENSE:FOM:RANGE1:FREQUENCY:START %f' % probe_start)
+            if probe_stop is not None:
+                self.write('SENSE:FOM:RANGE1:FREQUENCY:STOP %f' % probe_stop)
 
-        self.write('SENSE:FOM:RANGE4:COUPLED 1')
-        if probe_start is not None:
-            self.write('SENSE:FOM:RANGE1:FREQUENCY:START %f' % probe_start)
-        if probe_stop is not None:
-            self.write('SENSE:FOM:RANGE1:FREQUENCY:STOP %f' % probe_stop)
+            self.write('SENSE:FOM:RANGE2:COUPLED 0')
+            self.write('SENSE:FOM:RANGE3:COUPLED 0')
+            if read_frequency is not None:
+                self.write('SENSE:FOM:RANGE2:FREQUENCY:START %f' % read_frequency)
+                self.write('SENSE:FOM:RANGE2:FREQUENCY:STOP %f' % read_frequency)
+                self.write('SENSE:FOM:RANGE3:FREQUENCY:START %f' % read_frequency)
+                self.write('SENSE:FOM:RANGE3:FREQUENCY:STOP %f' % read_frequency)
 
-        self.write('SENSE:FOM:RANGE2:COUPLED 0')
-        if read_frequency is not None:
-            self.write('SENSE:FOM:RANGE2:FREQUENCY:START %f' % read_frequency)
-            self.write('SENSE:FOM:RANGE2:FREQUENCY:STOP %f' % read_frequency)
-            self.write('SENSE:FOM:RANGE3:FREQUENCY:START %f' % read_frequency)
-            self.write('SENSE:FOM:RANGE3:FREQUENCY:STOP %f' % read_frequency)
+            self.set_frequency_offset_mode_state(True)
 
-        self.set_frequency_offset_mode_state(True)
+            if read_power is not None:
+                self.set_power(read_power, channel=1, port=1)
+            if probe_power is not None:
+                self.set_power(probe_power, channel=1, port=3)
+        else:
+            print "TWO TONE OFF"
+            self.write('SENSE:FOM:RANGE2:COUPLED 1')
+            self.write('SENSE:FOM:RANGE3:COUPLED 1')
+            self.write('SENSE:FOM:RANGE4:COUPLED 0')
+            if probe_start is not None:
+                self.write('SENSE:FOM:RANGE1:FREQUENCY:START %f' % probe_start)
+            if probe_stop is not None:
+                self.write('SENSE:FOM:RANGE1:FREQUENCY:STOP %f' % probe_stop)
 
-        if read_power is not None:
-            self.set_power(read_power, channel=1, port=1)
-        if probe_power is not None:
-            self.set_power(probe_power, channel=1, port=3)
+
+
+            self.set_frequency_offset_mode_state(False)
+            self.set_power(probe_power, channel=1, port=3, state=0)
+            if read_power is not None:
+                self.set_power(read_power, channel=1, port=1)
+
 
     #### Averaging
     def set_averages(self, averages, channel=1):
@@ -228,9 +247,15 @@ class N5242A(SocketInstrument):
 
     #### Source
 
-    def set_power(self, power, channel=1, port=1):
+    def set_power(self, power, channel=1, port=1,state=1):
         # print ":SOURCE:POWER%d %f" % (channel, power)
-        self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
+        if state:
+            self.write(":SOURCE%d:POWER%d:MODE ON" % (channel, port))
+            self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
+        else:
+            print "Turning off the port %d" %(port)
+            self.write(":SOURCE%d:POWER%d:MODE OFF" % (channel, port))
+            # self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
 
     def get_power(self, channel=1, port=1):
         return float(self.query(":SOURCE%d:POWER%d?" % (channel, port)))
@@ -356,16 +381,16 @@ class N5242A(SocketInstrument):
     def save_file(self, fname):
         self.write('MMEMORY:STORE:FDATA \"' + fname + '\"')
 
-    # def read_line(self, eof_char='\n', timeout=None):
-    #     if timeout is None:
-    #         timeout = self.query_timeout
-    #     done = False
-    #     while done is False:
-    #         buffer_str = self.read(timeout)
-    #         # print "buffer_str", buffer_str
-    #         yield buffer_str
-    #         if buffer_str[-1] == eof_char:
-    #             done = True
+    def read_line(self, eof_char='\n', timeout=None):
+        if timeout is None:
+            timeout = self.query_timeout
+        done = False
+        while done is False:
+            buffer_str = self.read(timeout)
+            # print "buffer_str", buffer_str
+            yield buffer_str
+            if buffer_str[-1] == eof_char:
+                done = True
 
     def read_data(self, sweep_points=None, channel=1, timeout=None):
         """Read current NWA Data, return fpts,mags,phases"""
