@@ -61,12 +61,10 @@ class N5242A(SocketInstrument):
 
     def set_sweep_points(self, numpts=1600, channel=1):
         query = ":sense%d:sweep:points %d" % (channel, numpts)
-        print query
         self.write(query)
 
     def get_sweep_points(self, channel=1):
         data = self.query(":sense%d:sweep:points?" % (channel))
-        # print 'sweep points query response', [data]
         return int(data)
 
     def set_sweep_mode(self, mode='CONT'):
@@ -103,12 +101,8 @@ class N5242A(SocketInstrument):
             self.write(query)
 
     def set_frequency_offset_mode_state(self, state):
-        if state:
-            s='1'
-        else:
-            s='0'
+        s = '1' if state else '0'
         self.write('SENSE:FOM:STATE ' + s)
-
 
     def setup_two_tone_measurement(self, read_frequency=None, read_power=None, probe_start=None, probe_stop=None, probe_power=None, two_tone=True ):
         if two_tone:
@@ -149,7 +143,6 @@ class N5242A(SocketInstrument):
             self.set_power(probe_power, channel=1, port=3, state=0)
             if read_power is not None:
                 self.set_power(read_power, channel=1, port=1)
-
 
     #### Averaging
     def set_averages(self, averages, channel=1):
@@ -201,7 +194,7 @@ class N5242A(SocketInstrument):
         elif mode.lower() in allowed_modes:
             self.write('sense:AVER:mode ' + mode)
         else:
-            print "trigger average mode need to be one of " + ', '.join(allowed_modes)
+            print "trigger average mode needs to be one of " + ', '.join(allowed_modes)
 
 
     def get_trigger_average_mode (self):
@@ -285,7 +278,6 @@ class N5242A(SocketInstrument):
 
     def define_measurement(self, name, channel, mode):
         query = "calc%d:par:def:ext '%s','%s'" % (channel, name, mode)
-        print query
         self.write(query)
 
     def get_measurements(self):
@@ -298,7 +290,6 @@ class N5242A(SocketInstrument):
 
     def select_measurement(self, name=None, channel=1):
         query = "calc%d:par:sel '%s'" % (channel, name)
-        print query
         self.write(query)
 
     def display_measurement(self, name=None, trace=1):
@@ -366,7 +357,6 @@ class N5242A(SocketInstrument):
 
     def set_electrical_delay(self, seconds, channel=1):
         query = "calc%d:corr:edel:time %e" % (channel, seconds)
-        print query
         self.write(query)
 
     def get_electrical_delay(self, channel=1):
