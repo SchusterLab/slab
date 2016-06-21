@@ -93,6 +93,13 @@ class N5242A(SocketInstrument):
         else:
             return data.strip()
 
+    def get_sweep_time(self, channel=1):
+        """
+        :return: The sweep time in seconds
+        """
+        answer = self.query('SENS%d:SWE:TIME?'%channel)
+        return float(answer.strip())
+
     def set_sweep_group_count(self, count=None):
         if count is None:
             return
