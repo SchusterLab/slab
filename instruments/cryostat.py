@@ -12,9 +12,9 @@ import time
 class Triton(SocketInstrument):
     default_port = 22518
 
-    def __init__(self, name="Triton", address='slab-fridge1.uchicago.edu', enabled=True, timeout=10):
+    def __init__(self, name="Triton", address='slab-fridge1.uchicago.edu', enabled=True, query_timeout=1000):
         # if ':' not in address: address+=':22518'
-        SocketInstrument.__init__(self, name, address, enabled, timeout)
+        SocketInstrument.__init__(self, name, address, enabled, query_timeout)
         self.recv_length = 65536
 
     def get_status(self):
