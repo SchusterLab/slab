@@ -8,6 +8,7 @@ SRS900 Voltage Source (voltsource.py)
 from slab.instruments import SocketInstrument, SerialInstrument, VisaInstrument, Instrument
 import re, time
 from numpy import linspace
+import numpy as np
 
 class VoltageSource:
     def ramp_volt(self, v, sweeprate=1, channel=1):
@@ -50,10 +51,10 @@ class VoltageSource:
 class SRS900(SerialInstrument, VisaInstrument, VoltageSource):
     'Interface to the SRS900 voltage source'
 
-    def __init__(self, name="", address='COM5', enabled=True, timeout=1):
+    def __init__(self, name="", address='COM5', enabled=True, query_timeout=1000):
         # if ':' not in address: address+=':22518'
         if address[:3].upper() == 'COM':
-            SerialInstrument.__init__(self, name, address, enabled, timeout)
+            SerialInstrument.__init__(self, name, address, enabled, query_timeout)
         else:
             VisaInstrument.__init__(self, name, address, enabled)
         self.query_sleep = 0.05
@@ -310,7 +311,18 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
             print "\t%s"%program
             self.delete_program(program)
 
-
+    def linear_ramp(self, Vi, Vf, dt=0.1):
+        program_name='simple_ramp.csv'
+        #self.set_output(False)
+        self.flush_program_memory()
+        self.define_program(program_name, np.array([Vi, Vf]), instrument_range=None, mode='VOLT')
+        self.load_program(program_name)
+        self.set_program_repeat(False)
+        self.set_program_interval_time(dt)  # dV/sweep_speed)
+        self.set_program_slope_time(dt)  # dV/sweep_speed)
+        self.set_volt(Vi)
+        self.set_output(True)
+        self.run_program()
 
 
 # class SRS928(Instrument):
