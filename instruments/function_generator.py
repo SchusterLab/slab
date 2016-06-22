@@ -3,6 +3,9 @@
 BNC Function Generator (function_generator.py)
 ==============================================
 :Author: David Schuster
+
+PLEASE COMMENT ANY ADDITIONAL CODE YOU WRITE
+
 """
 from slab.instruments import SocketInstrument
 import time
@@ -17,29 +20,52 @@ class BNCAWG(SocketInstrument):
         SocketInstrument.__init__(self, name, address, enabled, query_timeout, recv_length)
 
     def get_id(self):
-        """Get Instrument ID String"""
+        """
+        Returns the ID of the machine
+        :return: string
+        """
         return self.query('*IDN?')
 
     def set_output(self, state=True):
-        """Set Output State On/Off"""
+        """
+        Disable or enable the Output connector on the front panel. The default is ON. The Output key is lit when enabled.
+        :param state: bool
+        :return: None
+        """
         if state:
             self.write('OUTPUT ON')
         else:
             self.write('OUTPUT OFF')
 
     def get_output(self):
-        """Query Output State"""
+        """
+        “0” or “1” indicating the on/off state of the Output connector on the front panel is returned.
+        :return: bool
+        """
         return int(self.query('OUTPUT?')) == 1
 
     def set_termination(self, load=None):
-        """Set Output State On/Off"""
-        if load:  self.write('OUTPUT:LOAD %s' % load)
+        """
+        Select the desired output termination. It can be any value (in ohms) between 1Ω
+        and 10kΩ. INF sets the output termination to “high impedance” (>10 kΩ). The
+        default is 50Ω. The specified value is used for amplitude, offset, and high/low
+        level settings.
+        :param load: float or string
+        :return: None
+        """
+        if load: self.write('OUTPUT:LOAD %s' % load)
 
     def get_termination(self):
-        """Set Output State On/Off"""
+        """
+        Query the current load setting in ohms. Return the current load setting or “9.9E+37” meaning “high impedance”.
+        :return: float
+        """
         return float(self.query('OUTPUT:LOAD?'))
 
     def set_function(self, ftype="sine"):
+        """
+        Sets the function. ftype must be one of the strings “SIN”, “SQU”, “RAMP”, “PULS”, “NOIS”, “DC”, and “USER”.
+        """
         ftypes = {"SINE": "SIN", "SQUARE": "SQU", "SQU": "SQU", "RAMP": "RAMP", "PULSE": "PULSE", "NOISE": "NOISE",
                   "DC": "DC", "USER": "USER"}
         ftype_str = ftypes[ftype.upper()]
@@ -48,35 +74,79 @@ class BNCAWG(SocketInstrument):
     def set_square(self, dutycycle=50):
         """
         There are limitations to the duty cycle you can set. 
-        for frequency lower than 10MHz, it is limited to 20% and 80%."""
+        for frequency lower than 10MHz, it is limited to 20% and 80%.
+        """
         self.write('FUNC:SQU')
         return self.write('FUNC:SQU:DCYC %s' % str(dutycycle))
 
     def get_function(self):
+        """
+        Query the selection made by FUNCtion USER command. One of the strings “SIN”,
+        “SQU”, “RAMP”, “PULS”, “NOIS”, “DC”, and “USER” will be returned.
+        :return: string
+        """
         return self.query('FUNCtion?')
 
     def set_frequency(self, frequency):
+        """
+        Set the frequency in Hz
+        :param frequency: float
+        :return: None
+        """
         self.write('FREQ %f' % (float(frequency)))
 
     def get_frequency(self):
+        """
+        Returns the frequency in Hz
+        :return: float
+        """
         return float(self.query('FREQ?'))
 
-    def set_period(self, frequency):
-        self.write('PULS:PER %f' % (float(frequency)))
+    def set_period(self, period):
+        """
+        Specify the pulse period. The range is from 200 ns to 2000 seconds. The default is 1 ms.
+        :param period: float
+        :return: None
+        """
+        self.write('PULS:PER %f' % (float(period)))
 
     def get_period(self):
+        """
+        The period of the pulse waveform will be returned in seconds.
+        :return: float
+        """
         return float(self.query('PULS:PER?'))
 
     def set_pulse_width(self, frequency):
+        """
+        Specify the pulse width in seconds. The range is from 20 ns to 2000 seconds. The default is 100μs.
+        :param frequency: float
+        :return: None
+        """
         self.write('FUNC:PULS:WIDT %.9f' % (float(frequency)))
 
     def get_pulse_width(self):
+        """
+        Query the pulse width. The pulse width in seconds will be returned.
+        :return: float
+        """
         return float(self.query('FUNC:PULS:WIDT?'))
 
-    def set_pulse_duty_cycle(self, frequency):
-        self.write('FUNC:PULS:DCYC %f' % (float(frequency)))
+    def set_pulse_duty_cycle(self, percent):
+        """
+        Specify the pulse duty cycle in percent. The range is from 0 percent to 100
+        percent. The default is 10 percent. The minimum value is approximately 0
+        percent and the maximum value is approximately 100 percent.
+        :param percent: float
+        :return: None
+        """
+        self.write('FUNC:PULS:DCYC %f' % (float(percent)))
 
     def get_pulse_duty_cycle(self):
+        """
+        Query the pulse duty cycle. The duty cycle in percent will be returned.
+        :return: float
+        """
         return float(self.query('FUNC:PULS:DCYC?'))
 
     def set_pulse_transition(self, frequency):
@@ -86,45 +156,137 @@ class BNCAWG(SocketInstrument):
         return float(self.query('FUNC:PULS:TRAN?'))
 
     def set_amplitude(self, voltage):
+        """
+        Specify the output amplitude. The minimum value is 10 mVpp into 50Ω and the
+        maximum value is the largest amplitude for the chosen function (at most 10 Vpp
+        into 50Ω depending on the chosen function and the offset voltage)
+        :param voltage: float
+        :return: None
+        """
         self.write('VOLT %f' % voltage)
 
     def get_amplitude(self):
+        """
+        Query the output amplitude for the current function. The value is returned in the
+        unit chosen by the VOLT:UNIT command.
+        :return: float
+        """
         return float(self.query('VOLT?'))
 
     def set_autorange(self, range):
-        """OFF,ON,ONCE"""
+        """
+        Disable or enable the voltage auto-ranging. The default is “On” where the
+        waveform generator selects an optimal setting for the output amplifier and
+        attenuators.
+        :param range: 'On' or 'Off'
+        :return: None
+        """
         self.write('VOLT:RANGE:AUTO %s' % range.upper())
 
     def get_autorange(self):
-        return self.query('VOLT:RANGE:AUTO?').split('\n')
+        """
+        “0” (off) or “1” (on) indicating the auto-ranging enable state is returned.
+        :return: bool
+        """
+        return int(self.query('VOLT:RANGE:AUTO?').split('\n')) == 1
 
     def set_offset(self, offset):
+        """
+        Specify the dc offset voltage. The default is 0 volts. The minimum value is the
+        most negative dc offset for the chosen function and amplitude and the maximum
+        value is the largest dc offset for the chosen function and amplitude.
+        :param offset: float
+        :return: None
+        """
         self.write("VOLT:OFFSET %f" % offset)
 
     def get_offset(self):
+        """
+        Query the dc offset voltage for the current function.
+        :return: float
+        """
         return float(self.query("VOLT:OFFSET?"))
 
+    def set_voltage_high(self, high):
+        """
+        Specify the high voltage level. The default high level for all functions is +50 mV.
+        :param high: float
+        :return: None
+        """
+        self.write('VOLT:HIGH %.5f' % high)
+
+    def get_voltage_high(self):
+        """
+        Query the high voltage level.
+        :return: float
+        """
+        self.query('VOLT:HIGH?')
+
+    def set_voltage_low(self, low):
+        """
+        Specify the low voltage level. The default low level for all functions is -50 mV.
+        :param high: float
+        :return: None
+        """
+        self.write('VOLT:LOW %.5f' % low)
+
+    def get_voltage_low(self):
+        """
+        Query the low voltage level.
+        :return: float
+        """
+        self.query('VOLT:LOW?')
+
     def set_trigger_source(self, source="INT"):
+        """
+        Specify a trigger source for the triggered burst mode only. The waveform
+        generator accepts a software (BUS) trigger, an immediate (internal) trigger, or
+        a hardware trigger from the rear-panel EXT TRIG connector. The default is IMM.
+        :param source:
+        :return: None
+        """
         trig_types = {'INT': 'IMM', 'INTERNAL': 'IMM', 'EXTERNAL': 'EXT', 'EXT': 'EXT', 'BUS': 'BUS', 'MAN': 'MAN'}
         trig_type_str = trig_types[source.upper()]
         self.write('TRIG:SOURCE %s' % trig_type_str)
 
     def get_trigger_source(self):
-        return self.query('TRIG:SOURCE?')
+        """
+        Query the trigger source. “IMM” or “BUS” or “EXT” string indicating the trigger
+        source will be returned.
+        :return: string
+        """
+        return self.query('TRIG:SOURCE?').strip()
 
     def set_trigger_out(self, state):
+        """
+        Disable or enable the trigger out signal. The default is OFF. When the trigger out
+        signal is enabled, a TTL-compatible square waveform with the specified edge is
+        output from the Ext Trig connector on the rear panel at the beginning of the
+        sweep or burst.
+        :param state: bool
+        :return: None
+        """
         if state:
             self.write('OutPut:TRIGger %s' % "ON")
         else:
             self.write('OutPut:TRIGger %s' % "OFF")
 
     def get_trigger_out(self):
+        """
+        “0” or “1” indicating the trigger out signal state will be returned.
+        :return: bool
+        """
         if self.query('OutPut:TRIGger?') == '1\n':
             return True
         else:
             return False
 
     def set_trigger_slope(self, edge):
+        """
+        Specify an edge for the “trigger out” signal.
+        :param edge: string ('POS' or 'NEG')
+        :return: None
+        """
         edge = edge.upper();
         if edge == 'POS' or edge == 'POSITIVE':
             self.write('OutPut:TRIGger:SLOPe %s' % "POSitive")
@@ -132,39 +294,88 @@ class BNCAWG(SocketInstrument):
             self.write('OutPut:TRIGger:SLOPe %s' % "NEGative")
 
     def get_trigger_slope(self):
+        """
+        “POS” or “NEG” string indicating the edge for the “trigger out” signal will be returned.
+        :return: 'POS' or 'NEG'
+        """
         return self.query('OutPut:TRIGger:SLOPe?')[:-1]
 
     def trigger(self):
+        """
+        Issue an immediate trigger from the remote interface. This command can
+        trigger a sweep or burst with any available trigger source (TRIG:SOUR
+        command).
+        :return: None
+        """
         self.write('TRIGGER')
 
     def set_burst_cycles(self, cycles=1):
+        """
+        Specify the number of cycles to be output in each burst (triggered burst mode
+        only). The range is from 1 to 50,000 cycles in 1 cycle increments and the default
+        is 1 cycle.
+        :param cycles: integer
+        :return: None
+        """
         self.write('BURST:NCYCLES %d' % cycles)
 
     def get_burst_cycles(self):
+        """
+        The burst count will be returned. The range is from 1 to 50,000, and 9.9E+37 is
+        returned if Infinite is specified.
+        :return: integer
+        """
         answer = self.query('BURST:NCYCLES?').strip()
         return int(float(answer))
 
     def set_burst_period(self, period):
+        """
+        Specify the burst period for bursts with internal (immediate) trigger source. The
+        burst period is ignored when external or manual trigger source is enabled (or
+        when the gated burst mode is chosen).
+        :param period: period in seconds
+        :return: None
+        """
         self.write('BURSt:INTernal:PERiod %f' % period)
 
     def get_burst_period(self):
+        """
+        The burst period in seconds will be returned.
+        :return: float
+        """
         return float(self.query('BURSt:INTernal:PERiod?'))
 
     def set_burst_phase(self, phase):
         """
-        phase is between -360 and 360"""
+        Specify the starting phase in degrees or radians according to UNIT:ANGL
+        command. The range is from -360 degrees to +360 degrees (or from -2Π to
+        +2Π radians) and the default is 0 degree (0 radians).
+        """
         self.write('BURSt:PHASe %d' % phase)
 
     def get_burst_phase(self):
+        """
+        The starting phase in degree or radians will be returned.
+        :return: float
+        """
         return float(self.query('BURSt:PHASe?'))
 
     def set_burst_state(self, state=True):
+        """
+        Disable or enable the burst mode.
+        :param state: bool
+        :return: None
+        """
         if state:
             self.write('BURst:STATe ON')
         else:
             self.write('BURst:STATe OFF')
 
     def get_burst_state(self):
+        """
+        “0” (OFF) or ”1” (ON) will be returned.
+        :return: integer
+        """
         return int(self.query('BURST:STATE?')) == 1
 
     def set_burst_mode(self, mode):
@@ -174,7 +385,7 @@ class BNCAWG(SocketInstrument):
             self.write('BURSt:MODE GATed')
 
     def get_burst_mode(self):
-        return int(self.query('BURSt:MODE?')) == 1
+        return self.query('BURSt:MODE?').strip()
 
     def set_burst_trigger_slope(self, edge):
         edge = edge.upper();
@@ -187,9 +398,20 @@ class BNCAWG(SocketInstrument):
         return self.query('TRIGger:SLOPe?')[:-1]
 
     def set_symmetry(self, percent):
+        """
+        Specify the symmetry percentage for ramp waves. Symmetry represents the
+        amount of time per cycle that the ramp wave is rising (supposing the waveform
+        polarity is not inverted). The range is from 0% to 100% and the default is 100%.
+        :param percent: float
+        :return: None
+        """
         self.write('FUNCtion:RAMP:SYMMetry %d' % percent)
 
     def get_symmetry(self):
+        """
+        Query the current symmetry setting in percent.
+        :return: integer
+        """
         return int(self.query('FUNCtion:RAMP:SYMMetry?'))
 
     def send_waveform(self, vData, Vpp=2):
@@ -222,8 +444,6 @@ class BNCAWG(SocketInstrument):
         settings['offset'] = self.get_offset()
         return settings
 
-    # setup the BNC as the master trigger for the
-    # qubit experiment
     def set_exp_trigger(self):
 
         self.set_output(False)
@@ -261,7 +481,8 @@ class BiasDriver(BNCAWG):
     this class is designed to allow use of the BNCAWG as a DC voltage supply.
     internal amplifier range changes causes large spikes in the output.
     Hence to use as DC supply, auto-range-scalling has to be turned off.
-    We want a sticky response. Don't want voltage to change no matter what we do. """
+    We want a sticky response. Don't want voltage to change no matter what we do.
+    """
 
     def setup_volt_source(self, duration=None, pulse_voltage=None, rest_voltage=None, autorange='off'):
         # set the duty cycle to 40/60,
