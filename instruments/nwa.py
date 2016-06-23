@@ -193,6 +193,7 @@ class E5071(SocketInstrument):
         return float(self.query(":SENS%d:FREQ:SPAN?" % channel))
 
     #### Averaging
+
     def get_operation_completion(self):
         data = self.query("*OPC?")
         if data is None:
@@ -311,6 +312,46 @@ class E5071(SocketInstrument):
         answer = self.query(':TRIG:SEQ:EXT:SLOP?')
         ret = 1 if answer.strip() == 'POS' else 0
         return ret
+
+    def set_trigger_low_latency(self, state=True):
+        """
+        This command turns ON/OFF or returns the status of the low-latency external trigger feature.
+        When turning on the low-latency external trigger feature, the point trigger feature must be set
+        to on and the trigger source must be set to external trigger.
+        :param state: bool
+        :return: None
+        """
+        set = 'ON' if state else 'OFF'
+        self.write(':TRIG:EXT:LLAT %s'%set)
+
+    def get_trigger_low_latency(self):
+        """
+        Returns the low latency external trigger status
+        :return: bool
+        """
+        answer = self.query(':TRIG:EXT:LLAT?')
+        return bool(answer.strip())
+
+    def set_trigger_event(self, state='sweep'):
+        """
+        This command turns ON/OFF the status of the point trigger feature.
+        :param state: string ('sweep' or 'point')
+        :return: None
+        """
+        if state in ['sweep', 'point']:
+            do_set = 'ON' if state == 'point' else 'OFF'
+            self.write(':TRIG:POIN %s'%do_set)
+        else:
+            print "keyword state should be either 'sweep' or 'point'"
+
+    def get_trigger_event(self):
+        """
+        This command returns the status of the point trigger feature.
+        :param state: string ('sweep' or 'point')
+        :return: bool
+        """
+        answer = self.query(':TRIG:POIN?')
+        return bool(answer.strip())
 
     def set_trigger_out_polarity(self, polarity=1):
         """
