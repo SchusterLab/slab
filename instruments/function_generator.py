@@ -44,6 +44,29 @@ class BNCAWG(SocketInstrument):
         """
         return int(self.query('OUTPUT?')) == 1
 
+    def set_output_polarity(self, state='normal'):
+        """
+        Invert the waveform relative to the offset voltage. The default is NORM, in which
+        the waveform goes positive during the first part of the cycle and in INV mode the
+        waveform goes negative during the first part of the cycle. The offset remains the
+        same when the waveform is inverted and the Sync signal is not inverted.
+        :param state: string, 'normal' or 'inverted'
+        :return: None
+        """
+        if state.lower() in ['normal', 'inverted']:
+            do_set = 'NORM' if state.lower() == 'normal' else 'INV'
+            self.write('OUTP:POL %s'%do_set)
+        else:
+            print "State must be 'normal' or 'inverted' for inverted output."
+
+    def get_output_polarity(self):
+        """
+        Query the polarity of the waveform. “NORM” or “INV” indicating the polarity will be returned.
+        :return: string
+        """
+        answer = self.query('OUTP:POL?')
+        return answer.strip()
+
     def set_termination(self, load=None):
         """
         Select the desired output termination. It can be any value (in ohms) between 1Ω
@@ -117,13 +140,13 @@ class BNCAWG(SocketInstrument):
         """
         return float(self.query('PULS:PER?'))
 
-    def set_pulse_width(self, frequency):
+    def set_pulse_width(self, width):
         """
         Specify the pulse width in seconds. The range is from 20 ns to 2000 seconds. The default is 100μs.
         :param frequency: float
         :return: None
         """
-        self.write('FUNC:PULS:WIDT %.9f' % (float(frequency)))
+        self.write('FUNC:PULS:WIDT %.9f' % (float(width)))
 
     def get_pulse_width(self):
         """
