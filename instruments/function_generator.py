@@ -243,7 +243,8 @@ class BNCAWG(SocketInstrument):
         Query the high voltage level.
         :return: float
         """
-        self.query('VOLT:HIGH?')
+        answer = self.query('VOLT:HIGH?')
+        return float(answer.strip())
 
     def set_voltage_low(self, low):
         """
@@ -258,7 +259,8 @@ class BNCAWG(SocketInstrument):
         Query the low voltage level.
         :return: float
         """
-        self.query('VOLT:LOW?')
+        answer = self.query('VOLT:LOW?')
+        return float(answer.strip())
 
     def set_trigger_source(self, source="INT"):
         """
