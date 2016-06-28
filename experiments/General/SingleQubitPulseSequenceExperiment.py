@@ -146,7 +146,7 @@ class SpinEchoExperiment(QubitPulseSequenceExperiment):
 
 class EFRabiExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_Rabi', config_file='..\\config.json', **kwargs):
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file, liveplot_enabled=False,
                                               PulseSequence=EFRabiSequence, pre_run=self.pre_run,
                                               post_run=self.post_run)
 
@@ -171,7 +171,7 @@ class EFRabiExperiment(QubitPulseSequenceExperiment):
 
 class EFRamseyExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_Ramsey', config_file='..\\config.json', **kwargs):
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,liveplot_enabled=False,
                                               PulseSequence=EFRamseySequence, pre_run=self.pre_run,
                                               post_run=self.post_run, **kwargs)
 

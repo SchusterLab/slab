@@ -26,7 +26,7 @@ class QubitPulseSequenceExperiment(Experiment):
         if 'liveplot_enabled' in self.extra_args:
             self.liveplot_enabled = self.extra_args['liveplot_enabled']
         else:
-            self.liveplot_enabled = True
+            self.liveplot_enabled = False
 
         if 'data_prefix' in self.extra_args:
             data_prefix = self.extra_args['data_prefix']
