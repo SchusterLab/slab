@@ -4,7 +4,7 @@ Created on Sat Sep 03 14:50:09 2011
 
 @author: David Schuster
 """
-import slab.instruments
+#import slab.instruments
 import os
 import sys
 import socket
