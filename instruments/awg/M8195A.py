@@ -20,6 +20,53 @@ class M8195A(SocketInstrument):
     def get_id(self):
         return self.query("*IDN?")
 
+    ## 6.10 :FORMat Subsystem
+    def set_byte_order(self,value):
+        if value in ['NORM','SWAP']:
+            self.write(':FORM:BORD %s' %value)
+        else:
+            raise Exception('M8195A: Invalid Byte Order')
+        
+    def get_byte_order(self):
+        return self.query(':FORM:BORD?')
+
+    ## 6.11 :INSTrument Subsystem
+    def get_slot_number(self):
+        return self.query(':INST:SLOT?')
+
+    def flash_access_led(self, seconds):
+        self.write(':INST:IDEN %d' %seconds)
+
+    def stop_flash_access_led(self):
+        self.write(':INST:IDEN:STOP')
+
+    def get_hwardware_revision_number(self):
+        return self.query(':INST:HWR?')
+
+    def set_dac_mode(self,value):
+        if value in ['SING','DUAL','FOUR','MARK','DCD','DCM']:
+            self.write(':INST:DACM %s' %value)
+        else:
+            raise Exception('M8195A: Invalid DAC mode')
+
+    def get_dac_mode(self):
+        return self.query(':INST:DACM?')
+
+    def set_dac_sample_rate_divider(self,value):
+        if value in [1,2,4]:
+            self.write(':INST:MEM:EXT:RDIV DIV%d' %value)
+        else:
+            raise Exception('M8195A: Invalid DAC sample rate divider')
+
+    def get_dac_sample_rate_divider(self):
+        return self.query(':INST:MEM:EXT:RDIV?')
+
+    def get_multi_module_configuration(self):
+        return self.query(':INST:MMOD:CONF?')
+
+    def get_multi_module_mode(self):
+        return self.query(':INST:MMOD:MODE?')
+
     ## 6.12 :MMEMory Subsystem
 
     def get_disk_usage_information(self, value):

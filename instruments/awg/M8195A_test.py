@@ -26,4 +26,9 @@ print m8195A.get_offset(1)
 
 print m8195A.get_id()
 
+print m8195A.get_dac_mode()
+
+m8195A.set_dac_sample_rate_divider(4)
+print m8195A.get_sample_clock_divider()
+
 print "Done!"
