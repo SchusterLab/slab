@@ -20,13 +20,44 @@ class M8195A(SocketInstrument):
     def get_id(self):
         return self.query("*IDN?")
 
+    ## 6.9 TRIGger - Trigger Input
+
+    def set_advancement_event_source(self,value):
+        if value in ['TRIG','EVEN','INT']:
+            self.write(':TRIG:SOUR:ADV %s' %value)
+        else:
+            raise Exception('M8195A: Invalid advancement event source')
+
+    def get_advancement_event_source(self):
+        return self.query(':TRIG:SOUR:ADV?')
+
+    def send_trigger_enable_event(self):
+        self.write(':TRIG:ENAB')
+
+    def send_trigger_begin_event(self):
+        self.write(':TRIG:BEG')
+
+    def send_trigger_gate(self,state):
+        if state in ['on', 'ON', True, 1, '1']:
+            self.write(':TRIG:BEG:GATE ON')
+        elif state in ['off', 'OFF', False, 0, '0']:
+            self.write(':TRIG:BEG:GATE OFF')
+        else:
+            raise Exception('M8195A: Invalid trigger gate state')
+
+    def get_trigger_gate(self):
+        return self.query(':TRIG:BEG:GATE?')
+
+    def send_trigger_advancement_event(self):
+        self.write(':TRIG:ADV')
+
     ## 6.10 :FORMat Subsystem
     def set_byte_order(self,value):
         if value in ['NORM','SWAP']:
             self.write(':FORM:BORD %s' %value)
         else:
             raise Exception('M8195A: Invalid Byte Order')
-        
+
     def get_byte_order(self):
         return self.query(':FORM:BORD?')
 
