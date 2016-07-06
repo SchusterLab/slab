@@ -20,8 +20,153 @@ class M8195A(SocketInstrument):
     def get_id(self):
         return self.query("*IDN?")
 
-    ## 6.9 TRIGger - Trigger Input
+    ## 6.8 :ARM/TRIGger Subsystem
+    def stop_output(self, channel):
+        self.write(':ABOR%d' %channel)
 
+    def set_module_delay(self,seconds):
+        self.write(':ARM:MDEL %f' %seconds)
+
+    def get_module_delay(self):
+        return self.query(':ARM:MDEL?')
+
+    def set_sample_delay(self,value):
+        self.write(':ARM:SDEL %d' %value)
+
+    def get_sample_delay(self):
+        return self.query(':ARM:SDEL?')
+
+    def set_arming_mode(self, value):
+        if value in ['SELF','ARM']:
+            self.write(':INIT:CONT:ENAB %s' %value)
+        else:
+            raise Exception('M8195A: Invalid arming mode')
+
+    def get_arming_mode(self):
+        return self.query(':INIT:CONT:ENAB?')
+
+    def set_continuous_mode(self,state):
+        if state in ['on', 'ON', True, 1, '1']:
+            self.write(':INIT:CONT:STAT ON')
+        elif state in ['off', 'OFF', False, 0, '0']:
+            self.write(':INIT:CONT:STAT OFF')
+        else:
+            raise Exception('M8195A: Invalid continuous mode command')
+
+    def get_continuous_mode(self):
+        return self.query(':INIT:CONT:STAT?')
+
+    def set_gate_mode(self,state):
+        if state in ['on', 'ON', True, 1, '1']:
+            self.write(':INIT:GATE:STAT ON')
+        elif state in ['off', 'OFF', False, 0, '0']:
+            self.write(':INIT:GATE:STAT OFF')
+        else:
+            raise Exception('M8195A: Invalid continuous mode command')
+
+    def get_gate_mode(self):
+        return self.query(':INIT:GATE:STAT?')
+
+    def start_all_output(self):
+        self.write(':INIT:IMM')
+
+    def set_trigger_level(self,value):
+        self.write(':ARM:TRIG:LEV %f' %value)
+
+    def get_trigger_level(self):
+        return self.query(':ARM:TRIG:LEV?')
+
+    def set_trigger_input_slope(self,value):
+        if value in ['POS','NEG','EITH']:
+            self.write(':ARM:TRIG:SLOP %s' %value)
+        else:
+            raise Exception('M8195A: Invalid trigger slope')
+
+    def get_trigger_input_slope(self):
+        return self.query(':ARM:TRIP:SLOP?')
+
+    def set_trigger_source(self,value):
+        if value in ['TRIG','EVEN','INT']:
+            self.write(':ARM:TRIG:SOUR %s' %value)
+        else:
+            raise Exception('M8195A: Invalid trigger source')
+
+    def get_trigger_source(self):
+        return self.query(':ARM:TRIG:SOUR?')
+
+    def set_internal_trigger_frequency(self,value):
+        self.write(':ARM:TRIG:FREQ %f' %value)
+
+    def get_internal_trigger_frequency(self):
+        return self.query(':ARM:TRIG:FREQ?')
+
+    def set_trigger_operation_mode(self,value):
+        if value in ['ASYN','SYNC']:
+            self.write(':ARM:TRIG:OPER %s' %value)
+        else:
+            raise Exception('M8195A: Invalid trigger operation mode')
+
+    def get_trigger_operation_mode(self):
+        return self.query(':ARM:TRIG:OPER?')
+
+    def set_event_level(self,value):
+        self.write(':ARM:EVEN:LEV %f' %value)
+
+    def get_event_level(self):
+        return self.query(':ARM:EVEN:LEV?')
+
+    def set_event_input_slope(self,value):
+        if value in ['POS','NEG','EITH']:
+            self.write(':ARM:EVEN:SLOP %s' %value)
+        else:
+            raise Exception('M8195A: Invalid trigger slope')
+
+    def get_event_input_slope(self):
+        return self.query(':ARM:EVEN:SLOP?')
+
+    def set_enable_event_source(self,value):
+        if value in ['TRIG','EVEN']:
+            self.write(':TRIG:SOUR:ENAB %s' %value)
+        else:
+            raise Exception('M8195A: Invalid trigger source')
+
+    def get_enable_event_source(self):
+        return self.query(':TRIG:SOUR:ENAB?')
+
+    def set_enable_hardware_input_disable_state(self,state):
+        if state in ['on', 'ON', True, 1, '1']:
+            self.write(':TRIG:ENAB:HWD ON')
+        elif state in ['off', 'OFF', False, 0, '0']:
+            self.write(':TRIG:ENAB:HWD OFF')
+        else:
+            raise Exception('M8195A: Invalid continuous mode command')
+
+    def get_enable_hardware_input_disable_state(self):
+        return self.query(':TRIG:ENAB:HWD?')
+
+    def set_trigger_hardware_input_disable_state(self,state):
+        if state in ['on', 'ON', True, 1, '1']:
+            self.write(':TRIG:BEG:HWD ON')
+        elif state in ['off', 'OFF', False, 0, '0']:
+            self.write(':TRIG:BEG:HWD OFF')
+        else:
+            raise Exception('M8195A: Invalid continuous mode command')
+
+    def get_trigger_hardware_input_disable_state(self):
+        return self.query(':TRIG:BEG:HWD?')
+
+    def set_advancement_hardware_input_disable_state(self,state):
+        if state in ['on', 'ON', True, 1, '1']:
+            self.write(':TRIG:ADV:HWD ON')
+        elif state in ['off', 'OFF', False, 0, '0']:
+            self.write(':TRIG:ADV:HWD OFF')
+        else:
+            raise Exception('M8195A: Invalid continuous mode command')
+
+    def get_advancement_hardware_input_disable_state(self):
+        return self.query(':TRIG:ADV:HWD?')
+
+    ## 6.9 TRIGger - Trigger Input
     def set_advancement_event_source(self,value):
         if value in ['TRIG','EVEN','INT']:
             self.write(':TRIG:SOUR:ADV %s' %value)
@@ -239,20 +384,20 @@ class M8195A(SocketInstrument):
 
         return self.query(':OUTP%d:FILT:%s:SCAL?' %(channel,codename))
 
-    def set_fir_delay(self,channel,rate_divider,value):
+    def set_fir_delay(self,channel,rate_divider,ps):
         codename = self.rate_divider_codename(rate_divider)
 
         if rate_divider == 1:
-            if abs(value) > 50:
+            if abs(ps) > 50:
                 raise Exception('M8195A: Invalid FIR delay')
         elif rate_divider == 2:
-            if abs(value) > 100:
+            if abs(ps) > 100:
                 raise Exception('M8195A: Invalid FIR delay')
         elif rate_divider == 4:
-            if abs(value) > 200:
+            if abs(ps) > 200:
                 raise Exception('M8195A: Invalid FIR delay')
 
-        self.write(':OUTP%d:FILT:%s:DEL %fps' %(channel,codename,value))
+        self.write(':OUTP%d:FILT:%s:DEL %fps' %(channel,codename,ps))
 
     def get_fir_delay(self,channel,rate_divider):
 
