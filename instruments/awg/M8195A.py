@@ -581,4 +581,93 @@ class M8195A(SocketInstrument):
     def get_frequency_phase_response_data(self,channel):
         return self.query(':CHAR%d?' %channel)
 
+    ## 6.20 :TRACe Subsystem
+
+    def set_waveform_sample_source(self,channel,value):
+        if value in ['INT','EXT']:
+            self.write(':TRAC%d:MMOD %s' %(channel,value))
+        else:
+            raise Exception('M8195A: Invalid waveform sample source')
+
+    def get_waveform_sample_source(self,channel):
+        return self.query('TRAC%d:MMOD?' %channel)
+
+    def set_segment_size(self,channel,segment_id,length,init_value=0,write_only = False):
+        if write_only:
+            self.write('TRAC%d:DEF:WONL %d,%d,%f' %(channel,segment_id,length,init_value))
+        else:
+            self.write('TRAC%d:DEF %d,%d,%f' %(channel,segment_id,length,init_value))
+
+    def set_new_segment_size(self,channel,length,init_value=0, write_only = False):
+        if write_only:
+            return self.query('TRAC%d:DEF:WONL:NEW? %d,%f' %(channel,length,init_value))
+        else:
+            return self.query('TRAC%d:DEF:NEW? %d,%f' %(channel,length,init_value))
+
+    def set_segment_data(self,channel,segment_id,offset,data):
+        #data in comma-separated list
+        self.write(':TRAC%d:DATA %d,%d,%s' %(channel,segment_id,offset,data))
+
+    def get_segment_data(self,channel,segment_id,offset,length):
+        return self.query(':TRAC%d:DATA? %d,%d,%d' %(channel,segment_id,offset,length))
+
+    def set_segment_data_from_file(self,channel,segment_id,file_name,data_type,marker_flag,padding,init_value,ignore_header_parameters):
+        self.write(':TRAC%d:IMP %d,%s,%s,%s,%s,%d,%s' %(channel,segment_id,file_name,data_type,marker_flag,padding,init_value,ignore_header_parameters))
+
+    def delete_segment(self,channel,segment_id):
+        self.write(':TRAC%d:DEL %d' %(channel,segment_id))
+
+    def delete_all_segment(self,channel):
+        self.write(':TRAC%d:DEL:ALL' %channel)
+
+    def get_segment_catalog(self,channel):
+        return self.query(':TRAC%d:CAT?' %channel)
+
+    def get_memory_space_amount(self,channel):
+        return self.query(':TRAC%d:FREE?' %channel)
+
+    def set_segment_name(self,channel,segment_id,name):
+        self.write(':TRAC%d:NAME %d, %s' %(channel,segment_id,name))
+
+    def get_segment_name(self,channel,segment_id):
+        return self.query(':TRAC%d:NAME? %d' %(channel,segment_id))
+
+    def set_segment_comment(self,channel,segment_id,comment):
+        self.write(':TRAC%d:COMM %d, %s' %(channel,segment_id,comment))
+
+    def get_segment_comment(self,channel,segment_id):
+        return self.query(':TRAC%d:COMM? %d' %(channel,segment_id))
+
+    def set_select_segment(self,channel,segment_id):
+        self.write(':TRAC%d:SEL %d' %(channel,segment_id))
+
+    def get_select_segment(self,channel):
+        return self.query(':TRAC%d:SEL?' %channel)
+
+    def set_selected_segment_advancement_mode(self,channel,value):
+        if value in ['AUTO','COND','REP','SING']:
+            self.write(':TRAC%d:ADV %s' %(channel,value))
+        else:
+            raise Exception('M8195A: Invalid segment advancement mode')
+
+    def get_selected_segment_advancement_mode(self,channel):
+        return self.query(':TRAC%d:ADV?' %channel)
+
+    def set_selected_segment_loop(self,channel,value):
+        self.write(':TRAC%d:COUN %d' %(channel,value))
+
+    def get_selected_segment_loop(self,channel):
+        return self.query(':TRAC%d:COUN?' %channel)
+
+    def set_selected_segment_marker_enable(self,channel,state):
+        if state in ['on', 'ON', True, 1, '1']:
+            self.write(':TRAC:MARK%d ON' %channel)
+        elif state in ['off', 'OFF', False, 0, '0']:
+            self.write(':TRAC:MARK%d OFF' %channel)
+        else:
+            raise Exception('M8195A: Invalid selected segment marker enable command')
+
+    def get_selected_segment_marker_enable(self,channel):
+        return self.query(':TRAC%d:MARK?' %channel)
+
     
