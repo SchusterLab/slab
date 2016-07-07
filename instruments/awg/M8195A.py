@@ -670,4 +670,11 @@ class M8195A(SocketInstrument):
     def get_selected_segment_marker_enable(self,channel):
         return self.query(':TRAC%d:MARK?' %channel)
 
-    
+
+    ## 6.21 :TEST Subsystem
+
+    def get_power_on_self_tests_result(self):
+        return self.query(':TEST:PON?')
+
+    def get_power_on_self_tests_results_with_test_message(self):
+        return self.query(':TEST:TST?')
