@@ -575,3 +575,10 @@ class M8195A(SocketInstrument):
 
     def get_scenario_loop(self):
         return self.query(':STAB:SCEN:COUN?')
+
+    ## 6.19 Frequency and Phase Response Data Access
+
+    def get_frequency_phase_response_data(self,channel):
+        return self.query(':CHAR%d?' %channel)
+
+    
