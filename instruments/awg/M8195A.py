@@ -515,3 +515,63 @@ class M8195A(SocketInstrument):
 
     def get_mode(self):
         return self.query(':FUNC:MODE?')
+
+    ## 6.18 :STABle Subsystem
+    def reset_sequence(self):
+        self.write(':STAB:RES')
+
+    def write_sequence_data(self,sequence_table_index,segment_id,sequence_loop=1,segment_loop=1,start_address='0',end_address='#0xFFFFFFFF'):
+        self.write(':STAB:DATA %d, #0x10000000, %d, %d, %d, %s, %s' %(sequence_table_index,sequence_loop,segment_loop,segment_id,start_address,end_address))
+
+    def write_sequence_idle(self,sequence_table_index,sequence_loop=1,idle_sample='0',idle_delay=0):
+        self.write(':STAB:DATA %d, #0x80000000,%d,0,%s,%f,0' %(sequence_table_index,sequence_loop,idle_sample,idle_delay))
+
+    def read_sequence_data(self,sequence_table_index,length):
+        return self.query(':STAB:DATA? %d, %d' %(sequence_table_index,length))
+
+    def read_sequence_data_block(self,sequence_table_index,length):
+        return self.query(':STAB:DATA:BLOC? %d, %d' %(sequence_table_index,length))
+
+    def set_sequence_starting_id(self,sequence_table_index):
+        self.write(':STAB:SEQ:SEL %d' %sequence_table_index)
+
+    def get_sequence_starting_id(self):
+        return self.query(':STAB:SEQ:SEL?')
+
+    def get_sequence_execution_state(self):
+        return self.query(':STAB:SEQ:STAT?')
+
+    def set_dynamic_mode(self,state):
+        if state in ['on', 'ON', True, 1, '1']:
+            self.write(':STAB:DYN ON')
+        elif state in ['off', 'OFF', False, 0, '0']:
+            self.write(':STAB:DYN OFF')
+        else:
+            raise Exception('M8195A: Invalid dynamic mode command')
+
+    def get_dynamic_mode(self):
+        return self.query(':STAB:DYN?')
+
+    def set_dynamic_starting_id(self,sequence_table_index):
+        self.write(':STAB:DYN:SEL %d' %sequence_table_index)
+
+    def set_scenario_starting_id(self,sequence_table_index):
+        self.write(':STAB:SCEN:SEL %d' %sequence_table_index)
+
+    def get_scenario_starting_id(self):
+        return self.query(':STAB:SCEN:SEL?')
+
+    def set_scenario_advancement_mode(self,value):
+        if value in ['AUTO','COND','REP','SING']:
+            self.write(':STAB:SCEN:ADV %s' %value)
+        else:
+            raise Exception('M8195A: Invalid scenario advancement mode')
+
+    def get_scenario_advancement_mode(self):
+        return self.query(':STAB:SCEN:ADV?')
+
+    def set_scenario_loop(self,value):
+        self.write(':STAB:SCEN:COUN %d' %value)
+
+    def get_scenario_loop(self):
+        return self.query(':STAB:SCEN:COUN?')
