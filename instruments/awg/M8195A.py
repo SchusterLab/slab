@@ -17,8 +17,98 @@ class M8195A(SocketInstrument):
         SocketInstrument.__init__(self, name, address, enabled, timeout)
         self._loaded_waveforms = []
 
+    ## 6.5 System Related Commands
+
+    def set_event_in_mode(self,value):
+        if value in ['EIN','TOUT']:
+            self.write(':SYST:EIN:MODE %s' %value)
+        else:
+            raise Exception('M8195A: Invalid event in mode')
+
+    def get_event_in_mode(self):
+        return self.query(':SYST:EIN:MODE?')
+
+    def get_error(self):
+        return self.query(':SYST:ERR?')
+
+    def get_all_scpi_commands(self):
+        return self.query(':SYST:HELP:HEAD?')
+
+    def get_licenses_installed(self):
+        return self.query(':SYST:LIC:EXT:LIST?')
+
+    def set_system_setup(self,value):
+        self.write(':SYST:SET %s' %value)
+
+    def get_system_setup(self):
+        return self.query(':SYST:SET?')
+
+    def get_system_version(self):
+        return self.query(':SYST:VERS?')
+
+    def get_system_communication_availability(self):
+        return self.query(':SYST:COMM:*?')
+
+    def get_vxi_11_instrument_number(self):
+        return self.query(':SYST:COMM:INST?')
+
+    def get_hislip_number(self):
+        return self.query(':SYST:COMM:HISL?')
+
+    def get_socket_port(self):
+        return self.query(':SYST:COMM:SOCK?')
+
+    def get_telnet_port(self):
+        return self.query(':SYST:COMM:TELN?')
+
+    def get_tcp_port(self):
+        return self.query(':SYST:COMM:TCP:CONT?')
+
+    ## 6.6 Common Command List
     def get_id(self):
         return self.query("*IDN?")
+
+    def clear_event_register(self):
+        self.write('*CLS')
+
+    def set_enable_bits_status_register(self,value):
+        self.write('*ESE %d' %value)
+
+    def get_enable_bits_status_register(self):
+        return self.query('*ESE?')
+
+    def get_event_status_register(self):
+        return self.query('ESR?')
+
+    def set_operation_complete(self):
+        self.write('*OPC')
+
+    def get_operation_complete(self):
+        return self.query('*OPC?')
+
+    def get_installed_options(self):
+        return self.query('*OPT?')
+
+    def set_factory_default(self):
+        self.write('*RST')
+
+    def set_enable_bits_service_request(self,value):
+        self.write('*SRE %d' %value)
+
+    def get_enable_bits_service_request(self):
+        return self.query('*SRE?')
+
+    def get_summary_register(self):
+        return self.query('*STB?')
+
+    def execute_self_test(self):
+        return self.query('*TST?')
+
+    def get_instrument_data(self):
+        return self.query('*LRN?')
+
+    def wait_current_execution(self):
+        return self.query('*WAI?')
 
     ## 6.8 :ARM/TRIGger Subsystem
     def stop_output(self, channel):
