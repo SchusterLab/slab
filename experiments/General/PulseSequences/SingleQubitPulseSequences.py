@@ -23,7 +23,7 @@ class RabiSequence(QubitPulseSequence):
         if self.expt_cfg['sweep_amp']:
             self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
         else:
-            self.psb.append('q','general', self.pulse_type, amp=self.pulse_cfg['gauss']['a'], length=pt,freq=self.expt_cfg['iq_freq'])
+            self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'])
 
 
 
@@ -63,8 +63,8 @@ class SpinEchoSequence(QubitPulseSequence):
 
     def define_parameters(self):
         self.pulse_type =  self.expt_cfg['pulse_type']
-        self.half_pi_offset = self.pulse_cfg[self.pulse_type]['offset_phase']
-
+        # self.half_pi_offset = self.pulse_cfg[self.pulse_type]['offset_phase']
+        self.half_pi_offset = 0.0
     def define_pulses(self,pt):
 
         self.psb.append('q','half_pi', self.pulse_type)

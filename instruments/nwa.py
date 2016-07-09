@@ -5,10 +5,10 @@ Created on Mon Aug 01 21:26:31 2011
 @author: Dave
 """
 from slab.instruments import SocketInstrument, VisaInstrument
-import time
+import time, glob, re
 import numpy as np
-import glob
 import os.path
+from matplotlib import pyplot as plt
 
 
 class HP3577A(VisaInstrument):
@@ -158,7 +158,7 @@ class E5071(SocketInstrument):
     default_port = 5025
 
     def __init__(self, name="E5071", address=None, enabled=True):
-        SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=10, recv_length=2 ** 20)
+        SocketInstrument.__init__(self, name, address, enabled=enabled, query_timeout=10, recv_length=2 ** 20)
         self.query_sleep = 0.05
 
     def get_id(self):
@@ -192,13 +192,15 @@ class E5071(SocketInstrument):
     def get_span(self, channel=1):
         return float(self.query(":SENS%d:FREQ:SPAN?" % channel))
 
-    def set_sweep_points(self, numpts=1600, channel=1):
-        self.write(":SENSe%d:SWEep:POINts %f" % (channel, numpts))
-
-    def get_sweep_points(self, channel=1):
-        return float(self.query(":SENSe%d:SWEep:POINts?" % (channel)))
-
     #### Averaging
+
+    def get_operation_completion(self):
+        data = self.query("*OPC?")
+        if data is None:
+            return False
+        else:
+            return bool(int(data.strip()))
+
     def set_averages(self, averages, channel=1):
         self.write(":SENS%d:AVERage:COUNt %d" % (channel, averages))
 
@@ -222,33 +224,144 @@ class E5071(SocketInstrument):
         self.write(":SENS%d:BANDwidth:RESolution %f" % (channel, bw))
 
     def get_ifbw(self, channel=1):
-
         return float(self.query(":SENS%d:BANDwidth:RESolution?" % (channel)))
 
     def averaging_complete(self):
-        # if self.query("*OPC?") == '+1\n': return True
         self.write("*OPC?")
         self.read()
 
-    #        else: return False
+    #### Trigger
 
     def trigger_single(self):
+        """
+        Send a single trigger.
+        :return: None
+        """
         self.write(':TRIG:SING')
 
     def set_trigger_average_mode(self, state=True):
+        """
+        If state=True, the machine initiates averaging when it receives a single trigger. It keeps
+        averaging until the averaging is complete.
+        :param state: bool
+        :return: None
+        """
         if state:
             self.write(':TRIG:AVER ON')
         else:
             self.write(':TRIG:AVER OFF')
 
     def get_trigger_average_mode(self):
+        """
+        Returns the trigger averaging mode. If True, the machine operates in a way where it keeps averaging
+        a trace until averaging is complete, with only a SINGLE trigger necessary.
+        :return: bool
+        """
         return bool(self.query(':TRIG:AVER?'))
 
-    def set_trigger_source(self, source="INTERNAL"):  # INTERNAL, MANUAL, EXTERNAL,BUS
+    def set_trigger_source(self, source="INTERNAL"):
+        """
+        Sets the trigger source to one of the following:
+        INTERNAL, MANUAL, EXTERNAL,BUS
+        :param source: string
+        :return: None
+        """
         self.write(':TRIG:SEQ:SOURCE ' + source)
 
-    def get_trigger_source(self):  # INTERNAL, MANUAL, EXTERNAL,BUS
-        return self.query(':TRIG:SEQ:SOURCE?')
+    def get_trigger_source(self):
+        """
+        Returns the trigger source.
+        :return: string
+        """
+        answer = self.query(':TRIG:SEQ:SOURCE?')
+        return answer.strip()
+
+    def set_trigger_continuous(self, state=True):
+        """
+        Set the trigger mode to continuous (if state = True) or set the state to Hold (if state = False)
+        :param state: bool
+        :return: None
+        """
+        set = 'ON' if state else 'OFF'
+        self.write(':INIT:CONT %s'%set)
+
+    def get_trigger_continuous(self):
+        """
+        Returns True if the trigger mode is set to Continuous, or False if the trigger mode is set to Hold.
+        :return: bool
+        """
+        answer = self.query(':INIT:CONT?')
+        return bool(answer.strip())
+
+    def set_trigger_in_polarity(self, polarity=1):
+        """
+        Set the external input trigger polarity. If polarity = 1, the external trigger is set to the positive edge,
+        if polarity = 0, the machine triggers on the negative edge.
+        :param polarity:
+        :return: None
+        """
+        set = 'POS' if polarity else 'NEG'
+        self.write(':TRIG:SEQ:EXT:SLOP %s' % set)
+
+    def get_trigger_in_polarity(self):
+        """
+        Returns the trigger slope for the external trigger. Returns 1 for triggering on positive edge, or
+        0 for triggering on the negative edge.
+        :return: integer
+        """
+        answer = self.query(':TRIG:SEQ:EXT:SLOP?')
+        ret = 1 if answer.strip() == 'POS' else 0
+        return ret
+
+    def set_trigger_low_latency(self, state=True):
+        """
+        This command turns ON/OFF or returns the status of the low-latency external trigger feature.
+        When turning on the low-latency external trigger feature, the point trigger feature must be set
+        to on and the trigger source must be set to external trigger.
+        :param state: bool
+        :return: None
+        """
+        set = 'ON' if state else 'OFF'
+        self.write(':TRIG:EXT:LLAT %s'%set)
+
+    def get_trigger_low_latency(self):
+        """
+        Returns the low latency external trigger status
+        :return: bool
+        """
+        answer = self.query(':TRIG:EXT:LLAT?')
+        return bool(answer.strip())
+
+    def set_trigger_event(self, state='sweep'):
+        """
+        This command turns ON/OFF the status of the point trigger feature.
+        :param state: string ('sweep' or 'point')
+        :return: None
+        """
+        if state in ['sweep', 'point']:
+            do_set = 'ON' if state == 'point' else 'OFF'
+            self.write(':TRIG:POIN %s'%do_set)
+        else:
+            print "keyword state should be either 'sweep' or 'point'"
+
+    def get_trigger_event(self):
+        """
+        This command returns the status of the point trigger feature.
+        :param state: string ('sweep' or 'point')
+        :return: bool
+        """
+        answer = self.query(':TRIG:POIN?')
+        return bool(answer.strip())
+
+    def set_trigger_out_polarity(self, polarity=1):
+        """
+        Sets the external output trigger polarity. If polarity = 1, the external trigger is a positive voltage
+        pulse. If polarity = 0, the external trigger is a negative voltage pulse.
+        :param polarity: integer
+        :return: None
+        """
+        set = 'POS' if polarity else 'NEG'
+        self.write('TRIG:OUTP:POL %s' % set)
 
     #### Source
 
@@ -267,8 +380,96 @@ class E5071(SocketInstrument):
     def get_output(self):
         return bool(self.query(":OUTPUT?"))
 
-    def set_measure(self, mode='S21'):
-        self.write(":CALC1:PAR1:DEF %s" % (mode))
+    def set_measure(self, mode='S21', channel=1):
+        self.write(":CALC%d:PAR1:DEF %s" % (channel, mode))
+
+    #### Sweep
+
+    def get_sweep_time(self, channel=1):
+        """
+        Returns the sweep time in seconds.
+        :param channel: channel number
+        :return: float
+        """
+        answer = self.query(":SENS%d:SWE:TIME?"%channel)
+        return float(answer.strip())
+
+    def set_sweep_time(self, sweep_time, channel=1):
+        """
+        Sets the sweep time in seconds. If the sweep time is set to 'AUTO', this function first sets the sweep time
+        to manual. Then it sets the sweep time to "sweep_time". This value cannot be lower than the value when the
+        sweep time is set to auto.
+        :param sweep_time: sweep time in seconds
+        :param channel: channel number
+        :return: None
+        """
+        self.set_sweep_time_auto(state=False, channel=channel)
+        self.write(":SENS%d:SWE:TIME %.3e"%(channel, sweep_time))
+
+    def set_sweep_time_auto(self, state=True, channel=1):
+        """
+        Sets the sweep time to automatic (the fastest option).
+        :param state: True/False
+        :param channel: channel number
+        :return: None
+        """
+        set = 'ON' if state else 'OFF'
+        self.write(":SENS%d:SWE:TIME:AUTO %s"%(channel, set))
+
+    def get_sweep_time_auto(self, channel=1):
+        """
+        Returns True if the sweep time is automatically set, or False if the sweep time is set manually.
+        :param channel: channel number
+        :return: bool
+        """
+        answer = self.query(":SENS%d:SWE:TIME:AUTO?"%channel)
+        return bool(answer.strip())
+
+    def set_sweep_points(self, numpts=1600, channel=1):
+        """
+        Sets the number of sweep points
+        :param numpts: integer
+        :param channel: channel number
+        :return: None
+        """
+        self.write(":SENSe%d:SWEep:POINts %f" % (channel, numpts))
+
+    def get_sweep_points(self, channel=1):
+        """
+        Returns the number of points in the current sweep.
+        :param channel: channel number
+        :return: integer
+        """
+        return float(self.query(":SENSe%d:SWEep:POINts?" % (channel)))
+
+    #### Scale
+
+    def get_electrical_delay(self, channel=1):
+        """
+        Returns the electrical delay in seconds
+        :param channel: channel number
+        :return: float
+        """
+        answer = self.query(":CALC%d:CORR:EDEL:TIME?" % (channel))
+        return float(answer.strip())
+
+    def set_electrical_delay(self, electrical_delay, channel=1):
+        """
+        Sets the electrical delay of the trace. The number should be between -10s and 10s.
+        :param electrical_delay: float
+        :param channel: channel number
+        :return: None
+        """
+        self.write(":CALC%d:CORR:EDEL:TIME %.6e"%(channel, np.float64(electrical_delay)))
+
+    def auto_scale(self, channel=1, trace_number=1):
+        """
+        Auto-scales the y-axis of the trace with trace_number.
+        :param channel: channel number
+        :param trace_number: integer
+        :return: None
+        """
+        self.write(":DISP:WIND%d:TRAC%d:Y:AUTO"%(channel, trace_number))
 
     #### File Operations
 
@@ -276,43 +477,44 @@ class E5071(SocketInstrument):
         self.write('MMEMORY:STORE:FDATA \"' + fname + '\"')
 
     def set_format(self, trace_format='MLOG', channel=1):
-        """set_format: valid options are
+        """
+        set_format: valid options are
         {MLOGarithmic|PHASe|GDELay| SLINear|SLOGarithmic|SCOMplex|SMITh|SADMittance|PLINear|PLOGarithmic|POLar|MLINear|SWR|REAL| IMAGinary|UPHase|PPHase}
         """
         self.write(":CALC:FORMAT " + trace_format)
 
     def get_format(self, channel=1):
-        """set_format: valid options are
+        """
+        get_format: valid options are
         {MLOGarithmic|PHASe|GDELay| SLINear|SLOGarithmic|SCOMplex|SMITh|SADMittance|PLINear|PLOGarithmic|POLar|MLINear|SWR|REAL| IMAGinary|UPHase|PPHase}
         """
         return self.query(":CALC:FORMAT?")
 
-    def read_data(self, channel=1):
-        """Read current NWA Data, return fpts,mags,phases"""
-        #        self.write(":CALC1:PAR1:SEL")
-        #        self.write(":INIT1:CONT OFF")
-        #        self.write(":ABOR")
+    def read_data(self, channel=1, timeout=None):
+        """
+        Read current NWA Data, output depends on format, for mag phase, use set_format('SLOG')
+        :param channel: channel number
+        :param timeout: optional, query timeout in ms.
+        :return: np.vstack((fpts, data))
+        """
+        #self.get_operation_completion()
         self.write(":FORM:DATA ASC")
-        self.write(":CALC1:DATA:FDAT?")
-        data_str = ''
+        self.write(":CALC%d:DATA:FDAT?"%channel)
 
-        done = False
-        ii = 0
-        while not done:
-            time.sleep(self.query_sleep)
-            ii += 1
-            try:
-                s = self.read()
-            except:
-                print "read %d failed!" % ii
-            data_str += s
-            done = data_str[-1] == '\n'
-        # print data_str
+        if timeout is None:
+            timeout = self.query_timeout
+
+        data_str = ''.join(self.read_line(timeout=timeout))
         data = np.fromstring(data_str, dtype=float, sep=',')
-        data = data.reshape((-1, 2))
-        data = data.transpose()
-        # self.data=data
-        fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), len(data[0]))
+        sweep_points = int(self.get_sweep_points())
+        fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), sweep_points)
+        if len(data) == 2 * sweep_points:
+            data = data.reshape((-1, 2))
+            data = data.transpose()
+            return np.vstack((fpts, data))
+        else:
+            return np.vstack((fpts, data))
+
         return np.vstack((fpts, data))
 
     #### Meta
@@ -322,9 +524,8 @@ class E5071(SocketInstrument):
         # print "Acquiring single trace"
         self.set_trigger_source('BUS')
         time.sleep(self.query_sleep * 2)
-        old_timeout = self.get_timeout()
-        #        old_format=self.get_format()
-        self.set_timeout(10000)
+        old_timeout = self.get_query_timeout()
+        self.set_query_timeout(10000)
         self.set_format()
         time.sleep(self.query_sleep)
         old_avg_mode = self.get_trigger_average_mode()
@@ -338,8 +539,7 @@ class E5071(SocketInstrument):
             self.save_file(fname)
         ans = self.read_data()
         time.sleep(self.query_sleep)
-        #       self.set_format(old_format)
-        self.set_timeout(old_timeout)
+        self.set_query_timeout(old_timeout)
         self.set_trigger_average_mode(old_avg_mode)
         self.set_trigger_source('INTERNAL')
         self.set_format()
@@ -485,18 +685,18 @@ class E5071(SocketInstrument):
                     }
         return settings
 
-    def configure(self, start=None, stop=None, center=None, span=None, power=None, ifbw=None, sweep_pts=None, avgs=None,
+    def configure(self, start=None, stop=None, center=None, span=None, power=None, ifbw=None, sweep_points=None, averages=None,
                   defaults=False, remote=False):
-        if defaults:       self.set_default_state()
-        if remote:                          self.set_remote_state()
-        if start is not None:            self.set_start_frequency(start)
-        if stop is not None:            self.set_stop_frequency(stop)
-        if center is not None:          self.set_center_frequency(center)
-        if span is not None:            self.set_span(span)
-        if power is not None:         self.set_power(power)
-        if ifbw is not None:            self.set_ifbw(ifbw)
-        if sweep_pts is not None:   self.set_sweep_points(sweep_pts)
-        if avgs is not None:            self.set_averages(avgs)
+        if defaults: self.set_default_state()
+        if remote: self.set_remote_state()
+        if start is not None: self.set_start_frequency(start)
+        if stop is not None: self.set_stop_frequency(stop)
+        if center is not None: self.set_center_frequency(center)
+        if span is not None: self.set_span(span)
+        if power is not None: self.set_power(power)
+        if ifbw is not None: self.set_ifbw(ifbw)
+        if sweep_points is not None: self.set_sweep_points(sweep_points)
+        if averages is not None: self.set_averages(averages)
 
     def set_remote_state(self):
         self.set_trigger_source('BUS')
@@ -570,16 +770,16 @@ def nwa_test1(na):
     """Read NWA data and plot results"""
     fpts, mags, phases = na.read_data()
 
-    figure(1)
-    subplot(2, 1, 1)
-    xlabel("Frequency (GHz)")
-    ylabel("Transmission, S21 (dB)")
-    plot(fpts / 1e9, mags)
-    subplot(2, 1, 2)
-    xlabel("Frequency (GHz)")
-    ylabel("Transmitted Phase (deg)")
-    plot(fpts / 1e9, phases)
-    show()
+    plt.figure(1)
+    plt.subplot(2, 1, 1)
+    plt.xlabel("Frequency (GHz)")
+    plt.ylabel("Transmission, S21 (dB)")
+    plt.plot(fpts / 1e9, mags)
+    plt.subplot(2, 1, 2)
+    plt.xlabel("Frequency (GHz)")
+    plt.ylabel("Transmitted Phase (deg)")
+    plt.plot(fpts / 1e9, phases)
+    plt.show()
 
 
 def nwa_test2(na):
@@ -591,16 +791,16 @@ def nwa_test2(na):
 
     freqs, mags, phases = na.segmented_sweep(9e9, 15e9, 50e3)
 
-    figure(1)
-    subplot(2, 1, 1)
-    xlabel("Frequency (GHz)")
-    ylabel("Transmission, S21 (dB)")
-    plot(freqs / 1e9, mags)
-    subplot(2, 1, 2)
-    xlabel("Frequency (GHz)")
-    ylabel("Transmitted Phase (deg)")
-    plot(freqs / 1e9, phases)
-    show()
+    plt.figure(1)
+    plt.subplot(2, 1, 1)
+    plt.xlabel("Frequency (GHz)")
+    plt.ylabel("Transmission, S21 (dB)")
+    plt.plot(freqs / 1e9, mags)
+    plt.subplot(2, 1, 2)
+    plt.xlabel("Frequency (GHz)")
+    plt.ylabel("Transmitted Phase (deg)")
+    plt.plot(freqs / 1e9, phases)
+    plt.show()
 
 
 def nwa_test3(na):

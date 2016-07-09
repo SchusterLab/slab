@@ -6,10 +6,9 @@ SRS900 Voltage Source (voltsource.py)
 """
 
 from slab.instruments import SocketInstrument, SerialInstrument, VisaInstrument, Instrument
-import re
-import time
+import re, time
 from numpy import linspace
-
+import numpy as np
 
 class VoltageSource:
     def ramp_volt(self, v, sweeprate=1, channel=1):
@@ -52,10 +51,10 @@ class VoltageSource:
 class SRS900(SerialInstrument, VisaInstrument, VoltageSource):
     'Interface to the SRS900 voltage source'
 
-    def __init__(self, name="", address='COM5', enabled=True, timeout=1):
+    def __init__(self, name="", address='COM5', enabled=True, query_timeout=1000):
         # if ':' not in address: address+=':22518'
         if address[:3].upper() == 'COM':
-            SerialInstrument.__init__(self, name, address, enabled, timeout)
+            SerialInstrument.__init__(self, name, address, enabled, query_timeout)
         else:
             VisaInstrument.__init__(self, name, address, enabled)
         self.query_sleep = 0.05
@@ -228,6 +227,102 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
     def get_measure(self):
         """Get measured value"""
         return float(self.query(':MEASURE?').strip())
+
+    def get_programs(self):
+        """Returns a list of programs defined in the memory"""
+        answer = self.query('PROG:CAT?').strip()
+        # the program names are between quotes in "answer". This returns them as a list.
+        program_list = re.findall('\"(.+?)\"', answer)
+        return program_list
+
+    def set_program_slope_time(self, ts):
+        """Sets the slope time between two successive steps in a program"""
+        self.write(':PROG:SLOP %.6f'%ts)
+
+    def get_program_slope_time(self):
+        """Returns the slope time between two successive steps in a program"""
+        answer = self.query(':PROG:SLOP?').strip()
+        return float(answer)
+
+    def set_program_interval_time(self, ti):
+        """Sets the interval time between two successive steps in a program"""
+        self.write(':PROG:INT %.6f'%ti)
+
+    def get_program_interval_time(self):
+        """Returns the interval time between two successive steps in a program"""
+        answer = self.query(':PROG:INT?').strip()
+        return float(answer)
+
+    def define_program(self, name, points, instrument_range=None, mode='VOLT'):
+        """Defines a program with filename 'name' and steps 'points'"""
+        x3 = 'V' if mode == 'VOLT' else 'A'
+
+        if instrument_range is not None:
+            if isinstance(instrument_range, float):
+                x2 = instrument_range
+            elif isinstance(instrument_range, ndarray) or isinstance(instrument_range, list):
+                x2 = instrument_range
+            else:
+                raise ValueError("Specified data type for variable range not understood.")
+        else:
+            x2 = max(abs(points))
+
+        formatted_points = ''
+        for k, p in enumerate(points):
+            formatted_points += '%.6f, %f, %s\r\n' % (p, x2, x3)
+
+        self.write(':PROG:DEF "%s", "%s"' % (name, formatted_points))
+
+    def load_program(self, name):
+        """Load an existing program from the memory"""
+        if name in self.get_programs():
+            self.write('PROG:LOAD "%s"'%name)
+        else:
+            raise ValueError("Specified program name does not exist.")
+
+    def run_program(self):
+        """Run the program. For this to work, the output needs to be set to True"""
+        self.write('PROG:RUN')
+
+    def step_program(self):
+        """Move forward one step in a program"""
+        self.write('PROG:STEP')
+
+    def set_program_repeat(self, state=True):
+        """Set to False if program needs to execute only once"""
+        self.write(":PROG:REP %d" % int(state))
+
+    def get_program_repeat(self):
+        """True if the program repeats forever"""
+        answer = int(self.query(':PROG:REP?').strip())
+        return bool(answer)
+
+    def delete_program(self, name):
+        """Note: you can only delete a program when no other programs are running"""
+        if name in self.get_programs():
+            self.write('PROG:DEL "%s"'%name)
+        else:
+            raise ValueError("Specified program name does not exist.")
+
+    def flush_program_memory(self):
+        """Deletes all programs from the memory"""
+        print "Deleting programs from memory:"
+        for program in self.get_programs():
+            print "\t%s"%program
+            self.delete_program(program)
+
+    def linear_ramp(self, Vi, Vf, dt=0.1):
+        program_name='simple_ramp.csv'
+        #self.set_output(False)
+        self.flush_program_memory()
+        self.define_program(program_name, np.array([Vi, Vf]), instrument_range=None, mode='VOLT')
+        self.load_program(program_name)
+        self.set_program_repeat(False)
+        self.set_program_interval_time(dt)  # dV/sweep_speed)
+        self.set_program_slope_time(dt)  # dV/sweep_speed)
+        self.set_volt(Vi)
+        self.set_output(True)
+        self.run_program()
 
 
 # class SRS928(Instrument):
