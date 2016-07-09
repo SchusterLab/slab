@@ -153,7 +153,7 @@ class SocketInstrument(Instrument):
 
 class SerialInstrument(Instrument):
     
-    def __init__(self, name, address, enabled=True, timeout=.1, 
+    def __init__(self, name, address, enabled=True, timeout=.1,
                  recv_length=1024, baudrate=9600, querysleep=1):
         Instrument.__init__(self, name, address, enabled)
         self.protocol='serial'
@@ -173,7 +173,7 @@ class SerialInstrument(Instrument):
     
     def set_timeout(self,timeout):
         Instrument.set_timeout(self,timeout)
-        if self.enabled: self.ser.setTimeout(self.timeout)
+        if self.enabled: self.ser.timeout=self.timeout
         
     def set_query_sleep(self, querysleep):            
         self.query_sleep = querysleep

@@ -35,8 +35,8 @@ try: from Alazar import Alazar, AlazarConfig, AlazarConstants
 except: print "Could not load Alazar card"
 try: from function_generator import BiasDriver,FilamentDriver,BNCAWG
 except: print "Could not load BNC AWG classes"
-try: from Keithley199 import Keithley199
-except: print "Could not load Keithley199 voltmeter classes"
+try: from multimeter import Keithley199, HP34401A
+except: print "Could not load Keithley199/HP34401A multimeter classes"
 try: from spectrumanalyzer import E4440
 except: print "Could not load E4440 Spectrum Analyzer"
 try: from cryocon import Cryocon
@@ -49,3 +49,5 @@ try: from Omega16i import Omega16i
 except: print "Could not load Omega 16i driver"
 try: from lockin import SR844
 except: print "Could not load SR844 driver"
+try: from PressureGauge import PressureGauge
+except: print "Could not load PressureGauge driver"

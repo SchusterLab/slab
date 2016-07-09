@@ -9,6 +9,21 @@ import re
 import time
 import numpy as np
 
+class HP34401A(VisaInstrument):
+    def __init__(self,name="HP34401",address='GPIB0::30::INSTR',enabled=True,timeout=1):
+        #if ':' not in address: address+=':22518'
+
+        VisaInstrument.__init__(self,name,address,enabled, term_chars='\r')
+        self.query_sleep=0.4
+        self.recv_length=65536
+        self.term_char=''
+
+    def get_id(self):
+        return self.query('*IDN?')
+
+    def get_value(self):
+        return float(self.query("READ?"))
+
 class Keithley199(VisaInstrument):
     
     def __init__(self,name="keithley199",address='GPIB0::26::INSTR',enabled=True,timeout=1):

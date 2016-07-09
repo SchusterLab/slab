@@ -21,7 +21,10 @@ class Cryocon(SocketInstrument):
         return self.query_sleep
 
     def get_temp(self,ch='A'):
-        return float(self.query('INPUT? '+ch.upper()))
+        try:
+            return float(self.query('INPUT? '+ch.upper()))
+        except:
+            return 0
     
     def set_sensor_type(self,ch,sensor_type=0):
         self.write("INPUT %s:SENSOR %d" %(ch,sensor_type) )
