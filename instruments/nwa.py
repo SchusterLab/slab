@@ -525,7 +525,7 @@ class E5071(SocketInstrument):
         self.set_trigger_source('BUS')
         time.sleep(self.query_sleep * 2)
         old_timeout = self.get_query_timeout()
-        self.set_query_timeout(10000)
+        #self.set_query_timeout(10000)
         self.set_format()
         time.sleep(self.query_sleep)
         old_avg_mode = self.get_trigger_average_mode()
