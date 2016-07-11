@@ -7,6 +7,8 @@ Created on 5 Jul 2015
 
 from slab.instruments import SocketInstrument
 
+import numpy as np
+
 
 class M8195A(SocketInstrument):
     """Keysight M8195A Arbitrary Waveform Class"""
@@ -111,8 +113,8 @@ class M8195A(SocketInstrument):
         return self.query('*WAI?')
 
     ## 6.8 :ARM/TRIGger Subsystem
-    def stop_output(self, channel):
-        self.write(':ABOR%d' %channel)
+    def stop_output(self):
+        self.write(':ABOR')
 
     def set_module_delay(self,seconds):
         self.write(':ARM:MDEL %f' %seconds)
@@ -610,11 +612,11 @@ class M8195A(SocketInstrument):
     def reset_sequence(self):
         self.write(':STAB:RES')
 
-    def write_sequence_data(self,sequence_table_index,segment_id,sequence_loop=1,segment_loop=1,start_address='0',end_address='#0xFFFFFFFF'):
-        self.write(':STAB:DATA %d, #0x10000000, %d, %d, %d, %s, %s' %(sequence_table_index,sequence_loop,segment_loop,segment_id,start_address,end_address))
+    def write_sequence_data(self,sequence_table_index,segment_id,sequence_loop=1,segment_loop=1,start_address='0',end_address='4294967295'):
+        self.write(':STAB:DATA %d, 268435456, %d, %d, %d, %s, %s' %(sequence_table_index,sequence_loop,segment_loop,segment_id,start_address,end_address))
 
-    def write_sequence_idle(self,sequence_table_index,sequence_loop=1,idle_sample='0',idle_delay=0):
-        self.write(':STAB:DATA %d, #0x80000000,%d,0,%s,%f,0' %(sequence_table_index,sequence_loop,idle_sample,idle_delay))
+    def write_sequence_idle(self,sequence_table_index,idle_delay,sequence_loop=1,idle_sample='0'):
+        self.write(':STAB:DATA %d, 2147483648,%d,0,%s,%f,0' %(sequence_table_index,sequence_loop,idle_sample,idle_delay))
 
     def read_sequence_data(self,sequence_table_index,length):
         return self.query(':STAB:DATA? %d, %d' %(sequence_table_index,length))
@@ -684,15 +686,15 @@ class M8195A(SocketInstrument):
 
     def set_segment_size(self,channel,segment_id,length,init_value=0,write_only = False):
         if write_only:
-            self.write('TRAC%d:DEF:WONL %d,%d,%f' %(channel,segment_id,length,init_value))
+            self.write(':TRAC%d:DEF:WONL %d,%d,%f' %(channel,segment_id,length,init_value))
         else:
-            self.write('TRAC%d:DEF %d,%d,%f' %(channel,segment_id,length,init_value))
+            self.write(':TRAC%d:DEF %d,%d,%f' %(channel,segment_id,length,init_value))
 
     def set_new_segment_size(self,channel,length,init_value=0, write_only = False):
         if write_only:
-            return self.query('TRAC%d:DEF:WONL:NEW? %d,%f' %(channel,length,init_value))
+            return self.query(':TRAC%d:DEF:WONL:NEW? %d,%f' %(channel,length,init_value))
         else:
-            return self.query('TRAC%d:DEF:NEW? %d,%f' %(channel,length,init_value))
+            return self.query(':TRAC%d:DEF:NEW? %d,%f' %(channel,length,init_value))
 
     def set_segment_data(self,channel,segment_id,offset,data):
         #data in comma-separated list
@@ -760,11 +762,85 @@ class M8195A(SocketInstrument):
     def get_selected_segment_marker_enable(self,channel):
         return self.query(':TRAC%d:MARK?' %channel)
 
-
     ## 6.21 :TEST Subsystem
-
     def get_power_on_self_tests_result(self):
         return self.query(':TEST:PON?')
 
     def get_power_on_self_tests_results_with_test_message(self):
         return self.query(':TEST:TST?')
+
+
+## Setup AWG
+
+def setup_awg(m8195a):
+    m8195a.stop_output()
+    m8195a.set_factory_default()
+
+    m8195a.set_dac_mode('FOUR')
+    m8195a.set_dac_sample_rate_divider(4)
+
+    for ii in [1,2,3,4]:
+        m8195a.set_waveform_sample_source(ii,'EXT')
+        m8195a.delete_all_segment(ii)
+
+
+def define_segments(m8195a):
+
+    segment_length = 25600
+    sequence_length = 10
+
+    dt = 1./16 #ns
+
+    time_array = np.arange(0,segment_length)*dt
+
+
+
+
+    for ii in range(1,sequence_length+1):
+        print ii
+        m8195a.set_segment_size(1,ii,segment_length)
+
+        freq1 = 0.05 #GHz
+        freq3 = 0.05  #GHz
+
+        segment_data_array = 127*np.cos(2*np.pi*freq1*time_array)
+        segment_data_csv = ','.join(['%d' %num for num in segment_data_array])
+        m8195a.set_segment_data(1,ii,0,segment_data_csv)
+
+        segment_data_array = (ii/float(sequence_length)) * 127*np.cos(2*np.pi*freq3*time_array)
+        segment_data_csv = ','.join(['%d' %num for num in segment_data_array])
+        m8195a.set_segment_data(3,ii,0,segment_data_csv)
+
+
+def define_sequence(m8195a):
+    sequence_length = 10
+
+    for ii in range(1,sequence_length+1):
+        m8195a.write_sequence_data(ii-1,ii)
+        # m8195a.write_sequence_idle(ii-1,25600)
+
+
+def start_output(m8195a):
+
+    for ii in [1,2,3,4]:
+        m8195a.set_enabled(ii,True)
+    m8195a.start_all_output()
+
+if __name__ == "__main__":
+    m8195a = M8195A(address ='192.168.14.234:5025')
+    m8195a.socket.setblocking(1)
+    setup_awg(m8195a)
+
+
+
+    define_segments(m8195a)
+
+    m8195a.set_mode('STS')
+    define_sequence(m8195a)
+
+    m8195a.set_advancement_event_source('INT')
+    m8195a.set_sequence_starting_id(0)
+
+    start_output(m8195a)
+
+
