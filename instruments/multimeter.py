@@ -13,19 +13,65 @@ class HP34401A(VisaInstrument):
     def __init__(self,name="HP34401",address='GPIB0::30::INSTR',enabled=True,timeout=1):
         #if ':' not in address: address+=':22518'
 
-        VisaInstrument.__init__(self,name,address,enabled, term_chars='\r')
-        self.query_sleep=0.4
+        VisaInstrument.__init__(self,name,address,enabled, term_chars='')
+        self.query_sleep=1
         self.recv_length=65536
         self.term_char=''
+        #Default mode for multimeter:
+        #self.set_4wireresistance()
 
     def get_id(self):
-        return self.query('*IDN?')
+        self.write("*IDN?")
+        time.sleep(30)
+        return self.read()
+        #return self.query('*IDN?')
 
     def get_value(self):
         return float(self.query("READ?"))
 
+    def set_DCvoltage(self):
+        self.query_sleep = 3
+        self.write("CONF:VOLT:DC")
+        self.query("READ?")
+
+
+    def set_ACvoltage(self):
+        self.query_sleep = 3
+        self.write("CONF:VOLT:AC")
+        self.query("READ?")
+
+
+    def set_DCcurrent(self):
+        self.write("CONF:CURR:DC")
+        self.write("READ?")
+        self.query_sleep = 3
+
+    def set_ACcurrent(self):
+        self.write("CONF:CURR:AC")
+        self.write("READ?")
+        self.query_sleep = 3
+        #self.write("MEAS:CURR:AC?")
+
+    def set_2wireresistance(self):
+        self.write("CONF:RES")
+        self.query("MEAS:RES?")
+        self.query_sleep = 1
+
+    def set_4wireresistance(self):
+        self.write("CONF:FRES")
+        self.query("MEAS:FRES?")
+        self.query_sleep = 1
+
+    def get_errors(self):
+        return self.query("SYST:ERR?")
+
+    def get_commands(self):
+        return "Commands: get_id, get_value, set_DCvoltage, set_DCcurrent, set_2wireDCresistance, set_4wireDCresistance"
+
+    #def get_derivative(self):
+
 class Keithley199(VisaInstrument):
-    
+
     def __init__(self,name="keithley199",address='GPIB0::26::INSTR',enabled=True,timeout=1):
         #if ':' not in address: address+=':22518'        
         
@@ -79,8 +125,9 @@ class Keithley199(VisaInstrument):
 
 if __name__ == '__main__':
     print "HERE"
-    #magnet=IPSMagnet(address='COM1')
-    V=Keithley199(address='GPIB0::26::INSTR')
-    print V.get_id()
-    V.set_range_auto()
-    print V.get_volt()
+    # #magnet=IPSMagnet(address='COM1')
+    # V=Keithley199(address='GPIB0::26::INSTR')
+    # print V.get_id()
+    # V.set_range_auto()
+    # print V.get_volt()
+    dmm=HP34401A()
