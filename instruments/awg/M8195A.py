@@ -612,8 +612,40 @@ class M8195A(SocketInstrument):
     def reset_sequence(self):
         self.write(':STAB:RES')
 
-    def write_sequence_data(self,sequence_table_index,segment_id,sequence_loop=1,segment_loop=1,start_address='0',end_address='4294967295'):
-        self.write(':STAB:DATA %d, 268435456, %d, %d, %d, %s, %s' %(sequence_table_index,sequence_loop,segment_loop,segment_id,start_address,end_address))
+    def write_sequence_data(self,sequence_table_index,segment_id,segment_advancement_mode='SING',sequence_advancement_mode='SING',start=False,end=False,sequence_loop=1,segment_loop=1,start_address='0',end_address='4294967295'):
+        control = 0
+
+        if start == True:
+            control += 2**28
+
+        if end == True:
+            control += 2**30
+
+        if sequence_advancement_mode in ['AUTO', 'COND', 'REP', 'SING']:
+            if sequence_advancement_mode == 'AUTO':
+                control = control
+            elif sequence_advancement_mode == 'COND':
+                control += 1*(2**20)
+            elif sequence_advancement_mode == 'REP':
+                control += 2*(2**20)
+            elif sequence_advancement_mode == 'SING':
+                control += 3*(2**20)
+        else:
+            raise Exception('M8195A: Invalid sequence advancement mode')
+
+        if segment_advancement_mode in ['AUTO', 'COND', 'REP', 'SING']:
+            if segment_advancement_mode == 'AUTO':
+                control = control
+            elif segment_advancement_mode == 'COND':
+                control += 1*(2**16)
+            elif segment_advancement_mode == 'REP':
+                control += 2*(2**16)
+            elif segment_advancement_mode == 'SING':
+                control += 3*(2**16)
+        else:
+            raise Exception('M8195A: Invalid segment advancement mode')
+
+        self.write(':STAB:DATA %d, %d, %d, %d, %d, %s, %s' %(sequence_table_index,control,sequence_loop,segment_loop,segment_id,start_address,end_address))
 
     def write_sequence_idle(self,sequence_table_index,idle_delay,sequence_loop=1,idle_sample='0'):
         self.write(':STAB:DATA %d, 2147483648,%d,0,%s,%f,0' %(sequence_table_index,sequence_loop,idle_sample,idle_delay))
@@ -787,14 +819,11 @@ def setup_awg(m8195a):
 def define_segments(m8195a):
 
     segment_length = 25600
-    sequence_length = 10
+    sequence_length = 5
 
     dt = 1./16 #ns
 
     time_array = np.arange(0,segment_length)*dt
-
-
-
 
     for ii in range(1,sequence_length+1):
         print ii
@@ -813,11 +842,13 @@ def define_segments(m8195a):
 
 
 def define_sequence(m8195a):
-    sequence_length = 10
+    sequence_length = 5
 
-    for ii in range(1,sequence_length+1):
+    m8195a.write_sequence_data(0,1,start=True)
+    for ii in range(2,sequence_length):
         m8195a.write_sequence_data(ii-1,ii)
         # m8195a.write_sequence_idle(ii-1,25600)
+    m8195a.write_sequence_data(sequence_length-1,sequence_length,end=True)
 
 
 def start_output(m8195a):
