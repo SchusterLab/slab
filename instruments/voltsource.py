@@ -51,10 +51,10 @@ class VoltageSource:
 class SRS900(SerialInstrument, VisaInstrument, VoltageSource):
     'Interface to the SRS900 voltage source'
 
-    def __init__(self, name="", address='COM5', enabled=True, query_timeout=1000):
+    def __init__(self, name="", address='COM5', enabled=True, timeout=1.0):
         # if ':' not in address: address+=':22518'
         if address[:3].upper() == 'COM':
-            SerialInstrument.__init__(self, name, address, enabled, query_timeout)
+            SerialInstrument.__init__(self, name, address, enabled, timeout)
         else:
             VisaInstrument.__init__(self, name, address, enabled)
         self.query_sleep = 0.05

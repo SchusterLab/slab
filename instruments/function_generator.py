@@ -16,8 +16,8 @@ class BNCAWG(SocketInstrument):
     'Interface to the BNC function generator'
     default_port = 5025
 
-    def __init__(self, name='BNCAWG', address='', enabled=True, query_timeout=1000, recv_length=1024):
-        SocketInstrument.__init__(self, name, address, enabled, query_timeout, recv_length)
+    def __init__(self, name='BNCAWG', address='', enabled=True, timeout=1000, recv_length=1024):
+        SocketInstrument.__init__(self, name, address, enabled, timeout, recv_length)
 
     def get_id(self):
         """
