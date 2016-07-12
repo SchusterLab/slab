@@ -12,7 +12,7 @@ import time
 class BKPowerSupply(SerialInstrument):
     'Interface to the BK Precision 9130 Power Supply'
     def __init__(self,name="",address='COM11',enabled=True,timeout=0.25):
-        SerialInstrument.__init__(self,name,address,enabled,timeout,querysleep=0.2)
+        SerialInstrument.__init__(self,name,address,enabled,timeout,query_sleep=0.2)
         
     def get_id(self):
         #self.query('SYST:VERS?')

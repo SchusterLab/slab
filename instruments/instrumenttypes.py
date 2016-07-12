@@ -144,7 +144,7 @@ class SocketInstrument(Instrument):
         if self.enabled:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.ip, self.port))
-            self.set_timeout(self.query_timeout)
+            self.set_timeout(self.timeout)
             self.socket.setblocking(0)
 
     def set_enable(self, enable=True):
@@ -189,18 +189,16 @@ class SerialInstrument(Instrument):
         self.enabled = enabled
         if self.enabled:
             try:
-                if address.upper()[:3] =='COM':
-                    address=int(address.upper().split('COM')[1])-1
-                self.ser = serial.Serial(address-1, baudrate)
+                self.ser = serial.Serial(address, baudrate)
             except serial.SerialException:
                 print 'Cannot create a connection to port ' + str(address) + '.\n'
-        self.set_query_timeout(timeout)
+        self.set_timeout(timeout)
         self.recv_length = recv_length
         self.query_sleep = query_sleep
 
     def set_timeout(self, timeout):
          Instrument.set_timeout(self, timeout)
-         if self.enabled: self.ser.setTimeout(self.timeout)
+         if self.enabled: self.ser.timeout=self.timeout
 
     def test(self):
         self.ser.setTimeout(self.timeout)
