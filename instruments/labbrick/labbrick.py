@@ -60,7 +60,7 @@ def LPS_get_device_info():
     devinfos=[]
     for devid in devids:
         model=C.create_string_buffer(8194)
-        dll.fnLPS_GetModelName(U32(devid),model)
+        dll.fnLPS_GetModelNameA(U32(devid),model)
         serial=int(dll.fnLPS_GetSerialNumber(U32(devid)))
 #            devstr="Device: %d\tModel: %s\tSerial: %d" % (devid,model,serial)
 #            print devstr
