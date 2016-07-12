@@ -13,6 +13,7 @@ class Cryocon(SocketInstrument):
     def __init__(self, name="Cryocon", address=None, enabled=True):
         SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=1, recv_length=2 ** 20)
         self.query_sleep = 0.05
+        self.socket.setblocking(1)
 
     def get_id(self):
         return "Cryocon 18I"
