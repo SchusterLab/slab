@@ -8,6 +8,7 @@ Created on 5 Jul 2015
 from slab.instruments import SocketInstrument
 
 import numpy as np
+import sys
 
 
 class M8195A(SocketInstrument):
@@ -816,17 +817,13 @@ def setup_awg(m8195a):
         m8195a.delete_all_segment(ii)
 
 
-def define_segments(m8195a):
-
-    segment_length = 25600
-    sequence_length = 5
-
-    dt = 1./16 #ns
+def define_segments(m8195a,segment_length,sequence_length,dt):
 
     time_array = np.arange(0,segment_length)*dt
 
     for ii in range(1,sequence_length+1):
-        print ii
+        sys.stdout.write('x')
+
         m8195a.set_segment_size(1,ii,segment_length)
 
         freq1 = 0.05 #GHz
@@ -840,9 +837,11 @@ def define_segments(m8195a):
         segment_data_csv = ','.join(['%d' %num for num in segment_data_array])
         m8195a.set_segment_data(3,ii,0,segment_data_csv)
 
+    print '\n'
 
-def define_sequence(m8195a):
-    sequence_length = 5
+
+def define_sequence(m8195a,sequence_length):
+
 
     m8195a.write_sequence_data(0,1,start=True)
     for ii in range(2,sequence_length):
@@ -863,14 +862,22 @@ if __name__ == "__main__":
     setup_awg(m8195a)
 
 
+    segment_length = 25600
+    sequence_length = 50
 
-    define_segments(m8195a)
+    dt = 1./16 #ns
+
+    period = 1./50 #s
+
+    define_segments(m8195a,segment_length,sequence_length,dt)
 
     m8195a.set_mode('STS')
-    define_sequence(m8195a)
+    define_sequence(m8195a,sequence_length)
 
     m8195a.set_advancement_event_source('INT')
     m8195a.set_sequence_starting_id(0)
+
+    m8195a.set_internal_trigger_frequency(1./period)
 
     start_output(m8195a)
 
