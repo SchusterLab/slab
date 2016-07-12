@@ -378,24 +378,13 @@ class N5242A(SocketInstrument):
     def save_file(self, fname):
         self.write('MMEMORY:STORE:FDATA \"' + fname + '\"')
 
-    def read_line(self, eof_char='\n', timeout=None):
-        if timeout is None:
-            timeout = self.query_timeout
-        done = False
-        while done is False:
-            buffer_str = self.read(timeout)
-            # print "buffer_str", buffer_str
-            yield buffer_str
-            if buffer_str[-1] == eof_char:
-                done = True
-
     def read_data(self, sweep_points=None, channel=1, timeout=None):
         """Read current NWA Data, return fpts,mags,phases"""
         if sweep_points is None:
             sweep_points = self.get_sweep_points()
 
         if timeout is None:
-            timeout = self.query_timeout
+            timeout = self.timeout
         self.get_operation_completion()
         self.write("CALC%d:DATA? FDATA" % channel)
         data_str = ''.join(self.read_line(timeout=timeout))

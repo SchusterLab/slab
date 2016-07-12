@@ -158,7 +158,7 @@ class E5071(SocketInstrument):
     default_port = 5025
 
     def __init__(self, name="E5071", address=None, enabled=True):
-        SocketInstrument.__init__(self, name, address, enabled=enabled, query_timeout=10, recv_length=2 ** 20)
+        SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=10, recv_length=2 ** 20)
         self.query_sleep = 0.05
 
     def get_id(self):
@@ -502,7 +502,7 @@ class E5071(SocketInstrument):
         self.write(":CALC%d:DATA:FDAT?"%channel)
 
         if timeout is None:
-            timeout = self.query_timeout
+            timeout = self.timeout
 
         data_str = ''.join(self.read_line(timeout=timeout))
         data = np.fromstring(data_str, dtype=float, sep=',')
@@ -524,8 +524,8 @@ class E5071(SocketInstrument):
         # print "Acquiring single trace"
         self.set_trigger_source('BUS')
         time.sleep(self.query_sleep * 2)
-        old_timeout = self.get_query_timeout()
-        #self.set_query_timeout(10000)
+        old_timeout = self.get_timeout()
+        self.set_timeout(100.)
         self.set_format()
         time.sleep(self.query_sleep)
         old_avg_mode = self.get_trigger_average_mode()
@@ -539,7 +539,7 @@ class E5071(SocketInstrument):
             self.save_file(fname)
         ans = self.read_data()
         time.sleep(self.query_sleep)
-        self.set_query_timeout(old_timeout)
+        self.set_timeout(old_timeout)
         self.set_trigger_average_mode(old_avg_mode)
         self.set_trigger_source('INTERNAL')
         self.set_format()

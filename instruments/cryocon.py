@@ -11,14 +11,11 @@ class Cryocon(SocketInstrument):
     default_port = 5000
 
     def __init__(self, name="Cryocon", address=None, enabled=True):
-        SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=10, recv_length=2 ** 20)
+        SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=1, recv_length=2 ** 20)
         self.query_sleep = 0.05
 
     def get_id(self):
         return "Cryocon 18I"
-
-    def get_query_sleep(self):
-        return self.query_sleep
 
     def get_temp(self,ch='A'):
         try:
@@ -55,6 +52,10 @@ class Cryocon(SocketInstrument):
             times.append(sl[1])
             temps.append(sl[2:])
         return (dates,times,temps)
-            
+
+if __name__=="__main__":
+    c=Cryocon(address='192.168.14.165:5000')
+    print c.get_id()
+    print c.get_temp('A')
   
       

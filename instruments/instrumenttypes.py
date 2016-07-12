@@ -35,7 +35,7 @@ class Instrument(object):
         :param name:
         :param address:
         :param enabled:
-        :param query_timeout: timeout for low-level queries in seconds
+        :param timeout: timeout for low-level queries in seconds
         :return:
         """
         self.name = name
@@ -90,7 +90,7 @@ class VisaInstrument(Instrument):
         Instrument.__init__(self, name, address, enabled, timeout, **kwargs)
         if self.enabled:
             self.protocol = 'VISA'
-            self.query_timeout = query_timeout
+            self.timeout = timeout
             address = address.upper()
             self.instrument=visa.ResourceManager().open_resource(address)
             self.instrument.timeout = timeout*1000
@@ -128,7 +128,7 @@ import select
 class SocketInstrument(Instrument):
     default_port = 23
 
-    def __init__(self, name, address='', enabled=True, recv_length=1024, timeout=1000, **kwargs):
+    def __init__(self, name, address='', enabled=True, recv_length=1024, timeout=1.0, **kwargs):
         Instrument.__init__(self, name, address, enabled, timeout, **kwargs)
         self.protocol = 'socket'
         self.recv_length = recv_length
@@ -151,6 +151,10 @@ class SocketInstrument(Instrument):
         self.enabled = enable
         self.on_enable()
 
+    def set_timeout(self,timeout):
+        Instrument.set_timeout(self,timeout)
+        if self.enabled: self.socket.settimeout(self.timeout)
+
     def write(self, s):
         if self.enabled: self.socket.send(s + self.term_char)
 
@@ -160,14 +164,12 @@ class SocketInstrument(Instrument):
         return ''.join(self.read_line())
 
     def read(self, timeout=None):
-        if timeout == None: timeout = self.query_timeout
+        if timeout == None: timeout = self.timeout
         ready = select.select([self.socket], [], [], timeout)
         if (ready[0] and self.enabled):
             return self.socket.recv(self.recv_length)
 
     def read_line(self, eof_char='\n', timeout=None):
-        if timeout is None:
-            timeout = self.query_timeout
         done = False
         while done is False:
             buffer_str = self.read(timeout)
@@ -175,8 +177,8 @@ class SocketInstrument(Instrument):
             if buffer_str is None:
                 pass # done = True
             elif buffer_str[-len(eof_char):] == eof_char:
-                yield buffer_str
                 done = True
+                yield buffer_str
             else:
                 yield buffer_str
 

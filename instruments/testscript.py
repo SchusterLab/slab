@@ -20,7 +20,7 @@ im = InstrumentManager()
 #plotter = LivePlotClient()
 dcflux = im['YOKO2']
 nwa = im['PNAX']
-# nwa = N5242A("N5242A", address="192.168.14.249", query_timeout=10e3)
+# nwa = N5242A("N5242A", address="192.168.14.249", timeout=10.)
 #drive = im['RF3']
 print 'Deviced Connected'
 expt_path = os.getcwd() + '\data'
@@ -37,7 +37,7 @@ sweep_pts = 701
 avgs = 5
 delay = 0
 print "Configuring the NWA"
-nwa.set_query_timeout(10)
+nwa.set_timeout(10)
 nwa.set_ifbw(ifbw)
 nwa.set_center_frequency(center)
 nwa.set_span(span)
