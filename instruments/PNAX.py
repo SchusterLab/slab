@@ -395,7 +395,7 @@ class N5242A(SocketInstrument):
             sweep_points = self.get_sweep_points()
 
         if timeout is None:
-            timeout = self.query_timeout
+            timeout = self.timeout
         self.get_operation_completion()
         self.write("CALC%d:DATA? FDATA" % channel)
         data_str = ''.join(self.read_line(timeout=timeout))
