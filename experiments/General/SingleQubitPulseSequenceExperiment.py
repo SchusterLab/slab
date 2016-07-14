@@ -79,6 +79,80 @@ class RabiExperiment(QubitPulseSequenceExperiment):
                     self.cfg['pulse_info']['gauss']['pi_length'] = self.pi_length
                     self.cfg['pulse_info']['gauss']['half_pi_length'] =  self.half_pi_length
 
+
+class Rabi2Experiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='Rabi', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=Rabi2Sequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+    def pre_run(self):
+        self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg[self.expt_cfg_name]['iq_freq'])
+
+    def post_run(self, expt_pts, expt_avg_data):
+
+
+        if self.cfg[self.expt_cfg_name]['calibrate_pulse']:
+            print "Analyzing Rabi Data"
+            fitdata = fitdecaysin(expt_pts, expt_avg_data)
+            pulse_type = self.cfg[self.expt_cfg_name]['pulse_type']
+            # determine the start location of the rabi oscillation. +1 if it starts top; -1 if it starts bottom.
+            start_signal = np.sign(180 - fitdata[2] % 360)
+
+            self.excited_signal = start_signal
+            # time takes to have the rabi oscillation phase to +/- pi/2
+            pi_length = (self.excited_signal * np.sign(fitdata[0]) * 0.5 * np.pi - fitdata[
+                2] * np.pi / 180.) / (2 * np.pi * fitdata[1]) % (1 / fitdata[1])
+            # time takes to have the rabi oscillation phase to 0/ pi
+            half_pi_length = (self.excited_signal * np.sign(fitdata[0]) * np.pi - fitdata[
+                2] * np.pi / 180.) / (2 * np.pi * fitdata[1]) % (0.5 / fitdata[1])
+
+            self.pi_length = pi_length
+            self.half_pi_length = half_pi_length
+            self.a = self.cfg[self.expt_cfg_name]['a']
+            self.iq_freq = self.cfg[self.expt_cfg_name]['iq_freq']
+
+        else:
+            print "Analyzing Rabi Data"
+            self.pi_length = self.cfg['pulse_info']['gauss']['pi_length']
+            self.half_pi_length = self.cfg['pulse_info']['gauss']['half_pi_length']
+            fitdata = fitdecaysin(expt_pts[18:], expt_avg_data[18:])
+
+            # if (-fitdata[2]%180 - 90)/(360*fitdata[1]) < 0:
+            #     print "Rabi pi/2 length =" + str((-fitdata[2]%180 + 180)/(360*fitdata[1]))
+            #     print "Rabi pi length =" + str((-fitdata[2]%180 + 270)/(360*fitdata[1]))
+            #     self.half_pi_length = ((-fitdata[2]%180 + 180)/(360*fitdata[1]))
+            #     self.pi_length = ((-fitdata[2]%180 + 270)/(360*fitdata[1]))
+            #
+            #
+            # else:
+            #
+            #     print "Rabi pi/2 length =" + str((-fitdata[2]%180 )/(360*fitdata[1]))
+            #     print "Rabi pi length =" + str((-fitdata[2]%180 + 90)/(360*fitdata[1]))
+            #     self.half_pi_length = ((-fitdata[2]%180)/(360*fitdata[1]))
+            #     self.pi_length =((-fitdata[2]%180 + 90)/(360*fitdata[1]))
+
+            self.pi_length = 0.5/fitdata[1]
+            self.half_pi_length = 0.25/(fitdata[1])
+            print 'Rabi pi: %s ns' % (0.5 / fitdata[1])
+            print 'Rabi pi/2: %s ns' % (0.25 / fitdata[1])
+            print 'T1*: %s ns' % (fitdata[3])
+            if (self.cfg['pulse_info']['save_to_file']):
+
+                if (self.cfg['pulse_info']['calibrate_amp']):
+                     if(self.pi_length < self.cfg['pulse_info']['gauss']['pi_length']):
+                        self.cfg['pulse_info']['gauss']['a'] =  (self.cfg['pulse_info']['gauss']['a'])*(self.pi_length/(self.cfg['pulse_info']['gauss']['pi_length']))
+                     else:
+                         temp = (self.cfg['pulse_info']['gauss']['a'])*((self.cfg['pulse_info']['gauss']['pi_length'])/self.pi_length)
+                         if(temp > 1):
+                             print "Increase pi length"
+                             pass
+                         else:
+                            self.cfg['pulse_info']['gauss']['a'] =  temp
+                else:
+                    self.cfg['pulse_info']['gauss']['pi_length'] = self.pi_length
+                    self.cfg['pulse_info']['gauss']['half_pi_length'] =  self.half_pi_length
+
 class T1Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='T1', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,

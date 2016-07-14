@@ -75,11 +75,11 @@ class PulseSequence:
     def write_M8195A_sequence(self,awg,path,file_prefix,upload=False):
         print "writing M8195A sequence"
         waveforms_qubit_drive = self.waveforms['qubit drive I']
-        waveforms_qubit_flux = self.waveforms['qubit drive Q']
+        waveforms_qubit_2 = self.waveforms['qubit drive 2']
         waveforms_readout = self.markers['readout pulse']
         waveforms_card = self.markers['card trigger']
 
-        waveform_matrix = np.array([waveforms_qubit_drive,waveforms_qubit_flux,waveforms_readout,waveforms_card])
+        waveform_matrix = np.array([waveforms_qubit_drive,waveforms_qubit_2,waveforms_readout,waveforms_card])
 
         upload_M8195A_sequence(waveform_matrix)
 
