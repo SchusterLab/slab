@@ -142,14 +142,20 @@ class QubitPulseSequenceExperiment(Experiment):
         except:
             print "self.awg not loaded."
 
-        if self.pre_run is not None:
-            self.pre_run()
+        try:
+            if self.pre_run is not None:
+                self.pre_run()
+        except:
+            print "Pre run unsuccessful"
 
-        if self.adc==None:
-            print "Prep Card"
-            adc = Alazar(self.cfg['alazar'])
-        else:
-            adc = self.adc
+        try:
+            if self.adc==None:
+                print "Prep Card"
+                adc = Alazar(self.cfg['alazar'])
+            else:
+                adc = self.adc
+        except:
+            print "ADC setup unsuccessful"
 
         expt_data = None
         current_data = None
