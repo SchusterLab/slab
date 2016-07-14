@@ -911,14 +911,15 @@ def upload_M8195A_sequence(waveform_matrix):
     m8195a = M8195A(address ='192.168.14.234:5025')
     m8195a.socket.setblocking(1)
 
-    num_channels = 4
+    waveform_shape = waveform_matrix.shape
+
+    num_channels = waveform_shape[0]
+    sequence_length = waveform_shape[1]
+    segment_length = waveform_shape[2]
 
     setup_awg(m8195a,num_channels=num_channels)
 
 
-
-    segment_length = 25600
-    sequence_length = 50
 
     dt = float(num_channels)/64. #ns
 
