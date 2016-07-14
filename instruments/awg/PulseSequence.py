@@ -63,12 +63,16 @@ class PulseSequence:
         return self.marker_info[name]['tpts']
 
     def write_sequence(self, path, file_prefix, upload=False):
-        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence, 'PXDAC4800':self.write_PXDAC4800_sequence}
+        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence
+            , 'PXDAC4800':self.write_PXDAC4800_sequence, 'M8195A':self.write_M8195A_sequence}
         for awg in self.awg_info:
             try:
                 write_function[awg['type']](awg, path, file_prefix, awg['upload'])
             except KeyError:
                 print "Error in writing pulse to awg named: " + str(awg['type'])
+
+    def write_M8195A_sequence(self,awg,path,file_prefix,upload=False):
+        print "writing M8195A sequence"
 
     def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
