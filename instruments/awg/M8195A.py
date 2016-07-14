@@ -824,7 +824,13 @@ def setup_awg(m8195a,num_channels):
         m8195a.set_waveform_sample_source(ii,'EXT')
 
 
-def define_segments(m8195a,waveform_matrix,num_channels,segment_length,sequence_length):
+def define_segments(m8195a,waveform_matrix):
+
+    waveform_shape = waveform_matrix.shape
+
+    num_channels = waveform_shape[0]
+    sequence_length = waveform_shape[1]
+    segment_length = waveform_shape[2]
 
     for sequence_id in range(1,sequence_length+1):
         sys.stdout.write('x')
@@ -922,7 +928,7 @@ if __name__ == "__main__":
 
     # define_segments_test(m8195a,segment_length,sequence_length,dt)
 
-    define_segments(m8195a,waveform_matrix,num_channels,segment_length,sequence_length)
+    define_segments(m8195a,waveform_matrix)
 
     m8195a.set_mode('STS')
     define_sequence(m8195a,sequence_length)
