@@ -907,6 +907,40 @@ def get_sample_sequence(num_channels,segment_length,sequence_length,dt):
     return waveform_channel_array
 
 
+def upload_M8195A_sequence(waveform_matrix):
+    m8195a = M8195A(address ='192.168.14.234:5025')
+    m8195a.socket.setblocking(1)
+
+    num_channels = 4
+
+    setup_awg(m8195a,num_channels=num_channels)
+
+
+
+    segment_length = 25600
+    sequence_length = 50
+
+    dt = float(num_channels)/64. #ns
+
+    # waveform_matrix = get_sample_sequence(4,segment_length,sequence_length,dt)
+
+    period = 1./50 #s
+
+    # define_segments_test(m8195a,segment_length,sequence_length,dt)
+
+    define_segments(m8195a,waveform_matrix)
+
+    m8195a.set_mode('STS')
+    define_sequence(m8195a,sequence_length)
+
+    m8195a.set_advancement_event_source('INT')
+    m8195a.set_sequence_starting_id(0)
+
+    m8195a.set_internal_trigger_frequency(1./period)
+
+    start_output(m8195a)
+
+
 if __name__ == "__main__":
     m8195a = M8195A(address ='192.168.14.234:5025')
     m8195a.socket.setblocking(1)
