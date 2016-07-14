@@ -4,6 +4,7 @@ import numpy as np
 from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence, write_PXDAC4800_file
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
 from slab.instruments import InstrumentManager
+from slab.instruments.awg.M8195A import upload_M8195A_sequence
 import os
 
 
@@ -73,6 +74,14 @@ class PulseSequence:
 
     def write_M8195A_sequence(self,awg,path,file_prefix,upload=False):
         print "writing M8195A sequence"
+        waveforms_qubit_drive = self.waveforms['qubit drive I']
+        waveforms_qubit_flux = self.waveforms['qubit drive Q']
+        waveforms_readout = self.markers['readout pulse']
+        waveforms_card = self.markers['card trigger']
+
+        waveform_matrix = np.array([waveforms_qubit_drive,waveforms_qubit_flux,waveforms_readout,waveforms_card])
+
+        upload_M8195A_sequence(waveform_matrix)
 
     def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
