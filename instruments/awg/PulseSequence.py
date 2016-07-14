@@ -69,13 +69,14 @@ class PulseSequence:
         for awg in self.awg_info:
             try:
                 write_function[awg['type']](awg, path, file_prefix, awg['upload'])
+            except Exception,e: print str(e)
             except KeyError:
                 print "Error in writing pulse to awg named: " + str(awg['type'])
 
     def write_M8195A_sequence(self,awg,path,file_prefix,upload=False):
         print "writing M8195A sequence"
         waveforms_qubit_drive = self.waveforms['qubit drive I']
-        waveforms_qubit_2 = self.waveforms['qubit drive 2']
+        waveforms_qubit_2 = self.waveforms['M8195A CH2']
         waveforms_readout = self.markers['readout pulse']
         waveforms_card = self.markers['card trigger']
 
