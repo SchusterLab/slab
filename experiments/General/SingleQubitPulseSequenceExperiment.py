@@ -81,7 +81,7 @@ class RabiExperiment(QubitPulseSequenceExperiment):
 
 
 class Rabi2Experiment(QubitPulseSequenceExperiment):
-    def __init__(self, path='', prefix='Rabi', config_file='..\\config.json', **kwargs):
+    def __init__(self, path='', prefix='Rabi2', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                               PulseSequence=Rabi2Sequence, pre_run=self.pre_run,
                                               post_run=self.post_run, **kwargs)
