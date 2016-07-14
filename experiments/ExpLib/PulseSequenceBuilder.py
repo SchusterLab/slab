@@ -252,6 +252,16 @@ class PulseSequenceBuilder():
         for ii in range(len(pulse_sequence_matrix)):
             self.markers_readout[ii] = ap.square(self.mtpts, 1, self.origin + self.measurement_delay,
                                                  self.measurement_width)
+
+            # TODO: make readout frequency more general (DC or AC modulated)
+            try:
+                if self.cfg['readout']['direct']:
+                    self.markers_readout[ii] = ap.sideband(self.mtpts,ap.square(self.mtpts, 1, self.origin + self.measurement_delay,
+
+            except:
+                print "Fails to AC modulate readout signal"
+
+
             self.markers_card[ii] = ap.square(self.mtpts, 1,
                                               self.origin - self.card_delay + self.measurement_delay,
                                               self.card_trig_width)
