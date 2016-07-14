@@ -17,10 +17,13 @@ class QubitPulseSequence(PulseSequence):
         define_parameters()
         sequence_length = len(self.expt_pts)
 
-        if "multimode" not in name.lower():
-            cfg['awgs'][1]['upload'] = False
-        else:
-            cfg['awgs'][1]['upload'] = True
+        try:
+            if "multimode" not in name.lower():
+                cfg['awgs'][1]['upload'] = False
+            else:
+                cfg['awgs'][1]['upload'] = True
+        except:
+            print "unable to communicate with awg[1]"
 
         if (expt_cfg['use_pi_calibration']):
             sequence_length+=2
