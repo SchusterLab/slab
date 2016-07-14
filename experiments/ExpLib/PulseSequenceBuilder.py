@@ -257,6 +257,7 @@ class PulseSequenceBuilder():
             try:
                 if self.cfg['readout']['direct']:
                     self.markers_readout[ii] = ap.sideband(self.mtpts,ap.square(self.mtpts, 1, self.origin + self.measurement_delay,
+                                                 self.measurement_width),np.zeros(len(self.mtpts)),self.cfg['readout']['frequency'])[0]
 
             except:
                 print "Fails to AC modulate readout signal"
