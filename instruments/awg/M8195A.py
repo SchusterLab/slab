@@ -925,7 +925,7 @@ def upload_M8195A_sequence(waveform_matrix):
 
     # waveform_matrix = get_sample_sequence(4,segment_length,sequence_length,dt)
 
-    period = 1./50 #s
+    period = 1./(50*1e3) #s
 
     # define_segments_test(m8195a,segment_length,sequence_length,dt)
 
