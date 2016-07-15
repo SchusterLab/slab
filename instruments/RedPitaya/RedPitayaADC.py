@@ -373,6 +373,7 @@ if __name__ == "__main__":
     data_crop_std = np.std(data_crop_matrix, axis=0)
 
     plt.errorbar(arange(num_experiments),data_crop_avg,yerr=data_crop_std)
+    plt.xlim(-1,num_experiments+1)
 
     # plt.subplot(133,xlabel="Score", ylabel="Counts", title="Single Shot Histogram")
     #
