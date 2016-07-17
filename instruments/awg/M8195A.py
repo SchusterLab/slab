@@ -739,6 +739,10 @@ class M8195A(SocketInstrument):
     def set_segment_data_from_file(self,channel,segment_id,file_name,data_type,marker_flag,padding,init_value,ignore_header_parameters):
         self.write(':TRAC%d:IMP %d,%s,%s,%s,%s,%d,%s' %(channel,segment_id,file_name,data_type,marker_flag,padding,init_value,ignore_header_parameters))
 
+    def set_segment_data_from_bin_file(self,channel,segment_id,file_name):
+        self.write(':TRAC%d:IMP %d,%s,%s,%s,%s,%s,%d,%s' %(channel,segment_id,file_name,'BIN8','IONL','OFF','FILL',0,'ON'))
+
+
     def delete_segment(self,channel,segment_id):
         self.write(':TRAC%d:DEL %d' %(channel,segment_id))
 
@@ -842,6 +846,38 @@ def define_segments(m8195a,waveform_matrix):
             segment_data_array = 127*waveform_matrix[channel-1][sequence_id-1]
             segment_data_csv = ','.join(['%d' %num for num in segment_data_array])
             m8195a.set_segment_data(channel,sequence_id,0,segment_data_csv)
+
+    print '\n'
+
+
+# TODO: The binary file loading is not working yet.
+def define_segments_binary(m8195a,waveform_matrix):
+
+    waveform_shape = waveform_matrix.shape
+
+    num_channels = waveform_shape[0]
+    sequence_length = waveform_shape[1]
+    segment_length = waveform_shape[2]
+
+    for sequence_id in range(1,sequence_length+1):
+        sys.stdout.write('x')
+
+        m8195a.set_segment_size(1,sequence_id,segment_length)
+
+        for channel in range(1,num_channels+1):
+
+            segment_data_array = 127*waveform_matrix[channel-1][sequence_id-1]
+
+            filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin' %(sequence_id,channel)
+            with open(filename, 'wb')  as f:
+                segment_data_array.astype('int8').tofile(f)
+
+    for sequence_id in range(1,sequence_length+1):
+        for channel in range(1,num_channels+1):
+
+            filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin' %(sequence_id,channel)
+
+            m8195a.set_segment_data_from_bin_file(channel,sequence_id,filename)
 
     print '\n'
 
@@ -953,7 +989,7 @@ if __name__ == "__main__":
 
 
     segment_length = 25600
-    sequence_length = 50
+    sequence_length = 5
 
     dt = float(num_channels)/64. #ns
 
@@ -964,6 +1000,8 @@ if __name__ == "__main__":
     # define_segments_test(m8195a,segment_length,sequence_length,dt)
 
     define_segments(m8195a,waveform_matrix)
+
+    # define_segments_binary(m8195a,waveform_matrix)
 
     m8195a.set_mode('STS')
     define_sequence(m8195a,sequence_length)
