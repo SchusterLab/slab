@@ -8,6 +8,7 @@ from numpy import mean, arange
 from tqdm import tqdm
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
 from slab.instruments.pulseblaster.pulseblaster import *
+from slab.instruments.RedPitaya.RedPitayaADC import *
 
 
 class QubitPulseSequenceExperiment(Experiment):
@@ -155,63 +156,88 @@ class QubitPulseSequenceExperiment(Experiment):
             else:
                 adc = self.adc
         except:
-            print "ADC setup unsuccessful"
+            print "Alazar setup unsuccessful"
 
-        expt_data = None
-        current_data = None
-        for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['averages'] / 100))):
-            tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg_prep,
-                                                                    start_function=self.awg_run,
-                                                                    excise=self.cfg['readout']['window'])
 
-            mag = sqrt(ch1_pts**2+ch2_pts**2)
+        if self.cfg['readout']['adc'] == 'redpitaya':
+            print "Using Red Pitaya ADC"
+            m8195a = M8195A(address ='192.168.14.234:5025')
+
             if not self.cfg[self.expt_cfg_name]['use_pi_calibration']:
-
-                if expt_data is None:
-                    if self.cfg['readout']['channel']==1:
-                        expt_data = ch1_pts
-                    elif self.cfg['readout']['channel']==2:
-                        expt_data = ch2_pts
-                else:
-                    if self.cfg['readout']['channel']==1:
-                        expt_data = (expt_data * ii + ch1_pts) / (ii + 1.0)
-                    elif self.cfg['readout']['channel']==2:
-                        expt_data = (expt_data * ii + ch2_pts) / (ii + 1.0)
-
-
+                num_experiments = len(self.pulse_sequence.expt_pts)
             else:
-                if self.cfg['readout']['channel']==1:
-                    zero_amp = mean(ch1_pts[-2])
-                    pi_amp = mean(ch1_pts[-1])
-                    current_data= (ch1_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
-                elif self.cfg['readout']['channel']==2:
-                    zero_amp = mean(ch2_pts[-2])
-                    pi_amp = mean(ch2_pts[-1])
-                    current_data= (ch2_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
-                if expt_data is None:
-                    expt_data = current_data
-                else:
-                    expt_data = (expt_data * ii + current_data) / (ii + 1.0)
+                num_experiments = len(self.pulse_sequence.expt_pts)+2
 
+            print "Number of experiments: " + str(num_experiments)
 
-            expt_avg_data = mean(expt_data, 1)
-
-
-            if self.liveplot_enabled:
-                self.plotter.plot_z(self.prefix + ' Data', expt_data.T)
-                self.plotter.plot_xy(self.prefix + ' XY', self.pulse_sequence.expt_pts, expt_avg_data)
-
-            # print ii * min(self.cfg[self.expt_cfg_name]['averages'], 100)
+            expt_avg_data = setup_redpitaya_adc(m8195a,num_experiments=num_experiments,window=self.cfg['readout']['window'],shots=self.cfg[self.expt_cfg_name]['averages'],plot_data=True)
 
             if self.data_file != None:
-                self.slab_file = SlabFile(self.data_file)
+                    self.slab_file = SlabFile(self.data_file)
             else:
                 self.slab_file = self.datafile()
+
             with self.slab_file as f:
-                f.add('expt_2d', expt_data)
                 f.add('expt_avg_data', expt_avg_data)
                 f.add('expt_pts', self.expt_pts)
                 f.close()
+
+        else:
+            expt_data = None
+            current_data = None
+            for ii in arange(max(1, self.cfg[self.expt_cfg_name]['averages'] / 100)):
+                tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg_prep,
+                                                                        start_function=self.awg_run,
+                                                                        excise=self.cfg['readout']['window'])
+
+                mag = sqrt(ch1_pts**2+ch2_pts**2)
+                if not self.cfg[self.expt_cfg_name]['use_pi_calibration']:
+
+                    if expt_data is None:
+                        if self.cfg['readout']['channel']==1:
+                            expt_data = ch1_pts
+                        elif self.cfg['readout']['channel']==2:
+                            expt_data = ch2_pts
+                    else:
+                        if self.cfg['readout']['channel']==1:
+                            expt_data = (expt_data * ii + ch1_pts) / (ii + 1.0)
+                        elif self.cfg['readout']['channel']==2:
+                            expt_data = (expt_data * ii + ch2_pts) / (ii + 1.0)
+
+
+                else:
+                    if self.cfg['readout']['channel']==1:
+                        zero_amp = mean(ch1_pts[-2])
+                        pi_amp = mean(ch1_pts[-1])
+                        current_data= (ch1_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
+                    elif self.cfg['readout']['channel']==2:
+                        zero_amp = mean(ch2_pts[-2])
+                        pi_amp = mean(ch2_pts[-1])
+                        current_data= (ch2_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
+                    if expt_data is None:
+                        expt_data = current_data
+                    else:
+                        expt_data = (expt_data * ii + current_data) / (ii + 1.0)
+
+
+                expt_avg_data = mean(expt_data, 1)
+
+
+                if self.liveplot_enabled:
+                    self.plotter.plot_z(self.prefix + ' Data', expt_data.T)
+                    self.plotter.plot_xy(self.prefix + ' XY', self.pulse_sequence.expt_pts, expt_avg_data)
+
+                # print ii * min(self.cfg[self.expt_cfg_name]['averages'], 100)
+
+                if self.data_file != None:
+                    self.slab_file = SlabFile(self.data_file)
+                else:
+                    self.slab_file = self.datafile()
+                with self.slab_file as f:
+                    f.add('expt_2d', expt_data)
+                    f.add('expt_avg_data', expt_avg_data)
+                    f.add('expt_pts', self.expt_pts)
+                    f.close()
 
         if self.post_run is not None:
             self.post_run(self.expt_pts, expt_avg_data)
