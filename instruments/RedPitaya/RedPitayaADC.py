@@ -315,17 +315,26 @@ class RedPitaya(ClientMemory):
     asga = InterfaceDescriptor(ASG,channel='A')
     asgb = InterfaceDescriptor(ASG,channel='B')
 
-if __name__ == "__main__":
+
+def setup_redpitaya_adc(awg,num_experiments,samples=2048,window=(80,8000),shots=2**14,plot_data=False):
+
+    start = int(window[0]/8) #ns to sample index (the factor 8 comes from time (ns) to take an oscillation of 125MHz)
+    stop = int(window[1]/8) #ns to sample index
+
     ### Test Single Shot Mode
     rp = RedPitaya(connect(REDPITAYA_IP, port=18861))
-    print ".bit version: %d" % rp.scope.version
-
-    samples = 2048
-    start = 5
-    stop  = 1000
-    shots = 2**14
+    print "RedPitaya .bit version: %d" % rp.scope.version
 
     rp.scope.setup_trigger (trigger_source=4, threshold_ch1 = 2000, threshold_ch2 = 2000)
+
+
+    def run_awg():
+        awg.start_all_output()
+
+    def stop_awg():
+        awg.stop_output()
+
+    run_awg()
 
     ch1, ch2 = rp.scope.acquire_avg (samples = samples, avgs = shots)
     tpts = rp.scope.times[:len(ch1)]/1e-6
@@ -340,52 +349,41 @@ if __name__ == "__main__":
     plt.axvspan(tpts[start], tpts[stop], color='g', alpha=0.2, lw=0)
     plt.legend()
 
-    #rp.scope.setup_convolution_filter(xg=xgm*2**15,yg=ygm*2**15,xe=xem*2**15,ye=yem*2**15)
-
-    m8195a = M8195A(address ='192.168.14.234:5025')
-    m8195a.socket.setblocking(1)
-
 
     rp.scope.setup_convolution_filter(xg=zeros(2**12),yg=zeros(2**12),xe=ones(2**12),ye=ones(2**12))
 
     #shot_data0 = rp.scope.acquire_singleshot (samples = samples, start = start, stop = stop, shots = shots, dual_ch=False, use_filter=True)
 
-    def run_awg():
-        m8195a.start_all_output()
-
-    def stop_awg():
-        m8195a.stop_output()
 
 
     shot_data1,shot_data2 = rp.scope.acquire_singleshot (samples = samples, start = start, stop = stop, shots = shots, dual_ch=True
                                                          , use_filter=False, start_function= run_awg, prep_function = stop_awg)
 
-    plt.subplot(132,xlabel="Shot #", ylabel="Score", title="Single Shot Raw")
-    plt.plot (shot_data1)
+
+    if plot_data:
+        plt.subplot(132,xlabel="Shot #", ylabel="Score", title="Single Shot Raw")
+        plt.plot (shot_data1)
 
 
-    plt.subplot(133,xlabel="Experiment #", ylabel="Score", title="Average Data")
+        plt.subplot(133,xlabel="Experiment #", ylabel="Score", title="Average Data")
 
-    num_experiments = 8
-    data_crop = shot_data1[num_experiments-1:math.floor(shots/num_experiments)*num_experiments-1]
-    data_crop_matrix = np.reshape(data_crop, (-1, num_experiments))
-    data_crop_avg = np.mean(data_crop_matrix, axis=0)
-    data_crop_std = np.std(data_crop_matrix, axis=0)
+        data_crop = shot_data1[num_experiments-1:math.floor(shots/num_experiments)*num_experiments-1]
+        data_crop_matrix = np.reshape(data_crop, (-1, num_experiments))
+        data_crop_avg = np.mean(data_crop_matrix, axis=0)
+        data_crop_std = np.std(data_crop_matrix, axis=0)
 
-    plt.errorbar(arange(num_experiments),data_crop_avg,yerr=data_crop_std)
-    plt.xlim(-1,num_experiments+1)
+        plt.errorbar(arange(num_experiments),data_crop_avg,yerr=data_crop_std)
+        plt.xlim(-1,num_experiments+1)
 
-    # plt.subplot(133,xlabel="Score", ylabel="Counts", title="Single Shot Histogram")
-    #
-    # y0,x0=histogram(array(shot_data0),bins=75)
-    # y1,x1=histogram(array(shot_data1),bins=75)
-    # y2,x2=histogram(array(shot_data2),bins=75)
-    #
-    # plt.plot(y0, label='filter')
-    # plt.plot(y1, label='ch1')
-    # plt.plot(y2, label='ch2')
-    # plt.legend()
-    print "hw_avgs: %d, avg_cnt: %d, adc_trigged: %d, npt_mode: %d, avg_mode: %d, avg_do: %d, ss_mode: %d" %(rp.scope.hw_avgs,rp.scope.avg_cnt,rp.scope.adc_trigged, rp.scope.npt_mode, rp.scope.avg_mode, rp.scope.avg_do,rp.scope.ss_mode )
-    print "t1: %d, t2: %d, t3: %d, t4: %d, t5: %d" % (rp.scope.t1,rp.scope.t2,rp.scope.t3,rp.scope.t4,rp.scope.t5)
 
-    plt.show()
+        print "hw_avgs: %d, avg_cnt: %d, adc_trigged: %d, npt_mode: %d, avg_mode: %d, avg_do: %d, ss_mode: %d" %(rp.scope.hw_avgs,rp.scope.avg_cnt,rp.scope.adc_trigged, rp.scope.npt_mode, rp.scope.avg_mode, rp.scope.avg_do,rp.scope.ss_mode )
+        print "t1: %d, t2: %d, t3: %d, t4: %d, t5: %d" % (rp.scope.t1,rp.scope.t2,rp.scope.t3,rp.scope.t4,rp.scope.t5)
+
+        plt.show()
+
+    return data_crop_avg
+
+
+if __name__ == "__main__":
+    m8195a = M8195A(address ='192.168.14.234:5025')
+    setup_redpitaya_adc(m8195a,num_experiments=4,samples=2048,window=(80,8000),shots=2**14,plot_data=True)
