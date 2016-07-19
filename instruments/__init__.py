@@ -51,3 +51,5 @@ try: from lockin import SR844
 except: print "Could not load SR844 driver"
 try: from PressureGauge import PressureGauge
 except: print "Could not load PressureGauge driver"
+try: from dymo import Dymo
+except: print "Could not load Dymo USB Scale"
