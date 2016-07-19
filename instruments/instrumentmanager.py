@@ -9,6 +9,7 @@ import os
 import sys
 import socket
 from optparse import OptionParser
+from importlib import import_module
 
 try:
     import Pyro4
@@ -35,6 +36,8 @@ class InstrumentManager(dict):
         self.config_path = config_path
         self.config = None
         self.ns_address = ns_address
+        self.instruments_module = import_module("slab.instruments")
+        
         #self.instruments={}
         if not server and Pyro4Loaded:
                 try:
@@ -74,7 +77,7 @@ class InstrumentManager(dict):
         """Loads instrument based on config_string (Name\tAddress\tType)"""
         #print config_string
         name, in_class, addr = self.parse_config_string(config_string);
-        fn = getattr(slab.instruments, in_class)
+        fn = getattr(self.instruments_module, in_class)
         return fn(name=name, address=addr)
 
     def __getattr__(self, item):
