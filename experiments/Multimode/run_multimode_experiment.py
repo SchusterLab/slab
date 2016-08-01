@@ -15,6 +15,12 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
         #Do Multimode Rabi
         expt=MultimodeRabiExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
+
+    if expt_name.lower() == 'multimode_vacuum_rabi':
+        from slab.experiments.General.VacuumRabiExperimentPSB import MultimodeVacuumRabiExperiment
+        # Do Vacuum Rabi
+        expt = MultimodeVacuumRabiExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower()=='multimode_rabi_sweep':
         #Multimode ef Rabi sweep experiment
         expt=MultimodeRabiSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
@@ -67,8 +73,21 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
     if expt_name.lower()=='multimode_mode_mode_cz_v2_offset_experiment':
         expt=Multimode_Mode_Mode_CZ_V2_Offset_Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower()=='multimode_mode_mode_cz_v3_offset_experiment':
+        expt=Multimode_Mode_Mode_CZ_V3_Offset_Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_mode_mode_cnot_v2_offset_experiment':
+        expt=Multimode_Mode_Mode_CNOT_V2_Offset_Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_mode_mode_cnot_v3_offset_experiment':
+        expt=Multimode_Mode_Mode_CNOT_V3_Offset_Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower()=='multimode_ac_stark_shift_experiment':
         expt=Multimode_AC_Stark_Shift_Offset_Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_dc_offset_experiment':
+        expt=MultimodeDCOffsetExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
 
     if expt_name.lower()=='multimode_state_dep_shift':
         expt=Multimode_State_Dep_Shift_Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
@@ -81,6 +100,12 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
 
     if expt_name.lower()=='multimode_two_resonator_tomography':
         expt=MultimodeTwoResonatorTomography(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_two_resonator_tomography_phase_sweep':
+        expt=MultimodeTwoResonatorTomographyPhaseSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_process_tomography_phase_sweep':
+        expt=MultimodeProcessTomographyPhaseSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_three_mode_correlation_experiment':
         expt=MultimodeThreeModeCorrelationExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)

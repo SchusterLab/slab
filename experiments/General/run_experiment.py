@@ -37,6 +37,11 @@ def run_experiment(expt_name,lp_enable = True, **kwargs):
         # Do Rabi Experiment
         expt = RabiSweepExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 'ef_rabi_sweep':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import EFRabiSweepExperiment
+        # Do Rabi Experiment
+        expt = EFRabiSweepExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower() == 'histogram':
         from slab.experiments.General.HistogramExperiment import HistogramExperiment
         # Do Histogram Experiment
@@ -50,7 +55,7 @@ def run_experiment(expt_name,lp_enable = True, **kwargs):
     if expt_name.lower() == 'ramsey':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import RamseyExperiment
         # Do Ramsey Experiment
-        expt = RamseyExperiment(path=datapath, liveplot_enabled = lp_enable, trigger_period=0.000125, **kwargs)
+        expt = RamseyExperiment(path=datapath, liveplot_enabled = lp_enable, trigger_period=0.0002, **kwargs)
 
     if expt_name.lower() == 'spin_echo':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import SpinEchoExperiment

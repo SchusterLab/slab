@@ -98,6 +98,9 @@ def run_seq_experiment(expt_name,lp_enable=True):
     if expt_name.lower() == 'frequency_stabilization':
         frequency_stabilization(seq_exp)
 
+    if expt_name.lower() == 'ef_frequency_calibration':
+        ef_frequency_calibration(seq_exp)
+
     if expt_name.lower() == 'pulse_calibration':
         pulse_calibration(seq_exp)
 
@@ -117,11 +120,11 @@ def run_seq_experiment(expt_name,lp_enable=True):
             seq_exp.run('randomized_benchmarking_phase_offset',{"data_file":data_file})
 
     if expt_name.lower() == 'rabi_sweep':
-        drive_freq_pts = arange(4.71e9,4.74e9,1e6)
+        drive_freq_pts = arange(4.72e9,4.73e9,1e6)
         for ii, drive_freq in enumerate(drive_freq_pts):
             seq_exp.run('rabi_sweep',{"drive_freq":drive_freq, "data_file":data_file})
 
     if expt_name.lower() == 'ef_rabi_sweep':
-        ef_freq_pts = arange(4.52e9,4.54e9,1e6)
+        ef_freq_pts = arange(4.525e9,4.535e9,0.2e6)
         for ii, ef_freq in enumerate(ef_freq_pts):
             seq_exp.run('ef_rabi_sweep',{"ef_freq":ef_freq, "data_file":data_file})

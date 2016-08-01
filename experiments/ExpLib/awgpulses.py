@@ -11,7 +11,7 @@ def sideband(t, plus, minus, freq=0, phase=0, offset=False, offset_fit_lin=0,off
             freq_integ_array = np.cumsum(freq_calibrated)*time_step
             # np.savetxt('time.out', t, delimiter=',')
         return ( np.cos(2 * np.pi * (freq_integ_array/1.0e9) + phase*np.pi/180.0) * plus - np.cos(2 * np.pi * (freq_integ_array/1.0e9) + phase*np.pi/180.0) * minus,
-             -np.sin(2 * np.pi * (freq_integ_array/1.0e9)+ phase*np.pi/180.0) * plus - np.sin(2 * np.pi * (freq_integ_array/1.0e9) + phase*np.pi/180.0) * minus)
+             +np.sin(2 * np.pi * (freq_integ_array/1.0e9)+ phase*np.pi/180.0) * plus + np.sin(2 * np.pi * (freq_integ_array/1.0e9) + phase*np.pi/180.0) * minus)
     else:
         # For ML0218 Mixer
         return ( np.cos(2 * np.pi * (freq/1.0e9 * t)+ phase*np.pi/180.0) * plus - np.cos(2 * np.pi * (freq/1.0e9 * t) + phase*np.pi/180.0) * minus,
@@ -75,8 +75,11 @@ def trapezoid(t, a, t0, w, edge_time=0):
             t >= t0 + w + 2 * edge_time) )
 
 
-def get_pulse_span_length(cfg, type, length):
+def get_pulse_span_length(cfg, type, length, ramp_sigma = None):
     if type == "gauss":
         return length * 4 +cfg['spacing'] ## 4 sigma
     if type == "square":
-        return length + 4 * cfg[type]['ramp_sigma'] +cfg['spacing']
+        if ramp_sigma == None:
+            return length + 4 * cfg[type]['ramp_sigma'] +cfg['spacing']
+        else:
+            return length + 4 * ramp_sigma +cfg['spacing']

@@ -418,10 +418,7 @@ class RabiSweepExperiment(QubitPulseSequenceExperiment):
 
 class EFRabiSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_Rabi_Sweep', config_file='..\\config.json', **kwargs):
-        self.extra_args = {}
-        for key, value in kwargs.iteritems():
-            self.extra_args[key] = value
-        self.drive_freq = self.extra_args['drive_freq']
+
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                               PulseSequence=EFRabiSweepSequence, pre_run=self.pre_run,
                                               post_run=self.post_run, **kwargs)

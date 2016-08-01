@@ -227,7 +227,8 @@ def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfi
         fitparams[4]=np.mean(fitdatay)
         fitparams[0]=(max(fitdatay)-min(fitdatay))/2.#2*abs(fft_val)/len(fitdatay)
         fitparams[1]=fft_freqs[max_ind]
-        fitparams[2]=(cmath.phase(fft_val)-np.pi/2.)*180./np.pi
+        fitparams[2]=(cmath.phase(fft_val))*180./np.pi
+
         fitparams[3]=(max(fitdatax)-min(fitdatax))
 
         #fitparams[5]=fitdatax[0]
@@ -309,12 +310,14 @@ def sin_phase(xdata,ydata,expected_period,find_phase):
 
     if find_phase == 'max':
         correction = 90.0*np.sign(fits[0])
-    elif find_phase =='min':
+    elif find_phase == 'min':
         correction = -90.0*np.sign(fits[0])
     else:
         raise NameError('What do you want from me?')
 
     x_at_extremum = np.around((-fits[2]+correction)/(360.*fits[1]),decimals=2)
+
+    print "Oscillation contrast = " + str(2*fits[0])
 
     return x_at_extremum
 

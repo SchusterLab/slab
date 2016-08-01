@@ -76,6 +76,12 @@ class QubitPulseSequence(PulseSequence):
         self.markers['readout pulse'], self.markers['card trigger'], self.waveforms['qubit drive I'], self.waveforms[
             'qubit drive Q'], self.waveforms['qubit 1 flux'], self.markers['qubit buffer'], self.markers['ch3m1'] = generated_sequences
 
+        #
+        # np.save('Rabi_R',self.markers['readout pulse'])
+        # np.save('Rabi_Rtime',mtpts)
+        # np.save('Rabi_I',self.waveforms['qubit drive I'])
+        # np.save('Rabi_Q',self.waveforms['qubit drive I'])
+        # np.save('Rabi_Ptime',wtpts)
         # with SlabFile('sequences\pulse_sequence.h5') as f:
         #     f.add('readout pulse', self.markers['readout pulse'])
         #     f.add('card trigger', self.markers['card trigger'])

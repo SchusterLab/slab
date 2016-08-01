@@ -96,7 +96,7 @@ class EFRabiSequence(QubitPulseSequence):
     def define_pulses(self,pt):
         if self.expt_cfg['ge_pi']:
            self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q','general', self.ef_pulse_type, amp=self.pulse_cfg[self.expt_cfg['ef_pulse_type']]['pi_ef_a'], length=pt,freq=self.ef_sideband_freq)
+        self.psb.append('q','general_ef', self.ef_pulse_type, amp=self.pulse_cfg[self.expt_cfg['ef_pulse_type']]['pi_ef_a'], length=pt,freq=self.ef_sideband_freq)
         #self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.ef_sideband_freq)
         #self.psb.idle(4*pt)
         self.psb.append('q','pi', self.pulse_type)
@@ -154,6 +154,7 @@ class EFT1Sequence(QubitPulseSequence):
         self.psb.append('q','pi_q_ef')
         self.psb.idle(pt)
         self.psb.append('q','pi', self.pulse_type)
+        self.psb.append('q','pi_q_ef', self.pulse_type)
 
 
 
@@ -264,28 +265,60 @@ class HalfPiYPhaseOptimizationSequence(QubitPulseSequence):
 
 
     def define_pulses(self,pt):
-        if self.expt_cfg['test_pi']:
-            self.psb.append('q','half_pi', self.pulse_type, phase=0)
-            self.psb.append('q','pi', self.pulse_type,phase=pt)
-            self.psb.append('q','half_pi', self.pulse_type,phase=0)
-        elif self.expt_cfg['test_test_1']:
-            for i in arange(self.expt_cfg['number']):
-                self.psb.append('q','half_pi', self.pulse_type, phase=i*pt)
-        elif self.expt_cfg['test_test_2']:
-            for i in arange(self.expt_cfg['number']-1):
-                self.psb.append('q','half_pi', self.pulse_type, phase=i*self.expt_cfg['offset_phase'])
-            self.psb.append('q','half_pi', self.pulse_type, phase= pt)
-        elif self.expt_cfg['test_test_3']:
-            # Do for odd number
-            for i in arange(self.expt_cfg['number']-1):
-                if i%2 ==0:
-                    self.psb.append('q','half_pi', self.pulse_type, addphase=i*self.expt_cfg['offset_phase'])
-                else:
-                    self.psb.append('q','half_pi_y', self.pulse_type, addphase=i*self.expt_cfg['offset_phase'])
-            self.psb.append('q','half_pi', self.pulse_type, phase= pt)
-        else:
-            self.psb.append('q','half_pi', self.pulse_type, phase=0)
-            self.psb.append('q','half_pi', self.pulse_type,phase= pt)
+        # if self.expt_cfg['test_pi']:
+        #     self.psb.append('q','half_pi', self.pulse_type, phase=0)
+        #     self.psb.append('q','pi', self.pulse_type,phase=pt)
+        #     self.psb.append('q','half_pi', self.pulse_type,phase=0)
+        # elif self.expt_cfg['test_test_1']:
+        #     for i in arange(self.expt_cfg['number']):
+        #         self.psb.append('q','half_pi', self.pulse_type, phase=i*pt)
+        # elif self.expt_cfg['test_test_2']:
+        #     for i in arange(self.expt_cfg['number']-1):
+        #         self.psb.append('q','half_pi', self.pulse_type, phase=i*self.expt_cfg['offset_phase'])
+        #     self.psb.append('q','half_pi', self.pulse_type, phase= pt)
+        # elif self.expt_cfg['test_test_3']:
+        #     # Do for odd number
+        #     for i in arange(self.expt_cfg['number']-1):
+        #         if i%2 ==0:
+        #             self.psb.append('q','half_pi', self.pulse_type, addphase=i*self.expt_cfg['offset_phase'])
+        #         else:
+        #             self.psb.append('q','half_pi_y', self.pulse_type, addphase=i*self.expt_cfg['offset_phase'])
+        #     self.psb.append('q','half_pi', self.pulse_type, phase= pt)
+    # else:
+        self.psb.append('q','half_pi', self.pulse_type, phase=0)
+        self.psb.append('q','half_pi', self.pulse_type,phase= pt)
+
+class QuarterPiYPhaseSequence(QubitPulseSequence):
+    def __init__(self,name, cfg, expt_cfg,**kwargs):
+        self.pulse_cfg = cfg['pulse_info']
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
+        if 'qubit_dc_offset' in self.extra_args:
+            self.qubit_dc_offset = self.extra_args['qubit_dc_offset']
+            if cfg['halfpiyphaseoptimization']['test_pi']:
+                self.pulse_cfg['qubit_dc_offset_pi'] =  self.qubit_dc_offset
+            else:
+                self.pulse_cfg['qubit_dc_offset'] =  self.qubit_dc_offset
+            self.pulse_cfg['fix_phase'] =  True
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
+
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pulse_type =  self.expt_cfg['pulse_type']
+
+
+    def define_pulses(self,pt):
+
+        self.psb.append('q','quarter_pi', self.pulse_type, phase=0)
+        self.psb.append('q','quarter_pi', self.pulse_type,phase= pt)
+        self.psb.append('q','quarter_pi', self.pulse_type, phase=0)
+        self.psb.append('q','quarter_pi', self.pulse_type,phase= pt)
+
+
 
 class TomographySequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -365,9 +398,9 @@ class EFRabiSweepSequence(QubitPulseSequence):
 
     def __init__(self,name, cfg, expt_cfg, **kwargs):
         self.pulse_cfg = cfg['pulse_info']
+        self.qubit_cfg = cfg['qubit']
 
-        ef_freq = kwargs['ef_freq']
-        self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-ef_freq)
+        self.ef_freq = kwargs['ef_freq']
 
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses, **kwargs)
 
@@ -377,11 +410,13 @@ class EFRabiSweepSequence(QubitPulseSequence):
 
     def define_parameters(self):
         self.pulse_type =  self.expt_cfg['pulse_type']
+        self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-self.ef_freq)
+
 
     def define_pulses(self,pt):
         self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q','general', self.ef_pulse_type, amp=self.pulse_cfg[self.expt_cfg['ef_pulse_type']]['pi_ef_a'], length=pt,freq=self.ef_sideband_freq)
-
+        self.psb.append('q','general', self.expt_cfg['ef_pulse_type'], amp=self.pulse_cfg[self.expt_cfg['ef_pulse_type']]['pi_ef_a'], length=pt,freq=self.ef_sideband_freq)
+        self.psb.append('q','pi', self.pulse_type)
 
 class RabiRamseyT1FluxSweepSequence(QubitPulseSequence):
 

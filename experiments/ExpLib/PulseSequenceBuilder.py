@@ -9,7 +9,7 @@ from liveplot import LivePlotClient
 
 
 class Pulse():
-    def __init__(self, target, name, type, amp, length, freq, phase, span_length):
+    def __init__(self, target, name, type, amp, length, freq, phase, span_length,add_freq=0):
         self.target = target
         self.name = name
         self.type = type
@@ -17,6 +17,7 @@ class Pulse():
         self.length = length
         self.freq = freq
         self.phase = phase
+        self.add_freq = add_freq
         self.span_length = span_length
 
 
@@ -37,7 +38,7 @@ class PulseSequenceBuilder():
         self.pulse_span_length_list_temp = []
         self.qubit_cfg = cfg['qubit']
 
-    def append(self, target, name, type='gauss', amp=0, length=0, freq=None, phase=None,addphase=None, **kwargs):
+    def append(self, target, name, type='gauss', amp=0, length=0, freq=None, phase=None,addphase=None,add_freq = 0, **kwargs):
         '''
         Append a pulse in the pulse sequence.
         '''
@@ -58,6 +59,7 @@ class PulseSequenceBuilder():
                     phase = self.pulse_cfg[type]['phase']
                 if addphase != None:
                     phase = self.pulse_cfg[type]['phase']+addphase
+
             if name == "half_pi":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
@@ -67,6 +69,17 @@ class PulseSequenceBuilder():
                     phase = self.pulse_cfg[type]['phase']
                 if addphase != None:
                     phase = self.pulse_cfg[type]['phase']+addphase
+
+            if name == "quarter_pi":
+                amp = self.pulse_cfg[type]['half_pi_a']
+                length = self.pulse_cfg[type]['half_pi_length']/2.0
+                if freq == None:
+                    freq = self.pulse_cfg[type]['iq_freq']
+                if phase == None:
+                    phase = self.pulse_cfg[type]['phase']
+                if addphase != None:
+                    phase = self.pulse_cfg[type]['phase']+addphase
+
             if name == "neg_half_pi":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
@@ -150,7 +163,11 @@ class PulseSequenceBuilder():
                 freq = mm_target_info['flux_pulse_freq_ef']
                 type=mm_target_info['flux_pulse_type_ef']
 
-            pulse_span_length = ap.get_pulse_span_length(self.cfg['flux_pulse_info'], type, length)
+            if name[-1] == "f":
+                pulse_span_length = ap.get_pulse_span_length(self.cfg['flux_pulse_info'], type, length, mm_target_info['ramp_sigma_ef'])
+            else:
+                pulse_span_length = ap.get_pulse_span_length(self.cfg['flux_pulse_info'], type, length, mm_target_info['ramp_sigma'])
+
             flux_pulse_span_length = pulse_span_length
             for span_length_temp in self.pulse_span_length_list_temp:
                 flux_pulse_span_length += span_length_temp
@@ -171,7 +188,7 @@ class PulseSequenceBuilder():
         if phase == None:
             phase = 0
 
-        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length)
+        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length,add_freq)
 
         self.pulse_sequence_list.append(pulse)
         self.total_pulse_span_length += pulse_span_length
@@ -301,6 +318,7 @@ class PulseSequenceBuilder():
 
                         if pulse.name == "cal_pi":
                             if pulse_info['fix_cal_pi']:
+                                #print "fix qubit dc offset pi"
                                 qubit_dc_offset = pulse_info['qubit_dc_offset_pi']
                                 qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
                                                                   self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)
@@ -308,7 +326,7 @@ class PulseSequenceBuilder():
                                 qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse)
 
-                        elif pulse.name[:2] == 'pi':
+                        elif pulse.name == 'pi':
                             if pulse_info['fix_pi']:
                                 qubit_dc_offset = pulse_info['qubit_dc_offset_pi']
                                 qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
@@ -317,7 +335,15 @@ class PulseSequenceBuilder():
                                 qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse)
                         # elif pulse.name[:7] == 'half_pi' or pulse.name[:11] == 'neg_half_pi':
+                        elif 'ef' in pulse.name:
+                            #print "fix qubit ef dc offset"
+                            qubit_dc_offset = pulse_info['qubit_ef_dc_offset']
+                            #print qubit_dc_offset
+                            qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
+                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)
+
                         else:
+                            #print "fix qubit dc offset"
                             qubit_dc_offset = pulse_info['qubit_dc_offset']
                             qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)
@@ -333,7 +359,7 @@ class PulseSequenceBuilder():
                     if flux_pulse_started == False:
                         flux_end_location = pulse_location
                         flux_pulse_started = True
-                    mm_target = int(pulse.target[4])
+                    mm_target = int(pulse.target[4:])
                     mm_target_info = self.cfg['multimodes'][mm_target]
                     flux_pulse_info = self.cfg['flux_pulse_info']
                     if pulse.type == "square":
@@ -377,6 +403,11 @@ class PulseSequenceBuilder():
                                                 self.origin - flux_end_location - total_flux_pulse_span_length_list[
                                                     ii] - self.tek2_trigger_delay,
                                                 self.card_trig_width)
+
+        # np.save("fluxwaveform_chirp_mode_9_250ns",self.waveforms_qubit_flux[50])
+        # print np.shape(self.ftpts)
+        # np.save("time_chirp_mode_9_250ns",self.ftpts)
+
         return (self.markers_readout,
                 self.markers_card,
                 self.waveforms_qubit_I,
