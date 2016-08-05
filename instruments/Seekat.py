@@ -1,3 +1,8 @@
+"""
+For additional information see the web page:
+http://opendacs.com/seekat-homepage/
+"""
+
 import numpy as np
 import time, math
 from instrumenttypes import SerialInstrument
