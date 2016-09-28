@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Aug 01 21:26:31 2011
-
 @author: Dave
+
+For the programming manual see http://ena.support.keysight.com/e5071c/manuals/webhelp/eng/
 """
 from slab.instruments import SocketInstrument, VisaInstrument
 import time, glob, re
