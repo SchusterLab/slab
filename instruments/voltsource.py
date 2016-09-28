@@ -12,7 +12,7 @@ import numpy as np
 
 class VoltageSource:
     def ramp_volt(self, v, sweeprate=1, channel=1):
-        start = self.get_volt()
+        start = self.get_volt(channel=channel)
         stop = v
         if stop == start: return
         start_t = time.time()
@@ -193,7 +193,7 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
                 curr_str = '%smA' % (current * 1e3)
                 self.set_level(curr_str)
         else:
-            raise Exception("ERROR: Need to set Yoko current in voltage mode")
+            raise Exception("ERROR: Need to set Yoko current in current mode")
 
     def get_current(self):
         """Get yoko current (in Amps!)"""
@@ -203,19 +203,22 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
             raise Exception("ERROR: Need to set Yoko voltage in current mode")
 
     def set_volt(self, voltage, channel=0):
-        # channel does nothing...for compatibility with the SRS
+        # Channel keyword not used for the Yokogawa.
+        # This is implemented for compatibility with other sources that use ramp_voltage (e.g. SRS)
         """Set yoko voltage"""
         if self.get_mode() == "VOLT":
             self.set_level(voltage)
         else:
-            raise Exception("ERROR: Need to set Yoko voltage in current mode")
+            raise Exception("ERROR: Need to set Yoko voltage in voltage mode")
 
-    def get_volt(self):
+    def get_volt(self, channel=0):
+        # Channel keyword not used for the Yokogawa.
+        # This is implemented for compatibility with other sources that use ramp_voltage (e.g. SRS)
         """Get yoko voltage"""
         if self.get_mode() == "VOLT":
             return self.get_level()
         else:
-            raise Exception("ERROR: Need to set Yoko voltage in current mode")
+            raise Exception("ERROR: Need to set Yoko voltage in voltage mode")
 
     def set_measure_state(self, state=True):
         """Set measurement state of instrument"""
