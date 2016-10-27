@@ -740,8 +740,8 @@ class M8195A(SocketInstrument):
         self.write(':TRAC%d:IMP %d,%s,%s,%s,%s,%d,%s' %(channel,segment_id,file_name,data_type,marker_flag,padding,init_value,ignore_header_parameters))
 
     def set_segment_data_from_bin_file(self,channel,segment_id,file_name):
-        self.write(':TRAC%d:IMP %d,%s,%s,%s,%s,%s,%d,%s' %(channel,segment_id,file_name,'BIN8','IONL','OFF','FILL',0,'ON'))
-
+        print ':TRAC%d:IMP %d,%s,%s' %(channel,segment_id,file_name,'BIN8')
+        self.write(':TRAC%d:IMP %d,%s,%s, IONLY, ON, ALEN' %(channel,segment_id,file_name,'BIN8'))
 
     def delete_segment(self,channel,segment_id):
         self.write(':TRAC%d:DEL %d' %(channel,segment_id))
@@ -868,14 +868,14 @@ def define_segments_binary(m8195a,waveform_matrix):
 
             segment_data_array = 127*waveform_matrix[channel-1][sequence_id-1]
 
-            filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin' %(sequence_id,channel)
+            filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)
             with open(filename, 'wb')  as f:
                 segment_data_array.astype('int8').tofile(f)
 
     for sequence_id in range(1,sequence_length+1):
         for channel in range(1,num_channels+1):
 
-            filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin' %(sequence_id,channel)
+            filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
 
             m8195a.set_segment_data_from_bin_file(channel,sequence_id,filename)
 
@@ -965,7 +965,9 @@ def upload_M8195A_sequence(waveform_matrix):
 
     # define_segments_test(m8195a,segment_length,sequence_length,dt)
 
-    define_segments(m8195a,waveform_matrix)
+    # define_segments(m8195a,waveform_matrix)
+
+    define_segments_binary(m8195a,waveform_matrix)
 
     m8195a.set_mode('STS')
     define_sequence(m8195a,sequence_length)

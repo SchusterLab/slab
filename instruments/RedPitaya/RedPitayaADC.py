@@ -209,6 +209,11 @@ class Scope2(MemoryInterface):
         self.reset_writestate_machine(v=False)
         self.arm_trigger()
 
+        print "###########################"
+        print "sleeping 0.1s!"
+        time.sleep(0.1)
+        print "###########################"
+
         if not start_function == None:
             start_function()
 
@@ -316,10 +321,13 @@ class RedPitaya(ClientMemory):
     asgb = InterfaceDescriptor(ASG,channel='B')
 
 
-def setup_redpitaya_adc(awg,num_experiments,samples=2048,window=(80,8000),shots=2**14,plot_data=False):
+def setup_redpitaya_adc(awg,num_experiments,samples=1024,window=(80,8000),shots=2**14,plot_data=False):
 
     start = int(window[0]/8) #ns to sample index (the factor 8 comes from time (ns) to take an oscillation of 125MHz)
     stop = int(window[1]/8) #ns to sample index
+
+    print "Start: " + str(start)
+    print "Stop: " + str(stop)
 
     ### Test Single Shot Mode
     rp = RedPitaya(connect(REDPITAYA_IP, port=18861))
@@ -337,17 +345,21 @@ def setup_redpitaya_adc(awg,num_experiments,samples=2048,window=(80,8000),shots=
     run_awg()
 
     ch1, ch2 = rp.scope.acquire_avg (samples = samples, avgs = shots)
+
+    stop_awg()
+
     tpts = rp.scope.times[:len(ch1)]/1e-6
 
-    plt.interactive(False)
-    plt.figure()
+    if plot_data:
+        plt.interactive(False)
+        plt.figure()
 
-    #figsize(24,6)
-    plt.subplot(131,xlabel="Time (us)", ylabel="Voltage", title="Averaging Acquisition")
-    plt.plot (tpts,ch1,'r',label='ch1')
-    plt.plot (tpts,ch2,'b',label='ch2')
-    plt.axvspan(tpts[start], tpts[stop], color='g', alpha=0.2, lw=0)
-    plt.legend()
+        #figsize(24,6)
+        plt.subplot(131,xlabel="Time (us)", ylabel="Voltage", title="Averaging Acquisition")
+        plt.plot (tpts,ch1,'r',label='ch1')
+        plt.plot (tpts,ch2,'b',label='ch2')
+        plt.axvspan(tpts[start], tpts[stop], color='g', alpha=0.2, lw=0)
+        plt.legend()
 
 
     rp.scope.setup_convolution_filter(xg=zeros(2**12),yg=zeros(2**12),xe=ones(2**12),ye=ones(2**12))
@@ -359,6 +371,13 @@ def setup_redpitaya_adc(awg,num_experiments,samples=2048,window=(80,8000),shots=
     shot_data1,shot_data2 = rp.scope.acquire_singleshot (samples = samples, start = start, stop = stop, shots = shots, dual_ch=True
                                                          , use_filter=False, start_function= run_awg, prep_function = stop_awg)
 
+    data_crop = shot_data1[0:math.floor(shots/num_experiments)*num_experiments]
+    data_crop_matrix = np.reshape(data_crop, (-1, num_experiments))
+    data_crop_avg = np.mean(data_crop_matrix, axis=0)
+    data_crop_std = np.std(data_crop_matrix, axis=0)
+
+    print "hw_avgs: %d, avg_cnt: %d, adc_trigged: %d, npt_mode: %d, avg_mode: %d, avg_do: %d, ss_mode: %d" %(rp.scope.hw_avgs,rp.scope.avg_cnt,rp.scope.adc_trigged, rp.scope.npt_mode, rp.scope.avg_mode, rp.scope.avg_do,rp.scope.ss_mode )
+    print "t1: %d, t2: %d, t3: %d, t4: %d, t5: %d" % (rp.scope.t1,rp.scope.t2,rp.scope.t3,rp.scope.t4,rp.scope.t5)
 
     if plot_data:
         plt.subplot(132,xlabel="Shot #", ylabel="Score", title="Single Shot Raw")
@@ -367,17 +386,13 @@ def setup_redpitaya_adc(awg,num_experiments,samples=2048,window=(80,8000),shots=
 
         plt.subplot(133,xlabel="Experiment #", ylabel="Score", title="Average Data")
 
-        data_crop = shot_data1[num_experiments-1:math.floor(shots/num_experiments)*num_experiments-1]
-        data_crop_matrix = np.reshape(data_crop, (-1, num_experiments))
-        data_crop_avg = np.mean(data_crop_matrix, axis=0)
-        data_crop_std = np.std(data_crop_matrix, axis=0)
+
 
         plt.errorbar(arange(num_experiments),data_crop_avg,yerr=data_crop_std)
         plt.xlim(-1,num_experiments+1)
 
 
-        print "hw_avgs: %d, avg_cnt: %d, adc_trigged: %d, npt_mode: %d, avg_mode: %d, avg_do: %d, ss_mode: %d" %(rp.scope.hw_avgs,rp.scope.avg_cnt,rp.scope.adc_trigged, rp.scope.npt_mode, rp.scope.avg_mode, rp.scope.avg_do,rp.scope.ss_mode )
-        print "t1: %d, t2: %d, t3: %d, t4: %d, t5: %d" % (rp.scope.t1,rp.scope.t2,rp.scope.t3,rp.scope.t4,rp.scope.t5)
+
 
         plt.show()
 

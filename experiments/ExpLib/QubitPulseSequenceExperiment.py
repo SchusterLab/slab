@@ -170,7 +170,14 @@ class QubitPulseSequenceExperiment(Experiment):
 
             print "Number of experiments: " + str(num_experiments)
 
-            expt_avg_data = setup_redpitaya_adc(m8195a,num_experiments=num_experiments,window=self.cfg['readout']['window'],shots=self.cfg[self.expt_cfg_name]['averages'],plot_data=True)
+            correct_counter = 0
+            repeat = 100
+            for ii in range(repeat):
+                expt_avg_data = setup_redpitaya_adc(m8195a,samples=2000,num_experiments=num_experiments,window=self.cfg['readout']['window'],shots=self.cfg[self.expt_cfg_name]['averages'],plot_data=False)
+                if ((expt_avg_data[1:]-expt_avg_data[:-1])>0).all():
+                    correct_counter += 1
+
+            print "correct percent: " + str(correct_counter/float(repeat))
 
             if self.data_file != None:
                     self.slab_file = SlabFile(self.data_file)
