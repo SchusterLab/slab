@@ -58,6 +58,11 @@ class QubitPulseSequenceExperiment(Experiment):
         else:
             self.flux_freq = None
 
+        if 'readout_freq' in self.extra_args:
+            self.readout_freq = self.extra_args['readout_freq']
+        else:
+            self.readout_freq = self.cfg['readout']['frequency']
+
         self.prefix = prefix
         self.expt_cfg_name = prefix.lower()
 
@@ -81,11 +86,11 @@ class QubitPulseSequenceExperiment(Experiment):
         return
 
     def go(self):
-        if self.liveplot_enabled:
-            self.plotter.clear()
+        # if self.liveplot_enabled:
+        #     self.plotter.clear()
 
         print "Prep Instruments"
-        self.readout.set_frequency(self.cfg['readout']['frequency'])
+        self.readout.set_frequency(self.readout_freq)
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=True)
         self.readout.set_output(True)
@@ -121,13 +126,13 @@ class QubitPulseSequenceExperiment(Experiment):
             pass
 
 
-        try:
-            if self.cfg['freq_flux']['current']:
-                self.flux_volt.ramp_current(self.cfg['freq_flux']['flux'])
-            elif self.cfg['freq_flux']['voltage']:
-                self.flux_volt.ramp_volt(self.cfg['freq_flux']['flux'])
-        except:
-            print "Voltage source not loaded."
+        # try:
+        #     if self.cfg['freq_flux']['current']:
+        #         self.flux_volt.ramp_current(self.cfg['freq_flux']['flux'])
+        #     elif self.cfg['freq_flux']['voltage']:
+        #         self.flux_volt.ramp_volt(self.cfg['freq_flux']['flux'])
+        # except:
+        #     print "Voltage source not loaded."
 
         try:
             self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
@@ -183,9 +188,9 @@ class QubitPulseSequenceExperiment(Experiment):
             expt_avg_data = mean(expt_data, 1)
 
 
-            if self.liveplot_enabled:
-                self.plotter.plot_z(self.prefix + ' Data', expt_data.T)
-                self.plotter.plot_xy(self.prefix + ' XY', self.pulse_sequence.expt_pts, expt_avg_data)
+            # if self.liveplot_enabled:
+            #     self.plotter.plot_z(self.prefix + ' Data', expt_data.T)
+            #     self.plotter.plot_xy(self.prefix + ' XY', self.pulse_sequence.expt_pts, expt_avg_data)
 
             # print ii * min(self.cfg[self.expt_cfg_name]['averages'], 100)
 

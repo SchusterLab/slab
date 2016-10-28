@@ -4,10 +4,13 @@ __author__ = 'Nelson'
 from slab.instruments.awg.PulseSequence import *
 from slab.experiments.ExpLib import awgpulses as ap
 from numpy import arange, linspace
+from slab.instruments.pulseblaster.pulseblaster import start_pulseblaster, run_pulseblaster
 #from slab.experiments.ExpLib.TEK1PulseOrganizer import *
 
 class VacuumRabiSequence(PulseSequence):
-    def __init__(self, awg_info, vacuum_rabi_cfg, readout_cfg,buffer_cfg,pulse_cfg):
+    def __init__(self, awg_info, vacuum_rabi_cfg, readout_cfg, buffer_cfg, pulse_cfg, cfg):
+
+        self.cfg = cfg
 
         self.vacuum_rabi_cfg = vacuum_rabi_cfg
 
@@ -15,7 +18,7 @@ class VacuumRabiSequence(PulseSequence):
         self.marker_start_buffer = buffer_cfg['marker_start']
 
         PulseSequence.__init__(self, "Vacuum Rabi", awg_info, sequence_length=1)
-
+        self.exp_period_ns = self.cfg['expt_trigger']['period_ns']
         self.pulse_type = vacuum_rabi_cfg['pulse_type']
         self.pi_pulse = vacuum_rabi_cfg['pi_pulse']
         self.a = vacuum_rabi_cfg['a']
@@ -53,6 +56,14 @@ class VacuumRabiSequence(PulseSequence):
         ii = 0
         w =self.pi_length
         a=self.pulse_cfg['a']
+
+        # TODO: pulseblaster out of sync bug#
+
+        awg_trig_len = 100
+        start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin + self.measurement_delay,
+                           self.card_trig_width, self.measurement_width)
+        run_pulseblaster()
+
         if self.pi_pulse:
             if self.pulse_type == 'square':
                     self.waveforms['qubit drive I'][ii], self.waveforms['qubit drive Q'][ii] = \

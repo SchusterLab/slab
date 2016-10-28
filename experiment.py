@@ -33,8 +33,8 @@ class Experiment:
         else:
             self.config_file = None
         self.im = InstrumentManager()
-        if liveplot_enabled:
-            self.plotter = LivePlotClient()
+        # if liveplot_enabled:
+        #     self.plotter = LivePlotClient()
         # self.dataserver= dataserver_client()
         self.fname = os.path.join(path, get_next_filename(path, prefix, suffix='.h5'))
 

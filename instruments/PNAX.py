@@ -151,6 +151,27 @@ class N5242A(SocketInstrument):
             if read_power is not None:
                 self.set_power(read_power, channel=1, port=1)
 
+    def setup_rf_flux_measurement(self, read_power=None, probe_power=None, read_start=None, read_stop=None,
+                                   probe_frequency=None):
+
+        self.write('SENSE:FOM:RANGE2:COUPLED 1')
+        self.write('SENSE:FOM:RANGE3:COUPLED 1')
+        self.write('SENSE:FOM:RANGE4:COUPLED 0')
+        if read_start is not None:
+            self.write('SENSE:FOM:RANGE1:FREQUENCY:START %f' % read_start)
+        if read_stop is not None:
+            self.write('SENSE:FOM:RANGE1:FREQUENCY:STOP %f' % read_stop)
+
+        if probe_frequency is not None:
+            self.write('SENSE:FOM:RANGE4:FREQUENCY:START %f' % probe_frequency)
+            self.write('SENSE:FOM:RANGE4:FREQUENCY:STOP %f' % probe_frequency)
+
+        self.set_frequency_offset_mode_state(True)
+        if read_power is not None:
+            self.set_power(read_power, channel=1, port=1)
+        if probe_power is not None:
+            self.set_power(probe_power, channel=1, port=3)
+
     #### Averaging
     def set_averages(self, averages, channel=1):
         self.write(":SENS%d:AVERage:COUNt %d" % (channel, averages))

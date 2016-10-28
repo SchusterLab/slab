@@ -42,7 +42,7 @@ class RabiExperiment(QubitPulseSequenceExperiment):
             print "Analyzing Rabi Data"
             self.pi_length = self.cfg['pulse_info']['gauss']['pi_length']
             self.half_pi_length = self.cfg['pulse_info']['gauss']['half_pi_length']
-            fitdata = fitdecaysin(expt_pts[18:], expt_avg_data[18:])
+            fitdata = fitdecaysin(expt_pts[10:], expt_avg_data[10:])
 
             # if (-fitdata[2]%180 - 90)/(360*fitdata[1]) < 0:
             #     print "Rabi pi/2 length =" + str((-fitdata[2]%180 + 180)/(360*fitdata[1]))
@@ -123,7 +123,7 @@ class RamseyExperiment(QubitPulseSequenceExperiment):
 
         print "Suggested Qubit Frequency: " + str(self.suggested_qubit_freq)
         print "Or Suggested Flux: " + str(self.flux - self.offset_freq / self.freq_flux_slope)
-
+        self.cfg['freq_flux']['flux'] = self.flux - self.offset_freq / self.freq_flux_slope
 
 class SpinEchoExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Spin_Echo', config_file='..\\config.json', **kwargs):
@@ -171,7 +171,7 @@ class EFRabiExperiment(QubitPulseSequenceExperiment):
 
 class EFRamseyExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_Ramsey', config_file='..\\config.json', **kwargs):
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,liveplot_enabled=False,
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                               PulseSequence=EFRamseySequence, pre_run=self.pre_run,
                                               post_run=self.post_run, **kwargs)
 
@@ -262,6 +262,18 @@ class PiXOptimizationExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='PiXOptimization', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                               PulseSequence=PiXOptimizationSequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+    def pre_run(self):
+        pass
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
+
+class PiXoptimizationChangeAmpExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='PiXOptimization_change_amp', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=PiXoptimizationChangeAmpSequence, pre_run=self.pre_run,
                                               post_run=self.post_run, **kwargs)
 
     def pre_run(self):
@@ -388,8 +400,13 @@ class RabiRamseyT1FluxSweepExperiment(QubitPulseSequenceExperiment):
         self.extra_args = {}
         for key, value in kwargs.iteritems():
             self.extra_args[key] = value
+
+
         self.drive_freq = self.extra_args['drive_freq']
-        self.exp = self.extra_args['exp']
+        if 'exp' in self.extra_args:
+            self.exp = self.extra_args['exp']
+        else:
+            self.exp = 'rabi'
         self.flux = self.extra_args['flux']
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,

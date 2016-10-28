@@ -234,6 +234,8 @@ def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfi
         
     decaysin3 = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (
     -1. * (x - fitdatax[0]) / p[3]) + p[4]
+    # decaysin3 = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * x + p[2] - np.pi / 2.) * np.e ** (
+    # -1. * (x - fitdatax[0]) / p[3]) + p[4]
     #print "fitparams: ",fitparams
     p1 = fitgeneral(fitdatax, fitdatay, decaysin3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)

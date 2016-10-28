@@ -272,9 +272,9 @@ def run_sequential_experiment(expt_name):
         prefix = 'rabi_ramsey_t1_flux_sweep'
         data_file =  os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
 
-        flux_pts = np.load(r'S:\_Data\160104 - 2D Multimode Qubit (Chip MM3, 11 modes)\iPython Notebooks\flux_sm.npy')
-        drive_pts = np.load(r'S:\_Data\160104 - 2D Multimode Qubit (Chip MM3, 11 modes)\iPython Notebooks\qubit_frequencies_sm.npy')
-        readout_pts = np.load(r'S:\_Data\160104 - 2D Multimode Qubit (Chip MM3, 11 modes)\iPython Notebooks\readout_frequencies_sm.npy')
+        flux_pts = load(r'S:\_Data\160711 - Nb Tunable Coupler\data\flux_total.npy')
+        drive_pts = load(r'S:\_Data\160711 - Nb Tunable Coupler\data\probe_frequencies_total.npy')
+        readout_pts = load(r'S:\_Data\160711 - Nb Tunable Coupler\data\read_frequencies_7_28.npy')
 
 
         # flux_pts=[-0.012]
@@ -343,18 +343,18 @@ def run_sequential_experiment(expt_name):
             del expt
             gc.collect()
 
-            ### Rabi Long
-            print "### Running Rabi Long."
-            adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep','rabi_long')
-            expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'rabi_long', flux = flux,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled)
-            expt.go()
-            # pi_length = expt.pi_length
-            # half_pi_length = expt.half_pi_length
-
-            adc.close()
-            expt = None
-            del expt
-            gc.collect()
+            ## Rabi Long
+            # print "### Running Rabi Long."
+            # adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep','rabi_long')
+            # expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'rabi_long', flux = flux,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled)
+            # expt.go()
+            # # pi_length = expt.pi_length
+            # # half_pi_length = expt.half_pi_length
+            #
+            # adc.close()
+            # expt = None
+            # del expt
+            # gc.collect()
 
             ### remove adc
             adc = None
@@ -373,90 +373,90 @@ def run_sequential_experiment(expt_name):
             gc.collect()
 
 
-            ### Pi/2 phase sweep
-            print "### Running pi/2 phase sweep experiment"
-            adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep','half_pi_phase_sweep')
-            expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'half_pi_phase_sweep', flux = flux,half_pi_length=half_pi_length,data_file=data_file, adc=adc,drive_freq=drive_freq, readout_freq = readout_freq,liveplot_enabled=liveplot_enabled)
-            expt.go()
-
-            adc.close()
-            expt = None
-            del expt
-            gc.collect()
-
-
-            ### EF Rabi
-            print "### Running EF Rabi."
-            adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep', 'ef_rabi')
-            expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'ef_rabi', flux = flux,pi_length=pi_length,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled, alpha=qubit_alpha)
-            expt.go()
-            ef_pi_length = expt.pi_length
-            ef_half_pi_length = expt.half_pi_length
-
-            adc.close()
-            expt = None
-            del expt
-            gc.collect()
-
-            ### EF Ramsey
-            print "### Running EF Ramsey."
-            adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep', 'ef_ramsey')
-            expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'ef_ramsey', flux = flux,pi_length=pi_length,ef_half_pi_length=ef_half_pi_length,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled, alpha=qubit_alpha)
-            expt.go()
-            suggested_alpha_freq = expt.suggested_qubit_alpha
-            print "Suggested alpha frequency: " + str(suggested_alpha_freq)
-            qubit_alpha = suggested_alpha_freq
-
-            adc.close()
-            expt = None
-            del expt
-            gc.collect()
-
-            ### EF Rabi
-            print "### Running EF Rabi."
-            adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep', 'ef_rabi')
-            expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'ef_rabi', flux = flux,pi_length=pi_length,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled, alpha=qubit_alpha)
-            expt.go()
-            ef_pi_length = expt.pi_length
-            ef_half_pi_length = expt.half_pi_length
-
-            adc.close()
-            expt = None
-            del expt
-            gc.collect()
-
-
-            ### EF T1
-            print "### Running EF T1."
-            adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep', 'ef_t1')
-            expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'ef_t1', flux = flux,pi_length=pi_length,ef_pi_length=ef_pi_length,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled, alpha=qubit_alpha)
-            expt.go()
-
-            adc.close()
-            expt = None
-            del expt
-            gc.collect()
-
-
-            ## EF Ramsey Long
-            print "### Running EF Ramsey."
-            adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep', 'ef_ramsey_long')
-            expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'ef_ramsey_long', flux = flux,pi_length=pi_length,ef_half_pi_length=ef_half_pi_length,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled, alpha=qubit_alpha)
-            expt.go()
-            suggested_alpha_freq = expt.suggested_qubit_alpha
-            print "Suggested alpha frequency: " + str(suggested_alpha_freq)
-            qubit_alpha = suggested_alpha_freq
-
-            adc.close()
-            expt = None
-            del expt
-            gc.collect()
-
-            ### remove adc
-            adc = None
-            del adc
-
-            gc.collect()
+            # ### Pi/2 phase sweep
+            # print "### Running pi/2 phase sweep experiment"
+            # adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep','half_pi_phase_sweep')
+            # expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'half_pi_phase_sweep', flux = flux,half_pi_length=half_pi_length,data_file=data_file, adc=adc,drive_freq=drive_freq, readout_freq = readout_freq,liveplot_enabled=liveplot_enabled)
+            # expt.go()
+            #
+            # adc.close()
+            # expt = None
+            # del expt
+            # gc.collect()
+            #
+            #
+            # ### EF Rabi
+            # print "### Running EF Rabi."
+            # adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep', 'ef_rabi')
+            # expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'ef_rabi', flux = flux,pi_length=pi_length,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled, alpha=qubit_alpha)
+            # expt.go()
+            # ef_pi_length = expt.pi_length
+            # ef_half_pi_length = expt.half_pi_length
+            #
+            # adc.close()
+            # expt = None
+            # del expt
+            # gc.collect()
+            #
+            # ### EF Ramsey
+            # print "### Running EF Ramsey."
+            # adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep', 'ef_ramsey')
+            # expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'ef_ramsey', flux = flux,pi_length=pi_length,ef_half_pi_length=ef_half_pi_length,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled, alpha=qubit_alpha)
+            # expt.go()
+            # suggested_alpha_freq = expt.suggested_qubit_alpha
+            # print "Suggested alpha frequency: " + str(suggested_alpha_freq)
+            # qubit_alpha = suggested_alpha_freq
+            #
+            # adc.close()
+            # expt = None
+            # del expt
+            # gc.collect()
+            #
+            # ### EF Rabi
+            # print "### Running EF Rabi."
+            # adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep', 'ef_rabi')
+            # expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'ef_rabi', flux = flux,pi_length=pi_length,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled, alpha=qubit_alpha)
+            # expt.go()
+            # ef_pi_length = expt.pi_length
+            # ef_half_pi_length = expt.half_pi_length
+            #
+            # adc.close()
+            # expt = None
+            # del expt
+            # gc.collect()
+            #
+            #
+            # ### EF T1
+            # print "### Running EF T1."
+            # adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep', 'ef_t1')
+            # expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'ef_t1', flux = flux,pi_length=pi_length,ef_pi_length=ef_pi_length,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled, alpha=qubit_alpha)
+            # expt.go()
+            #
+            # adc.close()
+            # expt = None
+            # del expt
+            # gc.collect()
+            #
+            #
+            # ## EF Ramsey Long
+            # print "### Running EF Ramsey."
+            # adc = prepare_alazar(cfg, 'rabi_ramsey_t1_flux_sweep', 'ef_ramsey_long')
+            # expt = RabiRamseyT1FluxSweepExperiment(path=datapath,exp = 'ef_ramsey_long', flux = flux,pi_length=pi_length,ef_half_pi_length=ef_half_pi_length,data_file=data_file, adc=adc, drive_freq=drive_freq, readout_freq = readout_freq, liveplot_enabled=liveplot_enabled, alpha=qubit_alpha)
+            # expt.go()
+            # suggested_alpha_freq = expt.suggested_qubit_alpha
+            # print "Suggested alpha frequency: " + str(suggested_alpha_freq)
+            # qubit_alpha = suggested_alpha_freq
+            #
+            # adc.close()
+            # expt = None
+            # del expt
+            # gc.collect()
+            #
+            # ### remove adc
+            # adc = None
+            # del adc
+            #
+            # gc.collect()
 
     if expt_name.lower() == 'halfpixoptimization_sweep':
 

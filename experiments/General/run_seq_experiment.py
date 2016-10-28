@@ -4,6 +4,7 @@ from slab.experiments.ExpLib.SequentialExperiment import *
 from slab import *
 import os
 import json
+import numpy as np
 
 
 datapath = os.getcwd() + '\data'
@@ -15,6 +16,8 @@ cfg = AttrDict(json.loads(cfg_str))
 
 def get_data_filename(prefix):
     return  os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
+
+
 
 
 def frequency_stabilization(seq_exp):
@@ -84,5 +87,17 @@ def run_seq_experiment(expt_name,lp_enable=True):
 
     if expt_name.lower() == 'pulse_calibration':
         pulse_calibration(seq_exp)
+
+    if expt_name.lower() == 'rabi_ramsey_t1':
+        # ef_pulse_calibration(seq_exp)
+        prefix = 'rabi_ramsey_t1'
+        data_file = get_data_filename(prefix)
+        flux_pts = np.load(r'S:\_Data\160711 - Nb Tunable Coupler\data\flux_total.npy')
+        drive_pts = np.load(r'S:\_Data\160711 - Nb Tunable Coupler\data\probe_frequencies_total.npy')
+        readout_pts = np.load(r'S:\_Data\160711 - Nb Tunable Coupler\data\read_frequencies_7_28.npy')
+
+
+        seq_exp.run(('rabi_ramsey_t1_flux_sweep', {'exp':'rabi','flux':0.0055,'drive_freq':5.071e9,'update_config':False,"data_file":data_file}))
+        # print seq_exp.expt.offset_freq
 
 

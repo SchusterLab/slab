@@ -14,7 +14,7 @@ class VacuumRabiExperiment(Experiment):
 
         self.liveplot_enabled = liveplot_enabled
 
-        self.pulse_sequence = VacuumRabiSequence(self.cfg['awgs'], self.cfg[self.expt_cfg_name], self.cfg['readout'], self.cfg['buffer'], self.cfg['pulse_info'])
+        self.pulse_sequence = VacuumRabiSequence(self.cfg['awgs'], self.cfg[self.expt_cfg_name], self.cfg['readout'], self.cfg['buffer'], self.cfg['pulse_info'],self.cfg)
         self.pulse_sequence.build_sequence()
         self.pulse_sequence.write_sequence(os.path.join(self.path, '../sequences/'), prefix, upload=True)
 

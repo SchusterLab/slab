@@ -53,6 +53,8 @@ class PulseSequenceBuilder():
             if name == "pi" or name == "cal_pi":
                 amp = self.pulse_cfg[type]['pi_a']
                 length = self.pulse_cfg[type]['pi_length']
+                # print amp
+                # print length
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']

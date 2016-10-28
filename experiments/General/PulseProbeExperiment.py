@@ -19,7 +19,7 @@ class PulseProbeExperiment(Experiment):
 
         self.expt_pts = arange(self.cfg[self.expt_cfg_name]['start'], self.cfg[self.expt_cfg_name]['stop'], self.cfg[self.expt_cfg_name]['step'])
 
-        self.pulse_sequence = PulseProbeSequence(self.cfg['awgs'], self.cfg[self.expt_cfg_name], self.cfg['readout'],self.cfg['pulse_info'][self.pulse_type], self.cfg['buffer'])
+        self.pulse_sequence = PulseProbeSequence(self.cfg['awgs'], self.cfg[self.expt_cfg_name], self.cfg['readout'],self.cfg['pulse_info'][self.pulse_type], self.cfg['buffer'],self.cfg)
         self.pulse_sequence.build_sequence()
         self.pulse_sequence.write_sequence(os.path.join(self.path, '../sequences/'), prefix, upload=True)
 
@@ -60,7 +60,7 @@ class PulseProbeExperiment(Experiment):
         adc = Alazar(self.cfg['alazar'])
 
         for freq in self.expt_pts:
-            self.drive.set_frequency(freq)
+            self.drive.set_frequency(freq-self.cfg[self.expt_cfg_name]['iq_freq'])
 
             expt_data_ch1 = None
             expt_data_ch2 = None

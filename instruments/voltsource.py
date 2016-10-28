@@ -12,7 +12,9 @@ import numpy as np
 
 class VoltageSource:
     def ramp_volt(self, v, sweeprate=1, channel=1):
-        start = self.get_volt()
+        # channel is only for SRS, YOKO ignore channel
+        start = self.get_volt(channel=channel)
+        print start
         stop = v
         if stop == start: return
         start_t = time.time()
@@ -210,7 +212,8 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
         else:
             raise Exception("ERROR: Need to set Yoko voltage in current mode")
 
-    def get_volt(self):
+    def get_volt(self, channel=0):
+        # channel does nothing...for compatibility with the SRS - alex
         """Get yoko voltage"""
         if self.get_mode() == "VOLT":
             return self.get_level()

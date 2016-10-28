@@ -75,5 +75,9 @@ class QubitPulseSequence(PulseSequence):
         self.markers['readout pulse'], self.markers['card trigger'], self.waveforms['qubit drive I'], self.waveforms[
             'qubit drive Q'], self.waveforms['qubit 1 flux'], self.markers['qubit buffer'], self.markers['ch3m1'] = generated_sequences
 
+        np.save('S:\\_Data\\160711 - Nb Tunable Coupler\\data\\waveform.npy',self.waveforms['qubit drive Q'])
+
+        ### in ipython notebook: call np.load('file_path/file_name.npy')
+
     def reshape_data(self, data):
         return np.reshape(data, (self.sequence_length, self.waveform_length))

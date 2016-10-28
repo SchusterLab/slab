@@ -4,7 +4,7 @@ __author__ = 'Nelson'
 
 
 import numpy as np
-def run_experiment(expt_name,lp_enable = True, **kwargs):
+def run_experiment(expt_name,lp_enable = False, **kwargs):
     import os
     import difflib
 
@@ -104,6 +104,11 @@ def run_experiment(expt_name,lp_enable = True, **kwargs):
     if expt_name.lower() == 'error_amplification_phase_offset':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import SingleQubitErrorAmplificationPhaseOffsetExperiment
         expt = SingleQubitErrorAmplificationPhaseOffsetExperiment(path=datapath, liveplot_enabled = lp_enable,trigger_period = 0.001, **kwargs)
+
+    if expt_name.lower() == 'rabi_ramsey_t1_flux_sweep':
+
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import RabiRamseyT1FluxSweepExperiment
+        expt = RabiRamseyT1FluxSweepExperiment(path=datapath, liveplot_enabled=lp_enable,trigger_period=0.001, **kwargs)
 
     if expt != None:
         expt.go()
