@@ -122,7 +122,7 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
     clock_rate = 1.2  # G/s
 
     ## max voltage
-    max_offset = 0.07
+    max_offset = 0.1
     max_output_volt = 1.47  # set output voltage to be 1.4V if 1.0 in waveform
     unit_volt = max_output_volt - max_offset
     scale = unit_volt / max_output_volt * max_value
@@ -140,8 +140,10 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
     waveforms = np.reshape(waveforms, (len(waveforms), len(waveforms[0][0]) * len(waveforms[0])))
     #print "reshaped"
     for ii, offset in enumerate(offsets):
-        waveforms[ii] = waveforms[ii] * scale + offset
+        print offset
+        waveforms[ii] = waveforms[ii] * scale + offset / max_output_volt * max_value
     #print "scaled"
+
     interleaved_waveforms = np.ravel(np.column_stack(waveforms))
 
     #print "interleaved"
