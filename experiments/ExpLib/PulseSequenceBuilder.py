@@ -247,7 +247,7 @@ class PulseSequenceBuilder():
             return int(math.ceil(x / 100.0)) * 100
         self.origin = roundup100(self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer))
         self.uses_tek2 = False
-        awg_trig_len=100
+        awg_trig_len=self.cfg['triggers']['awg']
         start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin + self.measurement_delay, self.card_trig_width, self.measurement_width)
         for ii in range(len(pulse_sequence_matrix)):
             self.markers_readout[ii] = ap.square(self.mtpts, 1, self.origin + self.measurement_delay,
