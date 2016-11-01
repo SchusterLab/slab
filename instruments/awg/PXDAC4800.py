@@ -16,7 +16,7 @@ class PXDAC4800:
     def __init__(self):
         pass
 
-    def load_sequence_file(self, waveform_file_name):
+    def load_sequence_file(self, waveform_file_name,offset_bytes_list):
         U8 = C.c_uint8
         U8P = C.POINTER(U8)
         U32 = C.c_uint32
@@ -76,6 +76,11 @@ class PXDAC4800:
         dll.SetOutputVoltageCh1XD48(pHandle, U32(1023))
         dll.SetOutputVoltageCh2XD48(pHandle, U32(1023))
 
+        ### Set Dac Default value
+        dll.SetCustomDacValueEnableXD48(pHandle, U32(3))
+        for ii in range(1,3,1):
+            dll.SetCustomDacDefaultValueXD48(pHandle,U32(ii),U32(offset_bytes_list[ii-1]))
+
         print "Active Channel Mask: " + str(dll.GetActiveChannelMaskXD48(pHandle, U32(1)))
 
         print "Load waveform file."
@@ -122,7 +127,7 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
     clock_rate = 1.2  # G/s
 
     ## max voltage
-    max_offset = 0.1
+    max_offset = 0.2
     max_output_volt = 1.47  # set output voltage to be 1.4V if 1.0 in waveform
     unit_volt = max_output_volt - max_offset
     scale = unit_volt / max_output_volt * max_value
@@ -131,7 +136,7 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
         offsets = np.zeros(len(waveforms))
 
     #     Check for overflows
-    if (np.amax(np.abs(offsets)) > max_output_volt - unit_volt):
+    if (np.amax(np.abs(offsets)*max_output_volt/max_value) > max_output_volt - unit_volt):
         raise ValueError('Offset value overflow.')
     #     if np.amax(waveforms) > 1.0 or np.amin(waveforms) <-1.0:
     #         raise ValueError('Waveform value overflow.')
@@ -140,8 +145,9 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
     waveforms = np.reshape(waveforms, (len(waveforms), len(waveforms[0][0]) * len(waveforms[0])))
     #print "reshaped"
     for ii, offset in enumerate(offsets):
-        print offset
-        waveforms[ii] = waveforms[ii] * scale + offset / max_output_volt * max_value
+        # offset_bytes = int((offset + awg_output_offsets[ii]) / max_output_volt * max_value)
+        # offset_bytes_list.append(offset_bytes)
+        waveforms[ii] = waveforms[ii] * scale + offset
     #print "scaled"
 
     interleaved_waveforms = np.ravel(np.column_stack(waveforms))
@@ -150,5 +156,6 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
 
     with open(filename, 'wb')  as f:
         interleaved_waveforms.astype('int16').tofile(f)
+
 
     #print 'finished generating waveform file'
