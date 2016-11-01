@@ -16,7 +16,7 @@ class PXDAC4800:
     def __init__(self):
         pass
 
-    def load_sequence_file(self, waveform_file_name,offset_bytes_list):
+    def load_sequence_file(self, waveform_file_name,offset_bytes_list,clock_speed):
         U8 = C.c_uint8
         U8P = C.POINTER(U8)
         U32 = C.c_uint32
@@ -25,6 +25,15 @@ class PXDAC4800:
         I32 = C.c_int32
         CFLT = C.c_float
         CHARP = C.c_char_p
+
+        clock_divider = 1.2/clock_speed
+
+        if not clock_divider.is_integer():
+            raise ValueError('clock speed is not integer divider of 1.2 GHz')
+
+        clock_divider = int(clock_divider)
+        if clock_divider == 3:
+            raise ValueError('clock divider cannot be equal to 3')
 
         unsigned_short_length = 2
 
@@ -81,6 +90,10 @@ class PXDAC4800:
         for ii in range(1,3,1):
             dll.SetCustomDacDefaultValueXD48(pHandle,U32(ii),U32(offset_bytes_list[ii-1]))
 
+        ### Set clock division
+        dll.SetClockDivider1XD48(pHandle, U32(clock_divider))
+
+
         print "Active Channel Mask: " + str(dll.GetActiveChannelMaskXD48(pHandle, U32(1)))
 
         print "Load waveform file."
@@ -124,7 +137,7 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
     ## max value for signed short
     max_value = 2 ** 15 - 1
     min_value = -2 ** 15
-    clock_rate = 1.2  # G/s
+    # clock_rate = 1.2  # G/s
 
     ## max voltage
     max_offset = 0.2

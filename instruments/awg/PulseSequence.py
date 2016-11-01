@@ -100,7 +100,7 @@ class PulseSequence:
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
         offset_bytes_list = write_PXDAC4800_file(waveforms, os.path.join(path, file_prefix + '.rd16'), self.name,awg['iq_offsets_bytes'])
         if upload:
-            PXDAC4800().load_sequence_file(os.path.join(path, file_prefix + '.rd16'), awg['iq_offsets_bytes'])
+            PXDAC4800().load_sequence_file(os.path.join(path, file_prefix + '.rd16'), awg['iq_offsets_bytes'],awg['clock_speed'])
             print "Sequence file uploaded"
             print "Waveform length: " + str(len(waveforms[0][0]))
             PXDAC4800.waveform_length = len(waveforms[0][0])
