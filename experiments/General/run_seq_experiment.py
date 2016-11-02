@@ -19,14 +19,14 @@ def get_data_filename(prefix):
 
 def frequency_stabilization(seq_exp):
     seq_exp.run('Ramsey',{})
-    if (abs(seq_exp.expt.offset_freq) < 50e3):
+    if (abs(seq_exp.expt.offset_freq) < 200e3):
         print "Frequency is within expected value. No further calibration required."
         pass
     else:
         print seq_exp.expt.flux
         flux_offset = -seq_exp.expt.offset_freq/(seq_exp.expt.freq_flux_slope)
         print flux_offset
-        if (abs(flux_offset) < 0.000002):
+        if (abs(flux_offset) < 0.00001):
             flux2 = seq_exp.expt.flux + flux_offset
             print flux2
             seq_exp.run('Ramsey',{'flux':flux2})
@@ -37,9 +37,9 @@ def frequency_stabilization(seq_exp):
                 print "Great success! Frequency calibrated"
                 seq_exp.expt.save_config()
             else:
-                if (abs(flux_offset2) < 0.000002):
+                if (abs(flux_offset2) < 0.00001):
                     seq_exp.run('Ramsey',{'flux':flux3})
-                    if (abs(seq_exp.expt.offset_freq) < 100e3):
+                    if (abs(seq_exp.expt.offset_freq) < 50e3):
                         print "Frequency calibrated"
                         seq_exp.expt.save_config()
                     else:
@@ -51,8 +51,8 @@ def frequency_stabilization(seq_exp):
             print "Large change in flux is required; please do so manually"
             pass
 
-def pulse_calibration(seq_exp,phase_exp=True):
-    frequency_stabilization(seq_exp)
+def pulse_calibration(seq_exp,phase_exp=False):
+    # frequency_stabilization(seq_exp)
     seq_exp.run('Rabi',{'update_config':True})
     print "ge pi and pi/2 pulses recalibrated"
 
@@ -62,6 +62,7 @@ def pulse_calibration(seq_exp,phase_exp=True):
     pass
 
 def ef_pulse_calibration(seq_exp):
+    # ef_frequency_calibration(seq_exp)
     seq_exp.run('ef_Rabi',{'update_config':True})
     print "ef pi and pi/2 pulses recalibrated"
 
@@ -74,14 +75,14 @@ def ef_frequency_calibration(seq_exp):
     if abs(seq_exp.expt.offset_freq) < 50e3:
         print "Anharmonicity well calibrated: no change!"
 
-    elif  abs(seq_exp.expt.offset_freq) > 50e3 and abs(seq_exp.expt.offset_freq) < 1e6:
+    elif  abs(seq_exp.expt.offset_freq) > 50e3 and abs(seq_exp.expt.offset_freq) < 3e6:
         seq_exp.expt.save_config()
         print "Alpha changed by + %s kHz"%(seq_exp.expt.offset_freq/1e3)
 
     else:
-        print "Anharmonicity suggested change > 1 MHz: Rerunnig EF Ramsey"
+        print "Anharmonicity suggested change > 3 MHz: Rerunnig EF Ramsey"
         seq_exp.run('ef_Ramsey',{})
-        if abs(seq_exp.expt.offset_freq) > 2e6:
+        if abs(seq_exp.expt.offset_freq) > 4e6:
             print "Large anharmonicity change suggested again: check manually"
         else:
             seq_exp.expt.save_config()
@@ -102,10 +103,10 @@ def run_seq_experiment(expt_name,lp_enable=True):
         ef_frequency_calibration(seq_exp)
 
     if expt_name.lower() == 'pulse_calibration':
-        pulse_calibration(seq_exp)
+        pulse_calibration(seq_exp,phase_exp = True)
 
     if expt_name.lower() == 'ef_pulse_calibration':
-        ef_frequency_calibration(seq_exp)
+        # ef_frequency_calibration(seq_exp)
         ef_pulse_calibration(seq_exp)
 
     if expt_name.lower() == 'repeated_ef_ramsey':
@@ -120,7 +121,7 @@ def run_seq_experiment(expt_name,lp_enable=True):
             seq_exp.run('randomized_benchmarking_phase_offset',{"data_file":data_file})
 
     if expt_name.lower() == 'rabi_sweep':
-        drive_freq_pts = arange(4.72e9,4.73e9,1e6)
+        drive_freq_pts = arange(7.67e9,7.70e9,2e6)
         for ii, drive_freq in enumerate(drive_freq_pts):
             seq_exp.run('rabi_sweep',{"drive_freq":drive_freq, "data_file":data_file})
 

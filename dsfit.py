@@ -604,7 +604,7 @@ def fitlinear(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=
         fitdatay=ydata
     if fitparams is None:
         fitparams=[1,1]
-        fitparams[0] = array(fitdatay)[0]
+        fitparams[0] = fitdatay[0]
         fitparams[1] = (float(fitdatay[-1])-float(fitdatay[0]))/( float(fitdatax[-1])-float(fitdatax[0]))
 
 

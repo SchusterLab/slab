@@ -40,7 +40,7 @@ class HistogramExperiment(Experiment):
 
         self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         self.drive.set_power(self.cfg[self.expt_cfg_name]['power'])
-        self.drive.set_ext_pulse(mod=False)
+        self.drive.set_ext_pulse(mod=True)
         self.drive.set_output(True)
 
         self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
@@ -61,25 +61,38 @@ class HistogramExperiment(Experiment):
                 self.readout.set_frequency(freq)
                 #self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] , freq)
                 self.readout_shifter.set_phase((self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (freq - self.cfg['readout']['frequency']))%360, freq)
-                tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg.stop_and_prep, start_function=self.awg.run,excise=None)
-                self.plotter.plot_z("current",ch1_pts)
+                tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg.stop_and_prep, start_function=self.awg.run,excise=self.cfg['readout']['window'])
+                # self.plotter.plot_z("current",ch1_pts)
                 # with self.datafile() as f:
                 #     f.append('time_trace', ch1_pts)
                 ss_data = zeros((len(self.expt_pts), num_bins))
                 sss_data = zeros((len(self.expt_pts), num_bins))
 
-                ss1, ss2 = adc.acquire_singleshot_data(prep_function=None, start_function=None,
+                ss1, ss2 = adc.acquire_singleshot_data(prep_function=self.awg.stop_and_prep, start_function=self.awg.run,
                                                        excise=self.cfg['readout']['window'])
+
+                with self.datafile() as f:
+                    f.append_line('ss1', ss1)
+                    f.append_line('ss2', ss2)
 
 
                 ss1 = reshape(ss1, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
-                histo_range = (ss1.min() / 1.5, ss1.max() * 1.5)
+                histo_range = (ss1.min() / 1.05, ss1.max() * 1.05)
                 for jj, ss in enumerate(ss1):
                     sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
                     ss_data[jj] += sshisto
                     sss_data[jj] = cumsum(ss_data[[jj]])
                     self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
                     self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
+
+                # ss2 = reshape(ss2, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+                # histo_range = (ss2.min() / 1.05, ss2.max() * 1.05)
+                # for jj, ss in enumerate(ss2):
+                #     sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
+                #     ss_data[jj] += sshisto
+                #     sss_data[jj] = cumsum(ss_data[[jj]])
+                #     self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
+                #     self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
 
                 self.plotter.plot_xy('contrast', ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
                 max_contrast_data[yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()

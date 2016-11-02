@@ -23,7 +23,7 @@ class RabiSequence(QubitPulseSequence):
         if self.expt_cfg['sweep_amp']:
             self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
         else:
-            self.psb.append('q','general', self.pulse_type, amp=self.pulse_cfg['gauss']['a'], length=pt,freq=self.expt_cfg['iq_freq'])
+            self.psb.append('q','general', self.pulse_type, amp=self.pulse_cfg[self.pulse_type]['a'], length=pt,freq=self.expt_cfg['iq_freq'])
 
 
 
@@ -170,7 +170,9 @@ class T1Sequence(QubitPulseSequence):
 
     def define_pulses(self,pt):
         # self.psb.append('q','general', 'square', amp=1, length=16,freq=150e6)
+
         self.psb.append('q','pi', self.pulse_type)
+        # self.psb.idle(200)
         self.psb.idle(pt)
 
 
@@ -427,6 +429,7 @@ class RabiRamseyT1FluxSweepSequence(QubitPulseSequence):
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.exp = self.extra_args['exp']
+
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses, **kwargs)
 
 

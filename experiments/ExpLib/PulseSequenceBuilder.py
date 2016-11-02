@@ -135,7 +135,7 @@ class PulseSequenceBuilder():
                     phase = 0
                 if addphase != None:
                     phase = addphase
-                    
+
             pulse_span_length = ap.get_pulse_span_length(self.pulse_cfg, type, length)
             if self.flux_pulse_started:
                 self.pulse_span_length_list_temp.append(pulse_span_length)
@@ -404,9 +404,9 @@ class PulseSequenceBuilder():
                                                     ii] - self.tek2_trigger_delay,
                                                 self.card_trig_width)
 
-        # np.save("fluxwaveform_chirp_mode_9_250ns",self.waveforms_qubit_flux[50])
+        # np.save("q_c_mm_ef_ramsey3",self.waveforms_qubit_flux[0])
         # print np.shape(self.ftpts)
-        # np.save("time_chirp_mode_9_250ns",self.ftpts)
+        # np.save("time3",self.ftpts)
 
         return (self.markers_readout,
                 self.markers_card,

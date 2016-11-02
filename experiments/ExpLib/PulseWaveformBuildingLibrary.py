@@ -93,6 +93,7 @@ def flux_square_phase_fix(ftpts,pulse_location,pulse,pulse_cfg, mm_target_info, 
             dc_offset = mm_target_info['dc_offset_freq_ef']
             shifted_frequency = mm_target_info['flux_pulse_freq_ef']
             bare_frequency = shifted_frequency+dc_offset
+            # print mm_target_info['ramp_sigma_ef']
             waveforms_qubit_flux = ap.sideband(ftpts,
                                              ap.square(ftpts, pulse.amp, pulse_location-pulse.length-0.5*(pulse.span_length - pulse.length) , pulse.length, mm_target_info['ramp_sigma_ef']), np.zeros(len(ftpts)),freq=bare_frequency, phase= 360*(-dc_offset + pulse.add_freq)/1e9*(ftpts-pulse_location)+pulse.phase,offset=False)[0]
 

@@ -34,6 +34,12 @@ class QubitPulseSequence(PulseSequence):
         self.total_flux_pulse_span_length_list = []
 
         for ii, pt in enumerate(self.expt_pts):
+
+            ## sideband cool
+            if 'sb_cool' in kwargs:
+                if kwargs['sb_cool']:
+                    self.psb.append('q,mm'+str(10),'pi_ge')
+
             # obtain pulse sequence for each experiment point
             define_pulses(pt)
             self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
@@ -45,8 +51,14 @@ class QubitPulseSequence(PulseSequence):
 
             for jj, pt in enumerate(calibration_pts):
                 if jj ==0:
+                    if 'sb_cool' in kwargs:
+                        if kwargs['sb_cool']:
+                            self.psb.append('q,mm'+str(10),'pi_ge')
                     self.psb.idle(10)
                 if jj ==1:
+                    if 'sb_cool' in kwargs:
+                        if kwargs['sb_cool']:
+                            self.psb.append('q,mm'+str(10),'pi_ge')
                     self.psb.append('q','cal_pi', self.pulse_type)
                 self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
                 total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())

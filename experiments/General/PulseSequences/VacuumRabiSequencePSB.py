@@ -149,7 +149,7 @@ class MultimodeVacuumRabiSequencePSB(PulseSequence):
         # seq 1 g1
 
         self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q,mm'+str(self.mode),'pi_ge')
+        # self.psb.append('q,mm'+str(self.mode),'pi_ge')
 
         self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
         total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
@@ -166,19 +166,24 @@ class MultimodeVacuumRabiSequencePSB(PulseSequence):
         self.total_flux_pulse_span_length_list.append(self.psb.get_total_flux_pulse_span_length())
         ####
 
-        # seq 3 e0
+        # seq 3 e1 or f0
 
         self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q,mm'+str(self.mode),'pi_ge')
-        self.psb.append('q','pi', self.pulse_type)
+        self.psb.append('q','pi_q_ef', self.pulse_type)
+
+        # self.psb.append('q,mm'+str(self.mode),'pi_ge')
+        # self.psb.append('q','pi', self.pulse_type)
 
         self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
         total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
         self.total_flux_pulse_span_length_list.append(self.psb.get_total_flux_pulse_span_length())
         ####
 
-        # seq 4 e1
+        # seq 4 e0
 
+        # self.psb.append('q','pi', self.pulse_type)
+
+        # self.psb.append('q,mm'+str(self.mode),'pi_ge')
         self.psb.append('q','pi', self.pulse_type)
 
         self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())

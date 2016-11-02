@@ -310,11 +310,20 @@ class MultimodeT1Experiment(QubitPulseSequenceExperiment):
                                                     PulseSequence=MultimodeT1Sequence, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
 
+        if 'mode' in kwargs:
+            self.id = self.extra_args['mode']
+        else:
+            self.id = self.cfg[self.expt_cfg_name]['id']
+
     def pre_run(self):
         self.tek2 = InstrumentManager()["TEK2"]
 
     def post_run(self, expt_pts, expt_avg_data):
-        pass
+        print "Analyzing mode T1 Data"
+        fitdata = fitexp(expt_pts, expt_avg_data)
+        print "T1: " + str(fitdata[3]) + " ns"
+        self.cfg['multimodes'][self.id]['T1'] = fitdata[3]
+
 
 
 class MultimodeEntanglementExperiment(QubitPulseSequenceExperiment):
@@ -1093,7 +1102,7 @@ class MultimodeProcessTomographyPhaseSweepExperiment(QubitPulseSequenceExperimen
         self.state_num = self.extra_args['state_num']
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequence, pre_run=self.pre_run,
+                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequenceDebug, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
 
     def pre_run(self):
@@ -1155,7 +1164,7 @@ class Multimode_State_Dep_Shift_Experiment(QubitPulseSequenceExperiment):
 
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=Multimode_State_Dep_Shift_Sequenceb, pre_run=self.pre_run,
+                                                    PulseSequence=Multimode_State_Dep_Shift_Sequence, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
 
 
@@ -1263,4 +1272,55 @@ class Multimode_State_Dep_Shift_Experiment(QubitPulseSequenceExperiment):
                 self.cfg['multimodes'][self.mode]['shift_ef'] =   self.offset_freq
 
 
+class MultimodeEchoSidebandExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='Multimode_Echo_Sideband_Experiment', config_file='..\\config.json', **kwargs):
+
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeEchoSidebandSequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+
+        if 'mode' in kwargs:
+            self.mode = self.extra_args['mode']
+        else:
+            self.mode = self.cfg[self.expt_cfg_name]['id']
+
+        if 'exp' in kwargs:
+            self.exp = self.extra_args['exp']
+        else:
+            self.exp = self.cfg[self.expt_cfg_name]['exp']
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+
+        if self.exp ==2:
+            pass
+        else:
+            if self.exp == 0:
+
+                print "pi/2 + pi/2(dphi) sideband expt for mode: %s" %(self.mode)
+                expected_period = 360.0
+
+            else:
+
+                print "pi/2 + pi(dphi) +  pi/2(phi_0) sideband expt for mode: %s" %(self.mode)
+                expected_period = 180.0
+
+
+            find_phase = 'min' #'max' or 'min'
+            x_at_extremum = sin_phase(expt_pts,expt_avg_data,expected_period,find_phase)
+
+            if self.exp == 0:
+                self.cfg['multimodes'][self.mode]['piby2_piby2_off_phase_0'] = x_at_extremum
+                print "Offset Phase = %s" %(x_at_extremum)
+            else:
+                self.cfg['multimodes'][self.mode]['piby2_piby2_off_phase_1'] =x_at_extremum
+                print "Offset Phase = %s" %(x_at_extremum)
 

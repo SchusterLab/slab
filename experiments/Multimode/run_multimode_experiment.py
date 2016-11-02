@@ -25,6 +25,9 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
         #Multimode ef Rabi sweep experiment
         expt=MultimodeRabiSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower()=='multimode_echo_sideband_experiment':
+        #Multimode ef Rabi sweep experiment
+        expt=MultimodeEchoSidebandExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_ef_rabi':
         #Do Multimode Rabi

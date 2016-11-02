@@ -121,7 +121,9 @@ class TelnetInstrument(Instrument):
         if self.enabled: self.tn.close()       
 #    def __del__(self):
 #        if self.enabled: self.tn.close()
-        
+
+
+import select
 class SocketInstrument(Instrument):
     default_port=23
     def __init__(self,name,address='',enabled=True,timeout=10, recv_length=1024):
@@ -146,8 +148,34 @@ class SocketInstrument(Instrument):
     def write(self, s):
         if self.enabled: self.socket.send(s+self.term_char)
         
-    def read(self):
-        if self.enabled: return self.socket.recv(self.recv_length)
+    # def read(self):
+    #     if self.enabled: return self.socket.recv(self.recv_length)
+
+
+    def query(self, s):
+        self.write(s)
+        time.sleep(self.query_sleep)
+        return ''.join(self.read_line())
+
+    def read(self, timeout=None):
+        if timeout == None: timeout = self.timeout
+        ready = select.select([self.socket], [], [], timeout)
+        if (ready[0] and self.enabled):
+            return self.socket.recv(self.recv_length)
+
+    def read_line(self, eof_char='\n', timeout=None):
+        done = False
+        while done is False:
+            buffer_str = self.read(timeout)
+            # print "buffer_str", [buffer_str]
+            if buffer_str is None:
+                pass # done = True
+            elif buffer_str[-len(eof_char):] == eof_char:
+                done = True
+                yield buffer_str
+            else:
+                yield buffer_str
+
 
 #    def __del__(self):
 #        if self.enabled: self.socket.close()

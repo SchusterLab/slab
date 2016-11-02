@@ -55,7 +55,7 @@ def run_experiment(expt_name,lp_enable = True, **kwargs):
     if expt_name.lower() == 'ramsey':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import RamseyExperiment
         # Do Ramsey Experiment
-        expt = RamseyExperiment(path=datapath, liveplot_enabled = lp_enable, trigger_period=0.0002, **kwargs)
+        expt = RamseyExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower() == 'spin_echo':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import SpinEchoExperiment
@@ -97,6 +97,10 @@ def run_experiment(expt_name,lp_enable = True, **kwargs):
         # Do EF T1 Experiment
         expt = TomographyExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 'rabi_ramsey_t1_flux_sweep':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import RabiRamseyT1FluxSweepExperiment
+        # Do EF T1 Experiment
+        expt = RabiRamseyT1FluxSweepExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower() == 'randomized_benchmarking':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import SingleQubitRandomizedBenchmarkingExperiment

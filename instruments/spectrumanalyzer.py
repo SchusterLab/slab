@@ -246,11 +246,15 @@ if __name__ == '__main__':
     print"Taking data"
     data = sa.take_one()
     sa.set_default_state()
+    print "Finished"
     #print data
     from matplotlib.pyplot import *
     #data=sa.read_data()
+
     plot(data[0], data[1])
     show()
+
+
     #print "Setting window"
 
     #from guiqwt.pyplot import *
