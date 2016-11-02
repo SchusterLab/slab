@@ -321,13 +321,17 @@ class RedPitaya(ClientMemory):
     asgb = InterfaceDescriptor(ASG,channel='B')
 
 
-def setup_redpitaya_adc(awg,num_experiments,samples=1024,window=(80,8000),shots=2**14,plot_data=False):
+def setup_redpitaya_adc(awg,num_experiments,samples=500,window=(80,8000),shots=2**14,plot_data=False):
 
     start = int(window[0]/8) #ns to sample index (the factor 8 comes from time (ns) to take an oscillation of 125MHz)
     stop = int(window[1]/8) #ns to sample index
 
+    samples = stop+1
+
     print "Start: " + str(start)
     print "Stop: " + str(stop)
+
+    print "Samples: " + str(samples)
 
     ### Test Single Shot Mode
     rp = RedPitaya(connect(REDPITAYA_IP, port=18861))
