@@ -7,7 +7,7 @@ from slab.experiments.Multimode.PulseSequences.MultimodePulseSequence import *
 from numpy import mean, arange
 from tqdm import tqdm
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
-from slab.instruments.pulseblaster.pulseblaster import *
+# from slab.instruments.pulseblaster.pulseblaster import *
 from slab.instruments.RedPitaya.RedPitayaADC import *
 
 
@@ -168,7 +168,7 @@ class QubitPulseSequenceExperiment(Experiment):
             else:
                 num_experiments = len(self.pulse_sequence.expt_pts)+2
 
-            testing_redpitaya = True
+            testing_redpitaya = False
 
             if not testing_redpitaya:
                 expt_avg_data = setup_redpitaya_adc(m8195a,num_experiments=num_experiments,window=self.cfg['readout']['window'],shots=self.cfg[self.expt_cfg_name]['averages'],plot_data=True)

@@ -4,7 +4,7 @@ from slab.instruments.awg.PulseSequence import *
 from slab.experiments.ExpLib import awgpulses as ap
 from numpy import arange, linspace
 from slab.experiments.ExpLib.PulseWaveformBuildingLibrary import *
-from slab.instruments.pulseblaster.pulseblaster import start_pulseblaster
+# from slab.instruments.pulseblaster.pulseblaster import start_pulseblaster
 import math
 from liveplot import LivePlotClient
 
@@ -248,7 +248,7 @@ class PulseSequenceBuilder():
         self.origin = roundup100(self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer))
         self.uses_tek2 = False
         awg_trig_len=100
-        start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin + self.measurement_delay, self.card_trig_width, self.measurement_width)
+        # start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin + self.measurement_delay, self.card_trig_width, self.measurement_width)
         for ii in range(len(pulse_sequence_matrix)):
             self.markers_readout[ii] = ap.square(self.mtpts, 1, self.origin + self.measurement_delay,
                                                  self.measurement_width)
