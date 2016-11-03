@@ -171,7 +171,7 @@ class QubitPulseSequenceExperiment(Experiment):
             testing_redpitaya = False
 
             if not testing_redpitaya:
-                expt_avg_data = setup_redpitaya_adc(m8195a,num_experiments=num_experiments,window=self.cfg['readout']['window'],shots=self.cfg[self.expt_cfg_name]['averages'],plot_data=True)
+                expt_avg_data = setup_redpitaya_adc(m8195a,num_experiments=num_experiments,window=self.cfg['readout']['window'],shots=self.cfg[self.expt_cfg_name]['averages'],plot_data=self.cfg['readout']['plot'])
 
             ## This is for testing the redpitaya behaviour
             if testing_redpitaya:
