@@ -32,6 +32,21 @@ def run_experiment(expt_name,lp_enable = True, **kwargs):
         # Do Rabi Experiment
         expt = RabiExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 'sideband_rabi':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import SidebandRabiExperiment
+        # Do Rabi2 Experiment
+        expt = SidebandRabiExperiment(path=datapath, liveplot_enabled= lp_enable, **kwargs)
+
+    if expt_name.lower() == 'cavity_t1':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import CavityT1Experiment
+        # Do T1 Experiment
+        expt = CavityT1Experiment(path=datapath, liveplot_enabled= lp_enable, **kwargs)
+
+    if expt_name.lower() == 'rabi2':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import Rabi2Experiment
+        # Do Rabi2 Experiment
+        expt = Rabi2Experiment(path=datapath, liveplot_enabled= lp_enable, **kwargs)
+
     if expt_name.lower() == 'histogram':
         from slab.experiments.General.HistogramExperiment import HistogramExperiment
         # Do Histogram Experiment

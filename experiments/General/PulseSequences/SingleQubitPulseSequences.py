@@ -39,10 +39,58 @@ class Rabi2Sequence(QubitPulseSequence):
     def define_pulses(self,pt):
         if self.expt_cfg['sweep_amp']:
             self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
-            self.psb.append('q2','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
+            #self.psb.append('q2','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
         else:
             self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'])
-            self.psb.append('q2','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'])
+            #self.psb.append('q2','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'])
+
+class SidebandRabiSequence(QubitPulseSequence):
+
+    def __init__(self, name, cfg, expt_cfg, **kwargs):
+        self.pulse_cfg = cfg['pulse_info']
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+
+        if 'flux_freq' in self.extra_args:
+            self.flux_freq = self.extra_args['flux_freq']
+        else:
+            self.flux_freq = self.expt_cfg['freq']
+        #self.flux_freq = self.extra_args['flux_freq']
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses, **kwargs)
+
+
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pi_pulse_type =  self.expt_cfg['pi_pulse_type']
+        self.sideband_pulse_type = self.expt_cfg['sideband_pulse_type']
+
+    def define_pulses(self,pt):
+        if self.expt_cfg['sweep_amp']:
+            self.psb.append('q', 'pi', self.pi_pulse_type)
+            self.psb.append('q2','general', self.sideband_pulse_type, amp=pt, length=self.expt_cfg['length'], freq=self.flux_freq)
+        else:
+            self.psb.append('q', 'pi', self.pi_pulse_type)
+            self.psb.append('q2','general', self.sideband_pulse_type, amp=self.expt_cfg['a'], length=pt, freq=self.flux_freq)
+
+class CavityT1Sequence(QubitPulseSequence):
+    def __init__(self,name, cfg, expt_cfg,**kwargs):
+        self.pulse_cfg = cfg['pulse_info']
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
+
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pulse_type =  self.expt_cfg['pulse_type']
+
+    def define_pulses(self,pt):
+        self.psb.append('q', 'pi', self.pulse_type)
+        self.psb.append('q2', 'sideband_pi', self.pulse_type)
+        self.psb.idle(pt)
+        self.psb.append('q2', 'sideband_pi', self.pulse_type)
 
 
 class RamseySequence(QubitPulseSequence):

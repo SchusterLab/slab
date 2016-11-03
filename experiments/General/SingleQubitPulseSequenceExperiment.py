@@ -87,7 +87,21 @@ class Rabi2Experiment(QubitPulseSequenceExperiment):
                                               post_run=self.post_run, **kwargs)
 
     def pre_run(self):
-        self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg[self.expt_cfg_name]['iq_freq'])
+        #self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg[self.expt_cfg_name]['iq_freq'])
+        pass
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
+
+class SidebandRabiExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='Sideband_Rabi', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=SidebandRabiSequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+    def pre_run(self):
+        #self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg[self.expt_cfg_name]['iq_freq'])
+        pass
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
@@ -108,6 +122,18 @@ class T1Experiment(QubitPulseSequenceExperiment):
         fitdata = fitexp(expt_pts, expt_avg_data)
         print "T1: " + str(fitdata[3]) + " ns"
 
+class CavityT1Experiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='Cavity_T1', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=CavityT1Sequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+    def pre_run(self):
+        #self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg[self.expt_cfg_name]['iq_freq'])
+        pass
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
 
 class RamseyExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Ramsey', config_file='..\\config.json', **kwargs):
