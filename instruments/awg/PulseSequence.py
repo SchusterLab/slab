@@ -82,7 +82,7 @@ class PulseSequence:
 
         waveform_matrix = np.array([waveforms_qubit_drive,waveforms_qubit_2,waveforms_readout,waveforms_card])
 
-        upload_M8195A_sequence(waveform_matrix)
+        upload_M8195A_sequence(waveform_matrix,awg)
 
     def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]

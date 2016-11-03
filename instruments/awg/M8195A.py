@@ -808,7 +808,7 @@ class M8195A(SocketInstrument):
 
 ## Setup AWG
 
-def setup_awg(m8195a,num_channels):
+def setup_awg(m8195a,num_channels,amplitudes):
     m8195a.stop_output()
     m8195a.set_factory_default()
 
@@ -825,6 +825,7 @@ def setup_awg(m8195a,num_channels):
 
     for ii in range(1,num_channels+1):
         m8195a.set_waveform_sample_source(ii,'EXT')
+        m8195a.set_amplitude(ii,amplitudes[ii-1])
 
 
 def define_segments(m8195a,waveform_matrix):
@@ -941,7 +942,11 @@ def get_sample_sequence(num_channels,segment_length,sequence_length,dt):
     return waveform_channel_array
 
 
-def upload_M8195A_sequence(waveform_matrix):
+def upload_M8195A_sequence(waveform_matrix,awg):
+
+    period_us = awg['period_us']
+    amplitudes = awg['amplitudes']
+
     m8195a = M8195A(address ='192.168.14.234:5025')
     m8195a.socket.setblocking(1)
 
@@ -951,7 +956,7 @@ def upload_M8195A_sequence(waveform_matrix):
     sequence_length = waveform_shape[1]
     segment_length = waveform_shape[2]
 
-    setup_awg(m8195a,num_channels=num_channels)
+    setup_awg(m8195a,num_channels=num_channels,amplitudes=amplitudes)
 
 
 
@@ -959,7 +964,7 @@ def upload_M8195A_sequence(waveform_matrix):
 
     # waveform_matrix = get_sample_sequence(4,segment_length,sequence_length,dt)
 
-    period = 1./(50*1e3) #s
+    period = period_us * 1e-6 #s
 
     # define_segments_test(m8195a,segment_length,sequence_length,dt)
 
