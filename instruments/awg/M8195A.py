@@ -740,7 +740,6 @@ class M8195A(SocketInstrument):
         self.write(':TRAC%d:IMP %d,%s,%s,%s,%s,%d,%s' %(channel,segment_id,file_name,data_type,marker_flag,padding,init_value,ignore_header_parameters))
 
     def set_segment_data_from_bin_file(self,channel,segment_id,file_name):
-        print ':TRAC%d:IMP %d,%s,%s' %(channel,segment_id,file_name,'BIN8')
         self.write(':TRAC%d:IMP %d,%s,%s, IONLY, ON, ALEN' %(channel,segment_id,file_name,'BIN8'))
 
     def delete_segment(self,channel,segment_id):
@@ -850,7 +849,6 @@ def define_segments(m8195a,waveform_matrix):
     print '\n'
 
 
-# TODO: The binary file loading is not working yet.
 def define_segments_binary(m8195a,waveform_matrix):
 
     waveform_shape = waveform_matrix.shape
