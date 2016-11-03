@@ -184,16 +184,20 @@ class QubitPulseSequenceExperiment(Experiment):
 
                 print "correct percent: " + str(correct_counter/float(repeat))
 
-
             if self.data_file != None:
-                    self.slab_file = SlabFile(self.data_file)
+                self.slab_file = SlabFile(self.data_file)
+
+                with self.slab_file as f:
+                    f.append_line('expt_avg_data', expt_avg_data)
+                    f.append_line('expt_pts', self.expt_pts)
+                    f.close()
             else:
                 self.slab_file = self.datafile()
 
-            with self.slab_file as f:
-                f.add('expt_avg_data', expt_avg_data)
-                f.add('expt_pts', self.expt_pts)
-                f.close()
+                with self.slab_file as f:
+                    f.add('expt_avg_data', expt_avg_data)
+                    f.add('expt_pts', self.expt_pts)
+                    f.close()
 
         else:
             expt_data = None
