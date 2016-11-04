@@ -18,7 +18,7 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,card_trig_len,r
 
     # time settings
     unit_inst_time = 10 # ns
-    idle_unit_inst_time = 100  # ns
+    idle_unit_inst_time = 10000  # ns
     exp_period = exp_period_ns
     #exp_period = 200*1000 # 100us
 
