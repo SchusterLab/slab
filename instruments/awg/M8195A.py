@@ -524,16 +524,10 @@ class M8195A(SocketInstrument):
             raise Exception('M8195A: Invalid reference source')
 
     def set_reference_clock_frequency(self,value):
-        if self.get_reference_source() == 'EXT':
-            self.write(':ROSC:FREQ %f' %value)
-        else:
-            raise Exception('M8195A: Not in external reference source')
+        self.write(':ROSC:FREQ %f' %value)
 
     def get_reference_clock_frequency(self):
-        if self.get_reference_source() == 'EXT':
-            return self.query(':ROSC:FREQ?')
-        else:
-            raise Exception('M8195A: Not in external reference source')
+        return self.query(':ROSC:FREQ?')
 
     def set_reference_clock_range(self,value):
         if self.get_reference_source() == 'EXT':
@@ -826,6 +820,10 @@ def setup_awg(m8195a,num_channels,amplitudes):
     for ii in range(1,num_channels+1):
         m8195a.set_waveform_sample_source(ii,'EXT')
         m8195a.set_amplitude(ii,amplitudes[ii-1])
+
+
+    m8195a.set_reference_clock_frequency(10e6)
+    m8195a.set_reference_source('EXT')
 
 
 def define_segments(m8195a,waveform_matrix):
