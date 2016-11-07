@@ -64,7 +64,7 @@ class SidebandRabiSequence(QubitPulseSequence):
         self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
 
     def define_parameters(self):
-        self.pi_pulse_type =  self.expt_cfg['pi_pulse_type']
+        self.pi_pulse_type =  self.expt_cfg['pulse_type']
         self.sideband_pulse_type = self.expt_cfg['sideband_pulse_type']
 
     def define_pulses(self,pt):

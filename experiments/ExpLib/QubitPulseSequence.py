@@ -13,6 +13,8 @@ class QubitPulseSequence(PulseSequence):
     def __init__(self, name, cfg, expt_cfg, define_points, define_parameters, define_pulses, **kwargs):
 
         self.expt_cfg = expt_cfg
+        self.pulse_type = expt_cfg['pulse_type']
+
         define_points()
         define_parameters()
         sequence_length = len(self.expt_pts)
