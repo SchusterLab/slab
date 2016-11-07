@@ -89,7 +89,7 @@ def run_seq_experiment(expt_name,lp_enable=True):
         # start = kwargs['start']
         prefix = expt_name.lower()
         data_file = get_data_filename(prefix)
-        drive_freq_pts = arange(0.96e9, 1.035e9, 2e6)
+        drive_freq_pts = arange(0.35e9, 0.45e9, 1e6)
         for ii, drive_freq in enumerate(drive_freq_pts):
             seq_exp.run(('Sideband_Rabi', {"flux_freq": drive_freq, "data_file": data_file}))
 

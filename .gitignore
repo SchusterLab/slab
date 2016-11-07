@@ -13,3 +13,4 @@ instruments/awg/.ipynb_checkpoints/test M8195A-checkpoint.ipynb
 instruments/instruments.cfg
 instruments/awg/test_m8195a
 *.bin8
+*.cfg
