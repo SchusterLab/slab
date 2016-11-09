@@ -110,7 +110,7 @@ class MultimodeCalibrateOffsetSequence(QubitPulseSequence):
         self.exp = self.extra_args['exp']
         self.mode = self.extra_args['mode']
         self.dc_offset_guess =  self.extra_args['dc_offset_guess']
-        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool=True)
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool=False)
 
     def define_points(self):
         self.expt_pts = arange(self.expt_cfg[self.exp]['start'], self.expt_cfg[self.exp]['stop'], self.expt_cfg[self.exp]['step'])
@@ -161,7 +161,7 @@ class MultimodeEchoSidebandSequence(QubitPulseSequence):
             self.modelist = arange(11)
 
 
-        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = True)
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = False)
 
     def define_points(self):
 
@@ -356,11 +356,10 @@ class MultimodeCalibrateEFSidebandSequence(QubitPulseSequence):
             self.add_freq = 0
 
         self.dc_offset_guess_ef =  self.extra_args['dc_offset_guess_ef']
-        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool=True)
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool=False)
 
     def define_points(self):
         self.expt_pts = arange(self.expt_cfg[self.exp]['start'], self.expt_cfg[self.exp]['stop'], self.expt_cfg[self.exp]['step'])
-        self.expt_pts = arange(-300,300,6.0)
 
 
     def define_parameters(self):
@@ -402,36 +401,17 @@ class MultimodeCalibrateEFSidebandSequence(QubitPulseSequence):
             else:
                 self.psb.append('q','pi', self.pulse_type)
             self.psb.append('q','pi_q_ef')
+
         else:
-
-            # self.psb.append('q','pi', self.pulse_type)
-            # self.psb.append('q','half_pi_q_ef')
-            # self.psb.append('q,mm'+str(self.id),'pi_ef')
-            # self.psb.idle(pt)
-            # self.psb.append('q,mm'+str(self.id),'pi_ef', phase = 360.0*self.phase_freq*pt/(1.0e9))
-            # self.psb.append('q','half_pi_q_ef')
-            # self.psb.append('q','pi', self.pulse_type)
-            # self.psb.append('q','pi_q_ef')
-
 
             self.psb.append('q','pi', self.pulse_type)
             self.psb.append('q','half_pi_q_ef')
             self.psb.append('q,mm'+str(self.id),'pi_ef')
-            # self.psb.append('q,mm'+str(self.id),'2pi_ef',phase=pt)
             self.psb.append('q,mm'+str(self.id),'pi_ef', phase = pt)
             self.psb.append('q','half_pi_q_ef')
             self.psb.append('q','pi', self.pulse_type)
             self.psb.append('q','pi_q_ef')
 
-            # self.psb.append('q','pi', self.pulse_type)
-            # self.psb.append('q','half_pi_q_ef')
-            # self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.multimode_cfg[self.id]['a_ef'], length=self.multimode_cfg[self.id]['flux_pi_length_ef'],freq=self.multimode_cfg[self.id]['flux_pulse_freq_ef'])
-            # self.psb.idle(pt)
-            # self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.multimode_cfg[self.id]['a_ef'], length=self.multimode_cfg[self.id]['flux_pi_length_ef'],freq=self.multimode_cfg[self.id]['flux_pulse_freq_ef'],phase=360.0*self.phase_freq*pt/(1.0e9))
-            # self.psb.append('q','half_pi_q_ef')
-            # self.psb.append('q','pi', self.pulse_type)
-            # if self.expt_cfg['cal_ef']:
-            #     self.psb.append('q','pi_q_ef')
 
 
 class MultimodeEFRamseySequence(QubitPulseSequence):
@@ -499,8 +479,6 @@ class MultimodeRabiSweepSequence(QubitPulseSequence):
 
     def define_pulses(self,pt):
         self.psb.append('q','pi', self.pulse_type)
-        #self.psb.append('q','half_pi', self.pulse_type)
-        #self.psb.append('q,mm0','general', self.flux_pulse_type, amp=self.expt_cfg['a'], length=pt)
         self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=pt,freq=self.flux_freq)
 
 class MultimodeDCOffsetSequence(QubitPulseSequence):
@@ -527,6 +505,10 @@ class MultimodeDCOffsetSequence(QubitPulseSequence):
             self.amp = self.extra_args['amp']
             self.freq = self.extra_args['freq']
 
+        if 'sideband' in self.extra_args:
+            self.sideband = self.extra_args['sideband']
+        else:
+            self.sideband = "ef"
         # self.pulse_cfg = cfg['pulse_info']
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
 
@@ -538,9 +520,17 @@ class MultimodeDCOffsetSequence(QubitPulseSequence):
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
 
     def define_pulses(self,pt):
-        self.psb.append('q','half_pi', self.pulse_type)
-        self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=pt,freq=self.freq)
-        self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
+
+        if self.sideband == "ge":
+            self.psb.append('q','half_pi', self.pulse_type)
+            self.psb.append('q','pi_q_ef')
+            self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=pt,freq=self.freq)
+            self.psb.append('q','pi_q_ef')
+            self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
+        else:
+            self.psb.append('q','half_pi', self.pulse_type)
+            self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=pt,freq=self.freq)
+            self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
 
 
 class MultimodeEFRabiSweepSequence(QubitPulseSequence):
@@ -1973,7 +1963,7 @@ class Multimode_Mode_Mode_CNOT_V2_Offset_Sequence(QubitPulseSequence):
             self.extra_args[key] = value
 
 
-        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses, sb_cool = True)
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses, sb_cool = False)
 
 
     def define_points(self):
@@ -2201,7 +2191,7 @@ class Multimode_Mode_Mode_CZ_V3_Offset_Sequence(QubitPulseSequence):
             sb_cool = True
 
 
-        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = True)
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = False)
 
 
     def define_points(self):
@@ -2416,7 +2406,7 @@ class Multimode_Mode_Mode_CZ_V3_Offset_Sequence_Debug(QubitPulseSequence):
             sb_cool = True
 
 
-        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = True)
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = False)
 
 
     def define_points(self):
@@ -2760,7 +2750,7 @@ class Multimode_Mode_Mode_CNOT_V3_Offset_Sequence(QubitPulseSequence):
         else:
             sb_cool = True
 
-        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = True)
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = False)
 
 
     def define_points(self):

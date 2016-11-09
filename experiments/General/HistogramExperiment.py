@@ -76,23 +76,23 @@ class HistogramExperiment(Experiment):
                     f.append_line('ss2', ss2)
 
 
-                ss1 = reshape(ss1, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
-                histo_range = (ss1.min() / 1.05, ss1.max() * 1.05)
-                for jj, ss in enumerate(ss1):
-                    sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
-                    ss_data[jj] += sshisto
-                    sss_data[jj] = cumsum(ss_data[[jj]])
-                    self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
-                    self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
-
-                # ss2 = reshape(ss2, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
-                # histo_range = (ss2.min() / 1.05, ss2.max() * 1.05)
-                # for jj, ss in enumerate(ss2):
+                # ss1 = reshape(ss1, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+                # histo_range = (ss1.min() / 1.05, ss1.max() * 1.05)
+                # for jj, ss in enumerate(ss1):
                 #     sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
                 #     ss_data[jj] += sshisto
                 #     sss_data[jj] = cumsum(ss_data[[jj]])
                 #     self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
                 #     self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
+
+                ss2 = reshape(ss2, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+                histo_range = (ss2.min() / 1.05, ss2.max() * 1.05)
+                for jj, ss in enumerate(ss2):
+                    sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
+                    ss_data[jj] += sshisto
+                    sss_data[jj] = cumsum(ss_data[[jj]])
+                    self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
+                    self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
 
                 self.plotter.plot_xy('contrast', ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
                 max_contrast_data[yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
