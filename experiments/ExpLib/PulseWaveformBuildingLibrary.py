@@ -110,9 +110,6 @@ def flux_square_phase_fix(ftpts,pulse_location,pulse,pulse_cfg, mm_target_info, 
                                                ap.square(ftpts, pulse.amp, pulse_location-pulse.length-0.5*(pulse.span_length - pulse.length) , pulse.length, mm_target_info['ramp_sigma_ef']), np.zeros(len(ftpts)),
                                               mm_target_info['flux_pulse_freq_ef'], pulse.phase,offset=False)[0]
 
-            # print "Goes to here"
-            # print  mm_target_info['flux_pulse_freq_ef']
-
         else:
             waveforms_qubit_flux = ap.sideband(ftpts,
                                    ap.square(ftpts, pulse.amp, pulse_location-pulse.length-0.5*(pulse.span_length - pulse.length) , pulse.length, mm_target_info['ramp_sigma']), np.zeros(len(ftpts)),

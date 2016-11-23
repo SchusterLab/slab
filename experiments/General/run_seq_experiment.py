@@ -19,7 +19,7 @@ def get_data_filename(prefix):
 
 def frequency_stabilization(seq_exp):
     seq_exp.run('Ramsey',{})
-    if (abs(seq_exp.expt.offset_freq) < 200e3):
+    if (abs(seq_exp.expt.offset_freq) < 50e3):
         print "Frequency is within expected value. No further calibration required."
         pass
     else:

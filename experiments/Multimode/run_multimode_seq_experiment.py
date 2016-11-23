@@ -41,7 +41,7 @@ def multimode_pi_pi_phase_calibration(seq_exp,mode):
 
 def multimode_ef_dc_offset_recalibration(seq_exp, mode):
     # pulse_calibration(seq_exp)
-    seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'long_multimode_ef_ramsey','dc_offset_guess_ef':cfg['multimodes'][mode]['dc_offset_freq_ef'],'mode':mode,'update_config':False})
+    seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'long_multimode_ef_ramsey','dc_offset_guess_ef':cfg['multimodes'][mode]['dc_offset_freq_ef'],'mode':mode,'update_config':True})
 
 def multimode_ef_dc_offset_calibration(seq_exp, mode):
     # pulse_calibration(seq_exp)
@@ -81,8 +81,8 @@ def multimode_mode_mode_cnot_calibration(seq_exp, mode,mode2, data_file=None,dat
                 {'mode': mode,'mode2':mode2, 'offset_exp': 5, 'load_photon':True,'update_config': True })
 
 def multimode_mode_mode_cnot_calibration_v3(seq_exp, mode,mode2, data_file=None,data_file_2=None):
-    frequency_stabilization(seq_exp)
-    ef_frequency_calibration(seq_exp)
+    # frequency_stabilization(seq_exp)
+    # ef_frequency_calibration(seq_exp)
 
     seq_exp.run('multimode_mode_mode_cnot_v3_offset_experiment',
                 {'mode': mode,'mode2':mode2, 'offset_exp': 0, 'number':1, 'load_photon':False,'update_config': True,'data_file':data_file})
@@ -118,8 +118,8 @@ def multimode_mode_mode_cnot_test_v3(seq_exp, mode, mode2, offset_exp, load_phot
                     {'mode': mode,'mode2':mode2, 'offset_exp': 2, 'load_photon':True,'number':num,'update_config': True,'data_file':data_file})
 
 def multimode_mode_mode_cz_calibration_v3(seq_exp, mode,mode2, data_file=None,data_file_2=None):
-    pulse_calibration(seq_exp,phase_exp=False)
-    ef_frequency_calibration(seq_exp)
+    # pulse_calibration(seq_exp,phase_exp=False)
+    # ef_frequency_calibration(seq_exp)
 
     seq_exp.run('multimode_mode_mode_cz_v3_offset_experiment',
                 {'mode': mode,'mode2':mode2, 'offset_exp': 0, 'number':1, 'load_photon':False,'update_config': True,'data_file':data_file})
@@ -249,10 +249,10 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
 
     if expt_name.lower() == 'sequential_state_dep_shift_calibration':
-        modelist = arange(11)
+        modelist = array([1,6,9])
+        frequency_stabilization(seq_exp)
         for mode in modelist:
-            frequency_stabilization(seq_exp)
-            seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':0,'qubit_shift_ge':1,'qubit_shift_ef':0,'update_config':True})
+            seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':0,'qubit_shift_ge':1,'qubit_shift_ef':0,'update_config':True,'data_file':data_file})
 
     if expt_name.lower() == 'sequential_state_dep_qubit_pulse_calibration':
         modelist = array([0,1,3,4,5,6,7,9,10])
@@ -428,36 +428,43 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
 
     if expt_name.lower() == 'sequential_ef_pulse_calibration':
+        update_config = True
+        print "Update config = " +str(update_config)
         modelist = array([1,6,9])
         # modelist = array([1,6])
         # pulse_calibration(seq_exp)
         # ef_pulse_calibration(seq_exp)
         for mode in modelist:
-           seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'multimode_ef_rabi','dc_offset_guess_ef':0,'mode':mode,'sb_cool':False,'update_config':False,'data_file':data_file})
+           seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'multimode_ef_rabi','dc_offset_guess_ef':0,'mode':mode,'sb_cool':False,'update_config':update_config,'data_file':data_file})
 
 
     if expt_name.lower() == 'sequential_ef_dc_offset_calibration':
+        update_config = True
+        print "Update config = " +str(update_config)
         modelist = array([1,6,9])
 
         # pulse_calibration(seq_exp)
         # ef_pulse_calibration(seq_exp)
         for mode in modelist:
-            seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'short_multimode_ef_ramsey','dc_offset_guess_ef':0,'mode':mode,'update_config':True,'data_file':data_file})
+            seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'short_multimode_ef_ramsey','dc_offset_guess_ef':0,'mode':mode,'update_config':update_config,'data_file':data_file})
 
     if expt_name.lower() == 'sequential_ef_dc_offset_recalibration':
-
+        update_config = True
+        print "Update config = " +str(update_config)
         modelist = array([1,6,9])
 
         for mode in modelist:
-             seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'long_multimode_ef_ramsey','dc_offset_guess_ef':cfg['multimodes'][mode]['dc_offset_freq_ef'],'mode':mode,'update_config':True,'data_file':data_file})
+             seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'long_multimode_ef_ramsey','dc_offset_guess_ef':cfg['multimodes'][mode]['dc_offset_freq_ef'],'mode':mode,'update_config':update_config,'data_file':data_file})
 
     if expt_name.lower() == 'sequential_dc_offset_recalibration':
+        update_config = True
+        print "Update config = " +str(update_config)
         # modelist = array([0,1,2,3,4,5,6,7,8,9,10])
         modelist = array([1,6,9])
         # pulse_calibration(seq_exp)
         for mode in modelist:
             print "RE calibrating DC offset for mode: " +str(mode)
-            seq_exp.run('multimode_calibrate_offset',{'exp':'long_multimode_ramsey','dc_offset_guess':cfg['multimodes'][mode]['dc_offset_freq'],'mode':mode,'update_config':True,'data_file':data_file})
+            seq_exp.run('multimode_calibrate_offset',{'exp':'long_multimode_ramsey','dc_offset_guess':cfg['multimodes'][mode]['dc_offset_freq'],'mode':mode,'update_config':update_config,'data_file':data_file})
 
     if expt_name.lower() == 'sequential_multimode_t1':
         modelist = arange([1,6,9])
@@ -477,8 +484,8 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
     if expt_name.lower() == 'sequential_pi_pi_phase_calibration':
         # modelist = array([0,1,3,4,5,6,7,9,10])
-        modelist = array([0,1,5,6,9,10])
-        pulse_calibration(seq_exp,phase_exp=True)
+        modelist = array([1,6,9])
+        # pulse_calibration(seq_exp,phase_exp=True)
         for mode in modelist:
             seq_exp.run('multimode_pi_pi_experiment',{'mode':mode,'update_config':True,'data_file':data_file})
 
@@ -489,13 +496,17 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
         # freqspan = linspace(-10,20,31)
         # freqlist = array([1.7745, 2.295, 2.48076])*1e9
-        # amplist = array([0.8,0.4,0.75])
+        # amplist = array([0.4,0.2,0.375])
         # modelist = array([1,6,9])
 
-        freqspan = linspace(0,1000,1001)
-        freqlist = array([1.64])*1e9
-        amplist = array([0.4])
-        modelist = array([-1])
+        freqspan = linspace(-10,20,31)
+        freqlist = array([1.664, 1.828, 1.864, 1.944, 2.12, 2.360, 2.434, 2.582])*1e9
+        modelist = array([0, 2, 3, 4, 5, 7, 8, 10])
+        amplist = 0.4*ones(len(modelist))
+        # freqspan = linspace(0,1000,1001)
+        # freqlist = array([1.64])*1e9
+        # amplist = array([0.4])
+        # modelist = array([-1])
 
 
         for i in arange(len(modelist)):
@@ -508,11 +519,29 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
     if expt_name.lower() == 'multimode_ef_rabi_scan':
 
-        freqspan = linspace(-1,25,26)
-        freqlist = array([1.9854, 2.5104, 2.6862])*1e9
-        amplist = array([0.3,0.4,0.4])
-        modelist = array([1,6,9])
+        # freqspan = linspace(-1,25,26)
+        # freqlist = array([2.5104, 2.6862])*1e9
+        # amplist = array([0.4,0.4])
+        # modelist = array([6,9])
 
+        # freqspan = linspace(-12,12,25)
+        # freqlist = array([1.995, 2.51876, 2.69456])*1e9 -5e6
+        # amplist = array([0.15,0.2,0.2])
+        # modelist = array([1,6,9])
+        # freqspan = linspace(-12,12,25)
+        # freqlist = array([1.995])*1e9 -5e6
+        # amplist = array([0.1])
+        # modelist = array([1])
+
+        # freqspan = linspace(-15,15,31)
+        # freqlist = array([1.664, 1.828, 1.864, 1.944, 2.12, 2.360, 2.434, 2.582])*1e9 + 202.23e6
+        # modelist = array([0, 2, 3, 4, 5, 7, 8, 10])
+        # amplist = 0.2*ones(len(modelist))
+        #
+        freqspan = linspace(-15,15,31)
+        freqlist = array([1.864, 1.944, 2.12, 2.360, 2.434, 2.582])*1e9 + 202.23e6
+        modelist = array([ 3, 4, 5, 7, 8, 10])
+        amplist = 0.2*ones(len(modelist))
 
         for i in arange(len(modelist)):
 
@@ -523,10 +552,6 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                     seq_exp.run('multimode_ef_rabi_sweep',{'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
             else:
                 pass
-
-
-
-
 
 
     if expt_name.lower() == 'sequential_single_mode_rb':
@@ -612,36 +637,34 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
             seq_exp.run('multimode_two_resonator_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'tomography_num':tom_num,'state_num':kwargs['state_num'],'data_file':data_file})
 
     if expt_name.lower() == 'sequential_process_tomography':
+        update_config = True
+        print "Update config = " +str(update_config)
         # Changes input state; measures a given correlator
         id1 = kwargs['id1']
         id2 = kwargs['id2']
         idlist = array([id1,id2])
 
-        # if kwargs['recaclibrate_modes']:
-        #     pulse_calibration(seq_exp,phase_exp=True)
-        #     for id in idlist:
-        #         multimode_pulse_calibration(seq_exp,mode=id)
-        #     multimode_ef_pulse_calibration(seq_exp,mode=id1)
-        #     for id in idlist:
-        #         multimode_dc_offset_recalibration(seq_exp,mode=id)
-        #     multimode_ef_dc_offset_recalibration(seq_exp,mode=id1)
-        #     for id in idlist:
-        #         multimode_pi_pi_phase_calibration(seq_exp,mode=id)
-
-        # pulse_calibration(seq_exp,phase_exp=True)
+        frequency_stabilization(seq_exp)
+        pulse_calibration(seq_exp,phase_exp=True)
+        ef_frequency_calibration(seq_exp)
+        ef_pulse_calibration(seq_exp)
 
         for state_num in arange(16):
-            seq_exp.run('multimode_process_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':state_num,'gate_num':kwargs['gate_num'],'tomography_num':kwargs['tom_num'],'sb_cool':kwargs['sb_cool'],'data_file':data_file})
+            seq_exp.run('multimode_process_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':state_num,'gate_num':kwargs['gate_num'],'tomography_num':kwargs['tom_num'],\
+                                                                    'sb_cool':kwargs['sb_cool'],'phase_correct_cz':kwargs['phase_correct_cz'],'phase_correct_cnot':kwargs['phase_correct_cnot'],\
+                                                                    'sweep_final_sb':kwargs['sweep_final_sb'],'sweep_cnot':kwargs['sweep_cnot'],'update_config': kwargs['update_config'],'data_file':data_file})
 
     if expt_name.lower() == 'multimode_process_tomography_correlations':
         # Correlator for a given input
+        update_config = False
         id1 = kwargs['id1']
         id2 = kwargs['id2']
         state_num = kwargs['state_num']
         gate_num = kwargs['gate_num']
         tom_num = kwargs['tom_num']
         # pulse_calibration(seq_exp,phase_exp=True)
-        seq_exp.run('multimode_process_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':state_num,'gate_num':gate_num,'tomography_num':tom_num})
+        seq_exp.run('multimode_process_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':state_num,'gate_num':kwargs['gate_num'],'tomography_num':kwargs['tom_num'],'sb_cool':kwargs['sb_cool'],\
+                                                                    'phase_correct_cz':kwargs['phase_correct_cz'],'phase_correct_cnot':kwargs['phase_correct_cnot'],'sweep_final_sb':kwargs['sweep_final_sb'],'sweep_cnot':kwargs['sweep_cnot'],'update_config': kwargs['update_config']})
 
     if expt_name.lower() == 'sequential_process_tomography_correlations':
         # Correlator for a given input
@@ -695,14 +718,14 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         # modelist = array([1,6,9])
 
         freqspan = linspace(0,1000,1001)
-        freqlist = array([1.64])*1e9
-        amplist = array([0.4])
+        freqlist = array([1.64])*1e9 - 27.5e6
+        amplist = array([0.15])
         modelist = array([-1])
 
-        freqspan = linspace(-1,25,26)
-        freqlist = array([1.9854, 2.5104, 2.6862])*1e9
-        amplist = array([0.3,0.4,0.4])
-        modelist = array([1,6,9])
+        # freqspan = linspace(-1,25,26)
+        # freqlist = array([1.9854, 2.5104, 2.6862])*1e9
+        # amplist = array([0.3,0.4,0.4])
+        # modelist = array([1,6,9])
 
         for i in arange(len(modelist)):
             print "running DC offset scan around mode %s"%(modelist[i])
@@ -758,8 +781,10 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
     if expt_name.lower() == 'pi_pi_phase_test':
 
-        for time in arange(0,500,20):
-            seq_exp.run('multimode_pi_pi_experiment',{'mode':kwargs['mode'],'sweep_time':True,'time':time,'update_config':False})
+        for time in arange(0,300,10):
+            print "mode = " + str(kwargs['mode'])
+            print "sweep time = " + str(time) + " ns"
+            seq_exp.run('multimode_pi_pi_experiment',{'mode':kwargs['mode'],'sweep_time':True,'time':time,'update_config':False,"data_file":data_file})
 
 
     if expt_name.lower() == 'find_chirp_freq_experiment':

@@ -402,43 +402,6 @@ class MultimodeEntanglementScalingExperiment(QubitPulseSequenceExperiment):
 
 
 
-class MultimodeCPhaseTestsExperiment(QubitPulseSequenceExperiment):
-    def __init__(self, path='', prefix='Multimode_CPhase_Tests_Experiment', config_file='..\\config.json', **kwargs):
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeCPhaseTestsSequence, pre_run=self.pre_run,
-                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
-
-    def pre_run(self):
-        self.tek2 = InstrumentManager()["TEK2"]
-
-    def post_run(self, expt_pts, expt_avg_data):
-        pass
-
-class MultimodeCPhaseExperiment(QubitPulseSequenceExperiment):
-    def __init__(self, path='', prefix='Multimode_CPhase_Experiment', config_file='..\\config.json', **kwargs):
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeCPhaseSequence, pre_run=self.pre_run,
-                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
-
-    def pre_run(self):
-        self.tek2 = InstrumentManager()["TEK2"]
-
-    def post_run(self, expt_pts, expt_avg_data):
-        pass
-
-
-class MultimodeCNOTExperiment(QubitPulseSequenceExperiment):
-    def __init__(self, path='', prefix='Multimode_CNOT_Experiment', config_file='..\\config.json', **kwargs):
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeCNOTSequence, pre_run=self.pre_run,
-                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
-
-    def pre_run(self):
-        self.tek2 = InstrumentManager()["TEK2"]
-
-    def post_run(self, expt_pts, expt_avg_data):
-        pass
-
 
 class Multimode_Qubit_Mode_CZ_Offset_Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_qubit_mode_cz_offset', config_file='..\\config.json', **kwargs):
@@ -1110,6 +1073,84 @@ class MultimodeProcessTomographyPhaseSweepExperiment(QubitPulseSequenceExperimen
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
+
+
+class MultimodeProcessTomographyPhaseSweepExperimentNEW(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_process_tomography_phase_sweep', config_file='..\\config.json', **kwargs):
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+        self.tomography_num = self.extra_args['tomography_num']
+        self.state_num = self.extra_args['state_num']
+
+        if 'sweep_cnot' in self.extra_args:
+            self.sweep_cnot = self.extra_args['sweep_cnot']
+        else:
+            self.sweep_cnot = False
+
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequenceNEW, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+        if self.sweep_cnot:
+            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['min', 'int', 'mean', 'min', 'max', 'int', 'max', 'int', 'mean', 'mean', 'int', 'mean', 'max', 'int', 'mean'],
+                             ['int', 'min', 'mean', 'min', 'int', 'max', 'max', 'int', 'mean', 'mean', 'int', 'mean', 'int', 'max', 'mean'],
+                             ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int', 'mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['min', 'int', 'mean', 'int', 'mean', 'mean', 'int', 'min', 'max', 'int', 'max', 'mean', 'max', 'int', 'mean'],
+                             ['int', 'min', 'mean', 'int', 'mean', 'mean', 'int', 'min', 'int', 'max', 'max', 'mean', 'int', 'max', 'mean'],
+                             ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min', 'mean', 'mean', 'max', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
+                             ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
+
+        else:
+            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['min', 'int', 'mean', 'min', 'max', 'int', 'max', 'int', 'int','min', 'int', 'mean', 'max', 'int', 'mean'],
+                             ['int', 'min', 'mean', 'min', 'int', 'max', 'max', 'int', 'max','int', 'int', 'mean', 'int', 'max', 'mean'],
+                             ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int', 'mean','mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['min', 'int', 'mean', 'int', 'int', 'max', 'int', 'min', 'max','int', 'max', 'mean', 'max', 'int', 'mean'],
+                             ['int', 'min', 'mean', 'int', 'min', 'int', 'int', 'min', 'int','max', 'max', 'mean', 'int', 'max', 'mean'],
+                             ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min', 'mean','mean', 'max', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
+                             ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
+
+
+
+
+        pair_index = 0
+        if find_fit_list[self.state_num][self.tomography_num] == 'mean':
+            pass
+        else:
+            expected_period = 360.
+            find_phase = find_fit_list[self.state_num][self.tomography_num] #'max' or 'min'
+            x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+            print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(self.state_num,self.tomography_num,find_phase,x_at_extremum)
+
+            if self.sweep_cnot:
+                self.cfg['proc_tom_phases'][pair_index]['ef_phase_1'][self.state_num][self.tomography_num] = x_at_extremum
+            else:
+                self.cfg['proc_tom_phases'][pair_index]['ef_phase_0'][self.state_num][self.tomography_num] = x_at_extremum
+
+
 
 
 class MultimodeThreeModeCorrelationExperiment(QubitPulseSequenceExperiment):

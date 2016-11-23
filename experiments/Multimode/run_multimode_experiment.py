@@ -108,7 +108,7 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
         expt=MultimodeTwoResonatorTomographyPhaseSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_process_tomography_phase_sweep':
-        expt=MultimodeProcessTomographyPhaseSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+        expt=MultimodeProcessTomographyPhaseSweepExperimentNEW(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_three_mode_correlation_experiment':
         expt=MultimodeThreeModeCorrelationExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)

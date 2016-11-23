@@ -80,7 +80,7 @@ class PulseSequence:
             im[awg['name']].pre_load()
             #print "Sequence preloaded"
             ### TODO: Hack while S drive is down
-            ##path = r'C:\temp_awg_file'
+            # path = r'C:\temp_awg_file'
             ###
             im[awg['name']].load_sequence_file(os.path.join(path, file_prefix + '.awg'), force_reload=True)
             print "Sequence file uploaded to Tek5014"

@@ -312,6 +312,8 @@ def sin_phase(xdata,ydata,expected_period,find_phase):
         correction = 90.0*np.sign(fits[0])
     elif find_phase == 'min':
         correction = -90.0*np.sign(fits[0])
+    elif find_phase == 'int':
+        correction = 0
     else:
         raise NameError('What do you want from me?')
 
