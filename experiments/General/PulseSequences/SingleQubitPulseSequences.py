@@ -72,7 +72,7 @@ class SidebandRabiSequence(QubitPulseSequence):
             self.psb.append('q', 'pi', self.pi_pulse_type)
             self.psb.append('q2','general', self.sideband_pulse_type, amp=pt, length=self.expt_cfg['length'], freq=self.flux_freq)
         else:
-            self.psb.append('q', 'pi', self.pi_pulse_type)
+            #self.psb.append('q', 'pi', self.pi_pulse_type)
             self.psb.append('q2','general', self.sideband_pulse_type, amp=self.expt_cfg['a'], length=pt, freq=self.flux_freq)
 
 class CavityT1Sequence(QubitPulseSequence):
