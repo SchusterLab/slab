@@ -38,7 +38,8 @@ class PulseProbeExperiment(Experiment):
         print "Prep Instruments"
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
-        self.readout.set_ext_pulse(mod=True)
+        self.readout.set_ext_pulse(mod=self.cfg['readout']['mod'])
+        self.readout.set_output(True)
         self.readout_shifter.set_phase(self.cfg['readout']['start_phase']%360, self.cfg['readout']['frequency'])
 
 
