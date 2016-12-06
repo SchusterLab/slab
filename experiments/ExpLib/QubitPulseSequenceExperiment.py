@@ -90,10 +90,14 @@ class QubitPulseSequenceExperiment(Experiment):
         #     self.plotter.clear()
 
         print "Prep Instruments"
-        self.readout.set_frequency(self.readout_freq)
-        self.readout.set_power(self.cfg['readout']['power'])
-        self.readout.set_ext_pulse(mod=self.cfg['readout']['mod'])
-        self.readout.set_output(True)
+
+        try:
+            self.readout.set_frequency(self.readout_freq)
+            self.readout.set_power(self.cfg['readout']['power'])
+            self.readout.set_ext_pulse(mod=True)
+            self.readout.set_output(True)
+        except:
+            print "No readout found."
 
         try:
             self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (
@@ -107,7 +111,7 @@ class QubitPulseSequenceExperiment(Experiment):
             self.drive.set_ext_pulse(mod=False)
             self.drive.set_output(True)
         except:
-            print "Drive is not loaded"
+            print "No drive found"
 
         try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
@@ -146,70 +150,78 @@ class QubitPulseSequenceExperiment(Experiment):
         if self.pre_run is not None:
             self.pre_run()
 
-        if self.adc==None:
-            print "Prep Card"
-            adc = Alazar(self.cfg['alazar'])
-        else:
-            adc = self.adc
 
-        expt_data = None
-        current_data = None
-        for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['averages'] / 100))):
-            tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg_prep,
-                                                                    start_function=self.awg_run,
-                                                                    excise=self.cfg['readout']['window'])
+        TEST_REDPITAYA = True
 
-            mag = sqrt(ch1_pts**2+ch2_pts**2)
-            if not self.cfg[self.expt_cfg_name]['use_pi_calibration']:
+        if TEST_REDPITAYA:
+            self.awg_run()
 
-                if expt_data is None:
-                    if self.cfg['readout']['channel']==1:
-                        expt_data = ch1_pts
-                    elif self.cfg['readout']['channel']==2:
-                        expt_data = ch2_pts
+
+        if not TEST_REDPITAYA:
+            if self.adc==None:
+                print "Prep Card"
+                adc = Alazar(self.cfg['alazar'])
+            else:
+                adc = self.adc
+
+            expt_data = None
+            current_data = None
+            for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['averages'] / 100))):
+                tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg_prep,
+                                                                        start_function=self.awg_run,
+                                                                        excise=self.cfg['readout']['window'])
+
+                mag = sqrt(ch1_pts**2+ch2_pts**2)
+                if not self.cfg[self.expt_cfg_name]['use_pi_calibration']:
+
+                    if expt_data is None:
+                        if self.cfg['readout']['channel']==1:
+                            expt_data = ch1_pts
+                        elif self.cfg['readout']['channel']==2:
+                            expt_data = ch2_pts
+                    else:
+                        if self.cfg['readout']['channel']==1:
+                            expt_data = (expt_data * ii + ch1_pts) / (ii + 1.0)
+                        elif self.cfg['readout']['channel']==2:
+                            expt_data = (expt_data * ii + ch2_pts) / (ii + 1.0)
+
+
                 else:
                     if self.cfg['readout']['channel']==1:
-                        expt_data = (expt_data * ii + ch1_pts) / (ii + 1.0)
+                        zero_amp = mean(ch1_pts[-2])
+                        pi_amp = mean(ch1_pts[-1])
+                        current_data= (ch1_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
                     elif self.cfg['readout']['channel']==2:
-                        expt_data = (expt_data * ii + ch2_pts) / (ii + 1.0)
+                        zero_amp = mean(ch2_pts[-2])
+                        pi_amp = mean(ch2_pts[-1])
+                        current_data= (ch2_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
+                    if expt_data is None:
+                        expt_data = current_data
+                    else:
+                        expt_data = (expt_data * ii + current_data) / (ii + 1.0)
 
 
-            else:
-                if self.cfg['readout']['channel']==1:
-                    zero_amp = mean(ch1_pts[-2])
-                    pi_amp = mean(ch1_pts[-1])
-                    current_data= (ch1_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
-                elif self.cfg['readout']['channel']==2:
-                    zero_amp = mean(ch2_pts[-2])
-                    pi_amp = mean(ch2_pts[-1])
-                    current_data= (ch2_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
-                if expt_data is None:
-                    expt_data = current_data
+                expt_avg_data = mean(expt_data, 1)
+
+
+                # if self.liveplot_enabled:
+                #     self.plotter.plot_z(self.prefix + ' Data', expt_data.T)
+                #     self.plotter.plot_xy(self.prefix + ' XY', self.pulse_sequence.expt_pts, expt_avg_data)
+
+                # print ii * min(self.cfg[self.expt_cfg_name]['averages'], 100)
+
+                if self.data_file != None:
+                    self.slab_file = SlabFile(self.data_file)
                 else:
-                    expt_data = (expt_data * ii + current_data) / (ii + 1.0)
+                    self.slab_file = self.datafile()
+                with self.slab_file as f:
+                    f.add('expt_2d', expt_data)
+                    f.add('expt_avg_data', expt_avg_data)
+                    f.add('expt_pts', self.expt_pts)
+                    f.close()
 
-
-            expt_avg_data = mean(expt_data, 1)
-
-
-            # if self.liveplot_enabled:
-            #     self.plotter.plot_z(self.prefix + ' Data', expt_data.T)
-            #     self.plotter.plot_xy(self.prefix + ' XY', self.pulse_sequence.expt_pts, expt_avg_data)
-
-            # print ii * min(self.cfg[self.expt_cfg_name]['averages'], 100)
-
-            if self.data_file != None:
-                self.slab_file = SlabFile(self.data_file)
-            else:
-                self.slab_file = self.datafile()
-            with self.slab_file as f:
-                f.add('expt_2d', expt_data)
-                f.add('expt_avg_data', expt_avg_data)
-                f.add('expt_pts', self.expt_pts)
-                f.close()
-
-        if self.post_run is not None:
-            self.post_run(self.expt_pts, expt_avg_data)
+            if self.post_run is not None:
+                self.post_run(self.expt_pts, expt_avg_data)
 
     def awg_prep(self):
         stop_pulseblaster()
