@@ -92,7 +92,7 @@ class QubitPulseSequenceExperiment(Experiment):
         print "Prep Instruments"
         self.readout.set_frequency(self.readout_freq)
         self.readout.set_power(self.cfg['readout']['power'])
-        self.readout.set_ext_pulse(mod=True)
+        self.readout.set_ext_pulse(mod=self.cfg['readout']['mod'])
         self.readout.set_output(True)
 
         try:
@@ -101,10 +101,14 @@ class QubitPulseSequenceExperiment(Experiment):
         except:
             print "Digital phase shifter not loaded."
 
-        self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
-        self.drive.set_power(self.cfg['drive']['power'])
-        self.drive.set_ext_pulse(mod=False)
-        self.drive.set_output(True)
+        try:
+            self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
+            self.drive.set_power(self.cfg['drive']['power'])
+            self.drive.set_ext_pulse(mod=False)
+            self.drive.set_output(True)
+        except:
+            print "Drive is not loaded"
+
         try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
         except:
