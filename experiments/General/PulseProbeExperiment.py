@@ -28,7 +28,7 @@ class PulseProbeExperiment(Experiment):
         return
 
     def go(self):
-        self.plotter.clear()
+        # self.plotter.clear()
 
         # self.save_config()
 
@@ -71,12 +71,12 @@ class PulseProbeExperiment(Experiment):
                     expt_data_ch2 = (expt_data_ch2 * ii + ch2_pts) / (ii + 1.0)
             expt_mag = sqrt(expt_data_ch1 ** 2 + expt_data_ch2 ** 2)
 
-            self.plotter.append_xy('readout_avg_freq_scan1', freq, mean(expt_data_ch1[0:]))
-            self.plotter.append_xy('readout_avg_freq_scan2', freq, mean(expt_data_ch2[0:]))
-            self.plotter.append_xy('readout_avg_freq_scan_mag', freq, mean(expt_mag[0:]))
-            self.plotter.append_z('scope1',expt_data_ch1)
-            self.plotter.append_z('scope2',expt_data_ch2)
-            self.plotter.append_z('scope_mag',expt_mag)
+            # self.plotter.append_xy('readout_avg_freq_scan1', freq, mean(expt_data_ch1[0:]))
+            # self.plotter.append_xy('readout_avg_freq_scan2', freq, mean(expt_data_ch2[0:]))
+            # self.plotter.append_xy('readout_avg_freq_scan_mag', freq, mean(expt_mag[0:]))
+            # self.plotter.append_z('scope1',expt_data_ch1)
+            # self.plotter.append_z('scope2',expt_data_ch2)
+            # self.plotter.append_z('scope_mag',expt_mag)
 
             with self.datafile() as f:
                 f.append_pt('freq', freq)

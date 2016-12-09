@@ -12,8 +12,6 @@ class VacuumRabiExperiment(Experiment):
 
         self.expt_cfg_name = prefix.lower()
 
-
-
         self.pulse_sequence = VacuumRabiSequence(self.cfg['awgs'], self.cfg[self.expt_cfg_name], self.cfg['readout'], self.cfg['buffer'], self.cfg['pulse_info'])
         self.pulse_sequence.build_sequence()
         self.pulse_sequence.write_sequence(os.path.join(self.path, '../sequences/'), prefix, upload=True)
@@ -27,7 +25,7 @@ class VacuumRabiExperiment(Experiment):
         return
 
     def go(self):
-        self.plotter.clear()
+        # self.plotter.clear()
 
         print "Prep Instruments"
         self.readout.set_output(True)
@@ -64,12 +62,13 @@ class VacuumRabiExperiment(Experiment):
 
             mag = sqrt(ch1_pts**2+ch2_pts**2)
 
-            self.plotter.append_xy('readout_avg_freq_scan1', freq, mean(ch1_pts[0:]))
-            self.plotter.append_xy('readout_avg_freq_scan2', freq, mean(ch2_pts[0:]))
-            self.plotter.append_xy('readout_avg_freq_scan_mag', freq, mean(mag[0:]))
-            self.plotter.append_z('scope1',ch1_pts)
-            self.plotter.append_z('scope2',ch2_pts)
-            self.plotter.append_z('scope_mag',mag)
+
+            # self.plotter.append_xy('readout_avg_freq_scan1', freq, mean(ch1_pts[0:]))
+            # self.plotter.append_xy('readout_avg_freq_scan2', freq, mean(ch2_pts[0:]))
+            # self.plotter.append_xy('readout_avg_freq_scan_mag', freq, mean(mag[0:]))
+            # self.plotter.append_z('scope1',ch1_pts)
+            # self.plotter.append_z('scope2',ch2_pts)
+            # self.plotter.append_z('scope_mag',mag)
 
             with self.datafile() as f:
                 f.append_pt('freq', freq)

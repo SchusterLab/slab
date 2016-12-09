@@ -8,7 +8,7 @@ Created on Wed Apr 06 15:41:58 2011
 import numpy as np
 import math as math
 try:
-    import guiqwt.pyplot as plt1 # Original version doesn't seem to work. Changed to a better coding style 
+    import guiqwt.pyplot as plt1 # Original version doesn't seem to work. Changed to a better coding style
 except:
     print "DSFIT could not import guiqwt"
 import matplotlib.pyplot as plt2
@@ -23,7 +23,7 @@ from scipy import optimize
 def set_fit_plotting(pkg='matplotlib'):
     global plt
     plt={'guiqwt':plt1,'matplotlib':plt2}[pkg]
-    
+
 def argselectdomain(xdata,domain):
     ind=np.searchsorted(xdata,domain)
     return (ind[0],ind[1])
@@ -35,13 +35,14 @@ def selectdomain(xdata,ydata,domain):
 def zipsort(xdata,ydata):
     inds=np.argsort(xdata)
     return np.take(xdata,inds),np.take(ydata,inds,axis=0)
-    
+
 
 """Wraplter around scipy.optimize.leastsq"""
 
 
 def fitgeneral(xdata, ydata, fitfunc, fitparams, domain=None, showfit=False, showstartfit=False, showdata=True,
-               label="", mark_data='bo', mark_fit='r-'):
+               label="", mark_data='bo', mark_fit='r-',defaultlabel=True):
+
     """Uses optimize.leastsq to fit xdata ,ydata using fitfunc and adjusting fit params"""
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
@@ -55,17 +56,17 @@ def fitgeneral(xdata, ydata, fitfunc, fitparams, domain=None, showfit=False, sho
     bestfitparams, success = optimize.leastsq(errfunc, startparams[:], args=(fitdatax,fitdatay))
     if showfit:
         if showdata:
-            plt.plot(fitdatax,fitdatay,mark_data,label=label+" data")
+            plt.plot(fitdatax,fitdatay,mark_data,label=label+" data" if defaultlabel else label)
         if showstartfit:
             plt.plot(fitdatax,fitfunc(startparams,fitdatax),label=label+" startfit")
-        plt.plot(fitdatax,fitfunc(bestfitparams,fitdatax),mark_fit,label=label+" fit")
+        plt.plot(fitdatax,fitfunc(bestfitparams,fitdatax),mark_fit,label=label+" fit" if defaultlabel else label)
         if label!='': plt.legend()
         err=math.fsum(errfunc(bestfitparams,fitdatax,fitdatay))
         #print 'the best fit has an RMS of {0}'.format(err)
 #    plt.t
-#    plt.figtext()    
+#    plt.figtext()
     return bestfitparams
-    
+
 def lorfunc(p, x):
     """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""
     return p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)
@@ -124,24 +125,24 @@ def print_cavity_Q(fit):
 def gaussfunc(p, x):
     """p[0]+p[1] exp(- (x-p[2])**2/p[3]**2/2)"""
     return p[0]+p[1]*math.e**(-1./2.*(x-p[2])**2/p[3]**2)
-    
+
 
 def expfunc(p,x):
     """p[0]+p[1]*exp(-(x-p[2])/p[3])"""
     return p[0]+p[1]*math.e**(-(x-p[2])/p[3])
-    
+
 def pulse_errfunc(p,x):
     """p[0]+p[1]*exp(-(x-p[2])/p[3])"""
     return p[0]+0.5*(1-((1-p[1])**x))
-    
-def fitexp(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+
+def fitexp(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",defaultlabel=True):
     """Fit exponential decay (p[0]+p[1]*exp(-(x-p[2])/p[3]))"""
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
     else:
         fitdatax=xdata
         fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         fitparams=[0.,0.,0.,0.]
         fitparams[0]=fitdatay[-1]
         fitparams[1]=fitdatay[0]-fitdatay[-1]
@@ -150,8 +151,8 @@ def fitexp(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
         fitparams[3]=(fitdatax[-1]-fitdatax[0])/5.
     #print fitparams
     p1 = fitgeneral(fitdatax, fitdatay, expfunc, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
-                    label=label)
-    return p1   
+                    label=label,defaultlabel=defaultlabel)
+    return p1
 
 # Test fit code
 
@@ -165,7 +166,7 @@ def fitpulse_err(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartf
     else:
         fitdatax=xdata
         fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         fitparams=[0.,0.]
         fitparams[0]=fitdatay[-1]
         fitparams[1]=fitdatay[0]-fitdatay[-1]
@@ -173,8 +174,8 @@ def fitpulse_err(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartf
     #print fitparams
     p1 = fitgeneral(fitdatax, fitdatay, pulse_errfunc, fitparams, domain=None, showfit=showfit,
                     showstartfit=showstartfit, label=label)
-    return p1   
-    
+    return p1
+
 def gaussfunc_nooffset(p, x):
     """p[0] exp(- (x-p[1])**2/p[2]**2/2)"""
     return p[0]*math.e**(-1./2.*(x-p[1])**2/p[2]**2)
@@ -204,25 +205,25 @@ def fitgauss(xdata,ydata,fitparams=None,no_offset=False,domain=None,showfit=Fals
         fitfunc = gaussfunc
 
     p1 = fitgeneral(fitdatax,fitdatay,fitfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
-    return p1   
-    
+    return p1
+
 def decaysin(p,x):
     """p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
     return p[0]*np.sin(2.*np.pi*p[1]*x+p[2]*np.pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]
 
-def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",defaultlabel = True):
     """Fits decaying sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
     else:
         fitdatax=xdata
         fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         FFT=scipy.fft(fitdatay)
         fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
-        max_ind=np.argmax(abs(FFT[2:len(fitdatay)/2.]))+2
+        max_ind=np.argmax(abs(FFT[2:len(fitdatay)/2]))+2
         fft_val=FFT[max_ind]
-        
+
         fitparams=[0,0,0,0,0]
         fitparams[4]=np.mean(fitdatay)
         fitparams[0]=(max(fitdatay)-min(fitdatay))/2.#2*abs(fft_val)/len(fitdatay)
@@ -232,13 +233,13 @@ def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfi
         fitparams[3]=(max(fitdatax)-min(fitdatax))
 
         #fitparams[5]=fitdatax[0]
-        
+
     decaysin3 = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (
     -1. * (x - fitdatax[0]) / p[3]) + p[4]
     #print "fitparams: ",fitparams
     p1 = fitgeneral(fitdatax, fitdatay, decaysin3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
-                    label=label)
-    return p1  
+                    label=label,defaultlabel=defaultlabel)
+    return p1
 
 def fitdecaydoublesin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
     """Fits decaying sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
@@ -271,19 +272,19 @@ def fitdecaydoublesin(xdata,ydata,fitparams=None,domain=None,showfit=False,shows
     return p1
 
 
-def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",defaultlabel=True):
     """Fits sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)+p[3]"""
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
     else:
         fitdatax=xdata
         fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         FFT=scipy.fft(fitdatay)
         fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
         max_ind=np.argmax(abs(FFT[1:len(fitdatay)/2.]))+1
         fft_val=FFT[max_ind]
-        
+
         fitparams=[0,0,0,0]
         fitparams[3]=np.mean(fitdatay)
         fitparams[0]=(max(fitdatay)-min(fitdatay))/2.#2*abs(fft_val)/len(fitdatay)
@@ -294,11 +295,11 @@ def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
     sin2=lambda p,x: p[0]*np.sin(2.*np.pi*p[1]*x+p[2]*np.pi/180.)+p[3]
     #print "fitparams: ",fitparams
     p1 = fitgeneral(fitdatax, fitdatay, sin2, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
-                    label=label)
-    return p1  
+                    label=label,defaultlabel=defaultlabel)
+    return p1
 
 
-def sin_phase(xdata,ydata,expected_period,find_phase):
+def sin_phase(xdata,ydata,expected_period,find_phase,showfit=False,defaultlabel=True):
     #initial fit guesses
     fitparams=[0,0,0,0]
     fitparams[0]=(max(ydata)-min(ydata))/2. #Amplitude
@@ -306,7 +307,8 @@ def sin_phase(xdata,ydata,expected_period,find_phase):
     fitparams[2]=0.0 #Phase
     fitparams[3]=np.mean(ydata) #Offset
 
-    fits=fitsin(xdata,ydata,fitparams=fitparams,showfit=False,label='fitting')
+    fits=fitsin(xdata,ydata,fitparams=fitparams,showfit=showfit,defaultlabel=defaultlabel)
+
 
     if find_phase == 'max':
         correction = 90.0*np.sign(fits[0])
@@ -336,7 +338,7 @@ def hangerfunc_old(p,x):
 def hangerqs_old(fitparams):
     """Converts fitparams into Qi and Qc"""
     return abs(fitparams[1]/fitparams[2]), abs(fitparams[1])/(1-abs(fitparams[2]))
-    
+
 def fithanger_old (xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
     """Fit's Hanger Transmission (S21) data without taking into account asymmetry
        returns p=[f0,Q,S21Min,Tmax]
@@ -346,7 +348,7 @@ def fithanger_old (xdata,ydata,fitparams=None,domain=None,showfit=False,showstar
     else:
         fitdatax=xdata
         fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         fitparams=[0,0,0,0]
         peakloc=np.argmin(fitdatay)
         ymax=(fitdatay[0]+fitdatay[-1])/2.
@@ -362,7 +364,7 @@ def fithanger_old (xdata,ydata,fitparams=None,domain=None,showfit=False,showstar
 
 def hangerfunc(p,x):
     """p=[f0,Qi,Qc,df,scale]"""
-    #print p    
+    #print p
     f0,Qi,Qc,df,scale = p
     a=(x-(f0+df))/(f0+df)
     b=2*df/f0
@@ -372,7 +374,7 @@ def hangerfunc(p,x):
 
 def hangerfunc_new(p,x):
     """p=[f0,Qi,Qc,df,scale]"""
-    #print p    
+    #print p
     f0,Qi,df,scale = p
     a=(x-(f0+df))/(f0+df)
     b=2*df/f0
@@ -380,10 +382,10 @@ def hangerfunc_new(p,x):
     y = 10 * np.log10(scale * (Qc ** 2. + Qi ** 2. * Qc ** 2. * (2. * a + b) ** 2.) / (
     (Qc + Qi) ** 2 + 4. * Qi ** 2. * Qc ** 2. * a ** 2.))
     return y
-    
+
 def hangerfunc_new_withQc(p,x):
     """p=[f0,Qi,Qc,df,scale]"""
-    #print p    
+    #print p
     f0,Qi,Qc,df,scale = p
     a=(x-(f0+df))/(f0+df)
     b=2*df/f0
@@ -411,18 +413,18 @@ def fithanger_new(xdata, ydata, fitparams=None, domain=None, showfit=False, show
         You need to define the Qc in hangerfunc_new()
         fitparams = []
         returns p=[f0,Qi,df,scale]
-        Uses hangerfunc_new. 
+        Uses hangerfunc_new.
     """
-    
+
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
     else:
         fitdatax=xdata
         fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         peakloc=np.argmin(fitdatay)
         ymax=(fitdatay[0]+fitdatay[-1])/2.
-        ymin=fitdatay[peakloc]        
+        ymin=fitdatay[peakloc]
         f0=fitdatax[peakloc]
         Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/5.))
         scale= ymax-ymin
@@ -439,7 +441,7 @@ def fithanger_new(xdata, ydata, fitparams=None, domain=None, showfit=False, show
     if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}'.format(fitresult[0], fitresult[1],
                                                                                         fitresult[2], fitresult[3])
     return fitresult
-    
+
 
 def fithanger_new_withQc(xdata, ydata, fitparams=None, domain=None, showfit=False, showstartfit=False,
                          printresult=False, label="", mark_data='bo', mark_fit='r-'):
@@ -447,18 +449,18 @@ def fithanger_new_withQc(xdata, ydata, fitparams=None, domain=None, showfit=Fals
         use the same parameters as old one 'fithanger', but a different interpretation of the fit formula
         fitparams = []
         returns p=[f0,Qi,Qc,df,scale]
-        Uses hangerfunc. 
+        Uses hangerfunc.
     """
-    
+
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
     else:
         fitdatax=xdata
         fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         peakloc=np.argmin(fitdatay)
         ymax=(fitdatay[0]+fitdatay[-1])/2.
-        ymin=fitdatay[peakloc]        
+        ymin=fitdatay[peakloc]
         f0=fitdatax[peakloc]
         Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/5.))
         scale= ymax-ymin
@@ -485,18 +487,18 @@ def fithanger(xdata, ydata, fitparams=None, domain=None, showfit=False, showstar
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
         fitparams = []
         returns p=[f0,Qi,Qc,df,scale]
-        Uses hangerfunc. 
+        Uses hangerfunc.
     """
-    
+
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
     else:
         fitdatax=xdata
         fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         peakloc=np.argmin(fitdatay)
         ymax=(fitdatay[0]+fitdatay[-1])/2.
-        ymin=fitdatay[peakloc]        
+        ymin=fitdatay[peakloc]
         f0=fitdatax[peakloc]
         Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/3.))
         scale= ymax
@@ -514,24 +516,24 @@ def fithanger(xdata, ydata, fitparams=None, domain=None, showfit=False, showstar
                                                                                                     fitresult[3],
                                                                                                     fitresult[4])
     return fitresult
-    
+
 
 def fithangertilt(xdata, ydata, fitparams=None, domain=None, showfit=False, showstartfit=False, printresult=False,
                   label="", mark_data='bo', mark_fit='r-'):
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
         fitparams = []
         returns p=[f0, Q, S21Min, Tmax]
-        Uses hangerfunctilt instead of hangerfunc. 
+        Uses hangerfunctilt instead of hangerfunc.
     """
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
     else:
         fitdatax=xdata
         fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         peakloc=np.argmin(fitdatay)
         ymax=(fitdatay[0]+fitdatay[-1])/2.
-        ymin=fitdatay[peakloc]        
+        ymin=fitdatay[peakloc]
         f0=fitdatax[peakloc]
         Q0=abs(fitdatax[peakloc]/((max(fitdatax)-min(fitdatax))/3.))
         Qi=Q0*(1.+ymax)
@@ -619,46 +621,46 @@ def fitbackground(xdata,ydata,fitparams=None, showfit=False,showstartfit=False,l
     """Fit Hanger Transmission (S21) data taking into account asymmetry.
         fitparams = []
         returns p=[f0,Qi,Qc,df,scale]
-        Uses hangerfunc. 
+        Uses hangerfunc.
     """
     fitdatax=xdata
     fitdatay=ydata
-    if fitparams is None:    
+    if fitparams is None:
         fitparams=[-6,0,0,0,0,0,0,0,0,0,6.9e+9]
         #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
     return fitgeneral(fitdatax, fitdatay, polynomial, fitparams, domain=None, showfit=showfit,
                       showstartfit=showstartfit, label=label)
-     
+
 
 def _datacheck_peakdetect(x_axis, y_axis):
     if x_axis is None:
         x_axis = range(len(y_axis))
-    
+
     if len(y_axis) != len(x_axis):
-        raise (ValueError, 
+        raise (ValueError,
                 'Input vectors y_axis and x_axis must have same length')
-    
+
     #needs to be a numpy array
     y_axis = np.array(y_axis)
     x_axis = np.array(x_axis)
     return x_axis, y_axis
-    
+
 def peakdetect(y_axis, x_axis = None, lookahead = 300, delta=0):
     """
-    Converted from/based on a MATLAB script at: 
+    Converted from/based on a MATLAB script at:
     http://billauer.co.il/peakdet.html
-    
+
     function for detecting local maximas and minmias in a signal.
     Discovers peaks by searching for values which are surrounded by lower
     or larger values for maximas and minimas respectively
-    
+
     keyword arguments:
     y_axis -- A list containg the signal over which to find peaks
     x_axis -- (optional) A x-axis whose values correspond to the y_axis list
         and is used in the return to specify the postion of the peaks. If
         omitted an index of the y_axis is used. (default: None)
     lookahead -- (optional) distance to look ahead from a peak candidate to
-        determine if it is the actual peak (default: 200) 
+        determine if it is the actual peak (default: 200)
         '(sample / period) / f' where '4 >= f >= 1.25' might be a good value
     delta -- (optional) this specifies a minimum difference between a peak and
         the following points, before a peak may be considered a peak. Useful
@@ -667,36 +669,36 @@ def peakdetect(y_axis, x_axis = None, lookahead = 300, delta=0):
         (default: 0)
             delta function causes a 20% decrease in speed, when omitted
             Correctly used it can double the speed of the function
-    
+
     return -- two lists [max_peaks, min_peaks] containing the positive and
         negative peaks respectively. Each cell of the lists contains a tupple
-        of: (position, peak_value) 
+        of: (position, peak_value)
         to get the average peak value do: np.mean(max_peaks, 0)[1] on the
-        results to unpack one of the lists into x, y coordinates do: 
+        results to unpack one of the lists into x, y coordinates do:
         x, y = zip(*tab)
     """
     max_peaks = []
     min_peaks = []
     dump = []   #Used to pop the first hit which almost always is false
-       
+
     # check input data
     x_axis, y_axis = _datacheck_peakdetect(x_axis, y_axis)
     # store data length for later use
     length = len(y_axis)
-    
-    
+
+
     #perform some checks
     if lookahead < 1:
         raise ValueError, "Lookahead must be '1' or above in value"
     if not (np.isscalar(delta) and delta >= 0):
         raise ValueError, "delta must be a positive number"
-    
+
     #maxima and minima candidates are temporarily stored in
     #mx and mn respectively
     mn, mx = np.Inf, -np.Inf
-    
+
     #Only detect peak if there is 'lookahead' amount of points after it
-    for index, (x, y) in enumerate(zip(x_axis[:-lookahead], 
+    for index, (x, y) in enumerate(zip(x_axis[:-lookahead],
                                         y_axis[:-lookahead])):
         if y > mx:
             mx = y
@@ -704,7 +706,7 @@ def peakdetect(y_axis, x_axis = None, lookahead = 300, delta=0):
         if y < mn:
             mn = y
             mnpos = x
-        
+
         ####look for max####
         if y < mx-delta and mx != np.Inf:
             #Maxima peak candidate found
@@ -722,10 +724,10 @@ def peakdetect(y_axis, x_axis = None, lookahead = 300, delta=0):
             #else:  #slows shit down this does
             #    mx = ahead
             #    mxpos = x_axis[np.where(y_axis[index:index+lookahead]==mx)]
-        
+
         ####look for min####
         if y > mn+delta and mn != -np.Inf:
-            #Minima peak candidate found 
+            #Minima peak candidate found
             #look ahead in signal to ensure that this is a peak and not jitter
             if y_axis[index:index+lookahead].min() > mn:
                 min_peaks.append([mnpos, mn])
@@ -739,8 +741,8 @@ def peakdetect(y_axis, x_axis = None, lookahead = 300, delta=0):
             #else:  #slows shit down this does
             #    mn = ahead
             #    mnpos = x_axis[np.where(y_axis[index:index+lookahead]==mn)]
-    
-    
+
+
     #Remove the false hit on the first value of the y_axis
     try:
         if dump[0]:
@@ -751,14 +753,14 @@ def peakdetect(y_axis, x_axis = None, lookahead = 300, delta=0):
     except IndexError:
         #no peaks were found, should the function return empty lists?
         pass
-        
+
     return [max_peaks, min_peaks]
 
 
 if __name__ =='__main__':
     plt.figure(1)
     xdata=np.linspace(-15,25,1000)
-    
+
     params=[1.,20.,5.,2.]
     ydata=gaussfunc(params,xdata)-1+2*np.random.rand(len(xdata))
     #plot(xdata,ydata-2.5+5*random.rand(xdata.__len__()),'bo')
@@ -767,8 +769,8 @@ if __name__ =='__main__':
     plt.subplot(1,2,2)
     p2=fitlor(xdata,ydata,showfit=True)
     #plot(xdata,lorfunc(p1,xdata),'r-')
-    
-    
+
+
     noise=0.
     plt.figure(2)
     params2=[7.8,200,200.,0.005,1.,0.,0.]
@@ -777,11 +779,11 @@ if __name__ =='__main__':
 #    params2=[7.8,200,0.01,1.]
     xdata2=np.linspace(7,9,1000)
     ydata2=hangerfunc(params2,xdata2)-noise/2.+noise*np.random.rand(len(xdata2))
-    fit=fithanger(xdata2,ydata2,showfit=True,showstartfit=True)   
+    fit=fithanger(xdata2,ydata2,showfit=True,showstartfit=True)
     print '{0}\n--------------Best Fit---------- \nf0: {1}\nQi: {2}\nQc: {3}\ndf: {4}\nScale: {5}\nSlope: {6}\nOffset:{7}\n'.format\
           ('hanger',fit[0],fit[1],fit[2],fit[3],fit[4],fit[5],fit[6])
     #print hangerqs(p3)
-    
+
     plt.show()
 
 
@@ -824,7 +826,7 @@ def fitdecayrabi(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartf
     return p1
 
 
-def fitdoubleexp(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+def fitdoubleexp(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",defaultlabel=True):
     """Fit exponential decay (p[0]+p[1]*exp(-(x-p[2])/p[3]))"""
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
@@ -841,11 +843,11 @@ def fitdoubleexp(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartf
         #fitparams[4]=(max(fitdatay)-fitdatay[-1])
         fitparams[5]=(fitdatax[-1]-fitdatax[0])/5
     #print fitparams
-    p1 = fitgeneral(fitdatax,fitdatay,doubleexpfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
+    p1 = fitgeneral(fitdatax,fitdatay,doubleexpfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label,defaultlabel=defaultlabel)
     return p1
 
 
-def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",defaultlabel=True):
     """Fits decaying sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
@@ -869,6 +871,5 @@ def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
 
     sin3 = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) + p[3]
     #print "fitparams: ",fitparams
-    p1 = fitgeneral(fitdatax, fitdatay, sin3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
-                    label=label)
+    p1 = fitgeneral(fitdatax, fitdatay, sin3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,defaultlabel=defaultlabel)
     return p1

@@ -47,7 +47,7 @@ class RabiExperiment(QubitPulseSequenceExperiment):
             ydata = expt_avg_data
             FFT=scipy.fft(ydata)
             fft_freqs=scipy.fftpack.fftfreq(len(ydata),xdata[1]-xdata[0])
-            max_ind=np.argmax(abs(FFT[2:len(ydata)/2.]))+2
+            max_ind=np.argmax(abs(FFT[2:len(ydata)/2]))+2
             fft_val=FFT[max_ind]
 
             fitparams=[0,0,0,0,0]
@@ -101,7 +101,7 @@ class EFRabiExperiment(QubitPulseSequenceExperiment):
         ydata = expt_avg_data
         FFT=scipy.fft(ydata)
         fft_freqs=scipy.fftpack.fftfreq(len(ydata),xdata[1]-xdata[0])
-        max_ind=np.argmax(abs(FFT[2:len(ydata)/2.]))+2
+        max_ind=np.argmax(abs(FFT[2:len(ydata)/2]))+2
         fft_val=FFT[max_ind]
 
         fitparams=[0,0,0,0,0]
@@ -330,6 +330,34 @@ class HalfPiYPhaseOptimizationExperiment(QubitPulseSequenceExperiment):
         fitdata=fitsin(xdata[:],ydata[:],fitparams=fitparams,showfit=False)
         self.cfg['pulse_info']['gauss']['offset_phase'] = around((-(fitdata[2]%180) + 90),2)
         print "Offset Phase = %s" %(self.cfg['pulse_info']['gauss']['offset_phase'])
+
+
+class EFPulsePhaseOptimizationExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='EFPulsePhaseOptimization', config_file='..\\config.json', **kwargs):
+        self.extra_args = {}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=EFPulsePhaseOptimizationSequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+    def pre_run(self):
+        pass
+
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
+        # if 'qubit_dc_offset' in self.extra_args:
+        #     self.cfg['pulse_info']['fix_phase'] =  False
+        # xdata = expt_pts
+        # ydata = expt_avg_data
+        # fitparams = [(max(ydata)-min(ydata))/(2.0),1/360.0,90,mean(ydata)]
+        # fitdata=fitsin(xdata[:],ydata[:],fitparams=fitparams,showfit=False)
+        # self.cfg['pulse_info']['gauss']['offset_phase'] = around((-(fitdata[2]%180) + 90),2)
+        # print "Offset Phase = %s" %(self.cfg['pulse_info']['gauss']['offset_phase'])
+        #
 
 
 

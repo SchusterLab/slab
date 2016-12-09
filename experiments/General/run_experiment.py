@@ -92,6 +92,11 @@ def run_experiment(expt_name,lp_enable = True, **kwargs):
         # Do EF T1 Experiment
         expt = HalfPiYPhaseOptimizationExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 'efpulsephaseoptimization':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import EFPulsePhaseOptimizationExperiment
+        # Do EF T1 Experiment
+        expt = EFPulsePhaseOptimizationExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower() == 'tomography':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import TomographyExperiment
         # Do EF T1 Experiment

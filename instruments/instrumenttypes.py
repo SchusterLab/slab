@@ -196,7 +196,7 @@ class SerialInstrument(Instrument):
                 #    except: raise ValueError
             except serial.SerialException:
                 print 'Cannot create a connection to port '+str(address)+'.\n'
-        self.set_timeout(timeout)
+        #self.set_timeout(timeout)
         self.recv_length = recv_length
         self.query_sleep = querysleep
     

@@ -1088,6 +1088,11 @@ class MultimodeProcessTomographyPhaseSweepExperimentNEW(QubitPulseSequenceExperi
         else:
             self.sweep_cnot = False
 
+        if 'pair_index' in self.extra_args:
+            self.pair_index = self.extra_args['pair_index']
+        else:
+            self.pair_index = 0
+
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                                     PulseSequence=MultimodeProcessTomographyPhaseSweepSequenceNEW, pre_run=self.pre_run,
@@ -1133,10 +1138,6 @@ class MultimodeProcessTomographyPhaseSweepExperimentNEW(QubitPulseSequenceExperi
                              ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
                              ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
 
-
-
-
-        pair_index = 0
         if find_fit_list[self.state_num][self.tomography_num] == 'mean':
             pass
         else:
@@ -1146,9 +1147,146 @@ class MultimodeProcessTomographyPhaseSweepExperimentNEW(QubitPulseSequenceExperi
             print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(self.state_num,self.tomography_num,find_phase,x_at_extremum)
 
             if self.sweep_cnot:
-                self.cfg['proc_tom_phases'][pair_index]['ef_phase_1'][self.state_num][self.tomography_num] = x_at_extremum
+                self.cfg['proc_tom_phases'][self.pair_index]['ef_phase_1'][self.state_num][self.tomography_num] = x_at_extremum
             else:
-                self.cfg['proc_tom_phases'][pair_index]['ef_phase_0'][self.state_num][self.tomography_num] = x_at_extremum
+                self.cfg['proc_tom_phases'][self.pair_index]['ef_phase_0'][self.state_num][self.tomography_num] = x_at_extremum
+
+class MultimodeProcessTomographyPhaseSweepExperimentNEWTEMP(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_process_tomography_phase_sweep_new', config_file='..\\config.json', **kwargs):
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+        self.tomography_num = self.extra_args['tomography_num']
+        self.state_num = self.extra_args['state_num']
+
+        if 'sweep_cnot' in self.extra_args:
+            self.sweep_cnot = self.extra_args['sweep_cnot']
+        else:
+            self.sweep_cnot = False
+        if 'sweep_final_sb' in self.extra_args:
+            self.sweep_final_sb = self.extra_args['sweep_final_sb']
+        else:
+            self.sweep_final_sb = False
+
+        if 'pair_index' in self.extra_args:
+            self.pair_index = self.extra_args['pair_index']
+        else:
+            self.pair_index = 0
+
+        if 'truncated_save' in self.extra_args:
+            self.truncated_save = self.extra_args['truncated_save']
+        else:
+            self.truncated_save = False
+
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequenceNEWTEMP, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+        if self.sweep_cnot:
+            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'min', 'max', 'mean', 'max', 'int', 'int','mean', 'int', 'mean', 'max', 'int', 'mean'],
+       ['int', 'min', 'mean', 'min', 'mean', 'max', 'max', 'int', 'mean','int', 'int', 'mean', 'int', 'max', 'mean'],
+       ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int','mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'int', 'int', 'mean', 'int', 'min', 'max','mean', 'max', 'mean', 'max', 'int', 'mean'],
+       ['int', 'min', 'mean', 'int', 'mean', 'int', 'int', 'min', 'mean','max', 'max', 'mean', 'int', 'max', 'mean'],
+       ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min','mean', 'mean', 'max', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
+       ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
+
+        else:
+            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['min', 'int', 'mean', 'min', 'max', 'int', 'max', 'int', 'int', 'min', 'int', 'mean', 'max', 'int', 'mean'],
+                             ['int', 'min', 'mean', 'min', 'int', 'max', 'max', 'int', 'max', 'int', 'int', 'mean', 'int', 'max', 'mean'],
+                             ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int', 'mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['min', 'int', 'mean', 'int', 'int', 'max', 'int', 'min', 'max', 'int', 'max', 'mean', 'max', 'int', 'mean'],
+                             ['int', 'min', 'mean', 'int', 'min', 'int', 'int', 'min', 'int', 'max', 'max', 'mean', 'int', 'max', 'mean'],
+                             ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min', 'mean', 'mean', 'max', 'mean', 'mean', 'mean', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+                             ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
+                             ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
+                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
+
+
+        if self.truncated_save:
+
+            lookup = array([5, 53, 55, 101, 103, 165, 167, 197])
+            Lslist =[[5,6,9,10,13,14],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10,13,14]]
+            Ltlist =[[0,1],[3,7],[3,7],[6],[6],[10],[10],[12,13]]
+            LslistCNOT =[5,6,9,10]
+            LtlistCNOT=[4,5,8,9]
+
+            expt_num = 16*self.tomography_num + self.state_num
+            if not self.sweep_cnot and not self.sweep_final_sb:
+                if expt_num in lookup:
+                    i = argmin(abs(lookup-expt_num))
+                    expected_period = 360.
+                    find_phase = find_fit_list[self.state_num][self.tomography_num] #'max' or 'min'
+                    x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+
+                    print "Pair index: " + str(self.pair_index)
+                    for s in Lslist[i]:
+                        for t in Ltlist[i]:
+                            print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(s,t,find_phase,x_at_extremum)
+                            if not self.sweep_cnot:
+                                self.cfg['proc_tom_phases'][self.pair_index]['ef_phase_0'][s][t] = x_at_extremum
+                    if expt_num == 53:
+                        for s in LslistCNOT:
+                            for t in LtlistCNOT:
+                                print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(s,t,find_phase,x_at_extremum)
+                                self.cfg['proc_tom_phases'][self.pair_index]['ef_phase_0'][s][t] = x_at_extremum
+
+
+            elif self.sweep_cnot and not self.sweep_final_sb:
+                # Saves phase added (subtracted) from CZ (CNOT) while optimizing XX, XY, YX, YY
+                lookup2  = array([69, 86, 137, 154])
+                slist = [5,6,9,10]
+                tlist = [4,5,8,9]
+                if expt_num in lookup2:
+                    i = argmin(abs(lookup2-expt_num))
+                    find_phase = find_fit_list[self.state_num][self.tomography_num]
+                    expected_period = 360.
+                    x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+                    s = slist[i]
+                    for t in tlist:
+                        print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(s,t,find_phase,x_at_extremum)
+                        self.cfg['proc_tom_phases'][self.pair_index]['ef_phase_1'][s][t] = x_at_extremum
+
+            else:
+                pass
+        else:
+            if find_fit_list[self.state_num][self.tomography_num] == 'mean':
+                pass
+            else:
+                expected_period = 360.
+                find_phase = find_fit_list[self.state_num][self.tomography_num] #'max' or 'min'
+                x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+                print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(self.state_num,self.tomography_num,find_phase,x_at_extremum)
+
+                if self.sweep_cnot:
+                    print "Pair index: " + str(self.pair_index)
+                    self.cfg['proc_tom_phases'][self.pair_index]['ef_phase_1'][self.state_num][self.tomography_num] = x_at_extremum
+                    print "Goes to place where cnot phase is saved"
+                else:
+                    print "Pair index: " + str(self.pair_index)
+                    self.cfg['proc_tom_phases'][self.pair_index]['ef_phase_0'][self.state_num][self.tomography_num] = x_at_extremum
+
 
 
 
