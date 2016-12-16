@@ -3,7 +3,7 @@ __author__ = 'Nelson'
 from spinapi import *
 
 
-def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,card_trig_len,readout_trig_len):
+def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,readout_trig_time,card_trig_len,readout_trig_len):
     # Enable the log file
     pb_set_debug(1)
 
@@ -28,17 +28,20 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,card_trig_len,r
     #card_trig_time = 2000
     #card_trig_len = 100
 
-    readout_trig_time = card_trig_time
+    # readout_trig_time = card_trig_time
     #readout_trig_len = 1000 # has to be longer than card_trig_len
 
 
     # calculated time value
     awg_trig_delay_loop = awg_trig_len/unit_inst_time
-    card_and_readout_trig_delay_loop = card_trig_len/unit_inst_time
-    readout_trig_delay_loop = (readout_trig_len-card_trig_len)/unit_inst_time
+    card_trig_delay_loop = card_trig_len/unit_inst_time
+    readout_trig_delay_loop = (readout_trig_len)/unit_inst_time
 
     awg_card_idle_time = card_trig_time - (awg_trig_time + awg_trig_len)
     awg_card_idle_delay_loop = awg_card_idle_time/unit_inst_time
+
+    card_readout_idle_time = readout_trig_time - (card_trig_time+card_trig_len)
+    card_readout_idle_delay_loop = card_readout_idle_time/unit_inst_time
 
     total_time = readout_trig_time + readout_trig_len
     period_idle_time = exp_period - total_time
@@ -68,10 +71,13 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,card_trig_len,r
     # idle between end of awg trig and card trig
     pb_inst_pbonly64(idle, Inst.LONG_DELAY, awg_card_idle_delay_loop, unit_inst_time)
 
-    # card and readout trig starts at the same time
-    pb_inst_pbonly64(card_trig+readout_trig, Inst.LONG_DELAY,card_and_readout_trig_delay_loop,unit_inst_time)
+    # card trig starts first at the same time
+    pb_inst_pbonly64(card_trig, Inst.LONG_DELAY,card_trig_delay_loop,unit_inst_time)
 
-    # readout trig after card trig (assume readout trig is longer)
+    # idle between card trig and readout trig
+    pb_inst_pbonly64(idle, Inst.LONG_DELAY, card_readout_idle_delay_loop, unit_inst_time)
+
+    # readout trig after card trig finished
     pb_inst_pbonly64(readout_trig, Inst.LONG_DELAY,readout_trig_delay_loop,unit_inst_time)
 
     # idle for next experiment

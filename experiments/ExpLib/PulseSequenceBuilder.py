@@ -196,9 +196,13 @@ class PulseSequenceBuilder():
         Being called internally to obtain the readout parameters.
         '''
         self.measurement_delay = self.readout_cfg['delay']
+
         self.measurement_width = self.readout_cfg['width']
         self.card_delay = self.readout_cfg['card_delay']
         self.card_trig_width = self.readout_cfg['card_trig_width']
+
+        if self.card_delay + self.card_trig_width >= self.measurement_delay:
+            raise ValueError('measurement delay should be larger than card delay by more than card_trig_width!')
 
     def get_max_length(self, total_pulse_span_length_list):
         '''
@@ -248,7 +252,7 @@ class PulseSequenceBuilder():
         self.origin = roundup100(self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer))
         self.uses_tek2 = False
         awg_trig_len=self.cfg['triggers']['awg']
-        start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin + self.measurement_delay, self.card_trig_width, self.measurement_width)
+        start_pulseblaster(self.exp_period_ns, awg_trig_len,self.origin+self.card_delay, self.origin + self.measurement_delay, self.card_trig_width, self.measurement_width)
         for ii in range(len(pulse_sequence_matrix)):
             self.markers_readout[ii] = ap.square(self.mtpts, 1, self.origin + self.measurement_delay,
                                                  self.measurement_width)

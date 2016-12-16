@@ -151,7 +151,7 @@ class QubitPulseSequenceExperiment(Experiment):
             self.pre_run()
 
 
-        TEST_REDPITAYA = True
+        TEST_REDPITAYA = False
 
         if TEST_REDPITAYA:
             self.awg_run()
