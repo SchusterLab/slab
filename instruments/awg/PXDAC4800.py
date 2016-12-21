@@ -17,6 +17,12 @@ class PXDAC4800:
         pass
 
     def load_sequence_file(self, waveform_file_name,offset_bytes_list,clock_speed):
+
+        print "load_sequence_file inputs:"
+        print waveform_file_name
+        print offset_bytes_list
+        print clock_speed
+
         U8 = C.c_uint8
         U8P = C.POINTER(U8)
         U32 = C.c_uint32

@@ -104,6 +104,7 @@ class PulseSequence:
             print "Sequence file uploaded"
             print "Waveform length: " + str(len(waveforms[0][0]))
             PXDAC4800.waveform_length = len(waveforms[0][0])
+            print "PXDAC4800 waveform length: " + str(PXDAC4800.waveform_length)
             PXDAC4800().run_experiment()
 
 
