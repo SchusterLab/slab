@@ -21,9 +21,9 @@ class RabiSequence(QubitPulseSequence):
 
     def define_pulses(self,pt):
         if self.expt_cfg['sweep_amp']:
-            self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
+            self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'],phase=self.expt_cfg['phase'])
         else:
-            self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'])
+            self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'],phase=self.expt_cfg['phase'])
 
 
 
