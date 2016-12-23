@@ -162,6 +162,7 @@ class QubitPulseSequenceExperiment(Experiment):
         if self.cfg['readout']['adc'] == 'redpitaya':
             print "Using Red Pitaya ADC"
             m8195a = M8195A(address ='192.168.14.234:5025')
+            m8195a.start_all_output()
 
             if not self.cfg[self.expt_cfg_name]['use_pi_calibration']:
                 num_experiments = len(self.pulse_sequence.expt_pts)

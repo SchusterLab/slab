@@ -802,7 +802,8 @@ class M8195A(SocketInstrument):
 
 ## Setup AWG
 
-def setup_awg(m8195a,num_channels,amplitudes):
+def setup_awg(m8195a,num_channels,amplitudes=[1.,1.,1.,1.]):
+
     m8195a.stop_output()
     m8195a.set_factory_default()
 
@@ -1002,7 +1003,7 @@ if __name__ == "__main__":
 
     # define_segments_test(m8195a,segment_length,sequence_length,dt)
 
-    define_segments(m8195a,waveform_matrix)
+    define_segments_binary(m8195a,waveform_matrix)
 
     # define_segments_binary(m8195a,waveform_matrix)
 

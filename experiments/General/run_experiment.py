@@ -4,7 +4,7 @@ __author__ = 'Nelson'
 
 
 import numpy as np
-def run_experiment(expt_name,lp_enable = True, **kwargs):
+def run_experiment(expt_name,lp_enable = False, **kwargs):
     import os
     import difflib
 

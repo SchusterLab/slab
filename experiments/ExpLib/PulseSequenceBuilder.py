@@ -10,7 +10,7 @@ from liveplot import LivePlotClient
 
 
 class Pulse():
-    def __init__(self, target, name, type, amp, length, freq, phase, span_length):
+    def __init__(self, target, name, type, amp, length, freq, phase, span_length,delay):
         self.target = target
         self.name = name
         self.type = type
@@ -19,6 +19,7 @@ class Pulse():
         self.freq = freq
         self.phase = phase
         self.span_length = span_length
+        self.delay=delay
 
 
 class PulseSequenceBuilder():
@@ -39,7 +40,7 @@ class PulseSequenceBuilder():
         self.pulse_span_length_list_temp = []
         self.qubit_cfg = cfg['qubit']
 
-    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None, **kwargs):
+    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None, delay=0, **kwargs):
         '''
         Append a pulse in the pulse sequence.
         '''
@@ -148,7 +149,7 @@ class PulseSequenceBuilder():
         if phase == None:
             phase = 0
 
-        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length)
+        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length,delay)
 
         self.pulse_sequence_list.append(pulse)
         self.total_pulse_span_length += pulse_span_length
@@ -290,12 +291,12 @@ class PulseSequenceBuilder():
                 if pulse.target == "q":
                     if pulse.type == "square":
                         qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
-                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,
+                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location- pulse.delay, pulse,
                                                                self.pulse_cfg)
                     elif pulse.type == "gauss":
                         qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,
-                                                              pulse_location, pulse)
+                                                              pulse_location- pulse.delay, pulse)
                     else:
                         raise ValueError('Wrong pulse type has been defined')
                     if pulse_defined:
@@ -308,12 +309,12 @@ class PulseSequenceBuilder():
 
                     if pulse.type == "square":
                         qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
-                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,
+                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location- pulse.delay, pulse,
                                                                self.pulse_cfg)
                     elif pulse.type == "gauss":
                         qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,
-                                                              pulse_location, pulse)
+                                                              pulse_location - pulse.delay, pulse)
                     else:
                         raise ValueError('Wrong pulse type has been defined')
                     if pulse_defined:

@@ -5,6 +5,7 @@ from slab.instruments.Alazar import Alazar
 from slab.experiments.General.PulseSequences.PulseProbeSequence import *
 from numpy import mean, arange
 from tqdm import tqdm
+from slab.instruments.awg.M8195A import *
 
 
 class PulseProbeExperiment(Experiment):
@@ -36,62 +37,74 @@ class PulseProbeExperiment(Experiment):
         # self.save_config()
 
         print "Prep Instruments"
-        self.readout.set_frequency(self.cfg['readout']['frequency'])
-        self.readout.set_power(self.cfg['readout']['power'])
-        self.readout.set_ext_pulse(mod=True)
-        self.readout_shifter.set_phase(self.cfg['readout']['start_phase']%360, self.cfg['readout']['frequency'])
+        try:
+            self.readout.set_frequency(self.cfg['readout']['frequency'])
+            self.readout.set_power(self.cfg['readout']['power'])
+            self.readout.set_ext_pulse(mod=True)
+            self.readout_shifter.set_phase(self.cfg['readout']['start_phase']%360, self.cfg['readout']['frequency'])
+        except:
+            print("cannot find readout")
 
+        try:
+            self.drive.set_power(self.cfg['drive']['power'])
+            self.drive.set_ext_pulse(mod=self.cfg['drive']['mod'])
+            self.drive.set_output(True)
+        except:
+            print("cannot find drive")
 
-        self.drive.set_power(self.cfg['drive']['power'])
-        self.drive.set_ext_pulse(mod=self.cfg['drive']['mod'])
-        self.drive.set_output(True)
         try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
         except:
             print("error in setting digital attenuator")
 
-        try:
-            self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
-            self.awg.run()
-        except:
-            print("error in setting awg")
 
-        print "Prep Card"
-        adc = Alazar(self.cfg['alazar'])
+        m8195a = M8195A(address ='192.168.14.234:5025')
+        m8195a.start_all_output()
 
-        for freq in self.expt_pts:
-            self.drive.set_frequency(freq)
+        # try:
+        #     self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
+        #     self.awg.run()
+        # except:
+        #     print("error in setting awg")
 
-            expt_data_ch1 = None
-            expt_data_ch2 = None
-            expt_data_mag = None
-            for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['averages'] / 100))):
-                tpts, ch1_pts, ch2_pts = adc.acquire_avg_data()
+        ## comment out for now
+        # print "Prep Card"
+        # adc = Alazar(self.cfg['alazar'])
+        #
+        # for freq in self.expt_pts:
+        #     self.drive.set_frequency(freq)
+        #
+        #     expt_data_ch1 = None
+        #     expt_data_ch2 = None
+        #     expt_data_mag = None
+        #     for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['averages'] / 100))):
+        #         tpts, ch1_pts, ch2_pts = adc.acquire_avg_data()
+        #
+        #         mag = sqrt(ch1_pts ** 2 + ch2_pts ** 2)
+        #
+        #         if expt_data_ch1 is None:
+        #             expt_data_ch1 = ch1_pts
+        #             expt_data_ch2 = ch2_pts
+        #         else:
+        #             expt_data_ch1 = (expt_data_ch1 * ii + ch1_pts) / (ii + 1.0)
+        #             expt_data_ch2 = (expt_data_ch2 * ii + ch2_pts) / (ii + 1.0)
+        #     expt_mag = sqrt(expt_data_ch1 ** 2 + expt_data_ch2 ** 2)
+        #
+        #     if self.liveplot_enabled:
+        #         self.plotter.append_xy('readout_avg_freq_scan1', freq, mean(expt_data_ch1[0:]))
+        #         self.plotter.append_xy('readout_avg_freq_scan2', freq, mean(expt_data_ch2[0:]))
+        #         self.plotter.append_xy('readout_avg_freq_scan_mag', freq, mean(expt_mag[0:]))
+        #         self.plotter.append_z('scope1', expt_data_ch1)
+        #         self.plotter.append_z('scope2', expt_data_ch2)
+        #         self.plotter.append_z('scope_mag', expt_mag)
+        #
+        #     with self.datafile() as f:
+        #         f.append_pt('freq', freq)
+        #         f.append_pt('ch1_mean', mean(expt_data_ch1[0:]))
+        #         f.append_pt('ch2_mean', mean(expt_data_ch2[0:]))
+        #         f.append_pt('mag_mean', mean(expt_mag[0:]))
 
-                mag = sqrt(ch1_pts ** 2 + ch2_pts ** 2)
-
-                if expt_data_ch1 is None:
-                    expt_data_ch1 = ch1_pts
-                    expt_data_ch2 = ch2_pts
-                else:
-                    expt_data_ch1 = (expt_data_ch1 * ii + ch1_pts) / (ii + 1.0)
-                    expt_data_ch2 = (expt_data_ch2 * ii + ch2_pts) / (ii + 1.0)
-            expt_mag = sqrt(expt_data_ch1 ** 2 + expt_data_ch2 ** 2)
-
-            if self.liveplot_enabled:
-                self.plotter.append_xy('readout_avg_freq_scan1', freq, mean(expt_data_ch1[0:]))
-                self.plotter.append_xy('readout_avg_freq_scan2', freq, mean(expt_data_ch2[0:]))
-                self.plotter.append_xy('readout_avg_freq_scan_mag', freq, mean(expt_mag[0:]))
-                self.plotter.append_z('scope1', expt_data_ch1)
-                self.plotter.append_z('scope2', expt_data_ch2)
-                self.plotter.append_z('scope_mag', expt_mag)
-
-            with self.datafile() as f:
-                f.append_pt('freq', freq)
-                f.append_pt('ch1_mean', mean(expt_data_ch1[0:]))
-                f.append_pt('ch2_mean', mean(expt_data_ch2[0:]))
-                f.append_pt('mag_mean', mean(expt_mag[0:]))
-
+        ###
             # tpts, ch1_pts, ch2_pts = adc.acquire_avg_data()
             #
             #
