@@ -158,7 +158,7 @@ class PulseSequenceBuilder():
         '''
         Append an idle in the pulse sequence.
         '''
-        pulse_info = Pulse('idle', 'idle', 'idle', 0, length, 0, 0, length)
+        pulse_info = Pulse('idle', 'idle', 'idle', 0, length, 0, 0, length,0)
 
         self.pulse_sequence_list.append(pulse_info)
         self.total_pulse_span_length += length
