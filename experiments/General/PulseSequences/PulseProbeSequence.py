@@ -50,7 +50,7 @@ class PulseProbeSequence(PulseSequence):
         # TODO: pulseblaster out of sync bug#
 
         awg_trig_len = 100
-        start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin + self.measurement_delay,
+        start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin+self.card_delay, self.origin + self.measurement_delay,
                            self.card_trig_width, self.measurement_width)
         run_pulseblaster()
 
@@ -97,6 +97,11 @@ class PulseProbeSequence(PulseSequence):
 
             high_values_indices = self.markers['qubit buffer'][ii] > 1
             self.markers['qubit buffer'][ii][high_values_indices] = 1
+
+        np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\waveform_I.npy', self.waveforms['qubit drive I'])
+        np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\time.npy',wtpts)
+        # np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\readout.npy', self.markers['readout pulse'])
+        # np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\card.npy',self.markers['card trigger'])
 
 
     def reshape_data(self, data):

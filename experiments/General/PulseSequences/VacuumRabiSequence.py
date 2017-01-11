@@ -60,7 +60,7 @@ class VacuumRabiSequence(PulseSequence):
         # TODO: pulseblaster out of sync bug#
 
         awg_trig_len = 100
-        start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin + self.measurement_delay,
+        start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin+self.card_delay, self.origin + self.measurement_delay,
                            self.card_trig_width, self.measurement_width)
         run_pulseblaster()
 

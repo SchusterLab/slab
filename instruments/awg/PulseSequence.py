@@ -66,7 +66,8 @@ class PulseSequence:
         write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence, 'PXDAC4800':self.write_PXDAC4800_sequence}
         for awg in self.awg_info:
             try:
-                write_function[awg['type']](awg, path, file_prefix, awg['upload'])
+                if awg['type'] is not "NONE":
+                    write_function[awg['type']](awg, path, file_prefix, awg['upload'])
             except KeyError:
                 print "Error in writing pulse to awg named: " + str(awg['type'])
 
