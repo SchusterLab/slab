@@ -14,7 +14,8 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,readout_trig_ti
 
     if pb_init() != 0:
         print("Error initializing board: %s" % pb_get_error())
-        exit()
+        # exit()
+        pass
 
     # time settings
     unit_inst_time = 10 # ns

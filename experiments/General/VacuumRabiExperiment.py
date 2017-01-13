@@ -99,6 +99,8 @@ class VacuumRabiExperiment(Experiment):
                 f.append_pt('ch1_mean', mean(expt_data_ch1[0:]))
                 f.append_pt('ch2_mean', mean(expt_data_ch2[0:]))
                 f.append_pt('mag_mean', mean(expt_mag[0:]))
+                f.add('expt_2d_ch1', expt_data_ch1)
+                f.add('expt_2d_ch2', expt_data_ch2)
 
 
 
