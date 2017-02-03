@@ -36,7 +36,7 @@ dBmtoV=dBm_to_V
 ######################## Plotting helpers
 
 figureStyles=[
-    {'name':'default','width':8,'height':8./1.61,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True,'dpi':72,'transparent':False},
+    {'name':'default','width':8,'height':8./1.61,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'hspace':0.5, 'tight':True,'dpi':72,'transparent':False},
     {'name':'prl1','width':3.4,'height':3.4,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True,'dpi':300},
     {'name':'prl2','width':7,'height':3.4,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True,'dpi':300},
     {'name':'prl21','width':1.2,'height':3.4,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True,'dpi':300},
