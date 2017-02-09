@@ -247,9 +247,9 @@ class PulseSequenceBuilder():
         For each pulse sequence, location of readout and card is fixed.
         Pulses are appended backward, from the last pulse to the first pulse.
         '''
-        def roundup100(x):
-            return int(math.ceil(x / 100.0)) * 100
-        self.origin = roundup100(self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer))
+        def roundup10(x):
+            return int(math.ceil(x / 10.0)) * 10
+        self.origin = roundup10(self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer))
         self.uses_tek2 = False
         awg_trig_len=self.cfg['triggers']['awg']
         start_pulseblaster(self.exp_period_ns, awg_trig_len,self.origin+self.card_delay, self.origin + self.measurement_delay, self.card_trig_width, self.measurement_width)
