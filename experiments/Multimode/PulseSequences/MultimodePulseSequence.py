@@ -1,13 +1,13 @@
 __author__ = 'Nelson'
 
 from slab.instruments.awg.PulseSequence import *
-from numpy import arange, linspace, sin, pi, sign, append
+from numpy import arange, linspace, sin, pi, sign, append, around, mean, delete,arcsin,sqrt,load,save
 from slab.experiments.ExpLib.PulseSequenceBuilder import *
 from slab.experiments.ExpLib.QubitPulseSequence import *
 from slab.experiments.ExpLib.QubitPulseSequence_SB_cool import *
 from slab.experiments.ExpLib.PulseSequenceGroup import *
 import random
-from numpy import around, mean, delete
+# from numpy import around, mean, delete,arcsin
 from liveplot import LivePlotClient
 
 class MultimodeRabiSequence(QubitPulseSequenceSBcool):
@@ -27,14 +27,8 @@ class MultimodeRabiSequence(QubitPulseSequenceSBcool):
         self.flux_pulse_type = self.multimode_cfg[int(self.id)]['flux_pulse_type']
 
     def define_pulses(self,pt):
-        if not self.expt_cfg['split_pulse']:
-            self.psb.append('q','pi', self.pulse_type)
-            self.psb.append('q,mm'+str(self.id),'general', self.flux_pulse_type, amp=self.multimode_cfg[int(self.id)]['a'], length=pt)
-
-        else:
-            self.psb.append('q','pi', self.pulse_type)
-            self.psb.append('q,mm'+str(self.id),'general', self.flux_pulse_type, amp=self.multimode_cfg[int(self.id)]['a'], length=pt)
-            self.psb.append('q,mm'+str(self.id),'general', self.flux_pulse_type, amp=self.multimode_cfg[int(self.id)]['a'], length=pt,phase=self.multimode_cfg[int(self.id)]['pi_pi_offset_phase'])
+        self.psb.append('q','pi', self.pulse_type)
+        self.psb.append('q,mm'+str(self.id),'general', self.flux_pulse_type, amp=self.multimode_cfg[int(self.id)]['a'], length=pt,phase=self.multimode_cfg[int(self.id)]['pi_pi_offset_phase']/(2.0))
 
 class MultimodeEFRabiSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -391,10 +385,7 @@ class MultimodeCalibrateEFSidebandSequence(QubitPulseSequence):
             self.psb.append('q','pi_q_ef')
             # self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.multimode_cfg[self.mode]['a_ef'], length=pt,freq=self.multimode_cfg[self.mode]['flux_pulse_freq_ef'])
             self.psb.append('q,mm'+str(self.mode),'general_f', self.flux_pulse_type, amp=self.multimode_cfg[self.mode]['a_ef'], length=pt,freq=self.multimode_cfg[self.mode]['flux_pulse_freq_ef'])
-            if self.shift:
-                self.psb.append('q','pi', self.pulse_type,add_freq=self.multimode_cfg[self.id]['shift'])
-            else:
-                self.psb.append('q','pi', self.pulse_type)
+            self.psb.append('q','pi', self.pulse_type)
             self.psb.append('q','pi_q_ef')
 
         else:
@@ -501,11 +492,21 @@ class MultimodeDCOffsetSequence(QubitPulseSequence):
             self.sideband = self.extra_args['sideband']
         else:
             self.sideband = "ef"
+        if 'ramsey_freq' in self.extra_args:
+            self.ramsey = self.extra_args['ramsey_freq']
+        else:
+            self.ramsey = cfg['multimode_dc_offset_experiment']['ramsey_freq']
+
         # self.pulse_cfg = cfg['pulse_info']
+
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
 
     def define_points(self):
-        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+        if 'timelist' in self.extra_args:
+            self.expt_pts = self.extra_args['timelist']
+        else:
+            self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
 
     def define_parameters(self):
         self.pulse_type =  self.expt_cfg['pulse_type']
@@ -518,11 +519,11 @@ class MultimodeDCOffsetSequence(QubitPulseSequence):
             self.psb.append('q','pi_q_ef')
             self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=pt,freq=self.freq)
             self.psb.append('q','pi_q_ef')
-            self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
+            self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.ramsey*pt/(1.0e9))
         else:
             self.psb.append('q','half_pi', self.pulse_type)
             self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=pt,freq=self.freq)
-            self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
+            self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.ramsey*pt/(1.0e9))
 
 class MultimodeEFRabiSweepSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg, **kwargs):
@@ -603,14 +604,37 @@ class MultimodeGeneralEntanglementSequence(QubitPulseSequence):
         for key, value in kwargs.iteritems():
             self.extra_args[key] = value
 
-        self.id1 = self.extra_args['id1']
-        self.id2 = self.extra_args['id2']
-        self.id3 = self.extra_args['id3']
-        self.id4 = self.extra_args['id4']
-        self.id5 = self.extra_args['id5']
-        self.id6 = self.extra_args['id6']
-        self.idm = self.extra_args['idm']
+        if 'id1' in self.extra_args:
+            self.id1 = self.extra_args['id1']
+        if 'id2' in self.extra_args:
+            self.id2 = self.extra_args['id2']
+        if 'id3' in self.extra_args:
+            self.id3 = self.extra_args['id3']
+        if 'id4' in self.extra_args:
+            self.id4 = self.extra_args['id4']
+        if 'id5' in self.extra_args:
+            self.id5 = self.extra_args['id5']
+        if 'id6' in self.extra_args:
+            self.id6 = self.extra_args['id6']
+        if 'idm' in self.extra_args:
+            self.idm = self.extra_args['idm']
+
+        if 'GHZ' in self.extra_args:
+            self.ghz = self.extra_args['GHZ']
+        else:
+            self.ghz = True
+
+        print "id1 = "  + str(self.id1)
+        print "id2 = "  + str(self.id2)
+        print "id3 = "  + str(self.id3)
+        print "idm = "  + str(self.idm)
+
+
         self.number = self.extra_args['number']
+        if 'tomography' in self.extra_args:
+            self.tomography = True
+            self.tom_pulse = self.extra_args['tom_pulse']
+
         #self.multimode_cfg = cfg['multimodes']
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
 
@@ -621,19 +645,39 @@ class MultimodeGeneralEntanglementSequence(QubitPulseSequence):
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
         self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
-        ef_freq = self.qubit_cfg['frequency']+self.qubit_cfg['alpha']
+        self.ef_freq = self.qubit_cfg['frequency']+self.qubit_cfg['alpha']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
 
 
     def define_pulses(self,pt):
-        self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q,mm'+str(self.id1),'general', self.flux_pulse_type, amp= self.multimode_cfg[int(self.id1)]['a'], length= pt)
-        self.psb.append('q','pi', self.pulse_type)
-        for ii in np.arange(2,self.number):
-            self.psb.append('q','pi_q_ef')
-            self.psb.append('q,mm'+str(getattr(self, "id"+str(ii))),'pi_ef')
-        self.psb.append('q,mm'+str(getattr(self, "id"+str(self.number))),'pi_ge')
-        self.psb.append('q,mm'+str(self.idm),'pi_ge')
+
+        if self.ghz:
+            self.psb.append('q','pi', self.pulse_type)
+            self.psb.append('q,mm'+str(self.id1),'general', self.flux_pulse_type, amp= self.multimode_cfg[int(self.id1)]['a'], length= pt,phase=-90)
+
+            self.psb.append('q','pi', self.pulse_type)
+            for ii in np.arange(2,self.number):
+                self.psb.append('q','pi_q_ef')
+                     # self.psb.append('q','pi_q_ef',phase = -360.0*pt*(self.pulse_cfg['gauss']['iq_freq'] + self.ef_freq)/1e9)
+                self.psb.append('q,mm'+str(getattr(self, "id"+str(ii))),'pi_ef')
+            self.psb.append('q,mm'+str(getattr(self, "id"+str(self.number))),'pi_ge',phase=-90)
+            self.psb.append('q,mm'+str(self.idm),'pi_ge',phase=+90)
+        else:
+            self.psb.append('q','pi', self.pulse_type)
+            flux_two_third_length = self.multimode_cfg[int(self.id1)]['flux_pi_length'] + (2/pi)*arcsin(sqrt(2.0/3.0))*( self.multimode_cfg[int(self.id1)]['flux_2pi_length'] -  self.multimode_cfg[int(self.id1)]['flux_pi_length'])
+            self.psb.append('q,mm'+str(self.id1),'general', self.flux_pulse_type, amp= self.multimode_cfg[int(self.id1)]['a'], length= flux_two_third_length,phase=-90)
+            self.psb.append('q,mm'+str(self.id2),'general', self.flux_pulse_type, amp= self.multimode_cfg[int(self.id2)]['a'], length= pt,phase=-90)
+            self.psb.append('q,mm'+str(self.id3),'pi_ge',phase=-90)
+            self.psb.append('q,mm'+str(self.idm),'pi_ge',phase=+90)
+            if self.tomography:
+                if self.tom_pulse == 0:
+                    # <X>
+                    self.psb.append('q','half_pi_y', self.pulse_type)
+                elif self.tom_pulse == 1:
+                    # <Y>
+                    self.psb.append('q','half_pi', self.pulse_type)
+                else:
+                    pass
 
 class MultimodeEntanglementScalingSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -859,7 +903,6 @@ class MultimodePi_PiSequence(QubitPulseSequence):
         self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-ef_freq)
 
         self.offset_phase = self.pulse_cfg['gauss']['offset_phase']
-
 
     def define_pulses(self,pt):
 
@@ -4360,8 +4403,6 @@ class Multimode_State_Dep_Shift_Sequence(QubitPulseSequence):
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
 
 
-
-
     def define_points(self):
 
         if 'exp' in self.extra_args:
@@ -5028,824 +5069,7 @@ class Multimode_State_Dep_Shift_Sequenceb(QubitPulseSequenceSBcool):
             else:
                 self.psb.append('q','pi', self.pulse_type)
 
-class MultimodeProcessTomographyPhaseSweepSequence(QubitPulseSequenceSBcool):
-
-
-    def __init__(self,name, cfg, expt_cfg,**kwargs):
-        self.qubit_cfg = cfg['qubit']
-        self.cfg = cfg
-        self.pulse_cfg = cfg['pulse_info']
-        self.multimode_cfg = cfg['multimodes']
-        self.extra_args={}
-        for key, value in kwargs.iteritems():
-            self.extra_args[key] = value
-            #print str(key) + ": " + str(value)
-
-        if 'sb_cool' in self.extra_args:
-            sb_cool = self.extra_args['sb_cool']
-        else:
-            sb_cool = True
-        self.tomography_num = self.extra_args['tomography_num']
-        self.state_num = self.extra_args['state_num']
-        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = sb_cool)
-
-
-    def define_points(self):
-        ## we define
-        ## automauted
-        self.tomography_pulse_num = 15
-
-        self.expt_pts = np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
-
-    def define_parameters(self):
-
-        self.pulse_type =  self.expt_cfg['pulse_type']
-        self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
-        self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
-
-        if 'id1' in self.extra_args:
-            self.id1 = self.extra_args['id1']
-        else:
-            self.id1 = self.expt_cfg['id1']
-
-        if 'id2' in self.extra_args:
-            self.id2 = self.extra_args['id2']
-        else:
-            self.id2 = self.expt_cfg['id2']
-
-        if 'gate_num' in self.extra_args:
-            self.gate_num = self.extra_args['gate_num']
-        else:
-            self.gate_num = 0
-
-        if 'do_length_sweep' in self.extra_args:
-            self.do_length_sweep = self.extra_args['do_length_sweep']
-            self.length = self.extra_args['length']
-        else:
-            self.do_length_sweep = False
-            self.length =(self.multimode_cfg[self.id1]['flux_pi_length']+self.multimode_cfg[self.id1]['flux_2pi_length'])/(2.0)
-
-
-        self.id = self.expt_cfg['id']
-
-        self.offset_phase = self.pulse_cfg[self.pulse_type]['offset_phase']
-        self.halfpicounter1 = 0
-        self.halfpicounter2 = 0
-
-        self.mode_mode_cnot_dc_phase = self.cfg['mode_mode_offset']['cnot_dc_phase']
-        self.mode_mode_cnot_phase = self.cfg['mode_mode_offset']['cnot_phase']
-        self.mode_mode_cnot_phase2 = self.cfg['mode_mode_offset']['cnot_phase2']
-
-        self.mode_mode_cz_dc_phase = self.cfg['mode_mode_offset']['cz_dc_phase']
-        self.mode_mode_cz_phase = self.cfg['mode_mode_offset']['cz_phase']
-        self.mode_mode_cz_phase2 = self.cfg['mode_mode_offset']['cz_phase2']
-
-        self.cz_phase_cz = self.mode_mode_cz_phase[self.id1][self.id2]
-        self.cz_phase2_cz = self.mode_mode_cz_phase2[self.id1][self.id2]
-
-        self.cz_phase_zc = self.mode_mode_cz_phase[self.id2][self.id1]
-        self.cz_phase2_zc = self.mode_mode_cz_phase2[self.id2][self.id1]
-
-        self.cnot_phase_cx = self.mode_mode_cnot_phase[self.id1][self.id2]
-        self.cnot_phase2_cx = self.mode_mode_cnot_phase2[self.id1][self.id2]
-
-        self.cnot_phase_xc = self.mode_mode_cnot_phase[self.id2][self.id1]
-        self.cnot_phase2_xc = self.mode_mode_cnot_phase2[self.id2][self.id1]
-        self.tom_pulse_list = ['0','half_pi_y','half_pi','pi']
-        self.pulse_num_id1 = self.state_num%4
-        self.pulse_num_id2 = self.state_num/4
-
-    def define_pulses(self,pt):
-
-        ### Initiate states
-        self.define_states(pt)
-        ### Act Gate
-        self.define_gate(pt)
-        ### Tomography
-        self.define_tomography_pulse(pt)
-
-    def define_states(self,pt):
-        ### Preparing all input states required for two-mode process tomography
-        if self.pulse_num_id1  == 1 or self.pulse_num_id1 == 2:
-            add_phase_1 = -self.offset_phase
-        else:
-            add_phase_1 = 0
-
-        if self.pulse_num_id2  == 1 or self.pulse_num_id2 == 2:
-            add_phase_2 = -self.offset_phase
-        else:
-            add_phase_2 = 0
-
-        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id1], self.pulse_type)
-        self.psb.append('q,mm'+str(self.id1),'pi_ge',phase = self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + add_phase_1 - 90.0)
-        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id2], self.pulse_type)
-        self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + add_phase_2 - 90.0)
-
-    def define_gate(self,pt):
-        ### Preparing all input states required for two-mode process tomography
-        if self.gate_num ==0:
-            # I
-            pass
-        elif self.gate_num == 1:
-            # CZ
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-        elif self.gate_num == 2:
-            # CX
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
-        elif self.gate_num == 3:
-            # CY
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=90.0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
-
-
-
-
-    def define_tomography_pulse(self,pt):
-
-        ### Correlators for two mode tomography; while sweeping the phase of the final sideband pulse
-
-        # State convention : |id2, id1 >
-        # Gate convention CNOT/CZ(control_id,target_id)
-
-        #CNOT(id2, id1) = CX
-        #CZ(id2, id1) = CZ
-
-
-        tomo_index = (self.tomography_num)%self.tomography_pulse_num
-
-        if tomo_index == 0:
-
-            # -<IX>
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt + 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-            # self.halfpicounter2+=1
-
-        elif tomo_index == 1:
-            # <IY>
-
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-            # self.halfpicounter2+=1
-
-        elif tomo_index == 2:
-            # <IZ>
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-
-        elif tomo_index == 3:
-            # -<XI>
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-            # self.halfpicounter2+=1
-        elif tomo_index == 4:
-            # <XX> = XI + CX
-
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-        elif tomo_index == 5:
-            # -<XY> = XI + CY
-
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase= 90.0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-
-        elif tomo_index == 6:
-            # <XZ>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-        elif tomo_index == 7:
-            # <YI>
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-        elif tomo_index == 8:
-            # -<YX>
-
-            #CNOT
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-
-        elif tomo_index == 9:
-            # <YY>
-
-            #CY
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=90.0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-
-        elif tomo_index == 10:
-            # -<YZ>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-
-        elif tomo_index == 11:
-            # <ZI>
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-
-        elif tomo_index == 12:
-            # <ZX>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-        elif tomo_index == 13:
-            # <ZY>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-
-        elif tomo_index == 14:
-            # <ZZ>
-
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-
-class MultimodeProcessTomographyPhaseSweepSequenceDebug(QubitPulseSequenceSBcool):
-
-
-
-    def __init__(self,name, cfg, expt_cfg,**kwargs):
-        self.qubit_cfg = cfg['qubit']
-        self.cfg = cfg
-        self.pulse_cfg = cfg['pulse_info']
-        self.multimode_cfg = cfg['multimodes']
-        self.extra_args={}
-        for key, value in kwargs.iteritems():
-            self.extra_args[key] = value
-            #print str(key) + ": " + str(value)
-
-        if 'sb_cool' in self.extra_args:
-            sb_cool = self.extra_args['sb_cool']
-        else:
-            sb_cool = True
-
-
-        self.tomography_num = self.extra_args['tomography_num']
-        self.state_num = self.extra_args['state_num']
-        QubitPulseSequenceSBcool.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = sb_cool)
-
-
-    def define_points(self):
-        ## we define
-        ## automauted
-        self.tomography_pulse_num = 15
-
-        self.expt_pts = np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
-
-    def define_parameters(self):
-
-        self.pulse_type =  self.expt_cfg['pulse_type']
-        self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
-        self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
-
-        if 'id1' in self.extra_args:
-            self.id1 = self.extra_args['id1']
-        else:
-            self.id1 = self.expt_cfg['id1']
-
-        if 'id2' in self.extra_args:
-            self.id2 = self.extra_args['id2']
-        else:
-            self.id2 = self.expt_cfg['id2']
-
-        if 'gate_num' in self.extra_args:
-            self.gate_num = self.extra_args['gate_num']
-        else:
-            self.gate_num = 0
-
-        if 'do_length_sweep' in self.extra_args:
-            self.do_length_sweep = self.extra_args['do_length_sweep']
-            self.length = self.extra_args['length']
-        else:
-            self.do_length_sweep = False
-            self.length =(self.multimode_cfg[self.id1]['flux_pi_length']+self.multimode_cfg[self.id1]['flux_2pi_length'])/(2.0)
-
-
-        self.id = self.expt_cfg['id']
-
-        self.offset_phase = self.pulse_cfg[self.pulse_type]['offset_phase']
-        self.halfpicounter1 = 0
-        self.halfpicounter2 = 0
-
-        self.mode_mode_cnot_dc_phase = self.cfg['mode_mode_offset']['cnot_dc_phase']
-        self.mode_mode_cnot_phase = self.cfg['mode_mode_offset']['cnot_phase']
-        self.mode_mode_cnot_phase2 = self.cfg['mode_mode_offset']['cnot_phase2']
-
-        self.mode_mode_cz_dc_phase = self.cfg['mode_mode_offset']['cz_dc_phase']
-        self.mode_mode_cz_phase = self.cfg['mode_mode_offset']['cz_phase']
-        self.mode_mode_cz_phase2 = self.cfg['mode_mode_offset']['cz_phase2']
-
-        self.cz_phase_cz = self.mode_mode_cz_phase[self.id1][self.id2]
-        self.cz_phase2_cz = self.mode_mode_cz_phase2[self.id1][self.id2]
-
-        self.cz_phase_zc = self.mode_mode_cz_phase[self.id2][self.id1]
-        self.cz_phase2_zc = self.mode_mode_cz_phase2[self.id2][self.id1]
-
-        self.cnot_phase_cx = self.mode_mode_cnot_phase[self.id1][self.id2]
-        self.cnot_phase2_cx = self.mode_mode_cnot_phase2[self.id1][self.id2]
-
-        self.cnot_phase_xc = self.mode_mode_cnot_phase[self.id2][self.id1]
-        self.cnot_phase2_xc = self.mode_mode_cnot_phase2[self.id2][self.id1]
-        self.tom_pulse_list = ['0','half_pi_y','half_pi','pi']
-        self.pulse_num_id1 = self.state_num%4
-        self.pulse_num_id2 = self.state_num/4
-
-    def define_pulses(self,pt):
-
-        ### Initiate states
-        self.define_states(pt)
-        ### Act Gate
-        self.define_gate(pt)
-        ### Tomography
-        self.define_tomography_pulse(pt)
-
-    def define_states(self,pt):
-        ### Preparing all input states required for two-mode process tomography
-        if self.pulse_num_id1  == 1 or self.pulse_num_id1 == 2:
-            add_phase_1 = -self.offset_phase
-        else:
-            add_phase_1 = 0
-
-        if self.pulse_num_id2  == 1 or self.pulse_num_id2 == 2:
-            add_phase_2 = -self.offset_phase
-        else:
-            add_phase_2 = 0
-
-        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id1], self.pulse_type)
-        self.psb.append('q,mm'+str(self.id1),'pi_ge',phase = self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + add_phase_1 - 90.0)
-        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id2], self.pulse_type)
-        self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + add_phase_2 - 90.0)
-
-    def define_gate(self,pt):
-        ### Preparing all input states required for two-mode process tomography
-        if self.gate_num ==0:
-            # I
-            pass
-        elif self.gate_num == 1:
-            # CZ
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-        elif self.gate_num == 2:
-            # CX
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
-        elif self.gate_num == 3:
-            # CY
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=90.0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
-
-
-
-
-    def define_tomography_pulse(self,pt):
-
-        ### Correlators for two mode tomography; while sweeping the phase of the final sideband pulse
-
-        # State convention : |id2, id1 >
-        # Gate convention CNOT/CZ(control_id,target_id)
-
-        #CNOT(id2, id1) = CX
-        #CZ(id2, id1) = CZ
-
-
-        tomo_index = (self.tomography_num)%self.tomography_pulse_num
-
-        if tomo_index == 0:
-
-            # -<IX>
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt + 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-            # self.halfpicounter2+=1
-
-        elif tomo_index == 1:
-            # <IY>
-
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-            # self.halfpicounter2+=1
-
-        elif tomo_index == 2:
-            # <IZ>
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-
-        elif tomo_index == 3:
-            # -<XI>
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-            # self.halfpicounter2+=1
-        elif tomo_index == 4:
-            # <XX> = XI + CX
-
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-        elif tomo_index == 5:
-            # -<XY> = XI + CY
-
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase= 90.0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-
-        elif tomo_index == 6:
-            # <XZ>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-        elif tomo_index == 7:
-            # <YI>
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-        elif tomo_index == 8:
-            # -<YX>
-
-            #CNOT
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-
-        elif tomo_index == 9:
-            # <YY>
-
-            #CY
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=90.0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-
-        elif tomo_index == 10:
-            # -<YZ>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-
-        elif tomo_index == 11:
-            # <ZI>
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-
-        elif tomo_index == 12:
-            # <ZX>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-        elif tomo_index == 13:
-            # <ZY>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-
-        elif tomo_index == 14:
-            # <ZZ>
-
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + pt+ 90.0)
-
-class MultimodeProcessTomographyPhaseSweepSequenceNEW(QubitPulseSequence):
-
-
-    def __init__(self,name, cfg, expt_cfg,**kwargs):
-        self.qubit_cfg = cfg['qubit']
-        self.cfg = cfg
-        self.pulse_cfg = cfg['pulse_info']
-        self.multimode_cfg = cfg['multimodes']
-        self.proc_tom = cfg['proc_tom_phases']
-        self.extra_args={}
-        for key, value in kwargs.iteritems():
-            self.extra_args[key] = value
-            #print str(key) + ": " + str(value)
-
-        if 'sb_cool' in self.extra_args:
-            sb_cool = self.extra_args['sb_cool']
-        else:
-            sb_cool = False
-
-        if 'pair_index' in self.extra_args:
-            self.pair_index = self.extra_args['pair_index']
-        else:
-            self.pair_index = 0
-
-
-        self.tomography_num = self.extra_args['tomography_num']
-        self.state_num = self.extra_args['state_num']
-        self.ef_phase_0 = 0
-        self.ef_phase_1 = 0
-
-        if 'phase_correct_cz' in self.extra_args:
-            print 'phase_correct_cz: ' + str(self.extra_args['phase_correct_cz'])
-            if self.extra_args['phase_correct_cz']:
-                self.ef_phase_0 = self.proc_tom[self.pair_index]['ef_phase_0'][self.state_num][self.tomography_num]
-
-        if 'phase_correct_cnot' in self.extra_args:
-            print 'phase_correct_cnot: ' + str(self.extra_args['phase_correct_cnot'])
-            if self.extra_args['phase_correct_cnot']:
-                self.ef_phase_1 = self.proc_tom[self.pair_index]['ef_phase_1'][self.state_num][self.tomography_num]
-
-        if 'sweep_cnot' in self.extra_args:
-            print "CNOT phase sweep: " +str(self.extra_args['sweep_cnot'])
-            self.sweep_cnot = self.extra_args['sweep_cnot']
-        else:
-            self.sweep_cnot = False
-
-        if 'sweep_final_sb' in self.extra_args:
-            self.sweep_final_sb = self.extra_args['sweep_final_sb']
-            print "Sweeping final sideband: " + str(self.sweep_final_sb)
-        else:
-            self.sweep_final_sb = False
-        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = sb_cool)
-
-
-    def define_points(self):
-        ## we define
-        ## automauted
-        self.tomography_pulse_num = 15
-        self.expt_pts = np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
-
-    def define_parameters(self):
-
-        self.pulse_type =  self.expt_cfg['pulse_type']
-        self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
-        self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
-
-        if 'id1' in self.extra_args:
-            self.id1 = self.extra_args['id1']
-        else:
-            self.id1 = self.expt_cfg['id1']
-
-        if 'id2' in self.extra_args:
-            self.id2 = self.extra_args['id2']
-        else:
-            self.id2 = self.expt_cfg['id2']
-
-        if 'gate_num' in self.extra_args:
-            self.gate_num = self.extra_args['gate_num']
-        else:
-            self.gate_num = 0
-
-        if 'do_length_sweep' in self.extra_args:
-            self.do_length_sweep = self.extra_args['do_length_sweep']
-            self.length = self.extra_args['length']
-        else:
-            self.do_length_sweep = False
-            self.length =(self.multimode_cfg[self.id1]['flux_pi_length']+self.multimode_cfg[self.id1]['flux_2pi_length'])/(2.0)
-
-
-        self.id = self.expt_cfg['id']
-
-        self.offset_phase = self.pulse_cfg[self.pulse_type]['offset_phase']
-        self.halfpicounter1 = 0
-        self.halfpicounter2 = 0
-
-        self.mode_mode_cnot_dc_phase = self.cfg['mode_mode_offset']['cnot_dc_phase']
-        self.mode_mode_cnot_phase = self.cfg['mode_mode_offset']['cnot_phase']
-        self.mode_mode_cnot_phase2 = self.cfg['mode_mode_offset']['cnot_phase2']
-
-        self.mode_mode_cz_dc_phase = self.cfg['mode_mode_offset']['cz_dc_phase']
-        self.mode_mode_cz_phase = self.cfg['mode_mode_offset']['cz_phase']
-        self.mode_mode_cz_phase2 = self.cfg['mode_mode_offset']['cz_phase2']
-
-        self.cz_phase_cz = self.mode_mode_cz_phase[self.id1][self.id2]
-        self.cz_phase2_cz = self.mode_mode_cz_phase2[self.id1][self.id2]
-
-        self.cz_phase_zc = self.mode_mode_cz_phase[self.id2][self.id1]
-        self.cz_phase2_zc = self.mode_mode_cz_phase2[self.id2][self.id1]
-
-        self.cnot_phase_cx = self.mode_mode_cnot_phase[self.id1][self.id2]
-        self.cnot_phase2_cx = self.mode_mode_cnot_phase2[self.id1][self.id2]
-
-        self.cnot_phase_xc = self.mode_mode_cnot_phase[self.id2][self.id1]
-        self.cnot_phase2_xc = self.mode_mode_cnot_phase2[self.id2][self.id1]
-        self.tom_pulse_list = ['0','half_pi_y','half_pi','pi']
-        self.pulse_num_id1 = self.state_num%4
-        self.pulse_num_id2 = self.state_num/4
-
-    def define_pulses(self,pt):
-
-        ### Initiate states
-        self.define_states(pt)
-        ### Act Gate
-        self.define_gate(pt)
-        ### Tomography
-        self.define_tomography_pulse(pt)
-
-    def define_states(self,pt):
-        ### Preparing all input states required for two-mode process tomography
-        if self.pulse_num_id1  == 1 or self.pulse_num_id1 == 2:
-            add_phase_1 = -self.offset_phase
-        else:
-            add_phase_1 = 0
-
-        if self.pulse_num_id2  == 1 or self.pulse_num_id2 == 2:
-            add_phase_2 = -self.offset_phase
-        else:
-            add_phase_2 = 0
-
-        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id2], self.pulse_type)
-        self.psb.append('q,mm'+str(self.id2),'pi_ge',phase = self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + add_phase_2 - 90.0)
-        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id1], self.pulse_type)
-        self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + add_phase_1 - 90.0)
-
-    def define_gate(self,pt):
-        ### Preparing all input states required for two-mode process tomography
-        if self.sweep_final_sb:
-            self.add_cphase = 0
-        else:
-            self.add_cphase = pt
-        if self.gate_num ==0:
-            # I
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.ef_phase_0+self.cz_phase_cz + 180.0 + self.add_cphase,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-        elif self.gate_num == 1:
-            # CZ
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.ef_phase_0+self.cz_phase_cz + self.add_cphase,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-        elif self.gate_num == 2:
-            # CX
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.ef_phase_0+self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
-        elif self.gate_num == 3:
-            # CY
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=90.0,efsbphase_0=self.cnot_phase_cx + self.ef_phase_0 + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
-
-    def define_tomography_pulse(self,pt):
-
-        ### Correlators for two mode tomography; while sweeping the phase of the ef sideband pulse within the gate (in define gate)
-
-        # State convention : |id2, id1 >
-        # Gate convention CNOT/CZ(control_id,target_id)
-
-        #CNOT(id2, id1) = CX
-        #CZ(id2, id1) = CZ
-        if self.sweep_cnot:
-            self.add_cnot_phase_2 = -pt
-        else:
-            self.add_cnot_phase_2 = 0
-        if self.sweep_final_sb:
-            self.final_sb_phase = pt
-        else:
-            self.final_sb_phase = 0
-
-
-        tomo_index = (self.tomography_num)%self.tomography_pulse_num
-
-        if tomo_index == 0:
-
-            # -<IX>
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-            # self.halfpicounter2+=1
-
-        elif tomo_index == 1:
-            # <IY>
-
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-            # self.halfpicounter2+=1
-
-        elif tomo_index == 2:
-            # <IZ>
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0+ self.final_sb_phase)
-
-        elif tomo_index == 3:
-            # -<XI>
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-            # self.halfpicounter2+=1
-        elif tomo_index == 4:
-            # <XX> = XI + CX
-
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0.0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0,efsbphase_2=self.add_cnot_phase_2+self.ef_phase_1)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-        elif tomo_index == 5:
-            # -<XY> = XI + CY
-
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase= 90.0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2+self.ef_phase_1)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-
-        elif tomo_index == 6:
-            # <XZ>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-        elif tomo_index == 7:
-            # <YI>
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-        elif tomo_index == 8:
-            # -<YX>
-
-            #CNOT
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0.0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2+self.ef_phase_1)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-
-        elif tomo_index == 9:
-            # <YY>
-
-            #CY
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=90.0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2+self.ef_phase_1)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-
-        elif tomo_index == 10:
-            # -<YZ>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-
-        elif tomo_index == 11:
-            # <ZI>
-
-            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
-
-        elif tomo_index == 12:
-            # <ZX>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi_y', self.pulse_type)
-
-        elif tomo_index == 13:
-            # <ZY>
-
-            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
-
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi', self.pulse_type)
-
-
-        elif tomo_index == 14:
-            # <ZZ>
-
-            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0.0,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2+self.ef_phase_1)
-            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
-
-class MultimodeProcessTomographyPhaseSweepSequenceNEWTEMP(QubitPulseSequence):
+class MultimodeProcessTomographyPhaseSweepSequence_1(QubitPulseSequence):
 
 
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -5918,17 +5142,22 @@ class MultimodeProcessTomographyPhaseSweepSequenceNEWTEMP(QubitPulseSequence):
         else:
             self.sweep_final_sb = False
 
-        if 'sweep_ef_qubit_phase' in self.extra_args:
-            self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
-            print "Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase)
-        else:
-            self.sweep_ef_qubit_phase = False
-
         if 'ef_sb_offset' in self.extra_args:
             self.ef_sb_offset = self.extra_args['ef_sb_offset']
             print "Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset)
         else:
             self.ef_sb_offset = 0
+
+        if 'sweep_ef_qubit_phase' in self.extra_args:
+            self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
+            print "Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase)
+            self.ef_phase_1 += self.ef_sb_offset
+        else:
+            self.sweep_ef_qubit_phase = False
+
+
+
+
 
 
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = sb_cool)
@@ -5990,7 +5219,9 @@ class MultimodeProcessTomographyPhaseSweepSequenceNEWTEMP(QubitPulseSequence):
         self.tom_pulse_list = ['0','half_pi_y','half_pi','pi']
         self.pulse_num_id1 = self.state_num%4
         self.pulse_num_id2 = self.state_num/4
-        print "ef phase 0 = " +str(self.ef_phase_0)
+        # print "Phase added to first ef sideband of CPhase = " +str(self.ef_phase_0)
+        # print "Additional Phase added (subtracted) to/from first (second) ef sideband of CPhase (CNOT) = " +str(self.ef_phase_1)
+
     def define_pulses(self,pt):
 
         ### Initiate states
@@ -6031,9 +5262,7 @@ class MultimodeProcessTomographyPhaseSweepSequenceNEWTEMP(QubitPulseSequence):
                 if tomo_index in array([4,5,8,9]):
                     self.add_cphase = self.ef_phase_1
         elif self.sweep_ef_qubit_phase:
-
             self.pi_ef_qubit_phase = pt
-            self.ef_phase_1 = self.ef_phase_1 + self.ef_sb_offset
             self.add_cphase = self.ef_phase_1
         else:
             self.add_cphase = pt
@@ -6161,8 +5390,9 @@ class MultimodeProcessTomographyPhaseSweepSequenceNEWTEMP(QubitPulseSequence):
             cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
 
             self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
-            self.psb.append('q','half_pi_y', self.pulse_type)
+            self.psb.append('q','half_pi', self.pulse_type)
 
+#### Was wrong untill 02/13
 
         elif tomo_index == 11:
             # <ZI>
@@ -6181,6 +5411,1439 @@ class MultimodeProcessTomographyPhaseSweepSequenceNEWTEMP(QubitPulseSequence):
             # <ZY>
 
             cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 14:
+            # <ZZ>
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2+self.ef_phase_1)
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+
+#### Protocol 2: All the measurement segments have a gate. Appropriate for extracting gate fidelities, with the insetion of the gate of interest between prep and measurement
+class MultimodeProcessTomographyPhaseSweepSequence_2(QubitPulseSequence):
+
+
+    def __init__(self,name, cfg, expt_cfg,**kwargs):
+
+        self.qubit_cfg = cfg['qubit']
+        self.cfg = cfg
+        self.pulse_cfg = cfg['pulse_info']
+        self.multimode_cfg = cfg['multimodes']
+        self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations.npy")
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
+
+        if 'sb_cool' in self.extra_args:
+            sb_cool = self.extra_args['sb_cool']
+        else:
+            sb_cool = False
+
+        if 'id1' in self.extra_args:
+            self.id1 = self.extra_args['id1']
+        else:
+            self.id1 = self.expt_cfg['id1']
+
+        if 'id2' in self.extra_args:
+            self.id2 = self.extra_args['id2']
+        else:
+            self.id2 = self.expt_cfg['id2']
+
+        self.proc_tom =   self.proc_tom_phase_matrix[self.id2][self.id1]
+        self.tomography_num = self.extra_args['tomography_num']
+        self.state_num = self.extra_args['state_num']
+        self.ef_phase_0 = 0
+        self.ef_phase_1 = 0
+
+        if 'sweep_time' in self.extra_args:
+            self.sweep_time = self.extra_args['sweep_time']
+        else:
+            self.sweep_time = 0
+
+        if 'phase_correct_cz' in self.extra_args:
+            self.phase_correct_cz = self.extra_args['phase_correct_cz']
+        else:
+            self.phase_correct_cz = False
+        print 'phase_correct_cz: ' + str(self.phase_correct_cz)
+
+        if self.phase_correct_cz:
+            self.ef_phase_0 = self.proc_tom[0][self.state_num][self.tomography_num]
+            print "ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0)
+
+        if 'phase_correct_cnot' in self.extra_args:
+            self.phase_correct_cnot = self.extra_args['phase_correct_cnot']
+        else:
+            self.phase_correct_cnot = False
+
+        print 'phase_correct_cnot: ' + str(self.phase_correct_cnot)
+
+        if self.phase_correct_cnot:
+            self.ef_phase_1 =  self.proc_tom[1][self.state_num][self.tomography_num]
+            print "Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1)
+
+        if 'cnot_ef_qubit_phase' in self.extra_args:
+            self.pi_ef_qubit_phase = self.extra_args['cnot_ef_qubit_phase']
+            print "Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg"
+        else:
+            self.pi_ef_qubit_phase = 0
+
+        if 'use_saved_cnot_ef_qubit_phase' in self.extra_args:
+            self.use_saved_cnot_ef_qubit_phase = self.extra_args['use_saved_cnot_ef_qubit_phase']
+        else:
+            self.use_saved_cnot_ef_qubit_phase = False
+
+        if self.use_saved_cnot_ef_qubit_phase:
+            self.pi_ef_qubit_phase = self.proc_tom[2][6][4]
+            # self.pi_ef_qubit_phase = 0
+
+        if 'sweep_cnot' in self.extra_args:
+            print "CNOT phase sweep: " +str(self.extra_args['sweep_cnot'])
+            self.sweep_cnot = self.extra_args['sweep_cnot']
+        else:
+            self.sweep_cnot = False
+
+
+        if 'sweep_final_sb' in self.extra_args:
+            self.sweep_final_sb = self.extra_args['sweep_final_sb']
+            print "Sweeping final sideband: " + str(self.sweep_final_sb)
+        else:
+            self.sweep_final_sb = False
+
+        if 'ef_sb_offset' in self.extra_args:
+            self.ef_sb_offset = self.extra_args['ef_sb_offset']
+            print "Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset)
+        else:
+            self.ef_sb_offset = 0
+
+        if 'sweep_ef_qubit_phase' in self.extra_args:
+            self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
+            print "Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase)
+            # self.ef_phase_1 += self.ef_sb_offset
+        else:
+            self.sweep_ef_qubit_phase = False
+
+        if 'sweep_ef_sb_offset_phase' in self.extra_args:
+            self.sweep_ef_sb_offset_phase = self.extra_args['sweep_ef_sb_offset_phase']
+            print "Sweeping ef sb offset phase: " + str(self.sweep_ef_sb_offset_phase)
+            # self.ef_phase_1 += self.ef_sb_offset
+        else:
+            self.sweep_ef_sb_offset_phase = False
+
+
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = sb_cool)
+
+    def define_points(self):
+        ## we define
+        ## automauted
+        self.tomography_pulse_num = 15
+
+        self.expt_pts = np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+
+        self.pulse_type =  self.expt_cfg['pulse_type']
+        self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
+        self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
+
+
+        if 'gate_num' in self.extra_args:
+            self.gate_num = self.extra_args['gate_num']
+        else:
+            self.gate_num = 0
+
+
+        self.id = self.expt_cfg['id']
+
+        self.offset_phase = self.pulse_cfg[self.pulse_type]['offset_phase']
+        self.halfpicounter1 = 0
+        self.halfpicounter2 = 0
+
+        self.mode_mode_cnot_dc_phase = self.cfg['mode_mode_offset']['cnot_dc_phase']
+        self.mode_mode_cnot_phase = self.cfg['mode_mode_offset']['cnot_phase']
+        self.mode_mode_cnot_phase2 = self.cfg['mode_mode_offset']['cnot_phase2']
+
+        self.mode_mode_cz_dc_phase = self.cfg['mode_mode_offset']['cz_dc_phase']
+        self.mode_mode_cz_phase = self.cfg['mode_mode_offset']['cz_phase']
+        self.mode_mode_cz_phase2 = self.cfg['mode_mode_offset']['cz_phase2']
+
+        self.cz_phase_cz = self.mode_mode_cz_phase[self.id1][self.id2]
+        self.cz_phase2_cz = self.mode_mode_cz_phase2[self.id1][self.id2]
+
+        self.cz_phase_zc = self.mode_mode_cz_phase[self.id2][self.id1]
+        self.cz_phase2_zc = self.mode_mode_cz_phase2[self.id2][self.id1]
+
+        self.cnot_phase_cx = self.mode_mode_cnot_phase[self.id1][self.id2]
+        self.cnot_phase2_cx = self.mode_mode_cnot_phase2[self.id1][self.id2]
+
+        self.cnot_phase_xc = self.mode_mode_cnot_phase[self.id2][self.id1]
+        self.cnot_phase2_xc = self.mode_mode_cnot_phase2[self.id2][self.id1]
+        self.tom_pulse_list = ['0','half_pi_y','half_pi','pi']
+        self.pulse_num_id1 = self.state_num%4
+        self.pulse_num_id2 = self.state_num/4
+        # print "Phase added to first ef sideband of CPhase = " +str(self.ef_phase_0)
+        # print "Additional Phase added (subtracted) to/from first (second) ef sideband of CPhase (CNOT) = " +str(self.ef_phase_1)
+
+    def define_pulses(self,pt):
+
+        ### Initiate states
+        self.define_states(pt)
+        ### Idle
+        if 'sweep_time' in self.extra_args:
+            self.psb.idle(self.sweep_time)
+        else:
+            pass
+        ### Act Gate
+        self.define_gate(pt)
+        ### Tomography
+        self.define_tomography_pulse(pt)
+
+    def define_states(self,pt):
+        ### Preparing all input states required for two-mode process tomography
+        if self.pulse_num_id1  == 1 or self.pulse_num_id1 == 2:
+            add_phase_1 = -self.offset_phase
+        else:
+            add_phase_1 = 0
+
+        if self.pulse_num_id2  == 1 or self.pulse_num_id2 == 2:
+            add_phase_2 = -self.offset_phase
+        else:
+            add_phase_2 = 0
+
+        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id2], self.pulse_type)
+        self.psb.append('q,mm'+str(self.id2),'pi_ge',phase = self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + add_phase_2 - 90.0)
+        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id1], self.pulse_type)
+        self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + add_phase_1 - 90.0)
+
+    def define_gate(self,pt):
+        ### Preparing all input states required for two-mode process tomography
+        tomo_index = (self.tomography_num)%self.tomography_pulse_num
+
+        if self.gate_num ==0:
+            # I
+            pass
+
+        elif self.gate_num == 1:
+            # CZ
+            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
+        elif self.gate_num == 2:
+            # CX
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx ,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0)
+        elif self.gate_num == 3:
+            # CY
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=-90.0,efsbphase_0=self.cnot_phase_cx + self.ef_phase_0 ,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
+        else:
+            pass
+
+    def define_tomography_pulse(self,pt):
+
+        ### Correlators for two mode tomography; while sweeping the phase of the ef sideband pulse within the gate (in define gate)
+
+        # State convention : |id2, id1 >
+        # Gate convention CNOT/CZ(control_id,target_id)
+
+        tomo_index = (self.tomography_num)%self.tomography_pulse_num
+        #CNOT(id2, id1) = CX
+        #CZ(id2, id1) = CZ
+
+
+        #### Adds ef phase 0 to first ef sideband of CNOT gate
+
+        self.add_cphase = 0
+        self.final_sb_phase = 0
+        self.add_cnot_phase_2 = 0
+        if self.phase_correct_cz:
+            self.add_cphase += self.ef_phase_0
+        if tomo_index in array([4,5,8,9]):
+            self.add_cphase += self.ef_sb_offset
+            self.add_cnot_phase_2 -= self.ef_sb_offset
+            if self.phase_correct_cnot:
+                self.add_cphase += self.ef_phase_1
+                self.add_cnot_phase_2 -= self.ef_phase_1
+
+        if self.sweep_final_sb:
+            self.final_sb_phase += pt
+        elif self.sweep_ef_qubit_phase:
+            self.pi_ef_qubit_phase += pt
+        else:
+            self.add_cphase += pt
+
+        if self.sweep_cnot:
+            self.add_cnot_phase_2 -=pt
+        elif self.sweep_ef_sb_offset_phase:
+            self.add_cnot_phase_2 +=pt
+        else:
+            pass
+
+
+
+
+        ### Adds a CPhase gate to all correlators that do not involve a CNOT gate
+
+        if tomo_index not in array([4,5,8,9,14]):
+            ### i.e not in XX, XY, YX, YY, ZZ
+            if tomo_index in array([6,10,12,13]):
+                ### i.e is XZ,YZ,ZX, ZY
+                id_phase = 0.0
+            else:
+                id_phase = 180.0
+            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.ef_phase_0+self.cz_phase_cz +  id_phase + self.add_cphase,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
+        else:
+            ### Gate added for CX correlators later
+            pass
+
+
+        if tomo_index == 0:
+
+            # -<IX>
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+            # self.halfpicounter2+=1
+
+        elif tomo_index == 1:
+            # <IY>
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+            # self.halfpicounter2+=1
+
+        elif tomo_index == 2:
+            # <IZ>
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0+ self.final_sb_phase)
+
+        elif tomo_index == 3:
+            # -<XI>
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+            # self.halfpicounter2+=1
+        elif tomo_index == 4:
+            # <XX> = XI + CX
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+            print "ef qubit phase = " +str(self.pi_ef_qubit_phase)
+            print "add c phase = " +str(self.add_cphase)
+            print "add cnot phase 2 = " +str(self.add_cnot_phase_2)
+            print "cnot_phase_2_cx = " +str(self.cnot_phase2_cx)
+            print "ef phase 1 = " +str(self.ef_phase_1)
+            print "ef phase 0 = "+str(self.ef_phase_0)
+
+
+        elif tomo_index == 5:
+            # -<XY> = XI + CY
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase= -90.0 + self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+
+        elif tomo_index == 6:
+            # <XZ>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+        elif tomo_index == 7:
+            # <YI>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+        elif tomo_index == 8:
+            # -<YX>
+
+            #CNOT
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx+self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 9:
+            # <YY>
+
+            #CY
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=-90.0+self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 10:
+            # -<YZ>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 11:
+            # <ZI>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+
+        elif tomo_index == 12:
+            # <ZX>
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+        elif tomo_index == 13:
+            # <ZY>
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 14:
+            # <ZZ>
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2)
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+
+
+### Flips the order of sidebands during state preparation so that the final prep sideband == measurement sideband
+class MultimodeProcessTomographySequence_2(QubitPulseSequence):
+
+    def __init__(self,name, cfg, expt_cfg,**kwargs):
+
+        self.qubit_cfg = cfg['qubit']
+        self.cfg = cfg
+        self.pulse_cfg = cfg['pulse_info']
+        self.multimode_cfg = cfg['multimodes']
+        self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations.npy")
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
+
+        if 'sb_cool' in self.extra_args:
+            sb_cool = self.extra_args['sb_cool']
+        else:
+            sb_cool = False
+
+        if 'proc_tom_set' in self.extra_args:
+            self.proc_tom_set = kwargs['proc_tom_set']
+        else:
+            self.proc_tom_set = 0
+
+        if 'id1' in self.extra_args:
+            self.id1 = self.extra_args['id1']
+        else:
+            self.id1 = self.expt_cfg['id1']
+
+        if 'id2' in self.extra_args:
+            self.id2 = self.extra_args['id2']
+        else:
+            self.id2 = self.expt_cfg['id2']
+
+        self.proc_tom =   self.proc_tom_phase_matrix[self.id2][self.id1]
+
+        self.ef_phase_0 = 0
+        self.ef_phase_1 = 0
+
+
+        self.pi_ef_qubit_phase = self.proc_tom[2][6][4]
+
+
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = sb_cool)
+
+    def define_points(self):
+        ## we define
+        ## automauted
+        self.tomography_pulse_num = 15
+
+        if self.proc_tom_set == 0:
+            self.expt_pts = np.arange(120)
+        else:
+            self.expt_pts = np.arange(120,240)
+
+    def define_parameters(self):
+
+        self.pulse_type =  self.expt_cfg['pulse_type']
+        self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
+        self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
+
+
+        if 'gate_num' in self.extra_args:
+            self.gate_num = self.extra_args['gate_num']
+        else:
+            self.gate_num = 0
+
+
+        self.offset_phase = self.pulse_cfg[self.pulse_type]['offset_phase']
+        self.mode_mode_cnot_dc_phase = self.cfg['mode_mode_offset']['cnot_dc_phase']
+        self.mode_mode_cnot_phase = self.cfg['mode_mode_offset']['cnot_phase']
+        self.mode_mode_cnot_phase2 = self.cfg['mode_mode_offset']['cnot_phase2']
+
+        self.mode_mode_cz_dc_phase = self.cfg['mode_mode_offset']['cz_dc_phase']
+        self.mode_mode_cz_phase = self.cfg['mode_mode_offset']['cz_phase']
+        self.mode_mode_cz_phase2 = self.cfg['mode_mode_offset']['cz_phase2']
+
+        self.cz_phase_cz = self.mode_mode_cz_phase[self.id1][self.id2]
+        self.cz_phase2_cz = self.mode_mode_cz_phase2[self.id1][self.id2]
+
+        self.cz_phase_zc = self.mode_mode_cz_phase[self.id2][self.id1]
+        self.cz_phase2_zc = self.mode_mode_cz_phase2[self.id2][self.id1]
+
+        self.cnot_phase_cx = self.mode_mode_cnot_phase[self.id1][self.id2]
+        self.cnot_phase2_cx = self.mode_mode_cnot_phase2[self.id1][self.id2]
+
+        self.cnot_phase_xc = self.mode_mode_cnot_phase[self.id2][self.id1]
+        self.cnot_phase2_xc = self.mode_mode_cnot_phase2[self.id2][self.id1]
+        self.tom_pulse_list = ['0','half_pi_y','half_pi','pi']
+
+        # print "Phase added to first ef sideband of CPhase = " +str(self.ef_phase_0)
+        # print "Additional Phase added (subtracted) to/from first (second) ef sideband of CPhase (CNOT) = " +str(self.ef_phase_1)
+
+    def define_pulses(self,pt):
+
+        ### Initiate states
+        self.define_states(pt)
+        ### Idle
+        ### Act Gate
+        self.define_gate(pt)
+        ### Tomography
+        self.define_tomography_pulse(pt)
+
+    def define_states(self,pt):
+        ### Preparing all input states required for two-mode process tomography
+        self.state_num = pt%16
+        self.pulse_num_id1 = self.state_num%4
+        self.pulse_num_id2 = self.state_num/4
+
+        if self.pulse_num_id1  == 1 or self.pulse_num_id1 == 2:
+            add_phase_1 = -self.offset_phase
+        else:
+            add_phase_1 = 0
+
+        if self.pulse_num_id2  == 1 or self.pulse_num_id2 == 2:
+            add_phase_2 = -self.offset_phase
+        else:
+            add_phase_2 = 0
+
+
+
+        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id2], self.pulse_type)
+        self.psb.append('q,mm'+str(self.id2),'pi_ge',phase = self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + add_phase_2 - 90.0)
+        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id1], self.pulse_type)
+        self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + add_phase_1 - 90.0)
+
+    def define_gate(self,pt):
+        ### Preparing all input states required for two-mode process tomography
+        self.tomography_num = pt/16
+        self.state_num = pt%16
+        tomo_index = (self.tomography_num)%self.tomography_pulse_num
+        self.ef_phase_0 = self.proc_tom[0][self.state_num][self.tomography_num]
+        self.ef_phase_1 =  self.proc_tom[1][self.state_num][self.tomography_num]
+        if self.gate_num ==0:
+            # I
+            pass
+
+        elif self.gate_num == 1:
+            # CZ
+            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
+        elif self.gate_num == 2:
+            # CX
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx ,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0)
+        elif self.gate_num == 3:
+            # CY
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=-90.0,efsbphase_0=self.cnot_phase_cx + self.ef_phase_0 ,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
+        else:
+            pass
+
+    def define_tomography_pulse(self,pt):
+
+        ### Correlators for two mode tomography; while sweeping the phase of the ef sideband pulse within the gate (in define gate)
+
+        # State convention : |id2, id1 >
+        # Gate convention CNOT/CZ(control_id,target_id)
+        self.tomography_num = pt/16
+        tomo_index = (self.tomography_num)%self.tomography_pulse_num
+        self.state_num = pt%16
+        tomo_index = (self.tomography_num)%self.tomography_pulse_num
+        self.ef_phase_0 = self.proc_tom[0][self.state_num][self.tomography_num]
+        self.ef_phase_1 =  self.proc_tom[1][self.state_num][self.tomography_num]
+        #CNOT(id2, id1) = CX
+        #CZ(id2, id1) = CZ
+
+        self.add_cphase = 0
+        if self.tomography_num in array([4,5,8,9]):
+            self.add_cphase = self.ef_phase_1
+
+
+        self.add_cnot_phase_2 =0
+
+        self.final_sb_phase = 0
+
+        ### Adds a CPhase gate to all correlators that do not involve a CNOT gate
+
+        if tomo_index not in array([4,5,8,9,14]):
+            ### i.e not in XX, XY, YX, YY, ZZ
+            if tomo_index in array([6,10,12,13]):
+                ### i.e is XZ,YZ,ZX, ZY
+                id_phase = 0.0
+            else:
+                id_phase = 180.0
+
+            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.ef_phase_0+self.cz_phase_cz +  id_phase + self.add_cphase,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
+
+
+        if tomo_index == 0:
+
+            # -<IX>
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+            # self.halfpicounter2+=1
+
+        elif tomo_index == 1:
+            # <IY>
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+            # self.halfpicounter2+=1
+
+        elif tomo_index == 2:
+            # <IZ>
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0+ self.final_sb_phase)
+
+        elif tomo_index == 3:
+            # -<XI>
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+            # self.halfpicounter2+=1
+        elif tomo_index == 4:
+            # <XX> = XI + CX
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+        elif tomo_index == 5:
+            # -<XY> = XI + CY
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase= -90.0 + self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+
+        elif tomo_index == 6:
+            # <XZ>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+        elif tomo_index == 7:
+            # <YI>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+        elif tomo_index == 8:
+            # -<YX>
+
+            #CNOT
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx+self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 9:
+            # <YY>
+
+            #CY
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=-90.0+self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 10:
+            # -<YZ>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 11:
+            # <ZI>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+
+        elif tomo_index == 12:
+            # <ZX>
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+        elif tomo_index == 13:
+            # <ZY>
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 14:
+            # <ZZ>
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2+self.ef_phase_1)
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+
+#### Test and old sequences
+class MultimodeProcessTomographyPhaseSweepSequence_test(QubitPulseSequence):
+
+    def __init__(self,name, cfg, expt_cfg,**kwargs):
+
+        self.qubit_cfg = cfg['qubit']
+        self.cfg = cfg
+        self.pulse_cfg = cfg['pulse_info']
+        self.multimode_cfg = cfg['multimodes']
+        self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations_test.npy")
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
+
+        if 'sb_cool' in self.extra_args:
+            sb_cool = self.extra_args['sb_cool']
+        else:
+            sb_cool = False
+
+        if 'pair_index' in self.extra_args:
+            self.pair_index = self.extra_args['pair_index']
+        else:
+            self.pair_index = 0
+        print "Pair index= " + str(self.pair_index)
+
+        if 'id1' in self.extra_args:
+            self.id1 = self.extra_args['id1']
+        else:
+            self.id1 = self.expt_cfg['id1']
+
+        if 'id2' in self.extra_args:
+            self.id2 = self.extra_args['id2']
+        else:
+            self.id2 = self.expt_cfg['id2']
+
+        self.proc_tom =   self.proc_tom_phase_matrix[self.id2][self.id1]
+        self.tomography_num = self.extra_args['tomography_num']
+        self.state_num = self.extra_args['state_num']
+        self.ef_phase_0 = 0
+        self.ef_phase_1 = 0
+
+        if 'sweep_time' in self.extra_args:
+            self.sweep_time = self.extra_args['sweep_time']
+        else:
+            self.sweep_time = 0
+
+        if 'phase_correct_cz' in self.extra_args:
+            print 'phase_correct_cz: ' + str(self.extra_args['phase_correct_cz'])
+            if self.extra_args['phase_correct_cz']:
+                self.ef_phase_0 = self.proc_tom[0][self.state_num][self.tomography_num]
+                print "ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0)
+
+        if 'phase_correct_cnot' in self.extra_args:
+            print 'phase_correct_cnot: ' + str(self.extra_args['phase_correct_cnot'])
+            self.phase_correct_cnot = self.extra_args['phase_correct_cnot']
+        else:
+            self.phase_correct_cnot = False
+
+        if self.phase_correct_cnot:
+            self.ef_phase_1 =  self.proc_tom[1][self.state_num][self.tomography_num]
+            print "Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1)
+
+        if 'cnot_ef_qubit_phase' in self.extra_args:
+            self.pi_ef_qubit_phase = self.extra_args['cnot_ef_qubit_phase']
+            print "Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg"
+        else:
+            self.pi_ef_qubit_phase = 0
+
+        if 'use_saved_cnot_ef_qubit_phase' in self.extra_args:
+            self.use_saved_cnot_ef_qubit_phase = self.extra_args['use_saved_cnot_ef_qubit_phase']
+        else:
+            self.use_saved_cnot_ef_qubit_phase = False
+
+        if self.use_saved_cnot_ef_qubit_phase:
+            self.pi_ef_qubit_phase = self.proc_tom[2][6][4]
+
+        if 'sweep_cnot' in self.extra_args:
+            print "CNOT phase sweep: " +str(self.extra_args['sweep_cnot'])
+            self.sweep_cnot = self.extra_args['sweep_cnot']
+        else:
+            self.sweep_cnot = False
+
+
+        if 'sweep_final_sb' in self.extra_args:
+            self.sweep_final_sb = self.extra_args['sweep_final_sb']
+            print "Sweeping final sideband: " + str(self.sweep_final_sb)
+        else:
+            self.sweep_final_sb = False
+
+        if 'ef_sb_offset' in self.extra_args:
+            self.ef_sb_offset = self.extra_args['ef_sb_offset']
+            print "Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset)
+        else:
+            self.ef_sb_offset = 0
+
+        if 'sweep_ef_qubit_phase' in self.extra_args:
+            self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
+            print "Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase)
+            self.ef_phase_1 += self.ef_sb_offset
+        else:
+            self.sweep_ef_qubit_phase = False
+
+        if 'sweep_ef_sb_offset_phase' in self.extra_args:
+            self.sweep_ef_sb_offset_phase = self.extra_args['sweep_ef_sb_offset_phase']
+            print "Sweeping ef sb offset phase: " + str(self.sweep_ef_sb_offset_phase)
+            self.ef_phase_1 += self.ef_sb_offset
+        else:
+            self.sweep_ef_sb_offset_phase = False
+
+
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = sb_cool)
+
+    def define_points(self):
+        ## we define
+        ## automauted
+        self.tomography_pulse_num = 15
+
+        self.expt_pts = np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+
+        self.pulse_type =  self.expt_cfg['pulse_type']
+        self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
+        self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
+
+
+        if 'gate_num' in self.extra_args:
+            self.gate_num = self.extra_args['gate_num']
+        else:
+            self.gate_num = 0
+
+
+        self.id = self.expt_cfg['id']
+
+        self.offset_phase = self.pulse_cfg[self.pulse_type]['offset_phase']
+        self.halfpicounter1 = 0
+        self.halfpicounter2 = 0
+
+        self.mode_mode_cnot_dc_phase = self.cfg['mode_mode_offset']['cnot_dc_phase']
+        self.mode_mode_cnot_phase = self.cfg['mode_mode_offset']['cnot_phase']
+        self.mode_mode_cnot_phase2 = self.cfg['mode_mode_offset']['cnot_phase2']
+
+        self.mode_mode_cz_dc_phase = self.cfg['mode_mode_offset']['cz_dc_phase']
+        self.mode_mode_cz_phase = self.cfg['mode_mode_offset']['cz_phase']
+        self.mode_mode_cz_phase2 = self.cfg['mode_mode_offset']['cz_phase2']
+
+        self.cz_phase_cz = self.mode_mode_cz_phase[self.id1][self.id2]
+        self.cz_phase2_cz = self.mode_mode_cz_phase2[self.id1][self.id2]
+
+        self.cz_phase_zc = self.mode_mode_cz_phase[self.id2][self.id1]
+        self.cz_phase2_zc = self.mode_mode_cz_phase2[self.id2][self.id1]
+
+        self.cnot_phase_cx = self.mode_mode_cnot_phase[self.id1][self.id2]
+        self.cnot_phase2_cx = self.mode_mode_cnot_phase2[self.id1][self.id2]
+
+        self.cnot_phase_xc = self.mode_mode_cnot_phase[self.id2][self.id1]
+        self.cnot_phase2_xc = self.mode_mode_cnot_phase2[self.id2][self.id1]
+        self.tom_pulse_list = ['0','half_pi_y','half_pi','pi']
+        self.pulse_num_id1 = self.state_num%4
+        self.pulse_num_id2 = self.state_num/4
+        # print "Phase added to first ef sideband of CPhase = " +str(self.ef_phase_0)
+        # print "Additional Phase added (subtracted) to/from first (second) ef sideband of CPhase (CNOT) = " +str(self.ef_phase_1)
+
+    def define_pulses(self,pt):
+
+        ### Initiate states
+        self.define_states(pt)
+        ### Idle
+        if 'sweep_time' in self.extra_args:
+            self.psb.idle(self.sweep_time)
+        else:
+            pass
+        ### Act Gate
+        self.define_gate(pt)
+        ### Tomography
+        self.define_tomography_pulse(pt)
+
+    def define_states(self,pt):
+        ### Preparing all input states required for two-mode process tomography
+        if self.pulse_num_id1  == 1 or self.pulse_num_id1 == 2:
+            add_phase_1 = -self.offset_phase
+        else:
+            add_phase_1 = 0
+
+        if self.pulse_num_id2  == 1 or self.pulse_num_id2 == 2:
+            add_phase_2 = -self.offset_phase
+        else:
+            add_phase_2 = 0
+
+        if self.tomography_num in array([6,10]):
+
+            self.psb.append('q',self.tom_pulse_list[self.pulse_num_id1], self.pulse_type)
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + add_phase_1 - 90.0)
+            self.psb.append('q',self.tom_pulse_list[self.pulse_num_id2], self.pulse_type)
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase = self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + add_phase_2 - 90.0)
+
+
+        else:
+
+            self.psb.append('q',self.tom_pulse_list[self.pulse_num_id2], self.pulse_type)
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase = self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + add_phase_2 - 90.0)
+            self.psb.append('q',self.tom_pulse_list[self.pulse_num_id1], self.pulse_type)
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + add_phase_1 - 90.0)
+
+
+    def define_gate(self,pt):
+        ### Preparing all input states required for two-mode process tomography
+        tomo_index = (self.tomography_num)%self.tomography_pulse_num
+
+        if self.gate_num ==0:
+            # I
+            pass
+
+        elif self.gate_num == 1:
+            # CZ
+            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
+        elif self.gate_num == 2:
+            # CX
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx ,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0)
+        elif self.gate_num == 3:
+            # CY
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=-90.0,efsbphase_0=self.cnot_phase_cx + self.ef_phase_0 ,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
+        else:
+            pass
+
+    def define_tomography_pulse(self,pt):
+
+        ### Correlators for two mode tomography; while sweeping the phase of the ef sideband pulse within the gate (in define gate)
+
+        # State convention : |id2, id1 >
+        # Gate convention CNOT/CZ(control_id,target_id)
+
+        tomo_index = (self.tomography_num)%self.tomography_pulse_num
+        #CNOT(id2, id1) = CX
+        #CZ(id2, id1) = CZ
+        if self.sweep_final_sb:
+            self.add_cphase = 0
+            if self.phase_correct_cnot:
+                if tomo_index in array([4,5,8,9]):
+                    self.add_cphase = self.ef_phase_1
+        elif self.sweep_ef_qubit_phase:
+            self.pi_ef_qubit_phase = pt
+            self.add_cphase = self.ef_phase_1
+
+        elif self.sweep_ef_sb_offset_phase:
+            self.pi_ef_qubit_phase = 0
+            self.ef_phase_1 = self.ef_phase_1 + pt
+            self.add_cphase = self.ef_phase_1
+        else:
+            self.add_cphase = pt
+
+        if self.sweep_cnot:
+            self.add_cnot_phase_2 = -pt
+        else:
+            self.add_cnot_phase_2 = 0
+        if self.sweep_final_sb:
+            self.final_sb_phase = pt
+        else:
+            self.final_sb_phase = 0
+
+        ### Adds a CPhase gate to all correlators that do not involve a CNOT gate
+
+        if tomo_index not in array([4,5,8,9,14]):
+            ### i.e not in XX, XY, YX, YY, ZZ
+            if tomo_index in array([6,10,12,13]):
+                ### i.e is XZ,YZ,ZX, ZY
+                id_phase = 0.0
+                if tomo_index in array([12,13]):
+                     cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.ef_phase_0+self.cz_phase_cz +  id_phase + self.add_cphase,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
+                else:
+                     cphase_v3(self.psb,self.id1,self.id2,efsbphase_0=self.ef_phase_0+self.cz_phase_zc +  id_phase + self.add_cphase,efsbphase_1=self.cz_phase2_zc,gesbphase1=self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0)
+
+            else:
+                id_phase = 180.0
+                cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.ef_phase_0+self.cz_phase_cz +  id_phase + self.add_cphase,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
+
+
+
+        if tomo_index == 0:
+
+            # -<IX>
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+            # self.halfpicounter2+=1
+
+        elif tomo_index == 1:
+            # <IY>
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+            # self.halfpicounter2+=1
+
+        elif tomo_index == 2:
+            # <IZ>
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0+ self.final_sb_phase)
+
+        elif tomo_index == 3:
+            # -<XI>
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+            # self.halfpicounter2+=1
+        elif tomo_index == 4:
+            # <XX> = XI + CX
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+        elif tomo_index == 5:
+            # -<XY> = XI + CY
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase= -90.0 + self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+
+        elif tomo_index == 6:
+            # <XZ>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+        elif tomo_index == 7:
+            # <YI>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+        elif tomo_index == 8:
+            # -<YX>
+
+            #CNOT
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx+self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 9:
+            # <YY>
+
+            #CY
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=-90.0+self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 10:
+            # -<YZ>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+### Corrected on 02_13
+
+        elif tomo_index == 11:
+            # <ZI>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+
+        elif tomo_index == 12:
+            # <ZX>
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+        elif tomo_index == 13:
+            # <ZY>
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 14:
+            # <ZZ>
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2+self.ef_phase_1)
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+
+class MultimodeProcessTomographyPhaseSweepSequence_2_old(QubitPulseSequence):
+
+
+    def __init__(self,name, cfg, expt_cfg,**kwargs):
+
+        self.qubit_cfg = cfg['qubit']
+        self.cfg = cfg
+        self.pulse_cfg = cfg['pulse_info']
+        self.multimode_cfg = cfg['multimodes']
+        self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations.npy")
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
+
+        if 'sb_cool' in self.extra_args:
+            sb_cool = self.extra_args['sb_cool']
+        else:
+            sb_cool = False
+
+        if 'pair_index' in self.extra_args:
+            self.pair_index = self.extra_args['pair_index']
+        else:
+            self.pair_index = 0
+        print "Pair index= " + str(self.pair_index)
+
+        if 'id1' in self.extra_args:
+            self.id1 = self.extra_args['id1']
+        else:
+            self.id1 = self.expt_cfg['id1']
+
+        if 'id2' in self.extra_args:
+            self.id2 = self.extra_args['id2']
+        else:
+            self.id2 = self.expt_cfg['id2']
+
+        self.proc_tom =   self.proc_tom_phase_matrix[self.id2][self.id1]
+        self.tomography_num = self.extra_args['tomography_num']
+        self.state_num = self.extra_args['state_num']
+        self.ef_phase_0 = 0
+        self.ef_phase_1 = 0
+
+        if 'sweep_time' in self.extra_args:
+            self.sweep_time = self.extra_args['sweep_time']
+        else:
+            self.sweep_time = 0
+
+        if 'phase_correct_cz' in self.extra_args:
+            print 'phase_correct_cz: ' + str(self.extra_args['phase_correct_cz'])
+            if self.extra_args['phase_correct_cz']:
+                self.ef_phase_0 = self.proc_tom[0][self.state_num][self.tomography_num]
+                print "ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0)
+
+        if 'phase_correct_cnot' in self.extra_args:
+            print 'phase_correct_cnot: ' + str(self.extra_args['phase_correct_cnot'])
+            self.phase_correct_cnot = self.extra_args['phase_correct_cnot']
+        else:
+            self.phase_correct_cnot = False
+
+        if self.phase_correct_cnot:
+            self.ef_phase_1 =  self.proc_tom[1][self.state_num][self.tomography_num]
+            print "Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1)
+
+        if 'cnot_ef_qubit_phase' in self.extra_args:
+            self.pi_ef_qubit_phase = self.extra_args['cnot_ef_qubit_phase']
+            print "Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg"
+        else:
+            self.pi_ef_qubit_phase = 0
+
+        if 'use_saved_cnot_ef_qubit_phase' in self.extra_args:
+            self.use_saved_cnot_ef_qubit_phase = self.extra_args['use_saved_cnot_ef_qubit_phase']
+        else:
+            self.use_saved_cnot_ef_qubit_phase = False
+
+        if self.use_saved_cnot_ef_qubit_phase:
+            self.pi_ef_qubit_phase = self.proc_tom[2][6][4]
+
+        if 'sweep_cnot' in self.extra_args:
+            print "CNOT phase sweep: " +str(self.extra_args['sweep_cnot'])
+            self.sweep_cnot = self.extra_args['sweep_cnot']
+        else:
+            self.sweep_cnot = False
+
+
+        if 'sweep_final_sb' in self.extra_args:
+            self.sweep_final_sb = self.extra_args['sweep_final_sb']
+            print "Sweeping final sideband: " + str(self.sweep_final_sb)
+        else:
+            self.sweep_final_sb = False
+
+        if 'ef_sb_offset' in self.extra_args:
+            self.ef_sb_offset = self.extra_args['ef_sb_offset']
+            print "Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset)
+        else:
+            self.ef_sb_offset = 0
+
+        if 'sweep_ef_qubit_phase' in self.extra_args:
+            self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
+            print "Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase)
+            self.ef_phase_1 += self.ef_sb_offset
+        else:
+            self.sweep_ef_qubit_phase = False
+
+        if 'sweep_ef_sb_offset_phase' in self.extra_args:
+            self.sweep_ef_sb_offset_phase = self.extra_args['sweep_ef_sb_offset_phase']
+            print "Sweeping ef sb offset phase: " + str(self.sweep_ef_sb_offset_phase)
+            self.ef_phase_1 += self.ef_sb_offset
+        else:
+            self.sweep_ef_sb_offset_phase = False
+
+
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool = sb_cool)
+
+    def define_points(self):
+        ## we define
+        ## automauted
+        self.tomography_pulse_num = 15
+
+        self.expt_pts = np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+
+        self.pulse_type =  self.expt_cfg['pulse_type']
+        self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
+        self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
+
+
+        if 'gate_num' in self.extra_args:
+            self.gate_num = self.extra_args['gate_num']
+        else:
+            self.gate_num = 0
+
+
+        self.id = self.expt_cfg['id']
+
+        self.offset_phase = self.pulse_cfg[self.pulse_type]['offset_phase']
+        self.halfpicounter1 = 0
+        self.halfpicounter2 = 0
+
+        self.mode_mode_cnot_dc_phase = self.cfg['mode_mode_offset']['cnot_dc_phase']
+        self.mode_mode_cnot_phase = self.cfg['mode_mode_offset']['cnot_phase']
+        self.mode_mode_cnot_phase2 = self.cfg['mode_mode_offset']['cnot_phase2']
+
+        self.mode_mode_cz_dc_phase = self.cfg['mode_mode_offset']['cz_dc_phase']
+        self.mode_mode_cz_phase = self.cfg['mode_mode_offset']['cz_phase']
+        self.mode_mode_cz_phase2 = self.cfg['mode_mode_offset']['cz_phase2']
+
+        self.cz_phase_cz = self.mode_mode_cz_phase[self.id1][self.id2]
+        self.cz_phase2_cz = self.mode_mode_cz_phase2[self.id1][self.id2]
+
+        self.cz_phase_zc = self.mode_mode_cz_phase[self.id2][self.id1]
+        self.cz_phase2_zc = self.mode_mode_cz_phase2[self.id2][self.id1]
+
+        self.cnot_phase_cx = self.mode_mode_cnot_phase[self.id1][self.id2]
+        self.cnot_phase2_cx = self.mode_mode_cnot_phase2[self.id1][self.id2]
+
+        self.cnot_phase_xc = self.mode_mode_cnot_phase[self.id2][self.id1]
+        self.cnot_phase2_xc = self.mode_mode_cnot_phase2[self.id2][self.id1]
+        self.tom_pulse_list = ['0','half_pi_y','half_pi','pi']
+        self.pulse_num_id1 = self.state_num%4
+        self.pulse_num_id2 = self.state_num/4
+        # print "Phase added to first ef sideband of CPhase = " +str(self.ef_phase_0)
+        # print "Additional Phase added (subtracted) to/from first (second) ef sideband of CPhase (CNOT) = " +str(self.ef_phase_1)
+
+    def define_pulses(self,pt):
+
+        ### Initiate states
+        self.define_states(pt)
+        ### Idle
+        if 'sweep_time' in self.extra_args:
+            self.psb.idle(self.sweep_time)
+        else:
+            pass
+        ### Act Gate
+        self.define_gate(pt)
+        ### Tomography
+        self.define_tomography_pulse(pt)
+
+    def define_states(self,pt):
+        ### Preparing all input states required for two-mode process tomography
+        if self.pulse_num_id1  == 1 or self.pulse_num_id1 == 2:
+            add_phase_1 = -self.offset_phase
+        else:
+            add_phase_1 = 0
+
+        if self.pulse_num_id2  == 1 or self.pulse_num_id2 == 2:
+            add_phase_2 = -self.offset_phase
+        else:
+            add_phase_2 = 0
+
+        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id2], self.pulse_type)
+        self.psb.append('q,mm'+str(self.id2),'pi_ge',phase = self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + add_phase_2 - 90.0)
+        self.psb.append('q',self.tom_pulse_list[self.pulse_num_id1], self.pulse_type)
+        self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + add_phase_1 - 90.0)
+
+    def define_gate(self,pt):
+        ### Preparing all input states required for two-mode process tomography
+        tomo_index = (self.tomography_num)%self.tomography_pulse_num
+
+        if self.gate_num ==0:
+            # I
+            pass
+
+        elif self.gate_num == 1:
+            # CZ
+            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.cz_phase_cz,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
+        elif self.gate_num == 2:
+            # CX
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=0,efsbphase_0=self.cnot_phase_cx ,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0)
+        elif self.gate_num == 3:
+            # CY
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=-90.0,efsbphase_0=self.cnot_phase_cx + self.ef_phase_0 ,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0+ 90.0)
+        else:
+            pass
+
+    def define_tomography_pulse(self,pt):
+
+        ### Correlators for two mode tomography; while sweeping the phase of the ef sideband pulse within the gate (in define gate)
+
+        # State convention : |id2, id1 >
+        # Gate convention CNOT/CZ(control_id,target_id)
+
+        tomo_index = (self.tomography_num)%self.tomography_pulse_num
+        #CNOT(id2, id1) = CX
+        #CZ(id2, id1) = CZ
+        if self.sweep_final_sb:
+            self.add_cphase = 0
+            if self.phase_correct_cnot:
+                if tomo_index in array([4,5,8,9]):
+                    self.add_cphase = self.ef_phase_1
+        elif self.sweep_ef_qubit_phase:
+            self.pi_ef_qubit_phase = pt
+            self.add_cphase = self.ef_phase_1
+
+        elif self.sweep_ef_sb_offset_phase:
+            self.pi_ef_qubit_phase = 0
+            self.ef_phase_1 = self.ef_phase_1 + pt
+            self.add_cphase = self.ef_phase_1
+        else:
+            self.add_cphase = pt
+
+        if self.sweep_cnot:
+            self.add_cnot_phase_2 = -pt
+        else:
+            self.add_cnot_phase_2 = 0
+        if self.sweep_final_sb:
+            self.final_sb_phase = pt
+        else:
+            self.final_sb_phase = 0
+
+        ### Adds a CPhase gate to all correlators that do not involve a CNOT gate
+
+        if tomo_index not in array([4,5,8,9,14]):
+            ### i.e not in XX, XY, YX, YY, ZZ
+            if tomo_index in array([6,10,12,13]):
+                ### i.e is XZ,YZ,ZX, ZY
+                id_phase = 0.0
+            else:
+                id_phase = 180.0
+            cphase_v3(self.psb,self.id2,self.id1,efsbphase_0=self.ef_phase_0+self.cz_phase_cz +  id_phase + self.add_cphase,efsbphase_1=self.cz_phase2_cz,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0)
+
+
+
+        if tomo_index == 0:
+
+            # -<IX>
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+            # self.halfpicounter2+=1
+
+        elif tomo_index == 1:
+            # <IY>
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+            # self.halfpicounter2+=1
+
+        elif tomo_index == 2:
+            # <IZ>
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0+ self.final_sb_phase)
+
+        elif tomo_index == 3:
+            # -<XI>
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+            # self.halfpicounter2+=1
+        elif tomo_index == 4:
+            # <XX> = XI + CX
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+        elif tomo_index == 5:
+            # -<XY> = XI + CY
+
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase= -90.0 + self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+
+        elif tomo_index == 6:
+            # <XZ>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+        elif tomo_index == 7:
+            # <YI>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+        elif tomo_index == 8:
+            # -<YX>
+
+            #CNOT
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx+self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 9:
+            # <YY>
+
+            #CY
+            cnot_v2(self.psb,self.id2,self.id1,cnot_phase=-90.0+self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx + self.add_cphase,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2-self.ef_phase_1)
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 +  90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 10:
+            # -<YZ>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi', self.pulse_type)
+
+
+        elif tomo_index == 11:
+            # <ZI>
+
+            self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+
+        elif tomo_index == 12:
+            # <ZX>
+
+            self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
+            self.psb.append('q','half_pi_y', self.pulse_type)
+
+        elif tomo_index == 13:
+            # <ZY>
 
             self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
             self.psb.append('q','half_pi', self.pulse_type)

@@ -3,8 +3,9 @@ __author__ = 'Nelson'
 from slab import *
 from slab.instruments.Alazar import Alazar
 from slab.experiments.ExpLib.QubitPulseSequenceExperiment import *
-from numpy import mean, arange, abs
+from numpy import mean, arange, abs,load,save
 from slab.dsfit import *
+from slab.twomodeprocesstomography import *
 
 
 class MultimodeRabiExperiment(QubitPulseSequenceExperiment):
@@ -50,7 +51,6 @@ class MultimodeRamseyExperiment(QubitPulseSequenceExperiment):
         print "Suggested offset frequency: " + str(suggested_offset_freq)
         print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
         print "T2*: " + str(fitdata[3]) + " ns"
-
 
 class MultimodeDCOffsetExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_DC_Offset_Experiment', config_file='..\\config.json', **kwargs):
@@ -98,8 +98,6 @@ class MultimodeDCOffsetExperiment(QubitPulseSequenceExperiment):
             print "Flux drive amplitude: %s" %(self.amp)
             print "Offset frequency: " + str(self.offset_freq)
             print "T2*: " + str(fitdata[3]) + " ns"
-
-
 
 class MultimodeCalibrateOffsetExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_Calibrate_Offset_Experiment', config_file='..\\config.json', **kwargs):
@@ -171,7 +169,6 @@ class MultimodeCalibrateOffsetExperiment(QubitPulseSequenceExperiment):
             self.cfg['multimodes'][self.mode]['T2'] = fitdata[3]
             print "New DC offset = " + str(self.cfg['multimodes'][self.mode]['dc_offset_freq']) + " Hz"
 
-
 class MultimodeQubitModeCrossKerrExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_Qubit_Mode_Cross_Kerr', config_file='..\\config.json', **kwargs):
         self.extra_args = {}
@@ -187,7 +184,6 @@ class MultimodeQubitModeCrossKerrExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
-
 
 class MultimodeCalibrateEFSidebandExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_Calibrate_EF_Sideband_experiment', config_file='..\\config.json', **kwargs):
@@ -250,7 +246,6 @@ class MultimodeCalibrateEFSidebandExperiment(QubitPulseSequenceExperiment):
             self.cfg['multimodes'][self.mode]['dc_offset_freq_ef'] = self.suggested_dc_offset_freq_ef
             print  "New DC offset = " +str(self.cfg['multimodes'][self.mode]['dc_offset_freq_ef']) + " Hz"
 
-
 class MultimodeEFRamseyExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_EF_Ramsey', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -287,7 +282,6 @@ class MultimodeRabiSweepExperiment(QubitPulseSequenceExperiment):
         #print self.data_file
         pass
 
-
 class MultimodeEFRabiSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_EF_Rabi_Sweep', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -302,7 +296,6 @@ class MultimodeEFRabiSweepExperiment(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         #print self.data_file
         pass
-
 
 class MultimodeT1Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_T1', config_file='..\\config.json', **kwargs):
@@ -324,8 +317,6 @@ class MultimodeT1Experiment(QubitPulseSequenceExperiment):
         print "T1: " + str(fitdata[3]) + " ns"
         self.cfg['multimodes'][self.id]['T1'] = fitdata[3]
 
-
-
 class MultimodeEntanglementExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_Entanglement', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -344,13 +335,21 @@ class MultimodeGeneralEntanglementExperiment(QubitPulseSequenceExperiment):
         for key, value in kwargs.iteritems():
             self.extra_args[key] = value
 
-        self.id1 = self.extra_args['id1']
-        self.id2 = self.extra_args['id2']
-        self.id3 = self.extra_args['id3']
-        self.id4 = self.extra_args['id4']
-        self.id5 = self.extra_args['id5']
-        self.id6 = self.extra_args['id6']
-        self.idm = self.extra_args['idm']
+        if 'id1' in self.extra_args:
+            self.id1 = self.extra_args['id1']
+        if 'id2' in self.extra_args:
+            self.id2 = self.extra_args['id2']
+        if 'id3' in self.extra_args:
+            self.id3 = self.extra_args['id3']
+        if 'id4' in self.extra_args:
+            self.id4 = self.extra_args['id4']
+        if 'id5' in self.extra_args:
+            self.id5 = self.extra_args['id5']
+        if 'id6' in self.extra_args:
+            self.id6 = self.extra_args['id6']
+        if 'idm' in self.extra_args:
+            self.idm = self.extra_args['idm']
+
         self.number = self.extra_args['number']
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                                     PulseSequence=MultimodeGeneralEntanglementSequence, pre_run=self.pre_run,
@@ -360,14 +359,7 @@ class MultimodeGeneralEntanglementExperiment(QubitPulseSequenceExperiment):
         self.tek2 = InstrumentManager()["TEK2"]
 
     def post_run(self, expt_pts, expt_avg_data):
-        self.cfg['multimode_general_entanglement']['id1'] = self.id1
-        self.cfg['multimode_general_entanglement']['id2'] = self.id2
-        self.cfg['multimode_general_entanglement']['id3'] = self.id3
-        self.cfg['multimode_general_entanglement']['id4'] = self.id4
-        self.cfg['multimode_general_entanglement']['id5'] = self.id5
-        self.cfg['multimode_general_entanglement']['id6'] = self.id6
-        self.cfg['multimode_general_entanglement']['number'] = self.number
-
+        pass
 
 class MultimodeEntanglementScalingExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_General_Entanglement', config_file='..\\config.json', **kwargs):
@@ -399,9 +391,6 @@ class MultimodeEntanglementScalingExperiment(QubitPulseSequenceExperiment):
         # self.cfg['multimode_general_entanglement']['id5'] = self.id5
         # self.cfg['multimode_general_entanglement']['id6'] = self.id6
         # self.cfg['multimode_general_entanglement']['number'] = self.number
-
-
-
 
 class Multimode_Qubit_Mode_CZ_Offset_Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_qubit_mode_cz_offset', config_file='..\\config.json', **kwargs):
@@ -436,7 +425,6 @@ class Multimode_Qubit_Mode_CZ_Offset_Experiment(QubitPulseSequenceExperiment):
             x_at_extremum = sin_phase(expt_pts,expt_avg_data,expected_period,find_phase)
             print 'Phase at %s: %s degrees' %(find_phase,x_at_extremum)
             self.cfg['multimodes'][self.id]['qubit_mode_ef_offset_1'] = x_at_extremum
-
 
 class Multimode_Qubit_Mode_CZ_V2_Offset_Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_qubit_mode_cz_v2_offset', config_file='..\\config.json', **kwargs):
@@ -484,7 +472,6 @@ class Multimode_Qubit_Mode_CZ_V2_Offset_Experiment(QubitPulseSequenceExperiment)
                 with slab_file as f:
                     f.append_pt('offset_exp_1_phase', x_at_extremum)
                     f.close()
-
 
 class Multimode_Mode_Mode_CNOT_V2_Offset_Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_mode_mode_cnot_v2_offset', config_file='..\\config.json', **kwargs):
@@ -593,7 +580,6 @@ class Multimode_Mode_Mode_CNOT_V2_Offset_Experiment(QubitPulseSequenceExperiment
                     f.append_pt('offset_exp_2_phase', x_at_extremum)
                     f.close()
 
-
 class Multimode_Mode_Mode_CNOT_V3_Offset_Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_mode_mode_cnot_v3_offset', config_file='..\\config.json', **kwargs):
 
@@ -683,7 +669,6 @@ class Multimode_Mode_Mode_CNOT_V3_Offset_Experiment(QubitPulseSequenceExperiment
                 with slab_file as f:
                     f.append_pt('offset_exp_2_phase', x_at_extremum)
                     f.close()
-
 
 class Multimode_Mode_Mode_CZ_V2_Offset_Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_mode_mode_cz_v2_offset', config_file='..\\config.json', **kwargs):
@@ -830,7 +815,6 @@ class Multimode_Mode_Mode_CZ_V3_Offset_Experiment(QubitPulseSequenceExperiment):
                     f.append_pt('offset_exp_2_phase', x_at_extremum)
                     f.close()
 
-
 class Multimode_AC_Stark_Shift_Offset_Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_ac_stark_shift', config_file='..\\config.json', **kwargs):
 
@@ -909,8 +893,6 @@ class MultimodePi_PiExperiment(QubitPulseSequenceExperiment):
             print 'Phase at %s: %s degrees' %(find_phase,x_at_extremum)
             self.cfg['multimodes'][self.id]['pi_pi_offset_phase'] = x_at_extremum
 
-
-
 class Multimode_ef_Pi_PiExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_ef_Pi_Pi_Experiment', config_file='..\\config.json', **kwargs):
 
@@ -965,8 +947,6 @@ class Multimode_ef_2pi_Experiment(QubitPulseSequenceExperiment):
         x_at_extremum = sin_phase(expt_pts,expt_avg_data,expected_period,find_phase)
         print 'Phase at %s: %s degrees' %(find_phase,x_at_extremum)
         self.cfg['multimodes'][self.id2]['ef_2pi_offset_phase'] = x_at_extremum
-
-
 
 class CPhaseOptimizationSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_cphase_optimization_sweep', config_file='..\\config.json', **kwargs):
@@ -1026,7 +1006,6 @@ class MultimodeQubitModeRandomizedBenchmarkingExperiment(QubitPulseSequenceExper
     def post_run(self, expt_pts, expt_avg_data):
         pass
 
-
 class MultimodeTwoResonatorTomography(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_two_Resonator_Tomography', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -1039,119 +1018,7 @@ class MultimodeTwoResonatorTomography(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         pass
 
-class MultimodeTwoResonatorTomographyPhaseSweepExperiment(QubitPulseSequenceExperiment):
-    def __init__(self, path='', prefix='multimode_two_resonator_tomography_phase_sweep', config_file='..\\config.json', **kwargs):
-        self.extra_args={}
-        for key, value in kwargs.iteritems():
-            self.extra_args[key] = value
-        self.tomography_num = self.extra_args['tomography_num']
-
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeTwoResonatorTomographyPhaseSweepSequenceNEW, pre_run=self.pre_run,
-                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
-
-    def pre_run(self):
-        self.tek2 = InstrumentManager()["TEK2"]
-
-    def post_run(self, expt_pts, expt_avg_data):
-        pass
-
-class MultimodeProcessTomographyPhaseSweepExperiment(QubitPulseSequenceExperiment):
-    def __init__(self, path='', prefix='multimode_process_tomography_phase_sweep', config_file='..\\config.json', **kwargs):
-        self.extra_args={}
-        for key, value in kwargs.iteritems():
-            self.extra_args[key] = value
-        self.tomography_num = self.extra_args['tomography_num']
-        self.state_num = self.extra_args['state_num']
-
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequenceDebug, pre_run=self.pre_run,
-                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
-
-    def pre_run(self):
-        self.tek2 = InstrumentManager()["TEK2"]
-
-    def post_run(self, expt_pts, expt_avg_data):
-        pass
-
-
-class MultimodeProcessTomographyPhaseSweepExperimentNEW(QubitPulseSequenceExperiment):
-    def __init__(self, path='', prefix='multimode_process_tomography_phase_sweep', config_file='..\\config.json', **kwargs):
-        self.extra_args={}
-        for key, value in kwargs.iteritems():
-            self.extra_args[key] = value
-        self.tomography_num = self.extra_args['tomography_num']
-        self.state_num = self.extra_args['state_num']
-
-        if 'sweep_cnot' in self.extra_args:
-            self.sweep_cnot = self.extra_args['sweep_cnot']
-        else:
-            self.sweep_cnot = False
-
-        if 'pair_index' in self.extra_args:
-            self.pair_index = self.extra_args['pair_index']
-        else:
-            self.pair_index = 0
-
-
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequenceNEW, pre_run=self.pre_run,
-                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
-
-    def pre_run(self):
-        self.tek2 = InstrumentManager()["TEK2"]
-
-    def post_run(self, expt_pts, expt_avg_data):
-        if self.sweep_cnot:
-            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['min', 'int', 'mean', 'min', 'max', 'int', 'max', 'int', 'mean', 'mean', 'int', 'mean', 'max', 'int', 'mean'],
-                             ['int', 'min', 'mean', 'min', 'int', 'max', 'max', 'int', 'mean', 'mean', 'int', 'mean', 'int', 'max', 'mean'],
-                             ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int', 'mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['min', 'int', 'mean', 'int', 'mean', 'mean', 'int', 'min', 'max', 'int', 'max', 'mean', 'max', 'int', 'mean'],
-                             ['int', 'min', 'mean', 'int', 'mean', 'mean', 'int', 'min', 'int', 'max', 'max', 'mean', 'int', 'max', 'mean'],
-                             ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min', 'mean', 'mean', 'max', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
-                             ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
-
-        else:
-            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['min', 'int', 'mean', 'min', 'max', 'int', 'max', 'int', 'int','min', 'int', 'mean', 'max', 'int', 'mean'],
-                             ['int', 'min', 'mean', 'min', 'int', 'max', 'max', 'int', 'max','int', 'int', 'mean', 'int', 'max', 'mean'],
-                             ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int', 'mean','mean', 'int', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['min', 'int', 'mean', 'int', 'int', 'max', 'int', 'min', 'max','int', 'max', 'mean', 'max', 'int', 'mean'],
-                             ['int', 'min', 'mean', 'int', 'min', 'int', 'int', 'min', 'int','max', 'max', 'mean', 'int', 'max', 'mean'],
-                             ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min', 'mean','mean', 'max', 'mean', 'mean', 'mean', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
-                             ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
-                             ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
-                             ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
-
-        if find_fit_list[self.state_num][self.tomography_num] == 'mean':
-            pass
-        else:
-            expected_period = 360.
-            find_phase = find_fit_list[self.state_num][self.tomography_num] #'max' or 'min'
-            x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
-            print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(self.state_num,self.tomography_num,find_phase,x_at_extremum)
-
-            if self.sweep_cnot:
-                self.cfg['proc_tom_phases'][self.pair_index]['ef_phase_1'][self.state_num][self.tomography_num] = x_at_extremum
-            else:
-                self.cfg['proc_tom_phases'][self.pair_index]['ef_phase_0'][self.state_num][self.tomography_num] = x_at_extremum
-
-class MultimodeProcessTomographyPhaseSweepExperimentNEWTEMP(QubitPulseSequenceExperiment):
+class MultimodeProcessTomographyPhaseSweepExperiment_1(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_process_tomography_phase_sweep_new', config_file='..\\config.json', **kwargs):
         self.extra_args={}
         for key, value in kwargs.iteritems():
@@ -1180,7 +1047,7 @@ class MultimodeProcessTomographyPhaseSweepExperimentNEWTEMP(QubitPulseSequenceEx
 
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequenceNEWTEMP, pre_run=self.pre_run,
+                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequence_1, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
 
     def pre_run(self):
@@ -1226,9 +1093,10 @@ class MultimodeProcessTomographyPhaseSweepExperimentNEWTEMP(QubitPulseSequenceEx
 
         if self.truncated_save:
 
-            lookup = array([5, 53, 55, 101, 103, 165, 167, 197])
-            Lslist =[[5,6,9,10,13,14],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10,13,14]]
-            Ltlist =[[0,1],[3,7],[3,7],[6],[6],[10],[10],[12,13]]
+            lookup = array([5, 53, 55, 101, 103, 197])
+            Lslist =[[5,6,9,10,13,14],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10,13,14]]
+            Ltlist =[[0,1],[3,7],[3,7],[6,10],[6,10],[12,13]]
+
             LslistCNOT =[5,6,9,10]
             LtlistCNOT=[4,5,8,9]
 
@@ -1287,9 +1155,416 @@ class MultimodeProcessTomographyPhaseSweepExperimentNEWTEMP(QubitPulseSequenceEx
                     print "Pair index: " + str(self.pair_index)
                     self.cfg['proc_tom_phases'][self.pair_index]['ef_phase_0'][self.state_num][self.tomography_num] = x_at_extremum
 
+class MultimodeProcessTomographyPhaseSweepExperiment_2(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_process_tomography_gate_fid_expt', config_file='..\\config.json', **kwargs):
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+        self.tomography_num = self.extra_args['tomography_num']
+        self.state_num = self.extra_args['state_num']
+
+        if 'sweep_cnot' in self.extra_args:
+            self.sweep_cnot = self.extra_args['sweep_cnot']
+        else:
+            self.sweep_cnot = False
+        if 'sweep_final_sb' in self.extra_args:
+            self.sweep_final_sb = self.extra_args['sweep_final_sb']
+        else:
+            self.sweep_final_sb = False
+
+        if 'sweep_ef_qubit_phase' in self.extra_args:
+            self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
+        else:
+            self.sweep_ef_qubit_phase = False
+
+        if 'sweep_ef_sb_offset_phase' in self.extra_args:
+            self.sweep_ef_sb_offset_phase = self.extra_args['sweep_ef_sb_offset_phase']
+        else:
+            self.sweep_ef_sb_offset_phase = False
+
+        if 'truncated_save' in self.extra_args:
+            self.truncated_save = self.extra_args['truncated_save']
+        else:
+            self.truncated_save = False
+
+        if 'id1' in self.extra_args:
+            self.id1 = self.extra_args['id1']
+        else:
+            self.id1 = self.expt_cfg['id1']
+
+        if 'id2' in self.extra_args:
+            self.id2 = self.extra_args['id2']
+        else:
+            self.id2 = self.expt_cfg['id2']
+
+        if 'gate_num' in self.extra_args:
+            self.gate_num = self.extra_args['gate_num']
+        else:
+            self.gate_num = 0
 
 
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequence_2, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
 
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+
+        self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations.npy")
+
+        if self.sweep_cnot:
+            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'min', 'max', 'mean', 'max', 'int', 'int','mean', 'int', 'mean', 'max', 'int', 'mean'],
+       ['int', 'min', 'mean', 'min', 'mean', 'max', 'max', 'int', 'mean','int', 'int', 'mean', 'int', 'max', 'mean'],
+       ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int','mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'int', 'int', 'mean', 'int', 'min', 'max','mean', 'max', 'mean', 'max', 'int', 'mean'],
+       ['int', 'min', 'mean', 'int', 'mean', 'int', 'int', 'min', 'mean','max', 'max', 'mean', 'int', 'max', 'mean'],
+       ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min','mean', 'mean', 'max', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
+       ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
+
+        elif self.sweep_final_sb:
+            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'min', 'int', 'mean'],
+       ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'int', 'min', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'min', 'int','mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'min', 'max', 'mean', 'mean', 'int', 'int','mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['int', 'min', 'mean', 'min', 'mean', 'max', 'mean', 'int', 'mean','int', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int','mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min','mean', 'mean', 'min', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'int', 'int', 'mean', 'mean', 'min', 'max','mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['int', 'min', 'mean', 'int', 'mean', 'int', 'mean', 'min', 'mean','max', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min','mean', 'mean', 'max', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
+       ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
+        else:
+            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+        ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['min', 'int', 'mean', 'min', 'max', 'int', 'max', 'int', 'int', 'min', 'int', 'mean', 'max', 'int', 'mean'],
+         ['int', 'min', 'mean', 'min', 'int', 'max', 'max', 'int', 'max', 'int', 'int', 'mean', 'int', 'max', 'mean'],
+         ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int', 'mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['min', 'int', 'mean', 'int', 'int', 'max', 'int', 'min', 'max', 'int', 'max', 'mean', 'max', 'int', 'mean'],
+         ['int', 'min', 'mean', 'int', 'min', 'int', 'int', 'min', 'int', 'max', 'max', 'mean', 'int', 'max', 'mean'],
+         ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min', 'mean', 'mean', 'max', 'mean', 'mean', 'mean', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
+         ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
+
+
+        if self.truncated_save:
+
+            lookup = array([5, 53, 55, 101, 103, 197])
+            Lslist =[[5,6,9,10,13,14],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10,13,14]]
+            Ltlist =[[0,1],[3,7],[3,7],[6,10],[6,10],[12,13]]
+
+            LslistCNOT =[5,6,9,10]
+            LtlistCNOT=[4,5,8,9]
+
+            expt_num = 16*self.tomography_num + self.state_num
+            if not self.sweep_cnot and not self.sweep_final_sb:
+                if expt_num in lookup:
+                    i = argmin(abs(lookup-expt_num))
+                    expected_period = 360.
+                    find_phase = find_fit_list[self.state_num][self.tomography_num] #'max' or 'min'
+
+                    x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+
+                    for s in Lslist[i]:
+                        for t in Ltlist[i]:
+                            print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(s,t,find_phase,x_at_extremum)
+                            if not self.sweep_cnot:
+                                self.proc_tom_phase_matrix[self.id2][self.id1][0][s][t] = x_at_extremum
+                                # self.cfg['proc_tom_phases_2'][self.pair_index]['ef_phase_0'][s][t] = x_at_extremum
+
+                    if expt_num == 53:
+                        for s in LslistCNOT:
+                            for t in LtlistCNOT:
+                                print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(s,t,find_phase,x_at_extremum)
+                                self.proc_tom_phase_matrix[self.id2][self.id1][0][s][t] = x_at_extremum
+                                # self.cfg['proc_tom_phases_2'][self.pair_index]['ef_phase_0'][s][t] = x_at_extremum
+
+
+            elif self.sweep_cnot and not self.sweep_final_sb:
+                # Saves phase added (subtracted) from CZ (CNOT) while optimizing XX, XY, YX, YY
+                lookup2  = array([69, 86, 137, 154])
+                slist = [5,6,9,10]
+                tlist = [4,5,8,9]
+                if expt_num in lookup2:
+                    i = argmin(abs(lookup2-expt_num))
+                    find_phase = find_fit_list[self.state_num][self.tomography_num]
+                    expected_period = 360.
+                    x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+                    s = slist[i]
+                    for t in tlist:
+                        print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(s,t,find_phase,x_at_extremum)
+                        # self.cfg['proc_tom_phases_2'][self.pair_index]['ef_phase_1'][s][t] = x_at_extremum
+                        self.proc_tom_phase_matrix[self.id2][self.id1][1][s][t] = x_at_extremum
+            else:
+                pass
+        else:
+            if not self.sweep_final_sb and not self.sweep_ef_qubit_phase:
+                if find_fit_list[self.state_num][self.tomography_num] == 'mean':
+                    pass
+                else:
+                    expected_period = 360.
+                    find_phase = find_fit_list[self.state_num][self.tomography_num] #'max' or 'min'
+                    x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+                    print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(self.state_num,self.tomography_num,find_phase,x_at_extremum)
+
+                    if self.sweep_cnot:
+                        print "Pair index: " + str(self.pair_index)
+                        self.proc_tom_phase_matrix[self.id2][self.id1][1][self.state_num][self.tomography_num] = x_at_extremum
+                        print "Goes to place where cnot phase is saved"
+                    else:
+                        print "Pair index: " + str(self.pair_index)
+                        self.proc_tom_phase_matrix[self.id2][self.id1][0][self.state_num][self.tomography_num] = x_at_extremum
+
+        if self.sweep_ef_qubit_phase:
+            expected_period = 360.
+            find_phase = 'int'
+            x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+            print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(self.state_num,self.tomography_num,find_phase,x_at_extremum)
+            self.proc_tom_phase_matrix[self.id2][self.id1][2][self.state_num][self.tomography_num] = x_at_extremum
+            ydata = -2*(expt_avg_data-0.5)
+            self.contrast = max(ydata) - min(ydata)
+
+        if self.sweep_ef_sb_offset_phase:
+            expected_period = 360.
+            find_phase = 'max'
+            x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+            self.optimal_ef_sb_offset = x_at_extremum
+
+        save("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations",self.proc_tom_phase_matrix)
+        if self.data_file!=None:
+            self.slab_file = SlabFile(self.data_file)
+            with self.slab_file as f:
+                f.add('proc_tom_phases', self.proc_tom_phase_matrix)
+                f.close()
+
+class MultimodeProcessTomographyPhaseSweepExperiment_test(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_process_tomography_phase_sweep_test', config_file='..\\config.json', **kwargs):
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+        self.tomography_num = self.extra_args['tomography_num']
+        self.state_num = self.extra_args['state_num']
+
+        if 'sweep_cnot' in self.extra_args:
+            self.sweep_cnot = self.extra_args['sweep_cnot']
+        else:
+            self.sweep_cnot = False
+        if 'sweep_final_sb' in self.extra_args:
+            self.sweep_final_sb = self.extra_args['sweep_final_sb']
+        else:
+            self.sweep_final_sb = False
+
+        if 'sweep_ef_qubit_phase' in self.extra_args:
+            self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
+        else:
+            self.sweep_ef_qubit_phase = False
+
+        if 'sweep_ef_sb_offset_phase' in self.extra_args:
+            self.sweep_ef_sb_offset_phase = self.extra_args['sweep_ef_sb_offset_phase']
+        else:
+            self.sweep_ef_sb_offset_phase = False
+
+        if 'pair_index' in self.extra_args:
+            self.pair_index = self.extra_args['pair_index']
+        else:
+            self.pair_index = 0
+
+        if 'truncated_save' in self.extra_args:
+            self.truncated_save = self.extra_args['truncated_save']
+        else:
+            self.truncated_save = False
+
+        if 'id1' in self.extra_args:
+            self.id1 = self.extra_args['id1']
+        else:
+            self.id1 = self.expt_cfg['id1']
+
+        if 'id2' in self.extra_args:
+            self.id2 = self.extra_args['id2']
+        else:
+            self.id2 = self.expt_cfg['id2']
+
+        if 'gate_num' in self.extra_args:
+            self.gate_num = self.extra_args['gate_num']
+        else:
+            self.gate_num = 0
+
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequence_test, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+
+        self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations_test.npy")
+
+        if self.sweep_cnot:
+            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'min', 'max', 'mean', 'max', 'int', 'int','mean', 'int', 'mean', 'max', 'int', 'mean'],
+       ['int', 'min', 'mean', 'min', 'mean', 'max', 'max', 'int', 'mean','int', 'int', 'mean', 'int', 'max', 'mean'],
+       ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int','mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'int', 'int', 'mean', 'int', 'min', 'max','mean', 'max', 'mean', 'max', 'int', 'mean'],
+       ['int', 'min', 'mean', 'int', 'mean', 'int', 'int', 'min', 'mean','max', 'max', 'mean', 'int', 'max', 'mean'],
+       ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min','mean', 'mean', 'max', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
+       ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
+
+        elif self.sweep_final_sb:
+            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'min', 'int', 'mean'],
+       ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'int', 'min', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'min', 'int','mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'min', 'max', 'mean', 'mean', 'int', 'int','mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['int', 'min', 'mean', 'min', 'mean', 'max', 'mean', 'int', 'mean','int', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int','mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min','mean', 'mean', 'min', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'int', 'int', 'mean', 'mean', 'min', 'max','mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['int', 'min', 'mean', 'int', 'mean', 'int', 'mean', 'min', 'mean','max', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min','mean', 'mean', 'max', 'mean', 'mean', 'mean', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+       ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
+       ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
+       ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean','mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
+        else:
+            find_fit_list = [['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+        ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['min', 'int', 'mean', 'min', 'max', 'int', 'max', 'int', 'int', 'min', 'int', 'mean', 'max', 'int', 'mean'],
+         ['int', 'min', 'mean', 'min', 'int', 'max', 'max', 'int', 'max', 'int', 'int', 'mean', 'int', 'max', 'mean'],
+         ['mean', 'mean', 'mean', 'min', 'mean', 'mean', 'max', 'int', 'mean', 'mean', 'int', 'mean', 'mean', 'mean', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['min', 'int', 'mean', 'int', 'int', 'max', 'int', 'min', 'max', 'int', 'max', 'mean', 'max', 'int', 'mean'],
+         ['int', 'min', 'mean', 'int', 'min', 'int', 'int', 'min', 'int', 'max', 'max', 'mean', 'int', 'max', 'mean'],
+         ['mean', 'mean', 'mean', 'int', 'mean', 'mean', 'int', 'min', 'mean', 'mean', 'max', 'mean', 'mean', 'mean', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean'],
+         ['min', 'int', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'max', 'int', 'mean'],
+         ['int', 'min', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'int', 'max', 'mean'],
+         ['mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean', 'mean']]
+
+
+        if self.truncated_save:
+
+            lookup = array([5, 53, 55, 101, 103, 197])
+            Lslist =[[5,6,9,10,13,14],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10,13,14]]
+            Ltlist =[[0,1],[3,7],[3,7],[6,10],[6,10],[12,13]]
+
+            LslistCNOT =[5,6,9,10]
+            LtlistCNOT=[4,5,8,9]
+
+            expt_num = 16*self.tomography_num + self.state_num
+            if not self.sweep_cnot and not self.sweep_final_sb:
+                if expt_num in lookup:
+                    i = argmin(abs(lookup-expt_num))
+                    expected_period = 360.
+                    find_phase = find_fit_list[self.state_num][self.tomography_num] #'max' or 'min'
+                    x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+
+                    print "Pair index: " + str(self.pair_index)
+                    for s in Lslist[i]:
+                        for t in Ltlist[i]:
+                            print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(s,t,find_phase,x_at_extremum)
+                            if not self.sweep_cnot:
+                                self.proc_tom_phase_matrix[self.id2][self.id1][0][s][t] = x_at_extremum
+                                # self.cfg['proc_tom_phases_2'][self.pair_index]['ef_phase_0'][s][t] = x_at_extremum
+
+                    if expt_num == 53:
+                        for s in LslistCNOT:
+                            for t in LtlistCNOT:
+                                print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(s,t,find_phase,x_at_extremum)
+                                self.proc_tom_phase_matrix[self.id2][self.id1][0][s][t] = x_at_extremum
+                                # self.cfg['proc_tom_phases_2'][self.pair_index]['ef_phase_0'][s][t] = x_at_extremum
+
+
+            elif self.sweep_cnot and not self.sweep_final_sb:
+                # Saves phase added (subtracted) from CZ (CNOT) while optimizing XX, XY, YX, YY
+                lookup2  = array([69, 86, 137, 154])
+                slist = [5,6,9,10]
+                tlist = [4,5,8,9]
+                if expt_num in lookup2:
+                    i = argmin(abs(lookup2-expt_num))
+                    find_phase = find_fit_list[self.state_num][self.tomography_num]
+                    expected_period = 360.
+                    x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+                    s = slist[i]
+                    for t in tlist:
+                        print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(s,t,find_phase,x_at_extremum)
+                        # self.cfg['proc_tom_phases_2'][self.pair_index]['ef_phase_1'][s][t] = x_at_extremum
+                        self.proc_tom_phase_matrix[self.id2][self.id1][1][s][t] = x_at_extremum
+            else:
+                pass
+        else:
+            if not self.sweep_final_sb and not self.sweep_ef_qubit_phase:
+                if find_fit_list[self.state_num][self.tomography_num] == 'mean':
+                    pass
+                else:
+                    expected_period = 360.
+                    find_phase = find_fit_list[self.state_num][self.tomography_num] #'max' or 'min'
+                    x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+                    print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(self.state_num,self.tomography_num,find_phase,x_at_extremum)
+
+                    if self.sweep_cnot:
+                        print "Pair index: " + str(self.pair_index)
+                        self.proc_tom_phase_matrix[self.id2][self.id1][1][self.state_num][self.tomography_num] = x_at_extremum
+                        print "Goes to place where cnot phase is saved"
+                    else:
+                        print "Pair index: " + str(self.pair_index)
+                        self.proc_tom_phase_matrix[self.id2][self.id1][0][self.state_num][self.tomography_num] = x_at_extremum
+
+        if self.sweep_ef_qubit_phase:
+            expected_period = 360.
+            find_phase = 'int'
+            x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+            print 'For state # %s, tom number %s, Phase at %s: %s degrees' %(self.state_num,self.tomography_num,find_phase,x_at_extremum)
+            self.proc_tom_phase_matrix[self.id2][self.id1][2][self.state_num][self.tomography_num] = x_at_extremum
+            ydata = -2*(expt_avg_data-0.5)
+            self.contrast = max(ydata) - min(ydata)
+
+        if self.sweep_ef_sb_offset_phase:
+            expected_period = 360.
+            find_phase = 'max'
+            x_at_extremum = sin_phase(expt_pts,-2*(expt_avg_data-0.5),expected_period,find_phase)
+            self.optimal_ef_sb_offset = x_at_extremum
+
+        save("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations_test",self.proc_tom_phase_matrix)
+        if self.data_file!=None:
+            self.slab_file = SlabFile(self.data_file)
+            with self.slab_file as f:
+                f.add('proc_tom_phases', self.proc_tom_phase_matrix)
+                f.close()
 
 class MultimodeThreeModeCorrelationExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_three_mode_correlation_experiment', config_file='..\\config.json', **kwargs):
@@ -1320,7 +1595,6 @@ class MultimodeCPhaseAmplificationExperiment(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         pass
 
-
 class MultimodeCNOTAmplificationExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_CNOT_Amplification_Experiment', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -1332,7 +1606,6 @@ class MultimodeCNOTAmplificationExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
-
 
 class Multimode_State_Dep_Shift_Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_State_Dep_Shift', config_file='..\\config.json', **kwargs):
@@ -1450,7 +1723,6 @@ class Multimode_State_Dep_Shift_Experiment(QubitPulseSequenceExperiment):
             elif self.qubit_shift_ef ==1:
                 self.cfg['multimodes'][self.mode]['shift_ef'] =   self.offset_freq
 
-
 class MultimodeEchoSidebandExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_Echo_Sideband_Experiment', config_file='..\\config.json', **kwargs):
 
@@ -1503,3 +1775,36 @@ class MultimodeEchoSidebandExperiment(QubitPulseSequenceExperiment):
                 self.cfg['multimodes'][self.mode]['piby2_piby2_off_phase_1'] =x_at_extremum
                 print "Offset Phase = %s" %(x_at_extremum)
 
+class MultimodeProcessTomographyExperiment_2(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_process_tomography_2', config_file='..\\config.json', **kwargs):
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+
+
+        if 'id1' in self.extra_args:
+            self.id1 = self.extra_args['id1']
+        else:
+            self.id1 = self.expt_cfg['id1']
+
+        if 'id2' in self.extra_args:
+            self.id2 = self.extra_args['id2']
+        else:
+            self.id2 = self.expt_cfg['id2']
+
+        if 'gate_num' in self.extra_args:
+            self.gate_num = self.extra_args['gate_num']
+        else:
+            self.gate_num = 0
+
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeProcessTomographySequence_2, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+
+        pass

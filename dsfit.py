@@ -16,6 +16,7 @@ import scipy
 import scipy.fftpack
 import cmath
 import numpy
+from numpy import*
 plt=plt2
 
 from scipy import optimize
@@ -37,7 +38,7 @@ def zipsort(xdata,ydata):
     return np.take(xdata,inds),np.take(ydata,inds,axis=0)
 
 
-"""Wraplter around scipy.optimize.leastsq"""
+"""Wrapper around scipy.optimize.leastsq"""
 
 
 def fitgeneral(xdata, ydata, fitfunc, fitparams, domain=None, showfit=False, showstartfit=False, showdata=True,
@@ -70,6 +71,9 @@ def fitgeneral(xdata, ydata, fitfunc, fitparams, domain=None, showfit=False, sho
 def lorfunc(p, x):
     """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""
     return p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)
+
+
+
 
 def fitlor(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",debug=False):
     """fit lorentzian:
@@ -873,3 +877,41 @@ def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
     #print "fitparams: ",fitparams
     p1 = fitgeneral(fitdatax, fitdatay, sin3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,defaultlabel=defaultlabel)
     return p1
+
+def lorfunccomplexsum(p, x):
+    """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""
+    out = p[0]
+    for i in range(13):
+        out = out + p[3*i+1]*p[3*i+3]/(-1j*(p[3*i+3])+(x-p[3*i+2]))
+    return out
+
+def harmfunccomplexsum2(p, x):
+    """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""
+    out = p[0] + 1j*p[61]
+    for i in range(15):
+        out = out + (p[4*i+1] + 1j*p[4*i+4])/((x**2-p[4*i+2]**2) -1j*x*p[4*i+3])
+    return out
+
+def harmfunccomplexsum_old(p, x):
+    """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""
+    out = p[0] + 1j*p[53]
+    for i in range(13):
+        out = out + (p[4*i+1] + 1j*p[4*i+4])/((x**2-p[4*i+2]**2) -1j*x*p[4*i+3])
+    return out
+
+
+
+
+def harmfuncsum(p, x):
+    """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""
+    out = p[0]
+    for i in range(13):
+        out = out + p[3*i+1]/sqrt(((x**2-p[3*i+2]**2)**2 + x**2*p[3*i+3]**2))
+    return out
+
+def lorfuncsum(p, x):
+    """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""
+    out = p[0]
+    for i in range(13):
+        out = out + p[3*i+1]/sqrt((1+(x-p[3*i+2])**2/p[3*i+3]**2))
+    return out

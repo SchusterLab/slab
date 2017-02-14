@@ -1,11 +1,12 @@
-__author__ = 'Nelson'
+__author__ = 'Nelson/Vatsan'
 
 from slab.experiments.ExpLib.SequentialExperiment import *
 from slab.experiments.General.run_seq_experiment import *
-from numpy import delete
+from numpy import delete,linspace
 from slab import *
 import os
 import json
+from slab.dsfit import*
 
 
 datapath = os.getcwd() + '\data'
@@ -18,11 +19,10 @@ cfg = AttrDict(json.loads(cfg_str))
 def get_data_filename(prefix):
     return  os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
 
-
-def multimode_pulse_calibration(seq_exp, mode):
+def multimode_pulse_calibration(seq_exp, mode,update_config=True):
     # pulse_calibration(seq_exp)
-    seq_exp.run('multimode_calibrate_offset',{'exp':'multimode_rabi','dc_offset_guess':0,'mode':mode,'update_config':True})
-
+    # kwargs['update_config']
+    seq_exp.run('multimode_calibrate_offset',{'exp':'multimode_rabi','dc_offset_guess':0,'mode':mode,'update_config':update_config})
 
 def multimode_dc_offset_calibration(seq_exp, mode):
     # pulse_calibration(seq_exp)
@@ -34,7 +34,7 @@ def multimode_dc_offset_recalibration(seq_exp, mode):
 
 def multimode_ef_pulse_calibration(seq_exp, mode):
     # pulse_calibration(seq_exp)
-    seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'multimode_ef_rabi','dc_offset_guess_ef':0,'mode':mode,'update_config':False})
+    seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'multimode_ef_rabi','dc_offset_guess_ef':0,'mode':mode,'update_config':True})
 
 def multimode_pi_pi_phase_calibration(seq_exp,mode):
     seq_exp.run('multimode_pi_pi_experiment',{'mode':mode,'update_config':True})
@@ -47,14 +47,12 @@ def multimode_ef_dc_offset_calibration(seq_exp, mode):
     # pulse_calibration(seq_exp)
     seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'short_multimode_ef_ramsey','dc_offset_guess_ef':0,'mode':mode,'update_config':True})
 
-
 def multimode_ge_calibration_all(seq_exp, kwargs):
     frequency_stabilization(seq_exp)
     multimode_pulse_calibration(seq_exp, kwargs['mode'])
     #multimode_dc_offset_calibration(seq_exp, kwargs['mode'])
     multimode_dc_offset_recalibration(seq_exp, kwargs['mode'])
     multimode_pi_pi_phase_calibration(seq_exp, kwargs['mode'])
-
 
 def multimode_cz_calibration(seq_exp, mode, data_file,data_file_2=None):
     frequency_stabilization(seq_exp)
@@ -95,7 +93,6 @@ def multimode_mode_mode_cnot_calibration_v3(seq_exp, mode,mode2, data_file=None,
 
     seq_exp.run('multimode_mode_mode_cnot_v3_offset_experiment',
                 {'mode': mode,'mode2':mode2, 'offset_exp': 1, 'load_photon':True,'update_config': True,'data_file':data_file })
-
 
 def multimode_mode_mode_cnot_test(seq_exp, mode,mode2, data_file=None,data_file_2=None):
     # frequency_stabilization(seq_exp)
@@ -138,7 +135,6 @@ def multimode_mode_mode_cz_calibration_v3_debug(seq_exp, mode,mode2, data_file=N
     seq_exp.run('multimode_mode_mode_cz_v3_offset_experiment',
                 {'mode': mode,'mode2':mode2, 'offset_exp': 0,'number':1, 'load_photon':True,'update_config': False})
 
-
 def multimode_mode_mode_cz_test_v3(seq_exp, mode, mode2, offset_exp, load_photon,test_one,number, data_file=None,data_file_2=None):
     # frequency_stabilization(seq_exp)
     # ef_frequency_calibration(seq_exp)
@@ -153,10 +149,6 @@ def multimode_mode_mode_cz_test_v3(seq_exp, mode, mode2, offset_exp, load_photon
     for num in arange(number):
         seq_exp.run('multimode_mode_mode_cz_v3_offset_experiment',
                     {'mode': mode,'mode2':mode2, 'offset_exp': offset_exp, 'load_photon':load_photon,'number':num,'update_config': True,'data_file':data_file})
-
-
-
-
 
 def multimode_cz_2modes_calibration(seq_exp, mode, mode2, data_file, data_file_2=None):
 
@@ -184,14 +176,12 @@ def multimode_stark_shift_calibration(seq_exp, mode, mode2, data_file):
     seq_exp.run('multimode_ac_stark_shift_experiment',
                 {'mode': mode, 'mode2': mode2, 'offset_exp': 1, 'update_config': True, "data_file": data_file})
 
-
 def multimode_cz_test(seq_exp, mode ,data_file, data_file_2 ):
     multimode_cz_calibration(seq_exp, mode, data_file_2)
     seq_exp.run('multimode_qubit_mode_cz_v2_offset_experiment', {'mode': mode
         , 'offset_exp': 3, 'load_photon': False, "data_file": data_file})
     seq_exp.run('multimode_qubit_mode_cz_v2_offset_experiment', {'mode': mode
         , 'offset_exp': 3, 'load_photon': True, "data_file": data_file})
-
 
 def multimode_cz_2modes_test(seq_exp, mode, mode2 ,data_file,data_file_2 ):
     multimode_cz_2modes_calibration(seq_exp, mode, mode2,data_file_2)
@@ -201,6 +191,19 @@ def multimode_cz_2modes_test(seq_exp, mode, mode2 ,data_file,data_file_2 ):
     seq_exp.run('multimode_mode_mode_cz_v2_offset_experiment',
                 {'mode': mode, 'mode2': mode2, 'offset_exp': 3, 'load_photon': True, 'update_config': True, "data_file": data_file})
 
+def process_tomography_find_ef_qubit_phase_ef_offset(seq_exp, mode, mode2):
+    contrast_list=[]
+    ef_sb_offset_list = linspace(0,360.0,6)
+    for ef_sb_offset in ef_sb_offset_list:
+        seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':mode,'id2':mode2,'state_num':6,\
+                                                                                'gate_num':0,'tomography_num':4,'phase_correct_cz':True,'phase_correct_cnot':False,\
+                                                                                'sweep_final_sb':False,'sweep_ef_qubit_phase':True,'ef_sb_offset': ef_sb_offset,\
+                                                                                'sweep_cnot':False,'truncated_save':False,'update_config': False})
+        contrast_list.append(seq_exp.expt.contrast)
+
+    # x_at_extremum = sin_phase(ef_sb_offset_list,contrast_list,180.0,'max')
+    x_at_extremum = ef_sb_offset_list[argmax(contrast_list)]
+    return x_at_extremum
 
 def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
     seq_exp = SequentialExperiment(lp_enable)
@@ -208,7 +211,10 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
     data_file = get_data_filename(prefix)
 
     if expt_name.lower() == 'multimode_pulse_calibration':
-        multimode_pulse_calibration(seq_exp,kwargs['mode'])
+        update_config = kwargs['update_config']
+        print "Update config = " +str(update_config)
+
+        multimode_pulse_calibration(seq_exp,kwargs['mode'],update_config=update_config)
 
     if expt_name.lower() == 'multimode_ef_pulse_calibration':
         multimode_ef_pulse_calibration(seq_exp,kwargs['mode'])
@@ -248,9 +254,181 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                     seq_exp.run('multimode_qubit_mode_cz_offset_experiment',{'mode':kwargs['mode'],'mode2':kwargs['mode2'],'offset_exp':offset_exp,'load_photon':load_photon,'update_config':True})
 
 
+
+################################################ Sequential multimode gate calibration experiments ######################################################
+
+
+    if expt_name.lower() == 'sequential_multimode_stark_shift':
+        while True:
+            mode = 5
+            mode2 = 6
+            multimode_stark_shift_calibration(seq_exp, mode, mode2,data_file)
+
+    if expt_name.lower() == 'sequential_multimode_calibration':
+        update_config = kwargs['update_config']
+        print "Update config = " +str(update_config)
+        modelist = kwargs['modelist']
+
+        pulse_calibration(seq_exp)
+        for mode in modelist:
+            seq_exp.run('multimode_calibrate_offset',{'exp':'multimode_rabi','dc_offset_guess':0,'mode':mode,'update_config':update_config,'data_file':data_file})
+
+
+    if expt_name.lower() == 'sequential_ef_pulse_calibration':
+        update_config = kwargs['update_config']
+        print "Update config = " +str(update_config)
+        modelist = kwargs['modelist']
+
+        for mode in modelist:
+           seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'multimode_ef_rabi','dc_offset_guess_ef':0,'mode':mode,'sb_cool':False,'update_config':update_config,'data_file':data_file})
+
+
+    if expt_name.lower() == 'sequential_ef_dc_offset_calibration':
+        update_config = kwargs['update_config']
+        print "Update config = " +str(update_config)
+        modelist = kwargs['modelist']
+
+
+        # pulse_calibration(seq_exp)
+        # ef_pulse_calibration(seq_exp)
+        for mode in modelist:
+            seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'short_multimode_ef_ramsey','dc_offset_guess_ef':0,'mode':mode,'update_config':update_config,'data_file':data_file})
+
+    if expt_name.lower() == 'sequential_ef_dc_offset_recalibration':
+        update_config = kwargs['update_config']
+        print "Update config = " +str(update_config)
+        modelist = kwargs['modelist']
+
+        for mode in modelist:
+             seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'long_multimode_ef_ramsey','dc_offset_guess_ef':cfg['multimodes'][mode]['dc_offset_freq_ef'],'mode':mode,'update_config':update_config,'data_file':data_file})
+
+    if expt_name.lower() == 'sequential_dc_offset_recalibration':
+        update_config = kwargs['update_config']
+        print "Update config = " +str(update_config)
+        modelist = kwargs['modelist']
+
+        for mode in modelist:
+            print "RE calibrating DC offset for mode: " +str(mode)
+            seq_exp.run('multimode_calibrate_offset',{'exp':'long_multimode_ramsey','dc_offset_guess':cfg['multimodes'][mode]['dc_offset_freq'],'mode':mode,'update_config':update_config,'data_file':data_file})
+
+    if expt_name.lower() == 'sequential_multimode_t1':
+        modelist = arange([1,6,9])
+
+        for mode in modelist:
+            seq_exp.run('multimode_t1',{'mode':mode,'update_config':True,'data_file':data_file})
+
+
+    if expt_name.lower() == 'sequential_dc_offset_calibration':
+        update_config = kwargs['update_config']
+        print "Update config = " +str(update_config)
+        modelist = kwargs['modelist']
+
+        # pulse_calibration(seq_exp)
+        for mode in modelist:
+            print "Calibrating DC offset for mode: " +str(mode)
+            seq_exp.run('multimode_calibrate_offset',{'exp':'short_multimode_ramsey','dc_offset_guess':0,'mode':mode,'update_config':True,'data_file':data_file})
+
+    if expt_name.lower() == 'sequential_pi_pi_phase_calibration':
+        update_config = kwargs['update_config']
+        print "Update config = " +str(update_config)
+        modelist = kwargs['modelist']
+
+        for mode in modelist:
+            seq_exp.run('multimode_pi_pi_experiment',{'mode':mode,'update_config':update_config,'data_file':data_file})
+
+
+################################################################### Multimode Rabi scans ##################################################################
+
+    if expt_name.lower() == 'multimode_rabi_scan':
+
+        freqspan = linspace(-10,10,21)
+        freqlist = array([ 1.6823167 ,  1.78388067,  1.9039681 ,  1.94607441,  2.13101483,
+        2.31223641,  2.41044112,  2.48847049,  2.58910637])*1e9
+        modelist = array([0,1,3,4,5,6,7,9,10])
+        modeindexlist = kwargs['modeindexlist']
+        amplist = array([ 1.89801629,  1.29881571,  2.80828336,  0.88971589,  0.79432847,
+        1.19547487,  3.17182375,  1.2783333  ,  1.0])
+
+        for i in modeindexlist:
+            print "running Rabi sweep around mode %s"%(modelist[i])
+            # frequency_stabilization(seq_exp)
+            for freq in freqspan:
+                flux_freq = freqlist[i] + freq*1e6
+                seq_exp.run('multimode_rabi_sweep',{'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
+
+
+
+    if expt_name.lower() == 'multimode_ef_rabi_scan':
+
+        freqspan = linspace(-10,10,21)
+        # freqlist = array([1.668,1.776, 1.868, 1.941, 2.125, 2.305, 2.363, 2.481, 2.578])*1e9 +200e6
+        # modelist = array([0,1,3,4,5,6,7,9,10])\
+        modelist = array([0,1,5,6,7,9,10])
+        freqlist = array([ 1.88853803,  1.98834533,  2.33440622,  2.5123926 ,  2.58623578,
+        2.69057381,  2.79586452])*1e9
+
+        modeindexlist = kwargs['modeindexlist']
+        amplist = array([ 2.24314571,  1.6329959 ,  1.23798758,  0.99347393,  2.33564694,
+        2.62137547,  6.30935376])
+
+        for i in modeindexlist:
+            frequency_stabilization(seq_exp)
+            print "running ef Rabi sweep around mode %s"%(modelist[i])
+            for freq in freqspan:
+                flux_freq = freqlist[i] + freq*1e6
+                seq_exp.run('multimode_ef_rabi_sweep',{'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
+
+
+####################################################################### DC offset scans ########################################
+
+    if expt_name.lower() == 'multimode_dc_offset_scan_ge':
+
+        # freqspan = linspace(0,1000,301)
+        # freqlist = array([1.54])*1e9
+        freqspan = linspace(0,100,51)
+        freqlist = array([1.692])*1e9
+        modelist = array([-1])
+
+        amp = kwargs['amp']
+
+        for i in arange(len(freqlist)):
+            # print "running DC offset scan around mode %s"%(modelist[i])
+            for freq in freqspan:
+                flux_freq = freqlist[i] + freq*1e6
+                seq_exp.run('multimode_dc_offset_experiment',{'freq':flux_freq,'amp':amp,'sideband':"ge","data_file":data_file})
+
+    if expt_name.lower() == 'multimode_dc_offset_vs_amplitude':
+
+        freq = kwargs['freq']
+        amplist = kwargs['amplist']
+        if 'sideband' in kwargs:
+            sideband = kwargs['sideband']
+        else:
+            sideband = "ge"
+        for amp in amplist:
+            seq_exp.run('multimode_dc_offset_experiment',{'freq':freq,'timelist':kwargs['timelist'],'ramsey_freq':kwargs['ramsey_freq'],'amp':amp,'sideband':sideband,"data_file":data_file})
+
+
+    if expt_name.lower() == 'multimode_dc_offset_scan_ef':
+
+        freqspan = linspace(0,1000,501)
+        freqlist = array([1.64])*1e9 - 27.5e6
+        amplist = array([0.2])
+        modelist = array([-1])
+
+
+        for i in arange(len(modelist)):
+            print "running DC offset scan around mode %s"%(modelist[i])
+            for freq in freqspan:
+                flux_freq = freqlist[i] + freq*1e6
+                print "Sweep frequency: " + str(flux_freq/1e9) + " GHz"
+                seq_exp.run('multimode_dc_offset_experiment',{'freq':flux_freq,'amp':amplist[i],'sideband':"ef","data_file":data_file})
+
+################################################################### State dependent shifts, composite pulses, Cross-Kerr tests ###################################
+
     if expt_name.lower() == 'sequential_state_dep_shift_calibration':
-        modelist = array([1,6,9])
-        frequency_stabilization(seq_exp)
+        modelist = kwargs['modelist']
+        # frequency_stabilization(seq_exp)
         for mode in modelist:
             seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':0,'qubit_shift_ge':1,'qubit_shift_ef':0,'update_config':True,'data_file':data_file})
 
@@ -282,9 +460,6 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         for mode in modelist:
             seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':3,'qubit_shift_ge':1,'qubit_shift_ef':0,'load_photon':False,'update_config':False,'data_file':data_file})
 
-
-
-
     if expt_name.lower() == 'sequential_state_dep_sideband_pulse_calibration':
         mode1 = kwargs['mode']
         modelist = array([0,1,3,4,5,6,7,9,10])
@@ -298,8 +473,6 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         pulse_calibration(seq_exp,phase_exp=True)
         for mode2 in mode2list:
             seq_exp.run('multimode_state_dep_shift',{'mode':mode1,'mode2':mode2,'exp':6,'add_freq':0,'shift_freq':kwargs['shift_freq'],'shift_freq_q':kwargs['shift_freq_q'],'load_photon':True,'qubit_shift_ge':1,'qubit_shift_ef':0,'update_config':False,'data_file':data_file})
-
-
 
     if expt_name.lower() == 'testing_echo_pi_sb':
         mode1 = kwargs['mode']
@@ -339,30 +512,6 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                 seq_exp.run('multimode_qubit_mode_cross_kerr',{'mode':mode,'mode2':mode2,'exp':exp,'update_config':True})
 
 
-    if expt_name.lower() == 'cphase_segment_tests':
-        modelist = array([4])
-        pulse_calibration(seq_exp,phase_exp=True)
-        multimode_pi_pi_phase_calibration(seq_exp,mode=6)
-        multimode_ef_pulse_calibration(seq_exp,mode=4)
-        for j in arange(3):
-            for mode in modelist:
-                for subexp in arange(5):
-                    seq_exp.run('multimode_state_dep_shift',{'mode':mode,'mode2':6,'exp':6,'qubit_shift_ge':0,'qubit_shift_ef':1,'subexp':subexp,'update_config':True})
-                    frequency_stabilization(seq_exp)
-
-    if expt_name.lower() == 'multimode_cz_calibration':
-        multimode_cz_calibration(seq_exp, kwargs['mode'])
-
-    if expt_name.lower() == 'multimode_cz_2modes_calibration':
-        multimode_cz_2modes_calibration(seq_exp, kwargs['mode'],kwargs['mode2'])
-
-
-    if expt_name.lower() == 'multimode_cz_test':
-        multimode_cz_test(seq_exp, kwargs['mode'], data_file)
-
-    if expt_name.lower() == 'multimode_cz_2modes_test':
-        multimode_cz_2modes_test(seq_exp, kwargs['mode'],kwargs['mode2'], data_file)
-
     if expt_name.lower() == 'sequential_multimode_cz_calibration':
         #data_file_2 = get_data_filename("sequential_ef_ramsey")
         while True:
@@ -377,183 +526,6 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
             mode = 1
             mode2 = 6
             multimode_cz_2modes_calibration(seq_exp, mode, mode2,data_file)
-
-
-    if expt_name.lower() == 'sequential_multimode_stark_shift':
-        while True:
-            mode = 5
-            mode2 = 6
-            multimode_stark_shift_calibration(seq_exp, mode, mode2,data_file)
-
-    if expt_name.lower() == 'sequential_multimode_cz_test':
-        data_file_2 = get_data_filename("sequential_multimode_cz_calibration")
-        while True:
-            modelist = array([1])
-            for mode in modelist:
-                multimode_cz_test(seq_exp, mode, data_file, data_file_2)
-
-
-    if expt_name.lower() == 'sequential_multimode_cz_2modes_test':
-
-        data_file_2 = get_data_filename("sequential_multimode_cz_2modes_calibration")
-
-        modelist = array([1,5,6,9])
-        for mode in modelist:
-            for mode2 in modelist:
-                if not mode == mode2:
-                    multimode_cz_2modes_test(seq_exp, mode, mode2, data_file, data_file_2)
-
-
-
-    if expt_name.lower() == 'multimode_ge_calibration_all':
-        multimode_ge_calibration_all(seq_exp,kwargs)
-
-    if expt_name.lower() == 'multimode_ef_calibration_all':
-        multimode_ef_pulse_calibration(seq_exp,kwargs['mode'])
-        multimode_ef_dc_offset_recalibration(seq_exp,kwargs['mode'])
-
-
-    if expt_name.lower() == 'sequential_multimode_calibration':
-
-        # modelist = array([0,1,2,3,4,5,6,7,8,9,10])
-        modelist = array([1,6,9])
-
-        pulse_calibration(seq_exp)
-        for mode in modelist:
-            seq_exp.run('multimode_calibrate_offset',{'exp':'multimode_rabi','dc_offset_guess':0,'mode':mode,'update_config':True,'data_file':data_file})
-            # multimode_dc_offset_recalibration(seq_exp,mode)
-            # # multimode_ef_pulse_calibration(seq_exp,mode)
-            # # multimode_ef_dc_offset_recalibration(seq_exp,mode)
-            # # multimode_pi_pi_phase_calibration(seq_exp,mode)
-
-
-    if expt_name.lower() == 'sequential_ef_pulse_calibration':
-        update_config = True
-        print "Update config = " +str(update_config)
-        modelist = array([1,6,9])
-        # modelist = array([1,6])
-        # pulse_calibration(seq_exp)
-        # ef_pulse_calibration(seq_exp)
-        for mode in modelist:
-           seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'multimode_ef_rabi','dc_offset_guess_ef':0,'mode':mode,'sb_cool':False,'update_config':update_config,'data_file':data_file})
-
-
-    if expt_name.lower() == 'sequential_ef_dc_offset_calibration':
-        update_config = True
-        print "Update config = " +str(update_config)
-        modelist = array([1,6,9])
-
-        # pulse_calibration(seq_exp)
-        # ef_pulse_calibration(seq_exp)
-        for mode in modelist:
-            seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'short_multimode_ef_ramsey','dc_offset_guess_ef':0,'mode':mode,'update_config':update_config,'data_file':data_file})
-
-    if expt_name.lower() == 'sequential_ef_dc_offset_recalibration':
-        update_config = True
-        print "Update config = " +str(update_config)
-        modelist = array([1,6,9])
-
-        for mode in modelist:
-             seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'long_multimode_ef_ramsey','dc_offset_guess_ef':cfg['multimodes'][mode]['dc_offset_freq_ef'],'mode':mode,'update_config':update_config,'data_file':data_file})
-
-    if expt_name.lower() == 'sequential_dc_offset_recalibration':
-        update_config = True
-        print "Update config = " +str(update_config)
-        # modelist = array([0,1,2,3,4,5,6,7,8,9,10])
-        modelist = array([1,6,9])
-        # pulse_calibration(seq_exp)
-        for mode in modelist:
-            print "RE calibrating DC offset for mode: " +str(mode)
-            seq_exp.run('multimode_calibrate_offset',{'exp':'long_multimode_ramsey','dc_offset_guess':cfg['multimodes'][mode]['dc_offset_freq'],'mode':mode,'update_config':update_config,'data_file':data_file})
-
-    if expt_name.lower() == 'sequential_multimode_t1':
-        modelist = arange([1,6,9])
-
-        for mode in modelist:
-            seq_exp.run('multimode_t1',{'mode':mode,'update_config':True,'data_file':data_file})
-
-
-    if expt_name.lower() == 'sequential_dc_offset_calibration':
-        modelist = array([1,6,9])
-
-
-        pulse_calibration(seq_exp)
-        for mode in modelist:
-            print "Calibrating DC offset for mode: " +str(mode)
-            seq_exp.run('multimode_calibrate_offset',{'exp':'short_multimode_ramsey','dc_offset_guess':0,'mode':mode,'update_config':True,'data_file':data_file})
-
-    if expt_name.lower() == 'sequential_pi_pi_phase_calibration':
-        # modelist = array([0,1,3,4,5,6,7,9,10])
-        modelist = array([1,6,9])
-        # pulse_calibration(seq_exp,phase_exp=True)
-        for mode in modelist:
-            seq_exp.run('multimode_pi_pi_experiment',{'mode':mode,'update_config':True,'data_file':data_file})
-
-
-    if expt_name.lower() == 'multimode_rabi_scan':
-
-
-
-        # freqspan = linspace(-10,20,31)
-        # freqlist = array([1.7745, 2.295, 2.48076])*1e9
-        # amplist = array([0.4,0.2,0.375])
-        # modelist = array([1,6,9])
-
-        freqspan = linspace(-10,20,31)
-        freqlist = array([1.664, 1.828, 1.864, 1.944, 2.12, 2.360, 2.434, 2.582])*1e9
-        modelist = array([0, 2, 3, 4, 5, 7, 8, 10])
-        amplist = 0.4*ones(len(modelist))
-        # freqspan = linspace(0,1000,1001)
-        # freqlist = array([1.64])*1e9
-        # amplist = array([0.4])
-        # modelist = array([-1])
-
-
-        for i in arange(len(modelist)):
-            print "running Rabi sweep around mode %s"%(modelist[i])
-            for freq in freqspan:
-                flux_freq = freqlist[i] + freq*1e6
-                seq_exp.run('multimode_rabi_sweep',{'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
-
-
-
-    if expt_name.lower() == 'multimode_ef_rabi_scan':
-
-        # freqspan = linspace(-1,25,26)
-        # freqlist = array([2.5104, 2.6862])*1e9
-        # amplist = array([0.4,0.4])
-        # modelist = array([6,9])
-
-        # freqspan = linspace(-12,12,25)
-        # freqlist = array([1.995, 2.51876, 2.69456])*1e9 -5e6
-        # amplist = array([0.15,0.2,0.2])
-        # modelist = array([1,6,9])
-        # freqspan = linspace(-12,12,25)
-        # freqlist = array([1.995])*1e9 -5e6
-        # amplist = array([0.1])
-        # modelist = array([1])
-
-        # freqspan = linspace(-15,15,31)
-        # freqlist = array([1.664, 1.828, 1.864, 1.944, 2.12, 2.360, 2.434, 2.582])*1e9 + 202.23e6
-        # modelist = array([0, 2, 3, 4, 5, 7, 8, 10])
-        # amplist = 0.2*ones(len(modelist))
-        #
-        freqspan = linspace(-15,15,31)
-        freqlist = array([1.864, 1.944, 2.12, 2.360, 2.434, 2.582])*1e9 + 202.23e6
-        modelist = array([ 3, 4, 5, 7, 8, 10])
-        amplist = 0.2*ones(len(modelist))
-
-        for i in arange(len(modelist)):
-
-            if modelist[i] in modelist:
-                print "running ef Rabi sweep around mode %s"%(modelist[i])
-                for freq in freqspan:
-                    flux_freq = freqlist[i] + freq*1e6
-                    seq_exp.run('multimode_ef_rabi_sweep',{'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
-            else:
-                pass
-
-
     if expt_name.lower() == 'sequential_single_mode_rb':
         for i in arange(kwargs['number']):
             if i%8 == 0:
@@ -562,48 +534,6 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                 multimode_pi_pi_phase_calibration(seq_exp,kwargs['mode'])
             seq_exp.run('single_mode_rb',{'mode':kwargs['mode'],"data_file":data_file})
 
-
-
-    if expt_name.lower() == 'sequential_cphase_amplification':
-        mode1 = 6
-        mode2 = 1
-        multimode_pulse_calibration(seq_exp,mode1)
-        multimode_ef_pulse_calibration(seq_exp,mode2)
-        multimode_pi_pi_phase_calibration(seq_exp,mode1)
-        multimode_ef_dc_offset_recalibration(seq_exp,mode2)
-        for i in arange(0,15):
-            frequency_stabilization(seq_exp)
-        seq_exp.run('multimode_ef_pi_pi_experiment',{'mode_1':mode1,'mode_2':mode2,'update_config':True})
-        seq_exp.run('multimode_cphase_amplification',{'mode_1':mode1,'mode_2':mode2,'number':i,"data_file":data_file})
-
-    if expt_name.lower() == 'sequential_cnot_amplification':
-        mode1 = kwargs['control_mode']
-        mode2 = kwargs['target_mode']
-        # multimode_pulse_calibration(seq_exp,mode1)
-        # multimode_ef_pulse_calibration(seq_exp,mode2)
-        # multimode_pi_pi_phase_calibration(seq_exp,mode1)
-        # multimode_ef_dc_offset_recalibration(seq_exp,mode2)
-        for i in arange(0,12,2):
-            # frequency_stabilization(seq_exp)
-            seq_exp.run('multimode_cnot_amplification',{'mode_1':mode1,'mode_2':mode2,'number':i,"data_file":data_file})
-
-
-    if expt_name.lower() == 'cphase_amplification':
-        mode1 = kwargs['control_mode']
-        mode2 = kwargs['target_mode']
-        seq_exp.run('multimode_ef_pi_pi_experiment',{'mode_1':mode1,'mode_2':mode2,'update_config':True})
-        seq_exp.run('multimode_cphase_amplification',{'mode_1':mode1,'mode_2':mode2,'number':15})
-
-    if expt_name.lower() == 'sequential_cnot_calibration':
-        multimode_mode_mode_cnot_calibration_v3(seq_exp,mode=kwargs['mode'],mode2=kwargs['mode2'],data_file = data_file)
-
-    if expt_name.lower() == 'sequential_cnot_testing':
-        multimode_mode_mode_cnot_test_v3(seq_exp,mode=kwargs['mode'],mode2=kwargs['mode2'],offset_exp=kwargs['offset_exp'],load_photon=kwargs['load_photon'],number=kwargs['number'],test_one=kwargs['test_one'],data_file=data_file)
-
-    if expt_name.lower() == 'sequential_cz_calibration':
-        multimode_mode_mode_cz_calibration_v3(seq_exp,mode=kwargs['mode'],mode2=kwargs['mode2'],data_file=data_file)
-    if expt_name.lower() == 'sequential_cz_testing':
-        multimode_mode_mode_cz_test_v3(seq_exp,mode=kwargs['mode'],mode2=kwargs['mode2'],offset_exp=kwargs['offset_exp'],load_photon=kwargs['load_photon'],number=kwargs['number'],test_one=kwargs['test_one'],data_file=data_file)
 
     if expt_name.lower() == 'multimode_vacuum_rabi':
         seq_exp.run('multimode_vacuum_rabi',{'mode':kwargs['mode'],'update_config':False})
@@ -621,47 +551,375 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                 seq_exp.run('multimode_mode_mode_cz_v3_offset_experiment',
                             {'mode': mode,'mode2':mode2, 'offset_exp': 5, 'load_photon':True,'update_config': True,'data_file':data_file})
 
-    if expt_name.lower() == 'sequential_multimode_entanglement':
+
+    if expt_name.lower() == 'sequential_chirp_calibration':
+        frequency_stabilization(seq_exp)
+        modelist = array([0,1,5,6,9,10])
+
+        for mode in modelist:
+            seq_exp.run('multimode_dc_offset_experiment',{'mode_calibration':True,'mode':mode,'sideband':"ef",'update_config':True,"data_file":data_file})
+
+    if expt_name.lower() == 'pi_pi_phase_test':
+
+        for time in arange(0,300,10):
+            print "mode = " + str(kwargs['mode'])
+            print "sweep time = " + str(time) + " ns"
+            seq_exp.run('multimode_pi_pi_experiment',{'mode':kwargs['mode'],'sweep_time':True,'time':time,'update_config':False,"data_file":data_file})
+
+
+    if expt_name.lower() == 'find_chirp_freq_experiment':
+        frequency_stabilization(seq_exp)
+        for addfreq in linspace(-3e6,6e6,19):
+            seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'multimode_ef_rabi','dc_offset_guess_ef':0,'add_freq':addfreq,'mode':kwargs['mode'],'update_config':False,"data_file":data_file})
+
+
+
+################################################################## Gate Calibration / Amplification experiments ######################################
+
+    if expt_name.lower() == 'sequential_cnot_calibration':
+        multimode_mode_mode_cnot_calibration_v3(seq_exp,mode=kwargs['mode'],mode2=kwargs['mode2'],data_file = data_file)
+
+    if expt_name.lower() == 'sequential_cnot_testing':
+        multimode_mode_mode_cnot_test_v3(seq_exp,mode=kwargs['mode'],mode2=kwargs['mode2'],offset_exp=kwargs['offset_exp'],load_photon=kwargs['load_photon'],number=kwargs['number'],test_one=kwargs['test_one'],data_file=data_file)
+
+    if expt_name.lower() == 'sequential_cz_calibration':
+        multimode_mode_mode_cz_calibration_v3(seq_exp,mode=kwargs['mode'],mode2=kwargs['mode2'],data_file=data_file)
+    if expt_name.lower() == 'sequential_cz_testing':
+        multimode_mode_mode_cz_test_v3(seq_exp,mode=kwargs['mode'],mode2=kwargs['mode2'],offset_exp=kwargs['offset_exp'],load_photon=kwargs['load_photon'],number=kwargs['number'],test_one=kwargs['test_one'],data_file=data_file)
+
+
+
+################################################################# Process tomography experiments ###########################################################
+
+    if expt_name.lower() == 'process_tomography_sweeping_cphase_all':
+        # Correlator for a given input
+        print "Update config = " +str(kwargs['update_config'])
+        print "Process tomography protocol = %s" %(kwargs['protocol'])
         id1 = kwargs['id1']
         id2 = kwargs['id2']
-        idmlist=[id1,id2]
-        for idm in idmlist:
-            seq_exp.run('multimode_entanglement',{'id1':kwargs['id1'],'id2':kwargs['id2'],'idm':idm,'2_mode':True,'GHZ':kwargs['GHZ'],'data_file':data_file})
+        gate_num = kwargs['gate_num']
+        phase = kwargs['cnot_ef_qubit_phase']
+        osc_mat = [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                   [1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
+                   [1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
+                   [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                   [1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
+                   [1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
+                   [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                   [1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0],
+                   [1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0],
+                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
+
+        for s in arange(16):
+            for t in arange(15):
+                if osc_mat[s][t] == 1.0:
+                    if kwargs['protocol'] == 1:
+                        seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
+                                                                        'sb_cool':kwargs['sb_cool'],'phase_correct_cz':kwargs['phase_correct_cz'],'phase_correct_cnot':kwargs['phase_correct_cnot'],\
+                                                                        'sweep_final_sb':kwargs['sweep_final_sb'],'cnot_ef_qubit_phase':phase,'sweep_cnot':kwargs['sweep_cnot'],\
+                                                                        'update_config': kwargs['update_config'],"data_file":data_file})
+                    else:
+                        seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
+                                                                        'sb_cool':kwargs['sb_cool'],'phase_correct_cz':kwargs['phase_correct_cz'],'phase_correct_cnot':kwargs['phase_correct_cnot'],\
+                                                                        'sweep_final_sb':kwargs['sweep_final_sb'],'cnot_ef_qubit_phase':phase,'sweep_cnot':kwargs['sweep_cnot'],\
+                                                                        'update_config': kwargs['update_config'],"data_file":data_file})
 
 
-    if expt_name.lower() == 'sequential_two_mode_tomography_phase_sweep':
+    if expt_name.lower() == 'process_tomography_sweeping_cnot_all':
+        # Correlator for a given input
+        print "Update config = " +str(kwargs['update_config'])
+        print "Process tomography protocol = %s" %(kwargs['protocol'])
         id1 = kwargs['id1']
         id2 = kwargs['id2']
-        # pulse_calibration(seq_exp,phase_exp=True)
-        for tom_num in arange(15):
-            seq_exp.run('multimode_two_resonator_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'tomography_num':tom_num,'state_num':kwargs['state_num'],'data_file':data_file})
+        gate_num = kwargs['gate_num']
+        phase = kwargs['cnot_ef_qubit_phase']
+        slist = array([5,6,9,10])
+        tlist=  array([4,5,8,9])
 
-    if expt_name.lower() == 'sequential_process_tomography':
-        update_config = True
-        print "Update config = " +str(update_config)
-        # Changes input state; measures a given correlator
-        id1 = kwargs['id1']
-        id2 = kwargs['id2']
-        idlist = array([id1,id2])
+        for t in tlist:
+            for s in slist:
+                if kwargs['protocol'] == 1:
+                    seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
+                                                                        'sb_cool':kwargs['sb_cool'],'phase_correct_cz':True,'phase_correct_cnot':False,\
+                                                                        'sweep_final_sb':False,'cnot_ef_qubit_phase':phase,'sweep_cnot':True,\
+                                                                        'update_config': kwargs['update_config'],"data_file":data_file})
+                else:
+                    seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
+                                                                        'sb_cool':kwargs['sb_cool'],'phase_correct_cz':True,'phase_correct_cnot':False,\
+                                                                        'sweep_final_sb':False,'cnot_ef_qubit_phase':phase,'sweep_cnot':True,\
+                                                                        'update_config': kwargs['update_config'],"data_file":data_file})
 
 
-        for state_num in arange(16):
-            seq_exp.run('multimode_process_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':state_num,'gate_num':kwargs['gate_num'],'tomography_num':kwargs['tom_num'],\
-                                                                    'sb_cool':kwargs['sb_cool'],'phase_correct_cz':kwargs['phase_correct_cz'],'phase_correct_cnot':kwargs['phase_correct_cnot'],\
-                                                                    'sweep_final_sb':kwargs['sweep_final_sb'],'sweep_cnot':kwargs['sweep_cnot'],'update_config': kwargs['update_config'],'data_file':data_file})
-
-    if expt_name.lower() == 'multimode_process_tomography_correlations':
+    if expt_name.lower() == 'multimode_process_tomography_correlations_vs_ef_qubit_phase':
         # Correlator for a given input
         update_config = False
+        print "Process tomography protocol = %s" %(kwargs['protocol'])
         id1 = kwargs['id1']
         id2 = kwargs['id2']
         state_num = kwargs['state_num']
         gate_num = kwargs['gate_num']
         tom_num = kwargs['tom_num']
-        # pulse_calibration(seq_exp,phase_exp=True)
-        seq_exp.run('multimode_process_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':state_num,'gate_num':kwargs['gate_num'],'tomography_num':kwargs['tom_num'],'sb_cool':kwargs['sb_cool'],\
-                                                                    'phase_correct_cz':kwargs['phase_correct_cz'],'phase_correct_cnot':kwargs['phase_correct_cnot'],'sweep_final_sb':kwargs['sweep_final_sb'],'sweep_time':sweep_time,'sweep_cnot':kwargs['sweep_cnot'],'update_config': kwargs['update_config']})
+        sweep_phase_start = kwargs['start_phase']
+        sweep_phase_stop = kwargs['stop_phase']
+        sweep_phase_step = kwargs['step_phase']
 
+
+        # pulse_calibration(seq_exp,phase_exp=True)
+        for phase in arange(sweep_phase_start,sweep_phase_stop,sweep_phase_step):
+            if kwargs['protocol'] == 1:
+                seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':state_num,'gate_num':kwargs['gate_num'],'pair_index':kwargs['pair_index'],'tomography_num':kwargs['tom_num'],\
+                                                                        'sb_cool':kwargs['sb_cool'],'phase_correct_cz':kwargs['phase_correct_cz'],'phase_correct_cnot':kwargs['phase_correct_cnot'],\
+                                                                        'sweep_final_sb':kwargs['sweep_final_sb'], 'cnot_ef_qubit_phase':phase,'sweep_cnot':kwargs['sweep_cnot'],\
+                                                                        'update_config': kwargs['update_config'],"data_file":data_file})
+            else:
+                seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':state_num,'gate_num':kwargs['gate_num'],'pair_index':kwargs['pair_index'],'tomography_num':kwargs['tom_num'],\
+                                                                        'sb_cool':kwargs['sb_cool'],'phase_correct_cz':kwargs['phase_correct_cz'],'phase_correct_cnot':kwargs['phase_correct_cnot'],\
+                                                                        'sweep_final_sb':kwargs['sweep_final_sb'], 'cnot_ef_qubit_phase':phase,'sweep_cnot':kwargs['sweep_cnot'],\
+                                                                        'update_config': kwargs['update_config'],"data_file":data_file})
+
+    if expt_name.lower() == 'process_tomography_sweeping_final_sb_all':
+        # Correlator for a given input
+        print "Update config = False"
+        print "Process tomography protocol = %s" %(kwargs['protocol'])
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        gate_num = kwargs['gate_num']
+        phase = kwargs['cnot_ef_qubit_phase']
+        slist = arange(16)
+        tlist=  arange(15)
+
+        for t in tlist:
+            frequency_stabilization(seq_exp)
+            pulse_calibration(seq_exp)
+            for s in slist:
+                if kwargs['protocol'] == 1:
+                    seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
+                                                                        'sb_cool':kwargs['sb_cool'],'phase_correct_cz':True,'phase_correct_cnot':True,\
+                                                                        'sweep_final_sb':True,'cnot_ef_qubit_phase':phase,'sweep_cnot':False,\
+                                                                        'update_config': False,"data_file":data_file})
+                else:
+                    seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
+                                                                    'sb_cool':kwargs['sb_cool'],'phase_correct_cz':True,'phase_correct_cnot':True,\
+                                                                    'sweep_final_sb':True,'cnot_ef_qubit_phase':phase,'sweep_cnot':False,\
+                                                                    'update_config': False,"data_file":data_file})
+
+    if expt_name.lower() == 'process_tomography_sweeping_final_sb_vs_tom_num':
+        # Correlator for a given input
+        print "Update config = False"
+        print "Process tomography protocol = %s" %(kwargs['protocol'])
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        gate_num = kwargs['gate_num']
+
+        slist = arange(16)
+        tlist=  arange(15)
+
+        t =  kwargs['tom_num']
+        # frequency_stabilization(seq_exp)
+        # pulse_calibration(seq_exp,phase_exp=False)
+        for s in slist:
+            if kwargs['protocol'] == 1:
+                phase = kwargs['cnot_ef_qubit_phase']
+                seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,'pair_index':kwargs['pair_index'],'gate_num':kwargs['gate_num'],'tomography_num':t,\
+                                                                    'sb_cool':kwargs['sb_cool'],'phase_correct_cz':True,'phase_correct_cnot':True,\
+                                                                    'sweep_final_sb':True,'cnot_ef_qubit_phase':phase,'sweep_cnot':False,\
+                                                                    'update_config': False,"data_file":data_file})
+            else:
+                seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
+                                                                    'sb_cool':kwargs['sb_cool'],'phase_correct_cz':True,'phase_correct_cnot':True,\
+                                                                    'sweep_final_sb':True, 'use_saved_cnot_ef_qubit_phase':True,'sweep_cnot':False,\
+                                                                    'update_config': False,"data_file":data_file})
+
+    if expt_name.lower() == 'process_tomography_sweeping_cphase_trunctated':
+        # Correlator for a given input
+        print "Update config = " +str(kwargs['update_config'])
+        print "Process tomography protocol = %s" %(kwargs['protocol'])
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        gate_num = 0
+        lookup = array([5, 53, 55, 101, 103, 165, 167, 197])
+        Lslist =[[5,6,9,10,13,14],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10,13,14],[7,11]]
+        Ltlist =[[0,1],[3,7],[3,7],[6],[6],[10],[10],[12,13],[12,13]]
+        LslistCNOT =[5,6,9,10]
+        LtlistCNOT=[4,5,8,9]
+        Ltlist =[[0,1],[3,7],[3,7],[6],[6],[10],[10],[12,13],[12,13]]
+
+        for expt_num in lookup:
+            t = expt_num/16
+            s = expt_num%16
+            if kwargs['protocol'] == 1:
+                seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,\
+                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':False,'phase_correct_cnot':False,\
+                                                                                'sweep_final_sb':False,'sweep_cnot':False,'truncated_save':True,\
+                                                                                'update_config': kwargs['update_config'],"data_file":data_file})
+            else:
+                seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,\
+                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':False,'phase_correct_cnot':False,\
+                                                                                'sweep_final_sb':False,'sweep_cnot':False,'truncated_save':True,\
+                                                                                'update_config': kwargs['update_config'],"data_file":data_file})
+
+
+
+    if expt_name.lower() == 'process_tomography_sweeping_cnot_trunctated':
+        # Correlator for a given input
+        print "Update config = " +str(kwargs['update_config'])
+        print "Process tomography protocol = %s" %(kwargs['protocol'])
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        gate_num = 0
+        lookup = array([69, 86, 137, 154])
+
+        LslistCNOT =[5,6,9,10]
+        LtlistCNOT=[4,5,8,9]
+
+        # frequency_stabilization(seq_exp)
+        # pulse_calibration(seq_exp,phase_exp=False)
+
+        for expt_num in lookup:
+            t = expt_num/16
+            s = expt_num%16
+            if kwargs['protocol'] == 1:
+                seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,\
+                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':True,'phase_correct_cnot':False,\
+                                                                                'sweep_final_sb':False,'sweep_cnot':True,'truncated_save':True,\
+                                                                                'cnot_ef_qubit_phase':kwargs['cnot_ef_qubit_phase'],\
+                                                                                'update_config': kwargs['update_config'],"data_file":data_file})
+            else:
+                seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,\
+                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':True,'phase_correct_cnot':False,\
+                                                                                'sweep_final_sb':False,'sweep_cnot':True,'truncated_save':True,\
+                                                                                'use_saved_cnot_ef_qubit_phase':True,\
+                                                                                'update_config': kwargs['update_config'],"data_file":data_file})
+
+
+
+    if expt_name.lower() == 'process_tomography_sweeping_ef_qubit_phase':
+        # Correlator for a given input
+        print "Update config = " +str(False)
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        gate_num = 0
+
+
+        t = 4
+        s = 6
+        if kwargs['protocol'] == 1:
+            seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,\
+                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':True,'phase_correct_cnot':False,\
+                                                                                'sweep_final_sb':False,'sweep_ef_qubit_phase':True,'ef_sb_offset': kwargs['ef_sb_offset'],\
+                                                                                'sweep_cnot':False,'truncated_save':False,'update_config': False,"data_file":data_file})
+        else:
+            seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,\
+                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':True,'phase_correct_cnot':False,\
+                                                                                'sweep_final_sb':False,'sweep_ef_qubit_phase':True,'ef_sb_offset': kwargs['ef_sb_offset'],\
+                                                                                'sweep_cnot':False,'truncated_save':False,'update_config': False,"data_file":data_file})
+
+
+
+
+    if expt_name.lower() == 'process_tomography_calibrations_truncated_all':
+
+
+        # Correlator for a given input
+
+        print "Update config = " +str(kwargs['update_config'])
+        # print "Process tomography protocol = %s" %(kwargs['protocol'])
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        gate_num = 0
+        lookup = array([5, 53, 55, 101, 103, 197])
+        Lslist =[[5,6,9,10,13,14],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10,13,14]]
+        Ltlist =[[0,1],[3,7],[3,7],[6,10],[6,10],[12,13]]
+        LslistCNOT =[5,6,9,10]
+        LtlistCNOT=[4,5,8,9]
+        Ltlist =[[0,1],[3,7],[3,7],[6],[6],[10],[10],[12,13],[12,13]]
+        lookup2 = array([69, 86, 137, 154])
+
+        ### CPhase calibrations: Total error from state preparation and measurement segments of process tomography
+
+        for expt_num in lookup:
+            t = expt_num/16
+            s = expt_num%16
+
+            seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,\
+                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':False,'phase_correct_cnot':False,\
+                                                                                'sweep_final_sb':False,'sweep_cnot':False,'truncated_save':True,\
+                                                                                'update_config': kwargs['update_config'],"data_file":data_file})
+
+        ### Finding optimal ef sb offset for fiding optimal ef qubit phase
+
+        ef_sb_offset = process_tomography_find_ef_qubit_phase_ef_offset(seq_exp, kwargs['id1'], kwargs['id2'])
+
+        # seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':6,\
+        #                                                                     'gate_num':gate_num,'tomography_num':4,'phase_correct_cz':True,'phase_correct_cnot':False,\
+        #                                                                     'sweep_final_sb':False,'sweep_cnot':False,'sweep_ef_sb_offset_phase':True,'truncated_save':True,\
+        #                                                                     'update_config': kwargs['update_config']})
+
+        # ef_sb_offset = seq_exp.expt.optimal_ef_sb_offset
+
+
+        print "Optimal ef sb offset phase for finding optimal ef qubit phase: " + str(ef_sb_offset)
+
+        ### Finding optimal ef qubit phase
+
+        seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':6,\
+                                                                                'gate_num':gate_num,'tomography_num':4,'phase_correct_cz':True,'phase_correct_cnot':False,\
+                                                                                'sweep_final_sb':False,'sweep_ef_qubit_phase':True,'ef_sb_offset': ef_sb_offset,\
+                                                                                'sweep_cnot':False,'truncated_save':False,'update_config': False,"data_file":data_file})
+
+        #### Calibrating phase to be added & subtracted from CZ & CNOT gates, to isolate preparation and measurement errors
+
+        for expt_num in lookup2:
+            t = expt_num/16
+            s = expt_num%16
+
+            seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,\
+                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':True,'phase_correct_cnot':False,\
+                                                                                'sweep_final_sb':False,'sweep_cnot':True,'truncated_save':True,\
+                                                                                'use_saved_cnot_ef_qubit_phase':True,\
+                                                                                'update_config': kwargs['update_config'],"data_file":data_file})
+
+
+    if expt_name.lower() == 'process_tomography_sweeping_final_sb':
+        # Correlator for a given input
+        print "Update config = False"
+        # print "Process tomography protocol = %s" %(kwargs['protocol'])
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        gate_num = kwargs['gate_num']
+        slist = arange(16)
+        tlist=  kwargs['tom_list']
+
+        for t in tlist:
+            for s in slist:
+
+                seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
+                                                                    'sb_cool':kwargs['sb_cool'],'phase_correct_cz':True,'phase_correct_cnot':True,\
+                                                                    'sweep_final_sb':True, 'use_saved_cnot_ef_qubit_phase':True,'sweep_cnot':False,\
+                                                                    'update_config': False,"data_file":data_file})
+
+
+    if expt_name.lower() == 'process_tomography_without_sweep':
+        # Correlator for a given input
+        print "Update config = False"
+        # print "Process tomography protocol = %s" %(kwargs['protocol'])
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        gate_num = kwargs['gate_num']
+        slist = arange(16)
+
+
+        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':kwargs['gate_num'],\
+                                                            'sb_cool':kwargs['sb_cool'],'proc_tom_set':0,'update_config': False,"data_file":data_file})
+
+        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':kwargs['gate_num'],\
+                                                            'sb_cool':kwargs['sb_cool'],'proc_tom_set':1,'update_config': False,"data_file":data_file})
 
 
 
@@ -672,66 +930,105 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         state_num = kwargs['state_num']
         gate_num = kwargs['gate_num']
         tom_num = kwargs['tom_num']
-
         id2list=[]
+
         for i in arange(len(modelist)):
             if modelist[i] == id1:
                 pass
             else:
                 id2list.append(modelist[i])
-        frequency_stabilization(seq_exp)
-        ef_frequency_calibration(seq_exp)
+        # frequency_stabilization(seq_exp)
+        # ef_frequency_calibration(seq_exp)
         for id2 in id2list:
-            seq_exp.run('multimode_process_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':id2,'state_num':state_num,'gate_num':gate_num,'tomography_num':tom_num})
+            seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':id2,'state_num':state_num,'gate_num':gate_num,'tomography_num':tom_num,\
+                                                                      'phase_correct_cz':True,'phase_correct_cnot':True,\
+                                                                    'sweep_final_sb':True, 'use_saved_cnot_ef_qubit_phase':True,'sweep_cnot':False,\
+                                                                    'update_config': False,"data_file":data_file})
 
 
 
 
-    if expt_name.lower() == 'tomography_pulse_length_sweep':
+######################### Process tomography test experiments ########################################################
+
+### Testing CZ-->ZC and prep swap for correlators XZ,YZ
+
+    if expt_name.lower() == 'process_tomography_xz_yz_test':
+
+        # Correlator for a given input
+
+        print "Update config = " +str(kwargs['update_config'])
+        # print "Process tomography protocol = %s" %(kwargs['protocol'])
         id1 = kwargs['id1']
         id2 = kwargs['id2']
-        pulse_calibration(seq_exp,phase_exp=True)
-        tom_num = kwargs['tom_num']
-        seq_exp.run('multimode_two_resonator_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'tomography_num':tom_num,'state_num':kwargs['state_num'],'data_file':data_file})
+        gate_num = 0
+        ### Only XZ,YZ correlators
+        lookup = array([101, 103, 165, 167])
+        Lslist =[[5,6,9,10,13,14],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10,13,14],[7,11]]
+        Ltlist =[[0,1],[3,7],[3,7],[6],[6],[10],[10],[12,13],[12,13]]
+        LslistCNOT =[5,6,9,10]
+        LtlistCNOT=[4,5,8,9]
+        lookup2 = array([69, 86, 137, 154])
+        print "Goes here"
+
+        ### CPhase calibrations: Total error from state preparation and measurement segments of process tomography
+
+        for expt_num in lookup:
+            t = expt_num/16
+            s = expt_num%16
+
+            seq_exp.run('multimode_process_tomography_phase_sweep_test',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,\
+                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':False,'phase_correct_cnot':False,\
+                                                                                'sweep_final_sb':False,'sweep_cnot':False,'truncated_save':True,\
+                                                                                'update_config': kwargs['update_config'],"data_file":data_file})
 
 
-    if expt_name.lower() == 'multimode_dc_offset_scan_ge':
+    if expt_name.lower() == 'process_tomography_xz_yz_test_final_sb':
+        # Correlator for a given input
+        print "Update config = False"
+        # print "Process tomography protocol = %s" %(kwargs['protocol'])
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        gate_num = kwargs['gate_num']
+        slist = arange(16)
+        tlist=  array(6,10)
 
-        freqspan = linspace(-10,20,31)
-        freqlist = array([1.7745, 2.295, 2.48076])*1e9
-        amplist = array([0.8,0.4,0.75])
-        modelist = array([1,6,9])
+        for t in tlist:
+            for s in slist:
 
-        for i in arange(len(modelist)):
-            print "running DC offset scan around mode %s"%(modelist[i])
-            for freq in freqspan:
-                flux_freq = freqlist[i] + freq*1e6
-                seq_exp.run('multimode_dc_offset_experiment',{'freq':flux_freq,'amp':amplist[i],'sideband':"ge","data_file":data_file})
-
-    if expt_name.lower() == 'multimode_dc_offset_scan_ef':
+                seq_exp.run('multimode_process_tomography_phase_sweep_test',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
+                                                                    'sb_cool':kwargs['sb_cool'],'phase_correct_cz':True,'phase_correct_cnot':True,\
+                                                                    'sweep_final_sb':True, 'use_saved_cnot_ef_qubit_phase':True,'sweep_cnot':False,\
+                                                                    'update_config': False,"data_file":data_file})
 
 
-        # freqspan = linspace(-10,10,21)
-        # freqlist = array([1.9854, 2.5104, 2.6862])*1e9
-        # amplist = array([0.15,0.2,0.2])
-        # modelist = array([1,6,9])
 
-        freqspan = linspace(0,1000,1001)
-        freqlist = array([1.64])*1e9 - 27.5e6
-        amplist = array([0.15])
-        modelist = array([-1])
+########################################################################## Multimode Entanglement Experiments #######################################################
 
-        # freqspan = linspace(-1,25,26)
-        # freqlist = array([1.9854, 2.5104, 2.6862])*1e9
-        # amplist = array([0.3,0.4,0.4])
-        # modelist = array([1,6,9])
+    if expt_name.lower() == 'sequential_multimode_entanglement':
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        idmlist=[id1,id2]
+        for idm in idmlist:
+            seq_exp.run('multimode_entanglement',{'id1':kwargs['id1'],'id2':kwargs['id2'],'idm':idm,'2_mode':True,'GHZ':kwargs['GHZ'],'data_file':data_file})
 
-        for i in arange(len(modelist)):
-            print "running DC offset scan around mode %s"%(modelist[i])
-            for freq in freqspan:
-                flux_freq = freqlist[i] + freq*1e6
-                print "Sweep frequency: " + str(flux_freq/1e9) + " GHz"
-                seq_exp.run('multimode_dc_offset_experiment',{'freq':flux_freq,'amp':amplist[i],'sideband':"ef","data_file":data_file})
+
+
+    if expt_name.lower() == 'entanglement_polytope_measurement':
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        id3 = kwargs['id3']
+
+        idmlist=[id1,id2,id3]
+        tom_pulse_list = arange(3)
+        for idm in idmlist:
+            for tom_pulse in tom_pulse_list:
+                seq_exp.run('multimode_general_entanglement',{'id1':kwargs['id1'],'id2':kwargs['id2'],'id3':kwargs['id3'],'idm':idm,'tomography':True,'GHZ':kwargs['GHZ'],'tom_pulse':tom_pulse,'number':kwargs['number'],'data_file':data_file})
+
+
+
+######################################################################## Obsolete Experimental Sequences ###############################################################################
+
+# Deleted all expts with old wrong process tomography protocol
 
     if expt_name.lower() == 'multimode_ef_rabi_scan_corrected':
 
@@ -769,27 +1066,20 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                 print "Sweep frequency: " + str(flux_freq/1e9) + " GHz"
                 seq_exp.run('multimode_dc_offset_experiment',{'freq':flux_freq,'amp':amplist[i][ii],'sideband':"ef","data_file":data_file})
 
+    if expt_name.lower() == 'sequential_two_mode_tomography_phase_sweep':
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        # pulse_calibration(seq_exp,phase_exp=True)
+        for tom_num in arange(15):
+            seq_exp.run('multimode_two_resonator_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'tomography_num':tom_num,'state_num':kwargs['state_num'],'data_file':data_file})
 
 
-    if expt_name.lower() == 'sequential_chirp_calibration':
-        frequency_stabilization(seq_exp)
-        modelist = array([0,1,5,6,9,10])
-
-        for mode in modelist:
-            seq_exp.run('multimode_dc_offset_experiment',{'mode_calibration':True,'mode':mode,'sideband':"ef",'update_config':True,"data_file":data_file})
-
-    if expt_name.lower() == 'pi_pi_phase_test':
-
-        for time in arange(0,300,10):
-            print "mode = " + str(kwargs['mode'])
-            print "sweep time = " + str(time) + " ns"
-            seq_exp.run('multimode_pi_pi_experiment',{'mode':kwargs['mode'],'sweep_time':True,'time':time,'update_config':False,"data_file":data_file})
-
-
-    if expt_name.lower() == 'find_chirp_freq_experiment':
-        frequency_stabilization(seq_exp)
-        for addfreq in linspace(-3e6,6e6,19):
-            seq_exp.run('multimode_calibrate_ef_sideband',{'exp':'multimode_ef_rabi','dc_offset_guess_ef':0,'add_freq':addfreq,'mode':kwargs['mode'],'update_config':False,"data_file":data_file})
+    if expt_name.lower() == 'tomography_pulse_length_sweep':
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        pulse_calibration(seq_exp,phase_exp=True)
+        tom_num = kwargs['tom_num']
+        seq_exp.run('multimode_two_resonator_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'tomography_num':tom_num,'state_num':kwargs['state_num'],'data_file':data_file})
 
 
     if expt_name.lower() == 'multimode_process_tomography_correlations_vs_time':
@@ -829,178 +1119,33 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                                                                         'update_config': kwargs['update_config'],"data_file":data_file})
 
 
-
-
-    if expt_name.lower() == 'process_tomography_sweeping_cphase_all':
-        # Correlator for a given input
-        print "Update config = " +str(kwargs['update_config'])
-        id1 = kwargs['id1']
-        id2 = kwargs['id2']
-        gate_num = kwargs['gate_num']
-        phase = kwargs['cnot_ef_qubit_phase']
-        osc_mat = [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                   [1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
-                   [1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
-                   [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                   [1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
-                   [1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
-                   [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                   [1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0],
-                   [1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0],
-                   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
-
-        for s in arange(16):
-            for t in arange(15):
-                if osc_mat[s][t] == 1.0:
-                    seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
-                                                                        'sb_cool':kwargs['sb_cool'],'phase_correct_cz':kwargs['phase_correct_cz'],'phase_correct_cnot':kwargs['phase_correct_cnot'],\
-                                                                        'sweep_final_sb':kwargs['sweep_final_sb'],'cnot_ef_qubit_phase':phase,'sweep_cnot':kwargs['sweep_cnot'],\
-                                                                        'update_config': kwargs['update_config'],"data_file":data_file})
-
-
-    if expt_name.lower() == 'process_tomography_sweeping_cnot_all':
-        # Correlator for a given input
-        print "Update config = " +str(kwargs['update_config'])
-        id1 = kwargs['id1']
-        id2 = kwargs['id2']
-        gate_num = kwargs['gate_num']
-        phase = kwargs['cnot_ef_qubit_phase']
-        slist = array([5,6,9,10])
-        tlist=  array([4,5,8,9])
-
-        for t in tlist:
-            for s in slist:
-                seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
-                                                                        'sb_cool':kwargs['sb_cool'],'phase_correct_cz':True,'phase_correct_cnot':False,\
-                                                                        'sweep_final_sb':False,'cnot_ef_qubit_phase':phase,'sweep_cnot':True,\
-                                                                        'update_config': kwargs['update_config'],"data_file":data_file})
-
-
-
-    if expt_name.lower() == 'multimode_process_tomography_correlations_vs_ef_qubit_phase':
-        # Correlator for a given input
-        update_config = False
-        id1 = kwargs['id1']
-        id2 = kwargs['id2']
-        state_num = kwargs['state_num']
-        gate_num = kwargs['gate_num']
-        tom_num = kwargs['tom_num']
-        sweep_phase_start = -180.0
-        sweep_phase_stop = 180.0
-        sweep_phase_step = 10.0
-
-
-        # pulse_calibration(seq_exp,phase_exp=True)
-        for phase in arange(sweep_phase_start,sweep_phase_stop,sweep_phase_step):
-            seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':state_num,'gate_num':kwargs['gate_num'],'pair_index':kwargs['pair_index'],'tomography_num':kwargs['tom_num'],\
-                                                                        'sb_cool':kwargs['sb_cool'],'phase_correct_cz':kwargs['phase_correct_cz'],'phase_correct_cnot':kwargs['phase_correct_cnot'],\
-                                                                        'sweep_final_sb':kwargs['sweep_final_sb'], 'cnot_ef_qubit_phase':phase,'sweep_cnot':kwargs['sweep_cnot'],\
-                                                                        'update_config': kwargs['update_config'],"data_file":data_file})
-
-
-    if expt_name.lower() == 'process_tomography_sweeping_final_sb_all':
-        # Correlator for a given input
-        print "Update config = False"
-        id1 = kwargs['id1']
-        id2 = kwargs['id2']
-        gate_num = kwargs['gate_num']
-        phase = kwargs['cnot_ef_qubit_phase']
-        slist = arange(16)
-        tlist=  arange(15)
-
-        for t in tlist:
+### Obsolete
+    if expt_name.lower() == 'sequential_cphase_amplification':
+        mode1 = 6
+        mode2 = 1
+        multimode_pulse_calibration(seq_exp,mode1)
+        multimode_ef_pulse_calibration(seq_exp,mode2)
+        multimode_pi_pi_phase_calibration(seq_exp,mode1)
+        multimode_ef_dc_offset_recalibration(seq_exp,mode2)
+        for i in arange(0,15):
             frequency_stabilization(seq_exp)
-            pulse_calibration(seq_exp)
-            for s in slist:
-                seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,'gate_num':kwargs['gate_num'],'tomography_num':t,\
-                                                                        'sb_cool':kwargs['sb_cool'],'phase_correct_cz':True,'phase_correct_cnot':True,\
-                                                                        'sweep_final_sb':True,'cnot_ef_qubit_phase':phase,'sweep_cnot':False,\
-                                                                        'update_config': False,"data_file":data_file})
+        seq_exp.run('multimode_ef_pi_pi_experiment',{'mode_1':mode1,'mode_2':mode2,'update_config':True})
+        seq_exp.run('multimode_cphase_amplification',{'mode_1':mode1,'mode_2':mode2,'number':i,"data_file":data_file})
+
+    if expt_name.lower() == 'sequential_cnot_amplification':
+        mode1 = kwargs['control_mode']
+        mode2 = kwargs['target_mode']
+        # multimode_pulse_calibration(seq_exp,mode1)
+        # multimode_ef_pulse_calibration(seq_exp,mode2)
+        # multimode_pi_pi_phase_calibration(seq_exp,mode1)
+        # multimode_ef_dc_offset_recalibration(seq_exp,mode2)
+        for i in arange(0,12,2):
+            # frequency_stabilization(seq_exp)
+            seq_exp.run('multimode_cnot_amplification',{'mode_1':mode1,'mode_2':mode2,'number':i,"data_file":data_file})
 
 
-    if expt_name.lower() == 'process_tomography_sweeping_final_sb_vs_tom_num':
-        # Correlator for a given input
-        print "Update config = False"
-        id1 = kwargs['id1']
-        id2 = kwargs['id2']
-        gate_num = kwargs['gate_num']
-        phase = kwargs['cnot_ef_qubit_phase']
-        slist = arange(16)
-        tlist=  arange(15)
-
-        t =  kwargs['tom_num']
-        # frequency_stabilization(seq_exp)
-        # pulse_calibration(seq_exp,phase_exp=False)
-        for s in slist:
-            seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,'pair_index':kwargs['pair_index'],'gate_num':kwargs['gate_num'],'tomography_num':t,\
-                                                                    'sb_cool':kwargs['sb_cool'],'phase_correct_cz':True,'phase_correct_cnot':True,\
-                                                                    'sweep_final_sb':True,'cnot_ef_qubit_phase':phase,'sweep_cnot':False,\
-                                                                    'update_config': False,"data_file":data_file})
-
-
-
-    if expt_name.lower() == 'process_tomography_sweeping_cphase_trunctated':
-        # Correlator for a given input
-        print "Update config = " +str(kwargs['update_config'])
-        id1 = kwargs['id1']
-        id2 = kwargs['id2']
-        gate_num = 0
-        lookup = array([5, 53, 55, 101, 103, 165, 167, 197, 199])
-        Lslist =[[5,6,9,10,13,14],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10],[7,11],[5,6,9,10,13,14],[7,11]]
-        Ltlist =[[0,1],[3,7],[3,7],[6],[6],[10],[10],[12,13],[12,13]]
-        LslistCNOT =[5,6,9,10]
-        LtlistCNOT=[4,5,8,9]
-        Ltlist =[[0,1],[3,7],[3,7],[6],[6],[10],[10],[12,13],[12,13]]
-        frequency_stabilization(seq_exp)
-        pulse_calibration(seq_exp,phase_exp=False)
-
-        for expt_num in lookup:
-            t = expt_num/16
-            s = expt_num%16
-            seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,\
-                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':False,'phase_correct_cnot':False,\
-                                                                                'sweep_final_sb':False,'sweep_cnot':False,'truncated_save':True,'update_config': kwargs['update_config'],"data_file":data_file})
-
-
-    if expt_name.lower() == 'process_tomography_sweeping_cnot_trunctated':
-        # Correlator for a given input
-        print "Update config = " +str(kwargs['update_config'])
-        id1 = kwargs['id1']
-        id2 = kwargs['id2']
-        gate_num = 0
-        lookup = array([69, 86, 137, 154])
-
-        LslistCNOT =[5,6,9,10]
-        LtlistCNOT=[4,5,8,9]
-
-        # frequency_stabilization(seq_exp)
-        # pulse_calibration(seq_exp,phase_exp=False)
-
-        for expt_num in lookup:
-            t = expt_num/16
-            s = expt_num%16
-            seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,\
-                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':True,'phase_correct_cnot':False,\
-                                                                                'sweep_final_sb':False,'sweep_cnot':True,'truncated_save':True,'cnot_ef_qubit_phase':kwargs['cnot_ef_qubit_phase'],'update_config': kwargs['update_config'],"data_file":data_file})
-
-
-
-    if expt_name.lower() == 'process_tomography_sweeping_ef_qubit_phase':
-        # Correlator for a given input
-        print "Update config = " +str(False)
-        id1 = kwargs['id1']
-        id2 = kwargs['id2']
-        gate_num = 0
-
-
-        t = 4
-        s = 6
-        seq_exp.run('multimode_process_tomography_phase_sweep_new',{'id1':kwargs['id1'],'id2':kwargs['id2'],'pair_index':kwargs['pair_index'],'state_num':s,\
-                                                                                'gate_num':gate_num,'tomography_num':t,'phase_correct_cz':True,'phase_correct_cnot':False,\
-                                                                                'sweep_final_sb':False,'sweep_ef_qubit_phase':True,'ef_sb_offset': kwargs['ef_sb_offset'],'sweep_cnot':False,'truncated_save':False,'update_config': False,"data_file":data_file})
+    if expt_name.lower() == 'cphase_amplification':
+        mode1 = kwargs['control_mode']
+        mode2 = kwargs['target_mode']
+        seq_exp.run('multimode_ef_pi_pi_experiment',{'mode_1':mode1,'mode_2':mode2,'update_config':True})
+        seq_exp.run('multimode_cphase_amplification',{'mode_1':mode1,'mode_2':mode2,'number':15})

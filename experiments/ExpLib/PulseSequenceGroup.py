@@ -25,6 +25,8 @@ def cphase_v2(psb,control_id ,minus_Z_id,cz_phase1=0,cz_phase2=0):
     if not control_id == "q":
         psb.append('q,mm'+str(control_id),'pi_ge')
 
+
+#### Final CZ gate
 def cphase_v3(psb,control_id ,minus_Z_id, efsbphase_0=0,efsbphase_1=0,gesbphase1=0,add_freq=0,efsbphase_2=0):
     # pass
     if not control_id == "q":
@@ -46,6 +48,8 @@ def cnot_v1(psb,control_id ,minus_Z_id, cnot_phase=0,cnot_dc_phase=0):
     if not control_id == "q":
         psb.append('q,mm'+str(control_id),'pi_ge',phase=cnot_dc_phase)
 
+
+#### Final CNOT gate
 def cnot_v2(psb,control_id ,minus_Z_id, cnot_phase=0,efsbphase_0=0,efsbphase_1=0,gesbphase1=0,efsbphase_2=0):
     if not control_id == "q":
         psb.append('q,mm'+str(control_id),'pi_ge', phase = -gesbphase1)

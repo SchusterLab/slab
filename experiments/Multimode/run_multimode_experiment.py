@@ -50,6 +50,9 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
     if expt_name.lower()=='multimode_entanglement':
         expt=MultimodeEntanglementExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower()=='multimode_general_entanglement':
+        expt=MultimodeGeneralEntanglementExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower()=='multimode_cphase_tests_experiment':
         expt=MultimodeCPhaseTestsExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
@@ -101,14 +104,17 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
     if expt_name.lower()=='multimode_two_resonator_tomography':
         expt=MultimodeTwoResonatorTomography(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
-    if expt_name.lower()=='multimode_two_resonator_tomography_phase_sweep':
-        expt=MultimodeTwoResonatorTomographyPhaseSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
-
-    if expt_name.lower()=='multimode_process_tomography_phase_sweep':
-        expt=MultimodeProcessTomographyPhaseSweepExperimentNEW(path=datapath,liveplot_enabled = lp_enable, **kwargs)
-
     if expt_name.lower()=='multimode_process_tomography_phase_sweep_new':
-        expt=MultimodeProcessTomographyPhaseSweepExperimentNEWTEMP(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+        expt=MultimodeProcessTomographyPhaseSweepExperiment_1(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_process_tomography_gate_fid_expt':
+        expt=MultimodeProcessTomographyPhaseSweepExperiment_2(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_process_tomography_2':
+        expt=MultimodeProcessTomographyExperiment_2(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_process_tomography_phase_sweep_test':
+        expt=MultimodeProcessTomographyPhaseSweepExperiment_test(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_three_mode_correlation_experiment':
         expt=MultimodeThreeModeCorrelationExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
