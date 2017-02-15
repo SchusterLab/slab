@@ -47,7 +47,7 @@ class VacuumRabiExperiment(Experiment):
             self.drive.set_ext_pulse(mod=False)
 
 
-        # self.drive.set_ext_pulse(mod=False)
+        self.drive.set_ext_pulse(mod=False)
 
         try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
