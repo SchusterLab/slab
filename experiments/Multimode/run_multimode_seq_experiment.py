@@ -829,6 +829,10 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         # Correlator for a given input
 
         print "Update config = " +str(kwargs['update_config'])
+
+        print "Calibrating total phase error in state preparation and measurement"
+
+
         # print "Process tomography protocol = %s" %(kwargs['protocol'])
         id1 = kwargs['id1']
         id2 = kwargs['id2']
@@ -843,6 +847,8 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
         ### CPhase calibrations: Total error from state preparation and measurement segments of process tomography
 
+
+
         for expt_num in lookup:
             t = expt_num/16
             s = expt_num%16
@@ -852,9 +858,12 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                                                                                 'sweep_final_sb':False,'sweep_cnot':False,'truncated_save':True,\
                                                                                 'update_config': kwargs['update_config'],"data_file":data_file})
 
+
         ### Finding optimal ef sb offset for fiding optimal ef qubit phase
+        print "Finding ef sb offset phase to best find optimal ef qubit phase"
 
         ef_sb_offset = process_tomography_find_ef_qubit_phase_ef_offset(seq_exp, kwargs['id1'], kwargs['id2'])
+
 
         # seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':6,\
         #                                                                     'gate_num':gate_num,'tomography_num':4,'phase_correct_cz':True,'phase_correct_cnot':False,\
@@ -868,10 +877,12 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
         ### Finding optimal ef qubit phase
 
+        print "Calibrating ef qubit phase through using XX correlator"
         seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':6,\
                                                                                 'gate_num':gate_num,'tomography_num':4,'phase_correct_cz':True,'phase_correct_cnot':False,\
                                                                                 'sweep_final_sb':False,'sweep_ef_qubit_phase':True,'ef_sb_offset': ef_sb_offset,\
                                                                                 'sweep_cnot':False,'truncated_save':False,'update_config': False,"data_file":data_file})
+        print "Seperating state preparation and measurement error "
 
         #### Calibrating phase to be added & subtracted from CZ & CNOT gates, to isolate preparation and measurement errors
 
@@ -894,6 +905,7 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         id2 = kwargs['id2']
         gate_num = kwargs['gate_num']
         slist = arange(16)
+        slist = arange(16)
         tlist=  kwargs['tom_list']
 
         for t in tlist:
@@ -915,12 +927,39 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         slist = arange(16)
 
 
-        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':kwargs['gate_num'],\
-                                                            'sb_cool':kwargs['sb_cool'],'proc_tom_set':0,'update_config': False,"data_file":data_file})
+        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':kwargs['gate_num'],'proc_tom_set':0,'update_config': False,"data_file":data_file})
+        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':kwargs['gate_num'],'proc_tom_set':1,'update_config': False,"data_file":data_file})
 
-        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':kwargs['gate_num'],\
-                                                            'sb_cool':kwargs['sb_cool'],'proc_tom_set':1,'update_config': False,"data_file":data_file})
 
+    if expt_name.lower() == 'process_tomography_nosweep_id_cz':
+        # Correlator for a given input
+        print "Update config = False"
+        # print "Process tomography protocol = %s" %(kwargs['protocol'])
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+
+
+        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':0,'proc_tom_set':0,'update_config': False,"data_file":data_file})
+        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':0,'proc_tom_set':1,'update_config': False,"data_file":data_file})
+        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':1,'proc_tom_set':0,'update_config': False,"data_file":data_file})
+        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':1,'proc_tom_set':1,'update_config': False,"data_file":data_file})
+
+    if expt_name.lower() == 'final_sb_sweep_only_cnot_id_cz':
+        LslistCNOT =[5,6,9,10]
+        LtlistCNOT= [4,5,8,9]
+
+        for s in LslistCNOT:
+            for t in LtlistCNOT:
+                seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,'gate_num':0,'tomography_num':t,\
+                                                                    'sb_cool':False,'phase_correct_cz':True,'phase_correct_cnot':True,\
+                                                                    'sweep_final_sb':True, 'use_saved_cnot_ef_qubit_phase':True,'sweep_cnot':False,\
+                                                                    'update_config': False,"data_file":data_file})
+        for s in LslistCNOT:
+            for t in LtlistCNOT:
+                seq_exp.run('multimode_process_tomography_gate_fid_expt',{'id1':kwargs['id1'],'id2':kwargs['id2'],'state_num':s,'gate_num':1,'tomography_num':t,\
+                                                                    'sb_cool':False,'phase_correct_cz':True,'phase_correct_cnot':True,\
+                                                                    'sweep_final_sb':True, 'use_saved_cnot_ef_qubit_phase':True,'sweep_cnot':False,\
+                                                                    'update_config': False,"data_file":data_file})
 
 
     if expt_name.lower() == 'sequential_process_tomography_correlations':
