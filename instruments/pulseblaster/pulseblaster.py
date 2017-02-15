@@ -59,7 +59,7 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,readout_trig_ti
     awg_trig = 0x1
     card_trig = 0x2
     readout_trig = 0x4
-    #drive_trig = 0x8
+    drive_trig = 0x8
 
     # Configure the core clock
     pb_core_clock(500.0)
@@ -71,13 +71,13 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,readout_trig_ti
     start = pb_inst_pbonly64(awg_trig, Inst.LONG_DELAY,awg_trig_delay_loop,unit_inst_time)
 
     # idle between end of awg trig and card trig
-    pb_inst_pbonly64(idle, Inst.LONG_DELAY, awg_card_idle_delay_loop, unit_inst_time)
+    pb_inst_pbonly64(drive_trig, Inst.LONG_DELAY, awg_card_idle_delay_loop, unit_inst_time)
 
     # card trig starts first at the same time
-    pb_inst_pbonly64(card_trig, Inst.LONG_DELAY,card_trig_delay_loop,unit_inst_time)
+    pb_inst_pbonly64(card_trig+drive_trig, Inst.LONG_DELAY,card_trig_delay_loop,unit_inst_time)
 
     # idle between card trig and readout trig
-    pb_inst_pbonly64(idle, Inst.LONG_DELAY, card_readout_idle_delay_loop, unit_inst_time)
+    pb_inst_pbonly64(drive_trig, Inst.LONG_DELAY, card_readout_idle_delay_loop, unit_inst_time)
 
     # readout trig after card trig finished
     pb_inst_pbonly64(readout_trig, Inst.LONG_DELAY,readout_trig_delay_loop,unit_inst_time)
