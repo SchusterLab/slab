@@ -24,7 +24,7 @@ def gauss(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_locatio
                                               pulse.span_length + marker_start_buffer- marker_end_buffer)
     return (qubit_waveforms,qubit_marker)
 
-def gauss_phase_fix(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse,pulse_info,qubit_dc_offset):
+def gauss_phase_fix(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse,pulse_info,qubit_dc_offset,t0=0):
 
     if pulse_info['fix_phase']:
         # print "Phase of qubit pulse is being fixed"
@@ -47,7 +47,7 @@ def gauss_phase_fix(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pul
                                  ap.gauss(wtpts, pulse.amp,
                                           origin - pulse_location - 0.5*pulse.span_length,
                                           pulse.length), np.zeros(len(wtpts)),
-                                 pulse.freq, pulse.phase)
+                                 pulse.freq, pulse.phase,t0=t0)
         qubit_marker = ap.square(mtpts, 1,
                                                   origin - pulse_location - pulse.span_length - marker_start_buffer,
                                                   pulse.span_length + marker_start_buffer- marker_end_buffer)

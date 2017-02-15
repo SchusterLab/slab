@@ -5851,7 +5851,7 @@ class MultimodeProcessTomographySequence_2(QubitPulseSequence):
         self.proc_tom =   self.proc_tom_phase_matrix[self.id2][self.id1]
 
 
-        self.pi_ef_qubit_phase = self.proc_tom[2][6][4] - 90.0
+        self.pi_ef_qubit_phase = self.proc_tom[2][6][4]
         # self.pi_ef_qubit_phase = self.proc_tom[2][6][4]
             # self.pi_ef_qubit_phase = 0
 

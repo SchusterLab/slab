@@ -10,6 +10,10 @@ import os
 def round_samples(x, min_samples=0, increment=1):
     return max(min_samples, int(increment * np.ceil(float(x) / float(increment))))
 
+def round_samples_2(x, min_samples=0, increment=1):
+    ## non-integer round samples
+    return max(min_samples, increment * int(np.ceil(float(x) / float(increment))))
+
 
 class PulseSequence:
     def __init__(self, name, awg_info, sequence_length):

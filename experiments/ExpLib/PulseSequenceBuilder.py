@@ -246,8 +246,8 @@ class PulseSequenceBuilder():
         self.acquire_readout_cfg()
         max_total_pulse_span_length = max(total_pulse_span_length_list)
         max_total_pulse_span_length += self.tek2_trigger_delay  #
-        self.max_length = round_samples(
-            (max_total_pulse_span_length + self.measurement_delay + self.measurement_width + 2 * self.start_end_buffer))
+        self.max_length = round_samples_2(
+            (max_total_pulse_span_length + self.measurement_delay + self.measurement_width + 2 * self.start_end_buffer),increment=1./1.2)
         return self.max_length
 
     def get_max_flux_length(self, total_flux_pulse_span_length_list):
@@ -282,7 +282,7 @@ class PulseSequenceBuilder():
         For each pulse sequence, location of readout and card is fixed.
         Pulses are appended backward, from the last pulse to the first pulse.
         '''
-        self.origin = self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer)
+        self.origin = self.max_length - round_samples_2((self.measurement_delay + self.measurement_width + self.start_end_buffer),increment=1./1.2)
         self.uses_tek2 = False
         for ii in range(len(pulse_sequence_matrix)):
 
@@ -333,20 +333,20 @@ class PulseSequenceBuilder():
                                                                   self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)
                             else:
                                 qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
-                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse)
+                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,t0=self.origin)
                         # elif pulse.name[:7] == 'half_pi' or pulse.name[:11] == 'neg_half_pi':
                         elif 'ef' in pulse.name:
                             #print "fix qubit ef dc offset"
                             qubit_dc_offset = pulse_info['qubit_ef_dc_offset']
                             #print qubit_dc_offset
                             qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
-                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)
+                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset,t0=self.origin)
 
                         else:
                             #print "fix qubit dc offset"
                             qubit_dc_offset = pulse_info['qubit_dc_offset']
                             qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
-                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)
+                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset,t0=self.origin)
                     else:
                         raise ValueError('Wrong pulse type has been defined')
                     if pulse_defined:
