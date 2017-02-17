@@ -1444,6 +1444,15 @@ class idealprocesstomographycorrelations():
 
                 for state_num in arange(16):
                     for tom_num in arange(15):
+                        # if tom_num in array([4,5,8,9]) and state_num in array([5,6,9,10]):
+                        #     if self.gate_num == 1:
+                        #         m_ab.append(2*((self.ydata_p[16*tom_num + state_num])-0.5))
+                        #     else:
+                        #         m_ab.append(-2*((self.ydata_p[16*tom_num + state_num])-0.5))
+                        # else:
+                        #     m_ab.append(-2*((self.ydata_p[16*tom_num + state_num])-0.5))
+
+
                         m_ab.append(-2*((self.ydata_p[16*tom_num + state_num])-0.5))
 
             m_ab = around(real(array(m_ab)),4).reshape((16,15))
@@ -2001,6 +2010,18 @@ class idealprocesstomographycorrelations():
         if filename is not None:
             plt.savefig(filename,bbox_inches='tight', dpi=500)
         print "Process Fidelity = " + str(trace(dot(pmat,pmattheory)))
+
+    def process_fid_expt(self,find_optimal_phase=False,phaselist=None,corrlist=None,scale=1,filename = None):
+        font = {'family' : 'serif',
+        'weight' : 'normal',
+        'size'   : 20}
+        matplotlib.rc('font', **font)
+        m_ab = np.append(np.ones([16,1]),self.theory_matrix(),1)
+        pmattheory = two_qubit_gate_inversion(m_ab)
+        m_ab = np.append(np.ones([16,1]),self.expt_matrix(find_optimal_phase=find_optimal_phase,phaselist=phaselist,corrlist=corrlist),1)
+        pmat = two_qubit_gate_inversion(m_ab)
+
+        return trace(dot(pmat,pmattheory))
 
 class processtomographycorrelations():
 

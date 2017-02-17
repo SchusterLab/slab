@@ -1204,7 +1204,7 @@ class MultimodeProcessTomographyPhaseSweepExperiment_2(QubitPulseSequenceExperim
 
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequence_2, pre_run=self.pre_run,
+                                                    PulseSequence=MultimodeProcessTomographyPhaseSweepSequence_3, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
 
     def pre_run(self):
@@ -1799,7 +1799,7 @@ class MultimodeProcessTomographyExperiment_2(QubitPulseSequenceExperiment):
 
 
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
-                                                    PulseSequence=MultimodeProcessTomographySequence_2, pre_run=self.pre_run,
+                                                    PulseSequence=MultimodeProcessTomographySequence_3, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
 
     def pre_run(self):

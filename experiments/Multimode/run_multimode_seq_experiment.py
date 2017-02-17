@@ -931,7 +931,7 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':kwargs['gate_num'],'proc_tom_set':1,'update_config': False,"data_file":data_file})
 
 
-    if expt_name.lower() == 'process_tomography_nosweep_id_cz':
+    if expt_name.lower() == 'process_tomography_nosweep_id_cz_3':
         # Correlator for a given input
         print "Update config = False"
         # print "Process tomography protocol = %s" %(kwargs['protocol'])
@@ -944,7 +944,7 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':1,'proc_tom_set':0,'update_config': False,"data_file":data_file})
         seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':1,'proc_tom_set':1,'update_config': False,"data_file":data_file})
 
-    if expt_name.lower() == 'final_sb_sweep_only_cnot_id_cz':
+    if expt_name.lower() == 'final_sb_sweep_only_cnot_id_cz_3':
         LslistCNOT =[5,6,9,10]
         LtlistCNOT= [4,5,8,9]
 
