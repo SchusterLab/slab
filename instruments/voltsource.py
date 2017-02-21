@@ -109,7 +109,7 @@ class SRS900(SerialInstrument, VisaInstrument, VoltageSource):
         return self.query("*IDN?")
 
     def set_volt(self, voltage, channel=1):
-        self.write('SNDT %d,\"VOLT %f\"' % (channel, voltage))
+        self.write('SNDT %d,\"VOLT %.3f\"' % (channel, voltage))
 
     def get_volt(self, channel=1):
         return float(self.query("VOLT?", channel))
