@@ -17,6 +17,7 @@ Install NI-VISA - Make sure to check the NI-VISA 4.6 box which is not default
     pip install Pyro4==4.24
     pip install pyvisa pyserial
     conda install pyqt=4.11.4
+    pip install PySerial
     ```
 
 ## Important
