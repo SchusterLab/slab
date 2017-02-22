@@ -1,5 +1,17 @@
 # Schuster Lab Instrument Drivers
 
+## Usage
+
+You need the following libraries
+
+```bash
+conda create env experiment_python2
+source activate experiment_python2
+pip install numpy matplotlib
+pip install Pyro4==4.24
+pip install Py
+```
+
 ## Important
 
 - This module should minimize dependency on slab datanalysis modules.
