@@ -11,7 +11,7 @@ Instructions for setting up a new machine for slab
 Install NI-VISA - Make sure to check the NI-VISA 4.6 box which is not default
     
     ```bash
-    conda create env experiment_python2
+    conda create experiment_python2
     source activate experiment_python2
     pip install numpy matplotlib scipy 
     pip install liveplot
