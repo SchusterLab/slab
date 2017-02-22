@@ -5,7 +5,9 @@
 You need the following libraries
 Instructions for setting up a new machine for slab
 
-1. First install Anaconda Python
+1. First install Anaconda: https://www.continuum.io/downloads
+
+    **IMPORTANT** use 32-bit version 2.7.x
 2. Use GitHub to clone the schusterlab/slab repository (for example to c:\_Lib\python\slab)
 3. To be able to host instruments you need to install the VISA drivers from the NI website
 Install NI-VISA - Make sure to check the NI-VISA 4.6 box which is not default
