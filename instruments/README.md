@@ -9,6 +9,7 @@ Instructions for setting up a new machine for slab
 2. Use GitHub to clone the schusterlab/slab repository (for example to c:\_Lib\python\slab)
 3. To be able to host instruments you need to install the VISA drivers from the NI website
 Install NI-VISA - Make sure to check the NI-VISA 4.6 box which is not default
+    
     ```bash
     conda create env experiment_python2
     source activate experiment_python2
