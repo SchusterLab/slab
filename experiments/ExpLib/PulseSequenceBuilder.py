@@ -334,6 +334,7 @@ class PulseSequenceBuilder():
                                                                   self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)
                             else:
                                 # print "testt"
+                                qubit_dc_offset = pulse_info['qubit_dc_offset_pi']
                                 qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset,t0=self.origin)
                         # elif pulse.name[:7] == 'half_pi' or pulse.name[:11] == 'neg_half_pi':
@@ -346,9 +347,10 @@ class PulseSequenceBuilder():
 
                         else:
                             #print "fix qubit dc offset"
-                            qubit_dc_offset = pulse_info['qubit_dc_offset']
-                            qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
-                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset,t0=self.origin)
+                            if not pulse.name == '0':
+                                qubit_dc_offset = pulse_info['qubit_dc_offset']
+                                qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
+                                                                  self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset,t0=self.origin)
                     else:
                         raise ValueError('Wrong pulse type has been defined')
                     if pulse_defined:
