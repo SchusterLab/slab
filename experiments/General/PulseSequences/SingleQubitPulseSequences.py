@@ -20,6 +20,10 @@ class RabiSequence(QubitPulseSequence):
         self.pulse_type =  self.expt_cfg['pulse_type']
 
     def define_pulses(self,pt):
+
+        ### Hack to fix error in half pi expt arising from drive FG not being triggered for short sequences
+        # self.psb.append('q','general', self.pulse_type, amp=0.0, length=50.0,freq=self.pulse_cfg['gauss']['iq_freq'])
+
         if self.expt_cfg['sweep_amp']:
             self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
         else:
@@ -160,6 +164,8 @@ class EFT1Sequence(QubitPulseSequence):
 
 class T1Sequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
+        self.qubit_cfg = cfg['qubit']
+        self.pulse_cfg = cfg['pulse_info']
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
 
     def define_points(self):
@@ -169,8 +175,9 @@ class T1Sequence(QubitPulseSequence):
         self.pulse_type =  self.expt_cfg['pulse_type']
 
     def define_pulses(self,pt):
-        # self.psb.append('q','general', 'square', amp=1, length=16,freq=150e6)
 
+        ### Hack to fix error in half pi expt arising from drive FG not being triggered for short sequences
+        # self.psb.append('q','general', self.pulse_type, amp=0.0, length=50.0,freq=self.pulse_cfg['gauss']['iq_freq'])
         self.psb.append('q','pi', self.pulse_type)
         # self.psb.idle(200)
         self.psb.idle(pt)
@@ -268,6 +275,8 @@ class HalfPiYPhaseOptimizationSequence(QubitPulseSequence):
 
     def define_pulses(self,pt):
 
+        ### Hack to fix error in half pi expt arising from drive FG not being triggered for short sequences
+        # self.psb.append('q','general', self.pulse_type, amp=0.0, length=50.0,freq=self.pulse_cfg['gauss']['iq_freq'])
         self.psb.append('q','half_pi', self.pulse_type, phase=0)
         self.psb.append('q','half_pi', self.pulse_type,phase= pt)
 

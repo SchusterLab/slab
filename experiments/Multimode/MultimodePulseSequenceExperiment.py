@@ -367,14 +367,29 @@ class MultimodeEntanglementScalingExperiment(QubitPulseSequenceExperiment):
         for key, value in kwargs.iteritems():
             self.extra_args[key] = value
 
-        self.id1 = self.extra_args['id1']
-        self.id2 = self.extra_args['id2']
-        self.id3 = self.extra_args['id3']
-        self.id4 = self.extra_args['id4']
-        self.id5 = self.extra_args['id5']
-        self.id6 = self.extra_args['id6']
-        self.idm = self.extra_args['idm']
+        if 'id1' in self.extra_args:
+            self.id1 = self.extra_args['id1']
+        if 'id2' in self.extra_args:
+            self.id2 = self.extra_args['id2']
+        if 'id3' in self.extra_args:
+            self.id3 = self.extra_args['id3']
+        if 'id4' in self.extra_args:
+            self.id4 = self.extra_args['id4']
+        if 'id5' in self.extra_args:
+            self.id5 = self.extra_args['id5']
+        if 'id6' in self.extra_args:
+            self.id6 = self.extra_args['id6']
+        if 'id7' in self.extra_args:
+            self.id7 = self.extra_args['id7']
+        if 'id8' in self.extra_args:
+            self.id8 = self.extra_args['id8']
+        if 'id9' in self.extra_args:
+            self.id9 = self.extra_args['id9']
+        if 'idm' in self.extra_args:
+            self.idm = self.extra_args['idm']
+
         self.number = self.extra_args['number']
+
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                                     PulseSequence=MultimodeGeneralEntanglementSequence, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
@@ -384,13 +399,7 @@ class MultimodeEntanglementScalingExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
-        # self.cfg['multimode_general_entanglement']['id1'] = self.id1
-        # self.cfg['multimode_general_entanglement']['id2'] = self.id2
-        # self.cfg['multimode_general_entanglement']['id3'] = self.id3
-        # self.cfg['multimode_general_entanglement']['id4'] = self.id4
-        # self.cfg['multimode_general_entanglement']['id5'] = self.id5
-        # self.cfg['multimode_general_entanglement']['id6'] = self.id6
-        # self.cfg['multimode_general_entanglement']['number'] = self.number
+
 
 class Multimode_Qubit_Mode_CZ_Offset_Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_qubit_mode_cz_offset', config_file='..\\config.json', **kwargs):

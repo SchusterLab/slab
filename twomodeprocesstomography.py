@@ -776,29 +776,27 @@ def two_qubit_gate_maximum_likelihood(m_ab):
 
     Xguess_real[0][0] = 1
 
-    #Xguess_real[0][0] = 0.25
-    #Xguess_real[3][0] = 0.25
-    #Xguess_real[0][3] = 0.25
-    #Xguess_real[3][3] = 0.25
+    Xguess_real[0][0] = 0.25
+    Xguess_real[3][0] = 0.25
+    Xguess_real[0][3] = 0.25
+    Xguess_real[3][3] = 0.25
 
-    #Xguess_real[0][12] = 0.25
-    #Xguess_real[3][12] = 0.25
-    #Xguess_real[0][15] = -0.25
-    #Xguess_real[3][15] = -0.25
+    Xguess_real[0][12] = 0.25
+    Xguess_real[3][12] = 0.25
+    Xguess_real[0][15] = -0.25
+    Xguess_real[3][15] = -0.25
 
-    #Xguess_real[12][0] = 0.25
-    #Xguess_real[15][0] = -0.25
-    #Xguess_real[12][3] = 0.25
-    #Xguess_real[15][3] = -0.25
+    Xguess_real[12][0] = 0.25
+    Xguess_real[15][0] = -0.25
+    Xguess_real[12][3] = 0.25
+    Xguess_real[15][3] = -0.25
 
-    #Xguess_real[12][12] = 0.25
-    #Xguess_real[12][15] = -0.25
-    #Xguess_real[15][12] = -0.25
-    #Xguess_real[15][15] = 0.25
+    Xguess_real[12][12] = 0.25
+    Xguess_real[12][15] = -0.25
+    Xguess_real[15][12] = -0.25
+    Xguess_real[15][15] = 0.25
 
     Xguess = vstack((Xguess_real,Xguess_imag))
-
-
 
 
     # Set boundary for allocation of each Chi to be between -1 and 1
@@ -832,9 +830,6 @@ def two_qubit_gate_maximum_likelihood(m_ab):
         x = x_real+x_imag
         x = np.reshape(x,(16,16))
         return x
-
-
-
     # states
     def get_phi_array():
         phi_1=[]
@@ -851,7 +846,6 @@ def two_qubit_gate_maximum_likelihood(m_ab):
                 phi.append(matrix(np.kron(phi_i,phi_j)))
 
         return phi
-
     # measurements
     def get_M_array():
         X = matrix([[0,1],[1,0]])
@@ -888,7 +882,6 @@ def two_qubit_gate_maximum_likelihood(m_ab):
     phi=get_phi_array()
     M=get_M_array()
     MMT = get_MMT_array(B,phi,M)
-
 
     def get_BndBm_array(B):
         BndBm = []
@@ -953,7 +946,6 @@ def two_qubit_gate_maximum_likelihood(m_ab):
 
         global Cost
         Cost.append(cost)
-
 
 
     min_result = spo.minimize(error_function, Xguess, method='SLSQP', options={'disp': True,'maxiter':120}
@@ -1569,6 +1561,51 @@ class idealprocesstomographycorrelations():
         cb = colorbar()
         cb.set_ticks([-1,0,1])
 
+    def plot_expt_process_matrix(self,find_optimal_phase = False,phaselist=None,corrlist=None,scale=1,title = '',filename=None):
+        font = {'family' : 'serif',
+        'weight' : 'normal',
+        'size'   : 12}
+
+        matplotlib.rc('font', **font)
+
+        plt.figure(figsize=(10,4))
+        subplot(121,title=title)
+        plt.imshow(self.expt_matrix(find_optimal_phase=find_optimal_phase,phaselist=phaselist,corrlist=corrlist),cmap = cm.PuOr,interpolation='none',extent=(0.5,15.5,16.5,0.5),origin='upper')
+        ylab = []
+        xlab = []
+        for tom_num in arange(15):
+            xlab.append(self.tom_label(tom_num))
+        for tom_num in arange(16):
+            ylab.append(self.state_label2(tom_num))
+        plt.xticks(arange(1,16,1),xlab)
+        plt.yticks(arange(1,17,1),ylab)
+        grid(True)
+        ylabel('Input state')
+        xlabel('Tomography Correlator')
+
+        clim(-1,1)
+        cb = colorbar()
+        cb.set_ticks([-1,0,1])
+
+        m_ab = np.append(np.ones([16,1]),self.theory_matrix(),1)
+        pmattheory = two_qubit_gate_inversion(m_ab)
+        m_ab = np.append(np.ones([16,1]),self.expt_matrix(find_optimal_phase=find_optimal_phase,phaselist=phaselist,corrlist=corrlist),1)
+        pmat = two_qubit_gate_inversion(m_ab)
+        subplot(122,title=title)
+        plt.imshow(real(pmat),cmap = cm.RdBu,interpolation='none',extent=(0.5,16.5,16.5,0.5),origin='upper')
+        plt.xticks(arange(1,17,1))
+        plt.yticks(arange(1,17,1))
+        grid(True)
+        ylabel('m')
+        xlabel('n')
+        clim(-scale,scale)
+        cb = colorbar()
+        cb.set_ticks([-scale,0,scale])
+        tight_layout()
+        if filename is not None:
+            plt.savefig(filename,bbox_inches='tight', dpi=500)
+        print "Process Fidelity = " + str(trace(dot(pmat,pmattheory)))
+
     def tom_label(self,tom_num):
         lab=''
         if((tom_num +1)/4 == 0):
@@ -1704,7 +1741,6 @@ class idealprocesstomographycorrelations():
         ax.set_zlim3d(-1,1)
 
         plt.show()
-
     # 2d and 3d plots of correlators vs ef sideband phase (first ef sideband of CZ gate, and second ef sideband of CNOT gate (XX,XY,YX,YY) )
     def plot_corr_all_vs_phase(self,start,stop, tom_num,xlimit=180,phi_add_ef_sb_cnot=0,phi_add_ef_q_cnot=0,sta = 0,sto =50):
 
@@ -1988,10 +2024,12 @@ class idealprocesstomographycorrelations():
         cb.set_ticks([-scale,0,scale])
 
     def plot_process_matrix_expt(self,find_optimal_phase=False,phaselist=None,corrlist=None,scale=1,filename = None):
+
         font = {'family' : 'serif',
         'weight' : 'normal',
         'size'   : 20}
         matplotlib.rc('font', **font)
+
         m_ab = np.append(np.ones([16,1]),self.theory_matrix(),1)
         pmattheory = two_qubit_gate_inversion(m_ab)
         m_ab = np.append(np.ones([16,1]),self.expt_matrix(find_optimal_phase=find_optimal_phase,phaselist=phaselist,corrlist=corrlist),1)
@@ -2007,6 +2045,7 @@ class idealprocesstomographycorrelations():
         clim(-scale,scale)
         cb = colorbar()
         cb.set_ticks([-scale,0,scale])
+
         if filename is not None:
             plt.savefig(filename,bbox_inches='tight', dpi=500)
         print "Process Fidelity = " + str(trace(dot(pmat,pmattheory)))

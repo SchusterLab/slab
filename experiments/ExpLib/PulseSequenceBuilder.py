@@ -328,12 +328,14 @@ class PulseSequenceBuilder():
 
                         elif pulse.name == 'pi':
                             if pulse_info['fix_pi']:
+                                print "testt"
                                 qubit_dc_offset = pulse_info['qubit_dc_offset_pi']
                                 qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
                                                                   self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset)
                             else:
-                                qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
-                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,t0=self.origin)
+                                # print "testt"
+                                qubit_waveforms, qubit_marker = gauss_phase_fix(self.wtpts, self.mtpts, self.origin,
+                                                              self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,pulse_info,qubit_dc_offset,t0=self.origin)
                         # elif pulse.name[:7] == 'half_pi' or pulse.name[:11] == 'neg_half_pi':
                         elif 'ef' in pulse.name:
                             #print "fix qubit ef dc offset"

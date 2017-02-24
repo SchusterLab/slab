@@ -312,7 +312,7 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
             seq_exp.run('multimode_calibrate_offset',{'exp':'long_multimode_ramsey','dc_offset_guess':cfg['multimodes'][mode]['dc_offset_freq'],'mode':mode,'update_config':update_config,'data_file':data_file})
 
     if expt_name.lower() == 'sequential_multimode_t1':
-        modelist = arange([1,6,9])
+        modelist = arange([0,1,3,4,5,6,7,9,10])
 
         for mode in modelist:
             seq_exp.run('multimode_t1',{'mode':mode,'update_config':True,'data_file':data_file})
@@ -349,6 +349,15 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         amplist = array([ 1.89801629,  1.29881571,  2.80828336,  0.88971589,  0.79432847,
         1.19547487,  3.17182375,  1.2783333  ,  1.0])
 
+
+        freqspan = linspace(-10,10,21)
+        freqlist = array([ 1.6823167 ,  1.78388067,  1.9039681 ,  1.94607441,  2.13101483,
+        2.31223641,  2.41044112,  2.48847049,  2.58910637])*1e9
+        modelist = array([0,1,3,4,5,6,7,9,10])
+        modeindexlist = kwargs['modeindexlist']
+        amplist = array([ 1.89801629,  1.29881571,  2.80828336,  0.88971589,  0.79432847,
+        1.19547487,  3.17182375,  1.2783333  ,  1.0])
+
         for i in modeindexlist:
             print "running Rabi sweep around mode %s"%(modelist[i])
             # frequency_stabilization(seq_exp)
@@ -356,7 +365,29 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                 flux_freq = freqlist[i] + freq*1e6
                 seq_exp.run('multimode_rabi_sweep',{'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
 
+    if expt_name.lower() == 'multimode_rabi_scan_all':
 
+        # freqspan = linspace(-10,10,21)
+        # freqlist = array([ 1.6823167 ,  1.78388067,  1.9039681 ,  1.94607441,  2.13101483,
+        # 2.31223641,  2.41044112,  2.48847049,  2.58910637])*1e9
+        # modelist = array([0,1,3,4,5,6,7,9,10])
+        # modeindexlist = kwargs['modeindexlist']
+        # amplist = array([ 1.89801629,  1.29881571,  2.80828336,  0.88971589,  0.79432847,
+        # 1.19547487,  3.17182375,  1.2783333  ,  1.0])
+        #
+        #
+        freqspan = linspace(0,154,155)
+        freqlist = array([ 2.495])*1e9
+        modelist = array([-1])
+        modeindexlist = kwargs['modeindexlist']
+        amplist = array([0.5])
+
+        for i in modeindexlist:
+            print "running Rabi sweep around mode %s"%(modelist[i])
+            # frequency_stabilization(seq_exp)
+            for freq in freqspan:
+                flux_freq = freqlist[i] + freq*1e6
+                seq_exp.run('multimode_rabi_sweep',{'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
 
     if expt_name.lower() == 'multimode_ef_rabi_scan':
 
@@ -528,10 +559,10 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
             multimode_cz_2modes_calibration(seq_exp, mode, mode2,data_file)
     if expt_name.lower() == 'sequential_single_mode_rb':
         for i in arange(kwargs['number']):
-            if i%8 == 0:
-                pulse_calibration(seq_exp,phase_exp=True)
-                multimode_pulse_calibration(seq_exp,kwargs['mode'])
-                multimode_pi_pi_phase_calibration(seq_exp,kwargs['mode'])
+            # if i%8 == 0:
+            #     pulse_calibration(seq_exp,phase_exp=True)
+            #     multimode_pulse_calibration(seq_exp,kwargs['mode'])
+            #     multimode_pi_pi_phase_calibration(seq_exp,kwargs['mode'])
             seq_exp.run('single_mode_rb',{'mode':kwargs['mode'],"data_file":data_file})
 
 
@@ -944,6 +975,20 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':1,'proc_tom_set':0,'update_config': False,"data_file":data_file})
         seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':1,'proc_tom_set':1,'update_config': False,"data_file":data_file})
 
+    if expt_name.lower() == 'process_tomography_nosweep_cz_3_idphase_flip':
+        # Correlator for a given input
+        print "Update config = False"
+        # print "Process tomography protocol = %s" %(kwargs['protocol'])
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+
+        print "Process tomography for CZ(" + str(id2) +", "+str(id1)+"), extra pi cphase added to Identity"
+
+
+        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':-1,'proc_tom_set':0,'update_config': False,"data_file":data_file})
+        seq_exp.run('multimode_process_tomography_2',{'id1':kwargs['id1'],'id2':kwargs['id2'],'gate_num':-1,'proc_tom_set':1,'update_config': False,"data_file":data_file})
+
+
     if expt_name.lower() == 'final_sb_sweep_only_cnot_id_cz_3':
         LslistCNOT =[5,6,9,10]
         LtlistCNOT= [4,5,8,9]
@@ -1062,6 +1107,25 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         for idm in idmlist:
             for tom_pulse in tom_pulse_list:
                 seq_exp.run('multimode_general_entanglement',{'id1':kwargs['id1'],'id2':kwargs['id2'],'id3':kwargs['id3'],'idm':idm,'tomography':True,'GHZ':kwargs['GHZ'],'tom_pulse':tom_pulse,'number':kwargs['number'],'data_file':data_file})
+
+    if expt_name.lower() == 'entanglement_polytope_measurement_all':
+        idlist = kwargs['idlist']
+        number = kwargs['number']
+
+        if len(idlist) < 9:
+            idlist = append(idlist,-ones(9-len(idlist)))
+
+        idlist= [int(id) for id in idlist]
+
+        idmlist=idlist[:number]
+        tom_pulse_list = arange(3)
+        for idm in idmlist:
+            for tom_pulse in tom_pulse_list:
+                seq_exp.run('multimode_general_entanglement',{'id1':idlist[0],'id2':idlist[1],'id3':idlist[2],'id4':idlist[3],\
+                                                              'id5':idlist[4],'id6':idlist[5],'id7':idlist[6],'id8':idlist[7],'id9':idlist[8],\
+                                                              'idm':idm,'tomography':True,'GHZ':kwargs['GHZ'],'tom_pulse':tom_pulse,'number':number,'data_file':data_file})
+
+
 
 
 
