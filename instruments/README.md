@@ -13,13 +13,13 @@ Instructions for setting up a new machine for slab
 Install NI-VISA - Make sure to check the NI-VISA 4.6 box which is not default
     
     ```bash
-    conda create experiment_python2
+    conda create --name experiment_python2
     source activate experiment_python2
     pip install numpy matplotlib scipy 
     pip install liveplot
     pip install Pyro4==4.24
     pip install pyvisa pyserial
-    conda install pyqt=4.11.4
+    conda install pyqt==4.11.4
     pip install PySerial
     ```
 
