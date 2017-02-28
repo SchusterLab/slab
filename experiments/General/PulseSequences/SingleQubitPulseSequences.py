@@ -24,12 +24,18 @@ class RabiSequence(QubitPulseSequence):
             self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
             self.psb.append('q2','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
         else:
-            self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=8000,freq=self.expt_cfg['iq_freq'])
-            self.psb.append('q2','general', self.pulse_type, amp=self.expt_cfg['a'], length=8000,freq=self.expt_cfg['iq_freq'],delay=8000)
-            self.psb.idle(10000)
-            # for ii in range(500):
-            #    self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'])
-            #    self.psb.idle(pt)
+            self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'])
+            # ## old
+            #
+            # self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=16000,freq=self.expt_cfg['iq_freq'])
+            # self.psb.append('q2','general', self.pulse_type, amp=self.expt_cfg['a'], length=16000,freq=self.expt_cfg['iq_freq'],delay=-5000)
+            # #117.0)
+            # #202.127294
+            # self.psb.idle(10000)            # for ii in range(500):
+            # #    self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'])
+            # #    self.psb.idle(pt)
+            #
+            # ##
 
 class Rabi2Sequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
