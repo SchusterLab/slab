@@ -45,27 +45,33 @@ class RabiExperiment(QubitPulseSequenceExperiment):
             print "Analyzing Rabi Data"
             self.pi_length = self.cfg['pulse_info']['gauss']['pi_length']
             self.half_pi_length = self.cfg['pulse_info']['gauss']['half_pi_length']
-            fitdata = fitdecaysin(expt_pts[10:], expt_avg_data[10:])
 
-            # if (-fitdata[2]%180 - 90)/(360*fitdata[1]) < 0:
-            #     print "Rabi pi/2 length =" + str((-fitdata[2]%180 + 180)/(360*fitdata[1]))
-            #     print "Rabi pi length =" + str((-fitdata[2]%180 + 270)/(360*fitdata[1]))
-            #     self.half_pi_length = ((-fitdata[2]%180 + 180)/(360*fitdata[1]))
-            #     self.pi_length = ((-fitdata[2]%180 + 270)/(360*fitdata[1]))
-            #
-            #
-            # else:
-            #
-            #     print "Rabi pi/2 length =" + str((-fitdata[2]%180 )/(360*fitdata[1]))
-            #     print "Rabi pi length =" + str((-fitdata[2]%180 + 90)/(360*fitdata[1]))
-            #     self.half_pi_length = ((-fitdata[2]%180)/(360*fitdata[1]))
-            #     self.pi_length =((-fitdata[2]%180 + 90)/(360*fitdata[1]))
+            try:
+                fitdata = fitdecaysin(expt_pts[10:], expt_avg_data[10:])
 
-            self.pi_length = 0.5/fitdata[1]
-            self.half_pi_length = 0.25/(fitdata[1])
-            print 'Rabi pi: %s ns' % (0.5 / fitdata[1])
-            print 'Rabi pi/2: %s ns' % (0.25 / fitdata[1])
-            print 'T1*: %s ns' % (fitdata[3])
+                # if (-fitdata[2]%180 - 90)/(360*fitdata[1]) < 0:
+                #     print "Rabi pi/2 length =" + str((-fitdata[2]%180 + 180)/(360*fitdata[1]))
+                #     print "Rabi pi length =" + str((-fitdata[2]%180 + 270)/(360*fitdata[1]))
+                #     self.half_pi_length = ((-fitdata[2]%180 + 180)/(360*fitdata[1]))
+                #     self.pi_length = ((-fitdata[2]%180 + 270)/(360*fitdata[1]))
+                #
+                #
+                # else:
+                #
+                #     print "Rabi pi/2 length =" + str((-fitdata[2]%180 )/(360*fitdata[1]))
+                #     print "Rabi pi length =" + str((-fitdata[2]%180 + 90)/(360*fitdata[1]))
+                #     self.half_pi_length = ((-fitdata[2]%180)/(360*fitdata[1]))
+                #     self.pi_length =((-fitdata[2]%180 + 90)/(360*fitdata[1]))
+
+                self.pi_length = 0.5/fitdata[1]
+                self.half_pi_length = 0.25/(fitdata[1])
+                print 'Rabi pi: %s ns' % (0.5 / fitdata[1])
+                print 'Rabi pi/2: %s ns' % (0.25 / fitdata[1])
+                print 'T1*: %s ns' % (fitdata[3])
+
+            except:
+                print "fitdata failed"
+
             if (self.cfg['pulse_info']['save_to_file']):
 
                 if (self.cfg['pulse_info']['calibrate_amp']):
@@ -81,6 +87,21 @@ class RabiExperiment(QubitPulseSequenceExperiment):
                 else:
                     self.cfg['pulse_info']['gauss']['pi_length'] = self.pi_length
                     self.cfg['pulse_info']['gauss']['half_pi_length'] =  self.half_pi_length
+
+class RabiThermalizerExperiment(QubitPulseSequenceExperiment):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=RabiThermalizerSequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+    def pre_run(self):
+        try:
+            self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg[self.expt_cfg_name]['iq_freq'])
+        except:
+            print "No drive found."
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
+
 
 class T1Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='T1', config_file='..\\config.json', **kwargs):
