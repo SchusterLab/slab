@@ -185,23 +185,37 @@ class QubitPulseSequenceExperiment(Experiment):
                         elif self.cfg['readout']['channel']==2:
                             expt_data = (expt_data * ii + ch2_pts) / (ii + 1.0)
 
+                    expt_avg_data = mean(expt_data, 1)
 
                 else:
-                    if self.cfg['readout']['channel']==1:
-                        zero_amp = mean(ch1_pts[-2])
-                        pi_amp = mean(ch1_pts[-1])
-                        current_data= (ch1_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
-                    elif self.cfg['readout']['channel']==2:
-                        zero_amp = mean(ch2_pts[-2])
-                        pi_amp = mean(ch2_pts[-1])
-                        current_data= (ch2_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
+
+                    # average first, then divide by pi_calibration values
                     if expt_data is None:
-                        expt_data = current_data
+                        if self.cfg['readout']['channel']==1:
+                            expt_data = ch1_pts[:-2]
+                            zero_amp_curr = mean(ch1_pts[-2])
+                            pi_amp_curr = mean(ch1_pts[-1])
+                        elif self.cfg['readout']['channel']==2:
+                            expt_data = ch2_pts[:-2]
+                            zero_amp_curr = mean(ch2_pts[-2])
+                            pi_amp_curr = mean(ch2_pts[-1])
+
+                        zero_amp = zero_amp_curr
+                        pi_amp = pi_amp_curr
                     else:
-                        expt_data = (expt_data * ii + current_data) / (ii + 1.0)
+                        if self.cfg['readout']['channel']==1:
+                            expt_data = (expt_data * ii + ch1_pts[:-2]) / (ii + 1.0)
+                            zero_amp_curr = mean(ch1_pts[-2])
+                            pi_amp_curr = mean(ch1_pts[-1])
+                        elif self.cfg['readout']['channel']==2:
+                            expt_data = (expt_data * ii + ch2_pts[:-2]) / (ii + 1.0)
+                            zero_amp_curr = mean(ch2_pts[-2])
+                            pi_amp_curr = mean(ch2_pts[-1])
 
+                        zero_amp = (zero_amp * ii + zero_amp_curr) / (ii + 1.0)
+                        pi_amp = (pi_amp * ii + pi_amp_curr) / (ii + 1.0)
 
-                expt_avg_data = mean(expt_data, 1)
+                    expt_avg_data = mean((expt_data-zero_amp)/(pi_amp-zero_amp), 1)
 
 
                 # if self.liveplot_enabled:
@@ -218,6 +232,12 @@ class QubitPulseSequenceExperiment(Experiment):
                     f.add('expt_2d', expt_data)
                     f.add('expt_avg_data', expt_avg_data)
                     f.add('expt_pts', self.expt_pts)
+
+                    # save pi_cal amps, to be able to monitor fluctuations
+                    if self.cfg[self.expt_cfg_name]['use_pi_calibration']:
+                        f.append_pt('zero_amps', zero_amp_curr)
+                        f.append_pt('pi_amps', pi_amp_curr)
+
                     f.close()
 
             if self.post_run is not None:
