@@ -4,6 +4,7 @@ import numpy as np
 from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence, write_PXDAC4800_file
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
 from slab.instruments import InstrumentManager
+from slab.instruments.awg.M8195A import upload_M8195A_sequence
 import os
 
 
@@ -63,13 +64,26 @@ class PulseSequence:
         return self.marker_info[name]['tpts']
 
     def write_sequence(self, path, file_prefix, upload=False):
-        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence, 'PXDAC4800':self.write_PXDAC4800_sequence}
+        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence,
+                          'PXDAC4800':self.write_PXDAC4800_sequence, 'M8195A':self.write_M8195A_sequence}
         for awg in self.awg_info:
             try:
                 if awg['type'] is not "NONE":
                     write_function[awg['type']](awg, path, file_prefix, awg['upload'])
             except KeyError:
                 print "Error in writing pulse to awg named: " + str(awg['type'])
+
+
+    def write_M8195A_sequence(self,awg,path,file_prefix,upload=False):
+        print "writing M8195A sequence"
+        waveforms_qubit_drive = self.waveforms['qubit drive I']
+        waveforms_qubit_2 = self.waveforms['M8195A CH2']
+        waveforms_readout = self.waveforms['M8195A CH3']
+        waveforms_card = self.waveforms['M8195A CH4']
+
+        waveform_matrix = np.array([waveforms_qubit_drive,waveforms_qubit_2,waveforms_readout,waveforms_card])
+
+        upload_M8195A_sequence(waveform_matrix,awg)
 
     def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
