@@ -1,5 +1,6 @@
 from instrumenttypes import Instrument, VisaInstrument, TelnetInstrument, SocketInstrument, SerialInstrument, WebInstrument
 from instrumentmanager import InstrumentManager
+from localinstruments import LocalInstruments
 try: from InstrumentManagerWindow import InstrumentManagerWindow
 except: print "Could not load InstrumentManagerWindow"
 
