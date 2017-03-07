@@ -175,18 +175,18 @@ class Scope2(MemoryInterface):
 
         return self.get_rawdata(0x10000, length = samples)/ max(1, self.avg_cnt), self.get_rawdata(0x20000, length = samples) / max(1, self.avg_cnt)
 
-    def acquire_singleshot(self, samples, start=0, stop=None, shots=1, dual_ch=False, use_filter=False, start_function = None, prep_function = None):
+    def acquire_singleshot(self, samples, start=0, stop=None, shots=1, dual_ch=False, use_filter=False,
+                           start_function=None, prep_function=None):
 
         if not prep_function == None:
             prep_function()
 
         if stop is None: stop = samples
-        shot_data_ch1 = np.zeros(shots,dtype=long)
-        if dual_ch: shot_data_ch2 = np.zeros(shots,dtype=long)
-        shots_read=0
-        loops=0
-        data_length=self.data_length
-
+        shot_data_ch1 = np.zeros(shots, dtype=long)
+        if dual_ch: shot_data_ch2 = np.zeros(shots, dtype=long)
+        shots_read = 0
+        loops = 0
+        data_length = self.data_length
 
         self.reset_writestate_machine(v=True)
         self.trigger_delay = samples
@@ -202,8 +202,8 @@ class Scope2(MemoryInterface):
         self.win_start = start
         self.win_stop = stop
 
-        ch1_address=0x10000
-        ch2_address=0x20000
+        ch1_address = 0x10000
+        ch2_address = 0x20000
 
         self.reset_writestate_machine(v=False)
         self.arm_trigger()
@@ -216,26 +216,27 @@ class Scope2(MemoryInterface):
         if not start_function == None:
             start_function()
 
-        cnt=self.avg_cnt
+        cnt = self.avg_cnt
         while (cnt < shots or shots_read < cnt):
             if cnt - shots_read > data_length:
                 print "Overflow after %d shots, with %d shots read!" % (cnt, shots_read)
                 break
-            mem_start=4*(shots_read % data_length)
+            mem_start = 4 * (shots_read % data_length)
             read_length = cnt - shots_read
 
-
-            shot_data_ch1[shots_read:shots_read+read_length] = array(self.reads(ch1_address+mem_start, read_length),copy=True,dtype=int32)
+            shot_data_ch1[shots_read:shots_read + read_length] = array(self.reads(ch1_address + mem_start, read_length),
+                                                                       copy=True, dtype=int32)
             if dual_ch:
-                shot_data_ch2[shots_read:shots_read+read_length] = array(self.reads(ch1_address+mem_start, read_length),copy=True,dtype=int32)
+                shot_data_ch2[shots_read:shots_read + read_length] = array(
+                    self.reads(ch2_address + mem_start, read_length), copy=True, dtype=int32)
 
             shots_read += read_length
 
-            loops+=1
-            #if loops % 2**11 ==0: print "x",
-            #print "loops: %d, cnt: %d, shots_read: %d, start: %d, length: %d" % (loops,cnt,shots_read,start,read_length)
+            loops += 1
+            # if loops % 2**11 ==0: print "x",
+            # print "loops: %d, cnt: %d, shots_read: %d, start: %d, length: %d" % (loops,cnt,shots_read,start,read_length)
 
-            cnt=self.avg_cnt
+            cnt = self.avg_cnt
 
         if dual_ch:
             return shot_data_ch1, shot_data_ch2
@@ -368,10 +369,17 @@ def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14
     shot_data1,shot_data2 = rp.scope.acquire_singleshot (samples = samples, start = start, stop = stop, shots = shots, dual_ch=True
                                                          , use_filter=False, start_function= start_function, prep_function = stop_function)
 
-    data_crop = shot_data1[0:math.floor(shots/num_experiments)*num_experiments]
-    data_crop_matrix = np.reshape(data_crop, (-1, num_experiments))
-    data_crop_avg = np.mean(data_crop_matrix, axis=0)
-    data_crop_std = np.std(data_crop_matrix, axis=0)
+    data_crop1 = shot_data1[0:math.floor(shots / num_experiments) * num_experiments]
+    data_crop1_matrix = np.reshape(data_crop1, (-1, num_experiments))
+
+    data_crop1_avg = np.mean(data_crop1_matrix, axis=0)
+    data_crop1_std = np.std(data_crop1_matrix, axis=0)
+
+    data_crop2 = shot_data2[0:math.floor(shots / num_experiments) * num_experiments]
+    data_crop2_matrix = np.reshape(data_crop2, (-1, num_experiments))
+
+    data_crop2_avg = np.mean(data_crop2_matrix, axis=0)
+    data_crop2_std = np.std(data_crop2_matrix, axis=0)
 
     print "hw_avgs: %d, avg_cnt: %d, adc_trigged: %d, npt_mode: %d, avg_mode: %d, avg_do: %d, ss_mode: %d" %(rp.scope.hw_avgs,rp.scope.avg_cnt,rp.scope.adc_trigged, rp.scope.npt_mode, rp.scope.avg_mode, rp.scope.avg_do,rp.scope.ss_mode )
     print "t1: %d, t2: %d, t3: %d, t4: %d, t5: %d" % (rp.scope.t1,rp.scope.t2,rp.scope.t3,rp.scope.t4,rp.scope.t5)
@@ -379,13 +387,15 @@ def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14
     if plot_data:
         plt.subplot(132,xlabel="Shot #", ylabel="Score", title="Single Shot Raw")
         plt.plot (shot_data1)
+        plt.plot(shot_data2)
 
 
         plt.subplot(133,xlabel="Experiment #", ylabel="Score", title="Average Data")
 
 
 
-        plt.errorbar(arange(num_experiments),data_crop_avg,yerr=data_crop_std)
+        plt.errorbar(arange(num_experiments),data_crop1_avg,yerr=data_crop1_std)
+        plt.errorbar(arange(num_experiments), data_crop2_avg, yerr=data_crop2_std)
         plt.xlim(-1,num_experiments+1)
 
 
@@ -393,7 +403,7 @@ def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14
 
         plt.show()
 
-    return data_crop_avg
+    return data_crop1_avg, data_crop2_avg
 
 
 if __name__ == "__main__":
