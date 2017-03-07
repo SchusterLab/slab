@@ -171,10 +171,14 @@ class QubitPulseSequenceExperiment(Experiment):
                 testing_redpitaya = False
 
                 if not testing_redpitaya:
-                    expt_avg_data_raw = setup_redpitaya_adc(num_experiments=num_experiments,
+                    expt_avg_data_raw1, expt_avg_data_raw2 = setup_redpitaya_adc(num_experiments=num_experiments,
                                                             window=self.cfg['readout']['window'],
                                                             shots=self.cfg[self.expt_cfg_name]['averages'],
                                                             plot_data=self.cfg['readout']['plot'],start_function=self.awg_run,stop_function=self.awg_prep)
+                    if self.cfg['readout']['channel'] == 1:
+                        expt_avg_data_raw = expt_avg_data_raw1
+                    else:
+                        expt_avg_data_raw = expt_avg_data_raw2
 
                 ## This is for testing the redpitaya behaviour
                 if testing_redpitaya:
