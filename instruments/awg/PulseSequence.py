@@ -110,7 +110,6 @@ class PulseSequence:
         # TODO : code would not work if upload is false
         if upload:
             pxdac4800 = LocalInstruments().inst_dict['pxdac4800_%d' %brdNum]
-            print "wow"
             pxdac4800.load_sequence_file(os.path.join(path, file_prefix + '_%d.rd16' %brdNum), awg['iq_offsets_bytes'],
                                          awg['clock_speed'])
             print "Sequence file uploaded"
