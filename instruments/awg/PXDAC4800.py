@@ -13,8 +13,8 @@ from array import array as barray
 
 
 class PXDAC4800:
-    def __init__(self):
-        pass
+    def __init__(self,brdNum):
+        self.brdNum = brdNum
 
     def load_sequence_file(self, waveform_file_name,offset_bytes_list,clock_speed):
 
@@ -54,7 +54,7 @@ class PXDAC4800:
 
         print "Connecting to PXDAC4800 device."
         dll = DACDLL
-        dll.ConnectToDeviceXD48(ppHandle, U32(1))
+        dll.ConnectToDeviceXD48(ppHandle, U32(self.brdNum))
 
         self.dll = dll
 
