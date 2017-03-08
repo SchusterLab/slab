@@ -115,6 +115,14 @@ class QubitPulseSequenceExperiment(Experiment):
             print "No drive found"
 
         try:
+            self.flux_drive.set_frequency(self.cfg['sidebands']['blue'] - self.cfg['flux_pulse_info'][self.pulse_type]['iq_freq'])
+            self.flux_drive.set_power(self.cfg['drive']['power'])
+            self.flux_drive.set_ext_pulse(mod=False)
+            self.flux_drive.set_output(True)
+        except:
+            print "No flux drive found"
+
+        try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
         except:
             print "Digital attenuator not loaded."
