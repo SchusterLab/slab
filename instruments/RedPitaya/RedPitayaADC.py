@@ -49,6 +49,7 @@ class Scope2(MemoryInterface):
     #equalization filter not implemented here
     dac2_on_ch1 = GetSetBit(0x50, pos=0)
     dac1_on_ch2 = GetSetBit(0x50, pos=1)
+    set_deb_len = GetSetRegister(0x90, SignedInteger(size=20))
 
     hw_avgs = GetSetRegister(0xAC, UnsignedInteger(size=18))
     version = GetRegister(0xB0, UnsignedInteger(size=32))
@@ -153,6 +154,7 @@ class Scope2(MemoryInterface):
         self.threshold_ch1 = threshold_ch1
         self.threshold_ch2 = threshold_ch2
         self.trigger_source = trigger_source
+        self.set_deb_len = 1000
 
 
     def acquire_avg(self, samples, avgs=1):
