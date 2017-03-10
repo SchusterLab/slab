@@ -15,7 +15,7 @@ class QubitPulseSequenceExperiment(Experiment):
     '''
     Parent class for all the single qubit pulse sequence experiment.
     '''
-    def __init__(self, path='', prefix='SQPSE', config_file=None, PulseSequence=None, pre_run=None, post_run=None,
+    def __init__(self, path='', prefix='SQPSE', config_file=None, PulseSequence=None, pre_run=None, post_run=None, cfg_update = None,
                  **kwargs):
 
         self.extra_args={}
@@ -206,18 +206,27 @@ class QubitPulseSequenceExperiment(Experiment):
                     zero_amp = expt_avg_data_raw[-2]
                     pi_amp = expt_avg_data_raw[-1]
                     expt_avg_data = (expt_avg_data_raw[:-2] - zero_amp) / (pi_amp - zero_amp)
+
+                    # #saves pi calibration data
+                    # expt_avg_data = expt_avg_data_raw
                 else:
                     expt_avg_data = expt_avg_data_raw
+
+                print shape(expt_avg_data)
+                expt_avg_data = expt_avg_data.flatten()
+                print shape(expt_avg_data)
 
                 if self.data_file != None:
                     self.slab_file = SlabFile(self.data_file)
 
                     with self.slab_file as f:
-                        f.append_line('expt_avg_data', expt_avg_data)
-                        f.append_line('expt_pts', self.expt_pts)
+                        f.add('expt_avg_data', expt_avg_data)
+                        f.add('expt_pts', self.expt_pts)
                         f.close()
                 else:
                     self.slab_file = self.datafile()
+
+
 
                     with self.slab_file as f:
                         f.add('expt_avg_data', expt_avg_data)
