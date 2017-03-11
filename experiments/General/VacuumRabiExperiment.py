@@ -39,15 +39,15 @@ class VacuumRabiExperiment(Experiment):
         else:
             self.readout.set_ext_pulse(mod=False)
 
-        if (self.cfg[self.expt_cfg_name]['pi_pulse']):
-            self.drive.set_output(True)
-            self.drive.set_ext_pulse(mod=True)
-        else:
-            self.drive.set_output(False)
-            self.drive.set_ext_pulse(mod=False)
-
-
-        self.drive.set_ext_pulse(mod=False)
+        # if (self.cfg[self.expt_cfg_name]['pi_pulse']):
+        #     self.drive.set_output(True)
+        #     self.drive.set_ext_pulse(mod=True)
+        # else:
+        #     self.drive.set_output(False)
+        #     self.drive.set_ext_pulse(mod=False)
+        #
+        #
+        # self.drive.set_ext_pulse(mod=False)
 
         try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])

@@ -17,7 +17,7 @@ class VacuumRabiSequence(PulseSequence):
         self.start_end_buffer = buffer_cfg['tek1_start_end']
         self.marker_start_buffer = buffer_cfg['marker_start']
 
-        PulseSequence.__init__(self, "Vacuum Rabi", awg_info, sequence_length=1)
+        PulseSequence.__init__(self, "Vacuum Rabi", awg_info, sequence_length=2)
         self.exp_period_ns = self.cfg['expt_trigger']['period_ns']
         self.pulse_type = vacuum_rabi_cfg['pulse_type']
         self.pi_pulse = vacuum_rabi_cfg['pi_pulse']
@@ -53,44 +53,46 @@ class VacuumRabiSequence(PulseSequence):
         wtpts = self.get_waveform_times('qubit drive I')
         mtpts = self.get_marker_times('qubit buffer')
 
-        ii = 0
-        w =self.pi_length
-        a=self.pulse_cfg['a']
+        # TODO: hack 2 sequence for vacuum rabi
 
-        # TODO: pulseblaster out of sync bug#
+        for ii in range(0,2):
+            w =self.pi_length
+            a=self.pulse_cfg['a']
 
-        awg_trig_len = 100
-        start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin+self.card_delay, self.origin + self.measurement_delay,
-                           self.card_trig_width, self.measurement_width)
-        run_pulseblaster()
+            # TODO: pulseblaster out of sync bug#
 
-        if self.pi_pulse:
-            if self.pulse_type == 'square':
+            awg_trig_len = 100
+            start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin+self.card_delay, self.origin + self.measurement_delay,
+                               self.card_trig_width, self.measurement_width)
+            run_pulseblaster()
+
+            if self.pi_pulse:
+                if self.pulse_type == 'square':
+                        self.waveforms['qubit drive I'][ii], self.waveforms['qubit drive Q'][ii] = \
+                            ap.sideband(wtpts,
+                                         ap.square(wtpts, a, self.origin - w - 2 * self.ramp_sigma , w,
+                                                    self.ramp_sigma), np.zeros(len(wtpts)),
+                                         self.pulse_cfg['iq_freq'], 0)
+
+                        self.markers['qubit buffer'][ii] = ap.square(mtpts, 1,
+                                                                      self.origin - w - 4 * self.ramp_sigma - self.marker_start_buffer,
+                                                                      w + 4 * self.ramp_sigma + self.marker_start_buffer)
+
+                if self.pulse_type == 'gauss':
+                    gauss_sigma = w  #covention for the width of gauss pulse
                     self.waveforms['qubit drive I'][ii], self.waveforms['qubit drive Q'][ii] = \
                         ap.sideband(wtpts,
-                                     ap.square(wtpts, a, self.origin - w - 2 * self.ramp_sigma , w,
-                                                self.ramp_sigma), np.zeros(len(wtpts)),
+                                     ap.gauss(wtpts, a, self.origin - 3 * gauss_sigma , gauss_sigma),
+                                     np.zeros(len(wtpts)),
                                      self.pulse_cfg['iq_freq'], 0)
+                    self.markers['qubit buffer'][ii] = ap.square(mtpts, 1, self.origin - 6 * gauss_sigma - self.marker_start_buffer ,
+                                                                  6 * gauss_sigma + self.marker_start_buffer)
 
-                    self.markers['qubit buffer'][ii] = ap.square(mtpts, 1,
-                                                                  self.origin - w - 4 * self.ramp_sigma - self.marker_start_buffer,
-                                                                  w + 4 * self.ramp_sigma + self.marker_start_buffer)
-
-            if self.pulse_type == 'gauss':
-                gauss_sigma = w  #covention for the width of gauss pulse
-                self.waveforms['qubit drive I'][ii], self.waveforms['qubit drive Q'][ii] = \
-                    ap.sideband(wtpts,
-                                 ap.gauss(wtpts, a, self.origin - 3 * gauss_sigma , gauss_sigma),
-                                 np.zeros(len(wtpts)),
-                                 self.pulse_cfg['iq_freq'], 0)
-                self.markers['qubit buffer'][ii] = ap.square(mtpts, 1, self.origin - 6 * gauss_sigma - self.marker_start_buffer ,
-                                                              6 * gauss_sigma + self.marker_start_buffer)
-
-        self.markers['readout pulse'][ii] = ap.square(mtpts, 1, self.origin + self.measurement_delay,
-                                                       self.measurement_width)
-        self.markers['card trigger'][ii] = ap.square(mtpts, 1,
-                                                      self.origin - self.card_delay + self.measurement_delay,
-                                                      self.card_trig_width)
+            self.markers['readout pulse'][ii] = ap.square(mtpts, 1, self.origin + self.measurement_delay,
+                                                           self.measurement_width)
+            self.markers['card trigger'][ii] = ap.square(mtpts, 1,
+                                                          self.origin - self.card_delay + self.measurement_delay,
+                                                          self.card_trig_width)
 
 
 

@@ -5,6 +5,7 @@ from numpy import arange, linspace
 from slab.experiments.ExpLib.PulseSequenceBuilder import *
 
 from liveplot import LivePlotClient
+import time
 
 class QubitPulseSequence(PulseSequence):
     '''
@@ -53,6 +54,10 @@ class QubitPulseSequence(PulseSequence):
                 total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
                 self.total_flux_pulse_span_length_list.append(self.psb.get_total_flux_pulse_span_length())
 
+        # alex make origin larger to accommodate longer fast arg pulses
+        if "alex_test" in cfg.keys():
+            total_pulse_span_length_list.append(cfg["alex_test"]["total_length"])
+
         max_length = self.psb.get_max_length(total_pulse_span_length_list)
         max_flux_length = self.psb.get_max_flux_length(self.total_flux_pulse_span_length_list)
         self.set_all_lengths(max_length)
@@ -85,8 +90,9 @@ class QubitPulseSequence(PulseSequence):
 
         self.psb.prepare_build(wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q, waveforms_qubit_flux,
                               markers_qubit_buffer, markers_ch3m1,waveforms_m8195A_CH2,waveforms_m8195A_CH3,waveforms_m8195A_CH4)
+        start_time = time.time()
         generated_sequences = self.psb.build(self.pulse_sequence_matrix,self.total_flux_pulse_span_length_list)
-
+        print 'time elapsed =', str(time.time() - start_time)
 
 
         self.markers['readout pulse'], self.markers['card trigger'], self.waveforms['qubit drive I'], self.waveforms[

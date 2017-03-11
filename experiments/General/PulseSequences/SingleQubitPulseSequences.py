@@ -25,6 +25,8 @@ class RabiSequence(QubitPulseSequence):
         else:
             self.psb.append('q', 'general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,
                             freq=self.expt_cfg['iq_freq'])
+            # self.psb.append('q2', 'general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,
+            #                 freq=self.expt_cfg['iq_freq'])
 
 class RabiThermalizerSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -32,7 +34,7 @@ class RabiThermalizerSequence(QubitPulseSequence):
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
 
     def define_points(self):
-        self.expt_pts = arange(self.expt_cfg['start'], 2* self.expt_cfg['stop'], self.expt_cfg['step'])
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
         # temp_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
         # self.expt_pts = np.append(temp_pts+0.01, -temp_pts-0.01)
 
@@ -43,6 +45,7 @@ class RabiThermalizerSequence(QubitPulseSequence):
         if self.expt_cfg['sweep_amp']:
             self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
         else:
+#           self.psb.idle(50e3)
             self.psb.append('q','general', 'square', amp=self.expt_cfg['a'], length=(pt % self.expt_cfg['stop']), freq=self.expt_cfg['iq_freq'])
             # self.psb.append('q2', 'general', 'square', amp=self.expt_cfg['a'], length=10*(pt % self.expt_cfg['stop']),
             #                 freq=self.expt_cfg['iq_freq'])
