@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-SRS900 Voltage Source (voltsource.py)
+AD5780 Voltage Source
 =====================================
-:Author: David Schuster
+:Author: Larry Chen
 """
 
 from slab.instruments import SocketInstrument, Instrument
@@ -13,8 +13,6 @@ from numpy import linspace
 
 class AD5780(SocketInstrument):
     default_port = 23
-    millivolts_per_bit = 0.0762939453
-    bits_per_millivolt = 13.1072
 
     def __init__(self, name='AD5780', address='', enabled=True, timeout=10, recv_length=1024):
         SocketInstrument.__init__(self, name, address, enabled, timeout, recv_length)
@@ -27,36 +25,36 @@ class AD5780(SocketInstrument):
             return self.query('INIT %d' %(int(channel)))
 
     def set_voltage(self, channel, voltage):
-        bitcode = int((voltage + 10)*1000*bits_per_millivolt)
+        bitcode = int((voltage + 10)*13107.2)
         if bitcode < 0 or bitcode > 262143:
             print('ERROR: voltage out of range')
-            return -1
-        return self.query('SET %d %d', channel, bitcode)
+            return bitcode
+        return self.query('SET %d %d' % (channel, bitcode))
 
     def get_voltage(self, channel):
-        return self.query('READ %d', channel)
+        return self.query('READ %d' % (channel))
 
     def ramp(self, channel, voltage, speed):
         """Ramp to voltage with speed in (V/S)"""
-        bitcode = int((voltage + 10)*1000*bits_per_millivolt)
+        bitcode = int((voltage + 10)*13107.2)
         if bitcode < 0 or bitcode > 262143:
             print('ERROR: voltage out of range')
-            return -1
+            return bitcode
         step_size = 100 # in bits
-        step_time = int(step_size * millivolts_per_bit / speed)
+        step_time = int(step_size * 0.0762939453 / speed)
         if step_time == 0:
             step_time = 1
-        return self.query('RAMP %d %d %d %d', channel, bitcode, step_size, step_time)
+        return self.query('RAMP %d %d %d %d' % (channel, bitcode, step_size, step_time))
 
     def get_id(self):
         """Get Instrument ID String"""
         return self.query('ID')
 
     def sweep(self, channel):
-        self.write('SET %d 0', channel)
-        self.write('RAMP %d %d %d %d', channel, 262143, 100, 5)
-        self.write('RAMP %d %d %d %d', channel, 0, 100, 5)
-        return self.query('READ %d', channel)
+        self.write('SET %d 0' % channel)
+        self.write('RAMP %d %d %d %d' % (channel, 262143, 100, 5))
+        self.write('RAMP %d %d %d %d' % (channel, 0, 100, 5))
+        return self.query('READ %d' % (channel))
 
 
 
