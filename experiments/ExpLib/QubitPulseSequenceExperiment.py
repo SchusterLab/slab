@@ -8,6 +8,7 @@ from numpy import mean, arange
 from tqdm import tqdm
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
 from slab.instruments.pulseblaster.pulseblaster import *
+from slab.instruments.awg.M8195A import M8195A
 
 
 class QubitPulseSequenceExperiment(Experiment):
@@ -83,6 +84,9 @@ class QubitPulseSequenceExperiment(Experiment):
             self.pulse_sequence.sequence_length * min(self.cfg[self.expt_cfg_name]['averages'], 100))
 
         self.ready_to_go = True
+
+        self.m8195a = M8195A(address ='192.168.14.234:5025')
+
         return
 
     def go(self):
@@ -245,8 +249,12 @@ class QubitPulseSequenceExperiment(Experiment):
 
     def awg_prep(self):
         stop_pulseblaster()
+
+        self.m8195a.stop_output()
         PXDAC4800().stop()
 
     def awg_run(self):
+        self.m8195a.start_all_output()
+        time.sleep(1)
         PXDAC4800().run_experiment()
         run_pulseblaster()
