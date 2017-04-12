@@ -6,6 +6,9 @@ AD5780 Voltage Source
 """
 
 from slab.instruments import SocketInstrument, Instrument
+import re
+import time
+from numpy import linspace
 
 
 class AD5780(SocketInstrument):
@@ -56,8 +59,5 @@ class AD5780(SocketInstrument):
 
 
 if __name__ == "__main__":
-    """Test script"""
-    dac = AD5780(address='192.168.14.158')
-    print(dac.get_id())
-    for i in range(1,5):
-        dac.sweep(i)
+    AD5780 = AD5780(address='192.168.14.158')
+    get_id()
