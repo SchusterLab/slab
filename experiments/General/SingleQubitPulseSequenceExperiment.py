@@ -89,7 +89,6 @@ class RabiExperiment(QubitPulseSequenceExperiment):
                     self.cfg['pulse_info']['gauss']['half_pi_length'] =  self.half_pi_length
 
 class RabiThermalizerExperiment(QubitPulseSequenceExperiment):
-    def __init__(self, path='', prefix='Rabi_Thermalizer', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                               PulseSequence=RabiThermalizerSequence, pre_run=self.pre_run,
                                               post_run=self.post_run, **kwargs)

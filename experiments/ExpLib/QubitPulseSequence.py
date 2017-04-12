@@ -47,8 +47,6 @@ class QubitPulseSequence(PulseSequence):
                     self.psb.idle(10)
                 if jj ==1:
                     self.psb.append('q','cal_pi', self.pulse_type)
-                    # changed cal_pi to be different from pi - alex
-                    # self.psb.append('q', 'pi', self.pulse_type)
                 self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
                 total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
                 self.total_flux_pulse_span_length_list.append(self.psb.get_total_flux_pulse_span_length())
@@ -70,36 +68,14 @@ class QubitPulseSequence(PulseSequence):
         waveforms_qubit_flux = self.waveforms['qubit 1 flux']
         markers_qubit_buffer = self.markers['qubit buffer']
         markers_ch3m1 = self.markers['ch3m1']
-
-        waveforms_m8195A_CH2 = None
-        waveforms_m8195A_CH3 = None
-        waveforms_m8195A_CH4 = None
-        try:
-            waveforms_m8195A_CH2 = self.waveforms['M8195A CH2']
-            waveforms_m8195A_CH3 = self.waveforms['M8195A CH3']
-            waveforms_m8195A_CH4 = self.waveforms['M8195A CH4']
-        except:
-            print "waveforms M8195A CH2 not found"
-
-
-
         self.psb.prepare_build(wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q, waveforms_qubit_flux,
-                              markers_qubit_buffer, markers_ch3m1,waveforms_m8195A_CH2,waveforms_m8195A_CH3,waveforms_m8195A_CH4)
+                              markers_qubit_buffer, markers_ch3m1)
         generated_sequences = self.psb.build(self.pulse_sequence_matrix,self.total_flux_pulse_span_length_list)
 
-
-
         self.markers['readout pulse'], self.markers['card trigger'], self.waveforms['qubit drive I'], self.waveforms[
-            'qubit drive Q'], self.waveforms['qubit 1 flux'], self.markers['qubit buffer'], self.markers['ch3m1'] = generated_sequences[0:7]
+            'qubit drive Q'], self.waveforms['qubit 1 flux'], self.markers['qubit buffer'], self.markers['ch3m1'] = generated_sequences
 
-        # np.save('S:\\_Data\\160711 - Nb Tunable Coupler\\data\\waveform.npy',self.waveforms['qubit drive Q'])
-
-        try:
-            self.waveforms['M8195A CH2'] = generated_sequences[7]
-            self.waveforms['M8195A CH3'] = generated_sequences[8]
-            self.waveforms['M8195A CH4'] = generated_sequences[9]
-        except:
-            print "waveforms M8195A CH not found"
+        np.save('S:\\_Data\\160711 - Nb Tunable Coupler\\data\\waveform.npy',self.waveforms['qubit drive Q'])
 
         ### in ipython notebook: call np.load('file_path/file_name.npy')
 

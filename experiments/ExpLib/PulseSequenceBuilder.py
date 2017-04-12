@@ -10,7 +10,7 @@ from liveplot import LivePlotClient
 
 
 class Pulse():
-    def __init__(self, target, name, type, amp, length, freq, phase, span_length,delay):
+    def __init__(self, target, name, type, amp, length, freq, phase, span_length):
         self.target = target
         self.name = name
         self.type = type
@@ -19,7 +19,6 @@ class Pulse():
         self.freq = freq
         self.phase = phase
         self.span_length = span_length
-        self.delay = delay
 
 
 class PulseSequenceBuilder():
@@ -40,19 +39,18 @@ class PulseSequenceBuilder():
         self.pulse_span_length_list_temp = []
         self.qubit_cfg = cfg['qubit']
 
-    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None, delay = 0,**kwargs):
+    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None, **kwargs):
         '''
         Append a pulse in the pulse sequence.
         '''
-        if target == "q" or target == "q2" or target == "q3" or target == "q4":
+        if target == "q":
             if name == "0":
                 amp = 0
                 length = self.pulse_cfg[type]['pi_length']
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']
-            # changed cal_pi to be diff from pi - alex
-            if name == "pi": # or name == "cal_pi":
+            if name == "pi" or name == "cal_pi":
                 amp = self.pulse_cfg[type]['pi_a']
                 length = self.pulse_cfg[type]['pi_length']
                 # print amp
@@ -60,19 +58,6 @@ class PulseSequenceBuilder():
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']
-            # cal_pi and cal_ef_pi added, with seperate parameters
-            if name == "cal_pi":
-                amp = self.pulse_cfg[type]['cal_pi_a']
-                length = self.pulse_cfg[type]['cal_pi_length']
-                freq = self.pulse_cfg[type]['cal_iq_freq']
-                if phase == None:
-                    phase = self.pulse_cfg[type]['cal_phase']
-            if name == "cal_ef_pi":
-                amp = self.pulse_cfg[type]['cal_ef_pi_a']
-                length = self.pulse_cfg[type]['cal_ef_pi_length']
-                freq = self.pulse_cfg[type]['cal_ef_iq_freq']
-                if phase == None:
-                    phase = self.pulse_cfg[type]['cal_ef_phase']
             if name == "half_pi":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
@@ -165,7 +150,7 @@ class PulseSequenceBuilder():
         if phase == None:
             phase = 0
 
-        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length,delay)
+        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length)
 
         self.pulse_sequence_list.append(pulse)
         self.total_pulse_span_length += pulse_span_length
@@ -174,7 +159,7 @@ class PulseSequenceBuilder():
         '''
         Append an idle in the pulse sequence.
         '''
-        pulse_info = Pulse('idle', 'idle', 'idle', 0, length, 0, 0, length,0)
+        pulse_info = Pulse('idle', 'idle', 'idle', 0, length, 0, 0, length)
 
         self.pulse_sequence_list.append(pulse_info)
         self.total_pulse_span_length += length
@@ -240,7 +225,7 @@ class PulseSequenceBuilder():
 
     def prepare_build(self, wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q,
                       waveforms_qubit_flux,
-                      markers_qubit_buffer, markers_ch3m1,waveforms_m8195A_CH2,waveforms_m8195A_CH3,waveforms_m8195A_CH4):
+                      markers_qubit_buffer, markers_ch3m1):
         '''
         Being called internally to set the variables.
         '''
@@ -254,10 +239,6 @@ class PulseSequenceBuilder():
         self.waveforms_qubit_flux = waveforms_qubit_flux
         self.markers_qubit_buffer = markers_qubit_buffer
         self.markers_ch3m1 = markers_ch3m1
-
-        self.waveforms_m8195A_CH2 = waveforms_m8195A_CH2
-        self.waveforms_m8195A_CH3 = waveforms_m8195A_CH3
-        self.waveforms_m8195A_CH4 = waveforms_m8195A_CH4
 
 
     def build(self, pulse_sequence_matrix, total_pulse_span_length_list):
@@ -286,17 +267,6 @@ class PulseSequenceBuilder():
                                                         np.zeros(len(self.ftpts)), np.zeros(len(self.ftpts)),
                                                         0, 0)[0]
             self.markers_qubit_buffer[ii] = ap.square(self.mtpts, 0, 0, 0)
-
-
-            # add M8195A channels
-            self.waveforms_m8195A_CH2[ii] = \
-            ap.sideband(self.wtpts, np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)), 0, 0)[0]
-            self.waveforms_m8195A_CH3[ii] = \
-                ap.sideband(self.wtpts, np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)), 0, 0)[0]
-            self.waveforms_m8195A_CH4[ii] = \
-                ap.sideband(self.wtpts, np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)), 0, 0)[0]
-
-
             pulse_location = 0
             flux_pulse_location = total_pulse_span_length_list[ii]
             flux_pulse_started = False
@@ -308,65 +278,18 @@ class PulseSequenceBuilder():
                 if pulse.target == "q":
                     if pulse.type == "square":
                         qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
-                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location- pulse.delay, pulse,
+                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location, pulse,
                                                                self.pulse_cfg)
                     elif pulse.type == "gauss":
                         qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,
-                                                              pulse_location- pulse.delay, pulse)
+                                                              pulse_location, pulse)
                     else:
                         raise ValueError('Wrong pulse type has been defined')
                     if pulse_defined:
                         self.waveforms_qubit_I[ii] += qubit_waveforms[0]
                         self.waveforms_qubit_Q[ii] += qubit_waveforms[1]
                         self.markers_qubit_buffer[ii] += qubit_marker
-
-                elif pulse.target == "q2":
-
-                    if pulse.type == "square":
-                        qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
-                                                               self.marker_start_buffer, self.marker_end_buffer,
-                                                               pulse_location - pulse.delay, pulse,
-                                                               self.pulse_cfg)
-                    elif pulse.type == "gauss":
-                        qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
-                                                              self.marker_start_buffer, self.marker_end_buffer,
-                                                              pulse_location - pulse.delay, pulse)
-                    else:
-                        raise ValueError('Wrong pulse type has been defined')
-                    if pulse_defined:
-                        self.waveforms_m8195A_CH2[ii] += qubit_waveforms[0]
-                elif pulse.target == "q3":
-
-                    if pulse.type == "square":
-                        qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
-                                                               self.marker_start_buffer, self.marker_end_buffer,
-                                                               pulse_location - pulse.delay, pulse,
-                                                               self.pulse_cfg)
-                    elif pulse.type == "gauss":
-                        qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
-                                                              self.marker_start_buffer, self.marker_end_buffer,
-                                                              pulse_location - pulse.delay, pulse)
-                    else:
-                        raise ValueError('Wrong pulse type has been defined')
-                    if pulse_defined:
-                        self.waveforms_m8195A_CH3[ii] += qubit_waveforms[0]
-
-                elif pulse.target == "q4":
-
-                    if pulse.type == "square":
-                        qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
-                                                               self.marker_start_buffer, self.marker_end_buffer,
-                                                               pulse_location - pulse.delay, pulse,
-                                                               self.pulse_cfg)
-                    elif pulse.type == "gauss":
-                        qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
-                                                              self.marker_start_buffer, self.marker_end_buffer,
-                                                              pulse_location - pulse.delay, pulse)
-                    else:
-                        raise ValueError('Wrong pulse type has been defined')
-                    if pulse_defined:
-                        self.waveforms_m8195A_CH4[ii] += qubit_waveforms[0]
 
                 elif pulse.target[:4] == "q,mm":
                     self.uses_tek2 = True
@@ -423,7 +346,4 @@ class PulseSequenceBuilder():
                 self.waveforms_qubit_Q,
                 self.waveforms_qubit_flux,
                 self.markers_qubit_buffer,
-                self.markers_ch3m1,
-                self.waveforms_m8195A_CH2,
-                self.waveforms_m8195A_CH3,
-                self.waveforms_m8195A_CH4)
+                self.markers_ch3m1)
