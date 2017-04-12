@@ -66,24 +66,6 @@ def square(t, a, t0, w, sigma=0):
     else:
         return a * (t >= t0) * (t < t0 + w)
 
-def square2(t, a, t0, w, sigma=0):
-
-    tlong = t
-    startind = int((t0-2*sigma)/(t[1]-t[0]))
-    endind = int(min((t0 + w + 2 * sigma) / (t[1] - t[0]), len(t)-1))
-    t = t[startind:endind]
-    if sigma>0:
-        pulse = a * (
-            (t >= t0) * (t < t0 + w) +  # Normal square pulse
-            (t >= t0-2*sigma) * (t < t0) * np.exp(-(t - t0) ** 2 / (2 * sigma ** 2)) +  # leading gaussian edge
-            (t >= t0 + w)* (t <= t0+w+2*sigma) * np.exp(-(t - (t0 + w)) ** 2 / (2 * sigma ** 2))  # trailing edge
-        )
-    else:
-        pulse =  a * (t >= t0) * (t < t0 + w)
-
-    pulselong = np.zeros(len(tlong))
-    pulselong[startind:endind] += pulse
-    return pulselong
 
 def trapezoid(t, a, t0, w, edge_time=0):
     return a * (

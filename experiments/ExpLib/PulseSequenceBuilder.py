@@ -296,31 +296,31 @@ class PulseSequenceBuilder():
             self.waveforms_m8195A_CH4[ii] = \
                 ap.sideband(self.wtpts, np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)), 0, 0)[0]
 
-            # # add ch2 ch3 sidebands
-            # amp = 0.0
-            # t0 = 10
-            # length = self.origin - t0
-            # sigma = 10
-            # freq = 100e6
-            # phase = 0
-            # self.waveforms_m8195A_CH2[ii] = \
-            #     ap.sideband(self.wtpts,
-            #                 ap.square(self.wtpts, amp,
-            #                           t0,
-            #                           length,
-            #                           sigma),
-            #                 np.zeros(len(self.wtpts)),
-            #                 freq, phase)[0]
-            #
-            # self.waveforms_m8195A_CH3[ii] = \
-            #     ap.sideband(self.wtpts,
-            #                 ap.square(self.wtpts, amp,
-            #                           t0,
-            #                           length,
-            #                           sigma),
-            #                 np.zeros(len(self.wtpts)),
-            #                 freq, phase)[0]
-            # ###
+            # add ch2 ch3 sidebands
+            amp = 1.0
+            t0 = 10
+            length = self.origin - t0
+            sigma = 10
+            freq = 100e6
+            phase = 0
+            self.waveforms_m8195A_CH2[ii] = \
+                ap.sideband(self.wtpts,
+                            ap.square(self.wtpts, amp,
+                                      t0,
+                                      length,
+                                      sigma),
+                            np.zeros(len(self.wtpts)),
+                            freq, phase)[0]
+
+            self.waveforms_m8195A_CH3[ii] = \
+                ap.sideband(self.wtpts,
+                            ap.square(self.wtpts, amp,
+                                      t0,
+                                      length,
+                                      sigma),
+                            np.zeros(len(self.wtpts)),
+                            freq, phase)[0]
+            ###
 
             pulse_location = 0
             flux_pulse_location = total_pulse_span_length_list[ii]
