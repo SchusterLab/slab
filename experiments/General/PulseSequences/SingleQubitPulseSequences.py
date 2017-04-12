@@ -26,7 +26,7 @@ class RabiSequence(QubitPulseSequence):
             self.psb.append('q', 'general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,
                             freq=self.expt_cfg['iq_freq'])
             # self.psb.append('q2', 'general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,
-                            # freq=self.expt_cfg['flux_freq'])
+            #                 freq=self.expt_cfg['iq_freq'])
 
 class RabiThermalizerSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
