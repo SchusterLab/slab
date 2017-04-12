@@ -47,10 +47,10 @@ class RabiThermalizerSequence(QubitPulseSequence):
         else:
 #           self.psb.idle(50e3)
             self.psb.append('q','general', 'square', amp=self.expt_cfg['a'], length=(pt % self.expt_cfg['stop']), freq=self.expt_cfg['iq_freq'])
-            # self.psb.append('q2', 'general', 'square', amp=self.expt_cfg['a'], length=10*(pt % self.expt_cfg['stop']),
-            #                 freq=self.expt_cfg['iq_freq'])
-            # self.psb.append('q3', 'general', 'square', amp=self.expt_cfg['a'], length=10*(pt % self.expt_cfg['stop']),
-            #                 freq=self.expt_cfg['iq_freq'])
+            self.psb.append('q2', 'general', 'square', amp=self.expt_cfg['a'], length=10*(pt % self.expt_cfg['stop']),
+                            freq=self.expt_cfg['iq_freq'])
+            self.psb.append('q3', 'general', 'square', amp=self.expt_cfg['a'], length=10*(pt % self.expt_cfg['stop']),
+                            freq=self.expt_cfg['iq_freq'])
 
             ##
             # final_pulse_index = np.floor(pt/self.expt_cfg['stop'])
