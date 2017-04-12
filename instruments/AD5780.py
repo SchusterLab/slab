@@ -22,7 +22,7 @@ class AD5780(SocketInstrument):
             return self.query('INIT %d' %(int(channel)))
 
     def set_voltage(self, channel, voltage):
-        bitcode = int((voltage + 10.05)*13107.15)
+        bitcode = int((voltage + 10)*13107.2)
         if bitcode < 0 or bitcode > 262143:
             print('ERROR: voltage out of range')
             return bitcode
@@ -33,12 +33,12 @@ class AD5780(SocketInstrument):
 
     def ramp(self, channel, voltage, speed):
         """Ramp to voltage with speed in (V/S)"""
-        bitcode = int((voltage + 10.05)*13107.15)
+        bitcode = int((voltage + 10)*13107.2)
         if bitcode < 0 or bitcode > 262143:
             print('ERROR: voltage out of range')
             return bitcode
         step_size = 100 # in bits
-        step_time = int(step_size * 0.0762942364 / speed)
+        step_time = int(step_size * 0.0762939453 / speed)
         if step_time == 0:
             step_time = 1
         return self.query('RAMP %d %d %d %d' % (channel, bitcode, step_size, step_time))
