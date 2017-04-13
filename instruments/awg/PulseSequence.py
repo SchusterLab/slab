@@ -63,7 +63,7 @@ class PulseSequence:
         return self.marker_info[name]['tpts']
 
     def write_sequence(self, path, file_prefix, upload=False):
-        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence, 'PXDAC4800':self.write_PXDAC4800_sequence}
+        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence, 'PXDAC4800_1':self.write_PXDAC4800_1_sequence,'PXDAC4800_2':self.write_PXDAC4800_2_sequence}
         for awg in self.awg_info:
             try:
                 if awg['type'] is not "NONE":
@@ -97,13 +97,23 @@ class PulseSequence:
         else:
             tek7 = None
 
-    def write_PXDAC4800_sequence(self, awg, path, file_prefix, upload=False):
+    def write_PXDAC4800_1_sequence(self, awg, path, file_prefix, upload=False):
+        self.write_PXDAC4800_sequence(awg,path,file_prefix,upload,1)
+
+    def write_PXDAC4800_2_sequence(self, awg, path, file_prefix, upload=False):
+        self.write_PXDAC4800_sequence(awg, path, file_prefix, upload, 2)
+
+
+    def write_PXDAC4800_sequence(self, awg, path, file_prefix, upload=False,brdNum = 0):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
-        offset_bytes_list = write_PXDAC4800_file(waveforms, os.path.join(path, file_prefix + '.rd16'), self.name,awg['iq_offsets_bytes'])
-        #TODO : code would not work if upload is false
+        offset_bytes_list = write_PXDAC4800_file(waveforms, os.path.join(path, file_prefix + '_%d.rd16' %brdNum), self.name,
+                                                 awg['iq_offsets_bytes'])
+        # TODO : code would not work if upload is false
         if upload:
-            pxdac4800 = LocalInstruments().inst_dict['pxdac4800']
-            pxdac4800.load_sequence_file(os.path.join(path, file_prefix + '.rd16'), awg['iq_offsets_bytes'],awg['clock_speed'])
+            pxdac4800 = LocalInstruments().inst_dict['pxdac4800_%d' %brdNum]
+            print "wow"
+            pxdac4800.load_sequence_file(os.path.join(path, file_prefix + '_%d.rd16' %brdNum), awg['iq_offsets_bytes'],
+                                         awg['clock_speed'])
             print "Sequence file uploaded"
             print "Waveform length: " + str(len(waveforms[0][0]))
             pxdac4800.waveform_length = len(waveforms[0][0])
