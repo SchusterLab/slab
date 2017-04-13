@@ -11,6 +11,7 @@ from liveplot import LivePlotClient
 class RabiSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
         self.pulse_cfg = cfg['pulse_info']
+        self.cfg = cfg
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
 
     def define_points(self):
@@ -24,6 +25,8 @@ class RabiSequence(QubitPulseSequence):
             self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
         else:
             self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'])
+            self.psb.append('q2', 'general', 'square', amp=0.5, length=5000,
+                            freq=0,delay=2500)
 
 
 
