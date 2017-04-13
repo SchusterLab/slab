@@ -118,12 +118,12 @@ class HistogramExperiment(Experiment):
 
                 #tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg.stop_and_prep, start_function=self.awg.run,excise=None)
 
-                tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg_prep,
-                                                                        start_function=self.awg_run,
-                                                                        excise=self.cfg['readout']['window'])
-
-                if self.liveplot_enabled:
-                    self.plotter.plot_z("current",ch1_pts)
+                # tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg_prep,
+                #                                                         start_function=self.awg_run,
+                #                                                         excise=self.cfg['readout']['window'])
+                #
+                # if self.liveplot_enabled:
+                #     self.plotter.plot_z("current",ch1_pts)
 
                 # with self.datafile() as f:
                 #     f.append('time_trace', ch1_pts)
@@ -132,6 +132,8 @@ class HistogramExperiment(Experiment):
 
                 # ss1, ss2 = adc.acquire_singleshot_data(prep_function=None, start_function=None,
                 #                                        excise=self.cfg['readout']['window'])
+                print "testing"
+
                 ss1, ss2 = adc.acquire_singleshot_data(prep_function=self.awg_prep, start_function=self.awg_run,
                                                        excise=self.cfg['readout']['window'])
 
