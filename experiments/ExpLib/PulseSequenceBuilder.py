@@ -43,7 +43,7 @@ class PulseSequenceBuilder():
         '''
         Append a pulse in the pulse sequence.
         '''
-        if target == "q":
+        if target == "q" or target == "q2":
             if name == "0":
                 amp = 0
                 length = self.pulse_cfg[type]['pi_length']
@@ -225,7 +225,7 @@ class PulseSequenceBuilder():
 
     def prepare_build(self, wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q,
                       waveforms_qubit_flux,
-                      markers_qubit_buffer, markers_ch3m1):
+                      markers_qubit_buffer, markers_ch3m1,waveforms_pxdac4800_2_ch1,waveforms_pxdac4800_2_ch2):
         '''
         Being called internally to set the variables.
         '''
@@ -239,6 +239,10 @@ class PulseSequenceBuilder():
         self.waveforms_qubit_flux = waveforms_qubit_flux
         self.markers_qubit_buffer = markers_qubit_buffer
         self.markers_ch3m1 = markers_ch3m1
+
+        # for 2nd PXDAC4800
+        self.waveforms_pxdac4800_2_ch1 = waveforms_pxdac4800_2_ch1
+        self.waveforms_pxdac4800_2_ch2 = waveforms_pxdac4800_2_ch2
 
 
     def build(self, pulse_sequence_matrix, total_pulse_span_length_list):
@@ -263,6 +267,12 @@ class PulseSequenceBuilder():
                 ap.sideband(self.wtpts,
                             np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)),
                             0, 0)
+
+            self.waveforms_pxdac4800_2_ch1[ii], self.waveforms_pxdac4800_2_ch2[ii] = \
+                ap.sideband(self.wtpts,
+                            np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)),
+                            0, 0)
+
             self.waveforms_qubit_flux[ii] = ap.sideband(self.ftpts,
                                                         np.zeros(len(self.ftpts)), np.zeros(len(self.ftpts)),
                                                         0, 0)[0]
@@ -289,6 +299,23 @@ class PulseSequenceBuilder():
                     if pulse_defined:
                         self.waveforms_qubit_I[ii] += qubit_waveforms[0]
                         self.waveforms_qubit_Q[ii] += qubit_waveforms[1]
+                        self.markers_qubit_buffer[ii] += qubit_marker
+
+                if pulse.target == "q2":
+                    if pulse.type == "square":
+                        qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
+                                                               self.marker_start_buffer, self.marker_end_buffer,
+                                                               pulse_location, pulse,
+                                                               self.pulse_cfg)
+                    elif pulse.type == "gauss":
+                        qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
+                                                              self.marker_start_buffer, self.marker_end_buffer,
+                                                              pulse_location, pulse)
+                    else:
+                        raise ValueError('Wrong pulse type has been defined')
+                    if pulse_defined:
+                        self.waveforms_pxdac4800_2_ch1[ii] += qubit_waveforms[0]
+                        self.waveforms_pxdac4800_2_ch2[ii] += qubit_waveforms[1]
                         self.markers_qubit_buffer[ii] += qubit_marker
 
                 elif pulse.target[:4] == "q,mm":
@@ -346,4 +373,6 @@ class PulseSequenceBuilder():
                 self.waveforms_qubit_Q,
                 self.waveforms_qubit_flux,
                 self.markers_qubit_buffer,
-                self.markers_ch3m1)
+                self.markers_ch3m1,
+                self.waveforms_pxdac4800_2_ch1,
+                self.waveforms_pxdac4800_2_ch2)
