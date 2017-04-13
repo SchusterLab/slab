@@ -245,8 +245,8 @@ class QubitPulseSequenceExperiment(Experiment):
 
     def awg_prep(self):
         stop_pulseblaster()
-        PXDAC4800().stop()
+        LocalInstruments().inst_dict['pxdac4800'].stop()
 
     def awg_run(self):
-        PXDAC4800().run_experiment()
+        LocalInstruments().inst_dict['pxdac4800'].run_experiment()
         run_pulseblaster()

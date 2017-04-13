@@ -2,7 +2,6 @@
 """
 PXDAC4800
 ================================
-
 :Author: Nelson Leung
 """
 import ctypes as C
@@ -17,6 +16,12 @@ class PXDAC4800:
         pass
 
     def load_sequence_file(self, waveform_file_name,offset_bytes_list,clock_speed):
+
+        print "load_sequence_file inputs:"
+        print waveform_file_name
+        print offset_bytes_list
+        print clock_speed
+
         U8 = C.c_uint8
         U8P = C.POINTER(U8)
         U32 = C.c_uint32
@@ -50,13 +55,13 @@ class PXDAC4800:
         dll = DACDLL
         dll.ConnectToDeviceXD48(ppHandle, U32(1))
 
-        PXDAC4800.dll = dll
+        self.dll = dll
 
         print "PXDAC4800 device connected."
 
         pHandle = dll.GetHandleXD48(ppHandle)
 
-        PXDAC4800.pHandle = pHandle
+        self.pHandle = pHandle
 
         print "Getting Serial Number."
 
@@ -99,7 +104,7 @@ class PXDAC4800:
         print "Load waveform file."
 
         offset = U32(0)
-        PXDAC4800.offset = offset
+        self.offset = offset
 
         filePath = CHARP(waveform_file_name + '\0')
         # fileSize= U32(os.path.getsize(filePath))
@@ -112,18 +117,18 @@ class PXDAC4800:
         PlaybackBytes = pPlaybackBytes.contents
         print "Playback Bytes: " + str(PlaybackBytes.value)
 
-        PXDAC4800.PlaybackBytes = PlaybackBytes
+        self.PlaybackBytes = PlaybackBytes
 
     def run_experiment(self):
         U32 = C.c_uint32
         unsigned_short_length = 2
         # print "Begining Ram Playback."
-        PXDAC4800.dll.BeginRamPlaybackXD48(PXDAC4800.pHandle, PXDAC4800.offset, PXDAC4800.PlaybackBytes, U32(
-            2 * PXDAC4800.waveform_length * unsigned_short_length))  ## Only play sequence's single waveform byte length for each trigger
+        self.dll.BeginRamPlaybackXD48(self.pHandle, self.offset, self.PlaybackBytes, U32(
+            2 * self.waveform_length * unsigned_short_length))  ## Only play sequence's single waveform byte length for each trigger
 
     def stop(self):
         # print "Stopping Ram Playback."
-        PXDAC4800.dll.EndRamPlaybackXD48(PXDAC4800.pHandle)
+        self.dll.EndRamPlaybackXD48(self.pHandle)
 
 
 def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=None, do_string_io=False):

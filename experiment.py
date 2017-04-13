@@ -5,7 +5,7 @@ from liveplot import LivePlotClient
 import os.path
 import json
 
-from slab import SlabFile, InstrumentManager, get_next_filename, AttrDict
+from slab import SlabFile, InstrumentManager, get_next_filename, AttrDict, LocalInstruments
 
 
 class Experiment:

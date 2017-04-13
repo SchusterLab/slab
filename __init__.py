@@ -1,4 +1,4 @@
-from instruments import InstrumentManager
+from instruments import InstrumentManager, LocalInstruments
 from datamanagement import SlabFile, h5File, AttrDict
 #
 # try:

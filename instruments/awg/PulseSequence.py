@@ -3,7 +3,7 @@ import numpy as np
 
 from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence, write_PXDAC4800_file
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
-from slab.instruments import InstrumentManager
+from slab.instruments import InstrumentManager, LocalInstruments
 import os
 
 
@@ -100,12 +100,17 @@ class PulseSequence:
     def write_PXDAC4800_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
         offset_bytes_list = write_PXDAC4800_file(waveforms, os.path.join(path, file_prefix + '.rd16'), self.name,awg['iq_offsets_bytes'])
+        #TODO : code would not work if upload is false
         if upload:
-            PXDAC4800().load_sequence_file(os.path.join(path, file_prefix + '.rd16'), awg['iq_offsets_bytes'],awg['clock_speed'])
+            pxdac4800 = LocalInstruments().inst_dict['pxdac4800']
+            pxdac4800.load_sequence_file(os.path.join(path, file_prefix + '.rd16'), awg['iq_offsets_bytes'],awg['clock_speed'])
             print "Sequence file uploaded"
             print "Waveform length: " + str(len(waveforms[0][0]))
-            PXDAC4800.waveform_length = len(waveforms[0][0])
-            PXDAC4800().run_experiment()
+            pxdac4800.waveform_length = len(waveforms[0][0])
+            print "PXDAC4800 waveform length: " + str(pxdac4800.waveform_length)
+            pxdac4800.run_experiment()
+
+            return pxdac4800
 
 
 
