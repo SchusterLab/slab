@@ -65,12 +65,12 @@ class HistogramHeteroExperiment(Experiment):
         self.expt_pts = self.pulse_sequence.histo_pts
 
         self.cfg['alazar']['samplesPerRecord'] = 2 ** (self.cfg['readout']['width'] - 1).bit_length()
-        self.cfg['alazar']['recordsPerBuffer'] = self.pulse_sequence.sequence_length*self.cfg[self.expt_cfg_name]['repeats']
+        self.cfg['alazar']['recordsPerBuffer'] = self.pulse_sequence.sequence_length*self.cfg[self.expt_cfg_name]['hw_repeats']
         # self.cfg['alazar']['recordsPerAcquisition'] = int(
         #     self.pulse_sequence.sequence_length * self.cfg[self.expt_cfg_name]['repeats']* max(self.cfg[self.expt_cfg_name]['averages'], 10))
 
         self.cfg['alazar']['recordsPerAcquisition'] = int(
-            self.pulse_sequence.sequence_length * self.cfg[self.expt_cfg_name]['repeats'])
+            self.pulse_sequence.sequence_length * self.cfg[self.expt_cfg_name]['hw_repeats'])
 
         self.ready_to_go = True
         return
@@ -119,23 +119,23 @@ class HistogramHeteroExperiment(Experiment):
                 #self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] , freq)
                 self.readout_shifter.set_phase((self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (freq - self.cfg['readout']['frequency']))%360, freq)
 
-                expt_data_ch1 = None
-                expt_data_ch2 = None
+                # expt_data_ch1 = None
+                # expt_data_ch2 = None
 
-                for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['averages'] / 100))):
+                for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['python_repeats']))):
 
                     tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg_prep, start_function=self.awg_run,excise=None)
 
-                    if expt_data_ch1 is None:
-                        expt_data_ch1 = ch1_pts
-                        expt_data_ch2 = ch2_pts
-                    else:
-                        expt_data_ch1 = (expt_data_ch1 * ii + ch1_pts) / (ii + 1.0)
-                        expt_data_ch2 = (expt_data_ch2 * ii + ch2_pts) / (ii + 1.0)
+                    # if expt_data_ch1 is None:
+                    #     expt_data_ch1 = ch1_pts
+                    #     expt_data_ch2 = ch2_pts
+                    # else:
+                    #     expt_data_ch1 = (expt_data_ch1 * ii + ch1_pts) / (ii + 1.0)
+                    #     expt_data_ch2 = (expt_data_ch2 * ii + ch2_pts) / (ii + 1.0)
 
                     with self.datafile() as f:
-                        f.add('ch1_pts', ch1_pts)
-                        f.add('ch2_pts', ch2_pts)
+                        f.append_data(f,'ch1_pts', ch1_pts)
+                        f.append_data(f,'ch2_pts', ch2_pts)
 
                         f.close()
 
