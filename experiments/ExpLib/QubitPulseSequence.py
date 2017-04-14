@@ -38,6 +38,9 @@ class QubitPulseSequence(PulseSequence):
 
 
             ## add heterodyne pulse
+            self.psb.append('q2', 'general', 'square', amp=0.5, length=cfg['readout']['width'] + 1000,
+                            freq=cfg['readout']['heterodyne_freq'],
+                            delay=(cfg['readout']['width'] + 1000) / 2)
             ##
 
 
