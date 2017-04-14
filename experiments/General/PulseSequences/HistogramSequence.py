@@ -11,6 +11,8 @@ from liveplot import LivePlotClient
 class HistogramSequence(PulseSequence):
     def __init__(self, awg_info, histo_cfg, readout_cfg, pulse_cfg, buffer_cfg):
 
+        self.readout_cfg = readout_cfg
+
         self.histo_cfg = histo_cfg
         self.histo_pts = [0, 1]
 
@@ -83,10 +85,10 @@ class HistogramSequence(PulseSequence):
             self.marker_start_buffer = 0
             self.marker_end_buffer = 0
 
-            heterodyne_pulsedata = ap.square(wtpts, 0.5, self.origin, self.cfg['readout']['width'] + 1000, 10)
+            heterodyne_pulsedata = ap.square(wtpts, 0.5, self.origin, self.readout_cfg['width'] + 1000, 10)
 
             self.waveforms['pxdac4800_2_ch1'][ii], self.waveforms['pxdac4800_2_ch2'][ii] = \
-                ap.sideband(wtpts, heterodyne_pulsedata, np.zeros(len(wtpts)), self.cfg['readout']['heterodyne_freq'],
+                ap.sideband(wtpts, heterodyne_pulsedata, np.zeros(len(wtpts)), self.readout_cfg['heterodyne_freq'],
                             0)
             ##
 

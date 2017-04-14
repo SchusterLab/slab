@@ -37,6 +37,11 @@ def run_experiment(expt_name,lp_enable = False, **kwargs):
         # Do Histogram Experiment
         expt = HistogramExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 'histogram_hetero':
+        from slab.experiments.General.HistogramHeteroExperiment import HistogramHeteroExperiment
+        # Do Histogram Experiment
+        expt = HistogramHeteroExperiment(path=datapath, liveplot_enabled=lp_enable, **kwargs)
+
     if expt_name.lower() == 't1':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import T1Experiment
         # Do T1 Experiment
