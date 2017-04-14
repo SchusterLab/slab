@@ -35,6 +35,12 @@ class QubitPulseSequence(PulseSequence):
         for ii, pt in enumerate(self.expt_pts):
             # obtain pulse sequence for each experiment point
             define_pulses(pt)
+
+
+            ## add heterodyne pulse
+            ##
+
+
             self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
             total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
             self.total_flux_pulse_span_length_list.append(self.psb.get_total_flux_pulse_span_length())
