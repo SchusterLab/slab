@@ -79,5 +79,16 @@ class HistogramSequence(PulseSequence):
                 self.markers['qubit buffer'][ii] = ap.square(mtpts, 1, self.origin - 6 * gauss_sigma - self.marker_start_buffer ,
                                                               6 * gauss_sigma + self.marker_start_buffer)
 
+            ## heterodyne pulse
+            self.marker_start_buffer = 0
+            self.marker_end_buffer = 0
+
+            heterodyne_pulsedata = ap.square(wtpts, 0.5, self.origin, self.cfg['readout']['width'] + 1000, 10)
+
+            self.waveforms['pxdac4800_2_ch1'][ii], self.waveforms['pxdac4800_2_ch2'][ii] = \
+                ap.sideband(wtpts, heterodyne_pulsedata, np.zeros(len(wtpts)), self.cfg['readout']['heterodyne_freq'],
+                            0)
+            ##
+
     def reshape_data(self, data):
         return np.reshape(data, (self.sequence_length, self.waveform_length))

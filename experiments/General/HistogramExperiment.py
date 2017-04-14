@@ -112,7 +112,7 @@ class HistogramExperiment(Experiment):
                 self.plotter.clear('max contrast')
 
             for yy, freq in enumerate(freqpts):
-                self.readout.set_frequency(freq)
+                self.readout.set_frequency(freq-self.cfg['readout']['heterodyne_freq'])
                 #self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] , freq)
                 self.readout_shifter.set_phase((self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (freq - self.cfg['readout']['frequency']))%360, freq)
 
@@ -153,6 +153,7 @@ class HistogramExperiment(Experiment):
                 max_contrast_data[yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
                 if self.liveplot_enabled:
                     self.plotter.append_xy('max contrast', freq, max_contrast_data[yy])
+
             if len(attenpts)>1:
                 if self.liveplot_enabled:
                     print "plotting max contrast 2"
@@ -168,9 +169,10 @@ class HistogramExperiment(Experiment):
 
     def awg_prep(self):
         stop_pulseblaster()
-        PXDAC4800().stop()
-
+        LocalInstruments().inst_dict['pxdac4800_1'].stop()
+        LocalInstruments().inst_dict['pxdac4800_2'].stop()
 
     def awg_run(self):
-        PXDAC4800().run_experiment()
+        LocalInstruments().inst_dict['pxdac4800_1'].run_experiment()
+        LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
         run_pulseblaster()
