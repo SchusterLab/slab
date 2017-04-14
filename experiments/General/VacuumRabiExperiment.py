@@ -65,7 +65,7 @@ class VacuumRabiExperiment(Experiment):
 
 
         for freq in self.expt_pts:
-            self.readout.set_frequency(freq)
+            self.readout.set_frequency(freq-self.cfg['readout']['heterodyne_freq'])
             self.readout_shifter.set_phase((self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (freq - self.cfg['readout']['frequency']))%360, freq)
             # print self.readout_shifter.get_phase()
 
