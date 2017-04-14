@@ -36,7 +36,7 @@ class PulseProbeExperiment(Experiment):
         # self.save_config()
 
         print "Prep Instruments"
-        self.readout.set_frequency(self.cfg['readout']['frequency'])
+        self.readout.set_frequency(self.cfg['readout']['frequency']-self.cfg['readout']['heterodyne_freq'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=self.cfg['readout']['mod'])
         self.readout.set_output(True)
