@@ -72,32 +72,43 @@ class VacuumRabiSequence(PulseSequence):
                            self.card_trig_width, self.measurement_width)
         run_pulseblaster()
 
-        pulsedata = np.zeros(len(wtpts))
+        self.waveforms['qubit drive I'][ii] = np.zeros(len(wtpts))
+        self.waveforms['qubit drive Q'][ii] = np.zeros(len(wtpts))
 
         if self.pi_pulse:
 
             if self.pulse_type == 'square':
-                pulsedata += ap.square(wtpts, a, self.origin - (w + 2 * self.ramp_sigma) - (w_ef + 4 * self.ramp_sigma) , w, self.ramp_sigma)
+                pulsedata = ap.square(wtpts, a, self.origin - (w + 2 * self.ramp_sigma) - (w_ef + 4 * self.ramp_sigma) , w, self.ramp_sigma)
 
             if self.pulse_type == 'gauss':
-                pulsedata += ap.gauss(wtpts, a, self.origin - 3 * w - 6 * w_ef , w)
+                pulsedata = ap.gauss(wtpts, a, self.origin - 3 * w - 6 * w_ef , w)
+
+            temp_I, temp_Q = ap.sideband(wtpts, pulsedata, np.zeros(len(wtpts)), self.pulse_cfg['iq_freq'], 0)
+            self.waveforms['qubit drive I'][ii] += temp_I
+            self.waveforms['qubit drive Q'][ii] += temp_Q
 
         if self.pi_ef_pulse:
 
             if self.pulse_type == 'square':
-                pulsedata += ap.square(wtpts, a_ef, self.origin  - (w + 2 * self.ramp_sigma), w_ef, self.ramp_sigma)
+                pulsedata = ap.square(wtpts, a_ef, self.origin  - (w + 2 * self.ramp_sigma), w_ef, self.ramp_sigma)
 
             if self.pulse_type == 'gauss':
-                pulsedata += ap.gauss(wtpts, a_ef, self.origin - 3 * w_ef, w_ef)
+                pulsedata = ap.gauss(wtpts, a_ef, self.origin - 3 * w_ef, w_ef)
 
-        self.waveforms['qubit drive I'][ii], self.waveforms['qubit drive Q'][ii] = \
-                ap.sideband(wtpts, pulsedata, np.zeros(len(wtpts)), self.pulse_cfg['iq_freq'], 0)
+            # ef pulse need to be shifted in freq by alpha
+            temp_I, temp_Q = ap.sideband(wtpts, pulsedata, np.zeros(len(wtpts)),
+                                         self.pulse_cfg['iq_freq']+self.cfg['qubit']['alpha'], 0)
+            self.waveforms['qubit drive I'][ii] += temp_I
+            self.waveforms['qubit drive Q'][ii] += temp_Q
+
+        # self.waveforms['qubit drive I'][ii], self.waveforms['qubit drive Q'][ii] = \
+        #         ap.sideband(wtpts, pulsedata, np.zeros(len(wtpts)), self.pulse_cfg['iq_freq'], 0)
 
         ## heterodyne pulse
         self.marker_start_buffer = 0
         self.marker_end_buffer = 0
 
-        heterodyne_pulsedata = ap.square(wtpts, 0.5, self.origin, self.cfg['readout']['width']+1000, 10)
+        heterodyne_pulsedata = ap.square(wtpts, self.cfg['readout']['heterodyne_a'], self.origin, self.cfg['readout']['width']+1000, 10)
 
         self.waveforms['pxdac4800_2_ch1'][ii], self.waveforms['pxdac4800_2_ch2'][ii] =\
             ap.sideband(wtpts, heterodyne_pulsedata, np.zeros(len(wtpts)), self.cfg['readout']['heterodyne_freq'], 0)
