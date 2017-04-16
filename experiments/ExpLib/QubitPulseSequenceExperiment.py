@@ -158,6 +158,7 @@ class QubitPulseSequenceExperiment(Experiment):
 
 
         if not TEST_REDPITAYA:
+
             if self.adc==None:
                 print "Prep Card"
                 adc = Alazar(self.cfg['alazar'])
@@ -171,7 +172,6 @@ class QubitPulseSequenceExperiment(Experiment):
                                                                         start_function=self.awg_run,
                                                                         excise=self.cfg['readout']['window'])
 
-                mag = sqrt(ch1_pts**2+ch2_pts**2)
                 if not self.cfg[self.expt_cfg_name]['use_pi_calibration']:
 
                     if expt_data is None:
@@ -185,7 +185,19 @@ class QubitPulseSequenceExperiment(Experiment):
                         elif self.cfg['readout']['channel']==2:
                             expt_data = (expt_data * ii + ch2_pts) / (ii + 1.0)
 
-                    expt_avg_data = mean(expt_data, 1)
+                    if self.cfg['readout']['heterodyne_freq'] == 0:
+                        # homodyne
+                        expt_avg_data = mean(expt_data, 1)
+                    else:
+                        # heterodyne
+                        heterodyne_freq = self.cfg['readout']['heterodyne_freq']
+                        # ifft by numpy default has the correct 1/N normalization
+                        expt_data_fft_amp = np.abs(np.fft.ifft(expt_data))
+                        hetero_f_ind = int(round(heterodyne_freq * tpts.size * 1e-9))  # position in ifft
+
+                        #todo: single freq v.s. finite freq window (latter: more robust but noisier and with distortion)
+                        # expt_avg_data = np.average(expt_data_fft_amp[:, (hetero_f_ind - 1):(hetero_f_ind + 1)], axis=1)
+                        expt_avg_data = expt_data_fft_amp[:, hetero_f_ind]
 
                 else:
 
@@ -215,6 +227,7 @@ class QubitPulseSequenceExperiment(Experiment):
                         zero_amp = (zero_amp * ii + zero_amp_curr) / (ii + 1.0)
                         pi_amp = (pi_amp * ii + pi_amp_curr) / (ii + 1.0)
 
+                    #todo: add heterodyne with pi_cal
                     expt_avg_data = mean((expt_data-zero_amp)/(pi_amp-zero_amp), 1)
 
 
