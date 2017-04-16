@@ -95,7 +95,8 @@ class VacuumRabiSequence(PulseSequence):
             if self.pulse_type == 'gauss':
                 pulsedata = ap.gauss(wtpts, a_ef, self.origin - 3 * w_ef, w_ef)
 
-            # ef pulse need to be shifted in freq by alpha
+            # ef pulse shifted in freq by alpha
+            # consistent with implementation in ef_rabi
             temp_I, temp_Q = ap.sideband(wtpts, pulsedata, np.zeros(len(wtpts)),
                                          self.pulse_cfg['iq_freq']+self.cfg['qubit']['alpha'], 0)
             self.waveforms['qubit drive I'][ii] += temp_I
