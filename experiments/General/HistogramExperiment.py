@@ -99,6 +99,10 @@ class HistogramExperiment(Experiment):
         freqpts = arange(self.cfg[self.expt_cfg_name]['freq_start'], self.cfg[self.expt_cfg_name]['freq_stop'], self.cfg[self.expt_cfg_name]['freq_step'])
         num_bins = self.cfg[self.expt_cfg_name]['num_bins']
 
+        ss_data_all = zeros((2, len(attenpts), len(freqpts), 2,
+                             self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts))
+                            )  # (channel, atten, freq, g/e, average)
+
         for xx, atten in enumerate(attenpts):
             #self.im.atten.set_attenuator(atten)
             try:
@@ -127,10 +131,11 @@ class HistogramExperiment(Experiment):
                 for kk, ssthis in enumerate([ss1, ss2]):
 
                     ssthis = reshape(ssthis, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+                    ss_data_all[kk, xx, yy, :, :] = ssthis
 
                     print 'ss ch', str(kk+1), 'max/min =', ssthis.max(), ssthis.min()
                     dist = ssthis.max() - ssthis.min()
-                    histo_range = (ssthis.min() - dist/2.0, ssthis.max() + dist/2.0)
+                    histo_range = (ssthis.min() - 0.01*dist, ssthis.max() + 0.01*dist)
 
                     for jj, ss in enumerate(ssthis):
                         sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
@@ -152,6 +157,11 @@ class HistogramExperiment(Experiment):
                 f.append_line('max_contrast_data_ch1', max_contrast_data[0, :])
                 f.append_line('max_contrast_data_ch2', max_contrast_data[1, :])
                 f.close()
+
+        with self.datafile() as f:
+            f.add('ss_data_ch1', ss_data_all[0])
+            f.add('ss_data_ch2', ss_data_all[1])
+            f.close()
 
 
     def awg_prep(self):
