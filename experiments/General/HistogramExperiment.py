@@ -106,7 +106,7 @@ class HistogramExperiment(Experiment):
             except:
                 print "Digital attenuator not loaded."
 
-            max_contrast_data = zeros(len(freqpts))
+            max_contrast_data = zeros((2,len(freqpts)))
 
             if self.liveplot_enabled:
                 self.plotter.clear('max contrast')
@@ -124,37 +124,33 @@ class HistogramExperiment(Experiment):
                 ss1, ss2 = adc.acquire_singleshot_data(prep_function=self.awg_prep, start_function=self.awg_run,
                                                        excise=self.cfg['readout']['window'])
 
-                ssthis = ss1
-                ssthis = reshape(ssthis, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
-                
-                print 'ss1 max/min =', ssthis.max(), ssthis.min()
-                dist = ssthis.max() - ssthis.min()
-                histo_range = (ssthis.min() - dist/2.0, ssthis.max() + dist/2.0)
+                for kk, ssthis in enumerate([ss1, ss2]):
 
-                for jj, ss in enumerate(ssthis):
-                    sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
-                    ss_data[jj] += sshisto
-                    sss_data[jj] = cumsum(ss_data[[jj]])
+                    ssthis = reshape(ssthis, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+
+                    print 'ss ch', str(kk+1), 'max/min =', ssthis.max(), ssthis.min()
+                    dist = ssthis.max() - ssthis.min()
+                    histo_range = (ssthis.min() - dist/2.0, ssthis.max() + dist/2.0)
+
+                    for jj, ss in enumerate(ssthis):
+                        sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
+                        ss_data[jj] += sshisto
+                        sss_data[jj] = cumsum(ss_data[[jj]])
+                        if self.liveplot_enabled:
+                            self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
+                            self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
+
+                    max_contrast_data[kk, yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
+
                     if self.liveplot_enabled:
-                        self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
-                        self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
-
-                if self.liveplot_enabled:
-                    self.plotter.plot_xy('contrast', ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
-                max_contrast_data[yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
-                if self.liveplot_enabled:
-                    self.plotter.append_xy('max contrast', freq, max_contrast_data[yy])
-
-            if len(attenpts)>1:
-                if self.liveplot_enabled:
-                    print "plotting max contrast 2"
-                    self.plotter.append_z('max contrast 2', max_contrast_data, start_step=(
-                        (attenpts[0], attenpts[1] - attenpts[0]),(freqpts[0] / 1.0e9, (freqpts[1] - freqpts[0]) / 1.0e9)))
+                        self.plotter.plot_xy('contrast_ch' + str(kk+1), ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
+                        self.plotter.append_xy('max contrast_ch' + str(kk+1), freq, max_contrast_data[kk,yy])
 
             with self.datafile() as f:
                 f.append_pt('atten', atten)
                 f.append_line('freq', freqpts)
-                f.append_line('max_contrast_data', max_contrast_data)
+                f.append_line('max_contrast_data_ch1', max_contrast_data[0, :])
+                f.append_line('max_contrast_data_ch2', max_contrast_data[1, :])
                 f.close()
 
 
