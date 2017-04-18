@@ -835,7 +835,7 @@ class Alazar():
 
 
     #this takes single shot data
-    def acquire_singleshot_heterodyne_data(self, IFreq, excise=None):
+    def acquire_singleshot_heterodyne_data(self, IFreq, prep_function=None,start_function=None, excise=None):
         self.post_buffers()
         single_data1=np.zeros((2,self.config.recordsPerAcquisition),dtype=float)
         single_data2=np.zeros((2,self.config.recordsPerAcquisition),dtype=float)
@@ -848,7 +848,9 @@ class Alazar():
         recordsCompleted=0
         buffersCompleted=0
         buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
+        if prep_function is not None: prep_function()
         ret = self.Az.AlazarStartCapture(self.handle)
+        if start_function is not None: start_function()
         
         if DEBUGALAZAR: 
             print "Start Capture: ", ret_to_str(ret,self.Az)
@@ -871,7 +873,7 @@ class Alazar():
                     single_record1=self.arrs[buf_idx][n*self.config.samplesPerRecord:(n+1)*self.config.samplesPerRecord]
                     single_record1 = (single_record1-128.)*(self.config.ch1_range/128.)                 
                     single_data1[0,recordsCompleted] = (2*sum(cosdata*single_record1)/num_pts)
-                    single_data1[1,recordsCompleted] = (2*sum(sindata*single_record1)/num_pts)**2
+                    single_data1[1,recordsCompleted] = (2*sum(sindata*single_record1)/num_pts)
                 if self.config.ch2_enabled: 
                     single_record2=self.arrs[buf_idx][(n+self.config.recordsPerBuffer)*self.config.samplesPerRecord:(n+self.config.recordsPerBuffer+1)*self.config.samplesPerRecord]
                     single_record2 = (single_record2-128)*(self.config.ch2_range/128.)                    
