@@ -116,31 +116,22 @@ class HistogramExperiment(Experiment):
                 #self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] , freq)
                 self.readout_shifter.set_phase((self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (freq - self.cfg['readout']['frequency']))%360, freq)
 
-                #tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg.stop_and_prep, start_function=self.awg.run,excise=None)
-
-                # tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg_prep,
-                #                                                         start_function=self.awg_run,
-                #                                                         excise=self.cfg['readout']['window'])
-                #
-                # if self.liveplot_enabled:
-                #     self.plotter.plot_z("current",ch1_pts)
-
-                # with self.datafile() as f:
-                #     f.append('time_trace', ch1_pts)
                 ss_data = zeros((len(self.expt_pts), num_bins))
                 sss_data = zeros((len(self.expt_pts), num_bins))
 
-                # ss1, ss2 = adc.acquire_singleshot_data(prep_function=None, start_function=None,
-                #                                        excise=self.cfg['readout']['window'])
-                print "testing"
+                print "runnning atten no.", xx, ", freq no.", yy
 
                 ss1, ss2 = adc.acquire_singleshot_data(prep_function=self.awg_prep, start_function=self.awg_run,
                                                        excise=self.cfg['readout']['window'])
 
+                ssthis = ss1
+                ssthis = reshape(ssthis, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+                
+                print 'ss1 max/min =', ssthis.max(), ssthis.min()
+                dist = ssthis.max() - ssthis.min()
+                histo_range = (ssthis.min() - dist/2.0, ssthis.max() + dist/2.0)
 
-                ss1 = reshape(ss1, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
-                histo_range = (ss1.min() / 1.5, ss1.max() * 1.5)
-                for jj, ss in enumerate(ss1):
+                for jj, ss in enumerate(ssthis):
                     sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
                     ss_data[jj] += sshisto
                     sss_data[jj] = cumsum(ss_data[[jj]])
