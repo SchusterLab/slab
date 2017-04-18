@@ -10,7 +10,7 @@ from slab.instruments.awg.PXDAC4800 import PXDAC4800
 from slab.instruments.pulseblaster.pulseblaster import *
 
 class HistogramHeteroExperiment(Experiment):
-    def __init__(self, path='', prefix='Histogram_hetero', config_file='..\\config.json', use_cal=False, **kwargs):
+    def __init__(self, path='', prefix='Histogram_Hetero', config_file='..\\config.json', use_cal=False, **kwargs):
 
         Experiment.__init__(self, path=path, prefix=prefix, config_file=config_file, **kwargs)
 
@@ -69,8 +69,7 @@ class HistogramHeteroExperiment(Experiment):
         # self.cfg['alazar']['recordsPerAcquisition'] = int(
         #     self.pulse_sequence.sequence_length * self.cfg[self.expt_cfg_name]['repeats']* max(self.cfg[self.expt_cfg_name]['averages'], 10))
 
-        self.cfg['alazar']['recordsPerAcquisition'] = int(
-            self.pulse_sequence.sequence_length * self.cfg[self.expt_cfg_name]['hw_repeats'])
+        self.cfg['alazar']['recordsPerAcquisition'] = int(self.pulse_sequence.sequence_length * self.cfg[self.expt_cfg_name]['hw_repeats']* max(self.cfg[self.expt_cfg_name]['averages'], 10))
 
         self.ready_to_go = True
         return
@@ -102,6 +101,13 @@ class HistogramHeteroExperiment(Experiment):
         freqpts = arange(self.cfg[self.expt_cfg_name]['freq_start'], self.cfg[self.expt_cfg_name]['freq_stop'], self.cfg[self.expt_cfg_name]['freq_step'])
         num_bins = self.cfg[self.expt_cfg_name]['num_bins']
 
+        ss_cos_data_all = zeros((2, len(attenpts), len(freqpts), 2,
+                             self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts))
+                            )  # (channel, atten, freq, g/e, average)
+        ss_sin_data_all = zeros((2, len(attenpts), len(freqpts), 2,
+                                 self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts))
+                                )  # (channel, atten, freq, g/e, average)
+
         for xx, atten in enumerate(attenpts):
             #self.im.atten.set_attenuator(atten)
             try:
@@ -109,7 +115,7 @@ class HistogramHeteroExperiment(Experiment):
             except:
                 print "Digital attenuator not loaded."
 
-            max_contrast_data = zeros(len(freqpts))
+            max_contrast_data = zeros((2,len(freqpts)))
 
             if self.liveplot_enabled:
                 self.plotter.clear('max contrast')
@@ -119,90 +125,63 @@ class HistogramHeteroExperiment(Experiment):
                 #self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] , freq)
                 self.readout_shifter.set_phase((self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (freq - self.cfg['readout']['frequency']))%360, freq)
 
-                # expt_data_ch1 = None
-                # expt_data_ch2 = None
-
-                for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['python_repeats']))):
-
-                    tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg_prep, start_function=self.awg_run,excise=None)
-
-                    # if expt_data_ch1 is None:
-                    #     expt_data_ch1 = ch1_pts
-                    #     expt_data_ch2 = ch2_pts
-                    # else:
-                    #     expt_data_ch1 = (expt_data_ch1 * ii + ch1_pts) / (ii + 1.0)
-                    #     expt_data_ch2 = (expt_data_ch2 * ii + ch2_pts) / (ii + 1.0)
-
-                    with self.datafile() as f:
-                        f.append_data(f,'ch1_pts', ch1_pts)
-                        f.append_data(f,'ch2_pts', ch2_pts)
-
-                        f.close()
-
-
-
-
-
-            with self.datafile() as f:
-                f.append_pt('atten', atten)
-                f.append_line('freq', freqpts)
-
-                f.close()
-
-                # tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg_prep,
-                #                                                         start_function=self.awg_run,
-                #                                                         excise=self.cfg['readout']['window'])
-                #
-                # if self.liveplot_enabled:
-                #     self.plotter.plot_z("current",ch1_pts)
-
-                # with self.datafile() as f:
-                #     f.append('time_trace', ch1_pts)
-
-
-                ## old
-                '''
                 ss_data = zeros((len(self.expt_pts), num_bins))
                 sss_data = zeros((len(self.expt_pts), num_bins))
 
-                # ss1, ss2 = adc.acquire_singleshot_data(prep_function=None, start_function=None,
+                print "runnning atten no.", xx, ", freq no.", yy
+
+                # ss1, ss2 = adc.acquire_singleshot_data(prep_function=self.awg_prep, start_function=self.awg_run,
                 #                                        excise=self.cfg['readout']['window'])
-                print "testing"
 
-                ss1, ss2 = adc.acquire_singleshot_data(prep_function=self.awg_prep, start_function=self.awg_run,
-                                                       excise=self.cfg['readout']['window'])
+                # todo: excise window
+                tpts, single_data1, single_data2, single_record1 = \
+                    adc.acquire_singleshot_heterodyne_data(self.cfg['readout']['heterodyne_freq'],\
+                                                       prep_function=self.awg_prep, start_function=self.awg_run, excise=None)
 
+                ss_cos_data_all[0, xx, yy, :, :] = reshape(single_data1[0], (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+                ss_cos_data_all[1, xx, yy, :, :] = reshape(single_data2[0], (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+                ss_sin_data_all[0, xx, yy, :, :] = reshape(single_data1[1], (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+                ss_sin_data_all[1, xx, yy, :, :] = reshape(single_data2[1], (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
 
-                ss1 = reshape(ss1, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
-                histo_range = (ss1.min() / 1.5, ss1.max() * 1.5)
-                for jj, ss in enumerate(ss1):
-                    sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
-                    ss_data[jj] += sshisto
-                    sss_data[jj] = cumsum(ss_data[[jj]])
+                with self.datafile() as f:
+                    f.add('ss_cos_data_ch1', ss_cos_data_all[0])
+                    f.add('ss_cos_data_ch2', ss_cos_data_all[1])
+                    f.add('ss_sin_data_ch1', ss_sin_data_all[0])
+                    f.add('ss_sin_data_ch2', ss_sin_data_all[1])
+                    f.close()
+
+                ss1 = single_data1[0]
+                ss2 = single_data1[1]
+
+                for kk, ssthis in enumerate([ss1, ss2]):
+
+                    ssthis = reshape(ssthis, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+
+                    print 'ss ch', str(kk+1), 'max/min =', ssthis.max(), ssthis.min()
+                    dist = ssthis.max() - ssthis.min()
+                    histo_range = (ssthis.min() - 0.01*dist, ssthis.max() + 0.01*dist)
+
+                    for jj, ss in enumerate(ssthis):
+                        sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
+                        ss_data[jj] += sshisto
+                        sss_data[jj] = cumsum(ss_data[[jj]])
+                        if self.liveplot_enabled:
+                            self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
+                            self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
+
+                    max_contrast_data[kk, yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
+
                     if self.liveplot_enabled:
-                        self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
-                        self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
-
-                if self.liveplot_enabled:
-                    self.plotter.plot_xy('contrast', ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
-                max_contrast_data[yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
-                if self.liveplot_enabled:
-                    self.plotter.append_xy('max contrast', freq, max_contrast_data[yy])
-
-            if len(attenpts)>1:
-                if self.liveplot_enabled:
-                    print "plotting max contrast 2"
-                    self.plotter.append_z('max contrast 2', max_contrast_data, start_step=(
-                        (attenpts[0], attenpts[1] - attenpts[0]),(freqpts[0] / 1.0e9, (freqpts[1] - freqpts[0]) / 1.0e9)))
+                        self.plotter.plot_xy('contrast_ch' + str(kk+1), ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
+                        self.plotter.append_xy('max contrast_ch' + str(kk+1), freq, max_contrast_data[kk,yy])
 
             with self.datafile() as f:
                 f.append_pt('atten', atten)
                 f.append_line('freq', freqpts)
-                f.append_line('max_contrast_data', max_contrast_data)
+                f.append_line('max_contrast_data_ch1', max_contrast_data[0, :])
+                f.append_line('max_contrast_data_ch2', max_contrast_data[1, :])
+                f.add('single_record1', single_record1)
                 f.close()
-            '''
-
-            ###
 
 
     def awg_prep(self):
