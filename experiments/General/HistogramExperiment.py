@@ -156,12 +156,11 @@ class HistogramExperiment(Experiment):
                 f.append_line('freq', freqpts)
                 f.append_line('max_contrast_data_ch1', max_contrast_data[0, :])
                 f.append_line('max_contrast_data_ch2', max_contrast_data[1, :])
-                f.close()
 
-        with self.datafile() as f:
-            f.add('ss_data_ch1', ss_data_all[0])
-            f.add('ss_data_ch2', ss_data_all[1])
-            f.close()
+                f.add('ss_data_ch1', ss_data_all[0])
+                f.add('ss_data_ch2', ss_data_all[1])
+
+                f.close()
 
 
     def awg_prep(self):
