@@ -147,7 +147,10 @@ class HistogramExperiment(Experiment):
                             self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
 
                     max_contrast_data[kk, yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
-                    max_contrast_data_ef[kk, yy] = abs(((sss_data[1] - sss_data[2]) / ss_data[1].sum())).max()
+
+                    if len(self.expt_pts)>2:
+
+                        max_contrast_data_ef[kk, yy] = abs(((sss_data[1] - sss_data[2]) / ss_data[1].sum())).max()
 
                     if self.liveplot_enabled:
                         self.plotter.plot_xy('contrast_ch' + str(kk+1), ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
@@ -158,13 +161,17 @@ class HistogramExperiment(Experiment):
                 f.append_line('freq', freqpts)
                 f.append_line('max_contrast_data_ch1', max_contrast_data[0, :])
                 f.append_line('max_contrast_data_ch2', max_contrast_data[1, :])
-                f.append_line('max_contrast_data_ef_ch1', max_contrast_data_ef[0, :])
-                f.append_line('max_contrast_data_ef_ch2', max_contrast_data_ef[1, :])
+
+                if len(self.expt_pts) > 2:
+                    f.append_line('max_contrast_data_ef_ch1', max_contrast_data_ef[0, :])
+                    f.append_line('max_contrast_data_ef_ch2', max_contrast_data_ef[1, :])
 
                 f.add('ss_data_ch1', ss_data_all[0])
                 f.add('ss_data_ch2', ss_data_all[1])
 
                 f.close()
+
+        # self.awg_prep()
 
 
     def awg_prep(self):
@@ -175,4 +182,6 @@ class HistogramExperiment(Experiment):
     def awg_run(self):
         LocalInstruments().inst_dict['pxdac4800_1'].run_experiment()
         LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
+        time.sleep(1)
+
         run_pulseblaster()

@@ -256,6 +256,8 @@ class QubitPulseSequenceExperiment(Experiment):
             if self.post_run is not None:
                 self.post_run(self.expt_pts, expt_avg_data)
 
+        # self.awg_prep()
+
     def awg_prep(self):
         stop_pulseblaster()
         LocalInstruments().inst_dict['pxdac4800_1'].stop()
@@ -264,4 +266,7 @@ class QubitPulseSequenceExperiment(Experiment):
     def awg_run(self):
         LocalInstruments().inst_dict['pxdac4800_1'].run_experiment()
         LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
+
+        time.sleep(1)
+
         run_pulseblaster()
