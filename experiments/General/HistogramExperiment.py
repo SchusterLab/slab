@@ -58,7 +58,7 @@ class HistogramExperiment(Experiment):
 
         self.pulse_type = self.cfg[self.expt_cfg_name]['pulse_type']
 
-        self.pulse_sequence = HistogramSequence(self.cfg['awgs'], self.cfg[self.expt_cfg_name], self.cfg['readout'],self.cfg['pulse_info'][self.pulse_type],self.cfg['buffer'])
+        self.pulse_sequence = HistogramSequence(self.cfg['awgs'], self.cfg[self.expt_cfg_name], self.cfg['readout'],self.cfg['pulse_info'][self.pulse_type],self.cfg['buffer'], self.cfg)
         self.pulse_sequence.build_sequence()
         self.pulse_sequence.write_sequence(os.path.join(self.path, '../sequences/'), prefix, upload=True)
 
@@ -99,9 +99,9 @@ class HistogramExperiment(Experiment):
         freqpts = arange(self.cfg[self.expt_cfg_name]['freq_start'], self.cfg[self.expt_cfg_name]['freq_stop'], self.cfg[self.expt_cfg_name]['freq_step'])
         num_bins = self.cfg[self.expt_cfg_name]['num_bins']
 
-        ss_data_all = zeros((2, len(attenpts), len(freqpts), 2,
+        ss_data_all = zeros((2, len(attenpts), len(freqpts), len(self.expt_pts),
                              self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts))
-                            )  # (channel, atten, freq, g/e, average)
+                            )  # (channel, atten, freq, g/e(/f), average)
 
         for xx, atten in enumerate(attenpts):
             #self.im.atten.set_attenuator(atten)
@@ -110,7 +110,8 @@ class HistogramExperiment(Experiment):
             except:
                 print "Digital attenuator not loaded."
 
-            max_contrast_data = zeros((2,len(freqpts)))
+            max_contrast_data = zeros((2,len(freqpts))) # (chn, freq)
+            max_contrast_data_ef = zeros((2, len(freqpts)))  # (chn, freq)
 
             if self.liveplot_enabled:
                 self.plotter.clear('max contrast')
@@ -146,6 +147,7 @@ class HistogramExperiment(Experiment):
                             self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
 
                     max_contrast_data[kk, yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
+                    max_contrast_data_ef[kk, yy] = abs(((sss_data[1] - sss_data[2]) / ss_data[1].sum())).max()
 
                     if self.liveplot_enabled:
                         self.plotter.plot_xy('contrast_ch' + str(kk+1), ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
@@ -156,6 +158,8 @@ class HistogramExperiment(Experiment):
                 f.append_line('freq', freqpts)
                 f.append_line('max_contrast_data_ch1', max_contrast_data[0, :])
                 f.append_line('max_contrast_data_ch2', max_contrast_data[1, :])
+                f.append_line('max_contrast_data_ef_ch1', max_contrast_data_ef[0, :])
+                f.append_line('max_contrast_data_ef_ch2', max_contrast_data_ef[1, :])
 
                 f.add('ss_data_ch1', ss_data_all[0])
                 f.add('ss_data_ch2', ss_data_all[1])
