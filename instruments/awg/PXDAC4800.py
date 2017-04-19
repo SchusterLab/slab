@@ -10,6 +10,7 @@ import time
 from struct import *
 from array import array as barray
 
+SERIAL_NUMBER = [301450,300727]
 
 class PXDAC4800:
     def __init__(self,brdNum):
@@ -53,7 +54,7 @@ class PXDAC4800:
 
         print "Connecting to PXDAC4800 device."
         dll = DACDLL
-        dll.ConnectToDeviceXD48(ppHandle, U32(self.brdNum))
+        dll.ConnectToDeviceXD48(ppHandle, U32(SERIAL_NUMBER[self.brdNum-1]))
 
         self.dll = dll
 
