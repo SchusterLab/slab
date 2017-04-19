@@ -3,7 +3,7 @@ __author__ = 'Nelson'
 from slab.instruments.awg.PulseSequence import *
 from slab.experiments.ExpLib import awgpulses as ap
 from numpy import arange, linspace
-# from slab.experiments.ExpLib.TEK1PulseOrganizer import *
+from slab.instruments.pulseblaster.pulseblaster import start_pulseblaster
 
 from liveplot import LivePlotClient
 
@@ -26,6 +26,7 @@ class HistogramSequence(PulseSequence):
         self.marker_start_buffer = buffer_cfg['marker_start']
 
         PulseSequence.__init__(self, "Histogram", awg_info, sequence_length=seq_len)
+        self.exp_period_ns = self.cfg['expt_trigger']['period_ns']
         self.pulse_cfg=pulse_cfg
         self.pulse_type = histo_cfg['pulse_type']
         self.pi_a = pulse_cfg['pi_a']
@@ -57,6 +58,12 @@ class HistogramSequence(PulseSequence):
         mtpts = self.get_marker_times('qubit buffer')
 
         # todo: why no pulse blaster code here? c.f. vacuum rabi
+
+        awg_trig_len = 100
+        start_pulseblaster(self.exp_period_ns, awg_trig_len, self.origin + self.card_delay,
+                           self.origin + self.measurement_delay,
+                           self.card_trig_width, self.measurement_width)
+
 
         for ii, d in enumerate(self.histo_pts):
 
