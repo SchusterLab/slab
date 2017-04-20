@@ -784,6 +784,7 @@ class Alazar():
         return tpts,avg_data1,avg_data2
 
     #added by ds on 4/17/2015
+    #this takes single shot data, time axis averaged
     def acquire_singleshot_data(self, prep_function=None,start_function=None, excise=None):
         """Acquire a single number (sum of data in excise window) for each record
            @start_function:  a callback function to start the AWG's or whatever is doing the triggering
@@ -833,13 +834,15 @@ class Alazar():
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
         return ss_data[0],ss_data[1]
 
-
-    #this takes single shot data
+    #this takes single shot data, returning cos/sin at IFreq
     def acquire_singleshot_heterodyne_data(self, IFreq, prep_function=None,start_function=None, excise=None):
+
         self.post_buffers()
         single_data1=np.zeros((2,self.config.recordsPerAcquisition),dtype=float)
         single_data2=np.zeros((2,self.config.recordsPerAcquisition),dtype=float)
-        num_pts = self.config.samplesPerRecord
+        if excise is None:
+            excise=(0,self.config.samplesPerRecord)
+        num_pts = excise[1] - excise[0]
         tpts=np.arange(num_pts)/float(self.config.sample_rate*1e3)        
         cosdata = cos(2*pi*IFreq*tpts)
         sindata = sin(2*pi*IFreq*tpts)
@@ -869,14 +872,18 @@ class Alazar():
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
                 break       
             for n in range(self.config.recordsPerBuffer):
-                if self.config.ch1_enabled: 
-                    single_record1=self.arrs[buf_idx][n*self.config.samplesPerRecord:(n+1)*self.config.samplesPerRecord]
+                if self.config.ch1_enabled:
+                    ch=0
+                    single_record1=self.arrs[buf_idx][((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[0] \
+                                                                        :((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[1]]
                     single_record1 = (single_record1-128.)*(self.config.ch1_range/128.)                 
                     single_data1[0,recordsCompleted] = (2*sum(cosdata*single_record1)/num_pts)
                     single_data1[1,recordsCompleted] = (2*sum(sindata*single_record1)/num_pts)
-                if self.config.ch2_enabled: 
-                    single_record2=self.arrs[buf_idx][(n+self.config.recordsPerBuffer)*self.config.samplesPerRecord:(n+self.config.recordsPerBuffer+1)*self.config.samplesPerRecord]
-                    single_record2 = (single_record2-128)*(self.config.ch2_range/128.)                    
+                if self.config.ch2_enabled:
+                    ch=1
+                    single_record2=self.arrs[buf_idx][((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[0] \
+                                                                        :((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[1]]
+                    single_record2 = (single_record2-128)*(self.config.ch2_range/128.)
                     single_data2[0,recordsCompleted] = (2*sum(cosdata*single_record2)/num_pts)
                     single_data2[1,recordsCompleted] = (2*sum(sindata*single_record2)/num_pts)
                 recordsCompleted+=1
@@ -895,11 +902,10 @@ class Alazar():
         if DEBUGALAZAR: print "Acquisition finished."
         if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
-        if excise is not None:
-            return tpts[excise[0]:excise[1]],single_data1[excise[0]:excise[1]],single_data2[excise[0]:excise[1]]
-        else:
-            return tpts,single_data1,single_data2,single_record1
-            
+
+        return single_data1,single_data2,single_record1
+
+
     #this takes single shot data and does not process it!
     #Exports the entire 2D array so don't take to many points!
     def acquire_singleshot_data2(self, excise=None):
