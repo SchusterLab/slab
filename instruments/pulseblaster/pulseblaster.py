@@ -103,6 +103,5 @@ def run_pulseblaster():
     pb_start()
 
 def stop_pulseblaster():
-    print "stop pulseblaster"
-    print pb_stop()
-    print pb_reset()
+    pb_stop()
+    pb_reset()
