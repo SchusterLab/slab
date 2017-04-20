@@ -58,7 +58,7 @@ class HistogramHeteroExperiment(Experiment):
 
         self.pulse_type = self.cfg[self.expt_cfg_name]['pulse_type']
 
-        self.pulse_sequence = HistogramSequence(self.cfg['awgs'], self.cfg[self.expt_cfg_name], self.cfg['readout'],self.cfg['pulse_info'][self.pulse_type],self.cfg['buffer'])
+        self.pulse_sequence = HistogramSequence(self.cfg['awgs'], self.cfg[self.expt_cfg_name], self.cfg['readout'],self.cfg['pulse_info'][self.pulse_type],self.cfg['buffer'], self.cfg)
         self.pulse_sequence.build_sequence()
         self.pulse_sequence.write_sequence(os.path.join(self.path, '../sequences/'), prefix, upload=True)
 
@@ -97,16 +97,19 @@ class HistogramHeteroExperiment(Experiment):
         print "Prep Card"
         adc = Alazar(self.cfg['alazar'])
 
+        heterodyne_carrier_freq = self.cfg['readout']['heterodyne_carrier_freq']
+        heterodyne_read_freqs = self.cfg['readout']['heterodyne_read_freq']
+
         attenpts = arange(self.cfg[self.expt_cfg_name]['atten_start'], self.cfg[self.expt_cfg_name]['atten_stop'], self.cfg[self.expt_cfg_name]['atten_step'])
         freqpts = arange(self.cfg[self.expt_cfg_name]['freq_start'], self.cfg[self.expt_cfg_name]['freq_stop'], self.cfg[self.expt_cfg_name]['freq_step'])
         num_bins = self.cfg[self.expt_cfg_name]['num_bins']
 
-        ss_cos_data_all = zeros((2, len(attenpts), len(freqpts), 2,
+        ss_cos_data_all = zeros((2, len(attenpts), len(freqpts), len(self.expt_pts),
                              self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts))
-                            )  # (channel, atten, freq, g/e, average)
-        ss_sin_data_all = zeros((2, len(attenpts), len(freqpts), 2,
+                            )  # (channel, atten, freq, g/e/(f), average)
+        ss_sin_data_all = zeros((2, len(attenpts), len(freqpts), len(self.expt_pts),
                                  self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts))
-                                )  # (channel, atten, freq, g/e, average)
+                                )  # (channel, atten, freq, g/e/(f), average)
 
         for xx, atten in enumerate(attenpts):
             #self.im.atten.set_attenuator(atten)
@@ -130,13 +133,9 @@ class HistogramHeteroExperiment(Experiment):
 
                 print "runnning atten no.", xx, ", freq no.", yy
 
-                # ss1, ss2 = adc.acquire_singleshot_data(prep_function=self.awg_prep, start_function=self.awg_run,
-                #                                        excise=self.cfg['readout']['window'])
-
-                # todo: excise window
-                tpts, single_data1, single_data2, single_record1 = \
+                single_data1, single_data2, single_record1 = \
                     adc.acquire_singleshot_heterodyne_data(self.cfg['readout']['heterodyne_freq'],\
-                                                       prep_function=self.awg_prep, start_function=self.awg_run, excise=None)
+                                                       prep_function=self.awg_prep, start_function=self.awg_run, excise=self.cfg['readout']['window'])
 
                 ss_cos_data_all[0, xx, yy, :, :] = reshape(single_data1[0], (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
                 ss_cos_data_all[1, xx, yy, :, :] = reshape(single_data2[0], (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
@@ -150,6 +149,7 @@ class HistogramHeteroExperiment(Experiment):
                     f.add('ss_sin_data_ch2', ss_sin_data_all[1])
                     f.close()
 
+                #here max_contrast only calculated for ch1 & 2 of (g/e)
                 ss1 = single_data1[0]
                 ss2 = single_data1[1]
 
@@ -157,7 +157,7 @@ class HistogramHeteroExperiment(Experiment):
 
                     ssthis = reshape(ssthis, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
 
-                    print 'ss ch', str(kk+1), 'max/min =', ssthis.max(), ssthis.min()
+                    print 'ss i/q ch', str(kk+1), 'max/min =', ssthis.max(), ssthis.min()
                     dist = ssthis.max() - ssthis.min()
                     histo_range = (ssthis.min() - 0.01*dist, ssthis.max() + 0.01*dist)
 
@@ -192,4 +192,5 @@ class HistogramHeteroExperiment(Experiment):
     def awg_run(self):
         LocalInstruments().inst_dict['pxdac4800_1'].run_experiment()
         LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
+        time.sleep(0.5)
         run_pulseblaster()
