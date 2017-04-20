@@ -56,6 +56,14 @@ class QubitPulseSequence(PulseSequence):
                     self.psb.idle(10)
                 if jj ==1:
                     self.psb.append('q','cal_pi', self.pulse_type)
+
+                ## add heterodyne pulse
+                self.psb.append('q2', 'general', 'square', amp=cfg['readout']['heterodyne_a'],
+                                length=cfg['readout']['width'] + 1000,
+                                freq=cfg['readout']['heterodyne_freq'],
+                                delay=(cfg['readout']['width'] + 1000) / 2)
+                ##
+
                 self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
                 total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
                 self.total_flux_pulse_span_length_list.append(self.psb.get_total_flux_pulse_span_length())
