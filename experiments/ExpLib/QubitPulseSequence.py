@@ -21,8 +21,13 @@ class QubitPulseSequence(PulseSequence):
         #     cfg['awgs'][1]['upload'] = False
         # else:
         #     cfg['awgs'][1]['upload'] = True
+        calibration_pts = []
 
-        if (expt_cfg['use_pi_calibration']):
+        if (expt_cfg['use_g-e-f_calibration']):
+            calibration_pts = range(3)
+            sequence_length+=3
+        elif (expt_cfg['use_pi_calibration']):
+            calibration_pts = range(2)
             sequence_length+=2
 
         PulseSequence.__init__(self, name, cfg['awgs'], sequence_length)
@@ -36,26 +41,26 @@ class QubitPulseSequence(PulseSequence):
             # obtain pulse sequence for each experiment point
             define_pulses(pt)
 
-
             ## add heterodyne pulse
             self.psb.append('q2', 'general', 'square', amp=cfg['readout']['heterodyne_a'], length=cfg['readout']['width'] + 1000,
                             freq=cfg['readout']['heterodyne_freq'],
                             delay=(cfg['readout']['width'] + 1000) / 2)
             ##
 
-
             self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
             total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
             self.total_flux_pulse_span_length_list.append(self.psb.get_total_flux_pulse_span_length())
 
-        if (expt_cfg['use_pi_calibration']):
-            calibration_pts = [0,1]
+        if len(calibration_pts) > 0:
 
             for jj, pt in enumerate(calibration_pts):
                 if jj ==0:
                     self.psb.idle(10)
                 if jj ==1:
                     self.psb.append('q','cal_pi', self.pulse_type)
+                if jj ==2:
+                    self.psb.append('q','cal_pi', self.pulse_type)
+                    self.psb.append('q', 'pi_q_ef', self.pulse_type)
 
                 ## add heterodyne pulse
                 self.psb.append('q2', 'general', 'square', amp=cfg['readout']['heterodyne_a'],
