@@ -909,6 +909,7 @@ class Alazar():
     def acquire_singleshot_heterodyne_multitone_data(self, IFreqList, prep_function=None, start_function=None, excise=None):
 
         self.post_buffers()
+        single_data1 = np.zeros((len(IFreqList), 2, self.config.recordsPerAcquisition), dtype=float) # index: (hetero_freqs, cos/sin, all_seqs)
         single_data2 = np.zeros((len(IFreqList), 2, self.config.recordsPerAcquisition), dtype=float)
         if excise is None:
             excise = (0, self.config.samplesPerRecord)
