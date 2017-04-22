@@ -369,6 +369,8 @@ class QubitPulseSequenceExperiment(Experiment):
                             f.add('ss_cal_g', ss_cal_g[:, :, :, 0:((ii + 1) * avgPerAcquisition)])
                             f.add('ss_cal_e', ss_cal_e[:, :, :, 0:((ii + 1) * avgPerAcquisition)])
                         if (self.cfg[self.expt_cfg_name]['use_g-e-f_calibration']):
+                            f.add('ss_cal_g', ss_cal_g[:, :, :, 0:((ii + 1) * avgPerAcquisition)])
+                            f.add('ss_cal_e', ss_cal_e[:, :, :, 0:((ii + 1) * avgPerAcquisition)])
                             f.add('ss_cal_f', ss_cal_f[:, :, :, 0:((ii + 1) * avgPerAcquisition)])
 
                         f.add('expt_avg_data', expt_avg_data.flatten())
