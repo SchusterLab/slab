@@ -105,7 +105,9 @@ class EFRabiSequence(QubitPulseSequence):
         self.psb.append('q','general', self.ef_pulse_type, amp=self.pulse_cfg[self.expt_cfg['ef_pulse_type']]['pi_ef_a'], length=pt,freq=self.ef_sideband_freq)
         #self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.ef_sideband_freq)
         #self.psb.idle(4*pt)
-        self.psb.append('q','pi', self.pulse_type)
+
+        if self.expt_cfg['end_ge_pi_swap']:
+           self.psb.append('q','pi', self.pulse_type)
 
         if self.expt_cfg['ef_cal']:
            self.psb.append('q', 'pi_q_ef', self.pulse_type)
