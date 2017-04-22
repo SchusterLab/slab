@@ -251,7 +251,7 @@ class QubitPulseSequenceExperiment(Experiment):
 
                 if self.cfg['readout']['is_multitone_heterodyne']:
                     het_carrier_freq = self.cfg['readout']['heterodyne_carrier_freq']
-                    het_read_freq_list = array(self.cfg['readout']['heterodyne_read_freq'])
+                    het_read_freq_list = array(self.cfg['readout']['heterodyne_freq_list'])
                     het_IFreqList = het_read_freq_list - het_carrier_freq
                 else:
                     het_carrier_freq = self.readout_freq - self.cfg['readout']['heterodyne_freq']

@@ -1,7 +1,7 @@
 __author__ = 'Nelson'
 
 from slab.instruments.awg.PulseSequence import *
-from numpy import arange, linspace
+from numpy import arange, linspace, array
 from slab.experiments.ExpLib.PulseSequenceBuilder import *
 
 from liveplot import LivePlotClient
@@ -13,6 +13,7 @@ class QubitPulseSequence(PulseSequence):
     def __init__(self, name, cfg, expt_cfg, define_points, define_parameters, define_pulses, **kwargs):
 
         self.expt_cfg = expt_cfg
+        self.cfg = cfg
         define_points()
         define_parameters()
         sequence_length = len(self.expt_pts)
@@ -42,10 +43,7 @@ class QubitPulseSequence(PulseSequence):
             define_pulses(pt)
 
             ## add heterodyne pulse
-            self.psb.append('q2', 'general', 'square', amp=cfg['readout']['heterodyne_a'], length=cfg['readout']['width'] + 1000,
-                            freq=cfg['readout']['heterodyne_freq'],
-                            delay=(cfg['readout']['width'] + 1000) / 2)
-            ##
+            self.add_heterodyne_pulses()
 
             self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
             total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
@@ -63,11 +61,7 @@ class QubitPulseSequence(PulseSequence):
                     self.psb.append('q', 'pi_q_ef', self.pulse_type)
 
                 ## add heterodyne pulse
-                self.psb.append('q2', 'general', 'square', amp=cfg['readout']['heterodyne_a'],
-                                length=cfg['readout']['width'] + 1000,
-                                freq=cfg['readout']['heterodyne_freq'],
-                                delay=(cfg['readout']['width'] + 1000) / 2)
-                ##
+                self.add_heterodyne_pulses()
 
                 self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
                 total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
@@ -77,6 +71,30 @@ class QubitPulseSequence(PulseSequence):
         max_flux_length = self.psb.get_max_flux_length(self.total_flux_pulse_span_length_list)
         self.set_all_lengths(max_length)
         self.set_waveform_length("qubit 1 flux", max_flux_length)
+
+    def add_heterodyne_pulses(self):
+
+        if self.cfg['readout']['is_multitone_heterodyne']:
+            het_carrier_freq = self.cfg['readout']['heterodyne_carrier_freq']
+            het_read_freq_list = array(self.cfg['readout']['heterodyne_freq_list'])
+            het_a_list = array(self.cfg['readout']['heterodyne_a_list'])
+            het_IFreqList = het_read_freq_list - het_carrier_freq
+        else:
+            het_carrier_freq = self.cfg['readout']['frequency'] - self.cfg['readout']['heterodyne_freq']
+            het_read_freq_list = array([self.cfg['readout']['frequency']])
+            het_a_list = array([self.cfg['readout']['heterodyne_a']])
+            het_IFreqList = het_read_freq_list - het_carrier_freq
+
+        if sum(het_a_list) > 1:
+            print 'Warning! Sum of heterodyne amplitudes > 1 in QubitPulseSequence.'
+
+        for ii in range(len(het_IFreqList)):
+
+            # q2 pulses are hacked to be fixed in time, so can append multiple pulses for heterodyne readout
+            self.psb.append('q2', 'general', 'square', amp= het_a_list[ii],
+                            length=self.cfg['readout']['width'] + 1000,
+                            freq= het_IFreqList[ii],
+                            delay=(self.cfg['readout']['width'] + 1000) / 2)
 
     def build_sequence(self):
         PulseSequence.build_sequence(self)
@@ -105,7 +123,6 @@ class QubitPulseSequence(PulseSequence):
             'qubit drive Q'], self.waveforms['qubit 1 flux'], self.markers['qubit buffer'], self.markers['ch3m1'],self.waveforms['pxdac4800_2_ch1'], self.waveforms['pxdac4800_2_ch2']= generated_sequences
 
         # np.save('S:\\_Data\\160711 - Nb Tunable Coupler\\data\\waveform.npy',self.waveforms['qubit drive Q'])
-
         ### in ipython notebook: call np.load('file_path/file_name.npy')
 
     def reshape_data(self, data):
