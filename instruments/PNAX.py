@@ -114,6 +114,8 @@ class N5242A(SocketInstrument):
     def setup_two_tone_measurement(self, read_frequency=None, read_power=None, probe_start=None, probe_stop=None, probe_power=None, two_tone=True ):
         if two_tone:
             print "TWO TONE ON"
+            # turn off port power coupling
+            self.write("SOUR:POW:COUP OFF")
             self.write('SENSE:FOM:RANGE4:COUPLED 1')
             if probe_start is not None:
                 self.write('SENSE:FOM:RANGE1:FREQUENCY:START %f' % probe_start)
