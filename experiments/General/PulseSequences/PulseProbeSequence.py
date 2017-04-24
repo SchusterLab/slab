@@ -108,8 +108,8 @@ class PulseProbeSequence(PulseSequence):
             ap.sideband(wtpts, heterodyne_pulsedata, np.zeros(len(wtpts)), self.cfg['readout']['heterodyne_freq'], 0)
         ##
 
-        np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\waveform_I.npy', self.waveforms['qubit drive I'])
-        np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\time.npy',wtpts)
+        # np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\waveform_I.npy', self.waveforms['qubit drive I'])
+        # np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\time.npy',wtpts)
         # np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\readout.npy', self.markers['readout pulse'])
         # np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\card.npy',self.markers['card trigger'])
 
