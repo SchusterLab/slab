@@ -258,8 +258,8 @@ class QubitPulseSequenceExperiment(Experiment):
                     het_read_freq_list = array([self.readout_freq])
                     het_IFreqList = het_read_freq_list - het_carrier_freq
 
-                avgPerAcquisition = min(self.cfg[self.expt_cfg_name]['averages'], 100)
-                numAcquisition = np.ceil(self.cfg[self.expt_cfg_name]['averages'] / 100)
+                avgPerAcquisition = int(min(self.cfg[self.expt_cfg_name]['averages'], 100))
+                numAcquisition = int(np.ceil(self.cfg[self.expt_cfg_name]['averages'] / 100))
 
                 # (ch1/2, exp_pts, heterodyne_freq, cos/sin, all averages)
                 ss_data = zeros((2, len(self.expt_pts), len(het_IFreqList), 2, avgPerAcquisition * numAcquisition))
