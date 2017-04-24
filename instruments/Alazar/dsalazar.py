@@ -877,15 +877,15 @@ class Alazar():
                     single_record1=self.arrs[buf_idx][((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[0] \
                                                                         :((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[1]]
                     single_record1 = (single_record1-128.)*(self.config.ch1_range/128.)                 
-                    single_data1[0,recordsCompleted] = (2*sum(cosdata*single_record1)/num_pts)
-                    single_data1[1,recordsCompleted] = (2*sum(sindata*single_record1)/num_pts)
+                    single_data1[0,recordsCompleted] = (2*np.dot(cosdata,single_record1)/num_pts)
+                    single_data1[1,recordsCompleted] = (2*np.dot(sindata,single_record1)/num_pts)
                 if self.config.ch2_enabled:
                     ch=1
                     single_record2=self.arrs[buf_idx][((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[0] \
                                                                         :((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[1]]
                     single_record2 = (single_record2-128)*(self.config.ch2_range/128.)
-                    single_data2[0,recordsCompleted] = (2*sum(cosdata*single_record2)/num_pts)
-                    single_data2[1,recordsCompleted] = (2*sum(sindata*single_record2)/num_pts)
+                    single_data2[0,recordsCompleted] = (2*np.dot(cosdata,single_record2)/num_pts)
+                    single_data2[1,recordsCompleted] = (2*np.dot(sindata,single_record2)/num_pts)
                 recordsCompleted+=1
             #plot(self.arrs[buf_idx])
             ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx].addr,U32(self.config.bytesPerBuffer))
@@ -956,8 +956,8 @@ class Alazar():
                                           excise[1]]
                     single_record1 = (single_record1 - 128.) * (self.config.ch1_range / 128.)
                     for jj in range(len(IFreqList)):
-                        single_data1[jj, 0, recordsCompleted] = (2 * sum(cosdata[jj] * single_record1) / num_pts)
-                        single_data1[jj, 1, recordsCompleted] = (2 * sum(sindata[jj] * single_record1) / num_pts)
+                        single_data1[jj, 0, recordsCompleted] = (2 * np.dot(cosdata[jj], single_record1) / num_pts)
+                        single_data1[jj, 1, recordsCompleted] = (2 * np.dot(sindata[jj], single_record1) / num_pts)
                 if self.config.ch2_enabled:
                     ch = 1
                     single_record2 = self.arrs[buf_idx][
@@ -967,8 +967,8 @@ class Alazar():
                                           excise[1]]
                     single_record2 = (single_record2 - 128) * (self.config.ch2_range / 128.)
                     for jj in range(len(IFreqList)):
-                        single_data2[jj, 0, recordsCompleted] = (2 * sum(cosdata[jj] * single_record2) / num_pts)
-                        single_data2[jj, 1, recordsCompleted] = (2 * sum(sindata[jj] * single_record2) / num_pts)
+                        single_data2[jj, 0, recordsCompleted] = (2 * np.dot(cosdata[jj], single_record2) / num_pts)
+                        single_data2[jj, 1, recordsCompleted] = (2 * np.dot(sindata[jj], single_record2) / num_pts)
                 recordsCompleted += 1
             # plot(self.arrs[buf_idx])
             ret = self.Az.AlazarPostAsyncBuffer(self.handle, self.bufs[buf_idx].addr, U32(self.config.bytesPerBuffer))
