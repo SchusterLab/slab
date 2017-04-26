@@ -96,7 +96,7 @@ class QubitPulseSequenceExperiment(Experiment):
             else:
                 self.readout.set_frequency(self.readout_freq - self.cfg['readout']['heterodyne_freq'])
             self.readout.set_power(self.cfg['readout']['power'])
-            self.readout.set_ext_pulse(mod=True)
+            self.readout.set_ext_pulse(mod=self.cfg['readout']['mod'])
             self.readout.set_output(True)
         except:
             print "No readout found."
