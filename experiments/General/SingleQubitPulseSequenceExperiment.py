@@ -182,17 +182,20 @@ class EFRabiExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         print "Analyzing ef Rabi Data"
-        self.pi_ef_length = self.cfg['pulse_info']['gauss']['pi_ef_length']
-        self.half_pi_ef_length = self.cfg['pulse_info']['gauss']['half_pi_ef_length']
-        fitdata = fitdecaysin(expt_pts[3:], expt_avg_data[3:])
-        self.pi_ef_length = 0.5 / fitdata[1]
-        self.half_pi_ef_length = 0.25 / (fitdata[1])
-        print 'ef Rabi pi: %s ns' % (0.5 / fitdata[1])
-        print 'ef Rabi pi/2: %s ns' % (0.25 / fitdata[1])
-        print 'ef T1*: %s ns' % (fitdata[3])
-        if (self.cfg['pulse_info']['save_to_file']):
-                self.cfg['pulse_info']['gauss']['pi_ef_length'] = self.pi_ef_length
-                self.cfg['pulse_info']['gauss']['half_pi_ef_length'] =  self.half_pi_ef_length
+        try:
+            self.pi_ef_length = self.cfg['pulse_info']['gauss']['pi_ef_length']
+            self.half_pi_ef_length = self.cfg['pulse_info']['gauss']['half_pi_ef_length']
+            fitdata = fitdecaysin(expt_pts[3:], expt_avg_data[3:])
+            self.pi_ef_length = 0.5 / fitdata[1]
+            self.half_pi_ef_length = 0.25 / (fitdata[1])
+            print 'ef Rabi pi: %s ns' % (0.5 / fitdata[1])
+            print 'ef Rabi pi/2: %s ns' % (0.25 / fitdata[1])
+            print 'ef T1*: %s ns' % (fitdata[3])
+            if (self.cfg['pulse_info']['save_to_file']):
+                    self.cfg['pulse_info']['gauss']['pi_ef_length'] = self.pi_ef_length
+                    self.cfg['pulse_info']['gauss']['half_pi_ef_length'] =  self.half_pi_ef_length
+        except:
+            print 'fitting failed'
 
 class EFRamseyExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_Ramsey', config_file='..\\config.json', **kwargs):
@@ -207,23 +210,26 @@ class EFRamseyExperiment(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         pass
         print "Analyzing EF Ramsey Data"
-        fitdata = fitdecaysin(expt_pts, expt_avg_data)
+        try:
+            fitdata = fitdecaysin(expt_pts, expt_avg_data)
 
-        # self.offset_freq =self.cfg['ramsey']['ramsey_freq'] - fitdata[1] * 1e9
-        #self.flux_volt = self.cfg['freq_flux']['flux_volt']
-        #self.freq_flux_slope = self.cfg['freq_flux']['slope']
+            # self.offset_freq =self.cfg['ramsey']['ramsey_freq'] - fitdata[1] * 1e9
+            #self.flux_volt = self.cfg['freq_flux']['flux_volt']
+            #self.freq_flux_slope = self.cfg['freq_flux']['slope']
 
-        suggested_anharm = self.cfg['qubit']['alpha'] + (+fitdata[1] * 1e9 - self.cfg['ef_ramsey']['ramsey_freq'])
+            suggested_anharm = self.cfg['qubit']['alpha'] + (+fitdata[1] * 1e9 - self.cfg['ef_ramsey']['ramsey_freq'])
 
-        print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
-        print "T2*ef: " + str(fitdata[3]) + " ns"
-        #if round(self.offset_freq/ self.freq_flux_slope,4)==0.0000:
-        #   print "Qubit frequency is well calibrated."
-        #else:
-        print "Suggested Anharmonicity: " + str(suggested_anharm)
-        #  print "Or Suggested Flux Voltage: " +str(round(self.flux_volt -self.offset_freq/ self.freq_flux_slope,4))
-        if (self.cfg['pulse_info']['save_to_file']):
-                self.cfg['qubit']['alpha'] = suggested_anharm
+            print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
+            print "T2*ef: " + str(fitdata[3]) + " ns"
+            #if round(self.offset_freq/ self.freq_flux_slope,4)==0.0000:
+            #   print "Qubit frequency is well calibrated."
+            #else:
+            print "Suggested Anharmonicity: " + str(suggested_anharm)
+            #  print "Or Suggested Flux Voltage: " +str(round(self.flux_volt -self.offset_freq/ self.freq_flux_slope,4))
+            if (self.cfg['pulse_info']['save_to_file']):
+                    self.cfg['qubit']['alpha'] = suggested_anharm
+        except:
+            print 'fitting failed'
 
 class EFT1Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_T1', config_file='..\\config.json', **kwargs):
