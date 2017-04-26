@@ -112,7 +112,7 @@ class QubitPulseSequenceExperiment(Experiment):
             self.drive.set_frequency(
                 self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
             self.drive.set_power(self.cfg['drive']['power'])
-            self.drive.set_ext_pulse(mod=False)
+            self.drive.set_ext_pulse(mod=self.cfg['drive']['mod'])
             self.drive.set_output(True)
         except:
             print "No drive found"

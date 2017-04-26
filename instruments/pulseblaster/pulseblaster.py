@@ -42,6 +42,11 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,readout_trig_ti
     awg_card_idle_time = card_trig_time - (awg_trig_time + awg_trig_len)
     awg_card_idle_delay_loop = awg_card_idle_time/unit_inst_time
 
+    awg_drive_buffer_time = 200
+    awg_drive_buffer_loop = 200/unit_inst_time
+    drive_mod = awg_card_idle_time-awg_drive_buffer_time
+    drive_mod_loop = drive_mod /unit_inst_time
+
     card_readout_idle_time = readout_trig_time - (card_trig_time+card_trig_len)
     card_readout_idle_delay_loop = card_readout_idle_time/unit_inst_time
 
@@ -68,19 +73,20 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,readout_trig_ti
     pb_start_programming(PULSE_PROGRAM)
 
     # idle till next experiment - alex, moved idle to beginning of cycle
-    start = pb_inst_pbonly64(drive_trig, Inst.LONG_DELAY, period_idle_delay_loop, idle_unit_inst_time)
+    start = pb_inst_pbonly64(idle, Inst.LONG_DELAY, period_idle_delay_loop, idle_unit_inst_time)
 
     # awg trigger
-    pb_inst_pbonly64(awg_trig + drive_trig, Inst.LONG_DELAY,awg_trig_delay_loop,unit_inst_time)
+    pb_inst_pbonly64(awg_trig, Inst.LONG_DELAY,awg_trig_delay_loop,unit_inst_time)
 
     # idle between end of awg trig and card trig
-    pb_inst_pbonly64(drive_trig, Inst.LONG_DELAY, awg_card_idle_delay_loop, unit_inst_time)
+    pb_inst_pbonly64(idle, Inst.LONG_DELAY, awg_drive_buffer_loop, unit_inst_time)
+    pb_inst_pbonly64(drive_trig, Inst.LONG_DELAY, drive_mod_loop, unit_inst_time)
 
     # card trig starts first at the same time
     pb_inst_pbonly64(card_trig+drive_trig, Inst.LONG_DELAY,card_trig_delay_loop,unit_inst_time)
 
     # idle between card trig and readout trig
-    pb_inst_pbonly64(idle, Inst.LONG_DELAY, card_readout_idle_delay_loop, unit_inst_time)
+    pb_inst_pbonly64(drive_trig, Inst.LONG_DELAY, card_readout_idle_delay_loop, unit_inst_time)
 
     # readout trig after card trig finished
     pb_inst_pbonly64(readout_trig, Inst.LONG_DELAY,readout_trig_delay_loop,unit_inst_time)
