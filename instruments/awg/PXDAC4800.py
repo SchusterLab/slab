@@ -75,32 +75,50 @@ class PXDAC4800:
         print "Setting DAC"
 
         dll.SetPowerupDefaultsXD48(pHandle)
+        # dll._SetOperatingModeXD48(pHandle, U32(1))
         dll.SetTriggerModeXD48(pHandle, U32(0))  # Set trigger mode in PLAY PER TRIGGER mode
         dll.SetPlaybackClockSourceXD48(pHandle, U32(0))  # Set clock source - Internal 1.2 GHz
 
         dll.SetExternalReferenceClockEnableXD48(pHandle, U32(1))  ## External 10MHz clock
+
+        time.sleep(1)
+
+        ## start DAC auto calibration
+        for ii in range(20):
+            calibration_result = dll.StartDacAutoCalibrationXD48(pHandle)
+            print "Calibration status: " + str(calibration_result)
+            if calibration_result == 0:
+                break
+        # if not calibration_result == 0:
+        #     exit()
 
         dll.SetDacSampleFormatXD48(pHandle, U32(1))  # Set DAC format to signed
         dll.SetDacSampleSizeXD48(pHandle, U32(2))  # Set DAC sample size to 16 bit LSB pad
         # dll.SetDigitalIoModeXD48(pHandle, U32(1)) # Set Digital IO pulse at the begining of a playback
 
         ### Set Active Channel Mask
-        dll.SetActiveChannelMaskXD48(pHandle, U32(3))
+        dll.SetActiveChannelMaskXD48(pHandle, U32(3)) # dual chn1/2
+        #dll.SetActiveChannelMaskXD48(pHandle, U32(12)) # dual chn 3/4
 
         ### Set output voltage to max
         dll.SetOutputVoltageCh1XD48(pHandle, U32(1023))
         dll.SetOutputVoltageCh2XD48(pHandle, U32(1023))
+        dll.SetOutputVoltageCh3XD48(pHandle, U32(1023))
+        dll.SetOutputVoltageCh4XD48(pHandle, U32(1023))
 
         ### Set Dac Default value
         dll.SetCustomDacValueEnableXD48(pHandle, U32(3))
-        for ii in range(1,3,1):
-            dll.SetCustomDacDefaultValueXD48(pHandle,U32(ii),U32(offset_bytes_list[ii-1]))
+        for ii in range(1,5,1):# chn 1/2/3/4
+            dll.SetCustomDacDefaultValueXD48(pHandle, U32(ii), U32(offset_bytes_list[ii - 1]))
 
         ### Set clock division
         dll.SetClockDivider1XD48(pHandle, U32(clock_divider))
 
 
         print "Active Channel Mask: " + str(dll.GetActiveChannelMaskXD48(pHandle, U32(1)))
+
+
+
 
         print "Load waveform file."
 
@@ -163,11 +181,20 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
     # generate waveforms
     waveforms = np.reshape(waveforms, (len(waveforms), len(waveforms[0][0]) * len(waveforms[0])))
     #print "reshaped"
-    for ii, offset in enumerate(offsets):
-        # offset_bytes = int((offset + awg_output_offsets[ii]) / max_output_volt * max_value)
-        # offset_bytes_list.append(offset_bytes)
-        waveforms[ii] = waveforms[ii] * scale + offset
-    #print "scaled"
+
+    # old
+    # for ii, offset in enumerate(offsets):
+    #     # offset_bytes = int((offset + awg_output_offsets[ii]) / max_output_volt * max_value)
+    #     # offset_bytes_list.append(offset_bytes)
+    #     waveforms[ii] = waveforms[ii] * scale + offset
+    # #print "scaled"
+
+    #
+
+    # new
+    for ii in range(len(waveforms)):
+        waveforms[ii] = waveforms[ii] * scale + offsets[ii]
+    #
 
     interleaved_waveforms = np.ravel(np.column_stack(waveforms))
 
