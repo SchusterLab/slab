@@ -33,15 +33,18 @@ class AD5780(SocketInstrument):
 
     def ramp(self, channel, voltage, speed):
         """Ramp to voltage with speed in (V/S)"""
-        bitcode = int((voltage + 10)*13107.2)
+        bitcode = int((voltage + 10.0)*13107.2)
         if bitcode < 0 or bitcode > 262143:
             print('ERROR: voltage out of range')
             return bitcode
-        step_size = 100 # in bits
+        step_size = 10 # in bits, about 0.7mV out of +-10V
         step_time = int(step_size * 0.0762939453 / speed)
         if step_time == 0:
             step_time = 1
-        return self.query('RAMP %d %d %d %d' % (channel, bitcode, step_size, step_time))
+        endbit = self.query('RAMP %d %d %d %d' % (channel, bitcode, step_size, step_time))
+        if not endbit == bitcode:
+            endbit = self.set_voltage(channel, voltage)
+        return endbit
 
     def get_id(self):
         """Get Instrument ID String"""
@@ -59,5 +62,6 @@ if __name__ == "__main__":
     """Test script"""
     dac = AD5780(address='192.168.14.158')
     print(dac.get_id())
-    for i in range(1,5):
-        dac.sweep(i)
+    # for i in range(1,5):
+    #     dac.sweep(i)
+    # dac.ramp(2, 1, 0.1)
