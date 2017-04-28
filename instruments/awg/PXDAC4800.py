@@ -83,14 +83,7 @@ class PXDAC4800:
 
         time.sleep(1)
 
-        ## start DAC auto calibration
-        for ii in range(20):
-            calibration_result = dll.StartDacAutoCalibrationXD48(pHandle)
-            print "Calibration status: " + str(calibration_result)
-            if calibration_result == 0:
-                break
-        # if not calibration_result == 0:
-        #     exit()
+
 
         dll.SetDacSampleFormatXD48(pHandle, U32(1))  # Set DAC format to signed
         dll.SetDacSampleSizeXD48(pHandle, U32(2))  # Set DAC sample size to 16 bit LSB pad
@@ -99,6 +92,15 @@ class PXDAC4800:
         ### Set Active Channel Mask
         dll.SetActiveChannelMaskXD48(pHandle, U32(3)) # dual chn1/2
         #dll.SetActiveChannelMaskXD48(pHandle, U32(12)) # dual chn 3/4
+
+        ## start DAC auto calibration
+        for ii in range(20):
+            calibration_result = dll.StartDacAutoCalibrationXD48(pHandle)
+            print "Calibration status: " + str(calibration_result)
+            if calibration_result == 0:
+                break
+                # if not calibration_result == 0:
+                #     exit()
 
         ### Set output voltage to max
         dll.SetOutputVoltageCh1XD48(pHandle, U32(1023))
@@ -112,7 +114,7 @@ class PXDAC4800:
             dll.SetCustomDacDefaultValueXD48(pHandle, U32(ii), U32(offset_bytes_list[ii - 1]))
 
         ### Set clock division
-        dll.SetClockDivider1XD48(pHandle, U32(clock_divider))
+        # dll.SetClockDivider1XD48(pHandle, U32(clock_divider))
 
 
         print "Active Channel Mask: " + str(dll.GetActiveChannelMaskXD48(pHandle, U32(1)))
