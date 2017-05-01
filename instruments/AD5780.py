@@ -6,6 +6,7 @@ AD5780 Voltage Source
 """
 
 from slab.instruments import SocketInstrument, Instrument
+import time
 
 
 class AD5780(SocketInstrument):
@@ -22,7 +23,8 @@ class AD5780(SocketInstrument):
             return self.query('INIT %d' %(int(channel)))
 
     def set_voltage(self, channel, voltage):
-        bitcode = int((voltage + 10)*13107.2)
+        bitcode = int((voltage + 10.0)*13107.2)
+        print 'set target', bitcode
         if bitcode < 0 or bitcode > 262143:
             print('ERROR: voltage out of range')
             return bitcode
@@ -34,16 +36,25 @@ class AD5780(SocketInstrument):
     def ramp(self, channel, voltage, speed):
         """Ramp to voltage with speed in (V/S)"""
         bitcode = int((voltage + 10.0)*13107.2)
+        print 'target', bitcode
+        currbit = int(self.get_voltage(channel).strip())
+        time.sleep(self.query_sleep)
+        print 'current', currbit
+        if bitcode == currbit:
+            return str(bitcode)
         if bitcode < 0 or bitcode > 262143:
             print('ERROR: voltage out of range')
-            return bitcode
+            return str(bitcode)
         step_size = 10 # in bits, about 0.7mV out of +-10V
         step_time = int(step_size * 0.0762939453 / speed)
         if step_time == 0:
             step_time = 1
         endbit = self.query('RAMP %d %d %d %d' % (channel, bitcode, step_size, step_time))
+        time.sleep(self.query_sleep)
         if not endbit == bitcode:
             endbit = self.set_voltage(channel, voltage)
+        if not int(endbit.strip())==bitcode:
+            print 'DAC get_voltage error!!!'
         return endbit
 
     def get_id(self):
