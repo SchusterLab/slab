@@ -229,26 +229,28 @@ class PulseSequenceBuilder():
 
         return self.max_total_flux_pulse_span_length
 
-    def prepare_build(self, wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q,
-                      waveforms_qubit_flux,
-                      markers_qubit_buffer, markers_ch3m1,waveforms_pxdac4800_2_ch1,waveforms_pxdac4800_2_ch2):
+    def prepare_build(self, waveforms_tpts_dict, waveforms_dict):
         '''
         Being called internally to set the variables.
         '''
-        self.wtpts = wtpts
-        self.mtpts = mtpts
-        self.ftpts = ftpts
-        self.markers_readout = markers_readout
-        self.markers_card = markers_card
-        self.waveforms_qubit_I = waveforms_qubit_I
-        self.waveforms_qubit_Q = waveforms_qubit_Q
-        self.waveforms_qubit_flux = waveforms_qubit_flux
-        self.markers_qubit_buffer = markers_qubit_buffer
-        self.markers_ch3m1 = markers_ch3m1
 
-        # for 2nd PXDAC4800
-        self.waveforms_pxdac4800_2_ch1 = waveforms_pxdac4800_2_ch1
-        self.waveforms_pxdac4800_2_ch2 = waveforms_pxdac4800_2_ch2
+        self.waveforms_dict = waveforms_dict
+        self.waveforms_tpts_dict = waveforms_tpts_dict
+
+        # self.wtpts = wtpts
+        # self.mtpts = mtpts
+        # self.ftpts = ftpts
+        # self.markers_readout = markers_readout
+        # self.markers_card = markers_card
+        # self.waveforms_qubit_I = waveforms_qubit_I
+        # self.waveforms_qubit_Q = waveforms_qubit_Q
+        # self.waveforms_qubit_flux = waveforms_qubit_flux
+        # self.markers_qubit_buffer = markers_qubit_buffer
+        # self.markers_ch3m1 = markers_ch3m1
+        #
+        # # for 2nd PXDAC4800
+        # self.waveforms_pxdac4800_2_ch1 = waveforms_pxdac4800_2_ch1
+        # self.waveforms_pxdac4800_2_ch2 = waveforms_pxdac4800_2_ch2
 
 
     def build(self, pulse_sequence_matrix, total_pulse_span_length_list):
@@ -264,25 +266,28 @@ class PulseSequenceBuilder():
         awg_trig_len=self.cfg['triggers']['awg']
         start_pulseblaster(self.exp_period_ns, awg_trig_len,self.origin+self.card_delay, self.origin + self.measurement_delay, self.card_trig_width, self.measurement_width)
         for ii in range(len(pulse_sequence_matrix)):
-            self.markers_readout[ii] = ap.square(self.mtpts, 1, self.origin + self.measurement_delay,
-                                                 self.measurement_width)
-            self.markers_card[ii] = ap.square(self.mtpts, 1,
-                                              self.origin - self.card_delay + self.measurement_delay,
-                                              self.card_trig_width)
-            self.waveforms_qubit_I[ii], self.waveforms_qubit_Q[ii] = \
-                ap.sideband(self.wtpts,
-                            np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)),
-                            0, 0)
+            # self.markers_readout[ii] = ap.square(self.mtpts, 1, self.origin + self.measurement_delay,
+            #                                      self.measurement_width)
+            # self.markers_card[ii] = ap.square(self.mtpts, 1,
+            #                                   self.origin - self.card_delay + self.measurement_delay,
+            #                                   self.card_trig_width)
+            # self.waveforms_qubit_I[ii], self.waveforms_qubit_Q[ii] = \
+            #     ap.sideband(self.wtpts,
+            #                 np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)),
+            #                 0, 0)
+            #
+            # self.waveforms_pxdac4800_2_ch1[ii], self.waveforms_pxdac4800_2_ch2[ii] = \
+            #     ap.sideband(self.wtpts,
+            #                 np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)),
+            #                 0, 0)
 
-            self.waveforms_pxdac4800_2_ch1[ii], self.waveforms_pxdac4800_2_ch2[ii] = \
-                ap.sideband(self.wtpts,
-                            np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)),
-                            0, 0)
+            for waveforms_key in self.waveforms_dict:
+                self.waveforms_dict[waveforms_key][ii] = np.zeros(len(self.waveforms_tpts_dict[waveforms_key]))
 
-            self.waveforms_qubit_flux[ii] = ap.sideband(self.ftpts,
-                                                        np.zeros(len(self.ftpts)), np.zeros(len(self.ftpts)),
-                                                        0, 0)[0]
-            self.markers_qubit_buffer[ii] = ap.square(self.mtpts, 0, 0, 0)
+            # self.waveforms_qubit_flux[ii] = ap.sideband(self.ftpts,
+            #                                             np.zeros(len(self.ftpts)), np.zeros(len(self.ftpts)),
+            #                                             0, 0)[0]
+            # self.markers_qubit_buffer[ii] = ap.square(self.mtpts, 0, 0, 0)
             pulse_location = 0
             flux_pulse_location = total_pulse_span_length_list[ii]
             flux_pulse_started = False
@@ -292,93 +297,110 @@ class PulseSequenceBuilder():
                 pulse_defined = True
                 pulse = pulse_sequence_matrix[ii][jj]
                 if pulse.target == "q":
-                    if pulse.type == "square":
-                        qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
-                                                               self.marker_start_buffer, self.marker_end_buffer,pulse_location- pulse.delay, pulse,
-                                                               self.pulse_cfg)
-                    elif pulse.type == "gauss":
-                        qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
-                                                              self.marker_start_buffer, self.marker_end_buffer,
-                                                              pulse_location- pulse.delay, pulse)
-                    else:
-                        raise ValueError('Wrong pulse type has been defined')
-                    if pulse_defined:
-                        self.waveforms_qubit_I[ii] += qubit_waveforms[0]
-                        self.waveforms_qubit_Q[ii] += qubit_waveforms[1]
-                        self.markers_qubit_buffer[ii] += qubit_marker
+                    waveforms_key_list = ['qubit drive I','qubit drive Q']
+
+                    for waveform_id, waveforms_key in enumerate(waveforms_key_list):
+                        if waveforms_key in self.waveforms_dict:
+                            if pulse.type == "square":
+                                qubit_waveforms = square(self.waveforms_tpts_dict[waveforms_key], self.origin,
+                                                                       self.marker_start_buffer, self.marker_end_buffer,pulse_location- pulse.delay, pulse,
+                                                                       self.pulse_cfg)
+                            elif pulse.type == "gauss":
+                                qubit_waveforms = gauss(self.waveforms_tpts_dict[waveforms_key],  self.origin,
+                                                                      self.marker_start_buffer, self.marker_end_buffer,
+                                                                      pulse_location- pulse.delay, pulse)
+                            else:
+                                raise ValueError('Wrong pulse type has been defined')
+                            if pulse_defined:
+                                self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[waveform_id]
+
+                        # self.waveforms_qubit_I[ii] += qubit_waveforms[0]
+                        # self.waveforms_qubit_Q[ii] += qubit_waveforms[1]
+                        # self.markers_qubit_buffer[ii] += qubit_marker
 
                 if pulse.target == "q2":
-                    if pulse.type == "square":
-                        qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
-                                                               self.marker_start_buffer, self.marker_end_buffer,
-                                                               pulse_location- pulse.delay, pulse,
-                                                               self.pulse_cfg)
-                    elif pulse.type == "gauss":
-                        qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
-                                                              self.marker_start_buffer, self.marker_end_buffer,
-                                                              pulse_location- pulse.delay, pulse)
-                    else:
-                        raise ValueError('Wrong pulse type has been defined')
-                    if pulse_defined:
-                        self.waveforms_pxdac4800_2_ch1[ii] += qubit_waveforms[0]
-                        self.waveforms_pxdac4800_2_ch2[ii] += qubit_waveforms[1]
-                        self.markers_qubit_buffer[ii] += qubit_marker
 
-                elif pulse.target[:4] == "q,mm":
-                    self.uses_tek2 = True
-                    if flux_pulse_started == False:
-                        flux_end_location = pulse_location
-                        flux_pulse_started = True
-                    mm_target = int(pulse.target[4])
-                    mm_target_info = self.cfg['multimodes'][mm_target]
-                    flux_pulse_info = self.cfg['flux_pulse_info']
-                    if pulse.type == "square":
-                        # waveforms_qubit_flux = flux_square(self.ftpts, flux_pulse_location, pulse,
-                        #                                    self.cfg['flux_pulse_info'])
+                    waveforms_key_list = ['pxdac4800_2_ch1', 'pxdac4800_2_ch2']
 
-                        waveforms_qubit_flux = flux_square_phase_fix(self.ftpts, flux_pulse_location, pulse,
-                                                           self.cfg['flux_pulse_info'],mm_target_info, flux_pulse_info)
-                    elif pulse.type == "gauss":
-                        waveforms_qubit_flux = flux_gauss(self.ftpts, flux_pulse_location, pulse)
-                    else:
-                        raise ValueError('Wrong pulse type has been defined')
-                    if pulse_defined:
-                        self.waveforms_qubit_flux[ii] += waveforms_qubit_flux
-                elif pulse.target[:4] == "q:mm":
-                    self.uses_tek2 = True
-                    if flux_pulse_started == False:
-                        flux_end_location = pulse_location
-                        flux_pulse_started = True
-                    if pulse.type == "square":
-                        waveforms_qubit_flux = flux_square(self.ftpts, flux_pulse_location, pulse,
-                                                           self.cfg['flux_pulse_info'])
-                    elif pulse.type == "gauss":
-                        waveforms_qubit_flux = flux_gauss(self.ftpts, flux_pulse_location, pulse)
-                    else:
-                        raise ValueError('Wrong pulse type has been defined')
-                    if pulse_defined:
-                        self.waveforms_qubit_flux[ii] += waveforms_qubit_flux
+                    for waveform_id, waveforms_key in enumerate(waveforms_key_list):
+                        if waveforms_key in self.waveforms_dict:
+                            if pulse.type == "square":
+                                qubit_waveforms = square(self.waveforms_tpts_dict[waveforms_key], self.origin,
+                                                                       self.marker_start_buffer, self.marker_end_buffer,
+                                                                       pulse_location - pulse.delay, pulse,
+                                                                       self.pulse_cfg)
+                            elif pulse.type == "gauss":
+                                qubit_waveforms = gauss(self.waveforms_tpts_dict[waveforms_key],self.origin,
+                                                                      self.marker_start_buffer, self.marker_end_buffer,
+                                                                      pulse_location - pulse.delay, pulse)
+                            else:
+                                raise ValueError('Wrong pulse type has been defined')
+                            if pulse_defined:
+                                self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[waveform_id]
+
+                    # if pulse.type == "square":
+                    #     qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
+                    #                                            self.marker_start_buffer, self.marker_end_buffer,
+                    #                                            pulse_location- pulse.delay, pulse,
+                    #                                            self.pulse_cfg)
+                    # elif pulse.type == "gauss":
+                    #     qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
+                    #                                           self.marker_start_buffer, self.marker_end_buffer,
+                    #                                           pulse_location- pulse.delay, pulse)
+                    # else:
+                    #     raise ValueError('Wrong pulse type has been defined')
+                    # if pulse_defined:
+                    #     self.waveforms_pxdac4800_2_ch1[ii] += qubit_waveforms[0]
+                    #     self.waveforms_pxdac4800_2_ch2[ii] += qubit_waveforms[1]
+                    #     # self.markers_qubit_buffer[ii] += qubit_marker
+
+                # elif pulse.target[:4] == "q,mm":
+                #     self.uses_tek2 = True
+                #     if flux_pulse_started == False:
+                #         flux_end_location = pulse_location
+                #         flux_pulse_started = True
+                #     mm_target = int(pulse.target[4])
+                #     mm_target_info = self.cfg['multimodes'][mm_target]
+                #     flux_pulse_info = self.cfg['flux_pulse_info']
+                #     if pulse.type == "square":
+                #         # waveforms_qubit_flux = flux_square(self.ftpts, flux_pulse_location, pulse,
+                #         #                                    self.cfg['flux_pulse_info'])
+                #
+                #         waveforms_qubit_flux = flux_square_phase_fix(self.ftpts, flux_pulse_location, pulse,
+                #                                            self.cfg['flux_pulse_info'],mm_target_info, flux_pulse_info)
+                #     elif pulse.type == "gauss":
+                #         waveforms_qubit_flux = flux_gauss(self.ftpts, flux_pulse_location, pulse)
+                #     else:
+                #         raise ValueError('Wrong pulse type has been defined')
+                #     if pulse_defined:
+                #         self.waveforms_qubit_flux[ii] += waveforms_qubit_flux
+                # elif pulse.target[:4] == "q:mm":
+                #     self.uses_tek2 = True
+                #     if flux_pulse_started == False:
+                #         flux_end_location = pulse_location
+                #         flux_pulse_started = True
+                #     if pulse.type == "square":
+                #         waveforms_qubit_flux = flux_square(self.ftpts, flux_pulse_location, pulse,
+                #                                            self.cfg['flux_pulse_info'])
+                #     elif pulse.type == "gauss":
+                #         waveforms_qubit_flux = flux_gauss(self.ftpts, flux_pulse_location, pulse)
+                #     else:
+                #         raise ValueError('Wrong pulse type has been defined')
+                #     if pulse_defined:
+                #         self.waveforms_qubit_flux[ii] += waveforms_qubit_flux
                 elif pulse.target == "idle":
                     pass
 
-                high_values_indices = self.markers_qubit_buffer[ii] > 1
-                self.markers_qubit_buffer[ii][high_values_indices] = 1
+                # high_values_indices = self.markers_qubit_buffer[ii] > 1
+                # self.markers_qubit_buffer[ii][high_values_indices] = 1
 
                 pulse_location += pulse.span_length
-                if flux_pulse_started:
-                    flux_pulse_location -= pulse.span_length
+                # if flux_pulse_started:
+                #     flux_pulse_location -= pulse.span_length
 
-            if self.uses_tek2:
-                self.markers_ch3m1[ii] = ap.square(self.mtpts, 1,
-                                                self.origin - flux_end_location - total_pulse_span_length_list[
-                                                    ii] - self.tek2_trigger_delay,
-                                                self.card_trig_width)
-        return (self.markers_readout,
-                self.markers_card,
-                self.waveforms_qubit_I,
-                self.waveforms_qubit_Q,
-                self.waveforms_qubit_flux,
-                self.markers_qubit_buffer,
-                self.markers_ch3m1,
-                self.waveforms_pxdac4800_2_ch1,
-                self.waveforms_pxdac4800_2_ch2)
+            # if self.uses_tek2:
+            #     self.markers_ch3m1[ii] = ap.square(self.mtpts, 1,
+            #                                     self.origin - flux_end_location - total_pulse_span_length_list[
+            #                                         ii] - self.tek2_trigger_delay,
+            #                                     self.card_trig_width)
+        return self.waveforms_dict

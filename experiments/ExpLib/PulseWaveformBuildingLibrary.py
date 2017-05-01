@@ -1,30 +1,30 @@
 from slab.experiments.ExpLib import awgpulses as ap
 import numpy as np
 
-def square(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse,pulse_cfg):
+def square(wtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse,pulse_cfg):
     qubit_waveforms = ap.sideband(wtpts,
                              ap.square(wtpts, pulse.amp,
                                        origin - pulse_location - pulse.length - 0.5*(pulse.span_length - pulse.length), pulse.length,
                                        pulse_cfg['square']['ramp_sigma']),
                              np.zeros(len(wtpts)),
                              pulse.freq, pulse.phase)
-    qubit_marker = ap.square(mtpts, 1, origin - pulse_location - pulse.span_length - marker_start_buffer,
-                                                              pulse.span_length + marker_start_buffer - marker_end_buffer)
-    return (qubit_waveforms,qubit_marker)
+    # qubit_marker = ap.square(mtpts, 1, origin - pulse_location - pulse.span_length - marker_start_buffer,
+    #                                                           pulse.span_length + marker_start_buffer - marker_end_buffer)
+    return qubit_waveforms
 
 
-def gauss(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse):
+def gauss(wtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse):
     qubit_waveforms = ap.sideband(wtpts,
                              ap.gauss(wtpts, pulse.amp,
                                       origin - pulse_location - 0.5*pulse.span_length,
                                       pulse.length), np.zeros(len(wtpts)),
                              pulse.freq, pulse.phase)
-    qubit_marker = ap.square(mtpts, 1,
-                                              origin - pulse_location - pulse.span_length - marker_start_buffer,
-                                              pulse.span_length + marker_start_buffer- marker_end_buffer)
-    return (qubit_waveforms,qubit_marker)
+    # qubit_marker = ap.square(mtpts, 1,
+    #                                           origin - pulse_location - pulse.span_length - marker_start_buffer,
+    #                                           pulse.span_length + marker_start_buffer- marker_end_buffer)
+    return qubit_waveforms
 
-def gauss_phase_fix(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse,pulse_info,qubit_dc_offset):
+def gauss_phase_fix(wtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse,pulse_info,qubit_dc_offset):
 
     if pulse_info['fix_phase']:
         print "Phase of qubit pulse is being fixed"
@@ -34,10 +34,10 @@ def gauss_phase_fix(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pul
                                           origin - pulse_location - 0.5*pulse.span_length,
                                           pulse.length), np.zeros(len(wtpts)),
                                  pulse.freq, phase= 360*qubit_dc_offset/1e9*(wtpts+pulse_location)+ pulse.phase)
-        qubit_marker = ap.square(mtpts, 1,
-                                                  origin - pulse_location - pulse.span_length - marker_start_buffer,
-                                                  pulse.span_length + marker_start_buffer- marker_end_buffer)
-        return (qubit_waveforms,qubit_marker)
+        # qubit_marker = ap.square(mtpts, 1,
+        #                                           origin - pulse_location - pulse.span_length - marker_start_buffer,
+        #                                           pulse.span_length + marker_start_buffer- marker_end_buffer)
+        return qubit_waveforms
 
 
 
@@ -48,10 +48,10 @@ def gauss_phase_fix(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pul
                                           origin - pulse_location - 0.5*pulse.span_length,
                                           pulse.length), np.zeros(len(wtpts)),
                                  pulse.freq, pulse.phase)
-        qubit_marker = ap.square(mtpts, 1,
-                                                  origin - pulse_location - pulse.span_length - marker_start_buffer,
-                                                  pulse.span_length + marker_start_buffer- marker_end_buffer)
-        return (qubit_waveforms,qubit_marker)
+        # qubit_marker = ap.square(mtpts, 1,
+        #                                           origin - pulse_location - pulse.span_length - marker_start_buffer,
+        #                                           pulse.span_length + marker_start_buffer- marker_end_buffer)
+        return qubit_waveforms
 
 def flux_square(ftpts,pulse_location,pulse,pulse_cfg):
     waveforms_qubit_flux = ap.sideband(ftpts,

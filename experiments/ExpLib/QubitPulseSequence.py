@@ -70,7 +70,7 @@ class QubitPulseSequence(PulseSequence):
         max_length = self.psb.get_max_length(total_pulse_span_length_list)
         max_flux_length = self.psb.get_max_flux_length(self.total_flux_pulse_span_length_list)
         self.set_all_lengths(max_length)
-        self.set_waveform_length("qubit 1 flux", max_flux_length)
+        # self.set_waveform_length("qubit 1 flux", max_flux_length)
 
     def add_heterodyne_pulses(self):
 
@@ -98,32 +98,47 @@ class QubitPulseSequence(PulseSequence):
 
     def build_sequence(self):
         PulseSequence.build_sequence(self)
-        wtpts = self.get_waveform_times('qubit drive I')
-        mtpts = self.get_marker_times('qubit buffer')
-        ftpts = self.get_waveform_times('qubit 1 flux')
-        markers_readout = self.markers['readout pulse']
-        markers_card = self.markers['card trigger']
-        waveforms_qubit_I = self.waveforms['qubit drive I']
-        waveforms_qubit_Q = self.waveforms['qubit drive Q']
-        waveforms_qubit_flux = self.waveforms['qubit 1 flux']
-        markers_qubit_buffer = self.markers['qubit buffer']
-        markers_ch3m1 = self.markers['ch3m1']
+        # wtpts = self.get_waveform_times('qubit drive I')
+        # # mtpts = self.get_marker_times('qubit buffer')
+        # # ftpts = self.get_waveform_times('qubit 1 flux')
+        # # markers_readout = self.markers['readout pulse']
+        # # markers_card = self.markers['card trigger']
+        # waveforms_qubit_I = self.waveforms['qubit drive I']
+        # waveforms_qubit_Q = self.waveforms['qubit drive Q']
+        # # waveforms_qubit_flux = self.waveforms['qubit 1 flux']
+        # # markers_qubit_buffer = self.markers['qubit buffer']
+        # # markers_ch3m1 = self.markers['ch3m1']
+        # # for second PXDAC4800
+        # waveforms_pxdac4800_2_ch1 = self.waveforms['pxdac4800_2_ch1']
+        # waveforms_pxdac4800_2_ch2 = self.waveforms['pxdac4800_2_ch2']
+
+        self.waveforms_dict = {}
+        self.waveforms_tpts_dict = {}
+
+        for awg in self.awg_info:
+            for waveform in awg['waveforms']:
+                self.waveforms_dict[waveform['name']] = self.waveforms[waveform['name']]
+                self.waveforms_tpts_dict[waveform['name']] = self.get_waveform_times(waveform['name'])
+
+        self.psb.prepare_build(self.waveforms_tpts_dict,self.waveforms_dict)
 
 
-        # for second PXDAC4800
-        waveforms_pxdac4800_2_ch1 = self.waveforms['pxdac4800_2_ch1']
-        waveforms_pxdac4800_2_ch2 = self.waveforms['pxdac4800_2_ch2']
-
-
-        self.psb.prepare_build(wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q, waveforms_qubit_flux,
-                              markers_qubit_buffer, markers_ch3m1,waveforms_pxdac4800_2_ch1,waveforms_pxdac4800_2_ch2)
+        # self.psb.prepare_build(wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q, waveforms_qubit_flux,
+        #                       markers_qubit_buffer, markers_ch3m1,waveforms_pxdac4800_2_ch1,waveforms_pxdac4800_2_ch2)
         generated_sequences = self.psb.build(self.pulse_sequence_matrix,self.total_flux_pulse_span_length_list)
 
-        self.markers['readout pulse'], self.markers['card trigger'], self.waveforms['qubit drive I'], self.waveforms[
-            'qubit drive Q'], self.waveforms['qubit 1 flux'], self.markers['qubit buffer'], self.markers['ch3m1'],self.waveforms['pxdac4800_2_ch1'], self.waveforms['pxdac4800_2_ch2']= generated_sequences
+        self.waveforms_dict = generated_sequences
+
+        for waveform_key in self.waveforms_dict:
+            self.waveforms[waveform_key] = self.waveforms_dict[waveform_key]
+
 
         # np.save('S:\\_Data\\160711 - Nb Tunable Coupler\\data\\waveform.npy',self.waveforms['qubit drive Q'])
         ### in ipython notebook: call np.load('file_path/file_name.npy')
+
+
+        # change amplitude
+        # self.waveforms['pxdac4800_2_ch2'] = 0.5 * self.waveforms['pxdac4800_2_ch2']
 
     def reshape_data(self, data):
         return np.reshape(data, (self.sequence_length, self.waveform_length))

@@ -25,8 +25,8 @@ class PulseSequence:
             for waveform in awg['waveforms']:
                 self.waveform_info[waveform['name']] = waveform.copy()
 
-            for marker in awg['markers']:
-                self.marker_info[marker['name']] = marker.copy()
+            # for marker in awg['markers']:
+            #     self.marker_info[marker['name']] = marker.copy()
 
 
     def init_waveforms_markers(self):
@@ -37,11 +37,11 @@ class PulseSequence:
                 self.waveforms[waveform['name']] = np.zeros((self.sequence_length, waveform_clk_length))
                 self.waveform_info[waveform['name']]['tpts'] = np.linspace(0., (waveform_clk_length-1)/awg['clock_speed'],waveform_clk_length)
 
-            for marker in awg['markers']:
-                marker_length=self.marker_info[marker['name']]['length']
-                marker_clk_length = round_samples( marker_length* awg['clock_speed'],awg['min_samples'],awg['min_increment'])
-                self.markers[marker['name']] = np.zeros((self.sequence_length, marker_clk_length))
-                self.marker_info[marker['name']]['tpts'] = np.linspace(0., (marker_clk_length-1)/awg['clock_speed'],marker_clk_length)
+            # for marker in awg['markers']:
+            #     marker_length=self.marker_info[marker['name']]['length']
+            #     marker_clk_length = round_samples( marker_length* awg['clock_speed'],awg['min_samples'],awg['min_increment'])
+            #     self.markers[marker['name']] = np.zeros((self.sequence_length, marker_clk_length))
+            #     self.marker_info[marker['name']]['tpts'] = np.linspace(0., (marker_clk_length-1)/awg['clock_speed'],marker_clk_length)
 
     def set_all_lengths(self, length):
         for name in self.marker_info.keys():
