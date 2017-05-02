@@ -49,13 +49,22 @@ class HistogramSequence(PulseSequence):
         self.origin = self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer)
 
         self.set_all_lengths(self.max_length)
-        self.set_waveform_length("qubit 1 flux", 1)
+        # self.set_waveform_length("qubit 1 flux", 1)
 
     def build_sequence(self):
         PulseSequence.build_sequence(self)
 
+        # waveform dict
+        self.waveforms_dict = {}
+        self.waveforms_tpts_dict = {}
+
+        for awg in self.awg_info:
+            for waveform in awg['waveforms']:
+                self.waveforms_dict[waveform['name']] = self.waveforms[waveform['name']]
+                self.waveforms_tpts_dict[waveform['name']] = self.get_waveform_times(waveform['name'])
+
         wtpts = self.get_waveform_times('qubit drive I')
-        mtpts = self.get_marker_times('qubit buffer')
+        # mtpts = self.get_marker_times('qubit buffer')
 
         # todo: why no pulse blaster code here? c.f. vacuum rabi
 
@@ -67,11 +76,11 @@ class HistogramSequence(PulseSequence):
 
         for ii, d in enumerate(self.histo_pts):
 
-            self.markers['readout pulse'][ii] = ap.square(mtpts, 1, self.origin + self.measurement_delay,
-                                                           self.measurement_width)
-            self.markers['card trigger'][ii] = ap.square(mtpts, 1,
-                                                          self.origin - self.card_delay + self.measurement_delay,
-                                                          self.card_trig_width)
+            # self.markers['readout pulse'][ii] = ap.square(mtpts, 1, self.origin + self.measurement_delay,
+            #                                                self.measurement_width)
+            # self.markers['card trigger'][ii] = ap.square(mtpts, 1,
+            #                                               self.origin - self.card_delay + self.measurement_delay,
+            #                                               self.card_trig_width)
 
             w = self.pi_length
             if ii>0:
@@ -85,8 +94,10 @@ class HistogramSequence(PulseSequence):
             else:
                 a_ef = 0
 
-            self.waveforms['qubit drive I'][ii] = np.zeros(len(wtpts))
-            self.waveforms['qubit drive Q'][ii] = np.zeros(len(wtpts))
+            if 'qubit drive I' in self.waveforms_dict:
+                self.waveforms['qubit drive I'][ii] = np.zeros(len(wtpts))
+            if 'qubit drive Q' in self.waveforms_dict:
+                self.waveforms['qubit drive Q'][ii] = np.zeros(len(wtpts))
 
             if self.pulse_type == 'square':
                 pulsedata = ap.square(wtpts, a,
@@ -99,19 +110,23 @@ class HistogramSequence(PulseSequence):
                 pulsedata_ef = ap.gauss(wtpts, a_ef, self.origin - 3 * w_ef, w_ef)
 
             temp_I, temp_Q = ap.sideband(wtpts, pulsedata, np.zeros(len(wtpts)), self.pulse_cfg['iq_freq'], 0)
-            self.waveforms['qubit drive I'][ii] += temp_I
-            self.waveforms['qubit drive Q'][ii] += temp_Q
+            if 'qubit drive I' in self.waveforms_dict:
+                self.waveforms['qubit drive I'][ii] += temp_I
+            if 'qubit drive Q' in self.waveforms_dict:
+                self.waveforms['qubit drive Q'][ii] += temp_Q
 
             # ef pulse shifted in freq by alpha
             # consistent with implementation in ef_rabi
             temp_I_ef, temp_Q_ef = ap.sideband(wtpts, pulsedata_ef, np.zeros(len(wtpts)),
                                          self.pulse_cfg['iq_freq'] + self.cfg['qubit']['alpha'], 0)
-            self.waveforms['qubit drive I'][ii] += temp_I_ef
-            self.waveforms['qubit drive Q'][ii] += temp_Q_ef
+            if 'qubit drive I' in self.waveforms_dict:
+                self.waveforms['qubit drive I'][ii] += temp_I_ef
+            if 'qubit drive Q' in self.waveforms_dict:
+                self.waveforms['qubit drive Q'][ii] += temp_Q_ef
 
-            self.markers['qubit buffer'][ii] = ap.square(mtpts, 1,
-                                                         self.origin - self.max_pulse_width - self.marker_start_buffer,
-                                                         self.max_pulse_width + self.marker_start_buffer)
+            # self.markers['qubit buffer'][ii] = ap.square(mtpts, 1,
+            #                                              self.origin - self.max_pulse_width - self.marker_start_buffer,
+            #                                              self.max_pulse_width + self.marker_start_buffer)
 
             ## heterodyne pulse
             self.marker_start_buffer = 0
@@ -120,9 +135,41 @@ class HistogramSequence(PulseSequence):
 
             heterodyne_pulsedata = ap.square(wtpts, self.readout_cfg['heterodyne_a'], self.origin, self.readout_cfg['width'] + 1000, 10)
 
-            self.waveforms['pxdac4800_2_ch1'][ii], self.waveforms['pxdac4800_2_ch2'][ii] = \
-                ap.sideband(wtpts, heterodyne_pulsedata, np.zeros(len(wtpts)), self.readout_cfg['heterodyne_freq'],
+            temp_h_I, temp_h_Q = \
+                ap.sideband(wtpts, heterodyne_pulsedata, np.zeros(len(wtpts)), self.cfg['readout']['heterodyne_freq'],
                             0)
+
+            if 'hetero_ch1' in self.waveforms_dict:
+                self.waveforms['hetero_ch1'][ii] = temp_h_I
+            if 'hetero_ch2' in self.waveforms_dict:
+                self.waveforms['hetero_ch2'][ii] = temp_h_Q
+            ##
+
+
+            # flux pulse
+            hw_delay = -95
+            manual_delay = 0
+            delay = manual_delay + hw_delay
+
+            flux_a = [0.5,0.5,0.5,0.5]
+            flux_freq = [200e6,200e6,200e6,200e6]
+
+
+            delay = manual_delay + hw_delay
+
+            for jj in range(4):
+
+                flux_pulsedata = ap.square(self.waveforms_tpts_dict['flux_%d' %(jj+1)], flux_a[jj], self.origin + delay,
+                                                 self.readout_cfg['width'] + 1000, 10)
+
+                temp_f_I, temp_f_Q = \
+                    ap.sideband(self.waveforms_tpts_dict['flux_%d' %(jj+1)], flux_pulsedata, np.zeros(len(self.waveforms_tpts_dict['flux_%d' %(jj+1)])),
+                                flux_freq[jj],
+                                0)
+
+                if 'flux_%d' %(jj+1) in self.waveforms_dict:
+                    self.waveforms['flux_%d' %(jj+1)][ii] = temp_f_I
+
             ##
 
     def reshape_data(self, data):
