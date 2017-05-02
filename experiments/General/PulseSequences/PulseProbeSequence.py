@@ -43,6 +43,15 @@ class PulseProbeSequence(PulseSequence):
     def build_sequence(self):
         PulseSequence.build_sequence(self)
 
+        # waveform dict
+        self.waveforms_dict = {}
+        self.waveforms_tpts_dict = {}
+
+        for awg in self.awg_info:
+            for waveform in awg['waveforms']:
+                self.waveforms_dict[waveform['name']] = self.waveforms[waveform['name']]
+                self.waveforms_tpts_dict[waveform['name']] = self.get_waveform_times(waveform['name'])
+
         wtpts = self.get_waveform_times('qubit drive I')
 #        mtpts = self.get_marker_times('qubit buffer')
 
@@ -64,15 +73,17 @@ class PulseProbeSequence(PulseSequence):
         a = self.a
 
         if self.pulse_type == 'square':
-            self.waveforms['qubit drive I'][ii] = ap.sideband(wtpts,
-                                                               ap.square(wtpts, a,
-                                                                          self.origin - pulse_probe_len - 3 * self.ramp_sigma,
-                                                                          pulse_probe_len, self.ramp_sigma),
-                                                               np.zeros(len(wtpts)),
-                                                              self.pulse_probe_cfg['iq_freq'], 0)[0]
-            self.waveforms['qubit drive Q'][ii] = ap.sideband(wtpts,
-                                                               ap.square(wtpts, a,
-                                                                          self.origin - pulse_probe_len - 3 * self.ramp_sigma,
+            if 'qubit drive I' in self.waveforms_dict:
+                self.waveforms['qubit drive I'][ii] = ap.sideband(wtpts,
+                                                                   ap.square(wtpts, a,
+                                                                              self.origin - pulse_probe_len - 3 * self.ramp_sigma,
+                                                                              pulse_probe_len, self.ramp_sigma),
+                                                                   np.zeros(len(wtpts)),
+                                                                  self.pulse_probe_cfg['iq_freq'], 0)[0]
+            if 'qubit drive Q' in self.waveforms_dict:
+                self.waveforms['qubit drive Q'][ii] = ap.sideband(wtpts,
+                                                                   ap.square(wtpts, a,
+                                                                              self.origin - pulse_probe_len - 3 * self.ramp_sigma,
                                                                           pulse_probe_len, self.ramp_sigma),
                                                                np.zeros(len(wtpts)),
                                                               self.pulse_probe_cfg['iq_freq'], 0)[1]
@@ -84,11 +95,13 @@ class PulseProbeSequence(PulseSequence):
             # self.markers['qubit buffer'][ii][high_values_indices] = 1
 
         if self.pulse_type == 'gauss':
-            self.waveforms['qubit drive I'][ii] = ap.sideband(wtpts,
+            if 'qubit drive I' in self.waveforms_dict:
+                self.waveforms['qubit drive I'][ii] = ap.sideband(wtpts,
                                                                ap.gauss(wtpts, a, self.origin - 3 * pulse_probe_len,
                                                                          pulse_probe_len), np.zeros(len(wtpts)),
                                                               self.pulse_probe_cfg['iq_freq'], 0)[0]
-            self.waveforms['qubit drive Q'][ii] = ap.sideband(wtpts,
+            if 'qubit drive Q' in self.waveforms_dict:
+                self.waveforms['qubit drive Q'][ii] = ap.sideband(wtpts,
                                                                ap.gauss(wtpts, a, self.origin - 3 * pulse_probe_len,
                                                                          pulse_probe_len), np.zeros(len(wtpts)),
                                                               self.pulse_probe_cfg['iq_freq'], 0)[1]
@@ -104,8 +117,13 @@ class PulseProbeSequence(PulseSequence):
 
         heterodyne_pulsedata = ap.square(wtpts, 0.5, self.origin, self.cfg['readout']['width']+1000, 10)
 
-        self.waveforms['pxdac4800_2_ch1'][ii], self.waveforms['pxdac4800_2_ch2'][ii] =\
+        temp_h_I, temp_h_Q = \
             ap.sideband(wtpts, heterodyne_pulsedata, np.zeros(len(wtpts)), self.cfg['readout']['heterodyne_freq'], 0)
+
+        if 'pxdac4800_2_ch1' in self.waveforms_dict:
+            self.waveforms['pxdac4800_2_ch1'][ii] = temp_h_I
+        if 'pxdac4800_2_ch2' in self.waveforms_dict:
+            self.waveforms['pxdac4800_2_ch2'][ii] = temp_h_Q
         ##
 
         # np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\waveform_I.npy', self.waveforms['qubit drive I'])
