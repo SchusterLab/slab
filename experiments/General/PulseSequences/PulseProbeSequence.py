@@ -115,15 +115,15 @@ class PulseProbeSequence(PulseSequence):
         self.marker_start_buffer = 0
         self.marker_end_buffer = 0
 
-        heterodyne_pulsedata = ap.square(wtpts, 0.5, self.origin, self.cfg['readout']['width']+1000, 10)
+        heterodyne_pulsedata = ap.square(wtpts, self.cfg['readout']['heterodyne_a'], self.origin, self.cfg['readout']['width']+1000, 10)
 
         temp_h_I, temp_h_Q = \
             ap.sideband(wtpts, heterodyne_pulsedata, np.zeros(len(wtpts)), self.cfg['readout']['heterodyne_freq'], 0)
 
-        if 'pxdac4800_2_ch1' in self.waveforms_dict:
-            self.waveforms['pxdac4800_2_ch1'][ii] = temp_h_I
-        if 'pxdac4800_2_ch2' in self.waveforms_dict:
-            self.waveforms['pxdac4800_2_ch2'][ii] = temp_h_Q
+        if 'hetero_ch1' in self.waveforms_dict:
+            self.waveforms['hetero_ch1'][ii] = temp_h_I
+        if 'hetero_ch2' in self.waveforms_dict:
+            self.waveforms['hetero_ch2'][ii] = temp_h_Q
         ##
 
         # np.save('S:\\_Data\\170102 - Tunable Coupler Higher Qubit with TWPA and Isolater\\data\\waveform_I.npy', self.waveforms['qubit drive I'])

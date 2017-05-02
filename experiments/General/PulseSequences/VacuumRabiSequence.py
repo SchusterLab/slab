@@ -50,13 +50,13 @@ class VacuumRabiSequence(PulseSequence):
         self.origin = self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer)
 
         self.set_all_lengths(self.max_length)
-        self.set_waveform_length("qubit 1 flux", 1)
+        # self.set_waveform_length("qubit 1 flux", 1)
 
     def build_sequence(self):
         PulseSequence.build_sequence(self)
 
         wtpts = self.get_waveform_times('qubit drive I')
-        mtpts = self.get_marker_times('qubit buffer')
+#        mtpts = self.get_marker_times('qubit buffer')
 
         ii = 0
         w = self.pi_length
@@ -72,8 +72,20 @@ class VacuumRabiSequence(PulseSequence):
                            self.card_trig_width, self.measurement_width)
         run_pulseblaster()
 
-        self.waveforms['qubit drive I'][ii] = np.zeros(len(wtpts))
-        self.waveforms['qubit drive Q'][ii] = np.zeros(len(wtpts))
+        # waveform dict
+        self.waveforms_dict = {}
+        self.waveforms_tpts_dict = {}
+
+        for awg in self.awg_info:
+            for waveform in awg['waveforms']:
+                self.waveforms_dict[waveform['name']] = self.waveforms[waveform['name']]
+                self.waveforms_tpts_dict[waveform['name']] = self.get_waveform_times(waveform['name'])
+
+        if 'qubit drive I' in self.waveforms_dict:
+            self.waveforms['qubit drive I'][ii] = np.zeros(len(wtpts))
+
+        if 'qubit drive Q' in self.waveforms_dict:
+            self.waveforms['qubit drive Q'][ii] = np.zeros(len(wtpts))
 
         if self.pi_pulse:
 
@@ -84,8 +96,11 @@ class VacuumRabiSequence(PulseSequence):
                 pulsedata = ap.gauss(wtpts, a, self.origin - 3 * w - 6 * w_ef , w)
 
             temp_I, temp_Q = ap.sideband(wtpts, pulsedata, np.zeros(len(wtpts)), self.pulse_cfg['iq_freq'], 0)
-            self.waveforms['qubit drive I'][ii] += temp_I
-            self.waveforms['qubit drive Q'][ii] += temp_Q
+
+            if 'qubit drive I' in self.waveforms_dict:
+                self.waveforms['qubit drive I'][ii] += temp_I
+            if 'qubit drive Q' in self.waveforms_dict:
+                self.waveforms['qubit drive Q'][ii] += temp_Q
 
         if self.pi_ef_pulse:
 
@@ -99,8 +114,10 @@ class VacuumRabiSequence(PulseSequence):
             # consistent with implementation in ef_rabi
             temp_I, temp_Q = ap.sideband(wtpts, pulsedata, np.zeros(len(wtpts)),
                                          self.pulse_cfg['iq_freq']+self.cfg['qubit']['alpha'], 0)
-            self.waveforms['qubit drive I'][ii] += temp_I
-            self.waveforms['qubit drive Q'][ii] += temp_Q
+            if 'qubit drive I' in self.waveforms_dict:
+                self.waveforms['qubit drive I'][ii] += temp_I
+            if 'qubit drive Q' in self.waveforms_dict:
+                self.waveforms['qubit drive Q'][ii] += temp_Q
 
         # self.waveforms['qubit drive I'][ii], self.waveforms['qubit drive Q'][ii] = \
         #         ap.sideband(wtpts, pulsedata, np.zeros(len(wtpts)), self.pulse_cfg['iq_freq'], 0)
@@ -111,18 +128,23 @@ class VacuumRabiSequence(PulseSequence):
 
         heterodyne_pulsedata = ap.square(wtpts, self.cfg['readout']['heterodyne_a'], self.origin, self.cfg['readout']['width']+1000, 10)
 
-        self.waveforms['pxdac4800_2_ch1'][ii], self.waveforms['pxdac4800_2_ch2'][ii] =\
+        temp_h_I, temp_h_Q =\
             ap.sideband(wtpts, heterodyne_pulsedata, np.zeros(len(wtpts)), self.cfg['readout']['heterodyne_freq'], 0)
+
+        if 'hetero_ch1' in self.waveforms_dict:
+            self.waveforms['hetero_ch1'][ii] = temp_h_I
+        if 'hetero_ch2' in self.waveforms_dict:
+            self.waveforms['hetero_ch2'][ii] = temp_h_Q
         ##
 
-        self.markers['qubit buffer'][ii] = ap.square(mtpts, 1, self.origin - self.max_pulse_width - self.marker_start_buffer ,
-                                                    self.max_pulse_width + self.marker_start_buffer)
-
-        self.markers['readout pulse'][ii] = ap.square(mtpts, 1, self.origin + self.measurement_delay,
-                                                       self.measurement_width)
-        self.markers['card trigger'][ii] = ap.square(mtpts, 1,
-                                                      self.origin - self.card_delay + self.measurement_delay,
-                                                      self.card_trig_width)
+        # self.markers['qubit buffer'][ii] = ap.square(mtpts, 1, self.origin - self.max_pulse_width - self.marker_start_buffer ,
+        #                                             self.max_pulse_width + self.marker_start_buffer)
+        #
+        # self.markers['readout pulse'][ii] = ap.square(mtpts, 1, self.origin + self.measurement_delay,
+        #                                                self.measurement_width)
+        # self.markers['card trigger'][ii] = ap.square(mtpts, 1,
+        #                                               self.origin - self.card_delay + self.measurement_delay,
+        #                                               self.card_trig_width)
 
     def reshape_data(self, data):
         return np.reshape(data, (self.sequence_length, self.waveform_length))
