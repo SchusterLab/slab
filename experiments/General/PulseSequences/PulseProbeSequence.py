@@ -38,13 +38,13 @@ class PulseProbeSequence(PulseSequence):
         self.origin = self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer)
 
         self.set_all_lengths(self.max_length)
-        self.set_waveform_length("qubit 1 flux", 1)
+#        self.set_waveform_length("qubit 1 flux", 1)
 
     def build_sequence(self):
         PulseSequence.build_sequence(self)
 
         wtpts = self.get_waveform_times('qubit drive I')
-        mtpts = self.get_marker_times('qubit buffer')
+#        mtpts = self.get_marker_times('qubit buffer')
 
         ii = 0
         # TODO: pulseblaster out of sync bug#
@@ -54,11 +54,11 @@ class PulseProbeSequence(PulseSequence):
                            self.card_trig_width, self.measurement_width)
         run_pulseblaster()
 
-        self.markers['readout pulse'][ii] = ap.square(mtpts, 1, self.origin + self.measurement_delay,
-                                                       self.measurement_width)
-        self.markers['card trigger'][ii] = ap.square(mtpts, 1,
-                                                      self.origin - self.card_delay + self.measurement_delay,
-                                                      self.card_trig_width)
+        # self.markers['readout pulse'][ii] = ap.square(mtpts, 1, self.origin + self.measurement_delay,
+        #                                                self.measurement_width)
+        # self.markers['card trigger'][ii] = ap.square(mtpts, 1,
+        #                                               self.origin - self.card_delay + self.measurement_delay,
+        #                                               self.card_trig_width)
 
         pulse_probe_len = self.pulse_probe_len
         a = self.a
@@ -76,12 +76,12 @@ class PulseProbeSequence(PulseSequence):
                                                                           pulse_probe_len, self.ramp_sigma),
                                                                np.zeros(len(wtpts)),
                                                               self.pulse_probe_cfg['iq_freq'], 0)[1]
-            self.markers['qubit buffer'][ii] = ap.square(mtpts, 1,
-                                                          self.origin - pulse_probe_len - 3 * self.ramp_sigma - self.marker_start_buffer,
-                                                          pulse_probe_len + 4 * self.ramp_sigma + self.marker_start_buffer)
-
-            high_values_indices = self.markers['qubit buffer'][ii] > 1
-            self.markers['qubit buffer'][ii][high_values_indices] = 1
+            # self.markers['qubit buffer'][ii] = ap.square(mtpts, 1,
+            #                                               self.origin - pulse_probe_len - 3 * self.ramp_sigma - self.marker_start_buffer,
+            #                                               pulse_probe_len + 4 * self.ramp_sigma + self.marker_start_buffer)
+            #
+            # high_values_indices = self.markers['qubit buffer'][ii] > 1
+            # self.markers['qubit buffer'][ii][high_values_indices] = 1
 
         if self.pulse_type == 'gauss':
             self.waveforms['qubit drive I'][ii] = ap.sideband(wtpts,
@@ -92,11 +92,11 @@ class PulseProbeSequence(PulseSequence):
                                                                ap.gauss(wtpts, a, self.origin - 3 * pulse_probe_len,
                                                                          pulse_probe_len), np.zeros(len(wtpts)),
                                                               self.pulse_probe_cfg['iq_freq'], 0)[1]
-            self.markers['qubit buffer'][ii] = ap.square(mtpts, 1, self.origin - 6 * pulse_probe_len - self.marker_start_buffer,
-                                                           6 * pulse_probe_len + self.marker_start_buffer)
-
-            high_values_indices = self.markers['qubit buffer'][ii] > 1
-            self.markers['qubit buffer'][ii][high_values_indices] = 1
+            # self.markers['qubit buffer'][ii] = ap.square(mtpts, 1, self.origin - 6 * pulse_probe_len - self.marker_start_buffer,
+            #                                                6 * pulse_probe_len + self.marker_start_buffer)
+            #
+            # high_values_indices = self.markers['qubit buffer'][ii] > 1
+            # self.markers['qubit buffer'][ii][high_values_indices] = 1
 
         ## heterodyne pulse
         self.marker_start_buffer = 0

@@ -44,7 +44,7 @@ class PulseSequenceBuilder():
         '''
         Append a pulse in the pulse sequence.
         '''
-        if target == "q" or target == "q2":
+        if target == "q" or target == "hetero" or target[:4] == "flux":
             if name == "0":
                 amp = 0
                 length = self.pulse_cfg[type]['pi_length']
@@ -105,8 +105,8 @@ class PulseSequenceBuilder():
 
             pulse_span_length = ap.get_pulse_span_length(self.pulse_cfg, type, length)
 
-            ## hack to not consider pulse length of "q2" (used for heterodyne)
-            if target == "q2":
+            ## hack to not consider pulse length of "hetero" (used for heterodyne)
+            if target == "hetero" or target[:4] == "flux":
                 pulse_span_length = 0
 
             if self.flux_pulse_started:
@@ -318,9 +318,9 @@ class PulseSequenceBuilder():
                         # self.waveforms_qubit_Q[ii] += qubit_waveforms[1]
                         # self.markers_qubit_buffer[ii] += qubit_marker
 
-                if pulse.target == "q2":
+                if pulse.target == "hetero":
 
-                    waveforms_key_list = ['pxdac4800_2_ch1', 'pxdac4800_2_ch2']
+                    waveforms_key_list = ['hetero_ch1', 'hetero_ch2']
 
                     for waveform_id, waveforms_key in enumerate(waveforms_key_list):
                         if waveforms_key in self.waveforms_dict:
@@ -338,6 +338,31 @@ class PulseSequenceBuilder():
                             if pulse_defined:
                                 self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[waveform_id]
 
+                #
+                if pulse.target[:4] == "flux":
+
+                    # waveforms_key_list = ['flux_1', 'flux_2','flux_3','flux_4']
+
+                    waveforms_key = pulse.target
+
+                    if waveforms_key in self.waveforms_dict:
+                        if pulse.type == "square":
+                            qubit_waveforms = square(self.waveforms_tpts_dict[waveforms_key],
+                                                     self.origin,
+                                                     self.marker_start_buffer,
+                                                     self.marker_end_buffer,
+                                                     pulse_location - pulse.delay, pulse,
+                                                     self.pulse_cfg)
+                        elif pulse.type == "gauss":
+                            qubit_waveforms = gauss(self.waveforms_tpts_dict[waveforms_key],
+                                                    self.origin,
+                                                    self.marker_start_buffer,
+                                                    self.marker_end_buffer,
+                                                    pulse_location - pulse.delay, pulse)
+                        else:
+                            raise ValueError('Wrong pulse type has been defined')
+                        if pulse_defined:
+                            self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[0] ## always zero index
                     # if pulse.type == "square":
                     #     qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
                     #                                            self.marker_start_buffer, self.marker_end_buffer,

@@ -10,15 +10,20 @@ import time
 from struct import *
 from array import array as barray
 
-SERIAL_NUMBER = [301450,300727]
+SERIAL_NUMBER = [301450,301483]
 
 class PXDAC4800:
     def __init__(self,brdNum):
         self.brdNum = brdNum
 
-    def load_sequence_file(self, waveform_file_name,offset_bytes_list,clock_speed):
+    def load_sequence_file(self, waveform_file_name,awg):
 
         print "load_sequence_file inputs:"
+
+        offset_bytes_list  = awg['iq_offsets_bytes']
+        clock_speed = awg['clock_speed']
+        self.channels_num = awg['channels_num']
+
         print waveform_file_name
         print offset_bytes_list
         print clock_speed
@@ -90,8 +95,11 @@ class PXDAC4800:
         # dll.SetDigitalIoModeXD48(pHandle, U32(1)) # Set Digital IO pulse at the begining of a playback
 
         ### Set Active Channel Mask
-        dll.SetActiveChannelMaskXD48(pHandle, U32(3)) # dual chn1/2
-        #dll.SetActiveChannelMaskXD48(pHandle, U32(12)) # dual chn 3/4
+        if self.channels_num == 2:
+            dll.SetActiveChannelMaskXD48(pHandle, U32(3)) # dual chn1/2
+            #dll.SetActiveChannelMaskXD48(pHandle, U32(12)) # dual chn 3/4
+        elif self.channels_num == 4:
+            dll.SetActiveChannelMaskXD48(pHandle, U32(15)) # four channels
 
         ## start DAC auto calibration
         for ii in range(20):
@@ -114,7 +122,7 @@ class PXDAC4800:
             dll.SetCustomDacDefaultValueXD48(pHandle, U32(ii), U32(offset_bytes_list[ii - 1]))
 
         ### Set clock division
-        # dll.SetClockDivider1XD48(pHandle, U32(clock_divider))
+        dll.SetClockDivider1XD48(pHandle, U32(clock_divider))
 
 
         print "Active Channel Mask: " + str(dll.GetActiveChannelMaskXD48(pHandle, U32(1)))
@@ -145,7 +153,7 @@ class PXDAC4800:
         unsigned_short_length = 2
         # print "Begining Ram Playback."
         self.dll.BeginRamPlaybackXD48(self.pHandle, self.offset, self.PlaybackBytes, U32(
-            2 * self.waveform_length * unsigned_short_length))  ## Only play sequence's single waveform byte length for each trigger
+            self.channels_num * self.waveform_length * unsigned_short_length))  ## Only play sequence's single waveform byte length for each trigger
 
     def stop(self):
         # print "Stopping Ram Playback."
