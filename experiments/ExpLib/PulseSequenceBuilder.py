@@ -216,6 +216,9 @@ class PulseSequenceBuilder():
         '''
         self.acquire_readout_cfg()
         max_total_pulse_span_length = max(total_pulse_span_length_list)
+
+        self.max_pulse_length = max_total_pulse_span_length
+
         max_total_pulse_span_length += self.tek2_trigger_delay  #
         self.max_length = round_samples(
             (max_total_pulse_span_length + self.measurement_delay + self.measurement_width + 2 * self.start_end_buffer))
