@@ -95,12 +95,18 @@ class QubitPulseSequence(PulseSequence):
 
         hw_delay = self.cfg['flux_pulse_info']['pxdac_hw_delay']
 
-        if self.cfg['flux_pulse_info']['on_during_drive']:
+        if self.cfg['flux_pulse_info']['on_during_drive'] and self.cfg['flux_pulse_info']['on_during_readout']:
             flux_width = self.cfg['readout']['width'] + self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0 + 1000
             flux_delay = flux_width/2.0 - (self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0) + hw_delay
-        else:
+        elif (self.cfg['flux_pulse_info']['on_during_drive']) and (not self.cfg['flux_pulse_info']['on_during_readout']):
+            flux_width = self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0
+            flux_delay = flux_width / 2.0 - (self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0) + hw_delay
+        elif (not self.cfg['flux_pulse_info']['on_during_drive']) and (self.cfg['flux_pulse_info']['on_during_readout']):
             flux_width = self.cfg['readout']['width'] + 1000
             flux_delay = flux_width/2.0 + hw_delay
+        else:
+            flux_width = 0
+            flux_delay = 0
 
         flux_a = self.cfg['flux_pulse_info']['flux_a']
         flux_freq = self.cfg['flux_pulse_info']['flux_freq']
