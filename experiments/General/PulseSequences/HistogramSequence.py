@@ -147,20 +147,21 @@ class HistogramSequence(PulseSequence):
 
 
             # flux pulse
-            hw_delay = -95
-            manual_delay = 0
-            delay = manual_delay + hw_delay
+            hw_delay = self.cfg['flux_pulse_info']['pxdac_hw_delay'] #-95
 
-            flux_a = [0.5,0.5,0.5,0.5]
-            flux_freq = [200e6,200e6,200e6,200e6]
+            if self.cfg['flux_pulse_info']['on_during_drive']:
+                flux_start = max(self.origin + hw_delay - self.max_pulse_width - self.start_end_buffer/2.0, 0)
+                flux_width = self.readout_cfg['width'] + self.max_pulse_width + self.start_end_buffer/2.0 + 1000
+            else:
+                flux_start = max(self.origin + hw_delay, 0)
+                flux_width = self.readout_cfg['width'] + 1000
 
-
-            delay = manual_delay + hw_delay
+            flux_a = self.cfg['flux_pulse_info']['flux_a']
+            flux_freq = self.cfg['flux_pulse_info']['flux_freq']
 
             for jj in range(4):
 
-                flux_pulsedata = ap.square(self.waveforms_tpts_dict['flux_%d' %(jj+1)], flux_a[jj], self.origin + delay,
-                                                 self.readout_cfg['width'] + 1000, 10)
+                flux_pulsedata = ap.square(self.waveforms_tpts_dict['flux_%d' %(jj+1)], flux_a[jj], flux_start, flux_width, 10)
 
                 temp_f_I, temp_f_Q = \
                     ap.sideband(self.waveforms_tpts_dict['flux_%d' %(jj+1)], flux_pulsedata, np.zeros(len(self.waveforms_tpts_dict['flux_%d' %(jj+1)])),
