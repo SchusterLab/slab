@@ -43,8 +43,8 @@ class QubitPulseSequence(PulseSequence):
             define_pulses(pt)
 
             ## add heterodyne pulse
-            self.add_heterodyne_pulses()
-            self.add_flux_pulses()
+            # self.add_heterodyne_pulses()
+            # self.add_flux_pulses()
 
 
             self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
@@ -63,8 +63,8 @@ class QubitPulseSequence(PulseSequence):
                     self.psb.append('q', 'pi_q_ef', self.pulse_type)
 
                 ## add heterodyne pulse
-                self.add_heterodyne_pulses()
-                self.add_flux_pulses()
+                # self.add_heterodyne_pulses()
+                # self.add_flux_pulses()
 
                 self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
                 total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
@@ -75,27 +75,41 @@ class QubitPulseSequence(PulseSequence):
         self.set_all_lengths(max_length)
         # self.set_waveform_length("qubit 1 flux", max_flux_length)
 
-    def add_flux_pulses(self):
-        hw_delay = -95
-        manual_delay = 0
-        delay = manual_delay+hw_delay
-        self.psb.append('flux_1', 'general', 'square', amp=0.5,
-                        length=self.cfg['readout']['width'] + 1000,
-                        freq=200e6,
-                        delay=(self.cfg['readout']['width'] + 1000) / 2 + delay)
+        ###
 
-        self.psb.append('flux_2', 'general', 'square', amp=0.5,
-                        length=self.cfg['readout']['width'] + 1000,
-                        freq=200e6,
-                        delay=(self.cfg['readout']['width'] + 1000) / 2+ delay)
-        self.psb.append('flux_3', 'general', 'square', amp=0.5,
-                        length=self.cfg['readout']['width'] + 1000,
-                        freq=200e6,
-                        delay=(self.cfg['readout']['width'] + 1000) / 2+ delay)
-        self.psb.append('flux_4', 'general', 'square', amp=0.5,
-                        length=self.cfg['readout']['width'] + 1000,
-                        freq=200e6,
-                        delay=(self.cfg['readout']['width'] + 1000) / 2+ delay)
+        # add heterodyne + flux pulse
+        # both heterodyne pulse and flux pulses don't count towards max_length
+        temp_seq_matrix = self.pulse_sequence_matrix
+        self.pulse_sequence_matrix = []
+
+        self.add_heterodyne_pulses()
+        self.add_flux_pulses()
+        temp_seqs = self.psb.get_pulse_sequence()
+
+        for ii in range(len(self.expt_pts)+len(calibration_pts)):
+            self.pulse_sequence_matrix.append(temp_seq_matrix[ii] + temp_seqs) # concatenate hetero/flux pulse
+
+        ###
+
+    def add_flux_pulses(self):
+
+        hw_delay = self.cfg['flux_pulse_info']['pxdac_hw_delay']
+
+        if self.cfg['flux_pulse_info']['on_during_drive']:
+            flux_width = self.cfg['readout']['width'] + self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0 + 1000
+            flux_delay = flux_width/2.0 - (self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0) + hw_delay
+        else:
+            flux_width = self.cfg['readout']['width'] + 1000
+            flux_delay = flux_width/2.0 + hw_delay
+
+        flux_a = self.cfg['flux_pulse_info']['flux_a']
+        flux_freq = self.cfg['flux_pulse_info']['flux_freq']
+
+        for ii in range(4):
+            self.psb.append('flux_'+str(ii), 'general', 'square', amp=flux_a[ii],
+                            length = flux_width,
+                            freq = flux_freq[ii],
+                            delay = flux_delay)
 
     def add_heterodyne_pulses(self):
 
