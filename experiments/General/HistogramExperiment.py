@@ -158,6 +158,7 @@ class HistogramExperiment(Experiment):
 
             with self.datafile() as f:
                 f.append_pt('atten', atten)
+                f.add('attenpts', attenpts)
                 f.append_line('freq', freqpts)
                 f.append_line('max_contrast_data_ch1', max_contrast_data[0, :])
                 f.append_line('max_contrast_data_ch2', max_contrast_data[1, :])
