@@ -876,14 +876,14 @@ class Alazar():
                     ch=0
                     single_record1=self.arrs[buf_idx][((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[0] \
                                                                         :((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[1]]
-                    single_record1 = (single_record1-128.)*(self.config.ch1_range/128.)                 
+                    single_record1 = (single_record1-128.0)*(self.config.ch1_range/128.0)
                     single_data1[0,recordsCompleted] = (2*np.dot(cosdata,single_record1)/num_pts)
                     single_data1[1,recordsCompleted] = (2*np.dot(sindata,single_record1)/num_pts)
                 if self.config.ch2_enabled:
                     ch=1
                     single_record2=self.arrs[buf_idx][((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[0] \
                                                                         :((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[1]]
-                    single_record2 = (single_record2-128)*(self.config.ch2_range/128.)
+                    single_record2 = (single_record2-128.0)*(self.config.ch2_range/128.0)
                     single_data2[0,recordsCompleted] = (2*np.dot(cosdata,single_record2)/num_pts)
                     single_data2[1,recordsCompleted] = (2*np.dot(sindata,single_record2)/num_pts)
                 recordsCompleted+=1
@@ -903,7 +903,7 @@ class Alazar():
         if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
 
-        return single_data1,single_data2,single_record1
+        return single_data1,single_data2,single_record1, single_record2
 
     # this takes single shot data, returning cos/sin at multiople freqs in IFreqList
     def acquire_singleshot_heterodyne_multitone_data(self, IFreqList, prep_function=None, start_function=None, excise=None):
@@ -954,7 +954,8 @@ class Alazar():
                                          0] \
                                          :((n + ch * self.config.recordsPerBuffer) * self.config.samplesPerRecord) +
                                           excise[1]]
-                    single_record1 = (single_record1 - 128.) * (self.config.ch1_range / 128.)
+                    #print 'single_record1 max/min: ', max(single_record1), min(single_record1)
+                    single_record1 = (single_record1 - 128.0) * (self.config.ch1_range / 128.0)
                     for jj in range(len(IFreqList)):
                         single_data1[jj, 0, recordsCompleted] = (2 * np.dot(cosdata[jj], single_record1) / num_pts)
                         single_data1[jj, 1, recordsCompleted] = (2 * np.dot(sindata[jj], single_record1) / num_pts)
@@ -965,7 +966,8 @@ class Alazar():
                                          0] \
                                          :((n + ch * self.config.recordsPerBuffer) * self.config.samplesPerRecord) +
                                           excise[1]]
-                    single_record2 = (single_record2 - 128) * (self.config.ch2_range / 128.)
+                    #print 'single_record2 max/min: ', max(single_record2), min(single_record2)
+                    single_record2 = (single_record2 - 128.0) * (self.config.ch2_range / 128.0)
                     for jj in range(len(IFreqList)):
                         single_data2[jj, 0, recordsCompleted] = (2 * np.dot(cosdata[jj], single_record2) / num_pts)
                         single_data2[jj, 1, recordsCompleted] = (2 * np.dot(sindata[jj], single_record2) / num_pts)
@@ -988,7 +990,7 @@ class Alazar():
         buffersCompleted, self.config.recordsPerAcquisition)
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
 
-        return single_data1, single_data2, single_record1
+        return single_data1, single_data2, single_record1, single_record2
 
     #this takes single shot data and does not process it!
     #Exports the entire 2D array so don't take to many points!
