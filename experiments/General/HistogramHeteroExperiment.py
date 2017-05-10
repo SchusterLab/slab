@@ -82,11 +82,11 @@ class HistogramHeteroExperiment(Experiment):
         print "Prep Instruments"
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
-        self.readout.set_ext_pulse(mod=True)
+        self.readout.set_ext_pulse(mod=self.cfg['readout']['mod'])
 
         self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         self.drive.set_power(self.cfg[self.expt_cfg_name]['power'])
-        self.drive.set_ext_pulse(mod=False)
+        self.drive.set_ext_pulse(mod=self.cfg['drive']['mod'])
         self.drive.set_output(True)
 
         try:
@@ -133,7 +133,7 @@ class HistogramHeteroExperiment(Experiment):
 
                 print "runnning atten no.", xx, ", freq no.", yy
 
-                single_data1, single_data2, single_record1 = \
+                single_data1, single_data2, single_record1, single_record2 = \
                     adc.acquire_singleshot_heterodyne_data(self.cfg['readout']['heterodyne_freq'],\
                                                        prep_function=self.awg_prep, start_function=self.awg_run, excise=self.cfg['readout']['window'])
 
@@ -147,11 +147,18 @@ class HistogramHeteroExperiment(Experiment):
                     f.add('ss_cos_data_ch2', ss_cos_data_all[1])
                     f.add('ss_sin_data_ch1', ss_sin_data_all[0])
                     f.add('ss_sin_data_ch2', ss_sin_data_all[1])
+                    f.append_line('single_record1', single_record1)
+                    f.append_line('single_record2', single_record2)
                     f.close()
 
-                #here max_contrast only calculated for ch1 & 2 of (g/e)
-                ss1 = single_data1[0]
-                ss2 = single_data1[1]
+                if self.cfg['readout']['heterodyne_freq']==0:
+                    # ch1 cos, ch2 cos
+                    ss1 = single_data1[0]
+                    ss2 = single_data2[0]
+                else:
+                    # ch1 cos, ch1 sin
+                    ss1 = single_data1[0]
+                    ss2 = single_data1[1]
 
                 for kk, ssthis in enumerate([ss1, ss2]):
 
@@ -181,7 +188,7 @@ class HistogramHeteroExperiment(Experiment):
                 f.append_line('freq', freqpts)
                 f.append_line('max_contrast_data_ch1', max_contrast_data[0, :])
                 f.append_line('max_contrast_data_ch2', max_contrast_data[1, :])
-                f.add('single_record1', single_record1)
+                #f.add('single_record1', single_record1)
                 f.close()
 
 
