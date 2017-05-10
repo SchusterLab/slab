@@ -792,11 +792,17 @@ class Alazar():
         """
         self.post_buffers()
         num_chs = 0
-        if self.config.ch1_enabled: num_chs+=1
-        if self.config.ch2_enabled: num_chs+=1
+        chn_range = []
+        if self.config.ch1_enabled:
+            num_chs+=1
+            chn_range.append(self.config.ch1_range)
+        if self.config.ch2_enabled:
+            num_chs+=1
+            chn_range.append(self.config.ch2_range)
         if excise is None:
             excise=(0,self.config.samplesPerRecord)
-        ss_data=np.zeros((2,self.config.recordsPerAcquisition),dtype=np.int32)
+        #ss_data=np.zeros((2,self.config.recordsPerAcquisition),dtype=np.int32)
+        ss_data = np.zeros((2, self.config.recordsPerAcquisition))
         buffersCompleted=0
         recordsCompleted=0
         buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
@@ -818,7 +824,8 @@ class Alazar():
 
             for n in range(self.config.recordsPerBuffer):
                 for ch in range(num_chs):
-                    ss_data[ch][recordsCompleted]=np.sum(self.arrs[buf_idx][((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[0]:((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[1]])
+                    ss_record = np.mean(self.arrs[buf_idx][((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[0]:((n+ch*self.config.recordsPerBuffer)*self.config.samplesPerRecord)+excise[1]])
+                    ss_data[ch][recordsCompleted] = (ss_record - 128.0) * (chn_range[ch] / 128.0)
                 recordsCompleted+=1
             ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx].addr,U32(self.config.bytesPerBuffer))
             if ret != 512:
