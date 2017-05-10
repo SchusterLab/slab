@@ -272,7 +272,7 @@ class QubitPulseSequenceExperiment(Experiment):
                 for ii in tqdm(arange(numAcquisition)):
 
                     # single_data1/2: index: (hetero_freqs, cos/sin, all_seqs)
-                    single_data1, single_data2, single_record1 = \
+                    single_data1, single_data2, single_record1, single_record2 = \
                         adc.acquire_singleshot_heterodyne_multitone_data(het_IFreqList, prep_function=self.awg_prep,
                                                                          start_function=self.awg_run,
                                                                          excise=self.cfg['readout']['window'])
@@ -364,6 +364,7 @@ class QubitPulseSequenceExperiment(Experiment):
                     with self.slab_file as f:
                         f.add('ss_data', ss_data[:, :, :, :, 0:((ii + 1) * avgPerAcquisition)])
                         f.add('single_record1', single_record1)
+                        f.add('single_record2', single_record2)
 
                         if (self.cfg[self.expt_cfg_name]['use_pi_calibration']):
                             f.add('ss_cal_g', ss_cal_g[:, :, :, 0:((ii + 1) * avgPerAcquisition)])
