@@ -198,7 +198,7 @@ class QubitPulseSequenceExperiment(Experiment):
                             expt_data_fft_amp = np.abs(np.fft.ifft(expt_data))
                             hetero_f_ind = int(round(heterodyne_freq * tpts.size * 1e-9))  # position in ifft
 
-                            # todo: single freq v.s. finite freq window (latter: more robust but noisier and with distortion)
+                            # todo: do the proper sum here
                             # expt_avg_data = np.average(expt_data_fft_amp[:, (hetero_f_ind - 1):(hetero_f_ind + 1)], axis=1)
                             expt_avg_data = expt_data_fft_amp[:, hetero_f_ind]
 
@@ -230,10 +230,13 @@ class QubitPulseSequenceExperiment(Experiment):
                         # todo: add heterodyne with pi_cal
                         expt_avg_data = mean((expt_data - zero_amp) / (pi_amp - zero_amp), 1)
 
-                    if self.data_file != None:
-                        self.slab_file = SlabFile(self.data_file)
-                    else:
-                        self.slab_file = self.datafile()
+                    # this needs to stay here
+                    # if self.data_file != None:
+                    #     self.slab_file = SlabFile(self.data_file)
+                    # else:
+                    #     self.slab_file = self.datafile()
+                    self.slab_file = self.datafile(self.data_file)
+
                     with self.slab_file as f:
                         f.add('expt_2d', expt_data)
                         f.add('expt_avg_data', expt_avg_data)
@@ -356,10 +359,11 @@ class QubitPulseSequenceExperiment(Experiment):
                             expt_avg_data2 = (expt_avg_data2 - zero_amp_avg2) / (pi_amp_avg2 - zero_amp_avg2)
 
                     # this needs to stay here
-                    if self.data_file != None:
-                        self.slab_file = SlabFile(self.data_file)
-                    else:
-                        self.slab_file = self.datafile()
+                    # if self.data_file != None:
+                    #     self.slab_file = SlabFile(self.data_file)
+                    # else:
+                    #     self.slab_file = self.datafile()
+                    self.slab_file = self.datafile(data_file=self.data_file)
 
                     with self.slab_file as f:
                         f.add('ss_data', ss_data[:, :, :, :, 0:((ii + 1) * avgPerAcquisition)])
