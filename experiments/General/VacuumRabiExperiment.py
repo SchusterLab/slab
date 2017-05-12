@@ -86,21 +86,46 @@ class VacuumRabiExperiment(Experiment):
                     expt_data_ch2 = (expt_data_ch2 * ii + ch2_pts) / (ii + 1.0)
             expt_mag = sqrt(expt_data_ch1 ** 2 + expt_data_ch2 ** 2)
 
+
+            # todo: fix heterodyne - need to take cos/sin of one channel
+            # todo: & excise window
+
+            if self.cfg['readout']['heterodyne_freq'] == 0:
+                # homodyne
+                mean_ch1 = mean(expt_data_ch1)
+                mean_ch2 = mean(expt_data_ch2)
+                mean_mag = mean(expt_mag)
+            else:
+                # heterodyne
+                heterodyne_freq = self.cfg['readout']['heterodyne_freq']
+                # ifft by numpy default has the correct 1/N normalization
+                fft_ch1 = np.abs(np.fft.ifft(expt_data_ch1))
+                fft_ch2 = np.abs(np.fft.ifft(expt_data_ch2))
+                fft_mag = np.abs(np.fft.ifft(expt_mag))
+
+                hetero_f_ind = int(round(heterodyne_freq * tpts.size * 1e-9))  # position in ifft
+
+                # todo: single freq v.s. finite freq window (latter: more robust but noisier and with distortion)
+                # expt_avg_data = np.average(expt_data_fft_amp[:, (hetero_f_ind - 1):(hetero_f_ind + 1)], axis=1)
+                mean_ch1 = fft_ch1[hetero_f_ind]
+                mean_ch2 = fft_ch2[hetero_f_ind]
+                mean_mag = fft_mag[hetero_f_ind]
+
             if self.liveplot_enabled:
-                self.plotter.append_xy('readout_avg_freq_scan1', freq, mean(expt_data_ch1[0:]))
-                self.plotter.append_xy('readout_avg_freq_scan2', freq, mean(expt_data_ch2[0:]))
-                self.plotter.append_xy('readout_avg_freq_scan_mag', freq, mean(expt_mag[0:]))
+                self.plotter.append_xy('readout_avg_freq_scan1', freq, mean_ch1)
+                self.plotter.append_xy('readout_avg_freq_scan2', freq, mean_ch2)
+                self.plotter.append_xy('readout_avg_freq_scan_mag', freq, mean_mag)
                 self.plotter.append_z('scope1',expt_data_ch1)
                 self.plotter.append_z('scope2',expt_data_ch2)
                 self.plotter.append_z('scope_mag',expt_mag)
 
             with self.datafile() as f:
                 f.append_pt('freq', freq)
-                f.append_pt('ch1_mean', mean(expt_data_ch1[0:]))
-                f.append_pt('ch2_mean', mean(expt_data_ch2[0:]))
-                f.append_pt('mag_mean', mean(expt_mag[0:]))
-                f.add('expt_2d_ch1', expt_data_ch1)
-                f.add('expt_2d_ch2', expt_data_ch2)
+                f.append_pt('ch1_mean', mean_ch1)
+                f.append_pt('ch2_mean', mean_ch2)
+                f.append_pt('mag_mean', mean_mag)
+                f.append_line('expt_2d_ch1', expt_data_ch1)
+                f.append_line('expt_2d_ch2', expt_data_ch2)
 
 
 
