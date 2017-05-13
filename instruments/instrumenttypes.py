@@ -198,9 +198,9 @@ class SerialInstrument(Instrument):
         self.recv_length = recv_length
         self.query_sleep = query_sleep
 
-    # def set_timeout(self, timeout):
-    #      Instrument.set_timeout(self, timeout)
-    #      if self.enabled: self.ser.timeout=self.timeout
+    def set_timeout(self, timeout):
+         Instrument.set_timeout(self, timeout)
+         if self.enabled: self.ser.timeout=self.timeout
 
     def test(self):
         self.ser.setTimeout(self.timeout)
