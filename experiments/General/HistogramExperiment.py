@@ -30,7 +30,7 @@ class HistogramExperiment(Experiment):
 
 
     def go(self):
-        self.plotter.clear()
+        #self.plotter.clear()
 
         print "Prep Instruments"
         self.readout.set_frequency(self.cfg['readout']['frequency'])
@@ -55,7 +55,7 @@ class HistogramExperiment(Experiment):
         for xx, atten in enumerate(attenpts):
             self.im.atten.set_attenuator(atten)
             max_contrast_data = zeros(len(freqpts))
-            self.plotter.clear('max contrast')
+            #self.plotter.clear('max contrast')
 
             for yy, freq in enumerate(freqpts):
                 self.readout.set_frequency(freq)
@@ -91,16 +91,17 @@ class HistogramExperiment(Experiment):
                     sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
                     ss_data[jj] += sshisto
                     sss_data[jj] = cumsum(ss_data[[jj]])
-                    self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
-                    self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
+                    #self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
+                    #self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
 
-                self.plotter.plot_xy('contrast', ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
+                #self.plotter.plot_xy('contrast', ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
                 max_contrast_data[yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
-                self.plotter.append_xy('max contrast', freq, max_contrast_data[yy])
+                #self.plotter.append_xy('max contrast', freq, max_contrast_data[yy])
             if len(attenpts)>1:
                 print "plotting max contrast 2"
-                self.plotter.append_z('max contrast 2', max_contrast_data, start_step=(
-                 (attenpts[0], attenpts[1] - attenpts[0]),(freqpts[0] / 1.0e9, (freqpts[1] - freqpts[0]) / 1.0e9)))
+                pass
+                # self.plotter.append_z('max contrast 2', max_contrast_data, start_step=(
+                #  (attenpts[0], attenpts[1] - attenpts[0]),(freqpts[0] / 1.0e9, (freqpts[1] - freqpts[0]) / 1.0e9)))
             with self.datafile() as f:
                 f.append_pt('atten', atten)
                 f.append_line('freq', freqpts)

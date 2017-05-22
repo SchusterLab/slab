@@ -24,6 +24,10 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
         #Multimode ef Rabi sweep experiment
         expt=MultimodeRabiSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower()=='multimode_bluesideband_sweep':
+        #Multimode Blue sideband sweep experiment
+        expt=MultimodeBlueSidebandSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower()=='multimode_echo_sideband_experiment':
         #Multimode ef Rabi sweep experiment
         expt=MultimodeEchoSidebandExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
@@ -103,6 +107,12 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
 
     if expt_name.lower()=='multimode_two_resonator_tomography':
         expt=MultimodeTwoResonatorTomography(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_two_resonator_tomography_phase_sweep':
+        expt=MultimodeTwoResonatorTomographyPhaseSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_ghz_entanglement_witness':
+        expt=MultimodeGHZEntanglementWitnessExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_process_tomography_phase_sweep_new':
         expt=MultimodeProcessTomographyPhaseSweepExperiment_1(path=datapath,liveplot_enabled = lp_enable, **kwargs)

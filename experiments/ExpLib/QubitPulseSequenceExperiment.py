@@ -146,6 +146,11 @@ class QubitPulseSequenceExperiment(Experiment):
                                                                     start_function=self.awg.run,
                                                                     excise=self.cfg['readout']['window'])
 
+            ### to skip the first 100 averages data point, because we saw a weird ramp in the RF output
+            if ii == 0:
+                time.sleep(0.1)
+                continue
+
             mag = sqrt(ch1_pts**2+ch2_pts**2)
             if not self.cfg[self.expt_cfg_name]['use_pi_calibration']:
 
@@ -160,23 +165,42 @@ class QubitPulseSequenceExperiment(Experiment):
                     elif self.cfg['readout']['channel']==2:
                         expt_data = (expt_data * ii + ch2_pts) / (ii + 1.0)
 
+                expt_avg_data = mean(expt_data, 1)
+
 
             else:
-                if self.cfg['readout']['channel']==1:
-                    zero_amp = mean(ch1_pts[-2])
-                    pi_amp = mean(ch1_pts[-1])
-                    current_data= (ch1_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
-                elif self.cfg['readout']['channel']==2:
-                    zero_amp = mean(ch2_pts[-2])
-                    pi_amp = mean(ch2_pts[-1])
-                    current_data= (ch2_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
+
                 if expt_data is None:
-                    expt_data = current_data
+                    if self.cfg['readout']['channel']==1:
+                        expt_data = ch1_pts
+                    elif self.cfg['readout']['channel']==2:
+                        expt_data = ch2_pts
                 else:
-                    expt_data = (expt_data * ii + current_data) / (ii + 1.0)
+                    if self.cfg['readout']['channel']==1:
+                        expt_data = (expt_data * ii + ch1_pts) / (ii + 1.0)
+                    elif self.cfg['readout']['channel']==2:
+                        expt_data = (expt_data * ii + ch2_pts) / (ii + 1.0)
+
+                expt_avg_data = mean(expt_data, 1)
+
+                expt_avg_data = (expt_avg_data[:-2]-expt_avg_data[-2])/(expt_avg_data[-1]-expt_avg_data[-2])
+
+            # else:
+            #     if self.cfg['readout']['channel']==1:
+            #         zero_amp = mean(ch1_pts[-2])
+            #         pi_amp = mean(ch1_pts[-1])
+            #         current_data= (ch1_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
+            #     elif self.cfg['readout']['channel']==2:
+            #         zero_amp = mean(ch2_pts[-2])
+            #         pi_amp = mean(ch2_pts[-1])
+            #         current_data= (ch2_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
+            #     if expt_data is None:
+            #         expt_data = current_data
+            #     else:
+            #         expt_data = (expt_data * ii + current_data) / (ii + 1.0)
 
 
-            expt_avg_data = mean(expt_data, 1)
+            # expt_avg_data = mean(expt_data, 1)
 
 
             if self.liveplot_enabled:

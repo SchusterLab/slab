@@ -1,15 +1,26 @@
 from slab.experiments.ExpLib import awgpulses as ap
 import numpy as np
 
-def square(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse,pulse_cfg):
+def square(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse,pulse_cfg,t0=0):
+    # code test 4/26/2017
     qubit_waveforms = ap.sideband(wtpts,
                              ap.square(wtpts, pulse.amp,
                                        origin - pulse_location - pulse.length - 0.5*(pulse.span_length - pulse.length), pulse.length,
                                        pulse_cfg['square']['ramp_sigma']),
                              np.zeros(len(wtpts)),
-                             pulse.freq, pulse.phase)
+                             pulse.freq, pulse.phase,t0=t0)
     qubit_marker = ap.square(mtpts, 1, origin - pulse_location - pulse.span_length - marker_start_buffer,
                                                               pulse.span_length + marker_start_buffer - marker_end_buffer)
+    # qubit_waveforms = ap.sideband(wtpts,
+    #                          ap.square(wtpts, pulse.amp,
+    #                                    origin - pulse_location - pulse.length - 0.5*(pulse.span_length - pulse.length), pulse.length,
+    #                                    pulse_cfg['square']['ramp_sigma']),
+    #                          np.zeros(len(wtpts)),
+    #                          pulse.freq, 360*(pulse.add_freq)/1e9*(wtpts+pulse_location)+pulse.phase)
+    # qubit_marker = ap.square(mtpts, 1, origin - pulse_location - pulse.span_length - marker_start_buffer,
+    #                                                           pulse.span_length + marker_start_buffer - marker_end_buffer)
+
+
     return (qubit_waveforms,qubit_marker)
 
 

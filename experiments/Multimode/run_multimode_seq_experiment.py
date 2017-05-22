@@ -365,6 +365,9 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                 flux_freq = freqlist[i] + freq*1e6
                 seq_exp.run('multimode_rabi_sweep',{'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
 
+
+
+
     if expt_name.lower() == 'multimode_rabi_scan_all':
 
         # freqspan = linspace(-10,10,21)
@@ -376,8 +379,34 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         # 1.19547487,  3.17182375,  1.2783333  ,  1.0])
         #
         #
-        freqspan = linspace(0,154,155)
-        freqlist = array([ 2.495])*1e9
+        freqspan = linspace(0,152,153)
+        freqlist = array([ 1.798])*1e9
+        modelist = array([-1])
+        modeindexlist = kwargs['modeindexlist']
+        amplist = array([0.5])
+
+        for i in modeindexlist:
+            print "running Rabi sweep around mode %s"%(modelist[i])
+            # frequency_stabilization(seq_exp)
+            for freq in freqspan:
+                flux_freq = freqlist[i] + freq*1e6
+                seq_exp.run('multimode_rabi_sweep',{'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
+
+
+
+    if expt_name.lower() == 'multimode_rabi_scan_all2':
+
+        # freqspan = linspace(-10,10,21)
+        # freqlist = array([ 1.6823167 ,  1.78388067,  1.9039681 ,  1.94607441,  2.13101483,
+        # 2.31223641,  2.41044112,  2.48847049,  2.58910637])*1e9
+        # modelist = array([0,1,3,4,5,6,7,9,10])
+        # modeindexlist = kwargs['modeindexlist']
+        # amplist = array([ 1.89801629,  1.29881571,  2.80828336,  0.88971589,  0.79432847,
+        # 1.19547487,  3.17182375,  1.2783333  ,  1.0])
+        #
+        #
+        freqspan = linspace(0,433,434)
+        freqlist = array([ 2.443])*1e9
         modelist = array([-1])
         modeindexlist = kwargs['modeindexlist']
         amplist = array([0.5])
@@ -401,6 +430,12 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         modeindexlist = kwargs['modeindexlist']
         amplist = array([ 2.24314571,  1.6329959 ,  1.23798758,  0.99347393,  2.33564694,
         2.62137547,  6.30935376])
+
+        freqspan = linspace(0,180,181)
+        freqlist = array([ 2.672])*1e9
+        modelist = array([-1])
+        modeindexlist = kwargs['modeindexlist']
+        amplist = array([0.5])
 
         for i in modeindexlist:
             frequency_stabilization(seq_exp)
@@ -1126,6 +1161,50 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                                                               'idm':idm,'tomography':True,'GHZ':kwargs['GHZ'],'tom_pulse':tom_pulse,'number':number,'data_file':data_file})
 
 
+    if expt_name.lower() == 'sequential_two_mode_tomography_phase_sweep':
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        # pulse_calibration(seq_exp,phase_exp=True)
+        for tom_num in arange(15):
+            seq_exp.run('multimode_two_resonator_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'tomography_num':tom_num,'state_num':kwargs['state_num'],'data_file':data_file})
+
+    if expt_name.lower() == 'sequential_ghz_entanglement_witness':
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        id3 = kwargs['id3']
+        final_sb_offset = kwargs['final_sb_offset']
+        pi_q_ef_offset =  kwargs['pi_q_ef_offset']
+        for tom_num in arange(4):
+            seq_exp.run('multimode_ghz_entanglement_witness',{'id1':kwargs['id1'],'id2':kwargs['id2'],'id3':kwargs['id3'],'sweep_ef_qubit_phase':False,\
+                                                              'final_sb_offset':final_sb_offset,'pi_q_ef_offset':pi_q_ef_offset,\
+                                                              'tomography_num':tom_num,'state_num':0,'data_file':data_file})
+
+    if expt_name.lower() == 'sequential_ghz_entanglement_witness_ef_sweep':
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        id3 = kwargs['id3']
+        final_sb_offset = kwargs['final_sb_offset']
+        pi_q_ef_offset = 0
+        for tom_num in arange(4):
+            seq_exp.run('multimode_ghz_entanglement_witness',{'id1':kwargs['id1'],'id2':kwargs['id2'],'id3':kwargs['id3'],'sweep_ef_qubit_phase':True,\
+                                                              'final_sb_offset':final_sb_offset,'pi_q_ef_offset':pi_q_ef_offset,\
+                                                              'tomography_num':tom_num,'state_num':0,'data_file':data_file})
+
+
+    if expt_name.lower() == 'sequential_ghz_entanglement_witness_echo_pi':
+        id1 = kwargs['id1']
+        id2 = kwargs['id2']
+        id3 = kwargs['id3']
+        final_sb_offset = kwargs['final_sb_offset']
+        ramsey_freq = kwargs['ramsey_freq']
+        number_pi_pulses = kwargs['number_pi_pulses']
+        startstopstep = kwargs['startstopstep']
+        pi_q_ef_offset = 0
+        for tom_num in arange(4):
+            seq_exp.run('multimode_ghz_entanglement_witness',{'id1':kwargs['id1'],'id2':kwargs['id2'],'id3':kwargs['id3'],'sweep_ef_qubit_phase':False,\
+                                                              'echo_pi_time_sweep':True,'final_sb_offset':final_sb_offset,'pi_q_ef_offset':pi_q_ef_offset,\
+                                                              'ramsey_freq':ramsey_freq,'number_pi_pulses':number_pi_pulses,'startstopstep':startstopstep,'tomography_num':tom_num,'state_num':0,'data_file':data_file})
+
 
 
 
@@ -1169,12 +1248,7 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
                 print "Sweep frequency: " + str(flux_freq/1e9) + " GHz"
                 seq_exp.run('multimode_dc_offset_experiment',{'freq':flux_freq,'amp':amplist[i][ii],'sideband':"ef","data_file":data_file})
 
-    if expt_name.lower() == 'sequential_two_mode_tomography_phase_sweep':
-        id1 = kwargs['id1']
-        id2 = kwargs['id2']
-        # pulse_calibration(seq_exp,phase_exp=True)
-        for tom_num in arange(15):
-            seq_exp.run('multimode_two_resonator_tomography_phase_sweep',{'id1':kwargs['id1'],'id2':kwargs['id2'],'tomography_num':tom_num,'state_num':kwargs['state_num'],'data_file':data_file})
+
 
 
     if expt_name.lower() == 'tomography_pulse_length_sweep':
@@ -1252,3 +1326,49 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         mode2 = kwargs['target_mode']
         seq_exp.run('multimode_ef_pi_pi_experiment',{'mode_1':mode1,'mode_2':mode2,'update_config':True})
         seq_exp.run('multimode_cphase_amplification',{'mode_1':mode1,'mode_2':mode2,'number':15})
+
+
+
+#############################  Blue sideband experiments YAO ###########################################
+
+
+    if expt_name.lower() == 'multimode_bluesideband_sweep':
+
+        # offset_list=[-81656602.748319939, -80685740.24701868, -79599004.754083157, -78597136.31114462, -7.77e+07, -76807382.828515679, -76009899.855674267, -75209535.153403714, -74459064.946205765, -73689192.183382601, -72983759.987144202, -72272657.000603467, -71674416.255530506, -71201969.173228472, -70642005.063694507, -70177149.894169152, -69898846.796902165, -69611643.262061238, -69518137.464103252, -69601738.595220476, -69552498.380955413, -69494148.22051169, -69394164.918533742, -69319497.915831298, -69006328.29023242, -68794345.798679218, -6.865e+07, -68505009.638900757, -68590321.673740223, -68604714.195392057]
+        # freqspan = linspace(2,12,21)
+        # freqcenter = array([4.8])*1e9
+
+        # freqspan = linspace(0,10,11)
+        # freqcenter = -array([70])*1e6
+
+        phasespan = linspace(-90,90,1)
+        phasecenter = array([0])
+
+        #delay = linspace(0,1,1)
+
+
+        # for ii,freq in enumerate(freqspan):
+        #     sweep_freq = freqcenter + freq*1e6
+        #     #add_freq = offset_list[ii]
+        #     print "running BlueSideband sweep at %s"%(sweep_freq)
+        #     #print "qubit DC offset at %s"%(add_freq)
+        #     seq_exp.run('multimode_bluesideband_sweep',{'flux_freq':sweep_freq,"data_file":data_file})
+
+        # for freq in freqspan:
+        #     sweep_freq = freqcenter + freq*1e6
+        #     print "running qubit drive sweep at %s"%(sweep_freq)
+        #     seq_exp.run('multimode_bluesideband_sweep',{'add_freq':sweep_freq,"data_file":data_file})
+
+        for phase in phasespan:
+            sweep_phase = phasecenter + phase
+            # sweep_phase = 5
+            print "setting pi/2 pulse phase to %s"%(sweep_phase)
+            seq_exp.run('multimode_bluesideband_sweep',{'pi_pulse_phase':sweep_phase,"data_file":data_file})
+
+        # for qubit_delay in delay:
+        #     print "qubit delay set to %s"%(qubit_delay)
+        #     seq_exp.run('multimode_bluesideband_sweep',{'qubit_delay':qubit_delay,"data_file":data_file})
+
+        # for pi_pulse_delay in delay:
+        #     print "pi pulse delay set to %s"%(pi_pulse_delay)
+        #     seq_exp.run('multimode_bluesideband_sweep',{'pi_pulse_delay':pi_pulse_delay,"data_file":data_file})

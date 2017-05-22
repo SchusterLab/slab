@@ -282,6 +282,21 @@ class MultimodeRabiSweepExperiment(QubitPulseSequenceExperiment):
         #print self.data_file
         pass
 
+class MultimodeBlueSidebandSweepExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='Multimode_BlueSideband_Sweep', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeBlueSidebandSweepSequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+        #print self.data_file
+        pass
+
 class MultimodeEFRabiSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_EF_Rabi_Sweep', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -399,7 +414,6 @@ class MultimodeEntanglementScalingExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
-
 
 class Multimode_Qubit_Mode_CZ_Offset_Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_qubit_mode_cz_offset', config_file='..\\config.json', **kwargs):
@@ -1019,6 +1033,41 @@ class MultimodeTwoResonatorTomography(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_two_Resonator_Tomography', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                                     PulseSequence=MultimodeTwoResonatorTomographySequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
+
+class MultimodeTwoResonatorTomographyPhaseSweepExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_two_resonator_tomography_phase_sweep', config_file='..\\config.json', **kwargs):
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+        self.tomography_num = self.extra_args['tomography_num']
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeTwoResonatorTomographyPhaseSweepSequenceNEW, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
+
+
+class MultimodeGHZEntanglementWitnessExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_ghz_entanglement_witness', config_file='..\\config.json', **kwargs):
+        self.extra_args={}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+        self.tomography_num = self.extra_args['tomography_num']
+
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeconcatenatedGHZEntanglementWitnessSequence, pre_run=self.pre_run,
                                                     post_run=self.post_run, prep_tek2= True,**kwargs)
 
     def pre_run(self):
@@ -1719,6 +1768,7 @@ class Multimode_State_Dep_Shift_Experiment(QubitPulseSequenceExperiment):
 
             print "Analyzing Ramsey Data"
             fitdata = fitdecaysin(expt_pts, expt_avg_data)
+
 
             self.offset_freq =self.cfg['multimode_state_dep_shift']['ramsey_freq'] - fitdata[1] * 1e9
 

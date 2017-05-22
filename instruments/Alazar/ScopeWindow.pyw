@@ -14,13 +14,13 @@ Created on Sat Oct 15 18:30:23 2011
 
 import sys
 import numpy as np
-
 from PyQt4.QtGui import *
 from PyQt4.QtCore import QTimer
 
 from guiqwt.builder import make
 
 from slab import *
+
 from ScopeWindow_ui import *
 from numpy import arange,sin,cos
 from slab.instruments import Alazar, AlazarConfig

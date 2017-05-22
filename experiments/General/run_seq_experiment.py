@@ -121,7 +121,7 @@ def run_seq_experiment(expt_name,lp_enable=True):
             seq_exp.run('randomized_benchmarking_phase_offset',{"data_file":data_file})
 
     if expt_name.lower() == 'rabi_sweep':
-        drive_freq_pts = arange(7.67e9,7.70e9,2e6)
+        drive_freq_pts = arange(4.75e9,4.9e9,0.5e6)
         for ii, drive_freq in enumerate(drive_freq_pts):
             seq_exp.run('rabi_sweep',{"drive_freq":drive_freq, "data_file":data_file})
 

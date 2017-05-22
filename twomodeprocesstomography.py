@@ -805,6 +805,7 @@ def two_qubit_gate_maximum_likelihood(m_ab):
         bnds.append((long(-1),long(1)))
 
     def get_B_array():
+
         I = matrix([[1,0],[0,1]])
         X = matrix([[0,1],[1,0]])
         Y = matrix([[0,-1j],[1j,0]])
@@ -917,8 +918,6 @@ def two_qubit_gate_maximum_likelihood(m_ab):
     def error_function(x_array):
         x = convert_array_to_matrix(x_array)
 
-
-
         err = 0
         for a in arange(0,16):
             for b in arange(0,16):
@@ -931,8 +930,6 @@ def two_qubit_gate_maximum_likelihood(m_ab):
                 err += np.absolute(m_ab[a][b]-sum_ab)**2
 
         return err
-
-
 
     def callbackF(Xi):
         global Nfeval
