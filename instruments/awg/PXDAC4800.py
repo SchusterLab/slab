@@ -23,6 +23,7 @@ class PXDAC4800:
         offset_bytes_list  = awg['iq_offsets_bytes']
         clock_speed = awg['clock_speed']
         self.channels_num = awg['channels_num']
+        self.sample_size = awg['sample_size']
 
         print waveform_file_name
         print offset_bytes_list
@@ -91,7 +92,13 @@ class PXDAC4800:
 
 
         dll.SetDacSampleFormatXD48(pHandle, U32(1))  # Set DAC format to signed
-        dll.SetDacSampleSizeXD48(pHandle, U32(2))  # Set DAC sample size to 16 bit LSB pad
+
+        if self.sample_size == 16:
+            dll.SetDacSampleSizeXD48(pHandle, U32(2))  # Set DAC sample size to 16 bit LSB pad
+        elif self.sample_size == 8:
+            dll.SetDacSampleSizeXD48(pHandle, U32(0))  # Set DAC sample size to 8 bit
+        else:
+            raise ValueError('Invalid sample size %s' %sample_size)
         # dll.SetDigitalIoModeXD48(pHandle, U32(1)) # Set Digital IO pulse at the begining of a playback
 
         ### Set Active Channel Mask
@@ -150,7 +157,7 @@ class PXDAC4800:
 
     def run_experiment(self):
         U32 = C.c_uint32
-        unsigned_short_length = 2
+        unsigned_short_length = int(self.sample_size/8)
         # print "Begining Ram Playback."
         self.dll.BeginRamPlaybackXD48(self.pHandle, self.offset, self.PlaybackBytes, U32(
             self.channels_num * self.waveform_length * unsigned_short_length))  ## Only play sequence's single waveform byte length for each trigger
@@ -160,7 +167,7 @@ class PXDAC4800:
         self.dll.EndRamPlaybackXD48(self.pHandle)
 
 
-def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=None, do_string_io=False):
+def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, sample_size=None, options=None, do_string_io=False):
     """
     Main function for writing a PXDAC4800 AWG format file (.rd16 binary file).
     """
@@ -169,8 +176,8 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
     #print "Sequence length: " + str(sequence_length)
 
     ## max value for signed short
-    max_value = 2 ** 15 - 1
-    min_value = -2 ** 15
+    max_value = 2 ** (sample_size-1) - 1
+    min_value = -2 ** (sample_size-1)
     # clock_rate = 1.2  # G/s
 
     ## max voltage
@@ -211,7 +218,7 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
     #print "interleaved"
 
     with open(filename, 'wb')  as f:
-        interleaved_waveforms.astype('int16').tofile(f)
+        interleaved_waveforms.astype('int%d'%sample_size).tofile(f)
 
 
     #print 'finished generating waveform file'

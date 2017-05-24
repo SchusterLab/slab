@@ -107,7 +107,7 @@ class PulseSequence:
     def write_PXDAC4800_sequence(self, awg, path, file_prefix, upload=False,brdNum = 0):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
         offset_bytes_list = write_PXDAC4800_file(waveforms, os.path.join(path, file_prefix + '_%d.rd16' %brdNum), self.name,
-                                                 awg['iq_offsets_bytes'])
+                                                 awg['iq_offsets_bytes'],awg['sample_size'])
         # TODO : code would not work if upload is false
         if upload:
             pxdac4800 = LocalInstruments().inst_dict['pxdac4800_%d' %brdNum]
