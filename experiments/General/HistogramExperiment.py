@@ -156,7 +156,12 @@ class HistogramExperiment(Experiment):
                         self.plotter.plot_xy('contrast_ch' + str(kk+1), ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
                         self.plotter.append_xy('max contrast_ch' + str(kk+1), freq, max_contrast_data[kk,yy])
 
-            with self.datafile() as f:
+            # initialize datafile by kwarg data_file
+            # self.slab_file = self.datafile(data_file=self.data_file)
+
+            self.slab_file = self.datafile()
+
+            with self.slab_file as f:
                 f.append_pt('atten', atten)
                 f.add('attenpts', attenpts)
                 f.append_line('freq', freqpts)
