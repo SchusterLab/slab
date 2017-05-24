@@ -235,7 +235,7 @@ class QubitPulseSequenceExperiment(Experiment):
                     #     self.slab_file = SlabFile(self.data_file)
                     # else:
                     #     self.slab_file = self.datafile()
-                    self.slab_file = self.datafile(self.data_file)
+                    self.slab_file = self.datafile(data_file=self.data_file)
 
                     with self.slab_file as f:
                         f.add('expt_2d', expt_data)
