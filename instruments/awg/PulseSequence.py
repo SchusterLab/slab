@@ -43,12 +43,14 @@ class PulseSequence:
             #     self.markers[marker['name']] = np.zeros((self.sequence_length, marker_clk_length))
             #     self.marker_info[marker['name']]['tpts'] = np.linspace(0., (marker_clk_length-1)/awg['clock_speed'],marker_clk_length)
 
-    def set_all_lengths(self, length):
+    def set_all_lengths(self, length, name_filter = ''):
         for name in self.marker_info.keys():
-            self.set_marker_length(name, length)
+            if name_filter in name:
+                self.set_marker_length(name, length)
 
         for name in self.waveform_info.keys():
-            self.set_waveform_length(name, length)
+            if name_filter in name:
+                self.set_waveform_length(name, length)
 
     def set_waveform_length(self, name, length):
         self.waveform_info[name]['length'] = length
