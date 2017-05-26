@@ -66,6 +66,16 @@ def square(t, a, t0, w, sigma=0):
     else:
         return a * (t >= t0) * (t < t0 + w)
 
+def square_exp(t, a, t0, w, sigma=0, exponent=0):
+    if sigma>0:
+        return a * (
+            (t >= t0) * (t < t0 + w) * np.exp( (t-t0) * exponent ) +  # Normal square pulse
+            (t >= t0-2*sigma) * (t < t0) * np.exp(-(t - t0) ** 2 / (2 * sigma ** 2)) +  # leading gaussian edge
+            (t >= t0 + w)* (t <= t0+w+2*sigma) * np.exp(-(t - (t0 + w)) ** 2 / (2 * sigma ** 2)) * np.exp( w * exponent ) # trailing edge
+        )
+    else:
+        return a * (t >= t0) * (t < t0 + w)
+
 
 def trapezoid(t, a, t0, w, edge_time=0):
     return a * (
@@ -78,5 +88,5 @@ def trapezoid(t, a, t0, w, edge_time=0):
 def get_pulse_span_length(cfg, type, length):
     if type == "gauss":
         return length * 4 +cfg['spacing'] ## 4 sigma
-    if type == "square":
+    if type == "square" or type == "square_exp":
         return length + 4 * cfg[type]['ramp_sigma'] +cfg['spacing']

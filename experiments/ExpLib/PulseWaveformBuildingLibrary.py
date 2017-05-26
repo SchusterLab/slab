@@ -12,6 +12,17 @@ def square(wtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pul
     #                                                           pulse.span_length + marker_start_buffer - marker_end_buffer)
     return qubit_waveforms
 
+def square_exp(wtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse,pulse_cfg):
+    qubit_waveforms = ap.sideband(wtpts,
+                             ap.square_exp(wtpts, pulse.amp,
+                                       origin - pulse_location - pulse.length - 0.5*(pulse.span_length - pulse.length), pulse.length,
+                                       pulse_cfg['square_exp']['ramp_sigma'], pulse.exponent),
+                             np.zeros(len(wtpts)),
+                             pulse.freq, pulse.phase)
+    # qubit_marker = ap.square(mtpts, 1, origin - pulse_location - pulse.span_length - marker_start_buffer,
+    #                                                           pulse.span_length + marker_start_buffer - marker_end_buffer)
+    return qubit_waveforms
+
 
 def gauss(wtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse):
     qubit_waveforms = ap.sideband(wtpts,
