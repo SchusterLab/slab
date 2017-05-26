@@ -127,18 +127,20 @@ class QubitPulseSequence(PulseSequence):
 
         flux_a = self.cfg['flux_pulse_info']['flux_a']
         flux_freq = self.cfg['flux_pulse_info']['flux_freq']
+        pulse_exponent = self.cfg['flux_pulse_info']['pulse_exponent']
 
         for ii in range(4):
 
             flux_area = flux_width * flux_a[ii]
             flux_comp_a = - flux_area/float(flux_comp_width)
 
-            self.psb.append('flux_'+str(ii+1), 'general', 'square', amp=flux_a[ii],
-                            length = flux_width,
-                            freq = flux_freq[ii], delay = flux_delay)
-            self.psb.append('flux_' + str(ii + 1), 'general', 'square', amp=flux_comp_a,
-                        length = flux_comp_width,
-                        freq = flux_freq[ii], delay = flux_delay)
+            # square_exp pulse - exponential to compensate bias tee's high pass
+            self.psb.append('flux_'+str(ii+1), 'general', 'square_exp', amp=flux_a[ii],
+                        length = flux_width, freq = flux_freq[ii],
+                        delay = flux_delay, exponent= pulse_exponent[ii])
+            self.psb.append('flux_' + str(ii + 1), 'general', 'square_exp', amp=flux_comp_a,
+                        length = flux_comp_width, freq = flux_freq[ii],
+                        delay = flux_delay, exponent= pulse_exponent[ii])
 
     # old 4 chn rf flux
     def add_flux_pulses_old(self):

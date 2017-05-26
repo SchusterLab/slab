@@ -10,7 +10,7 @@ from liveplot import LivePlotClient
 
 
 class Pulse():
-    def __init__(self, target, name, type, amp, length, freq, phase, span_length, delay):
+    def __init__(self, target, name, type, amp, length, freq, phase, span_length, delay, exponent = 0):
         self.target = target
         self.name = name
         self.type = type
@@ -20,6 +20,7 @@ class Pulse():
         self.phase = phase
         self.span_length = span_length
         self.delay = delay
+        self.exponent = exponent
 
 
 class PulseSequenceBuilder():
@@ -40,7 +41,7 @@ class PulseSequenceBuilder():
         self.pulse_span_length_list_temp = []
         self.qubit_cfg = cfg['qubit']
 
-    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None, delay=0, **kwargs):
+    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None, delay=0, exponent=0, **kwargs):
         '''
         Append a pulse in the pulse sequence.
         '''
@@ -158,7 +159,7 @@ class PulseSequenceBuilder():
         if phase == None:
             phase = 0
 
-        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length, delay)
+        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length, delay, exponent)
 
         self.pulse_sequence_list.append(pulse)
         self.total_pulse_span_length += pulse_span_length
@@ -377,6 +378,14 @@ class PulseSequenceBuilder():
                                                      self.marker_end_buffer,
                                                      flux_pulse_location_list[flux_index] - pulse.delay -pulse.span_length, pulse,
                                                      self.pulse_cfg)
+                        elif pulse.type == "square_exp":
+                            qubit_waveforms = square_exp(self.waveforms_tpts_dict[waveforms_key],
+                                                     self.origin,
+                                                     self.marker_start_buffer,
+                                                     self.marker_end_buffer,
+                                                     flux_pulse_location_list[
+                                                         flux_index] - pulse.delay - pulse.span_length, pulse,
+                                                     self.pulse_cfg)
                         elif pulse.type == "gauss":
                             qubit_waveforms = gauss(self.waveforms_tpts_dict[waveforms_key],
                                                     self.origin,
@@ -384,7 +393,7 @@ class PulseSequenceBuilder():
                                                     self.marker_end_buffer,
                                                     flux_pulse_location_list[flux_index] - pulse.delay-pulse.span_length, pulse)
                         else:
-                            raise ValueError('Wrong pulse type has been defined')
+                            raise ValueError('Wrong pulse type has been defined for flux pulses')
                         if pulse_defined:
                             self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[0] ## always zero index
                         flux_pulse_location_list[flux_index] -= pulse.span_length
