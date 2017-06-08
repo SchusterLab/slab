@@ -24,7 +24,6 @@ class Triton(SocketInstrument):
         status_string = ''.join(self.read_line('<end>'))
         while status_string.strip() == '':
             status_string = ''.join(self.read_line('<end>'))
-
         statuses = {'compressor' : re.findall('compressor is (.*)', status_string)[0],
                     'forepump' : re.findall('forepump is (.*)', status_string)[0],
                     'V1' : re.findall('V1 is (.*)', status_string)[0],
@@ -32,11 +31,11 @@ class Triton(SocketInstrument):
                     'V3': re.findall('V3 is (.*)', status_string)[0],
                     'V7': re.findall('V7 is (.*)', status_string)[0],
                     'V8': re.findall('V8 is (.*)', status_string)[0]}
-
         return statuses
 
     def get_help(self):
-        return self.query('help')
+        self.write('help')
+        print self.read().strip('\n')
 
     def get_pressures(self):
         """get_pressure returns the pressures detected by the fridge as a dictionary"""
@@ -89,7 +88,7 @@ class Triton(SocketInstrument):
 
     def get_mc_temperature(self):
         temperature = self.get_temperature('MC RuO2')
-        if not temperature > 0:
+        if temperature > 10:
             temperature = self.get_temperature('MC cernox')
         return temperature
 
