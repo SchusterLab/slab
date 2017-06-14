@@ -11,6 +11,7 @@ class VacuumRabiExperiment(Experiment):
         Experiment.__init__(self, path=path, prefix=prefix, config_file=config_file, liveplot_enabled = liveplot_enabled, **kwargs)
 
         self.expt_cfg_name = prefix.lower()
+        self.pulse_type = self.cfg[self.expt_cfg_name]['pulse_type']
 
         self.liveplot_enabled = liveplot_enabled
 
@@ -39,13 +40,20 @@ class VacuumRabiExperiment(Experiment):
         else:
             self.readout.set_ext_pulse(mod=False)
 
-        if (self.cfg[self.expt_cfg_name]['pi_pulse']):
-            self.drive.set_output(True)
-            self.drive.set_ext_pulse(mod=True)
-        else:
-            self.drive.set_output(False)
-            self.drive.set_ext_pulse(mod=False)
+        try:
+            self.drive.set_frequency(
+                self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
+            self.drive.set_power(self.cfg['drive']['power'])
+            self.drive.set_ext_pulse(mod=self.cfg['drive']['mod'])
 
+            if (self.cfg[self.expt_cfg_name]['pi_pulse']):
+                self.drive.set_output(True)
+            else:
+                self.drive.set_output(False)
+            print "Drive set successfully.."
+
+        except:
+            print "No drive found"
 
         self.drive.set_ext_pulse(mod=False)
 
