@@ -10,7 +10,8 @@ import time
 from struct import *
 from array import array as barray
 
-SERIAL_NUMBER = [301450,301483]
+# SERIAL_NUMBER = [301450,301483, 300727]
+SERIAL_NUMBER = [300727, 301483, 301450]
 
 class PXDAC4800:
     def __init__(self,brdNum):
@@ -109,7 +110,7 @@ class PXDAC4800:
             dll.SetActiveChannelMaskXD48(pHandle, U32(15)) # four channels
 
         ## start DAC auto calibration
-        for ii in range(30):
+        for ii in range(20):
             calibration_result = dll.StartDacAutoCalibrationXD48(pHandle)
             print "Calibration status: " + str(calibration_result)
             if calibration_result == 0:

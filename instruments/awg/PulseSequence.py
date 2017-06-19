@@ -65,7 +65,7 @@ class PulseSequence:
         return self.marker_info[name]['tpts']
 
     def write_sequence(self, path, file_prefix, upload=False):
-        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence, 'PXDAC4800_1':self.write_PXDAC4800_1_sequence,'PXDAC4800_2':self.write_PXDAC4800_2_sequence}
+        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence, 'PXDAC4800_1':self.write_PXDAC4800_1_sequence,'PXDAC4800_2':self.write_PXDAC4800_2_sequence,'PXDAC4800_3':self.write_PXDAC4800_3_sequence}
         for awg in self.awg_info:
             try:
                 if awg['type'] is not "NONE":
@@ -104,6 +104,9 @@ class PulseSequence:
 
     def write_PXDAC4800_2_sequence(self, awg, path, file_prefix, upload=False):
         self.write_PXDAC4800_sequence(awg, path, file_prefix, upload, 2)
+
+    def write_PXDAC4800_3_sequence(self, awg, path, file_prefix, upload=False):
+        self.write_PXDAC4800_sequence(awg, path, file_prefix, upload, 3)
 
 
     def write_PXDAC4800_sequence(self, awg, path, file_prefix, upload=False,brdNum = 0):
