@@ -98,7 +98,7 @@ class QubitPulseSequence(PulseSequence):
             self.pulse_sequence_matrix.append(temp_seq_matrix[ii] + temp_seqs)  # concatenate hetero/flux pulse
 
         max_flux_length = round_samples( max(self.flux_pulse_span_list)+ 2 * self.psb.start_end_buffer)
-        self.set_all_lengths(max_flux_length) #,  name_filter = 'flux')
+        self.set_all_lengths(max(max_flux_length,max_length))
 
         ###
 
@@ -109,21 +109,28 @@ class QubitPulseSequence(PulseSequence):
 
         if self.cfg['flux_pulse_info']['on_during_drive'] and self.cfg['flux_pulse_info']['on_during_readout']:
 
+            # todo: through warning if exp tail rails pxdac
+            flux_width = max(length + self.psb.measurement_delay + self.psb.measurement_width \
+                         - self.cfg['flux_pulse_info']['flux_drive_delay'] , 0)
+            flux_comp_width =  flux_width # self.cfg['flux_pulse_info']['dc_comp_pulse_length']
+            flux_delay = self.cfg['flux_pulse_info']['flux_drive_delay'] + hw_delay
+            flux_idle = 100.0
 
-            flux_width = length + self.psb.measurement_delay + self.psb.measurement_width \
-                         - self.cfg['flux_pulse_info']['flux_drive_delay']
-            flux_comp_width = self.cfg['flux_pulse_info']['dc_comp_pulse_length']
-            flux_delay = self.cfg['flux_pulse_info']['flux_drive_delay']
+        elif (self.cfg['flux_pulse_info']['on_during_drive']) and (not self.cfg['flux_pulse_info']['on_during_readout']):
 
-        # elif (self.cfg['flux_pulse_info']['on_during_drive']) and (not self.cfg['flux_pulse_info']['on_during_readout']):
-        #     flux_width = self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0
-        #     flux_delay = flux_width / 2.0 - (self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0) + hw_delay
+            flux_width = max(length - self.cfg['flux_pulse_info']['flux_drive_delay'], 0)
+            flux_comp_width = flux_width  # self.cfg['flux_pulse_info']['dc_comp_pulse_length']
+            flux_delay = self.cfg['flux_pulse_info']['flux_drive_delay'] + hw_delay
+            flux_idle = self.psb.measurement_delay + self.psb.measurement_width + 100
+
         # elif (not self.cfg['flux_pulse_info']['on_during_drive']) and (self.cfg['flux_pulse_info']['on_during_readout']):
         #     flux_width = self.cfg['readout']['width'] + 1000
         #     flux_delay = flux_width/2.0 + hw_delay
         else:
             flux_width = 0
+            flux_comp_width = 0
             flux_delay = 0
+            flux_idle = 0
 
         flux_a = self.cfg['flux_pulse_info']['flux_a']
         flux_freq = self.cfg['flux_pulse_info']['flux_freq']
@@ -131,8 +138,8 @@ class QubitPulseSequence(PulseSequence):
 
         for ii in range(4):
 
-            flux_area = flux_width * flux_a[ii]
-            flux_comp_a = - flux_area/float(flux_comp_width)
+            # flux_area = flux_width * flux_a[ii]
+            flux_comp_a = - flux_a[ii] #flux_area/float(flux_comp_width)
 
             # square_exp pulse - exponential to compensate bias tee's high pass
             self.psb.append('flux_'+str(ii+1), 'general', 'square_exp', amp=flux_a[ii],
@@ -140,7 +147,7 @@ class QubitPulseSequence(PulseSequence):
                         delay = flux_delay, exponent= pulse_exponent[ii])
             self.psb.append('flux_' + str(ii + 1), 'general', 'square_exp', amp=flux_comp_a,
                         length = flux_comp_width, freq = flux_freq[ii],
-                        delay = flux_delay, exponent= pulse_exponent[ii])
+                        delay = flux_delay + flux_idle, exponent= pulse_exponent[ii])
 
     # old 4 chn rf flux
     def add_flux_pulses_old(self):
