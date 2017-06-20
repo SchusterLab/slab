@@ -10,8 +10,8 @@ import time
 from struct import *
 from array import array as barray
 
-# SERIAL_NUMBER = [301450,301483, 300727]
-SERIAL_NUMBER = [300727, 301483, 301450]
+SERIAL_NUMBER = [301450,301483, 300727]
+# SERIAL_NUMBER = [300727, 301483, 301450]
 
 class PXDAC4800:
     def __init__(self,brdNum):

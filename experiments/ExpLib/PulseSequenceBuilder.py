@@ -45,7 +45,7 @@ class PulseSequenceBuilder():
         '''
         Append a pulse in the pulse sequence.
         '''
-        if target == "q" or target == "hetero" or target[:4] == "flux":
+        if target == "q" or target == "q2" or target == "hetero" or target[:4] == "flux":
             if name == "0":
                 amp = 0
                 length = self.pulse_cfg[type]['pi_length']
@@ -324,6 +324,27 @@ class PulseSequenceBuilder():
                         # self.waveforms_qubit_Q[ii] += qubit_waveforms[1]
                         # self.markers_qubit_buffer[ii] += qubit_marker
                     pulse_location += pulse.span_length
+
+                if pulse.target == "q2":
+                    waveforms_key_list = ['qubit drive 2 I','qubit drive 2 Q']
+
+                    for waveform_id, waveforms_key in enumerate(waveforms_key_list):
+                        if waveforms_key in self.waveforms_dict:
+                            if pulse.type == "square":
+                                qubit_waveforms = square(self.waveforms_tpts_dict[waveforms_key], self.origin,
+                                                                       self.marker_start_buffer, self.marker_end_buffer,pulse_location- pulse.delay, pulse,
+                                                                       self.pulse_cfg)
+                            elif pulse.type == "gauss":
+                                qubit_waveforms = gauss(self.waveforms_tpts_dict[waveforms_key],  self.origin,
+                                                                      self.marker_start_buffer, self.marker_end_buffer,
+                                                                      pulse_location- pulse.delay, pulse)
+                            else:
+                                raise ValueError('Wrong pulse type has been defined')
+                            if pulse_defined:
+                                self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[waveform_id]
+
+                    pulse_location += pulse.span_length
+
                 if pulse.target == "hetero":
 
                     waveforms_key_list = ['hetero_ch1', 'hetero_ch2']
@@ -398,7 +419,7 @@ class PulseSequenceBuilder():
                             self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[0] ## always zero index
                         flux_pulse_location_list[flux_index] -= pulse.span_length
 
-                        print(flux_pulse_location_list[flux_index])
+                        #print(flux_pulse_location_list[flux_index])
             # if self.uses_tek2:
             #     self.markers_ch3m1[ii] = ap.square(self.mtpts, 1,
             #                                     self.origin - flux_end_location - total_pulse_span_length_list[
