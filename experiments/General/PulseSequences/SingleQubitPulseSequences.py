@@ -28,7 +28,25 @@ class RabiSequence(QubitPulseSequence):
             # self.psb.append('q2', 'general', 'square', amp=0.5, length=self.cfg['readout']['width']+1000,
             #                 freq=self.cfg['readout']['heterodyne_freq'],delay=(self.cfg['readout']['width']+1000)/2)
 
+class RabiThermalizerSequence(QubitPulseSequence):
+    def __init__(self, name, cfg, expt_cfg, **kwargs):
+        self.pulse_cfg = cfg['pulse_info']
+        self.cfg = cfg
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
 
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pulse_type =  self.expt_cfg['pulse_type']
+
+    def define_pulses(self,pt):
+
+        if self.expt_cfg['separate_drive']:
+            self.psb.append('q2','general', self.expt_cfg['thermalizer_pulse_type'], amp=self.expt_cfg['a'], length=pt, freq=self.expt_cfg['iq_freq'])
+        else:
+            self.psb.append('q', 'general', self.expt_cfg['thermalizer_pulse_type'], amp=self.expt_cfg['a'], length=pt,
+                            freq=self.expt_cfg['iq_freq'])
 
 
 class RamseySequence(QubitPulseSequence):
