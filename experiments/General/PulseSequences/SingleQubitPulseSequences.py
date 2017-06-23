@@ -144,17 +144,20 @@ class EFRamseySequence(QubitPulseSequence):
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
         ef_freq = self.qubit_cfg['frequency']+self.qubit_cfg['alpha']
-        self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-ef_freq + self.expt_cfg['ramsey_freq'])
+        # self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-ef_freq + self.expt_cfg['ramsey_freq'])
+        self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq'] + self.qubit_cfg['alpha']
 
     def define_pulses(self,pt):
         if self.expt_cfg['ge_pi']:
             self.psb.append('q','pi', self.pulse_type)
         #self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.ef_sideband_freq)
-        self.psb.append('q','general', self.ef_pulse_type,amp=self.expt_cfg['a'],length = self.expt_cfg['half_pi_ef'], freq=self.ef_sideband_freq )
+        self.psb.append('q','general', self.ef_pulse_type, amp=self.pulse_cfg[self.expt_cfg['ef_pulse_type']]['half_pi_ef_a'],\
+                        length = self.pulse_cfg[self.expt_cfg['ef_pulse_type']]['half_pi_ef_length'], freq=self.ef_sideband_freq )
         self.psb.idle(pt)
-        self.psb.append('q','general', self.ef_pulse_type,amp=self.expt_cfg['a'],length = self.expt_cfg['half_pi_ef'],freq=self.ef_sideband_freq )
+        self.psb.append('q','general', self.ef_pulse_type, amp=self.pulse_cfg[self.expt_cfg['ef_pulse_type']]['half_pi_ef_a'],\
+                        length = self.pulse_cfg[self.expt_cfg['ef_pulse_type']]['half_pi_ef_length'], freq=self.ef_sideband_freq, \
+                        phase=360.0 * self.expt_cfg['ramsey_freq'] * pt / (1.0e9))
         self.psb.append('q','pi', self.pulse_type)
-
 
 class EFT1Sequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
