@@ -80,7 +80,7 @@ def fitlor(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
         fitdatay=ydata
     if fitparams is None:
         fitparams=[0,0,0,0]
-        fitparams[0]=(fitdatay[0]+fitdatay[-1])/2.
+        fitparams[0]=min(fitdatay)
         fitparams[1]=max(fitdatay)-min(fitdatay)
         fitparams[2]=fitdatax[np.argmax(fitdatay)]
         fitparams[3]=(max(fitdatax)-min(fitdatax))/10.
