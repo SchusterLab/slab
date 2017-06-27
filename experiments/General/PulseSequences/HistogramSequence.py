@@ -146,32 +146,118 @@ class HistogramSequence(PulseSequence):
             ##
 
 
-            # flux pulse
-            hw_delay = self.cfg['flux_pulse_info']['pxdac_hw_delay'] #-95
+            # # flux pulse
+            # hw_delay = self.cfg['flux_pulse_info']['pxdac_hw_delay'] #-95
+            #
+            # if self.cfg['flux_pulse_info']['on_during_drive']:
+            #     flux_start = max(self.origin + hw_delay - self.max_pulse_width - self.start_end_buffer/2.0, 0)
+            #     flux_width = self.readout_cfg['width'] + self.max_pulse_width + self.start_end_buffer/2.0 + 1000
+            # else:
+            #     flux_start = max(self.origin + hw_delay, 0)
+            #     flux_width = self.readout_cfg['width'] + 1000
+            #
+            # flux_a = self.cfg['flux_pulse_info']['flux_a']
+            # flux_freq = self.cfg['flux_pulse_info']['flux_freq']
+            #
+            # for jj in range(4):
+            #
+            #     flux_pulsedata = ap.square(self.waveforms_tpts_dict['flux_%d' %(jj+1)], flux_a[jj], flux_start, flux_width, 10)
+            #
+            #     temp_f_I, temp_f_Q = \
+            #         ap.sideband(self.waveforms_tpts_dict['flux_%d' %(jj+1)], flux_pulsedata, np.zeros(len(self.waveforms_tpts_dict['flux_%d' %(jj+1)])),
+            #                     flux_freq[jj],
+            #                     0)
+            #
+            #     if 'flux_%d' %(jj+1) in self.waveforms_dict:
+            #         self.waveforms['flux_%d' %(jj+1)][ii] = temp_f_I
+            #
+            # ##
 
-            if self.cfg['flux_pulse_info']['on_during_drive']:
-                flux_start = max(self.origin + hw_delay - self.max_pulse_width - self.start_end_buffer/2.0, 0)
-                flux_width = self.readout_cfg['width'] + self.max_pulse_width + self.start_end_buffer/2.0 + 1000
+            # this is to align flux pulse to readout? (diff in 2 pxdac cards)
+            hw_delay = self.cfg['flux_pulse_info']['pxdac_hw_delay']
+
+            if self.cfg['flux_pulse_info']['on_during_drive'] and self.cfg['flux_pulse_info']['on_during_readout']:
+
+                flux_width = max(self.max_pulse_width + self.readout_cfg['delay'] + self.readout_cfg['width'] \
+                                 - self.cfg['flux_pulse_info']['flux_drive_delay'], 0)
+                flux_comp_width = flux_width  # self.cfg['flux_pulse_info']['dc_comp_pulse_length']
+                flux_delay = self.cfg['flux_pulse_info']['flux_drive_delay'] + hw_delay
+                flux_idle = 100.0
+                flux_start = self.origin - self.max_pulse_width + flux_delay
+                flux_comp_start = flux_start + flux_width + flux_idle
+
+            elif (self.cfg['flux_pulse_info']['on_during_drive']) and (
+            not self.cfg['flux_pulse_info']['on_during_readout']):
+
+                flux_width = max(self.max_pulse_width - self.cfg['flux_pulse_info']['flux_drive_delay'], 0)
+                flux_comp_width = flux_width  # self.cfg['flux_pulse_info']['dc_comp_pulse_length']
+                flux_delay = self.cfg['flux_pulse_info']['flux_drive_delay'] + hw_delay
+                flux_idle = self.readout_cfg['delay'] + self.readout_cfg['width'] + 100
+                flux_start = self.origin - self.max_pulse_width + flux_delay
+                flux_comp_start = flux_start + flux_width + flux_idle
+
+            elif (not self.cfg['flux_pulse_info']['on_during_drive']) and (self.cfg['flux_pulse_info']['on_during_readout']):
+
+                flux_width = self.readout_cfg['delay'] + self.readout_cfg['width']
+                flux_comp_width = flux_width  # self.cfg['flux_pulse_info']['dc_comp_pulse_length']
+                flux_delay = hw_delay
+                flux_idle = 100.0
+                flux_start = self.origin + flux_delay
+                flux_comp_start = flux_start + flux_width + flux_idle
+
             else:
-                flux_start = max(self.origin + hw_delay, 0)
-                flux_width = self.readout_cfg['width'] + 1000
+                flux_width = 0
+                flux_comp_width = 0
+                flux_delay = 0
+                flux_idle = 0
+                flux_start = self.origin
+                flux_comp_start = flux_start
+
+
 
             flux_a = self.cfg['flux_pulse_info']['flux_a']
             flux_freq = self.cfg['flux_pulse_info']['flux_freq']
+            # pulse_exponent = self.cfg['flux_pulse_info']['pulse_exponent']
+            sigma = self.cfg["pulse_info"]["square_exp"]["ramp_sigma"]
 
             for jj in range(4):
 
-                flux_pulsedata = ap.square(self.waveforms_tpts_dict['flux_%d' %(jj+1)], flux_a[jj], flux_start, flux_width, 10)
+                # flux_area = flux_width * flux_a[ii]
+                flux_comp_a = - flux_a[jj]  # flux_area/float(flux_comp_width)
 
-                temp_f_I, temp_f_Q = \
-                    ap.sideband(self.waveforms_tpts_dict['flux_%d' %(jj+1)], flux_pulsedata, np.zeros(len(self.waveforms_tpts_dict['flux_%d' %(jj+1)])),
-                                flux_freq[jj],
-                                0)
+                f_I = np.zeros(len(self.waveforms_tpts_dict['flux_%d' % (jj + 1)]))
+                f_Q = np.zeros(len(self.waveforms_tpts_dict['flux_%d' % (jj + 1)]))
+
+                if flux_width > 0:
+                    # self.psb.append('flux_' + str(ii + 1), 'general', 'square', amp=flux_a[ii],
+                    #                 length=flux_width, freq=flux_freq[ii],
+                    #                 delay=flux_delay)
+
+                    flux_pulsedata = ap.square(self.waveforms_tpts_dict['flux_%d' % (jj + 1)], flux_a[jj], flux_start,
+                                               flux_width, sigma)
+                    temp_f_I, temp_f_Q = \
+                        ap.sideband(self.waveforms_tpts_dict['flux_%d' % (jj + 1)], flux_pulsedata,
+                                    np.zeros(len(self.waveforms_tpts_dict['flux_%d' % (jj + 1)])),
+                                    flux_freq[jj], 0)
+                    f_I += temp_f_I
+                    f_Q += temp_f_Q
+
+                if flux_comp_width > 0:
+                    # self.psb.append('flux_' + str(ii + 1), 'general', 'square', amp=flux_comp_a,
+                    #                 length=flux_comp_width, freq=flux_freq[ii],
+                    #                 delay=flux_delay + flux_idle)
+
+                    flux_pulsedata = ap.square(self.waveforms_tpts_dict['flux_%d' % (jj + 1)], flux_comp_a, flux_comp_start,
+                                               flux_comp_width, sigma)
+                    temp_f_I, temp_f_Q = \
+                        ap.sideband(self.waveforms_tpts_dict['flux_%d' % (jj + 1)], flux_pulsedata,
+                                    np.zeros(len(self.waveforms_tpts_dict['flux_%d' % (jj + 1)])),
+                                    flux_freq[jj], 0)
+                    f_I += temp_f_I
+                    f_Q += temp_f_Q
 
                 if 'flux_%d' %(jj+1) in self.waveforms_dict:
-                    self.waveforms['flux_%d' %(jj+1)][ii] = temp_f_I
-
-            ##
+                    self.waveforms['flux_%d' %(jj+1)][ii] = f_I
 
     def reshape_data(self, data):
         return np.reshape(data, (self.sequence_length, self.waveform_length))
