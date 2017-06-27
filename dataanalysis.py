@@ -27,6 +27,11 @@ def dBm_to_W(dBm):
 
 dBmtoW=dBm_to_W
 
+def W_to_dBm(W):
+    """convert dBm to Watts"""
+    return np.log(W*1e3)/np.log(10)*10.
+
+
 def dBm_to_V(dBm):
     """convert dBm to V"""
     return sqrt(dBm_to_W(dBm)*50)*sqrt(2)
