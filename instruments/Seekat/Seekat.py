@@ -5,13 +5,15 @@ http://opendacs.com/seekat-homepage/
 
 import numpy as np
 import time, math
-from instrumenttypes import SerialInstrument
+from slab.instruments.instrumenttypes import SerialInstrument
+
 
 class Seekat(SerialInstrument):
     def __init__(self, name="", address='/dev/cu.usbmodem1411', enabled=True, baudrate=115200, timeout=10):
-        SerialInstrument.__init__(self, name=name, address=address, enabled=enabled, timeout=timeout, recv_length=1024, baudrate=baudrate)
+        SerialInstrument.__init__(self, name=name, address=address, enabled=enabled, timeout=timeout, recv_length=1024,
+                                  baudrate=baudrate)
         self.term_char = ''
-    
+
     def get_channel_bits(self, channel):
         """
         When setting or getting the voltage, there's four digits that determine the channel. This function
@@ -83,18 +85,18 @@ class Seekat(SerialInstrument):
         bin16 = gbin(dec16, 16)
         d1 = int(bin16[0:8], 2)
         d2 = int(bin16[8:16], 2)
-    
+
         return d1, d2
 
-    def set_voltage(self, channel, voltage):
+    def set_voltage(self, channel, voltage, verbose=True):
         """
         Set the voltage of a specific channel
         :param channel: channel number (1-8)
         :param voltage: voltage (-10 to 10V)
         :return: None
         """
-        print 'Channel = ' + str(channel) + ' ,  Voltage = ' + str(round(voltage, 3))
-
+        if verbose:
+            print 'Channel = ' + str(channel) + ',  Voltage = ' + str(round(voltage, 3)),
         n1, n2, m1, m2 = self.get_channel_bits(channel)
         d1, d2 = self.get_voltage_bits(voltage)
 
@@ -102,6 +104,7 @@ class Seekat(SerialInstrument):
             d1 * m2) + ',' + str(d2 * m2)
 
         self.ser.flushInput()
+        time.sleep(0.02)
         self.ser.write(str(SS))
         self.ser.flush()
 
@@ -113,9 +116,9 @@ class Seekat(SerialInstrument):
         :return: Voltage (float)
         """
         n1, n2, m1, m2 = self.get_channel_bits(channel)
-        if n1 == 0: # channels 5-8
+        if n1 == 0:  # channels 5-8
             n2 += 128
-        if n2 == 0: # channels 1-4
+        if n2 == 0:  # channels 1-4
             n1 += 128
 
         S1 = '255,254,253,' + str(n1) + ',0,0,' + str(n2) + ',0,0'
@@ -141,14 +144,14 @@ class Seekat(SerialInstrument):
             except:
                 bdata[i] = 0
 
-        BD1 = bdata[1]*2**8+bdata[2]
-        BD2 = bdata[4]*2**8+bdata[5]
+        BD1 = bdata[1] * 2 ** 8 + bdata[2]
+        BD2 = bdata[4] * 2 ** 8 + bdata[5]
         bdata2 = max(BD1, BD2)
 
-        if bdata2 < 2**15:
-            volt = 10*float(bdata2)/(2**15-1)
+        if bdata2 < 2 ** 15:
+            volt = 10 * float(bdata2) / (2 ** 15 - 1)
         else:
-            volt = -10*(2**16-float(bdata2))/2**15
+            volt = -10 * (2 ** 16 - float(bdata2)) / 2 ** 15
         return round(volt, ndigits)
 
     def calibrate(self, channel):
@@ -167,7 +170,7 @@ class Seekat(SerialInstrument):
         self.set_voltage(channel, offset_voltage)
         blah = self.get_voltage(channel, 9)
         offset = -blah
-        print 'Offset calibration:\nSet to 0 V volt\nMeasure %.6fV'%(blah)
+        print 'Offset calibration:\nSet to 0 V volt\nMeasure %.6fV' % (blah)
 
         offsetsteps = round(offset / (38.14 * math.exp(-6)))
 
@@ -189,7 +192,7 @@ class Seekat(SerialInstrument):
         time.sleep(2)
         blah = self.get_voltage(channel, 9)
         offset = blah - min_voltage
-        print 'Gain calibration:\nSet to -10 V volt\nMeasure %.6fV'%(blah)
+        print 'Gain calibration:\nSet to -10 V volt\nMeasure %.6fV' % (blah)
         offsetsteps = round(offset / (152.59 * math.exp(-6)))
         offest8 = gbin(int(offsetsteps) % (2 ** 8), 8)
         d1 = 0
@@ -205,7 +208,7 @@ class Seekat(SerialInstrument):
         # Back to 0 V
         offset_voltage = 0
         self.set_voltage(channel, offset_voltage)
-    
+
         print "Calibration Complete !!!"
 
     def ramp(self, channel=1, period=0, start=-10, stop=10, step=40):
@@ -255,10 +258,11 @@ class Seekat(SerialInstrument):
             delay -= ((btoc - btic) - float(period)) / (step * 2)
             print btoc - btic
 
+
 if __name__ == "__main__":
-    o = Seekat(address='COM8', baudrate=115200, timeout=10)
+    o = Seekat(address='COM11', baudrate=115200, timeout=10)
     time.sleep(3)
 
     for k in range(8):
-        print "ch%d: Measured voltage is %.2f V"%(k+1, o.get_voltage(k+1))
+        print "ch%d: Measured voltage is %.2f V" % (k + 1, o.get_voltage(k + 1))
         time.sleep(1)
