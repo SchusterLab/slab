@@ -137,6 +137,8 @@ class QubitPulseSequence(PulseSequence):
 
         for ii in range(4):
 
+            # if ii > 0:
+
             # flux_area = flux_width * flux_a[ii]
             flux_comp_a = - flux_a[ii] #flux_area/float(flux_comp_width)
 
@@ -148,33 +150,21 @@ class QubitPulseSequence(PulseSequence):
                 self.psb.append('flux_' + str(ii + 1), 'general', 'square', amp=flux_comp_a,
                             length = flux_comp_width, freq = flux_freq[ii],
                             delay = flux_delay + flux_idle)
+            # else:
+            #     # try the new ramps
+            #
+            #     a_drive = 0.1
+            #     a_cal = 0.2
+            #     a_read = 0.4
+            #     sigma = 3
+            #
+            #     # self.psb.append('flux_' + str(ii + 1), 'general', 'logistic_ramp', start_amp= 0, stop_amp=a_drive,
+            #     #                 length=sigma*2, freq=0, delay=flux_delay)
+            #     self.psb.append('flux_' + str(ii + 1), 'general', 'linear_ramp', start_amp=a_drive, stop_amp=a_read,
+            #                     length=flux_width, freq=0, delay=flux_delay)
+            #     self.psb.append('flux_' + str(ii + 1), 'general', 'logistic_ramp', start_amp=a_read, stop_amp=0,
+            #                     length=sigma * 2, freq=0, delay=flux_delay)
 
-    # # old 4 chn rf flux
-    # def add_flux_pulses_old(self):
-    #
-    #     hw_delay = self.cfg['flux_pulse_info']['pxdac_hw_delay']
-    #
-    #     if self.cfg['flux_pulse_info']['on_during_drive'] and self.cfg['flux_pulse_info']['on_during_readout']:
-    #         flux_width = self.cfg['readout']['width'] + self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0 + 1000
-    #         flux_delay = flux_width/2.0 - (self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0) + hw_delay
-    #     elif (self.cfg['flux_pulse_info']['on_during_drive']) and (not self.cfg['flux_pulse_info']['on_during_readout']):
-    #         flux_width = self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0
-    #         flux_delay = flux_width / 2.0 - (self.psb.max_pulse_length + self.psb.start_end_buffer / 2.0) + hw_delay
-    #     elif (not self.cfg['flux_pulse_info']['on_during_drive']) and (self.cfg['flux_pulse_info']['on_during_readout']):
-    #         flux_width = self.cfg['readout']['width'] + 1000
-    #         flux_delay = flux_width/2.0 + hw_delay
-    #     else:
-    #         flux_width = 0
-    #         flux_delay = 0
-    #
-    #     flux_a = self.cfg['flux_pulse_info']['flux_a']
-    #     flux_freq = self.cfg['flux_pulse_info']['flux_freq']
-    #
-    #     for ii in range(4):
-    #         self.psb.append('flux_'+str(ii+1), 'general', 'square', amp=flux_a[ii],
-    #                         length = flux_width,
-    #                         freq = flux_freq[ii],
-    #                         delay = flux_delay)
 
     def add_heterodyne_pulses(self):
 

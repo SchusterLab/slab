@@ -414,12 +414,11 @@ class PulseSequenceBuilder():
                                                     self.marker_start_buffer,
                                                     self.marker_end_buffer,
                                                     flux_pulse_location_list[flux_index] - pulse.delay-pulse.span_length, pulse)
-                        # new ramps
+
                         elif pulse.type == "linear_ramp":
                             qubit_waveforms = linear_ramp(self.waveforms_tpts_dict[waveforms_key], self.origin,
                                                     flux_pulse_location_list[flux_index] - pulse.delay - pulse.span_length, pulse)
                         elif pulse.type == "logistic_ramp":
-                            print 'logistic'
                             qubit_waveforms = logistic_ramp(self.waveforms_tpts_dict[waveforms_key], self.origin,
                                                     flux_pulse_location_list[flux_index] - pulse.delay - pulse.span_length, pulse)
 
