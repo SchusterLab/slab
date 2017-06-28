@@ -10,7 +10,7 @@ from liveplot import LivePlotClient
 
 
 class Pulse():
-    def __init__(self, target, name, type, amp, length, freq, phase, span_length, delay, exponent = 0):
+    def __init__(self, target, name, type, amp, length, freq, phase, span_length, delay, exponent = 0, start_amp = 0, stop_amp = 0):
         self.target = target
         self.name = name
         self.type = type
@@ -21,7 +21,8 @@ class Pulse():
         self.span_length = span_length
         self.delay = delay
         self.exponent = exponent
-
+        self.start_amp = start_amp
+        self.stop_amp = stop_amp
 
 class PulseSequenceBuilder():
     def __init__(self, cfg):
@@ -41,7 +42,7 @@ class PulseSequenceBuilder():
         self.pulse_span_length_list_temp = []
         self.qubit_cfg = cfg['qubit']
 
-    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None, delay=0, exponent=0, **kwargs):
+    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None, delay=0, exponent=0, start_amp = 0, stop_amp = 0, **kwargs):
         '''
         Append a pulse in the pulse sequence.
         '''
@@ -159,7 +160,7 @@ class PulseSequenceBuilder():
         if phase == None:
             phase = 0
 
-        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length, delay, exponent)
+        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length, delay, exponent, start_amp, stop_amp)
 
         self.pulse_sequence_list.append(pulse)
         self.total_pulse_span_length += pulse_span_length
@@ -413,6 +414,15 @@ class PulseSequenceBuilder():
                                                     self.marker_start_buffer,
                                                     self.marker_end_buffer,
                                                     flux_pulse_location_list[flux_index] - pulse.delay-pulse.span_length, pulse)
+                        # new ramps
+                        elif pulse.type == "linear_ramp":
+                            qubit_waveforms = linear_ramp(self.waveforms_tpts_dict[waveforms_key], self.origin,
+                                                    flux_pulse_location_list[flux_index] - pulse.delay - pulse.span_length, pulse)
+                        elif pulse.type == "logistic_ramp":
+                            print 'logistic'
+                            qubit_waveforms = logistic_ramp(self.waveforms_tpts_dict[waveforms_key], self.origin,
+                                                    flux_pulse_location_list[flux_index] - pulse.delay - pulse.span_length, pulse)
+
                         else:
                             raise ValueError('Wrong pulse type has been defined for flux pulses')
                         if pulse_defined:

@@ -56,6 +56,25 @@ def ramp(t, a, t0, w):
     return a * (t - t0) * (t >= t0) * (t < t0 + w)
 
 
+def linear_ramp(t, start_a, stop_a, t0, w):
+    if w > 0:
+        return ( (stop_a - start_a) * (t - t0) / w + start_a) * (t >= t0) * (t < t0 + w)
+    else:
+        return 0*t
+
+def logistic_ramp(t, start_a, stop_a, t0, w):
+    # smooth S-shaped ramp using logistic function
+    # truncated and rescaled to be continuous
+    # bigger r - steeper slope
+    if w > 0:
+        r = 8.0 / w
+        scale = (1 + np.exp(r*w/2.0))/(-1 + np.exp(r*w/2.0))
+        return  (((start_a + stop_a * np.exp(r*(t-(t0+w/2.0))* (t >= t0) * (t < t0 + w)))/(1 + np.exp(r*(t-(t0+w/2.0))* (t >= t0) * (t < t0 + w)))-(start_a+stop_a)/2.0) \
+                * scale + (start_a+stop_a)/2.0) * (t >= t0) * (t < t0 + w)
+    else:
+        return 0*t
+
+
 def square(t, a, t0, w, sigma=0):
     if sigma>0:
         return a * (
@@ -69,12 +88,12 @@ def square(t, a, t0, w, sigma=0):
 def square_exp(t, a, t0, w, sigma=0, exponent=0):
     if sigma>0:
         return a * (
-            (t >= t0) * (t < t0 + w) * np.exp( (t-t0) * exponent ) +  # Normal square pulse
+            (t >= t0) * (t < t0 + w) * np.exp( (t >= t0) * (t < t0 + w) * (t-t0) * exponent ) +  # Normal square pulse
             (t >= t0-2*sigma) * (t < t0) * np.exp(-(t - t0) ** 2 / (2 * sigma ** 2)) +  # leading gaussian edge
             (t >= t0 + w)* (t <= t0+w+2*sigma) * np.exp(-(t - (t0 + w)) ** 2 / (2 * sigma ** 2)) * np.exp( w * exponent ) # trailing edge
         )
     else:
-        return a * (t >= t0) * (t < t0 + w)
+        return a * (t >= t0) * np.exp( (t >= t0) * (t < t0 + w) * (t-t0) * exponent )
 
 
 def trapezoid(t, a, t0, w, edge_time=0):
@@ -90,3 +109,6 @@ def get_pulse_span_length(cfg, type, length):
         return length * 4 +cfg['spacing'] ## 4 sigma
     if type == "square" or type == "square_exp":
         return length + 4 * cfg[type]['ramp_sigma'] +cfg['spacing']
+
+    if type in ["ramp", "linear_ramp", "logistic_ramp"]:
+        return length

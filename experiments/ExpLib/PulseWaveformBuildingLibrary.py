@@ -23,7 +23,6 @@ def square_exp(wtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location
     #                                                           pulse.span_length + marker_start_buffer - marker_end_buffer)
     return qubit_waveforms
 
-
 def gauss(wtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse):
     qubit_waveforms = ap.sideband(wtpts,
                              ap.gauss(wtpts, pulse.amp,
@@ -111,3 +110,18 @@ def flux_gauss(ftpts,pulse_location,pulse):
                                       pulse.length), np.zeros(len(ftpts)),
                              pulse.freq, pulse.phase)[1]
     return waveforms_qubit_flux
+
+
+def linear_ramp(wtpts,origin,pulse_location,pulse):
+    qubit_waveforms = ap.sideband(wtpts,
+                             ap.linear_ramp(wtpts, pulse.start_amp, pulse.stop_amp,
+                                       origin - pulse_location - pulse.length, pulse.length),
+                             np.zeros(len(wtpts)), 0, 0)
+    return qubit_waveforms
+
+def logistic_ramp(wtpts,origin,pulse_location,pulse):
+    qubit_waveforms = ap.sideband(wtpts,
+                             ap.logistic_ramp(wtpts, pulse.start_amp, pulse.stop_amp,
+                                       origin - pulse_location - pulse.length, pulse.length),
+                             np.zeros(len(wtpts)), 0, 0)
+    return qubit_waveforms
