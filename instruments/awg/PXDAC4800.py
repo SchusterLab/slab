@@ -26,9 +26,9 @@ class PXDAC4800:
         self.channels_num = awg['channels_num']
         self.sample_size = awg['sample_size']
 
-        print waveform_file_name
-        print offset_bytes_list
-        print clock_speed
+        print 'waveform_file_name =', waveform_file_name
+        print 'offset_bytes_list =', offset_bytes_list
+        print 'clock_speed =', clock_speed
 
         U8 = C.c_uint8
         U8P = C.POINTER(U8)
@@ -125,18 +125,17 @@ class PXDAC4800:
         dll.SetOutputVoltageCh4XD48(pHandle, U32(1023))
 
         ### Set Dac Default value
-        dll.SetCustomDacValueEnableXD48(pHandle, U32(3))
+        # works only on the channels enabled
+        dll.SetCustomDacValueEnableXD48(pHandle, U32(15))  # chn 1234
         for ii in range(1,5,1):# chn 1/2/3/4
-            dll.SetCustomDacDefaultValueXD48(pHandle, U32(ii), U32(offset_bytes_list[ii - 1]))
+            dll.SetCustomDacDefaultValueXD48(pHandle, U32(ii), I32(offset_bytes_list[ii - 1]))
+            # print 'offset_bytes_list on chn', ii, ':', dll.GetCustomDacDefaultValueXD48(pHandle, U32(ii))
 
         ### Set clock division
         dll.SetClockDivider1XD48(pHandle, U32(clock_divider))
 
 
         print "Active Channel Mask: " + str(dll.GetActiveChannelMaskXD48(pHandle, U32(1)))
-
-
-
 
         print "Load waveform file."
 
