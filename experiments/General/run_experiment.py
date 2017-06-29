@@ -122,5 +122,7 @@ def run_experiment(expt_name,lp_enable = False, **kwargs):
 
     if expt != None:
         expt.go()
+    else:
+        print 'Aborted: No experiment found with name:', expt_name.lower()
 
     return expt
