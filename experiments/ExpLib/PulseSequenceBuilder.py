@@ -236,6 +236,17 @@ class PulseSequenceBuilder():
 
         return self.max_total_flux_pulse_span_length
 
+    def get_total_flux_pulse_area(self, target):
+
+        flux_area = 0.0
+        for pulse in self.pulse_sequence_list:
+            if pulse.target[0:4] == 'flux':
+                flux_area += ap.get_pulse_area(type=pulse.type, \
+                            length=pulse.length, a=pulse.amp, start_a=pulse.start_amp, stop_a=pulse.stop_amp)
+
+        return flux_area
+
+
     def prepare_build(self, waveforms_tpts_dict, waveforms_dict):
         '''
         Being called internally to set the variables.

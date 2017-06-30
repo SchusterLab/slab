@@ -123,3 +123,10 @@ def get_pulse_span_length(cfg, type, length):
             return length
     else:
         return 0.0
+
+def get_pulse_area(type=None, length=0, a=0, start_a=0, stop_a=0):
+
+    if type in ['linear_ramp', 'logistic_ramp']:
+        return (start_a + stop_a)/2.0*length
+    else:
+        return 0.0
