@@ -96,7 +96,7 @@ class RabiThermalizerExperiment(QubitPulseSequenceExperiment):
 
     def pre_run(self):
         try:
-            self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg[self.expt_cfg_name]['iq_freq'])
+            self.drive.set_frequency(self.cfg[self.expt_cfg_name]['drive_carrier_freq'])
         except:
             print "No drive found."
 

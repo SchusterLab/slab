@@ -145,33 +145,7 @@ class HistogramSequence(PulseSequence):
                 self.waveforms['hetero_ch2'][ii] = temp_h_Q
             ##
 
-
-            # # flux pulse
-            # hw_delay = self.cfg['flux_pulse_info']['pxdac_hw_delay'] #-95
-            #
-            # if self.cfg['flux_pulse_info']['on_during_drive']:
-            #     flux_start = max(self.origin + hw_delay - self.max_pulse_width - self.start_end_buffer/2.0, 0)
-            #     flux_width = self.readout_cfg['width'] + self.max_pulse_width + self.start_end_buffer/2.0 + 1000
-            # else:
-            #     flux_start = max(self.origin + hw_delay, 0)
-            #     flux_width = self.readout_cfg['width'] + 1000
-            #
-            # flux_a = self.cfg['flux_pulse_info']['flux_a']
-            # flux_freq = self.cfg['flux_pulse_info']['flux_freq']
-            #
-            # for jj in range(4):
-            #
-            #     flux_pulsedata = ap.square(self.waveforms_tpts_dict['flux_%d' %(jj+1)], flux_a[jj], flux_start, flux_width, 10)
-            #
-            #     temp_f_I, temp_f_Q = \
-            #         ap.sideband(self.waveforms_tpts_dict['flux_%d' %(jj+1)], flux_pulsedata, np.zeros(len(self.waveforms_tpts_dict['flux_%d' %(jj+1)])),
-            #                     flux_freq[jj],
-            #                     0)
-            #
-            #     if 'flux_%d' %(jj+1) in self.waveforms_dict:
-            #         self.waveforms['flux_%d' %(jj+1)][ii] = temp_f_I
-            #
-            # ##
+            ## flux pulses
 
             # this is to align flux pulse to readout? (diff in 2 pxdac cards)
             hw_delay = self.cfg['flux_pulse_info']['pxdac_hw_delay']
@@ -212,8 +186,6 @@ class HistogramSequence(PulseSequence):
                 flux_idle = 0
                 flux_start = self.origin
                 flux_comp_start = flux_start
-
-
 
             flux_a = self.cfg['flux_pulse_info']['flux_a']
             flux_freq = self.cfg['flux_pulse_info']['flux_freq']
