@@ -102,9 +102,12 @@ class QubitPulseSequenceExperiment(Experiment):
             print "No readout found."
 
         try:
-            self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (
-                self.cfg['readout']['frequency'] - self.cfg['readout']['bare_frequency']),
-                                           self.cfg['readout']['frequency'])
+            if self.cfg['readout']['is_multitone_heterodyne']:
+                self.readout_shifter.set_phase(self.cfg['readout']['start_phase'], self.cfg['readout']['heterodyne_carrier_freq'])
+            else:
+                self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (
+                    self.cfg['readout']['frequency'] - self.cfg['readout']['bare_frequency']),
+                                               self.cfg['readout']['frequency'])
         except:
             print "Digital phase shifter not loaded."
 
