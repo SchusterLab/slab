@@ -402,14 +402,16 @@ class QubitPulseSequenceExperiment(Experiment):
 
     def awg_prep(self):
         stop_pulseblaster()
-        LocalInstruments().inst_dict['pxdac4800_1'].stop()
-        LocalInstruments().inst_dict['pxdac4800_2'].stop()
-        LocalInstruments().inst_dict['pxdac4800_3'].stop()
+        im = InstrumentManager()
+        im['M8195A'].stop_output()
+        for key, value in LocalInstruments().inst_dict.iteritems():
+            value.stop()
 
     def awg_run(self):
-        LocalInstruments().inst_dict['pxdac4800_1'].run_experiment()
-        LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
-        LocalInstruments().inst_dict['pxdac4800_3'].run_experiment()
+        im = InstrumentManager()
+        im['M8195A'].start_output()
+        for key, value in LocalInstruments().inst_dict.iteritems():
+            value.run_experiment()
 
         time.sleep(1)
 
