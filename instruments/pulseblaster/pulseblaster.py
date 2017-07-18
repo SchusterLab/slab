@@ -79,6 +79,7 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,readout_trig_ti
 
     # fast awg trigger
     pb_inst_pbonly64(drive_trig, Inst.LONG_DELAY, awg_trig_delay_loop, unit_inst_time)
+    pb_inst_pbonly64(idle, Inst.LONG_DELAY, fast_awg_trig_delay_loop, unit_inst_time)
 
     # awg trigger
     pb_inst_pbonly64(awg_trig, Inst.LONG_DELAY,awg_trig_delay_loop,unit_inst_time)
