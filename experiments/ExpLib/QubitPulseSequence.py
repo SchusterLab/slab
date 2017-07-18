@@ -182,9 +182,9 @@ class QubitPulseSequence(PulseSequence):
 
             # q2 pulses are hacked to be fixed in time, so can append multiple pulses for heterodyne readout
             self.psb.append('hetero', 'general', 'square', amp= het_a_list[ii],
-                            length=self.psb.measurement_width + 200,
+                            length=self.psb.measurement_width,
                             freq= het_IFreqList[ii],
-                            delay=(self.psb.measurement_width + 200) / 2.0)
+                            delay=self.psb.measurement_width/2.0 + 100)
 
     def build_sequence(self):
         PulseSequence.build_sequence(self)
