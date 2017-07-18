@@ -10,7 +10,7 @@ from liveplot import LivePlotClient
 
 
 class Pulse():
-    def __init__(self, target, name, type, amp, length, freq, phase, span_length, delay, exponent = 0, start_amp = 0, stop_amp = 0):
+    def __init__(self, target, name, type, amp, length, freq, phase, span_length, delay, exponent = 0, start_amp = 0, stop_amp = 0, **kwargs):
         self.target = target
         self.name = name
         self.type = type
@@ -23,6 +23,9 @@ class Pulse():
         self.exponent = exponent
         self.start_amp = start_amp
         self.stop_amp = stop_amp
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 class PulseSequenceBuilder():
     def __init__(self, cfg):
@@ -160,7 +163,7 @@ class PulseSequenceBuilder():
         if phase == None:
             phase = 0
 
-        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length, delay, exponent, start_amp, stop_amp)
+        pulse = Pulse(target, name, type, amp, length, freq, phase, pulse_span_length, delay, exponent, start_amp, stop_amp, **kwargs)
 
         self.pulse_sequence_list.append(pulse)
         self.total_pulse_span_length += pulse_span_length
@@ -431,6 +434,9 @@ class PulseSequenceBuilder():
                                                     flux_pulse_location_list[flux_index] - pulse.delay - pulse.span_length, pulse)
                         elif pulse.type == "logistic_ramp":
                             qubit_waveforms = logistic_ramp(self.waveforms_tpts_dict[waveforms_key], self.origin,
+                                                    flux_pulse_location_list[flux_index] - pulse.delay - pulse.span_length, pulse)
+                        elif pulse.type == "linear_ramp_with_mod":
+                            qubit_waveforms = linear_ramp_with_mod(self.waveforms_tpts_dict[waveforms_key], self.origin,
                                                     flux_pulse_location_list[flux_index] - pulse.delay - pulse.span_length, pulse)
 
                         else:

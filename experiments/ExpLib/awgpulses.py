@@ -62,6 +62,12 @@ def linear_ramp(t, start_a, stop_a, t0, w):
     else:
         return 0*t
 
+def linear_ramp_with_mod(t, start_a, stop_a, t0, w, mod_amp, mod_freq, mod_start_phase):
+    if w > 0:
+        return ( (stop_a - start_a) * (t - t0) / w + start_a + mod_amp * np.sin( 2*np.pi*(mod_freq/1.0e9)*(t-t0) + mod_start_phase/180.0 ) ) * (t >= t0) * (t < t0 + w)
+    else:
+        return 0*t
+
 def logistic_ramp(t, start_a, stop_a, t0, w):
     # smooth S-shaped ramp using logistic function
     # truncated and rescaled to be continuous
@@ -119,14 +125,14 @@ def get_pulse_span_length(cfg, type, length):
         if type == "square" or type == "square_exp":
             return length + 4 * cfg[type]['ramp_sigma'] +cfg['spacing']
 
-        if type in ["ramp", "linear_ramp", "logistic_ramp"]:
+        if type in ["ramp", "linear_ramp", "linear_ramp_with_mod", "logistic_ramp"]:
             return length
     else:
         return 0.0
 
 def get_pulse_area(type=None, length=0, a=0, start_a=0, stop_a=0):
 
-    if type in ['linear_ramp', 'logistic_ramp']:
+    if type in ["linear_ramp", "linear_ramp_with_mod", 'logistic_ramp']:
         return (start_a + stop_a)/2.0*length
     else:
         return 0.0
