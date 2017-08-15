@@ -49,7 +49,7 @@ class RamseySequence(QubitPulseSequence):
         if self.expt_cfg['echo']:
             print "Ramsey being run with single echo pulse"
             self.psb.idle(pt/2.0)
-            self.psb.append('q','pi')
+            self.psb.append('q','pi', self.pulse_type)
             self.psb.idle(pt/2.0)
         else:
             self.psb.idle(pt)
@@ -125,17 +125,17 @@ class EFRamseySequence(QubitPulseSequence):
     def define_pulses(self,pt):
         if self.expt_cfg['ge_pi']:
             self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q','half_pi_q_ef')
+        self.psb.append('q','half_pi_q_ef', self.pulse_type)
         if self.expt_cfg['echo']:
             self.psb.idle(pt/2.0)
-            self.psb.append('q','pi_q_ef')
+            self.psb.append('q','pi_q_ef', self.pulse_type)
             self.psb.idle(pt/2.0)
         else:
             self.psb.idle(pt)
-        self.psb.append('q','half_pi_q_ef',phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
+        self.psb.append('q','half_pi_q_ef', self.pulse_type,phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
         self.psb.append('q','pi', self.pulse_type)
         if self.expt_cfg['cal_ef']:
-            self.psb.append('q','pi_q_ef')
+            self.psb.append('q','pi_q_ef', self.pulse_type)
 
 class EFT1Sequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -155,7 +155,7 @@ class EFT1Sequence(QubitPulseSequence):
     def define_pulses(self,pt):
         if self.expt_cfg['ge_pi']:
             self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q','pi_q_ef')
+        self.psb.append('q','pi_q_ef', self.pulse_type)
         self.psb.idle(pt)
         self.psb.append('q','pi', self.pulse_type)
         self.psb.append('q','pi_q_ef', self.pulse_type)
@@ -227,7 +227,7 @@ class HalfPiXOptimizationSweepSequence(QubitPulseSequence):
         n = 2*pt+1
         i = 0
         while i< n:
-            self.psb.append('q','general', self.pulse_type, amp=self.pulse_amp, length=self.pulse_length,freq=self.pulse_cfg[self.pulse_type]['iq_freq'], phase= i*self.expt_cfg['phase'])
+            self.psb.append('q','general', self.pulse_type, amp=self.pulse_amp, length=self.pulse_length,freq=self.pulse_cfg[self.pulse_type]['iq_freq'], phase= i*self.pulse_cfg[self.pulse_type]['phase'])
             i += 1
 
 

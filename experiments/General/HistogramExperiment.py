@@ -54,8 +54,11 @@ class HistogramExperiment(Experiment):
 
         for xx, atten in enumerate(attenpts):
             self.im.atten.set_attenuator(atten)
-            max_contrast_data = zeros(len(freqpts))
+            max_contrast_data_ch1 = zeros(len(freqpts))
+            max_contrast_data_ch2 = zeros(len(freqpts))
             #self.plotter.clear('max contrast')
+
+            print "atten at: %s" %atten
 
             for yy, freq in enumerate(freqpts):
                 self.readout.set_frequency(freq)
@@ -71,19 +74,21 @@ class HistogramExperiment(Experiment):
                 ss1, ss2 = adc.acquire_singleshot_data(prep_function=self.awg.stop_and_prep, start_function=self.awg.run,
                                                        excise=self.cfg['readout']['window'])
 
-                with self.datafile() as f:
-                    f.append_line('ss1', ss1)
-                    f.append_line('ss2', ss2)
+                #with self.datafile() as f:
+                #    f.append_line('ss1', ss1)
+                #    f.append_line('ss2', ss2)
 
 
-                # ss1 = reshape(ss1, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
-                # histo_range = (ss1.min() / 1.05, ss1.max() * 1.05)
-                # for jj, ss in enumerate(ss1):
-                #     sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
-                #     ss_data[jj] += sshisto
-                #     sss_data[jj] = cumsum(ss_data[[jj]])
+                ss1 = reshape(ss1, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+                histo_range = (ss1.min() / 1.05, ss1.max() * 1.05)
+                for jj, ss in enumerate(ss1):
+                    sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
+                    ss_data[jj] += sshisto
+                    sss_data[jj] = cumsum(ss_data[[jj]])
                 #     self.plotter.plot_xy('histogram %d' % jj, ssbins[:-1], ss_data[jj])
                 #     self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
+
+                max_contrast_data_ch1[yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
 
                 ss2 = reshape(ss2, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
                 histo_range = (ss2.min() / 1.05, ss2.max() * 1.05)
@@ -95,7 +100,7 @@ class HistogramExperiment(Experiment):
                     #self.plotter.plot_xy('cum histo %d' % jj, ssbins[:-1], sss_data[jj])
 
                 #self.plotter.plot_xy('contrast', ssbins[:-1], abs(sss_data[0] - sss_data[1]) / ss_data[0].sum())
-                max_contrast_data[yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
+                max_contrast_data_ch2[yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
                 #self.plotter.append_xy('max contrast', freq, max_contrast_data[yy])
             if len(attenpts)>1:
                 print "plotting max contrast 2"
@@ -105,4 +110,5 @@ class HistogramExperiment(Experiment):
             with self.datafile() as f:
                 f.append_pt('atten', atten)
                 f.append_line('freq', freqpts)
-                f.append_line('max_contrast_data', max_contrast_data)
+                f.append_line('max_contrast_data_ch1', max_contrast_data_ch1)
+                f.append_line('max_contrast_data_ch2', max_contrast_data_ch2)

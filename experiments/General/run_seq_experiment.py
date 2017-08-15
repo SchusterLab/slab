@@ -117,7 +117,7 @@ def run_seq_experiment(expt_name,lp_enable=True):
 
     if expt_name.lower() == 'sequential_single_qubit_rb':
         for i in arange(32):
-            pulse_calibration(seq_exp,phase_exp=True)
+            #pulse_calibration(seq_exp,phase_exp=True)
             seq_exp.run('randomized_benchmarking_phase_offset',{"data_file":data_file})
 
     if expt_name.lower() == 'rabi_sweep':

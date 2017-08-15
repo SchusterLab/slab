@@ -451,8 +451,8 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
         # freqspan = linspace(0,1000,301)
         # freqlist = array([1.54])*1e9
-        freqspan = linspace(0,100,51)
-        freqlist = array([1.692])*1e9
+        freqspan = linspace(0,10,101)
+        freqlist = array([3.451])*1e9
         modelist = array([-1])
 
         amp = kwargs['amp']
@@ -1335,35 +1335,43 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
     if expt_name.lower() == 'multimode_bluesideband_sweep':
 
         # offset_list=[-81656602.748319939, -80685740.24701868, -79599004.754083157, -78597136.31114462, -7.77e+07, -76807382.828515679, -76009899.855674267, -75209535.153403714, -74459064.946205765, -73689192.183382601, -72983759.987144202, -72272657.000603467, -71674416.255530506, -71201969.173228472, -70642005.063694507, -70177149.894169152, -69898846.796902165, -69611643.262061238, -69518137.464103252, -69601738.595220476, -69552498.380955413, -69494148.22051169, -69394164.918533742, -69319497.915831298, -69006328.29023242, -68794345.798679218, -6.865e+07, -68505009.638900757, -68590321.673740223, -68604714.195392057]
-        # freqspan = linspace(2,12,21)
-        # freqcenter = array([4.8])*1e9
+        freqspan = linspace(0,20,21) #MHz
+        freqcenter = 2.96e9#2.745e9
 
-        # freqspan = linspace(0,10,11)
-        # freqcenter = -array([70])*1e6
+        # freqspan = linspace(-1,1,11)
+        # freqcenter = -array([66.6])*1e6
 
-        phasespan = linspace(-90,90,1)
-        phasecenter = array([0])
+        # phasespan = linspace(-30,30,201)
+        # phasecenter = array([0])
 
-        #delay = linspace(0,1,1)
+        # delay = linspace(93,200,1)
+
+        # predrive_time = linspace(0,100,101)
+
+        with SlabFile(data_file) as f:
+            f.append_line('freq', freqspan  * 1e6 + freqcenter)
+            f.close()
 
 
-        # for ii,freq in enumerate(freqspan):
-        #     sweep_freq = freqcenter + freq*1e6
-        #     #add_freq = offset_list[ii]
-        #     print "running BlueSideband sweep at %s"%(sweep_freq)
-        #     #print "qubit DC offset at %s"%(add_freq)
-        #     seq_exp.run('multimode_bluesideband_sweep',{'flux_freq':sweep_freq,"data_file":data_file})
+        for ii,freq in enumerate(freqspan):
+
+            sweep_freq = freqcenter + freq*1e6
+            # sweep_freq = 4.83*1e9
+            #add_freq = offset_list[ii]
+            print "running BlueSideband sweep at %s"%(sweep_freq)
+            #print "qubit DC offset at %s"%(add_freq)
+            seq_exp.run('multimode_bluesideband_sweep',{'flux_freq':sweep_freq,"data_file":data_file})
 
         # for freq in freqspan:
         #     sweep_freq = freqcenter + freq*1e6
         #     print "running qubit drive sweep at %s"%(sweep_freq)
         #     seq_exp.run('multimode_bluesideband_sweep',{'add_freq':sweep_freq,"data_file":data_file})
 
-        for phase in phasespan:
-            sweep_phase = phasecenter + phase
-            # sweep_phase = 5
-            print "setting pi/2 pulse phase to %s"%(sweep_phase)
-            seq_exp.run('multimode_bluesideband_sweep',{'pi_pulse_phase':sweep_phase,"data_file":data_file})
+        # for phase in phasespan:
+        #     sweep_phase = phasecenter + phase
+        #     sweep_phase = 90
+        #     print "setting pi/2 pulse phase to %s"%(sweep_phase)
+        #     seq_exp.run('multimode_bluesideband_sweep',{'pi_pulse_phase':sweep_phase,"data_file":data_file})
 
         # for qubit_delay in delay:
         #     print "qubit delay set to %s"%(qubit_delay)
@@ -1372,3 +1380,7 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         # for pi_pulse_delay in delay:
         #     print "pi pulse delay set to %s"%(pi_pulse_delay)
         #     seq_exp.run('multimode_bluesideband_sweep',{'pi_pulse_delay':pi_pulse_delay,"data_file":data_file})
+
+        # for predrive in predrive_time:
+        #     print "predrive time set to %s"%(predrive)
+        #     seq_exp.run('multimode_bluesideband_sweep',{'predrive':predrive,"data_file":data_file})

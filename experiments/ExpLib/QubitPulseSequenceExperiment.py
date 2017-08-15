@@ -185,6 +185,11 @@ class QubitPulseSequenceExperiment(Experiment):
 
                 expt_avg_data = (expt_avg_data[:-2]-expt_avg_data[-2])/(expt_avg_data[-1]-expt_avg_data[-2])
 
+            # temporary hack. Alazar card seems to shift two data points (problem disappeared after reboot computer)
+            # expt_avg_data = np.concatenate((expt_avg_data[2:],expt_avg_data[:2]))
+            # if self.cfg[self.expt_cfg_name]['use_pi_calibration']:
+            #     expt_avg_data = (expt_avg_data[:-2]-expt_avg_data[-2])/(expt_avg_data[-1]-expt_avg_data[-2])
+
             # else:
             #     if self.cfg['readout']['channel']==1:
             #         zero_amp = mean(ch1_pts[-2])

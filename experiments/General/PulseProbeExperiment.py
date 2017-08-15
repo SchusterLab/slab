@@ -38,6 +38,8 @@ class PulseProbeExperiment(Experiment):
         self.readout.set_ext_pulse(mod=True)
         self.readout_shifter.set_phase(self.cfg['readout']['start_phase']%360, self.cfg['readout']['frequency'])
 
+        self.trigger_period = self.cfg['expt_trigger']['period']
+        self.trigger.set_period(self.trigger_period)
 
         self.drive.set_power(self.cfg['drive']['power'])
         self.drive.set_ext_pulse(mod=True)

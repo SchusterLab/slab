@@ -61,6 +61,8 @@ class QubitPulseSequence(PulseSequence):
                     if 'sb_cool' in kwargs:
                         if kwargs['sb_cool']:
                             self.psb.append('q,mm'+str(10),'pi_ge')
+                    # self.psb.append('q','cal_pi', self.pulse_type)
+                    # print self.pulse_type
                     self.psb.append('q','cal_pi', self.pulse_type)
                 self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
                 total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())

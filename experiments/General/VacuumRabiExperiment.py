@@ -5,6 +5,7 @@ from slab.instruments.Alazar import Alazar
 from numpy import mean, arange, sqrt
 from slab.experiments.General.PulseSequences.VacuumRabiSequence import *
 from slab.experiments.General.PulseSequences.VacuumRabiSequencePSB import *
+from tqdm import tqdm
 
 class VacuumRabiExperiment(Experiment):
     def __init__(self, path='', prefix='Vacuum_Rabi', config_file='..\\config.json', use_cal=False, **kwargs):
@@ -44,6 +45,8 @@ class VacuumRabiExperiment(Experiment):
 
 
         # self.drive.set_ext_pulse(mod=False)
+        self.trigger_period = self.cfg['expt_trigger']['period']
+        self.trigger.set_period(self.trigger_period)
         self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
 
         self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
@@ -60,7 +63,22 @@ class VacuumRabiExperiment(Experiment):
             # print self.readout_shifter.get_phase()
             tpts, ch1_pts, ch2_pts = adc.acquire_avg_data()
 
-            mag = sqrt(ch1_pts**2+ch2_pts**2)
+            expt_data_ch1 = None
+            expt_data_ch2 = None
+            expt_data_mag = None
+            for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['averages'] / 100))):
+                tpts, ch1_pts, ch2_pts = adc.acquire_avg_data()
+
+                mag = sqrt(ch1_pts ** 2 + ch2_pts ** 2)
+
+
+                if expt_data_ch1 is None:
+                    expt_data_ch1 = ch1_pts
+                    expt_data_ch2 = ch2_pts
+                else:
+                    expt_data_ch1 = (expt_data_ch1 * ii + ch1_pts) / (ii + 1.0)
+                    expt_data_ch2 = (expt_data_ch2 * ii + ch2_pts) / (ii + 1.0)
+            expt_mag = sqrt(expt_data_ch1 ** 2 + expt_data_ch2 ** 2)
 
 
             # self.plotter.append_xy('readout_avg_freq_scan1', freq, mean(ch1_pts[0:]))
@@ -72,9 +90,9 @@ class VacuumRabiExperiment(Experiment):
 
             with self.datafile() as f:
                 f.append_pt('freq', freq)
-                f.append_pt('ch1_mean', mean(ch1_pts[0:]))
-                f.append_pt('ch2_mean', mean(ch2_pts[0:]))
-                f.append_pt('mag_mean', mean(mag[0:]))
+                f.append_pt('ch1_mean', mean(expt_data_ch1[0:]))
+                f.append_pt('ch2_mean', mean(expt_data_ch2[0:]))
+                f.append_pt('mag_mean', mean(expt_mag[0:]))
 
 
 class MultimodeVacuumRabiExperiment(Experiment):

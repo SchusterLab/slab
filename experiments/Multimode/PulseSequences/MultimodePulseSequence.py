@@ -10,11 +10,11 @@ import random
 # from numpy import around, mean, delete,arcsin
 from liveplot import LivePlotClient
 
-class MultimodeRabiSequence(QubitPulseSequenceSBcool):
+class MultimodeRabiSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
         self.multimode_cfg = cfg['multimodes']
-        QubitPulseSequenceSBcool.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
-
+        # QubitPulseSequenceSBcool.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
         # self.pulse_cfg = cfg['pulse_info']
 
 
@@ -23,12 +23,35 @@ class MultimodeRabiSequence(QubitPulseSequenceSBcool):
 
     def define_parameters(self):
         self.pulse_type =  self.expt_cfg['pulse_type']
-        self.id = self.expt_cfg['id']
-        self.flux_pulse_type = self.multimode_cfg[int(self.id)]['flux_pulse_type']
+        #self.id = self.expt_cfg['id']
+        #self.flux_pulse_type = self.multimode_cfg[int(self.id)]['flux_pulse_type']
 
     def define_pulses(self,pt):
+        # # original
+        # self.psb.append('q','pi', self.pulse_type)
+        # self.psb.append('q,mm'+str(self.id),'general', self.flux_pulse_type, amp=self.multimode_cfg[int(self.id)]['a'], length=pt,phase=self.multimode_cfg[int(self.id)]['pi_pi_offset_phase']/(2.0))
+        # #
+
+        # # # DC offset
+        # self.ramsey = 0e6#100e6
+        # self.freq = 3.3718e9
+        # self.psb.append('q','half_pi', self.pulse_type)
+        # self.psb.append('q','pi_q_ef', self.pulse_type)
+        # self.psb.append('q:mm','general', 'square', amp=0.0, length=pt,freq=self.freq)
+        # self.psb.append('q','pi_q_ef', self.pulse_type)
+        # self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.ramsey*pt/(1.0e9))
+
+
+        # self.psb.append('q','pi', self.pulse_type)
+        # self.psb.append('q','half_pi_q_ef', self.pulse_type)
+        # self.psb.idle(pt)
+        # self.psb.append('q','half_pi_q_ef', self.pulse_type,phase = 360.0*self.ramsey*pt/(1.0e9))
+        # self.psb.append('q','pi', self.pulse_type)
+        # self.psb.append('q','pi_q_ef', self.pulse_type)
+
         self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q,mm'+str(self.id),'general', self.flux_pulse_type, amp=self.multimode_cfg[int(self.id)]['a'], length=pt,phase=self.multimode_cfg[int(self.id)]['pi_pi_offset_phase']/(2.0))
+        self.psb.append('q:mm','general', 'square', amp=1.0, length=100,freq=pt)
+
 
 class MultimodeEFRabiSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -493,12 +516,18 @@ class MultimodeBlueSidebandSweepSequence(QubitPulseSequence):
         if 'add_freq' in kwargs:
             self.add_freq = self.extra_args['add_freq']
         else:
-            self.add_freq =-65e6
+            self.add_freq =-55e6
 
         if 'qubit_delay' in kwargs:
             self.qubit_delay = self.extra_args['qubit_delay']
         else:
-            self.qubit_delay =86
+            self.qubit_delay =93
+            # self.qubit_delay =4
+
+        if 'predrive' in kwargs:
+            self.predrive = self.extra_args['predrive']
+        else:
+            self.predrive =0
 
         if 'pi_pulse_delay' in kwargs:
             self.pi_pulse_delay = self.extra_args['pi_pulse_delay']
@@ -526,30 +555,90 @@ class MultimodeBlueSidebandSweepSequence(QubitPulseSequence):
 
         self.ramsey = cfg['multimode_bluesideband_sweep']['ramsey_freq']
 
+        self.ramp_sigma = cfg['multimode_bluesideband_sweep']['ramp_sigma']
+
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses, **kwargs)
 
 
 
     def define_points(self):
         self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+        # self.expt_pts = append(arange(0,self.ramp_sigma,self.expt_cfg['step']/4.),arange(self.expt_cfg['start']+self.ramp_sigma,self.expt_cfg['stop']+self.ramp_sigma,self.expt_cfg['step']))
 
     def define_parameters(self):
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
 
     def define_pulses(self,pt):
-
-        #self.psb.append('q','general', self.pulse_type, amp=self.qubit_amp, length=pt,freq=self.pulse_cfg[self.pulse_type]['iq_freq'], add_freq=self.add_freq, delay=pt+self.qubit_delay)
-
+        # if pt < self.ramp_sigma:
+        #
+        #     self.psb.append('q','general', 'gauss', amp=self.qubit_amp, length=pt, freq=self.pulse_cfg['gauss']['iq_freq']+self.add_freq, delay=pt+self.qubit_delay)
+        #
+        #     self.psb.append('q:mm','general', 'gauss', amp=self.flux_amp, length=pt, freq=self.flux_freq)
+        #
+        #     self.psb.idle(self.pi_pulse_delay)
+        #
+        #     self.psb.append('q','half_pi', 'square', phase = self.pi_pulse_phase)
+        #
+        # elif pt >= self.ramp_sigma:
+        # #self.psb.append('q','general', self.pulse_type, amp=self.qubit_amp, length=pt,freq=self.pulse_cfg[self.pulse_type]['iq_freq'], add_freq=self.add_freq, delay=pt+self.qubit_delay)
+        #
         # self.psb.append('q','pi', self.pulse_type)
+        # self.psb.idle(pt)
+        #
+        #     self.psb.append('q','general', 'square', amp=self.qubit_amp, length=pt-self.ramp_sigma, freq=self.pulse_cfg['square']['iq_freq']+self.add_freq, delay=pt+self.qubit_delay)
+        #
+        #     self.psb.append('q:mm','general', 'square', amp=self.flux_amp, length=pt-self.ramp_sigma, freq=self.flux_freq)
+        #
+        #     self.psb.idle(self.pi_pulse_delay)
+        #
+        #     self.psb.append('q','half_pi', 'square', phase = self.pi_pulse_phase)
 
-        self.psb.append('q','general', self.pulse_type, amp=self.qubit_amp, length=pt,freq=self.pulse_cfg[self.pulse_type]['iq_freq']+self.add_freq, delay=pt+self.qubit_delay)
+        # if self.pulse_type == 'gauss':
+        #     self.psb.append('q','general', self.pulse_type, amp=self.qubit_amp, length=pt, freq=self.pulse_cfg[self.pulse_type]['iq_freq']+self.add_freq, delay=4*pt+self.qubit_delay)
+        #
+        #     self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.flux_amp, length=pt, freq=self.flux_freq)
+        #
+        #     self.psb.idle(self.pi_pulse_delay)
+        #
+        #     # self.psb.append('q','half_pi', 'square', phase = self.pi_pulse_phase)
+        #
+        # else:
+            # self.psb.append('q','general', self.pulse_type, amp=self.qubit_amp, length=self.predrive, freq=self.pulse_cfg[self.pulse_type]['iq_freq'], delay=0)
 
+            # self.psb.append('q','general', self.pulse_type, amp=self.qubit_amp, length=pt, freq=self.pulse_cfg[self.pulse_type]['iq_freq']+self.add_freq, delay=pt+self.qubit_delay)
+        self.psb.append('q','pi', self.pulse_type)
         self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.flux_amp, length=pt, freq=self.flux_freq)
 
-        self.psb.idle(self.pi_pulse_delay)
+            # self.psb.idle(self.pi_pulse_delay)
 
-        # self.psb.append('q','half_pi', self.pulse_type, phase = self.pi_pulse_phase)
+            # self.psb.append('q','half_pi', 'square', phase = self.pi_pulse_phase)
+            #
+            # self.psb.append('q','general', 'square', amp=self.qubit_amp, length=pt, freq=self.pulse_cfg[self.pulse_type]['iq_freq'],phase = self.pi_pulse_phase)
+
+        # if pt == 0:
+        #
+        #     self.psb.append('q','general', self.pulse_type, amp=self.qubit_amp, length=pt, freq=self.pulse_cfg[self.pulse_type]['iq_freq']+self.add_freq, delay=pt+self.qubit_delay)
+        #
+        #     self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.flux_amp, length=pt, freq=self.flux_freq)
+        #
+        #     self.psb.idle(self.pi_pulse_delay)
+        #
+        #     self.psb.append('q','half_pi', 'square', phase = 38.8-90)
+        #
+        # elif pt > 0:
+        #
+        #     self.psb.append('q','general', self.pulse_type, amp=self.qubit_amp, length=pt, freq=self.pulse_cfg[self.pulse_type]['iq_freq']+self.add_freq, delay=pt+self.qubit_delay)
+        #
+        #     self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.flux_amp, length=pt, freq=self.flux_freq)
+        #
+        #     self.psb.idle(self.pi_pulse_delay)
+        #
+        #     self.psb.append('q','half_pi', 'square', phase = self.pi_pulse_phase)
+
+
+
+        # self.psb.append('q','half_pi', 'square', phase = self.pi_pulse_phase)
 
         # self.psb.append('q','half_pi', self.pulse_type)
         # self.psb.idle(pt)
@@ -558,6 +647,9 @@ class MultimodeBlueSidebandSweepSequence(QubitPulseSequence):
         # self.psb.append('q','half_pi', self.pulse_type)
         # self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.flux_amp, length=pt,freq=self.flux_freq)
         # self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.ramsey*pt/(1.0e9))
+
+        # self.psb.append('q','pi', self.pulse_type)
+        # self.psb.idle(pt)
 
 class MultimodeDCOffsetSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
