@@ -8,7 +8,7 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,readout_trig_ti
     pb_set_debug(1)
 
     print("Using SpinAPI Library version %s" % pb_get_version())
-    print("Found %d boards in the system.\n" % pb_count_boards())
+    print("Found %d PulseBlaster boards in the system.\n" % pb_count_boards())
 
     pb_select_board(0)
 
@@ -24,8 +24,10 @@ def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,readout_trig_ti
     exp_period = exp_period_ns
     #exp_period = 200*1000 # 100us
 
+    # use the drive trig to trigger the fast awg, which has 500ns hardware delay c.f. PXDAC
     fast_awg_trig_delay = 500
     fast_awg_trig_delay_loop = (fast_awg_trig_delay - awg_trig_len)/unit_inst_time
+
     awg_trig_time = 0
     #awg_trig_len = 100
 
