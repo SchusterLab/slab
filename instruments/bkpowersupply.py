@@ -34,8 +34,8 @@ class BKPowerSupply(SerialInstrument):
         
     def get_voltages(self):
         ans=self.query('APP:VOLT?\n')
-        voltages=[float (s.strip()) for s in ans.split(',')]
-        return voltages   
+        #voltages=[float (s.strip()) for s in ans.split(',')]
+        return ans
         
     def set_currents(self,ch1,ch2,ch3):
         self.write( 'APP:CURR %f,%f,%f\n' %(ch1,ch2,ch3))
@@ -72,8 +72,11 @@ class BKPowerSupply(SerialInstrument):
                 else:
                     stat=['0','1'][state]
 
-                self.write('INST CH%d'%(k+1))
+                #self.write('INST CH%d'%(k+1))
+                ch = ['FIR', 'SECO', 'THI'][k]
+                self.write('INST' + ' ' + ch + '\n')
                 self.write('OUTP '+stat+'\n')
+
         elif type(channel) == list:
             for k, chan in enumerate(channel):
                 stat=['0','1'][state[k]]
@@ -108,7 +111,7 @@ class BKPowerSupply(SerialInstrument):
         
 if __name__== '__main__':
     
-    p=BKPowerSupply(address='COM12')
+    p=BKPowerSupply(address='COM8')
     print p.get_voltages()
     
     
