@@ -43,6 +43,12 @@ def zipsort(xdata,ydata):
 def fitgeneral(xdata, ydata, fitfunc, fitparams, domain=None, showfit=False, showstartfit=False, showdata=True,
                label="", mark_data='bo', mark_fit='r-'):
     """Uses optimize.leastsq to fit xdata ,ydata using fitfunc and adjusting fit params"""
+
+    # sort data
+    order = np.argsort(xdata)
+    xdata = xdata[order]
+    ydata = ydata[order]
+
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
     else:
