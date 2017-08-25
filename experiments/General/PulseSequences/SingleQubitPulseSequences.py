@@ -616,6 +616,11 @@ class RabiThermalizerSequence(QubitPulseSequence):
 
         thermalizer_1_length = expt_cfg["drive1_length"]
         thermalizer_2_length = expt_cfg["drive2_length"]
+
+        # hack for AF ramp
+        # thermalizer_2_length = abs((expt_cfg['drive2_flux_a_start'][0] - expt_cfg['drive2_flux_a_stop'][0])/0.18*400)
+
+
         thermalizer_1_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer_pulse_type'], thermalizer_1_length)
         thermalizer_2_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer_pulse_type'], thermalizer_2_length)
 
@@ -636,7 +641,8 @@ class RabiThermalizerSequence(QubitPulseSequence):
             target = 'flux_' + str(ii + 1)
 
             flux_a_drive1 = expt_cfg['drive1_flux_a'][ii]
-            flux_a_drive2 = expt_cfg['drive2_flux_a'][ii]
+            flux_a_drive2_start = expt_cfg['drive2_flux_a_start'][ii]
+            flux_a_drive2_stop = expt_cfg['drive2_flux_a_stop'][ii]
             flux_a_read = expt_cfg['read_flux_a'][ii]
 
             flux_drive2_mod_amp = expt_cfg['flux_drive2_mod_amp'][ii]
@@ -674,16 +680,16 @@ class RabiThermalizerSequence(QubitPulseSequence):
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_excite, stop_amp=flux_a_excite, length=excite_dur)
 
             # ramp to a_drive2
-            self.psb.append(target, 'general', 'logistic_ramp', start_amp=flux_a_excite, stop_amp=flux_a_drive2, length=flux_ramp_dur2)
-            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive2, stop_amp=flux_a_drive2, length=flux_settle_dur2)
+            self.psb.append(target, 'general', 'logistic_ramp', start_amp=flux_a_excite, stop_amp=flux_a_drive2_start, length=flux_ramp_dur2)
+            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive2_start, stop_amp=flux_a_drive2_start, length=flux_settle_dur2)
             # 2nd thermalizer pulse
             thermalizer_2_start_time = excite_end_time + flux_ramp_dur2 + flux_settle_dur2
             thermalizer_2_end_time = thermalizer_2_start_time + thermalizer_2_dur
-            self.psb.append(target, 'general', 'linear_ramp_with_mod', start_amp=flux_a_drive2, stop_amp=flux_a_drive2, length=thermalizer_2_dur,\
+            self.psb.append(target, 'general', 'linear_ramp_with_mod', start_amp=flux_a_drive2_start, stop_amp=flux_a_drive2_stop, length=thermalizer_2_dur,\
                             mod_amp = flux_drive2_mod_amp, mod_freq = flux_drive2_mod_freq, mod_start_phase = 0.0)
 
             # ramp to a_read
-            self.psb.append(target, 'general', 'logistic_ramp', start_amp=flux_a_drive2, stop_amp=flux_a_read, length=flux_ramp_dur)
+            self.psb.append(target, 'general', 'logistic_ramp', start_amp=flux_a_drive2_stop, stop_amp=flux_a_read, length=flux_ramp_dur)
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_read, stop_amp=flux_a_read, length=flux_settle_dur)
             # readout
             read_start_time = thermalizer_2_end_time + flux_ramp_dur + flux_settle_dur
