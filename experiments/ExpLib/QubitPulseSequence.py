@@ -3,7 +3,7 @@ __author__ = 'Nelson'
 from slab.instruments.awg.PulseSequence import *
 from numpy import arange, linspace, array
 from slab.experiments.ExpLib.PulseSequenceBuilder import *
-
+import time
 from liveplot import LivePlotClient
 
 class QubitPulseSequence(PulseSequence):
@@ -178,13 +178,34 @@ class QubitPulseSequence(PulseSequence):
         if sum(het_a_list) > 1:
             print 'Warning! Sum of heterodyne amplitudes > 1 in QubitPulseSequence.'
 
-        for ii in range(len(het_IFreqList)):
+        if not self.cfg['readout']['is_fast_awg']:
 
-            # q2 pulses are hacked to be fixed in time, so can append multiple pulses for heterodyne readout
-            self.psb.append('hetero', 'general', 'square', amp= het_a_list[ii],
+            for ii in range(len(het_IFreqList)):
+                # q2 pulses are hacked to be fixed in time, so can append multiple pulses for heterodyne readout
+                self.psb.append('hetero', 'general', 'square', amp= het_a_list[ii],
+                                length=self.psb.measurement_width,
+                                freq= het_IFreqList[ii],
+                                delay=self.psb.measurement_width/2.0 + 100) # the 100ns is a mysterious delay
+        else:
+
+            # heterodyne carrier - LO
+            self.psb.append('hetero_carrier', 'general', 'square', amp=self.cfg['readout']['hetero_carrier_a'],
                             length=self.psb.measurement_width,
-                            freq= het_IFreqList[ii],
-                            delay=self.psb.measurement_width/2.0 + 100)
+                            freq=het_carrier_freq,
+                            delay=self.psb.measurement_width / 2.0 + 100)  # the 100ns is a mysterious delay
+            if self.cfg['readout']['is_hetero_phase_ref']:
+                # hetero phase reference to solve alazar jitter
+                self.psb.append('hetero_carrier', 'general', 'square', amp=self.cfg['readout']['hetero_phase_ref_a'],
+                                length=self.psb.measurement_width,
+                                freq=self.cfg['readout']['hetero_phase_ref_freq'],
+                                delay=self.psb.measurement_width / 2.0 + 100)  # the 100ns is a mysterious delay
+
+            for ii in range(len(het_IFreqList)):
+                # q2 pulses are hacked to be fixed in time, so can append multiple pulses for heterodyne readout
+                self.psb.append('hetero', 'general', 'square', amp= het_a_list[ii],
+                                length=self.psb.measurement_width,
+                                freq=het_read_freq_list[ii],
+                                delay=self.psb.measurement_width / 2.0 + 100)  # the 100ns is a mysterious delay
 
     def build_sequence(self):
         PulseSequence.build_sequence(self)
@@ -210,8 +231,10 @@ class QubitPulseSequence(PulseSequence):
                 self.waveforms_dict[waveform['name']] = self.waveforms[waveform['name']]
                 self.waveforms_tpts_dict[waveform['name']] = self.get_waveform_times(waveform['name'])
 
-        self.psb.prepare_build(self.waveforms_tpts_dict,self.waveforms_dict)
+        start_time = time.time()
+        print '\nStart building sequences...'
 
+        self.psb.prepare_build(self.waveforms_tpts_dict,self.waveforms_dict)
 
         # self.psb.prepare_build(wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q, waveforms_qubit_flux,
         #                       markers_qubit_buffer, markers_ch3m1,waveforms_pxdac4800_2_ch1,waveforms_pxdac4800_2_ch2)
@@ -222,6 +245,8 @@ class QubitPulseSequence(PulseSequence):
         for waveform_key in self.waveforms_dict:
             self.waveforms[waveform_key] = self.waveforms_dict[waveform_key]
 
+        end_time = time.time()
+        print 'Finished building sequences in', end_time - start_time, 'seconds.\n'
 
         # np.save('S:\\_Data\\160711 - Nb Tunable Coupler\\data\\waveform.npy',self.waveforms['qubit drive Q'])
         ### in ipython notebook: call np.load('file_path/file_name.npy')

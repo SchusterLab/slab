@@ -169,6 +169,24 @@ class QubitPulseSequenceExperiment(Experiment):
             else:
                 adc = self.adc
 
+            # debug_alazer = False
+            # if debug_alazer:
+            #
+            #     # save raw time trace, 100 runs only
+            #     tpts, single_data1, single_data2 = adc.acquire_singleshot_data2()
+            #
+            #     self.slab_file = self.datafile(data_file=self.data_file)
+            #     with self.slab_file as f:
+            #         f.add('tpts', tpts)
+            #         f.add('single_data1', single_data1)
+            #         f.add('single_data2', single_data2)
+            #         f.close()
+            #
+            #     # hack for post_run
+            #     expt_avg_data = self.expt_pts
+            #
+            # else:
+
             if not self.cfg['readout']['save_single-shot_data']:
 
                 expt_data = None
@@ -277,11 +295,30 @@ class QubitPulseSequenceExperiment(Experiment):
 
                 for ii in tqdm(arange(numAcquisition)):
 
-                    # single_data1/2: index: (hetero_freqs, cos/sin, all_seqs)
-                    single_data1, single_data2, single_record1, single_record2 = \
-                        adc.acquire_singleshot_heterodyne_multitone_data(het_IFreqList, prep_function=self.awg_prep,
-                                                                         start_function=self.awg_run,
-                                                                         excise=self.cfg['readout']['window'])
+                    if not self.cfg['readout']['is_hetero_phase_ref']:
+
+                        # single_data1/2: index: (hetero_freqs, cos/sin, all_seqs)
+                        single_data1, single_data2, single_record1, single_record2 = \
+                            adc.acquire_singleshot_heterodyne_multitone_data(het_IFreqList, prep_function=self.awg_prep,
+                                                                             start_function=self.awg_run,
+                                                                             excise=self.cfg['readout']['window'])
+
+                        # saving the raw time traces
+                        # single_data1, single_data2, single_record1, single_record2 = \
+                        #     adc.acquire_singleshot_heterodyne_multitone_data(het_IFreqList, prep_function=self.awg_prep,
+                        #                                                      start_function=self.awg_run,
+                        #                                                      excise=None, save_raw_data=True)
+
+                    else:
+
+                        # single_data1/2: index: (hetero_freqs, cos/sin, all_seqs)
+                        single_data1, single_data2, single_record1, single_record2 = \
+                            adc.acquire_singleshot_heterodyne_multitone_data_phase_ref(het_IFreqList,
+                                                                             self.cfg['readout']['hetero_phase_ref_freq'],
+                                                                             prep_function=self.awg_prep,
+                                                                             start_function=self.awg_run,
+                                                                             excise=self.cfg['readout']['window'],
+                                                                             save_raw_data=False)
 
                     single_data = array([single_data1, single_data2])
                     # index: (ch1/2, hetero_freqs, cos / sin, avgs, seq(exp_pts))
@@ -402,17 +439,20 @@ class QubitPulseSequenceExperiment(Experiment):
 
     def awg_prep(self):
         stop_pulseblaster()
+
         im = InstrumentManager()
         im['M8195A'].stop_output()
+
         for key, value in LocalInstruments().inst_dict.iteritems():
             value.stop()
 
     def awg_run(self):
+
         im = InstrumentManager()
         im['M8195A'].start_output()
+
         for key, value in LocalInstruments().inst_dict.iteritems():
             value.run_experiment()
 
         time.sleep(1)
-
         run_pulseblaster()

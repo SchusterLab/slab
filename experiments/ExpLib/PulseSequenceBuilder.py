@@ -49,7 +49,7 @@ class PulseSequenceBuilder():
         '''
         Append a pulse in the pulse sequence.
         '''
-        if target == "q" or target == "q2" or target == "hetero" or target[:4] == "flux":
+        if target == "q" or target == "q2" or target[:6] == "hetero" or target[:4] == "flux":
             if name == "0":
                 amp = 0
                 length = self.pulse_cfg[type]['pi_length']
@@ -112,7 +112,7 @@ class PulseSequenceBuilder():
 
             ## hack: allow multitone heterodyne pulses to be
             # added to the same location
-            if target == "hetero" :# or target[:4] == "flux":
+            if target[:6] == "hetero" :
                 pulse_span_length = 0
 
             if self.flux_pulse_started:
@@ -363,6 +363,27 @@ class PulseSequenceBuilder():
                 if pulse.target == "hetero":
 
                     waveforms_key_list = ['hetero_ch1', 'hetero_ch2']
+
+                    for waveform_id, waveforms_key in enumerate(waveforms_key_list):
+                        if waveforms_key in self.waveforms_dict:
+                            if pulse.type == "square":
+                                qubit_waveforms = square(self.waveforms_tpts_dict[waveforms_key], self.origin,
+                                                                       self.marker_start_buffer, self.marker_end_buffer,
+                                                                       pulse_location - pulse.delay, pulse,
+                                                                       self.pulse_cfg)
+                            elif pulse.type == "gauss":
+                                qubit_waveforms = gauss(self.waveforms_tpts_dict[waveforms_key],self.origin,
+                                                                      self.marker_start_buffer, self.marker_end_buffer,
+                                                                      pulse_location - pulse.delay, pulse)
+                            else:
+                                raise ValueError('Wrong pulse type has been defined')
+                            if pulse_defined:
+                                self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[waveform_id]
+                    pulse_location += pulse.span_length
+
+                if pulse.target == "hetero_carrier":
+
+                    waveforms_key_list = ['hetero_carrier']
 
                     for waveform_id, waveforms_key in enumerate(waveforms_key_list):
                         if waveforms_key in self.waveforms_dict:
