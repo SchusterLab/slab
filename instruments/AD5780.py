@@ -33,13 +33,40 @@ class AD5780(SocketInstrument):
     def get_voltage(self, channel):
         return self.query('READ %d' % (channel))
 
+    #Previous code from REPO
+    # def ramp(self, channel, voltage, speed):
+    #     """Ramp to voltage with speed in (V/S)"""
+    #     bitcode = int((voltage + 10.0)*13107.2)
+    #     print 'target', bitcode
+    #     currbit = int(self.get_voltage(channel).strip())
+    #     time.sleep(self.query_sleep)
+    #     print 'current', currbit
+    #     if bitcode == currbit:
+    #         return str(bitcode)
+    #     if bitcode < 0 or bitcode > 262143:
+    #         print('ERROR: voltage out of range')
+    #         return str(bitcode)
+    #     step_size = 10 # in bits, about 0.7mV out of +-10V
+    #     step_time = int(step_size * 0.0762939453 / speed)
+    #     if step_time == 0:
+    #         step_time = 1
+    #     endbit = self.query('RAMP %d %d %d %d' % (channel, bitcode, step_size, step_time))
+    #     time.sleep(self.query_sleep)
+    #     if not endbit == bitcode:
+    #         endbit = self.set_voltage(channel, voltage)
+    #     if not int(endbit.strip())==bitcode:
+    #         print 'DAC get_voltage error!!!'
+    #     return endbit
+
+    #Testing for debugging
     def ramp(self, channel, voltage, speed):
+        #Measured, not V/S, possibly railed time int()...
         """Ramp to voltage with speed in (V/S)"""
         bitcode = int((voltage + 10.0)*13107.2)
         print 'target', bitcode
         currbit = int(self.get_voltage(channel).strip())
         time.sleep(self.query_sleep)
-        print 'current', currbit
+        print 'startbit', currbit
         if bitcode == currbit:
             return str(bitcode)
         if bitcode < 0 or bitcode > 262143:
@@ -50,6 +77,7 @@ class AD5780(SocketInstrument):
         if step_time == 0:
             step_time = 1
         endbit = self.query('RAMP %d %d %d %d' % (channel, bitcode, step_size, step_time))
+        print 'endbit' , endbit
         time.sleep(self.query_sleep)
         if not endbit == bitcode:
             endbit = self.set_voltage(channel, voltage)
