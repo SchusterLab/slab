@@ -69,7 +69,8 @@ class PulseSequence:
         write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence,
                           'PXDAC4800_1': self.write_PXDAC4800_1_sequence,
                           'PXDAC4800_2': self.write_PXDAC4800_2_sequence,
-                          'PXDAC4800_3': self.write_PXDAC4800_3_sequence, 'M8195A': self.write_M8195A_sequence}
+                          'PXDAC4800_3': self.write_PXDAC4800_3_sequence,
+                          'M8195A': self.write_M8195A_sequence}
         for awg in self.awg_info:
             # try:
             if awg['type'] is not "NONE":
@@ -79,12 +80,8 @@ class PulseSequence:
 
     def write_M8195A_sequence(self, awg, path, file_prefix, upload=False):
         print "writing M8195A sequence"
-        waveforms_qubit_drive = self.waveforms['qubit drive I']
-        waveforms_qubit_2 = self.waveforms['qubit drive 2 I']
-        waveforms_readout = self.waveforms['hetero_ch1']
-        waveforms_card = self.waveforms['hetero_ch1']
-
-        waveform_matrix = np.array([waveforms_qubit_drive, waveforms_qubit_2, waveforms_readout, waveforms_card])
+        print 'fast awg waveforms (ch1-4):', [waveform['name'] for waveform in awg['waveforms']]
+        waveform_matrix = np.array([self.waveforms[waveform['name']] for waveform in awg['waveforms']])
         im = InstrumentManager()
         im[awg['name']].upload_M8195A_sequence(waveform_matrix, awg)
 
