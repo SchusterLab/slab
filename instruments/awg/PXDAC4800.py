@@ -44,7 +44,9 @@ class PXDAC4800:
         unsigned_short_length = 2
 
         try:
-            DACdllpath = r'C:\Program Files\Signatec\PXDAC4800\PXDAC4800_64.dll'
+            # DACdllpath = r'C:\Program Files\Signatec\PXDAC4800\PXDAC4800_64.dll'
+            DACdllpath = r'C:\Program Files (x86)\Signatec\PXDAC4800\Lib64\PXDAC4800_64.dll'
+
             DACDLL = C.CDLL(DACdllpath)
             print "DPXDAC4800.dll loaded"
         except:

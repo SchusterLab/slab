@@ -14,7 +14,8 @@ class RabiExperiment(QubitPulseSequenceExperiment):
 
     def pre_run(self):
         try:
-            self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg[self.expt_cfg_name]['iq_freq'])
+            pass
+            # self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg[self.expt_cfg_name]['iq_freq'])
         except:
             print "No drive found."
 

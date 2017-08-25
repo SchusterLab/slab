@@ -368,7 +368,7 @@ def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14
 
 
 
-    shot_data1,shot_data2 = rp.scope.acquire_singleshot (samples = samples, start = start, stop = stop, shots = shots, dual_ch=True
+    shot_data1,shot_data2 = rp.scope.acquire_singleshot (samples = samples, start = start, stop = stop, shots = shots * num_experiments, dual_ch=True
                                                          , use_filter=False, start_function= start_function, prep_function = stop_function)
 
     data_crop1 = shot_data1[0:math.floor(shots / num_experiments) * num_experiments]
@@ -410,4 +410,5 @@ def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14
 
 if __name__ == "__main__":
     m8195a = M8195A(address ='192.168.14.234:5025')
+    # m8195a = M8195A(address ='192.168.14.175')
     setup_redpitaya_adc(m8195a,num_experiments=4,samples=2048,window=(80,8000),shots=2**14,plot_data=True)

@@ -15,7 +15,8 @@ class BKPowerSupply(SerialInstrument):
         SerialInstrument.__init__(self,name,address,enabled,timeout,query_sleep=0.2)
         
     def get_id(self):
-        #self.query('SYST:VERS?')
+        self.write('*CLS')
+        print self.query('SYST:VERS?')
         return self.query('*IDN?')
         
     def set_voltage(self,channel,voltage):
@@ -108,8 +109,9 @@ class BKPowerSupply(SerialInstrument):
         
 if __name__== '__main__':
     
-    p=BKPowerSupply(address='COM12')
-    print p.get_voltages()
+    p=BKPowerSupply(address='COM5')
+    print p.get_id()
+    #print p.get_voltages()
     
     
     

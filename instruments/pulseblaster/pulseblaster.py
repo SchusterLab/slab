@@ -4,6 +4,8 @@ from spinapi import *
 
 
 def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,card_trig_len,readout_trig_len):
+
+
     # Enable the log file
     pb_set_debug(1)
 

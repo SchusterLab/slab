@@ -311,7 +311,8 @@ class PulseSequenceBuilder():
                     else:
                         raise ValueError('Wrong pulse type has been defined')
                     if pulse_defined:
-                        self.waveforms_pxdac4800_2_ch1[ii] += qubit_waveforms[0]
+                        # TODO : Hack CH1 to make it 0 waveform
+                        self.waveforms_pxdac4800_2_ch1[ii] += 0 * qubit_waveforms[0]
                         self.waveforms_pxdac4800_2_ch2[ii] += qubit_waveforms[1]
                         self.markers_qubit_buffer[ii] += qubit_marker
 
