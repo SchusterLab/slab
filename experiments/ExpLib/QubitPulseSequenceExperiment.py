@@ -435,7 +435,8 @@ class QubitPulseSequenceExperiment(Experiment):
             if self.post_run is not None:
                 self.post_run(self.expt_pts, expt_avg_data)
 
-                # self.awg_prep()
+            if self.cfg['stop_awgs'] == True:
+                self.awg_prep()
 
     def awg_prep(self):
         stop_pulseblaster()
