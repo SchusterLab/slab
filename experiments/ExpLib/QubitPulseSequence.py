@@ -74,19 +74,24 @@ class QubitPulseSequence(PulseSequence):
 
         ###
         # heterodyne pulse - hack: max_length = 0
-        temp_seq_matrix = self.pulse_sequence_matrix[:]
-        self.pulse_sequence_matrix = []
-        self.add_heterodyne_pulses()
-        #self.add_flux_pulses(length=500)
-        temp_seqs = self.psb.get_pulse_sequence()
+        if self.name == 'vacuum_rabi':
+            # vacuum_rabi : heterodyne pulses in SingleQubitPulseSeq
+            pass
 
-        # clears ?
-        dummy = self.psb.get_total_pulse_span_length()
-        dummy = self.psb.get_total_flux_pulse_span_length()
+        else:
+            temp_seq_matrix = self.pulse_sequence_matrix[:]
+            self.pulse_sequence_matrix = []
+            self.add_heterodyne_pulses()
+            #self.add_flux_pulses(length=500)
+            temp_seqs = self.psb.get_pulse_sequence()
 
-        for ii in range(len(self.expt_pts)+len(calibration_pts)):
-            self.pulse_sequence_matrix.append(temp_seq_matrix[ii] + temp_seqs) # concatenate hetero/flux pulse
-        ###
+            # clears ?
+            dummy = self.psb.get_total_pulse_span_length()
+            dummy = self.psb.get_total_flux_pulse_span_length()
+
+            for ii in range(len(self.expt_pts)+len(calibration_pts)):
+                self.pulse_sequence_matrix.append(temp_seq_matrix[ii] + temp_seqs) # concatenate hetero/flux pulse
+            ###
 
         ###
 
@@ -162,18 +167,29 @@ class QubitPulseSequence(PulseSequence):
                             delay = flux_delay + flux_idle)
 
 
-    def add_heterodyne_pulses(self):
+    def add_heterodyne_pulses(self, hetero_read_freq = None, hetero_a = None):
 
-        if self.cfg['readout']['is_multitone_heterodyne']:
-            het_carrier_freq = self.cfg['readout']['heterodyne_carrier_freq']
-            het_read_freq_list = array(self.cfg['readout']['heterodyne_freq_list'])
-            het_a_list = array(self.cfg['readout']['heterodyne_a_list'])
+        if hetero_read_freq is not None:
+
+            het_carrier_freq = hetero_read_freq - self.cfg['readout']['heterodyne_freq']
+            het_read_freq_list = array([hetero_read_freq])
+            if hetero_a is None:
+                het_a_list = array([self.cfg['readout']['heterodyne_a']])
+            else:
+                het_a_list = array([hetero_a])
             het_IFreqList = het_read_freq_list - het_carrier_freq
+
         else:
-            het_carrier_freq = self.cfg['readout']['frequency'] - self.cfg['readout']['heterodyne_freq']
-            het_read_freq_list = array([self.cfg['readout']['frequency']])
-            het_a_list = array([self.cfg['readout']['heterodyne_a']])
-            het_IFreqList = het_read_freq_list - het_carrier_freq
+            if self.cfg['readout']['is_multitone_heterodyne']:
+                het_carrier_freq = self.cfg['readout']['heterodyne_carrier_freq']
+                het_read_freq_list = array(self.cfg['readout']['heterodyne_freq_list'])
+                het_a_list = array(self.cfg['readout']['heterodyne_a_list'])
+                het_IFreqList = het_read_freq_list - het_carrier_freq
+            else:
+                het_carrier_freq = self.cfg['readout']['frequency'] - self.cfg['readout']['heterodyne_freq']
+                het_read_freq_list = array([self.cfg['readout']['frequency']])
+                het_a_list = array([self.cfg['readout']['heterodyne_a']])
+                het_IFreqList = het_read_freq_list - het_carrier_freq
 
         if sum(het_a_list) > 1:
             print 'Warning! Sum of heterodyne amplitudes > 1 in QubitPulseSequence.'
@@ -183,29 +199,29 @@ class QubitPulseSequence(PulseSequence):
             for ii in range(len(het_IFreqList)):
                 # q2 pulses are hacked to be fixed in time, so can append multiple pulses for heterodyne readout
                 self.psb.append('hetero', 'general', 'square', amp= het_a_list[ii],
-                                length=self.psb.measurement_width,
+                                length=self.cfg['readout']['width'],
                                 freq= het_IFreqList[ii],
-                                delay=self.psb.measurement_width/2.0 + 100) # the 100ns is a mysterious delay
+                                delay=self.cfg['readout']['width']/2.0 + 100) # the 100ns is a mysterious delay
         else:
 
             # heterodyne carrier - LO
             self.psb.append('hetero_carrier', 'general', 'square', amp=self.cfg['readout']['hetero_carrier_a'],
-                            length=self.psb.measurement_width,
+                            length=self.cfg['readout']['width'],
                             freq=het_carrier_freq,
-                            delay=self.psb.measurement_width / 2.0 + 100)  # the 100ns is a mysterious delay
+                            delay=self.cfg['readout']['width'] / 2.0 + 100)  # the 100ns is a mysterious delay
             if self.cfg['readout']['is_hetero_phase_ref']:
                 # hetero phase reference to solve alazar jitter
                 self.psb.append('hetero_carrier', 'general', 'square', amp=self.cfg['readout']['hetero_phase_ref_a'],
-                                length=self.psb.measurement_width,
+                                length=self.cfg['readout']['width'],
                                 freq=self.cfg['readout']['hetero_phase_ref_freq'],
-                                delay=self.psb.measurement_width / 2.0 + 100)  # the 100ns is a mysterious delay
+                                delay=self.cfg['readout']['width'] / 2.0 + 100)  # the 100ns is a mysterious delay
 
             for ii in range(len(het_IFreqList)):
                 # q2 pulses are hacked to be fixed in time, so can append multiple pulses for heterodyne readout
                 self.psb.append('hetero', 'general', 'square', amp= het_a_list[ii],
-                                length=self.psb.measurement_width,
+                                length=self.cfg['readout']['width'],
                                 freq=het_read_freq_list[ii],
-                                delay=self.psb.measurement_width / 2.0 + 100)  # the 100ns is a mysterious delay
+                                delay=self.cfg['readout']['width'] / 2.0 + 100)  # the 100ns is a mysterious delay
 
     def build_sequence(self):
         PulseSequence.build_sequence(self)
@@ -232,7 +248,7 @@ class QubitPulseSequence(PulseSequence):
                 self.waveforms_tpts_dict[waveform['name']] = self.get_waveform_times(waveform['name'])
 
         start_time = time.time()
-        print '\nStart building sequences...'
+        print '\nStart building sequences...(QubitPulseSequence.py)'
 
         self.psb.prepare_build(self.waveforms_tpts_dict,self.waveforms_dict)
 
