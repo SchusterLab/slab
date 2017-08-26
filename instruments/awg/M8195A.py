@@ -857,33 +857,28 @@ class M8195A(SocketInstrument):
         sequence_length = waveform_shape[1]
         segment_length = waveform_shape[2]
 
-        sys.stdout.write('M8195 writing to bin file..\n')
         for sequence_id in range(1,sequence_length+1):
+            sys.stdout.write('x')
 
-            sys.stdout.write('seq_id = '+str(sequence_id)+'\n')
             m8195a.set_segment_size(1,sequence_id,segment_length)
 
             for channel in range(1,num_channels+1):
+
                 segment_data_array = 127*waveform_matrix[channel-1][sequence_id-1]
 
-                # todo: move directory to local
-                #filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' % (sequence_id, channel)
-                filename = r'E:\M8195A seq\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)
+                filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)
                 with open(filename, 'wb')  as f:
                     segment_data_array.astype('int8').tofile(f)
-                # f.close()
-                # segment_data_array = None
 
-        sys.stdout.write('M8195 uploading bin file..\n')
         for sequence_id in range(1,sequence_length+1):
-
-            sys.stdout.write('seq_id = ' + str(sequence_id) + '\n')
             for channel in range(1,num_channels+1):
-                # filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' % (sequence_id, channel) + '\"'
-                filename = '\"' + r'E:\M8195A seq\sequences\m8195a_%d_%d.bin8' % (sequence_id, channel) + '\"'
+
+                filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
+
                 m8195a.set_segment_data_from_bin_file(channel,sequence_id,filename)
 
         print '\n'
+
 
     def define_segments_test(m8195a,segment_length,sequence_length,dt):
 
@@ -948,8 +943,6 @@ class M8195A(SocketInstrument):
 
     def upload_M8195A_sequence(m8195a,waveform_matrix,awg):
 
-        print 'here'
-
         period_us = awg['period_us']
         amplitudes = awg['amplitudes']
 
@@ -963,6 +956,8 @@ class M8195A(SocketInstrument):
         segment_length = waveform_shape[2]
 
         m8195a.setup_awg(num_channels=num_channels,amplitudes=amplitudes)
+
+
 
         dt = float(num_channels)/64. #ns
 

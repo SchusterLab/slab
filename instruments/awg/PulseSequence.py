@@ -5,7 +5,7 @@ from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence, wr
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
 from slab.instruments import InstrumentManager, LocalInstruments
 import os
-import time
+
 
 def round_samples(x, min_samples=0, increment=1):
     return max(min_samples, int(increment * np.ceil(float(x) / float(increment))))
@@ -34,7 +34,6 @@ class PulseSequence:
                 waveform_length = self.waveform_info[waveform['name']]['length']
                 waveform_clk_length = round_samples(waveform_length * awg['clock_speed'], awg['min_samples'],
                                                     awg['min_increment'])
-                # print self.sequence_length, waveform_clk_length
                 self.waveforms[waveform['name']] = np.zeros((self.sequence_length, waveform_clk_length))
                 self.waveform_info[waveform['name']]['tpts'] = np.linspace(0., (waveform_clk_length - 1) / awg[
                     'clock_speed'], waveform_clk_length)
@@ -80,18 +79,11 @@ class PulseSequence:
             #     print "Error in writing pulse to awg named: " + str(awg['type'])
 
     def write_M8195A_sequence(self, awg, path, file_prefix, upload=False):
-
-        start_time = time.time()
-        print "writing M8195A sequence.. (PulseSequence.py)"
+        print "writing M8195A sequence"
         print 'fast awg waveforms (ch1-4):', [waveform['name'] for waveform in awg['waveforms']]
-        # todo: this is where the memory blows up (5x 150us is still okay)
-        # need to initialize the whole waveforms array at first, and then fill in
         waveform_matrix = np.array([self.waveforms[waveform['name']] for waveform in awg['waveforms']])
         im = InstrumentManager()
         im[awg['name']].upload_M8195A_sequence(waveform_matrix, awg)
-
-        end_time = time.time()
-        print 'Finished uploading sequences in', end_time - start_time, 'seconds.\n'
 
     def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
@@ -135,7 +127,6 @@ class PulseSequence:
                                                  awg['iq_offsets_bytes'], awg['sample_size'])
         # TODO : code would not work if upload is false
         if upload:
-            print "Initializing PXDAC board", brdNum, "..."
             pxdac4800 = LocalInstruments().inst_dict['pxdac4800_%d' % brdNum]
             pxdac4800.load_sequence_file(os.path.join(path, file_prefix + '_%d.rd16' % brdNum), awg)
             print "Sequence file uploaded"
