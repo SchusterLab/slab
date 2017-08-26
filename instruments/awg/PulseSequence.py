@@ -81,7 +81,10 @@ class PulseSequence:
     def write_M8195A_sequence(self, awg, path, file_prefix, upload=False):
         print "writing M8195A sequence"
         print 'fast awg waveforms (ch1-4):', [waveform['name'] for waveform in awg['waveforms']]
+
+        # todo: this is where RAM blows up..
         waveform_matrix = np.array([self.waveforms[waveform['name']] for waveform in awg['waveforms']])
+
         im = InstrumentManager()
         im[awg['name']].upload_M8195A_sequence(waveform_matrix, awg)
 

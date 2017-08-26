@@ -159,9 +159,13 @@ class RamseyExperiment(QubitPulseSequenceExperiment):
                                               post_run=self.post_run, **kwargs)
 
     def pre_run(self):
-        self.drive.set_frequency(
-            self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
-        print self.cfg['pulse_info'][self.pulse_type]['iq_freq']
+
+        try:
+            self.drive.set_frequency(
+                self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
+            print self.cfg['pulse_info'][self.pulse_type]['iq_freq']
+        except:
+            print 'Ramsey Exp - No Drive.'
 
     def post_run(self, expt_pts, expt_avg_data):
         print "Analyzing Ramsey Data"
