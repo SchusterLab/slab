@@ -1,7 +1,6 @@
 __author__ = 'dave'
 
 import numpy as np
-import numexpr as ne
 
 
 def sideband(t, plus, minus, freq=0, phase=0, offset=False, offset_fit_lin=0,offset_fit_quad=0):
@@ -19,14 +18,8 @@ def sideband(t, plus, minus, freq=0, phase=0, offset=False, offset_fit_lin=0,off
         #      +np.sin(2 * np.pi * (freq/1.0e9 * t)+ phase*np.pi/180.0) * plus +np.sin(2 * np.pi * (freq/1.0e9 * t) + phase*np.pi/180.0) * minus)
         #
         # For IQ0317 Mixer
-        # return ( np.cos(2 * np.pi * (freq/1.0e9 * t)+ phase*np.pi/180.0) * plus - np.cos(2 * np.pi * (freq/1.0e9 * t) + phase*np.pi/180.0) * minus,
-        #      -np.sin(2 * np.pi * (freq/1.0e9 * t)+ phase*np.pi/180.0) * plus - np.sin(2 * np.pi * (freq/1.0e9 * t) + phase*np.pi/180.0) * minus)
-
-        wts = ne.evaluate('2 * (freq/1.0e9 * t)+ phase/180.0') * np.pi
-        cosdata = ne.evaluate('cos(wts)')
-        sindata = ne.evaluate('sin(wts)')
-        # return ne.evaluate('cosdata * (plus - minus)'), ne.evaluate('- sindata * (plus + minus)')
-        return ne.evaluate('cosdata * (plus - minus)'), ne.evaluate('- sindata * (plus + minus)')
+        return ( np.cos(2 * np.pi * (freq/1.0e9 * t)+ phase*np.pi/180.0) * plus - np.cos(2 * np.pi * (freq/1.0e9 * t) + phase*np.pi/180.0) * minus,
+             -np.sin(2 * np.pi * (freq/1.0e9 * t)+ phase*np.pi/180.0) * plus - np.sin(2 * np.pi * (freq/1.0e9 * t) + phase*np.pi/180.0) * minus)
 
 
 
@@ -95,7 +88,7 @@ def square(t, a, t0, w, sigma=0):
                 (t >= t0) * (t < t0 + w) +  # Normal square pulse
                 (t >= t0-2*sigma) * (t < t0) * np.exp(-(t - t0) ** 2 / (2 * sigma ** 2)) +  # leading gaussian edge
                 (t >= t0 + w)* (t <= t0+w+2*sigma) * np.exp(-(t - (t0 + w)) ** 2 / (2 * sigma ** 2))  # trailing edge
-                )
+            )
         else:
             return a * (t >= t0) * (t < t0 + w)
     else:
