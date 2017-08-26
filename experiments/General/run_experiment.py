@@ -13,7 +13,8 @@ def run_experiment(expt_name,lp_enable = False, **kwargs):
     expt = None
 
     if expt_name.lower() == 'vacuum_rabi':
-        from slab.experiments.General.VacuumRabiExperiment import VacuumRabiExperiment
+        #from slab.experiments.General.VacuumRabiExperiment import VacuumRabiExperiment
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import VacuumRabiExperiment
         # Do Vacuum Rabi
         expt = VacuumRabiExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
@@ -23,7 +24,8 @@ def run_experiment(expt_name,lp_enable = False, **kwargs):
         expt = CWDriveExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower() == 'pulse_probe':
-        from slab.experiments.General.PulseProbeExperiment import PulseProbeExperiment
+        # from slab.experiments.General.PulseProbeExperiment import PulseProbeExperiment
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import PulseProbeExperiment
         # Do CW drive experiment
         expt = PulseProbeExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
