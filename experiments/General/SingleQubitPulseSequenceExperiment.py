@@ -214,9 +214,11 @@ class EFRabiExperiment(QubitPulseSequenceExperiment):
                                               post_run=self.post_run, **kwargs)
 
     def pre_run(self):
-        self.drive.set_frequency(
-            self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
-
+        try:
+            self.drive.set_frequency(
+                self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
+        except:
+            print 'No Drive.'
 
     def post_run(self, expt_pts, expt_avg_data):
         print "Analyzing ef Rabi Data"
@@ -242,8 +244,11 @@ class EFRamseyExperiment(QubitPulseSequenceExperiment):
                                               post_run=self.post_run, **kwargs)
 
     def pre_run(self):
-        self.drive.set_frequency(
-            self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
+        try:
+            self.drive.set_frequency(
+                self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
+        except:
+            print 'No Drive.'
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
@@ -276,7 +281,11 @@ class EFT1Experiment(QubitPulseSequenceExperiment):
                                               post_run=self.post_run, **kwargs)
 
     def pre_run(self):
-        self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
+        try:
+            self.drive.set_frequency(
+                self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
+        except:
+            print 'No Drive.'
 
     def post_run(self, expt_pts, expt_avg_data):
         print "Analyzing EF T1 Data"
@@ -291,7 +300,11 @@ class EFT1Experiment(QubitPulseSequenceExperiment):
                                               post_run=self.post_run, **kwargs)
 
     def pre_run(self):
-        self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
+        try:
+            self.drive.set_frequency(
+                self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
+        except:
+            print 'No Drive.'
 
     def post_run(self, expt_pts, expt_avg_data):
         print "Analyzing EF T1 Data"

@@ -61,9 +61,11 @@ class RabiSequence(QubitPulseSequence):
 
     def define_pulses(self,pt):
         if self.expt_cfg['sweep_amp']:
-            self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],freq=self.expt_cfg['iq_freq'])
+            self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],
+                            freq=self.pulse_cfg[self.pulse_type]['iq_freq'])
         else:
-            self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.expt_cfg['iq_freq'])
+            self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,
+                            freq=self.pulse_cfg[self.pulse_type]['iq_freq'])
             # self.psb.append('q2', 'general', 'square', amp=0.5, length=self.cfg['readout']['width']+1000,
             #                 freq=self.cfg['readout']['heterodyne_freq'],delay=(self.cfg['readout']['width']+1000)/2)
 
@@ -139,7 +141,7 @@ class EFRabiSequence(QubitPulseSequence):
     def define_pulses(self,pt):
         if self.expt_cfg['ge_pi']:
            self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q','general', self.ef_pulse_type, amp=self.pulse_cfg[self.expt_cfg['ef_pulse_type']]['pi_ef_a'], length=pt,freq=self.ef_sideband_freq)
+        self.psb.append('q','general', self.ef_pulse_type, amp=self.expt_cfg['ef_a'], length=pt,freq=self.ef_sideband_freq)
         #self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.ef_sideband_freq)
         #self.psb.idle(4*pt)
 

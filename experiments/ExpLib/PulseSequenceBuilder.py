@@ -50,10 +50,22 @@ class PulseSequenceBuilder():
         Append a pulse in the pulse sequence.
         '''
         if target == "q" or target == "q2" or target[:6] == "hetero" or target[:4] == "flux":
+
+            ### adjust freq for fast awg
+            if target == "q" or target == "q2":
+                freq += self.cfg['qubit']['frequency'] - self.pulse_cfg[type]['iq_freq']
+
+            if self.cfg['pulse_info']['is_direct_synth']:
+                awg_freq = self.cfg['qubit']['frequency']
+            else:
+                awg_freq = self.pulse_cfg[type]['iq_freq']
+            ###
+
+
             if name == "0":
                 amp = 0
                 length = self.pulse_cfg[type]['pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                freq = awg_freq
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']
             if name == "pi" or name == "cal_pi":
@@ -61,50 +73,50 @@ class PulseSequenceBuilder():
                 length = self.pulse_cfg[type]['pi_length']
                 # print amp
                 # print length
-                freq = self.pulse_cfg[type]['iq_freq']
+                freq = awg_freq
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']
             if name == "half_pi":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                freq = awg_freq
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']
             if name == "neg_half_pi":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                freq = awg_freq
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']+180
             if name == "pi_y":
                 amp = self.pulse_cfg[type]['pi_a']
                 length = self.pulse_cfg[type]['pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                freq = awg_freq
                 if phase == None:
                     phase = self.pulse_cfg[type]['y_phase']
             if name == "half_pi_y":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                freq = awg_freq
                 if phase == None:
                     phase = self.pulse_cfg[type]['y_phase']
             if name == "neg_half_pi_y":
                 amp = self.pulse_cfg[type]['half_pi_a']
                 length = self.pulse_cfg[type]['half_pi_length']
-                freq = self.pulse_cfg[type]['iq_freq']
+                freq = awg_freq
                 if phase == None:
                     phase = self.pulse_cfg[type]['y_phase']+180
             if name == "pi_q_ef":
                 amp = self.pulse_cfg[type]['pi_ef_a']
                 length = self.pulse_cfg[type]['pi_ef_length']
-                freq = self.pulse_cfg[type]['iq_freq']+self.qubit_cfg['alpha']
+                freq = awg_freq+self.qubit_cfg['alpha']
                 if phase == None:
                     phase = 0
 
             if name == "half_pi_q_ef":
                 amp = self.pulse_cfg[type]['pi_ef_a']
                 length = self.pulse_cfg[type]['half_pi_ef_length']
-                freq = self.pulse_cfg[type]['iq_freq']+self.qubit_cfg['alpha']
+                freq = awg_freq+self.qubit_cfg['alpha']
                 if phase == None:
                     phase = 0
 
