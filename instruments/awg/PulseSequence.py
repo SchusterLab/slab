@@ -5,6 +5,7 @@ from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence, wr
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
 from slab.instruments import InstrumentManager, LocalInstruments
 import os
+import time
 
 
 def round_samples(x, min_samples=0, increment=1):
@@ -79,7 +80,9 @@ class PulseSequence:
             #     print "Error in writing pulse to awg named: " + str(awg['type'])
 
     def write_M8195A_sequence(self, awg, path, file_prefix, upload=False):
-        print "writing M8195A sequence"
+
+        start_time = time.time()
+        print '\nStart writing M8195A sequences...(PulseSequence.py)'
         print 'fast awg waveforms (ch1-4):', [waveform['name'] for waveform in awg['waveforms']]
 
         # todo: this is where RAM blows up..
@@ -87,6 +90,9 @@ class PulseSequence:
 
         im = InstrumentManager()
         im[awg['name']].upload_M8195A_sequence(waveform_matrix, awg)
+
+        end_time = time.time()
+        print 'Finished writing M8195A sequences in', end_time - start_time, 'seconds.\n'
 
     def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
