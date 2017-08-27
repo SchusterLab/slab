@@ -191,6 +191,10 @@ class QubitPulseSequence(PulseSequence):
                 het_a_list = array([self.cfg['readout']['heterodyne_a']])
                 het_IFreqList = het_read_freq_list - het_carrier_freq
 
+        # phase slope, referenced to het_carrier_freq
+        het_phase_list = [(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * ii )%360 * 0.0
+                          for ii in het_IFreqList]
+
         if sum(het_a_list) > 1:
             print 'Warning! Sum of heterodyne amplitudes > 1 in QubitPulseSequence.'
 
@@ -201,6 +205,7 @@ class QubitPulseSequence(PulseSequence):
                 self.psb.append('hetero', 'general', 'square', amp= het_a_list[ii],
                                 length=self.cfg['readout']['width'],
                                 freq= het_IFreqList[ii],
+                                phase=het_phase_list[ii],
                                 delay=self.cfg['readout']['width']/2.0 + 100) # the 100ns is a mysterious delay
         else:
 
@@ -215,12 +220,13 @@ class QubitPulseSequence(PulseSequence):
                                 length=self.cfg['readout']['width'],
                                 freq=self.cfg['readout']['hetero_phase_ref_freq'],
                                 delay=self.cfg['readout']['width'] / 2.0 + 100)  # the 100ns is a mysterious delay
-
+            # fast awg: read_freq
             for ii in range(len(het_IFreqList)):
                 # q2 pulses are hacked to be fixed in time, so can append multiple pulses for heterodyne readout
                 self.psb.append('hetero', 'general', 'square', amp= het_a_list[ii],
                                 length=self.cfg['readout']['width'],
                                 freq=het_read_freq_list[ii],
+                                phase=het_phase_list[ii],
                                 delay=self.cfg['readout']['width'] / 2.0 + 100)  # the 100ns is a mysterious delay
 
     def build_sequence(self):
