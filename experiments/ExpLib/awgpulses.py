@@ -5,7 +5,10 @@ import numexpr as ne
 
 
 def sideband(t, plus, minus, freq=0, phase=0, offset=False, offset_fit_lin=0,offset_fit_quad=0):
-    if offset:
+    if freq==0 and phase==0:
+        return (plus - minus)
+
+    elif offset:
         if (not max(plus) == 0):
             time_step = t[1]-t[0]
             freq_calibrated = getFreq(plus,freq,offset_fit_lin,offset_fit_quad);
@@ -49,71 +52,76 @@ def getFreq(pulse,freq,offset_fit_lin=0,offset_fit_quad=0):
 
 
 def gauss(t, a, t0, sigma):
-    if sigma >0:
-        return (t >= t0-2*sigma) * (t <= t0+2*sigma)*a * np.exp(-1.0 * (t - t0) ** 2 / (2 * sigma ** 2))
-    else:
-        return 0*(t-t0)
+    vv = np.zeros(t.shape)
+    if sigma > 0:
+        start = np.searchsorted(t, t0 - 2 * sigma, side='left')
+        stop = np.searchsorted(t, t0 + 2 * sigma, side='right') # include both ends <=/<=
+        t = t[start:stop]
+        vv[start:stop] = a * np.exp(-1.0 * (t - t0) ** 2 / (2 * sigma ** 2))
+    return vv
 
-
-def dgauss(t, a, t0, sigma):
-    return a * np.exp(-1.0 * (t - t0) ** 2 / (2 * sigma ** 2)) * (t - t0) / sigma ** 2
-
-
-def ramp(t, a, t0, w):
-    return a * (t - t0) * (t >= t0) * (t < t0 + w)
-
+def square(t, a, t0, w, sigma=0):
+    vv = np.zeros(t.shape)
+    if w > 0:
+        start = np.searchsorted(t, t0 - 2 * sigma, side='left')
+        stop = np.searchsorted(t, t0 + w + 2 * sigma, side='right') # include both ends <=/<=
+        t = t[start:stop]
+        if sigma > 0:
+            vv[start:stop] = a * (
+                (t >= t0) * (t < t0 + w) +  # Normal square pulse
+                (t >= t0 - 2 * sigma) * (t < t0) * np.exp(-(t - t0) ** 2 / (2 * sigma ** 2)) +  # leading gaussian edge
+                (t >= t0 + w) * (t <= t0 + w + 2 * sigma) * np.exp(-(t - (t0 + w)) ** 2 / (2 * sigma ** 2)) # trailing edge
+                )
+        else:
+            vv[start:stop] = a * (t >= t0) * (t < t0 + w)
+    return vv
 
 def linear_ramp(t, start_a, stop_a, t0, w):
+    vv = np.zeros(t.shape)
     if w > 0:
-        return ( (stop_a - start_a) * (t - t0) / w + start_a) * (t >= t0) * (t < t0 + w)
-    else:
-        return 0*t
+        start = np.searchsorted(t, t0, side='left')
+        stop = np.searchsorted(t, t0 + w, side='left') # include only left end <=/<
+        t = t[start:stop]
+        vv[start:stop] = ( (stop_a - start_a) * (t - t0) / w + start_a)
+    return vv
 
 def linear_ramp_with_mod(t, start_a, stop_a, t0, w, mod_amp, mod_freq, mod_start_phase):
+    vv = np.zeros(t.shape)
     if w > 0:
-        return ( (stop_a - start_a) * (t - t0) / w + start_a + mod_amp * np.sin( 2*np.pi*(mod_freq/1.0e9)*(t-t0) + mod_start_phase/180.0 ) ) * (t >= t0) * (t < t0 + w)
-    else:
-        return 0*t
+        start = np.searchsorted(t, t0, side='left')
+        stop = np.searchsorted(t, t0 + w, side='left') # include only left end <=/<
+        t = t[start:stop]
+        vv[start:stop] = ( (stop_a - start_a) * (t - t0) / w + start_a +
+                           mod_amp * np.sin( 2*np.pi*(mod_freq/1.0e9)*(t-t0) + mod_start_phase/180.0 )
+                           )
+    return vv
 
 def logistic_ramp(t, start_a, stop_a, t0, w):
     # smooth S-shaped ramp using logistic function
     # truncated and rescaled to be continuous
     # bigger r - steeper slope
+    vv = np.zeros(t.shape)
     if w > 0:
+        start = np.searchsorted(t, t0, side='left')
+        stop = np.searchsorted(t, t0 + w, side='left') # include only left end <=/<
+        t = t[start:stop]
         r = 8.0 / w
-        scale = (1 + np.exp(r*w/2.0))/(-1 + np.exp(r*w/2.0))
-        return  (((start_a + stop_a * np.exp(r*(t-(t0+w/2.0))* (t >= t0) * (t < t0 + w)))/(1 + np.exp(r*(t-(t0+w/2.0))* (t >= t0) * (t < t0 + w)))-(start_a+stop_a)/2.0) \
-                * scale + (start_a+stop_a)/2.0) * (t >= t0) * (t < t0 + w)
-    else:
-        return 0*t
+        scale = (1 + np.exp(r * w / 2.0)) / (-1 + np.exp(r * w / 2.0))
+        vv[start:stop] = (((start_a + stop_a * np.exp(r * (t - (t0 + w / 2.0)) ))
+                           / (1 + np.exp(r * (t - (t0 + w / 2.0)) )) - (start_a + stop_a) / 2.0)
+                            * scale + (start_a + stop_a) / 2.0)
+    return vv
 
 
-def square(t, a, t0, w, sigma=0):
-    if w > 0:
-        if sigma>0:
-            return a * (
-                (t >= t0) * (t < t0 + w) +  # Normal square pulse
-                (t >= t0-2*sigma) * (t < t0) * np.exp(-(t - t0) ** 2 / (2 * sigma ** 2)) +  # leading gaussian edge
-                (t >= t0 + w)* (t <= t0+w+2*sigma) * np.exp(-(t - (t0 + w)) ** 2 / (2 * sigma ** 2))  # trailing edge
-                )
-        else:
-            return a * (t >= t0) * (t < t0 + w)
-    else:
-        return 0*t
 
-def square_exp(t, a, t0, w, sigma=0, exponent=0):
-    if w > 0:
-        if sigma>0:
-            return a * (
-                (t >= t0) * (t < t0 + w) * np.exp( (t >= t0) * (t < t0 + w) * (t-t0) * exponent ) +  # Normal square pulse
-                (t >= t0-2*sigma) * (t < t0) * np.exp(-(t - t0) ** 2 / (2 * sigma ** 2)) +  # leading gaussian edge
-                (t >= t0 + w)* (t <= t0+w+2*sigma) * np.exp(-(t - (t0 + w)) ** 2 / (2 * sigma ** 2)) * np.exp( w * exponent ) # trailing edge
-            )
-        else:
-            return a * (t >= t0) * np.exp( (t >= t0) * (t < t0 + w) * (t-t0) * exponent )
-    else:
-        return 0 * t
+####
+## the following are old (unused?) pulses:
 
+def dgauss(t, a, t0, sigma):
+    return a * np.exp(-1.0 * (t - t0) ** 2 / (2 * sigma ** 2)) * (t - t0) / sigma ** 2
+
+def ramp(t, a, t0, w):
+    return a * (t - t0) * (t >= t0) * (t < t0 + w)
 
 def trapezoid(t, a, t0, w, edge_time=0):
     return a * (
