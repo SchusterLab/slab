@@ -192,11 +192,8 @@ class SpinEchoExperiment(QubitPulseSequenceExperiment):
                                               post_run=self.post_run, **kwargs)
 
     def pre_run(self):
-        try:
-            self.drive.set_frequency(
-                self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
-        except:
-            print 'Spin echo: No Drive.'
+        self.drive.set_frequency(
+            self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
 
     def post_run(self, expt_pts, expt_avg_data):
         print "Analyzing Spin Echo Data"
