@@ -30,6 +30,7 @@ class QubitPulseSequence(PulseSequence):
         elif (expt_cfg['use_pi_calibration']):
             calibration_pts = range(2)
             sequence_length+=2
+        print 'calibration_pts =', calibration_pts
 
         PulseSequence.__init__(self, name, cfg['awgs'], sequence_length)
 
@@ -37,7 +38,6 @@ class QubitPulseSequence(PulseSequence):
         self.pulse_sequence_matrix = []
         self.total_pulse_span_length_list = []
         self.total_flux_pulse_span_length_list = []
-
         self.flux_pulse_span_list = []
 
         for ii, pt in enumerate(self.expt_pts):
@@ -74,7 +74,7 @@ class QubitPulseSequence(PulseSequence):
 
         ###
         # heterodyne pulse - hack: max_length = 0
-        if self.name == 'vacuum_rabi':
+        if self.name == 'Vacuum_Rabi':
             # vacuum_rabi : heterodyne pulses in SingleQubitPulseSeq
             pass
 
@@ -169,6 +169,7 @@ class QubitPulseSequence(PulseSequence):
 
     def add_heterodyne_pulses(self, hetero_read_freq = None, hetero_a = None):
 
+        print hetero_read_freq
         if hetero_read_freq is not None:
 
             het_carrier_freq = hetero_read_freq - self.cfg['readout']['heterodyne_freq']

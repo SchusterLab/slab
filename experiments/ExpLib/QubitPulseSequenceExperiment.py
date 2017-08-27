@@ -273,7 +273,13 @@ class QubitPulseSequenceExperiment(Experiment):
 
             else:  # here saves all single shot data
 
-                if self.cfg['readout']['is_multitone_heterodyne']:
+                if self.prefix == 'Vacuum_Rabi':
+
+                    print 'vacuum_rabi'
+                    het_IFreqList = [self.cfg['readout']['heterodyne_freq']]
+                    het_read_freq_list = [0]
+
+                elif self.cfg['readout']['is_multitone_heterodyne']:
                     het_carrier_freq = self.cfg['readout']['heterodyne_carrier_freq']
                     het_read_freq_list = array(self.cfg['readout']['heterodyne_freq_list'])
                     het_IFreqList = het_read_freq_list - het_carrier_freq
