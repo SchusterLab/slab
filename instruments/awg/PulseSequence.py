@@ -1,7 +1,7 @@
 __author__ = 'dave'
 import numpy as np
 
-from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence, write_PXDAC4800_file
+from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence, write_PXDAC4800_file, M8195A, upload_M8195A_sequence
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
 from slab.instruments import InstrumentManager, LocalInstruments
 import os
@@ -86,10 +86,12 @@ class PulseSequence:
         print 'fast awg waveforms (ch1-4):', [waveform['name'] for waveform in awg['waveforms']]
 
         # todo: this is where RAM blows up..
-        waveform_matrix = np.array([self.waveforms[waveform['name']] for waveform in awg['waveforms']])
+        waveform_matrix = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
 
-        im = InstrumentManager()
-        im[awg['name']].upload_M8195A_sequence(waveform_matrix, awg)
+        # im = InstrumentManager()
+        # print type(im[awg['name']])
+        m8195a = M8195A(address='192.168.14.244:5025')
+        upload_M8195A_sequence(m8195a,waveform_matrix, awg)
 
         end_time = time.time()
         print 'Finished writing M8195A sequences in', end_time - start_time, 'seconds.\n'
