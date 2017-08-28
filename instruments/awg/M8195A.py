@@ -870,23 +870,22 @@ class M8195A(SocketInstrument):
             for channel in range(1,num_channels+1):
 
                 sys.stdout.write('writing seq id=' + str(sequence_id) + '..')
-                segment_data_array = 127*waveform_matrix[channel-1][sequence_id-1]
-                filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)
-                #filename = r'C:\M8195_sequences\m8195a_%d_%d.bin8' % (sequence_id, channel)
+
+                # todo:
+                # hack: M8195A sequence start from second sequence - '(sequence_id-2)'
+                segment_data_array = 127*waveform_matrix[channel-1][(sequence_id-2)%sequence_length]
+                #filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)
+                filename = r'C:\M8195_sequences\m8195a_%d_%d.bin8' % (sequence_id, channel)
                 with open(filename, 'wb')  as f:
                     segment_data_array.astype('int8').tofile(f)
 
                 sys.stdout.write('uploading..\n')
-                filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
-                #filename = '\"' + r'\\THORIUM-PC\M8195_sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
-                m8195a.set_segment_data_from_bin_file(channel,sequence_id,filename)
+                #filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
+                filename = '\"' + r'\\THORIUM-PC\M8195_sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
+                #m8195a.set_segment_data_from_bin_file(channel,sequence_id,filename)
 
-        # for sequence_id in range(1,sequence_length+1):
-        #     for channel in range(1,num_channels+1):
-        #
-        #         filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
-        #
-        #         m8195a.set_segment_data_from_bin_file(channel,sequence_id,filename)
+                m8195a.set_segment_data_from_bin_file(channel, sequence_id, filename)
+
 
         print '\n'
 
