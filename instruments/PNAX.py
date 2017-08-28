@@ -15,10 +15,8 @@ import numpy as np
 import glob
 import os.path
 
-
 def polar2mag(xs, ys):
-    return np.sqrt(xs ** 2 + ys ** 2), np.arctan(ys / xs)
-
+    return 20*np.log10(np.sqrt(xs ** 2 + ys ** 2)), np.arctan2(ys, xs) * 180/np.pi
 
 class N5242A(SocketInstrument):
     MAXSWEEPPTS = 1601
@@ -246,16 +244,13 @@ class N5242A(SocketInstrument):
             raise ValueError("Input not understood!")
 
     #### Source
-
     def set_power(self, power, channel=1, port=1,state=1):
-        # print ":SOURCE:POWER%d %f" % (channel, power)
         if state:
             self.write(":SOURCE%d:POWER%d:MODE ON" % (channel, port))
             self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
         else:
             print "Turning off the port %d" %(port)
             self.write(":SOURCE%d:POWER%d:MODE OFF" % (channel, port))
-            # self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
 
     def get_power(self, channel=1, port=1):
         return float(self.query(":SOURCE%d:POWER%d?" % (channel, port)))
@@ -344,17 +339,61 @@ class N5242A(SocketInstrument):
         else:
             return int(data)
 
-    def set_format(self, trace_format='MLOG', trace=1):
-        """set_format: need to run after the active trace is set.
-        valid options are
-        {MLOGarithmic|PHASe|GDELay| SLINear|SLOGarithmic|SCOMplex|SMITh|SADMittance|PLINear|PLOGarithmic|POLar|MLINear|SWR|REAL| IMAGinary|UPHase|PPHase}
+    def set_data_transfer_format(self, format='ascii'):
         """
-        self.write("CALC%d:FORM %s" % (trace, trace_format))
+        Sets the data format for transferring measurement data and frequency data.
+        See the Format Commands help section for more help on this topic.
+        :param format: Either 'ascii' or 'binary'
+        :return:
+        """
+        send_data = 'ASC,0' if format.lower() == 'ascii' else 'REAL,32'
+        self.write("FORM %s" % send_data)
+        if send_data == 'REAL,32':
+            self._set_byte_order('SWAP')
+
+    def get_data_transfer_format(self):
+        """
+        Returns the data format for transferring measurement data and frequency data.
+        :return: 'ascii' or 'binary'
+        """
+        answer = self.query('FORM:DATA?')
+        ret = 'ascii' if 'ASC' in answer else 'binary'
+        return ret
+
+    def _set_byte_order(self, order='SWAP'):
+        """
+        #NOTE for Plutonium, the byte order needs to be swapped!
+        Set the byte order used for GPIB data transfer. Some computers read data from the analyzer in the reverse order.
+        This command is only implemented if FORMAT:DATA is set to :REAL. If FORMAT:DATA is set to :ASCII, the swapped command is ignored.
+        :param order: 'swap' for swapped or 'norm' normal order
+        :return: None
+        """
+        if order.upper() in ['SWAP', 'NORM']:
+            self.write("FORM:BORD %s" % order.upper())
+
+    def _get_byte_order(self):
+        """
+        Returns the byte order used for GPIB data transfer.
+        :return: 'SWAP' (swapped) or 'NORM' (normal order)
+        """
+        return self.query("FORM:BORD?").strip()
+
+    def set_format(self, trace_format='MLOG', trace=1):
+        """
+        Sets the display format for the measurement.
+        This needs to be run after the active trace is set. The following options are available:
+        MLINear, MLOGarithmic, PHASe, UPHase (Unwrapped phase), IMAGinary, REAL, POLar, SMITh, SADMittance (Smith Admittance)
+        SWR, GDELay (Group Delay), KELVin, FAHRenheit, CELSius
+        """
+        allowed = ['MLIN', 'MLOG', 'PHAS', 'UPH', 'IMAG', 'REAL', 'POL', 'SMIT', 'SADM', 'SWR', 'GDEL', 'KEL', 'FAHR', 'CEL']
+        if trace_format.upper() in allowed:
+            self.write("CALC%d:FORM %s" % (trace, trace_format.upper()))
+        else:
+            raise ValueError("Specified trace format not allowed. Use %s" % allowed)
 
     def get_format(self, trace=1):
-        """set_format: need to run after active trace is set.
-        valid options are
-        {MLOGarithmic|PHASe|GDELay| SLINear|SLOGarithmic|SCOMplex|SMITh|SADMittance|PLINear|PLOGarithmic|POLar|MLINear|SWR|REAL| IMAGinary|UPHase|PPHase}
+        """
+        Returns the display format for the measurement.
         """
         data = self.query("CALC%d:FORM?" % (trace))
         if data is None:
@@ -363,11 +402,45 @@ class N5242A(SocketInstrument):
             return data.strip()
 
     def set_electrical_delay(self, seconds, channel=1):
+        """
+        Sets the electrical delay in seconds
+        :param seconds: Electrical delay in seconds
+        :param channel: Measurement channel
+        :return: None
+        """
         query = "calc%d:corr:edel:time %e" % (channel, seconds)
         self.write(query)
 
     def get_electrical_delay(self, channel=1):
+        """
+        Returns the electrical delay in seconds
+        :param channel: Measurement channel
+        :return: Electrical delay in seconds
+        """
         query = "calc%d:corr:edel:time?" % channel
+        data = self.query(query)
+        if data is None:
+            return None
+        else:
+            return float(data.strip())
+
+    def set_phase_offset(self, degrees, channel=1):
+        """
+        Sets the phase offset for the selected measurement
+        :param degrees: Phase offset in degrees. Choose any number between -360 and 360.
+        :param channel: Measurement channel
+        :return:
+        """
+        query = "CALC%d:OFFS:PHAS %.3f" % (channel, degrees)
+        self.write(query)
+
+    def get_phase_offset(self, channel=1):
+        """
+        Returns the phase offset for the selected measurement
+        :param channel: Measurement channel
+        :return: Numeric, returned value always in degrees
+        """
+        query = "CALC%d:OFFS:PHAS?"
         data = self.query(query)
         if data is None:
             return None
@@ -378,28 +451,40 @@ class N5242A(SocketInstrument):
     def save_file(self, fname):
         self.write('MMEMORY:STORE:FDATA \"' + fname + '\"')
 
-    # def read_line(self, eof_char='\n', timeout=None):
-    #     if timeout is None:
-    #         timeout = self.query_timeout
-    #     done = False
-    #     while done is False:
-    #         buffer_str = self.read(timeout)
-    #         # print "buffer_str", buffer_str
-    #         yield buffer_str
-    #         if buffer_str[-1] == eof_char:
-    #             done = True
+    def read_data(self, sweep_points=None, channel=1, timeout=None, data_format=None):
+        """
+        Read current NWA Data that is displayed on the screen. Returns TWO numbers per data point for Polar ('POL')
+        and Smith Chart ('SMIT') format, see set_format.
+        :param sweep_points: number of sweep points (optional, saves time)
+        :param channel: measurement channel (optional, saves time)
+        :param timeout: timeout in seconds (optional)
+        :param data_format: 'binary' or 'ascii' (optional, saves time). If specificied, this must be equal to get_data_transfer_format()
+        :return: 2 or 3 column data containing the frequency and data (1 or 2 column).
+        """
+        if data_format is None or not(data_format in ['binary', 'ascii']):
+            data_format = self.get_data_transfer_format()
 
-    def read_data(self, sweep_points=None, channel=1, timeout=None):
-        """Read current NWA Data, return fpts,mags,phases"""
         if sweep_points is None:
             sweep_points = self.get_sweep_points()
 
         if timeout is None:
             timeout = self.timeout
+        # query_sleep_before = self.query_sleep
         self.get_operation_completion()
         self.write("CALC%d:DATA? FDATA" % channel)
         data_str = ''.join(self.read_line(timeout=timeout))
-        data = np.fromstring(data_str, dtype=float, sep=',')
+
+        if data_format == 'binary':
+            len_data_dig = np.int(data_str[1])
+            len_data_expected = int(data_str[2: 2+len_data_dig])
+            len_data_actual = len(data_str[2 + len_data_dig:-1])
+            # It may happen that only part of the message is received. We know that this is the case by checking
+            # the checksum. If the received data is too short, just read out again.
+            while len_data_actual != len_data_expected:
+                data_str += ''.join(self.read_line(timeout=timeout))
+                len_data_actual = len(data_str[2 + len_data_dig:-1])
+
+        data = np.fromstring(data_str, dtype=float, sep=',') if data_format=='ascii' else np.fromstring(data_str[2+len_data_dig:-1], dtype=np.float32)
         fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), sweep_points)
         if len(data) == 2 * sweep_points:
             data = data.reshape((-1, 2))
@@ -409,11 +494,10 @@ class N5242A(SocketInstrument):
             return np.vstack((fpts, data))
 
     #### Meta
-    
-    def take(self, sweep_points=None):
+    def take(self, sweep_points=None, data_format=None):
         """
         Important:
-            the PNA-X need to be in the following mode
+            the PNA-X needs to be in the following mode
                 trigger source:IMMediate,
                 format:POLar,
                 trigger:CONTinuous ON
@@ -427,19 +511,25 @@ class N5242A(SocketInstrument):
         self.clear_averages()
         # this is the command that triggers the averaging. Execute right before read data.
         self.set_sweep_mode('gro')
-        data = self.read_data(sweep_points)
+        data = self.read_data(sweep_points=sweep_points, data_format=data_format)
         return data
 
-    def take_in_mag_phase(self, sweep_points=None):
-        fpts, xs, ys = self.take(sweep_points)
+    def take_in_mag_phase(self, sweep_points=None, data_format=None):
+        fpts, xs, ys = self.take(sweep_points=sweep_points, data_format=data_format)
         mags, phases = polar2mag(xs, ys)
         return fpts, mags, phases
 
-    def take_one_in_mag_phase(self, sweep_points=None):
+    def take_one_in_mag_phase(self, sweep_points=None, data_format=None):
+        """
+        Takes one averaged trace and return fpts, magnitudes and phases
+        :param sweep_points: Sweep points (optional, saves time)
+        :param data_format: 'ascii' or 'binary' (optional, saves time)
+        :return: fpts, mags, phases
+        """
         _trig_source = self.get_trigger_source()
         _format = self.get_format()
         self.setup_take()
-        fpts, xs, ys = self.take(sweep_points)
+        fpts, xs, ys = self.take(sweep_points=sweep_points, data_format=data_format)
         mags, phases = polar2mag(xs, ys)
         self.set_trigger_source(_trig_source)
         self.set_format(_format)
@@ -447,7 +537,7 @@ class N5242A(SocketInstrument):
 
     def setup_take(self, averages=None, averages_state=None):
         self.set_trigger_source("imm")
-        self.set_format('polar')
+        self.set_format('POL')
         self.set_trigger_continuous()
         
         if averages is not None:
