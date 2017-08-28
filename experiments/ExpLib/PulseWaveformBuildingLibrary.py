@@ -43,7 +43,8 @@ def gauss_phase_fix(wtpts,origin,marker_start_buffer,marker_end_buffer,pulse_loc
                                  ap.gauss(wtpts, pulse.amp,
                                           origin - pulse_location - 0.5*pulse.span_length,
                                           pulse.length), np.zeros(len(wtpts)),
-                                 pulse.freq, phase= 360*qubit_dc_offset/1e9*(wtpts+pulse_location)+ pulse.phase)
+                                 pulse.freq, phase= 360*qubit_dc_offset/1e9*(wtpts+pulse_location)+ pulse.phase,
+                                origin = origin)
         # qubit_marker = ap.square(mtpts, 1,
         #                                           origin - pulse_location - pulse.span_length - marker_start_buffer,
         #                                           pulse.span_length + marker_start_buffer- marker_end_buffer)
@@ -57,7 +58,7 @@ def gauss_phase_fix(wtpts,origin,marker_start_buffer,marker_end_buffer,pulse_loc
                                  ap.gauss(wtpts, pulse.amp,
                                           origin - pulse_location - 0.5*pulse.span_length,
                                           pulse.length), np.zeros(len(wtpts)),
-                                 pulse.freq, pulse.phase)
+                                 pulse.freq, pulse.phase, origin=origin)
         # qubit_marker = ap.square(mtpts, 1,
         #                                           origin - pulse_location - pulse.span_length - marker_start_buffer,
         #                                           pulse.span_length + marker_start_buffer- marker_end_buffer)
@@ -67,7 +68,7 @@ def flux_square(ftpts,pulse_location,pulse,pulse_cfg):
     waveforms_qubit_flux = ap.sideband(ftpts,
                                      ap.square(ftpts, pulse.amp, pulse_location-pulse.length-0.5*(pulse.span_length - pulse.length) , pulse.length, pulse_cfg['square'][
                                                                   'ramp_sigma']), np.zeros(len(ftpts)),
-                                      pulse.freq, pulse.phase,offset=False)[0]
+                                      pulse.freq, pulse.phase,offset=False, origin=origin)[0]
     return waveforms_qubit_flux
 
 def flux_square_phase_fix(ftpts,pulse_location,pulse,pulse_cfg, mm_target_info, flux_pulse_info):
@@ -80,7 +81,7 @@ def flux_square_phase_fix(ftpts,pulse_location,pulse,pulse_cfg, mm_target_info, 
             bare_frequency = shifted_frequency-dc_offset
             waveforms_qubit_flux = ap.sideband(ftpts,
                                              ap.square(ftpts, pulse.amp, pulse_location-pulse.length-0.5*(pulse.span_length - pulse.length) , pulse.length, pulse_cfg['square'][
-                                                                          'ramp_sigma']), np.zeros(len(ftpts)),freq=bare_frequency, phase= 360*dc_offset/1e9*(ftpts+pulse_location)+pulse.phase,offset=False)[0]
+                                                                          'ramp_sigma']), np.zeros(len(ftpts)),freq=bare_frequency, phase= 360*dc_offset/1e9*(ftpts+pulse_location)+pulse.phase,offset=False, origin=origin)[0]
 
         else:
             dc_offset = mm_target_info['dc_offset_freq']
@@ -88,7 +89,7 @@ def flux_square_phase_fix(ftpts,pulse_location,pulse,pulse_cfg, mm_target_info, 
             bare_frequency = shifted_frequency-dc_offset
             waveforms_qubit_flux = ap.sideband(ftpts,
                                              ap.square(ftpts, pulse.amp, pulse_location-pulse.length-0.5*(pulse.span_length - pulse.length) , pulse.length, pulse_cfg['square'][
-                                                                          'ramp_sigma']), np.zeros(len(ftpts)),freq=bare_frequency, phase= 360*dc_offset/1e9*(ftpts+pulse_location)+pulse.phase,offset=False)[0]
+                                                                          'ramp_sigma']), np.zeros(len(ftpts)),freq=bare_frequency, phase= 360*dc_offset/1e9*(ftpts+pulse_location)+pulse.phase,offset=False, origin=origin)[0]
 
 
 
@@ -96,7 +97,7 @@ def flux_square_phase_fix(ftpts,pulse_location,pulse,pulse_cfg, mm_target_info, 
         waveforms_qubit_flux = ap.sideband(ftpts,
                                            ap.square(ftpts, pulse.amp, pulse_location-pulse.length-0.5*(pulse.span_length - pulse.length) , pulse.length, pulse_cfg['square'][
                                                                       'ramp_sigma']), np.zeros(len(ftpts)),
-                                          pulse.freq, pulse.phase,offset=False)[0]
+                                          pulse.freq, pulse.phase,offset=False, origin=origin)[0]
 
 
     return waveforms_qubit_flux
@@ -108,7 +109,7 @@ def flux_gauss(ftpts,pulse_location,pulse):
                              ap.gauss(ftpts, pulse.amp,
                                       pulse_location - 0.5*pulse.span_length,
                                       pulse.length), np.zeros(len(ftpts)),
-                             pulse.freq, pulse.phase)[1]
+                             pulse.freq, pulse.phase, origin=origin)[1]
     return waveforms_qubit_flux
 
 
@@ -116,19 +117,19 @@ def linear_ramp(wtpts,origin,pulse_location,pulse):
     qubit_waveforms = ap.sideband(wtpts,
                              ap.linear_ramp(wtpts, pulse.start_amp, pulse.stop_amp,
                                        origin - pulse_location - pulse.length, pulse.length),
-                             np.zeros(len(wtpts)), 0, 0)
+                             np.zeros(len(wtpts)), 0, 0, origin=origin)
     return qubit_waveforms
 
 def logistic_ramp(wtpts,origin,pulse_location,pulse):
     qubit_waveforms = ap.sideband(wtpts,
                              ap.logistic_ramp(wtpts, pulse.start_amp, pulse.stop_amp,
                                        origin - pulse_location - pulse.length, pulse.length),
-                             np.zeros(len(wtpts)), 0, 0)
+                             np.zeros(len(wtpts)), 0, 0, origin=origin)
     return qubit_waveforms
 
 def linear_ramp_with_mod(wtpts,origin,pulse_location,pulse):
     qubit_waveforms = ap.sideband(wtpts,
                              ap.linear_ramp_with_mod(wtpts, pulse.start_amp, pulse.stop_amp,
                                        origin - pulse_location - pulse.length, pulse.length, pulse.mod_amp, pulse.mod_freq, pulse.mod_start_phase),
-                             np.zeros(len(wtpts)), 0, 0)
+                             np.zeros(len(wtpts)), 0, 0, origin=origin)
     return qubit_waveforms
