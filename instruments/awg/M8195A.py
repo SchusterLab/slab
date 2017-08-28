@@ -9,6 +9,7 @@ from slab.instruments import SocketInstrument
 
 import numpy as np
 import sys
+from tqdm import tqdm
 
 
 class M8195A(SocketInstrument):
@@ -863,13 +864,14 @@ class M8195A(SocketInstrument):
         sequence_length = waveform_matrix[0].shape[0]
         segment_length = waveform_matrix[0].shape[1]
 
-        for sequence_id in range(1,sequence_length+1):
+        sys.stdout.write('Writing and uploading M8195A sequences...')
+        for sequence_id in tqdm(range(1,sequence_length+1)):
 
             m8195a.set_segment_size(1,sequence_id,segment_length)
 
             for channel in range(1,num_channels+1):
 
-                sys.stdout.write('writing seq id=' + str(sequence_id) + '..')
+                #sys.stdout.write('writing seq id=' + str(sequence_id) + '..')
 
                 # todo:
                 # hack: M8195A sequence start from second sequence - '(sequence_id-2)'
@@ -879,15 +881,12 @@ class M8195A(SocketInstrument):
                 with open(filename, 'wb')  as f:
                     segment_data_array.astype('int8').tofile(f)
 
-                sys.stdout.write('uploading..\n')
+                #sys.stdout.write('uploading..\n')
                 #filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
                 filename = '\"' + r'\\THORIUM-PC\M8195_sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
                 #m8195a.set_segment_data_from_bin_file(channel,sequence_id,filename)
 
                 m8195a.set_segment_data_from_bin_file(channel, sequence_id, filename)
-
-
-        print '\n'
 
 
     def define_segments_test(m8195a,segment_length,sequence_length,dt):
