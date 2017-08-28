@@ -44,8 +44,11 @@ class PulseProbeSequence(QubitPulseSequence):
 
     def define_pulses(self,pt):
 
+        if self.expt_cfg['ge_pi']:
+            self.psb.append('q', 'cal_pi', self.expt_cfg['ge_pi_pulse_type'])
+
         self.psb.append('q', 'general', self.pulse_type, amp=self.expt_cfg['a'], length=self.expt_cfg['pulse_length'],
-                        freq= pt)
+                        freq= pt-(self.cfg['qubit']['frequency'] - self.pulse_cfg[self.pulse_type]['iq_freq']))
 
 class HistogramHeteroSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg, **kwargs):
