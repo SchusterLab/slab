@@ -851,11 +851,17 @@ class M8195A(SocketInstrument):
 
     def define_segments_binary(m8195a,waveform_matrix):
 
-        waveform_shape = waveform_matrix.shape
+        # waveform_shape = waveform_matrix.shape
+        #
+        # num_channels = waveform_shape[0]
+        # sequence_length = waveform_shape[1]
+        # segment_length = waveform_shape[2]
 
-        num_channels = waveform_shape[0]
-        sequence_length = waveform_shape[1]
-        segment_length = waveform_shape[2]
+        #waveform_shape = waveform_matrix.shape
+
+        num_channels = len(waveform_matrix)#[0]
+        sequence_length = waveform_matrix[0].shape[0]
+        segment_length = waveform_matrix[0].shape[1]
 
         for sequence_id in range(1,sequence_length+1):
 
