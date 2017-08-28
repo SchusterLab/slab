@@ -915,11 +915,9 @@ class M8195A(SocketInstrument):
 
     def define_sequence(m8195a,sequence_length):
 
-
         m8195a.write_sequence_data(0,1,start=True)
         for ii in range(2,sequence_length):
             m8195a.write_sequence_data(ii-1,ii)
-
         m8195a.write_sequence_data(sequence_length-1,sequence_length,end=True)
 
 
@@ -951,45 +949,52 @@ class M8195A(SocketInstrument):
         return waveform_channel_array
 
 
-    def upload_M8195A_sequence(m8195a,waveform_matrix,awg):
+def upload_M8195A_sequence(m8195a,waveform_matrix,awg):
 
-        period_us = awg['period_us']
-        amplitudes = awg['amplitudes']
+    period_us = awg['period_us']
+    amplitudes = awg['amplitudes']
 
-        # m8195a = M8195A(address ='192.168.14.234:5025')
-        m8195a.socket.setblocking(1)
+    # m8195a = M8195A(address ='192.168.14.234:5025')
+    m8195a.socket.setblocking(1)
 
-        waveform_shape = waveform_matrix.shape
+    # waveform_shape = waveform_matrix.shape
+    #
+    # num_channels = waveform_shape[0]
+    # sequence_length = waveform_shape[1]
+    # segment_length = waveform_shape[2]
 
-        num_channels = waveform_shape[0]
-        sequence_length = waveform_shape[1]
-        segment_length = waveform_shape[2]
+    num_channels = len(waveform_matrix)  # [0]
+    sequence_length = waveform_matrix[0].shape[0]
+    segment_length = waveform_matrix[0].shape[1]
 
-        m8195a.setup_awg(num_channels=num_channels,amplitudes=amplitudes)
+    m8195a.setup_awg(num_channels=num_channels,amplitudes=amplitudes)
 
+    dt = float(num_channels)/64. #ns
 
+    # waveform_matrix = get_sample_sequence(4,segment_length,sequence_length,dt)
 
-        dt = float(num_channels)/64. #ns
+    period = period_us * 1e-6 #s
 
-        # waveform_matrix = get_sample_sequence(4,segment_length,sequence_length,dt)
+    # define_segments_test(m8195a,segment_length,sequence_length,dt)
 
-        period = period_us * 1e-6 #s
+    # define_segments(m8195a,waveform_matrix)
 
-        # define_segments_test(m8195a,segment_length,sequence_length,dt)
+    m8195a.define_segments_binary(waveform_matrix)
 
-        # define_segments(m8195a,waveform_matrix)
+    m8195a.set_mode('STS')
+    m8195a.define_sequence(sequence_length)
 
-        m8195a.define_segments_binary(waveform_matrix)
+    m8195a.set_advancement_event_source('TRIG')
+    m8195a.set_sequence_starting_id(0)
 
-        m8195a.set_mode('STS')
-        m8195a.define_sequence(sequence_length)
+    # m8195a.set_internal_trigger_frequency(1./period)
 
-        m8195a.set_advancement_event_source('TRIG')
-        m8195a.set_sequence_starting_id(0)
+    # confirm upload complete by waiting for response
+    print 'Wait for upload to finish...'
+    print m8195a.get_id()
+    print 'Upload to M8195A finished.'
 
-        # m8195a.set_internal_trigger_frequency(1./period)
-
-        m8195a.start_output()
+    m8195a.start_output()
 
 
 if __name__ == "__main__":
