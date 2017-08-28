@@ -88,6 +88,9 @@ class QubitPulseSequenceExperiment(Experiment):
         # if self.liveplot_enabled:
         #     self.plotter.clear()
 
+        # print 'wait 30 secs'
+        # time.sleep(30)
+
         print "Prep Instruments"
 
         try:
@@ -324,6 +327,7 @@ class QubitPulseSequenceExperiment(Experiment):
                                                                              prep_function=self.awg_prep,
                                                                              start_function=self.awg_run,
                                                                              excise=self.cfg['readout']['window'],
+                                                                             isCompensatePhase=True,
                                                                              save_raw_data=False)
 
                     single_data = array([single_data1, single_data2])

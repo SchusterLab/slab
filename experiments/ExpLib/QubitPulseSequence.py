@@ -169,7 +169,7 @@ class QubitPulseSequence(PulseSequence):
 
     def add_heterodyne_pulses(self, hetero_read_freq = None, hetero_a = None):
 
-        print hetero_read_freq
+        # print hetero_read_freq
         if hetero_read_freq is not None:
 
             het_carrier_freq = hetero_read_freq - self.cfg['readout']['heterodyne_freq']
