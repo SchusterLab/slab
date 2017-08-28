@@ -47,6 +47,33 @@ class PulseProbeSequence(QubitPulseSequence):
         self.psb.append('q', 'general', self.pulse_type, amp=self.expt_cfg['a'], length=self.expt_cfg['pulse_length'],
                         freq= pt)
 
+class HistogramHeteroSequence(QubitPulseSequence):
+    def __init__(self,name, cfg, expt_cfg, **kwargs):
+        self.pulse_cfg = cfg['pulse_info']
+        self.cfg = cfg
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
+
+    def define_points(self):
+        self.freq_pts = arange(self.expt_cfg['freq_start'], self.expt_cfg['freq_stop'], self.expt_cfg['freq_step'])
+        # g/e/f  at each freq
+        self.expt_pts = arange(len(self.freq_pts)*3)
+
+    def define_parameters(self):
+        self.pulse_type = self.expt_cfg['pulse_type']
+        self.hetero_a = self.cfg['readout']['heterodyne_a']
+
+    def define_pulses(self,pt):
+
+        if pt%3 == 0:
+            self.psb.idle(10)
+        if pt%3 == 1:
+            self.psb.append('q', 'cal_pi', self.pulse_type)
+        if pt%3 == 2:
+            self.psb.append('q', 'cal_pi', self.pulse_type)
+            self.psb.append('q', 'pi_q_ef', self.pulse_type)
+
+        self.add_heterodyne_pulses(hetero_read_freq = self.freq_pts(int(pt/3)), hetero_a = self.hetero_a)
+
 class RabiSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
         self.pulse_cfg = cfg['pulse_info']

@@ -156,6 +156,11 @@ class QubitPulseSequenceExperiment(Experiment):
         except:
             print "self.awg not loaded."
 
+        self.take_data()
+
+
+    def take_data(self):
+
         if self.pre_run is not None:
             self.pre_run()
 

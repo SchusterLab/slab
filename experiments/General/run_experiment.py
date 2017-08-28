@@ -39,10 +39,10 @@ def run_experiment(expt_name,lp_enable = False, **kwargs):
         # Do Rabi Experiment
         expt = RabiThermalizerExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
-    if expt_name.lower() == 'histogram':
-        from slab.experiments.General.HistogramExperiment import HistogramExperiment
-        # Do Histogram Experiment
-        expt = HistogramExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+    # if expt_name.lower() == 'histogram':
+    #     from slab.experiments.General.HistogramExperiment import HistogramExperiment
+    #     # Do Histogram Experiment
+    #     expt = HistogramExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower() == 'histogram_hetero':
         from slab.experiments.General.HistogramHeteroExperiment import HistogramHeteroExperiment
