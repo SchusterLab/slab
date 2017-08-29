@@ -117,8 +117,10 @@ class QubitPulseSequence(PulseSequence):
         max_flux_length = round_samples( max(self.flux_pulse_span_list)+ 2 * self.psb.start_end_buffer)
         self.set_all_lengths(max(max_flux_length,max_length))
 
-        print 'max length =', max_length
-        print 'max flux length =', max_flux_length
+        print 'max length =', max_length, 'ns'
+        print 'max flux length =', max_flux_length, 'ns'
+        if max(max_flux_length,max_length) >= self.cfg["expt_trigger"]["period_ns"]:
+            print 'Error!! Max sequence length larger than Exp period! '
 
         ###
 
