@@ -85,7 +85,7 @@ class QubitPulseSequence(PulseSequence):
             #self.add_flux_pulses(length=500)
             temp_seqs = self.psb.get_pulse_sequence()
 
-            # clears ?
+            # clears
             dummy = self.psb.get_total_pulse_span_length()
             dummy = self.psb.get_total_flux_pulse_span_length()
 
@@ -98,6 +98,10 @@ class QubitPulseSequence(PulseSequence):
         # flux pulse
         temp_seq_matrix = self.pulse_sequence_matrix[:]
         self.pulse_sequence_matrix = []
+        # clears
+        dummy = self.psb.get_total_pulse_span_length()
+        dummy = self.psb.get_total_flux_pulse_span_length()
+
         for ii in range(len(self.expt_pts) + len(calibration_pts)):
 
             if self.name == 'rabi_thermalizer':
@@ -112,6 +116,9 @@ class QubitPulseSequence(PulseSequence):
 
         max_flux_length = round_samples( max(self.flux_pulse_span_list)+ 2 * self.psb.start_end_buffer)
         self.set_all_lengths(max(max_flux_length,max_length))
+
+        print 'max length =', max_length
+        print 'max flux length =', max_flux_length
 
         ###
 
