@@ -75,7 +75,7 @@ class HistogramHeteroSequence(QubitPulseSequence):
             self.psb.append('q', 'cal_pi', self.pulse_type)
             self.psb.append('q', 'pi_q_ef', self.pulse_type)
 
-        self.add_heterodyne_pulses(hetero_read_freq = self.freq_pts(int(pt/3)), hetero_a = self.hetero_a)
+        self.add_heterodyne_pulses(hetero_read_freq = self.freq_pts[int(pt/3)], hetero_a = self.hetero_a)
 
 class RabiSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
