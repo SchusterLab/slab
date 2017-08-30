@@ -10,7 +10,7 @@ import time
 from struct import *
 from array import array as barray
 
-SERIAL_NUMBER = [301450,301483, 300727]
+# SERIAL_NUMBER = [301450,301483, 300727]
 # SERIAL_NUMBER = [300727, 301483, 301450]
 
 class PXDAC4800:
@@ -59,9 +59,10 @@ class PXDAC4800:
 
         ppHandle = U32PP(U32P(U32(0)))
 
-        print "Connecting to PXDAC4800 device."
+        print "Connecting to PXDAC4800 Board #", self.brdNum
         dll = DACDLL
-        dll.ConnectToDeviceXD48(ppHandle, U32(SERIAL_NUMBER[self.brdNum-1]))
+        # dll.ConnectToDeviceXD48(ppHandle, U32(SERIAL_NUMBER[self.brdNum-1]))
+        dll.ConnectToDeviceXD48(ppHandle, U32(awg['SERIAL_NUMBER']))
 
         self.dll = dll
 
@@ -110,7 +111,7 @@ class PXDAC4800:
             dll.SetActiveChannelMaskXD48(pHandle, U32(15)) # four channels
 
         ## start DAC auto calibration
-        for ii in range(20):
+        for ii in range(10):
             calibration_result = dll.StartDacAutoCalibrationXD48(pHandle)
             print "Calibration status: " + str(calibration_result)
             if calibration_result == 0:
