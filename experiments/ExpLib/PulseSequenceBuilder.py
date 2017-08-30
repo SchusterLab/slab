@@ -425,7 +425,7 @@ class PulseSequenceBuilder():
                 # if flux_pulse_started:
                 #     flux_pulse_location -= pulse.span_length
 
-            flux_pulse_location_list = [pulse_location]*4
+            flux_pulse_location_list = [pulse_location]*8
 
             for jj in range(0, len(pulse_sequence_matrix[ii])):
 

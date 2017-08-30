@@ -162,16 +162,16 @@ class QubitPulseSequence(PulseSequence):
         flux_a = self.cfg['flux_pulse_info']['flux_a']
         flux_freq = self.cfg['flux_pulse_info']['flux_freq']
 
-        for ii in range(4):
+        for ii in range(8):
 
             flux_comp_a = - flux_a[ii]  # flux_area/float(flux_comp_width)
 
             if flux_width > 0:
-                self.psb.append('flux_'+str(ii+1), 'general', 'square', amp=flux_a[ii],
+                self.psb.append('flux_'+str(ii), 'general', 'square', amp=flux_a[ii],
                             length = flux_width, freq = flux_freq[ii],
                             delay = flux_delay)
             if flux_comp_width > 0:
-                self.psb.append('flux_' + str(ii + 1), 'general', 'square', amp=flux_comp_a,
+                self.psb.append('flux_' + str(ii), 'general', 'square', amp=flux_comp_a,
                             length = flux_comp_width, freq = flux_freq[ii],
                             delay = flux_delay + flux_idle)
 
