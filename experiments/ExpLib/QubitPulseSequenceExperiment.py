@@ -51,6 +51,7 @@ class QubitPulseSequenceExperiment(Experiment):
             self.data_file = self.extra_args['data_file']
         else:
             self.data_file = None
+        self.slab_file = self.datafile(data_file=self.data_file)
 
         if 'flux_freq' in self.extra_args:
             self.flux_freq = self.extra_args['flux_freq']
@@ -156,6 +157,8 @@ class QubitPulseSequenceExperiment(Experiment):
         except:
             print "self.awg not loaded."
 
+        print '\nFilename:', self.slab_file.filename, '\n'
+
         self.take_data()
 
 
@@ -259,12 +262,7 @@ class QubitPulseSequenceExperiment(Experiment):
                         # todo: add heterodyne with pi_cal
                         expt_avg_data = mean((expt_data - zero_amp) / (pi_amp - zero_amp), 1)
 
-                    # this needs to stay here
-                    # if self.data_file != None:
-                    #     self.slab_file = SlabFile(self.data_file)
-                    # else:
-                    #     self.slab_file = self.datafile()
-                    self.slab_file = self.datafile(data_file=self.data_file)
+                    # self.slab_file = self.datafile(data_file=self.data_file)
 
                     with self.slab_file as f:
                         f.add('expt_2d', expt_data)
