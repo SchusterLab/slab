@@ -28,7 +28,11 @@ class Pulse():
             setattr(self, key, value)
 
 class PulseSequenceBuilder():
+
     def __init__(self, cfg):
+
+        self.DEBUG_PSB = False
+
         buffer_cfg = cfg['buffer']
         self.cfg = cfg
         self.exp_period_ns = cfg['expt_trigger']['period_ns']
@@ -418,6 +422,8 @@ class PulseSequenceBuilder():
                 elif pulse.target == "idle":
                     pulse_location += pulse.span_length
 
+                if self.DEBUG_PSB:
+                    print 'pulse target =', pulse.target, ', current pulse_location =', pulse_location
                 # high_values_indices = self.markers_qubit_buffer[ii] > 1
                 # self.markers_qubit_buffer[ii][high_values_indices] = 1
 
@@ -427,6 +433,9 @@ class PulseSequenceBuilder():
 
             flux_pulse_location_list = [pulse_location]*8
 
+            if self.DEBUG_PSB:
+                print 'flux_pulse_location_list', flux_pulse_location_list
+
             for jj in range(0, len(pulse_sequence_matrix[ii])):
 
                 pulse_defined = True
@@ -434,26 +443,18 @@ class PulseSequenceBuilder():
 
 
                 if pulse.target[:4] == "flux":
-                    # waveforms_key_list = ['flux_1', 'flux_2','flux_3','flux_4']
+                    # waveforms_key_list = ['flux_0-7',]
 
                     waveforms_key = pulse.target
 
                     if waveforms_key in self.waveforms_dict:
-                        flux_index = int(pulse.target[-1]) - 1
+                        flux_index = int(pulse.target[-1]) # zero_indexed - 1
                         if pulse.type == "square":
                             qubit_waveforms = square(self.waveforms_tpts_dict[waveforms_key],
                                                      self.origin,
                                                      self.marker_start_buffer,
                                                      self.marker_end_buffer,
                                                      flux_pulse_location_list[flux_index] - pulse.delay -pulse.span_length, pulse,
-                                                     self.pulse_cfg)
-                        elif pulse.type == "square_exp":
-                            qubit_waveforms = square_exp(self.waveforms_tpts_dict[waveforms_key],
-                                                     self.origin,
-                                                     self.marker_start_buffer,
-                                                     self.marker_end_buffer,
-                                                     flux_pulse_location_list[
-                                                         flux_index] - pulse.delay - pulse.span_length, pulse,
                                                      self.pulse_cfg)
                         elif pulse.type == "gauss":
                             qubit_waveforms = gauss(self.waveforms_tpts_dict[waveforms_key],
@@ -478,7 +479,9 @@ class PulseSequenceBuilder():
                             self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[0] ## always zero index
                         flux_pulse_location_list[flux_index] -= pulse.span_length
 
-                        #print(flux_pulse_location_list[flux_index])
+                        if self.DEBUG_PSB:
+                            print 'add flux pulse target=', pulse.target, 'delay=', pulse.delay, 'span=', pulse.span_length
+                            print 'flux_pulse_location_list, [flux_index]=', flux_index, flux_pulse_location_list[flux_index]
             # if self.uses_tek2:
             #     self.markers_ch3m1[ii] = ap.square(self.mtpts, 1,
             #                                     self.origin - flux_end_location - total_pulse_span_length_list[
