@@ -6,7 +6,7 @@ import numexpr as ne
 
 def sideband(t, plus, minus, freq=0, phase=0, offset=False, offset_fit_lin=0,offset_fit_quad=0, origin=0):
     if freq==0 and phase==0:
-        return (plus - minus)
+        return (plus - minus), np.zeros(t.shape)
 
     elif offset:
         if (not max(plus) == 0):
