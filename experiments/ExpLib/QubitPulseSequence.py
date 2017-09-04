@@ -68,9 +68,46 @@ class QubitPulseSequence(PulseSequence):
                 self.total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
                 self.total_flux_pulse_span_length_list.append(self.psb.get_total_flux_pulse_span_length())
 
+        print 'total_pulse_span_length_list', self.total_pulse_span_length_list
+
         max_length = self.psb.get_max_length(self.total_pulse_span_length_list)
         max_flux_length = self.psb.get_max_flux_length(self.total_flux_pulse_span_length_list)
         self.set_all_lengths(max_length)
+
+        ###
+
+        # flux pulse
+        temp_seq_matrix = self.pulse_sequence_matrix[:]
+        self.pulse_sequence_matrix = []
+        # clears
+        dummy = self.psb.get_total_pulse_span_length()
+        dummy = self.psb.get_total_flux_pulse_span_length()
+
+        for ii in range(len(self.expt_pts) + len(calibration_pts)):
+
+            if self.name == 'rabi_thermalizer':
+                define_pulses(ii, isFlux = True)
+                flux_total_span = self.psb.get_total_pulse_span_length() # also clears
+            else:
+                flux_total_span = self.add_flux_pulses(pulse_span_length = self.total_pulse_span_length_list[ii])
+            temp_seqs = self.psb.get_pulse_sequence() # also clears seq
+
+            self.flux_pulse_span_list.append(flux_total_span)
+            dummy = self.psb.get_total_flux_pulse_span_length()
+
+            #print 'flux_pulse_span_list', self.flux_pulse_span_list
+
+            self.pulse_sequence_matrix.append(temp_seq_matrix[ii] + temp_seqs)  # concatenate hetero/flux pulse
+
+        max_flux_length = round_samples( max(self.flux_pulse_span_list)+ 2 * self.psb.start_end_buffer)
+        self.set_all_lengths(max(max_flux_length,max_length))
+
+        print 'max length =', max_length, 'ns'
+        print 'max flux length =', max_flux_length, 'ns'
+        if max(max_flux_length,max_length) >= self.cfg["expt_trigger"]["period_ns"]:
+            print 'Error!! Max sequence length larger than Exp period! '
+
+        ###
 
         ###
         # heterodyne pulse - hack: max_length = 0
@@ -91,40 +128,12 @@ class QubitPulseSequence(PulseSequence):
 
             for ii in range(len(self.expt_pts)+len(calibration_pts)):
                 self.pulse_sequence_matrix.append(temp_seq_matrix[ii] + temp_seqs) # concatenate hetero/flux pulse
-            ###
-
         ###
 
-        # flux pulse
-        temp_seq_matrix = self.pulse_sequence_matrix[:]
-        self.pulse_sequence_matrix = []
-        # clears
-        dummy = self.psb.get_total_pulse_span_length()
-        dummy = self.psb.get_total_flux_pulse_span_length()
-
-        for ii in range(len(self.expt_pts) + len(calibration_pts)):
-
-            if self.name == 'rabi_thermalizer':
-                define_pulses(ii, isFlux = True)
-            else:
-                self.add_flux_pulses(pulse_span_length = self.total_pulse_span_length_list[ii])
-            temp_seqs = self.psb.get_pulse_sequence() # also clears seq
-            self.flux_pulse_span_list.append(self.psb.get_total_pulse_span_length())
-            dummy = self.psb.get_total_flux_pulse_span_length()
-
-            self.pulse_sequence_matrix.append(temp_seq_matrix[ii] + temp_seqs)  # concatenate hetero/flux pulse
-
-        max_flux_length = round_samples( max(self.flux_pulse_span_list)+ 2 * self.psb.start_end_buffer)
-        self.set_all_lengths(max(max_flux_length,max_length))
-
-        print 'max length =', max_length, 'ns'
-        print 'max flux length =', max_flux_length, 'ns'
-        if max(max_flux_length,max_length) >= self.cfg["expt_trigger"]["period_ns"]:
-            print 'Error!! Max sequence length larger than Exp period! '
-
-        ###
 
     def add_flux_pulses(self, pulse_span_length):
+
+        #print pulse_span_length
 
         # this is to align flux pulse to readout? (diff in 2 pxdac cards)
         hw_delay = self.cfg['flux_pulse_info']['pxdac_hw_delay']
@@ -162,6 +171,9 @@ class QubitPulseSequence(PulseSequence):
         flux_a = self.cfg['flux_pulse_info']['flux_a']
         flux_freq = self.cfg['flux_pulse_info']['flux_freq']
 
+        #print 'desired flux_width= ', flux_width, ', delay=', flux_delay
+
+        flux_total_span_list = []
         for ii in range(8):
 
             flux_comp_a = - flux_a[ii]  # flux_area/float(flux_comp_width)
@@ -174,6 +186,11 @@ class QubitPulseSequence(PulseSequence):
                 self.psb.append('flux_' + str(ii), 'general', 'square', amp=flux_comp_a,
                             length = flux_comp_width, freq = flux_freq[ii],
                             delay = flux_delay + flux_idle)
+
+            # also clears
+            flux_total_span_list.append(self.psb.get_total_pulse_span_length())
+
+        return max(flux_total_span_list)
 
 
     def add_heterodyne_pulses(self, hetero_read_freq = None, hetero_a = None):
