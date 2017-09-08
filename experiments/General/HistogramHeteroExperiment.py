@@ -121,3 +121,6 @@ class HistogramHeteroExperiment(QubitPulseSequenceExperiment):
 
         if self.cfg['stop_awgs'] == True:
             self.awg_prep()
+
+        # close Alazar and release buffer
+        adc.close()

@@ -451,6 +451,9 @@ class QubitPulseSequenceExperiment(Experiment):
             if self.cfg['stop_awgs'] == True:
                 self.awg_prep()
 
+            # closes Alazar card and releases buffer
+            adc.close()
+
     def awg_prep(self):
         stop_pulseblaster()
 
