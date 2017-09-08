@@ -111,7 +111,7 @@ class QubitPulseSequence(PulseSequence):
 
         ###
         # heterodyne pulse - hack: max_length = 0
-        if self.name == 'Vacuum_Rabi':
+        if (self.name == 'Vacuum_Rabi') or (self.name == 'Histogram_Hetero'):
             # vacuum_rabi : heterodyne pulses in SingleQubitPulseSeq
             pass
 
