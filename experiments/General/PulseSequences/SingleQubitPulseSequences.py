@@ -50,6 +50,9 @@ class PulseProbeSequence(QubitPulseSequence):
         self.psb.append('q', 'general', self.pulse_type, amp=self.expt_cfg['a'], length=self.expt_cfg['pulse_length'],
                         freq= pt-(self.cfg['qubit']['frequency'] - self.pulse_cfg[self.pulse_type]['iq_freq']))
 
+        if self.expt_cfg['end_ge_pi']:
+            self.psb.append('q', 'cal_pi', self.expt_cfg['ge_pi_pulse_type'])
+
 class HistogramHeteroSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg, **kwargs):
         self.pulse_cfg = cfg['pulse_info']
@@ -74,6 +77,9 @@ class HistogramHeteroSequence(QubitPulseSequence):
         if pt%3 == 2:
             self.psb.append('q', 'cal_pi', self.pulse_type)
             self.psb.append('q', 'pi_q_ef', self.pulse_type)
+
+        # print pt
+        # print self.freq_pts[int(pt/3)]
 
         self.add_heterodyne_pulses(hetero_read_freq = self.freq_pts[int(pt/3)], hetero_a = self.hetero_a)
 

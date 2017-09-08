@@ -881,6 +881,9 @@ class M8195A(SocketInstrument):
                 with open(filename, 'wb')  as f:
                     segment_data_array.astype('int8').tofile(f)
 
+                # name = r'C:\slab_data_temp\m8195a_h_%d_%d.npy' % (sequence_id, channel)
+                # np.save(name, segment_data_array)
+
                 #sys.stdout.write('uploading..\n')
                 #filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
                 filename = '\"' + r'\\THORIUM-PC\M8195_sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
