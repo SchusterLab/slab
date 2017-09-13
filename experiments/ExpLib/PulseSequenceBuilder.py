@@ -54,8 +54,6 @@ class PulseSequenceBuilder():
             if name == "pi" or name == "cal_pi":
                 amp = self.pulse_cfg[type]['pi_a']
                 length = self.pulse_cfg[type]['pi_length']
-                # print amp
-                # print length
                 freq = self.pulse_cfg[type]['iq_freq']
                 if phase == None:
                     phase = self.pulse_cfg[type]['phase']
@@ -222,7 +220,7 @@ class PulseSequenceBuilder():
 
     def prepare_build(self, wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q,
                       waveforms_qubit_flux,
-                      markers_qubit_buffer, markers_ch3m1,waveforms_pxdac4800_2_ch1,waveforms_pxdac4800_2_ch2):
+                      markers_qubit_buffer, markers_ch3m1):
         '''
         Being called internally to set the variables.
         '''
@@ -238,8 +236,8 @@ class PulseSequenceBuilder():
         self.markers_ch3m1 = markers_ch3m1
 
         # for 2nd PXDAC4800
-        self.waveforms_pxdac4800_2_ch1 = waveforms_pxdac4800_2_ch1
-        self.waveforms_pxdac4800_2_ch2 = waveforms_pxdac4800_2_ch2
+        # self.waveforms_pxdac4800_2_ch1 = waveforms_pxdac4800_2_ch1
+        # self.waveforms_pxdac4800_2_ch2 = waveforms_pxdac4800_2_ch2
 
 
     def build(self, pulse_sequence_matrix, total_pulse_span_length_list):
@@ -265,10 +263,10 @@ class PulseSequenceBuilder():
                             np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)),
                             0, 0)
 
-            self.waveforms_pxdac4800_2_ch1[ii], self.waveforms_pxdac4800_2_ch2[ii] = \
-                ap.sideband(self.wtpts,
-                            np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)),
-                            0, 0)
+            # self.waveforms_pxdac4800_2_ch1[ii], self.waveforms_pxdac4800_2_ch2[ii] = \
+            #     ap.sideband(self.wtpts,
+            #                 np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)),
+            #                 0, 0)
 
             self.waveforms_qubit_flux[ii] = ap.sideband(self.ftpts,
                                                         np.zeros(len(self.ftpts)), np.zeros(len(self.ftpts)),
@@ -286,11 +284,11 @@ class PulseSequenceBuilder():
                     if pulse.type == "square":
                         qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
                                                                self.marker_start_buffer, self.marker_end_buffer,pulse_location- pulse.delay, pulse,
-                                                               self.pulse_cfg)
+                                                               self.pulse_cfg,t0=self.origin)
                     elif pulse.type == "gauss":
                         qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,
-                                                              pulse_location- pulse.delay, pulse)
+                                                              pulse_location- pulse.delay, pulse,t0=self.origin)
                     else:
                         raise ValueError('Wrong pulse type has been defined')
                     if pulse_defined:
@@ -303,17 +301,17 @@ class PulseSequenceBuilder():
                         qubit_waveforms, qubit_marker = square(self.wtpts, self.mtpts, self.origin,
                                                                self.marker_start_buffer, self.marker_end_buffer,
                                                                pulse_location- pulse.delay, pulse,
-                                                               self.pulse_cfg)
+                                                               self.pulse_cfg,t0=self.origin)
                     elif pulse.type == "gauss":
                         qubit_waveforms, qubit_marker = gauss(self.wtpts, self.mtpts, self.origin,
                                                               self.marker_start_buffer, self.marker_end_buffer,
-                                                              pulse_location- pulse.delay, pulse)
+                                                              pulse_location- pulse.delay, pulse,t0=self.origin)
                     else:
                         raise ValueError('Wrong pulse type has been defined')
                     if pulse_defined:
                         # TODO : Hack CH1 to make it 0 waveform
-                        self.waveforms_pxdac4800_2_ch1[ii] += 0 * qubit_waveforms[0]
-                        self.waveforms_pxdac4800_2_ch2[ii] += qubit_waveforms[1]
+                        # self.waveforms_pxdac4800_2_ch1[ii] += 0 * qubit_waveforms[0]
+                        # self.waveforms_pxdac4800_2_ch2[ii] += qubit_waveforms[1]
                         self.markers_qubit_buffer[ii] += qubit_marker
 
                 elif pulse.target[:4] == "q,mm":
@@ -329,7 +327,7 @@ class PulseSequenceBuilder():
                         #                                    self.cfg['flux_pulse_info'])
 
                         waveforms_qubit_flux = flux_square_phase_fix(self.ftpts, flux_pulse_location, pulse,
-                                                           self.cfg['flux_pulse_info'],mm_target_info, flux_pulse_info)
+                                                           self.cfg['flux_pulse_info'],mm_target_info, flux_pulse_info,t0=self.origin)
                     elif pulse.type == "gauss":
                         waveforms_qubit_flux = flux_gauss(self.ftpts, flux_pulse_location, pulse)
                     else:
@@ -343,7 +341,7 @@ class PulseSequenceBuilder():
                         flux_pulse_started = True
                     if pulse.type == "square":
                         waveforms_qubit_flux = flux_square(self.ftpts, flux_pulse_location, pulse,
-                                                           self.cfg['flux_pulse_info'])
+                                                           self.cfg['flux_pulse_info'],t0=self.origin)
                     elif pulse.type == "gauss":
                         waveforms_qubit_flux = flux_gauss(self.ftpts, flux_pulse_location, pulse)
                     else:
@@ -371,6 +369,6 @@ class PulseSequenceBuilder():
                 self.waveforms_qubit_Q,
                 self.waveforms_qubit_flux,
                 self.markers_qubit_buffer,
-                self.markers_ch3m1,
-                self.waveforms_pxdac4800_2_ch1,
-                self.waveforms_pxdac4800_2_ch2)
+                self.markers_ch3m1)
+                # self.waveforms_pxdac4800_2_ch1,
+                # self.waveforms_pxdac4800_2_ch2)

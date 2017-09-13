@@ -299,6 +299,9 @@ def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
                     label=label)
     return p1  
 
+
+
+
 def hangerfunc_old(p,x):
     """p=[f0,Q,S21Min,Tmax]
        (4*(x-p[0])**2/p[0]**2 * p[1]**2+p[2]**2/(1+4*(x-p[0])**2/p[0]**2 * p[1]**2))*p[3]
@@ -843,4 +846,82 @@ def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
     #print "fitparams: ",fitparams
     p1 = fitgeneral(fitdatax, fitdatay, sin3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
+    return p1
+
+
+def linear(p,x):
+    return p[0]+p[1]*(x)
+
+def fitlinear(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+    """Fits decaying sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:
+        fitparams=[1,1]
+        fitparams[0] = fitdatay[0]
+        fitparams[1] = (float(fitdatay[-1])-float(fitdatay[0]))/( float(fitdatax[-1])-float(fitdatax[0]))
+
+
+    p1 = fitgeneral(fitdatax, fitdatay, linear, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
+                    label=label)
+    return p1
+
+def rabisatfunc(p, x):
+    return p[0] + x**2/(2*x**2 + 1/p[1] )
+
+def fitrabisatfunc(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",debug=False):
+    """fit lorentzian:
+        returns [offset,amplitude,center,hwhm]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:
+        fitparams=[0,1]
+    if debug==True: print fitparams
+    p1 = fitgeneral(fitdatax, fitdatay, rabisatfunc, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
+                    label=label)
+
+    return p1
+
+def rabiwidth(p, x):
+    return sqrt(p[1]**2*(x**2) + p[0]**2)
+
+def fitrabiwidth(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",debug=False):
+    """fit lorentzian:
+        returns [offset,amplitude,center,hwhm]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:
+        fitparams=[sqrt((ydata[-1]-ydata[0])/(xdata[-1]-xdata[0])),ydata[0]]
+    if debug==True: print fitparams
+    p1 = fitgeneral(fitdatax, fitdatay, rabiwidth, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
+                    label=label)
+
+    return p1
+
+def poly(p, x):
+    return p[1]*(x-p[-1])+p[2]*(x-p[-1])**2
+
+def fitpoly(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",debug=False):
+    """fit lorentzian:
+        returns [offset,amplitude,center,hwhm]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:
+        fitparams=[ydata[0],(ydata[-1]-ydata[0])/(xdata[-1]-xdata[0]),0,xdata[0]]
+    if debug==True: print fitparams
+    p1 = fitgeneral(fitdatax, fitdatay, poly, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
+                    label=label)
+
     return p1

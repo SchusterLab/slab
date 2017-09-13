@@ -143,13 +143,14 @@ class QubitPulseSequenceExperiment(Experiment):
             pass
 
 
-        # try:
-        #     if self.cfg['freq_flux']['current']:
-        #         self.flux_volt.ramp_current(self.cfg['freq_flux']['flux'])
-        #     elif self.cfg['freq_flux']['voltage']:
-        #         self.flux_volt.ramp_volt(self.cfg['freq_flux']['flux'])
-        # except:
-        #     print "Voltage source not loaded."
+        try:
+            if self.cfg['freq_flux']['current']:
+                self.flux_volt.ramp_current(self.cfg['freq_flux']['flux'])
+            elif self.cfg['freq_flux']['voltage']:
+                self.flux_volt.ramp_volt(self.cfg['freq_flux']['flux'])
+
+        except:
+            print "Voltage source not loaded."
 
         try:
             self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
@@ -159,7 +160,7 @@ class QubitPulseSequenceExperiment(Experiment):
         if self.pre_run is not None:
             self.pre_run()
 
-
+        # What is this for?
         TEST_REDPITAYA = False
 
         if TEST_REDPITAYA:
@@ -220,13 +221,12 @@ class QubitPulseSequenceExperiment(Experiment):
                     self.slab_file = SlabFile(self.data_file)
 
                     with self.slab_file as f:
-                        f.add('expt_avg_data', expt_avg_data)
-                        f.add('expt_pts', self.expt_pts)
+                        f.append_line('expt_avg_data', expt_avg_data)
+                        f.append_line('expt_pts', self.expt_pts)
                         f.close()
+
                 else:
                     self.slab_file = self.datafile()
-
-
 
                     with self.slab_file as f:
                         f.add('expt_avg_data', expt_avg_data)
@@ -270,6 +270,7 @@ class QubitPulseSequenceExperiment(Experiment):
                         elif self.cfg['readout']['channel']==2:
                             zero_amp = mean(ch2_pts[-2])
                             pi_amp = mean(ch2_pts[-1])
+
                             current_data= (ch2_pts[:-2]-zero_amp)/(pi_amp-zero_amp)
                         if expt_data is None:
                             expt_data = current_data
@@ -296,15 +297,24 @@ class QubitPulseSequenceExperiment(Experiment):
                     f.add('expt_pts', self.expt_pts)
                     f.close()
 
+            # if self.data_file != None:
+            #     self.slab_file = SlabFile(self.data_file)
+            #     with self.slab_file as f:
+            #         f.append_line('expt_avg_data', expt_avg_data)
+            #         f.append_line('expt_pts', self.expt_pts)
+            #         f.close()
+
+
+
             if self.post_run is not None:
                 self.post_run(self.expt_pts, expt_avg_data)
 
     def awg_prep(self):
         stop_pulseblaster()
         LocalInstruments().inst_dict['pxdac4800_1'].stop()
-        LocalInstruments().inst_dict['pxdac4800_2'].stop()
+        # LocalInstruments().inst_dict['pxdac4800_2'].stop()
 
     def awg_run(self):
         LocalInstruments().inst_dict['pxdac4800_1'].run_experiment()
-        LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
+        # LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
         run_pulseblaster()

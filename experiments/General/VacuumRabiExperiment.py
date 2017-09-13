@@ -9,13 +9,12 @@ from slab.instruments.RedPitaya.RedPitayaADC import *
 from slab.instruments.pulseblaster.pulseblaster import *
 
 class VacuumRabiExperiment(Experiment):
-    def __init__(self, path='', liveplot_enabled = False, prefix='Vacuum_Rabi', config_file='..\\config.json', use_cal=False, **kwargs):
+    def __init__(self, path='', liveplot_enabled = False, calibrate_start_phase = False,prefix='Vacuum_Rabi', config_file='..\\config.json', use_cal=False, **kwargs):
         Experiment.__init__(self, path=path, prefix=prefix, config_file=config_file, liveplot_enabled = liveplot_enabled, **kwargs)
 
         self.expt_cfg_name = prefix.lower()
-
         self.liveplot_enabled = liveplot_enabled
-
+        self.calibrate_start_phase = calibrate_start_phase
         self.pulse_sequence = VacuumRabiSequence(self.cfg['awgs'], self.cfg[self.expt_cfg_name], self.cfg['readout'], self.cfg['buffer'], self.cfg['pulse_info'],self.cfg)
         self.pulse_sequence.build_sequence()
         self.pulse_sequence.write_sequence(os.path.join(self.path, '../sequences/'), prefix, upload=True)
@@ -43,13 +42,15 @@ class VacuumRabiExperiment(Experiment):
 
         if (self.cfg[self.expt_cfg_name]['pi_pulse']):
             self.drive.set_output(True)
-            self.drive.set_ext_pulse(mod=True)
+            self.drive.set_ext_pulse(mod=False)
         else:
             self.drive.set_output(False)
             self.drive.set_ext_pulse(mod=False)
 
 
+        # self.drive.set_output(True)
         # self.drive.set_ext_pulse(mod=False)
+        # # self.drive.set_ext_pulse(mod=False)
 
         try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
@@ -67,8 +68,8 @@ class VacuumRabiExperiment(Experiment):
 
         for freq in self.expt_pts:
             self.readout.set_frequency(freq)
-            # self.readout_shifter.set_phase((self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (freq - self.cfg['readout']['frequency']))%360, freq)
-            # print self.readout_shifter.get_phase()
+            self.readout_shifter.set_phase((self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (freq - self.cfg['readout']['frequency']))%360, freq)
+            print self.readout_shifter.get_phase()
 
             expt_data_ch1 = None
             expt_data_ch2 = None
@@ -123,12 +124,15 @@ class VacuumRabiExperiment(Experiment):
                     f.append_pt('ch2_mean', mean(expt_data_ch2[0:]))
                     f.append_pt('mag_mean', mean(expt_mag[0:]))
 
+
+                print cfg['readout']['start_phase']
+
     def awg_prep(self):
         stop_pulseblaster()
         LocalInstruments().inst_dict['pxdac4800_1'].stop()
-        LocalInstruments().inst_dict['pxdac4800_2'].stop()
+        # LocalInstruments().inst_dict['pxdac4800_2'].stop()
 
     def awg_run(self):
         LocalInstruments().inst_dict['pxdac4800_1'].run_experiment()
-        LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
+        # LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
         run_pulseblaster()

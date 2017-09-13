@@ -36,7 +36,7 @@ class CWDriveExperiment(Experiment):
         except:
             print("error in setting digital attenuator")
         self.readout.set_frequency(self.cfg['readout']['frequency'])
-        self.readout_shifter.set_phase((self.cfg['readout']['start_phase'])%360, self.cfg['readout']['frequency'])
+        # self.readout_shifter.set_phase((self.cfg['readout']['start_phase'])%360, self.cfg['readout']['frequency'])
 
         self.drive.set_output(True)
         self.drive.set_power(self.cfg['drive']['power'])

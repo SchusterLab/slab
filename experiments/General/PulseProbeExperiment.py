@@ -74,6 +74,7 @@ class PulseProbeExperiment(Experiment):
                                                        start_function=self.awg_run,
                                                        stop_function=self.awg_prep)
 
+
                 with self.datafile() as f:
                     f.append_pt('freq', freq)
                     f.append_pt('ch1_mean', ch1_pts)
@@ -133,9 +134,9 @@ class PulseProbeExperiment(Experiment):
     def awg_prep(self):
         stop_pulseblaster()
         LocalInstruments().inst_dict['pxdac4800_1'].stop()
-        LocalInstruments().inst_dict['pxdac4800_2'].stop()
+        # LocalInstruments().inst_dict['pxdac4800_2'].stop()
 
     def awg_run(self):
         LocalInstruments().inst_dict['pxdac4800_1'].run_experiment()
-        LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
+        # LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
         run_pulseblaster()

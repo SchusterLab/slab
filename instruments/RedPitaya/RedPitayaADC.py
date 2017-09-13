@@ -51,14 +51,14 @@ class Scope2(MemoryInterface):
     dac1_on_ch2 = GetSetBit(0x50, pos=1)
     set_deb_len = GetSetRegister(0x90, SignedInteger(size=20))
 
-    hw_avgs = GetSetRegister(0xAC, UnsignedInteger(size=18))
+    hw_avgs = GetSetRegister(0xAC, UnsignedInteger(size=32))
     version = GetRegister(0xB0, UnsignedInteger(size=32))
     hw_avg_status = GetRegister(0xB4, UnsignedInteger(size=32))
     adc_trigged = GetSetBit(0xB4, pos=3)
     npt_mode = GetSetBit(0xB4, pos=2)
     avg_mode = GetSetBit(0xB4, pos=1)
     avg_do = GetSetBit(0xB4, pos=0)
-    avg_cnt= GetRegister(0xB8, UnsignedInteger(size=18))
+    avg_cnt= GetRegister(0xB8, UnsignedInteger(size=32))
 
     abc_a_score = GetRegister(0xBC, SignedInteger(size=32))
     abc_b_score = GetRegister(0xC0, SignedInteger(size=32))
@@ -341,7 +341,7 @@ def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14
 
     rp.scope.setup_trigger (trigger_source=6, threshold_ch1 = 2000, threshold_ch2 = 2000)
 
-
+    # rp.scope.setup_trigger (trigger_source=6, threshold_ch1 = 0, threshold_ch2 = 0)
     start_function()
 
     ch1, ch2 = rp.scope.acquire_avg (samples = samples, avgs = shots)
@@ -367,13 +367,14 @@ def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14
     #shot_data0 = rp.scope.acquire_singleshot (samples = samples, start = start, stop = stop, shots = shots, dual_ch=False, use_filter=True)
 
 
-
-    shot_data1,shot_data2 = rp.scope.acquire_singleshot (samples = samples, start = start, stop = stop, shots = shots * num_experiments, dual_ch=True
+    shots = shots * num_experiments
+    shot_data1,shot_data2 = rp.scope.acquire_singleshot (samples = samples, start = start, stop = stop, shots = shots, dual_ch=True
                                                          , use_filter=False, start_function= start_function, prep_function = stop_function)
 
     data_crop1 = shot_data1[0:math.floor(shots / num_experiments) * num_experiments]
+    print shape(data_crop1)
     data_crop1_matrix = np.reshape(data_crop1, (-1, num_experiments))
-
+    print shape(data_crop1_matrix)
     data_crop1_avg = np.mean(data_crop1_matrix, axis=0)
     data_crop1_std = np.std(data_crop1_matrix, axis=0)
 
@@ -388,7 +389,7 @@ def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14
 
     if plot_data:
         plt.subplot(132,xlabel="Shot #", ylabel="Score", title="Single Shot Raw")
-        plt.plot (shot_data1)
+        plt.plot(shot_data1)
         plt.plot(shot_data2)
 
 

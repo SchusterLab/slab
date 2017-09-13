@@ -4,7 +4,7 @@ __author__ = 'Nelson'
 
 
 import numpy as np
-def run_experiment(expt_name,lp_enable = False, **kwargs):
+def run_experiment(expt_name,lp_enable = True, **kwargs):
     import os
     import difflib
 
@@ -27,10 +27,31 @@ def run_experiment(expt_name,lp_enable = False, **kwargs):
         # Do CW drive experiment
         expt = PulseProbeExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 'pulse_probe_iq':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import PulseProbeIQExperiment
+        # Do CW drive experiment
+        expt = PulseProbeIQExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
+
+    if expt_name.lower() == 'pulse_probe_ef_iq':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import PulseProbeEFIQExperiment
+        # Do CW drive experiment
+        expt = PulseProbeEFIQExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower() == 'rabi':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import RabiExperiment
         # Do Rabi Experiment
         expt = RabiExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower() == 'rabi_sweep':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import RabiSweepExperiment
+        # Do Rabi Experiment
+        expt = RabiSweepExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower() == 'ef_rabi_sweep':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import EFRabiSweepExperiment
+        # Do Rabi Experiment
+        expt = EFRabiSweepExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower() == 'histogram':
         from slab.experiments.General.HistogramExperiment import HistogramExperiment
@@ -42,10 +63,15 @@ def run_experiment(expt_name,lp_enable = False, **kwargs):
         # Do T1 Experiment
         expt = T1Experiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 't1rho':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import T1rhoExperiment
+        # Do T1 Experiment
+        expt = T1rhoExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower() == 'ramsey':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import RamseyExperiment
         # Do Ramsey Experiment
-        expt = RamseyExperiment(path=datapath, liveplot_enabled = lp_enable, trigger_period=0.0002, **kwargs)
+        expt = RamseyExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower() == 'spin_echo':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import SpinEchoExperiment
@@ -82,11 +108,20 @@ def run_experiment(expt_name,lp_enable = False, **kwargs):
         # Do EF T1 Experiment
         expt = HalfPiYPhaseOptimizationExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 'efpulsephaseoptimization':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import EFPulsePhaseOptimizationExperiment
+        # Do EF T1 Experiment
+        expt = EFPulsePhaseOptimizationExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower() == 'tomography':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import TomographyExperiment
         # Do EF T1 Experiment
         expt = TomographyExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 'rabi_ramsey_t1_flux_sweep':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import RabiRamseyT1FluxSweepExperiment
+        # Do EF T1 Experiment
+        expt = RabiRamseyT1FluxSweepExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower() == 'randomized_benchmarking':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import SingleQubitRandomizedBenchmarkingExperiment
@@ -104,11 +139,6 @@ def run_experiment(expt_name,lp_enable = False, **kwargs):
     if expt_name.lower() == 'error_amplification_phase_offset':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import SingleQubitErrorAmplificationPhaseOffsetExperiment
         expt = SingleQubitErrorAmplificationPhaseOffsetExperiment(path=datapath, liveplot_enabled = lp_enable,trigger_period = 0.001, **kwargs)
-
-    if expt_name.lower() == 'rabi_ramsey_t1_flux_sweep':
-
-        from slab.experiments.General.SingleQubitPulseSequenceExperiment import RabiRamseyT1FluxSweepExperiment
-        expt = RabiRamseyT1FluxSweepExperiment(path=datapath, liveplot_enabled=lp_enable,trigger_period=0.001, **kwargs)
 
     if expt != None:
         expt.go()
