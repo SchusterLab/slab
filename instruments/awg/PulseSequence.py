@@ -9,8 +9,8 @@ import time
 
 
 def round_samples(x, min_samples=0, increment=1):
-    return max(min_samples, int(increment * np.ceil(float(x) / float(increment))))
-
+    ## non-integer round samples
+    return max(min_samples, increment * int(np.ceil(float(x) / float(increment))))
 
 class PulseSequence:
     def __init__(self, name, awg_info, sequence_length):
@@ -32,7 +32,8 @@ class PulseSequence:
     def init_waveforms_markers(self):
         for awg in self.awg_info:
             for waveform in awg['waveforms']:
-                waveform_length = self.waveform_info[waveform['name']]['length']
+                # round_samples ensure waveform_length is int multiple of 1/clk_speed
+                waveform_length = round_samples(self.waveform_info[waveform['name']]['length'], increment=1.0/awg['clock_speed'])
                 waveform_clk_length = round_samples(waveform_length * awg['clock_speed'], awg['min_samples'],
                                                     awg['min_increment'])
                 self.waveforms[waveform['name']] = np.zeros((self.sequence_length, waveform_clk_length))

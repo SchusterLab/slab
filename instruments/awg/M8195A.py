@@ -881,7 +881,7 @@ class M8195A(SocketInstrument):
                 with open(filename, 'wb')  as f:
                     segment_data_array.astype('int8').tofile(f)
 
-                # name = r'C:\slab_data_temp\m8195a_h_%d_%d.npy' % (sequence_id, channel)
+                # name = r'C:\slab_data_temp\m8195test\m8195a_ramsey_long_%d_%d.npy' % (sequence_id, channel)
                 # np.save(name, segment_data_array)
 
                 #sys.stdout.write('uploading..\n')

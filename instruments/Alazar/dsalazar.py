@@ -603,8 +603,12 @@ class Alazar():
                                        U32(self.config.recordsPerAcquisition),
                                        flags)
         for i in range (self.config.bufferCount):
+
+            dummy = U32(self.bufs[i].size_bytes)
+            # print dummy
             ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[i].addr,U32(self.bufs[i].size_bytes))
             #print ret, self.config.bytesPerBuffer
+
             if ret != 512:
                 print "Failed to post Buffer", ret_to_str(ret, self.Az)
 
