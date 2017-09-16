@@ -86,8 +86,8 @@ class QubitPulseSequence(PulseSequence):
         for ii in range(len(self.expt_pts) + len(calibration_pts)):
 
             if self.name == 'rabi_thermalizer':
-                define_pulses(ii, isFlux = True)
-                flux_total_span = self.psb.get_total_pulse_span_length() # also clears
+                flux_total_span = define_pulses(ii, isFlux = True)
+                # flux_total_span = self.psb.get_total_pulse_span_length() # also clears
             else:
                 flux_total_span = self.add_flux_pulses(pulse_span_length = self.total_pulse_span_length_list[ii])
             temp_seqs = self.psb.get_pulse_sequence() # also clears seq
