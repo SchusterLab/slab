@@ -49,22 +49,25 @@ class PulseSequenceBuilder():
         self.pulse_span_length_list_temp = []
         self.qubit_cfg = cfg['qubit']
 
-    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None, delay=0, exponent=0, start_amp = 0, stop_amp = 0, **kwargs):
+    def append(self, target, name, type='gauss', amp=0, length=0, freq=0, phase=None, delay=0, exponent=0,
+               start_amp = 0, stop_amp = 0, override_iq_freq = False, **kwargs):
         '''
         Append a pulse in the pulse sequence.
         '''
         if target == "q" or target == "q2" or target[:6] == "hetero" or target[:4] == "flux":
 
-            ### adjust freq for fast awg
-            if target == "q" or target == "q2":
-                freq += self.cfg['qubit']['frequency'] - self.pulse_cfg[type]['iq_freq']
-
-            if self.cfg['pulse_info']['is_direct_synth']:
-                awg_freq = self.cfg['qubit']['frequency']
+            if override_iq_freq:
+                # here freq goes directly to pulse
+                awg_freq = freq
             else:
-                awg_freq = self.pulse_cfg[type]['iq_freq']
+                if self.cfg['pulse_info']['is_direct_synth']:
+                    awg_freq = self.cfg['qubit']['frequency']
+                    # when name = general
+                    if target == "q" or target == "q2":
+                        freq += self.cfg['qubit']['frequency'] - self.pulse_cfg[type]['iq_freq']
+                else:
+                    awg_freq = self.pulse_cfg[type]['iq_freq']
             ###
-
 
             if name == "0":
                 amp = 0
