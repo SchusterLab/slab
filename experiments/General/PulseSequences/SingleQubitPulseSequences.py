@@ -703,12 +703,18 @@ class RabiThermalizerSequence(QubitPulseSequence):
         thermalizer_1_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer_pulse_type'], thermalizer_1_length)
         thermalizer_2_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer_pulse_type'], thermalizer_2_length)
 
+        # used for excite pulse
         flux_settle_dur = flux_cfg['flux_settle_dur']
+        # right now used for 1st drive
         flux_settle_long_dur = flux_cfg['flux_settle_long_dur']
         flux_ramp_dur = flux_cfg['flux_ramp_dur']
 
+        # 2nd drive
         flux_settle_dur2 = flux_cfg['flux_settle_dur2']
         flux_ramp_dur2 = flux_cfg['flux_ramp_dur2']
+
+        # readout
+        flux_settle_dur3 = flux_cfg['flux_settle_dur3']
 
         comp_length_temp = flux_cfg['dc_comp_pulse_length']
 
@@ -770,9 +776,9 @@ class RabiThermalizerSequence(QubitPulseSequence):
 
             # ramp to a_read
             self.psb.append(target, 'general', 'logistic_ramp', start_amp=flux_a_drive2_stop, stop_amp=flux_a_read, length=flux_ramp_dur)
-            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_read, stop_amp=flux_a_read, length=flux_settle_dur)
+            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_read, stop_amp=flux_a_read, length=flux_settle_dur3)
             # readout
-            read_start_time = thermalizer_2_end_time + flux_ramp_dur + flux_settle_dur
+            read_start_time = thermalizer_2_end_time + flux_ramp_dur + flux_settle_dur3
             read_end_time = read_start_time + read_dur
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_read, stop_amp=flux_a_read, length=read_dur)
 
@@ -866,6 +872,9 @@ class RabiThermalizerSequence(QubitPulseSequence):
         flux_ramp_dur = flux_cfg['flux_ramp_dur']
         comp_length_temp = flux_cfg['dc_comp_pulse_length']
 
+        # readout
+        flux_settle_dur3 = flux_cfg['flux_settle_dur3']
+
         excite_idx = expt_cfg['excite_idx']
         cal_idx = expt_cfg['cal_idx']
 
@@ -915,9 +924,9 @@ class RabiThermalizerSequence(QubitPulseSequence):
             self.psb.append(target, 'general', 'logistic_ramp', start_amp=ef_flux_a_excite, stop_amp=flux_a_read,
                             length=flux_ramp_dur)
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_read, stop_amp=flux_a_read,
-                            length=flux_settle_dur)
+                            length=flux_settle_dur3)
             # readout
-            read_start_time = ef_end_time + flux_ramp_dur + flux_settle_dur
+            read_start_time = ef_end_time + flux_ramp_dur + flux_settle_dur3
             read_end_time = read_start_time + read_dur
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_read, stop_amp=flux_a_read, length=read_dur)
 
