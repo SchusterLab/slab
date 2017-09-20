@@ -109,17 +109,23 @@ class N5242A(SocketInstrument):
         s = '1' if state else '0'
         self.write('SENSE:FOM:STATE ' + s)
 
+    def set_port_powers_coupled(self, state=True):
+        self.write("SOUR:POW:COUP %d"%int(state))
+
     def setup_two_tone_measurement(self, read_frequency=None, read_power=None, probe_start=None, probe_stop=None, probe_power=None, two_tone=True ):
         if two_tone:
             print "TWO TONE ON"
             self.write('SENSE:FOM:RANGE4:COUPLED 1')
+            self.write('SENSE:FOM:RANGE2:COUPLED 0')
+            self.write('SENSE:FOM:RANGE3:COUPLED 0')
+
             if probe_start is not None:
                 self.write('SENSE:FOM:RANGE1:FREQUENCY:START %f' % probe_start)
             if probe_stop is not None:
                 self.write('SENSE:FOM:RANGE1:FREQUENCY:STOP %f' % probe_stop)
 
-            self.write('SENSE:FOM:RANGE2:COUPLED 0')
-            self.write('SENSE:FOM:RANGE3:COUPLED 0')
+            # self.write('SENSE:FOM:RANGE2:COUPLED 0')
+            # self.write('SENSE:FOM:RANGE3:COUPLED 0')
             if read_frequency is not None:
                 self.write('SENSE:FOM:RANGE2:FREQUENCY:START %f' % read_frequency)
                 self.write('SENSE:FOM:RANGE2:FREQUENCY:STOP %f' % read_frequency)
@@ -127,6 +133,7 @@ class N5242A(SocketInstrument):
                 self.write('SENSE:FOM:RANGE3:FREQUENCY:STOP %f' % read_frequency)
 
             self.set_frequency_offset_mode_state(True)
+            self.set_port_powers_coupled(False)
 
             if read_power is not None:
                 self.set_power(read_power, channel=1, port=1)
@@ -244,7 +251,7 @@ class N5242A(SocketInstrument):
             raise ValueError("Input not understood!")
 
     #### Source
-    def set_power(self, power, channel=1, port=1,state=1):
+    def set_power(self, power, channel=1, port=1, state=1):
         if state:
             self.write(":SOURCE%d:POWER%d:MODE ON" % (channel, port))
             self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
