@@ -83,10 +83,17 @@ class QubitPulseSequence(PulseSequence):
         dummy = self.psb.get_total_pulse_span_length()
         dummy = self.psb.get_total_flux_pulse_span_length()
 
+        flux_max_area_list = np.zeros(8)
+        flux_max_power_list = np.zeros(8)
         for ii in range(len(self.expt_pts) + len(calibration_pts)):
 
-            if self.name == 'rabi_thermalizer':
-                flux_total_span = define_pulses(ii, isFlux = True)
+            if self.name == 'rabi_thermalizer' or self.name == 'histogram_rabi_thermalizer':
+
+               # print 'add rabi_thermalizer flux pulse'
+                flux_total_span, flux_area_list, flux_power_list = define_pulses(ii, isFlux = True)
+
+                flux_max_area_list = np.where(np.abs(flux_max_area_list) >= np.abs(flux_area_list), flux_max_area_list, flux_area_list)
+                flux_max_power_list = np.where(flux_max_power_list >= flux_power_list, flux_max_power_list, flux_power_list)
                 # flux_total_span = self.psb.get_total_pulse_span_length() # also clears
             else:
                 flux_total_span = self.add_flux_pulses(pulse_span_length = self.total_pulse_span_length_list[ii])
@@ -106,13 +113,27 @@ class QubitPulseSequence(PulseSequence):
         print 'max flux length =', max_flux_length, 'ns'
         if max(max_flux_length,max_length) >= self.cfg["expt_trigger"]["period_ns"]:
             print 'Error!! Max sequence length larger than Exp period! '
+        print 'flux_max_area_list = [', ', '.join(map(str, flux_max_area_list)), ']'
+        print 'flux_max_power_list = [', ', '.join(map(str, flux_max_power_list)), ']'
+
+        # import csv
+        # with open(r'C:\slab_data_temp\fast_flux_kernels\flux_max_area.csv', 'a') as csvfile:
+        #     ww = csv.writer(csvfile, delimiter=',')
+        #     ww.writerow(map(str, flux_max_area_list))
+        #     csvfile.close()
+        #
+        # with open(r'C:\slab_data_temp\fast_flux_kernels\flux_max_power.csv', 'a') as csvfile:
+        #     ww = csv.writer(csvfile, delimiter=',')
+        #     ww.writerow(map(str, flux_max_power_list))
+        #     csvfile.close()
 
         ###
 
         ###
         # heterodyne pulse - hack: max_length = 0
-        if (self.name == 'Vacuum_Rabi') or (self.name == 'Histogram_Hetero'):
+        if (self.name == 'vacuum_rabi') or (self.name[0:9] == 'histogram') :
             # vacuum_rabi : heterodyne pulses in SingleQubitPulseSeq
+            #print 'skip adding heterodyne pulse in QubitPulseSeq'
             pass
 
         else:
@@ -195,6 +216,7 @@ class QubitPulseSequence(PulseSequence):
 
     def add_heterodyne_pulses(self, hetero_read_freq = None, hetero_a = None):
 
+        # todo: seems to have bug here? not the same w/ or w/o hetero_read_freq & hetero_a
         # print hetero_read_freq
         if hetero_read_freq is not None:
 
@@ -217,6 +239,11 @@ class QubitPulseSequence(PulseSequence):
                 het_read_freq_list = array([self.cfg['readout']['frequency']])
                 het_a_list = array([self.cfg['readout']['heterodyne_a']])
                 het_IFreqList = het_read_freq_list - het_carrier_freq
+
+        print 'het_carrier_freq', het_carrier_freq
+        print 'het_read_freq_list', het_read_freq_list
+        print 'het_a_list', het_a_list
+        print 'het_IFreqList', het_IFreqList
 
         # phase slope, referenced to het_carrier_freq
         het_phase_list = [(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * ii )%360 * 0.0

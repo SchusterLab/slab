@@ -151,3 +151,10 @@ def get_pulse_area(type=None, length=0, a=0, start_a=0, stop_a=0):
         return (start_a + stop_a)/2.0*length
     else:
         return 0.0
+
+def get_pulse_power(type=None, length=0, a=0, start_a=0, stop_a=0):
+
+    if type in ["linear_ramp", "linear_ramp_with_mod", 'logistic_ramp']:
+        return (((start_a + stop_a)/2.0)**2)*length
+    else:
+        return 0.0

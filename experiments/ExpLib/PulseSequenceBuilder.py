@@ -269,6 +269,17 @@ class PulseSequenceBuilder():
 
         return flux_area
 
+    def get_total_flux_pulse_power(self, target):
+
+        flux_pow = 0.0
+        for pulse in self.pulse_sequence_list:
+            if pulse.target == target:
+            # if pulse.target[0:4] == 'flux':
+                flux_pow += ap.get_pulse_power(type=pulse.type, \
+                            length=pulse.length, a=pulse.amp, start_a=pulse.start_amp, stop_a=pulse.stop_amp)
+
+        return flux_pow
+
 
     def prepare_build(self, waveforms_tpts_dict, waveforms_dict):
         '''
