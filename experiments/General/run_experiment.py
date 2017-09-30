@@ -44,6 +44,11 @@ def run_experiment(expt_name,lp_enable = False, **kwargs):
     #     # Do Histogram Experiment
     #     expt = HistogramExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 'histogram_rabi_thermalizer':
+        from slab.experiments.General.HistogramHeteroExperiment import HistogramHeteroExperiment
+        # Do Histogram Experiment
+        expt = HistogramHeteroExperiment(path=datapath, prefix="HistogramRabiThermalizer",liveplot_enabled=lp_enable, **kwargs)
+
     if expt_name.lower() == 'histogram_hetero':
         from slab.experiments.General.HistogramHeteroExperiment import HistogramHeteroExperiment
         # Do Histogram Experiment

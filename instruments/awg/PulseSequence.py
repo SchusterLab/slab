@@ -14,7 +14,7 @@ def round_samples(x, min_samples=0, increment=1):
 
 class PulseSequence:
     def __init__(self, name, awg_info, sequence_length):
-        self.name = name
+        self.name = name.lower()
         self.awg_info = awg_info
         self.sequence_length = sequence_length
         self.waveforms = {}
