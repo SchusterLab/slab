@@ -262,7 +262,8 @@ class PulseSequenceBuilder():
 
         flux_area = 0.0
         for pulse in self.pulse_sequence_list:
-            if pulse.target[0:4] == 'flux':
+            if pulse.target == target:
+            # if pulse.target[0:4] == 'flux':
                 flux_area += ap.get_pulse_area(type=pulse.type, \
                             length=pulse.length, a=pulse.amp, start_a=pulse.start_amp, stop_a=pulse.stop_amp)
 
