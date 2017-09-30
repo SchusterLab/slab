@@ -9,9 +9,15 @@ from tqdm import tqdm
 
 class HistogramHeteroExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='HistogramHetero', config_file='..\\config.json', **kwargs):
-        QubitPulseSequenceExperiment.__init__(self, path=path, prefix='Histogram_Hetero', config_file=config_file,
-                                              PulseSequence=HistogramHeteroSequence, pre_run=self.pre_run,
-                                              post_run=self.post_run, **kwargs)
+
+        if prefix == "HistogramRabiThermalizer":
+            QubitPulseSequenceExperiment.__init__(self, path=path, prefix='Histogram_Rabi_Thermalizer', config_file=config_file,
+                                                  PulseSequence=HistogramRabiThermalizerSequence, pre_run=self.pre_run,
+                                                  post_run=self.post_run, **kwargs)
+        else:
+            QubitPulseSequenceExperiment.__init__(self, path=path, prefix='Histogram_Hetero', config_file=config_file,
+                                                  PulseSequence=HistogramHeteroSequence, pre_run=self.pre_run,
+                                                  post_run=self.post_run, **kwargs)
 
     def pre_run(self):
         pass
