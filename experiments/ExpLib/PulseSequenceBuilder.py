@@ -490,8 +490,23 @@ class PulseSequenceBuilder():
 
                         else:
                             raise ValueError('Wrong pulse type has been defined for flux pulses')
+
                         if pulse_defined:
-                            self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[0] ## always zero index
+
+                            flux_idx = int(pulse.target[-1])
+                            if self.cfg["flux_pulse_info"]["fast_flux_pulse_shaping"]:
+
+                                flux_kernel = np.load(r'C:\slab_data_temp\fast_flux_kernels\kernel_flux_'+str(flux_idx)+'_v3.npy')
+                                # pad zeros to avoid boundary effects
+                                waveform_padded = np.concatenate( (np.zeros(len(flux_kernel)), qubit_waveforms[0], np.zeros(len(flux_kernel))))
+                                shaped_waveform = np.convolve(waveform_padded, flux_kernel, 'same')[len(flux_kernel):len(flux_kernel)+len(qubit_waveforms[0])]
+
+                                self.waveforms_dict[waveforms_key][ii] +=  shaped_waveform
+                                print "flux pulse shaping.. flux_a_max/min: before:", [max(qubit_waveforms[0]), min(qubit_waveforms[0])],\
+                                            ", after:", [max(shaped_waveform), min(shaped_waveform)]
+                            else:
+                                self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[0] ## always zero index
+
                         flux_pulse_location_list[flux_index] -= pulse.span_length
 
                         if self.DEBUG_PSB:
