@@ -70,20 +70,24 @@ class QubitPulseSequenceExperiment(Experiment):
         self.post_run = post_run
 
         self.pulse_type = self.cfg[self.expt_cfg_name]['pulse_type']
-
         self.pulse_sequence = PulseSequence(prefix, self.cfg, self.cfg[self.expt_cfg_name], **kwargs)
-        self.pulse_sequence.build_sequence()
-        self.pulse_sequence.write_sequence(os.path.join(self.path, '../sequences/'), prefix, upload=True)
 
-        self.expt_pts = self.pulse_sequence.expt_pts
-        self.cfg['alazar']['samplesPerRecord'] = 2 ** (self.cfg['readout']['width'] - 1).bit_length()
-        self.cfg['alazar']['recordsPerBuffer'] = self.pulse_sequence.sequence_length
+        if self.cfg["upload_exp"]:
+            self.pulse_sequence.build_sequence()
+            self.pulse_sequence.write_sequence(os.path.join(self.path, '../sequences/'), prefix, upload=True)
 
-        self.cfg['alazar']['recordsPerAcquisition'] = int(
-            self.pulse_sequence.sequence_length * min(self.cfg[self.expt_cfg_name]['averages'], 100))
+            self.expt_pts = self.pulse_sequence.expt_pts
+            self.cfg['alazar']['samplesPerRecord'] = 2 ** (self.cfg['readout']['width'] - 1).bit_length()
+            self.cfg['alazar']['recordsPerBuffer'] = self.pulse_sequence.sequence_length
 
-        self.ready_to_go = True
-        return
+            self.cfg['alazar']['recordsPerAcquisition'] = int(
+                self.pulse_sequence.sequence_length * min(self.cfg[self.expt_cfg_name]['averages'], 100))
+
+            self.ready_to_go = True
+        else:
+            self.ready_to_go = False
+
+        return self.ready_to_go
 
     def go(self):
         # if self.liveplot_enabled:
@@ -305,6 +309,16 @@ class QubitPulseSequenceExperiment(Experiment):
                 ss_cal_e = zeros((2, len(het_IFreqList), 2, avgPerAcquisition * numAcquisition))
                 ss_cal_f = zeros((2, len(het_IFreqList), 2, avgPerAcquisition * numAcquisition))
 
+                if self.cfg['readout']['save_trajectory_data']:
+
+                    # (ch1/2, exp_pts, heterodyne_freq, cos/sin, all averages, traj)
+                    traj_data = zeros((2, len(self.expt_pts), len(het_IFreqList), 2, avgPerAcquisition * numAcquisition, self.cfg['readout']['pts_per_traj']))
+
+                    # (ch1/2, heterodyne_freq, cos/sin, all averages, traj)
+                    traj_cal_g = zeros((2, len(het_IFreqList), 2, avgPerAcquisition * numAcquisition, self.cfg['readout']['pts_per_traj']))
+                    traj_cal_e = zeros((2, len(het_IFreqList), 2, avgPerAcquisition * numAcquisition, self.cfg['readout']['pts_per_traj']))
+                    traj_cal_f = zeros((2, len(het_IFreqList), 2, avgPerAcquisition * numAcquisition, self.cfg['readout']['pts_per_traj']))
+
                 for ii in tqdm(arange(numAcquisition)):
 
                     if not self.cfg['readout']['is_hetero_phase_ref']:
@@ -321,6 +335,18 @@ class QubitPulseSequenceExperiment(Experiment):
                         #                                                      start_function=self.awg_run,
                         #                                                      excise=None, save_raw_data=True)
 
+                    elif self.cfg['readout']['save_trajectory_data']:
+
+                        excise = [ 0, self.cfg['readout']['window'][1] ]
+                        single_data1, single_data2, single_record1, single_record2, single_traj1, single_traj2= \
+                            adc.acquire_singleshot_heterodyne_multitone_data_phase_ref_save_traj(het_IFreqList,
+                                                                                       self.cfg['readout'][
+                                                                                           'hetero_phase_ref_freq'],
+                                                                                       prep_function=self.awg_prep,
+                                                                                       start_function=self.awg_run,
+                                                                                       excise=excise,
+                                                                                       isCompensatePhase=True,
+                                                                                       save_raw_data=False, pts_per_traj=self.cfg['readout']['pts_per_traj'])
                     else:
 
                         # single_data1/2: index: (hetero_freqs, cos/sin, all_seqs)
@@ -361,6 +387,50 @@ class QubitPulseSequenceExperiment(Experiment):
 
                     else:
                         ss_data[:, :, :, :, (ii * avgPerAcquisition):((ii + 1) * avgPerAcquisition)] = single_data[:, :]
+
+                    ####
+                    if self.cfg['readout']['save_trajectory_data']:
+
+                        # index: (hetero_freqs, cos/sin, all_seqs, traj)
+                        single_traj = array([single_traj1, single_traj2])
+
+                        # index: (ch1/2, hetero_freqs, cos / sin, avgs, seq(exp_pts), traj)
+                        single_traj = np.reshape(single_traj,
+                                                 (single_traj.shape[0], single_traj.shape[1], single_traj.shape[2],
+                                                  self.cfg['alazar']['recordsPerAcquisition'] / self.pulse_sequence.sequence_length,
+                                                  self.pulse_sequence.sequence_length, single_traj.shape[-1]))
+
+                        # index: (ch1/2, exp_pts, hetero_freqs, cos / sin, avgs, traj)
+                        single_traj = np.transpose(single_traj, (0, 4, 1, 2, 3, 5))
+                        # print single_traj.shape
+
+                        if (self.cfg[self.expt_cfg_name]['use_g-e-f_calibration']):
+
+                            traj_data[:, :, :, :, (ii * avgPerAcquisition):((ii + 1) * avgPerAcquisition), :] = single_traj[
+                                                                                                           :,
+                                                                                                           0:-3, :]
+                            traj_cal_g[:, :, :, (ii * avgPerAcquisition):((ii + 1) * avgPerAcquisition), :] = single_traj[:,
+                                                                                                         -3, :]
+                            traj_cal_e[:, :, :, (ii * avgPerAcquisition):((ii + 1) * avgPerAcquisition), :] = single_traj[:,
+                                                                                                         -2, :]
+                            traj_cal_f[:, :, :, (ii * avgPerAcquisition):((ii + 1) * avgPerAcquisition), :] = single_traj[:,
+                                                                                                         -1, :]
+
+                        elif (self.cfg[self.expt_cfg_name]['use_pi_calibration']):
+
+                            traj_data[:, :, :, :, (ii * avgPerAcquisition):((ii + 1) * avgPerAcquisition), :] = single_traj[
+                                                                                                           :,
+                                                                                                           0:-2, :]
+                            traj_cal_g[:, :, :, (ii * avgPerAcquisition):((ii + 1) * avgPerAcquisition), :] = single_traj[:,
+                                                                                                         -2, :]
+                            traj_cal_e[:, :, :, (ii * avgPerAcquisition):((ii + 1) * avgPerAcquisition), :] = single_traj[:,
+                                                                                                         -1, :]
+
+                        else:
+                            traj_data[:, :, :, :, (ii * avgPerAcquisition):((ii + 1) * avgPerAcquisition), :] = single_traj[
+                                                                                                           :, :, :]
+
+                    ####
 
                     # old way for easy plotting
                     # only calculate for 1st het_readout_freq
@@ -430,6 +500,16 @@ class QubitPulseSequenceExperiment(Experiment):
                             f.add('ss_cal_g', ss_cal_g[:, :, :, 0:((ii + 1) * avgPerAcquisition)])
                             f.add('ss_cal_e', ss_cal_e[:, :, :, 0:((ii + 1) * avgPerAcquisition)])
                             f.add('ss_cal_f', ss_cal_f[:, :, :, 0:((ii + 1) * avgPerAcquisition)])
+
+                        if self.cfg['readout']['save_trajectory_data']:
+                            f.add('traj_data', traj_data[:, :, :, :, 0:((ii + 1) * avgPerAcquisition), :])
+                            if (self.cfg[self.expt_cfg_name]['use_pi_calibration']):
+                                f.add('traj_cal_g', traj_cal_g[:, :, :, 0:((ii + 1) * avgPerAcquisition), :])
+                                f.add('traj_cal_e', traj_cal_e[:, :, :, 0:((ii + 1) * avgPerAcquisition), :])
+                            if (self.cfg[self.expt_cfg_name]['use_g-e-f_calibration']):
+                                f.add('traj_cal_g', traj_cal_g[:, :, :, 0:((ii + 1) * avgPerAcquisition), :])
+                                f.add('traj_cal_e', traj_cal_e[:, :, :, 0:((ii + 1) * avgPerAcquisition), :])
+                                f.add('traj_cal_f', traj_cal_f[:, :, :, 0:((ii + 1) * avgPerAcquisition), :])
 
                         f.add('expt_avg_data', expt_avg_data.flatten())
                         f.add('expt_avg_data2', expt_avg_data2.flatten())
