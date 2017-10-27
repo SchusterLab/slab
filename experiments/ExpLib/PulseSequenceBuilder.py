@@ -313,37 +313,22 @@ class PulseSequenceBuilder():
         '''
         def roundup10(x):
             return int(math.ceil(x / 10.0)) * 10
+
         self.origin = roundup10(self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer))
         self.uses_tek2 = False
         awg_trig_len=self.cfg['triggers']['awg']
         start_pulseblaster(self.exp_period_ns, awg_trig_len,self.origin+self.card_delay, self.origin + self.measurement_delay, self.card_trig_width, self.measurement_width)
+
         for ii in range(len(pulse_sequence_matrix)):
-            # self.markers_readout[ii] = ap.square(self.mtpts, 1, self.origin + self.measurement_delay,
-            #                                      self.measurement_width)
-            # self.markers_card[ii] = ap.square(self.mtpts, 1,
-            #                                   self.origin - self.card_delay + self.measurement_delay,
-            #                                   self.card_trig_width)
-            # self.waveforms_qubit_I[ii], self.waveforms_qubit_Q[ii] = \
-            #     ap.sideband(self.wtpts,
-            #                 np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)),
-            #                 0, 0)
-            #
-            # self.waveforms_pxdac4800_2_ch1[ii], self.waveforms_pxdac4800_2_ch2[ii] = \
-            #     ap.sideband(self.wtpts,
-            #                 np.zeros(len(self.wtpts)), np.zeros(len(self.wtpts)),
-            #                 0, 0)
 
             for waveforms_key in self.waveforms_dict:
                 self.waveforms_dict[waveforms_key][ii] = np.zeros(len(self.waveforms_tpts_dict[waveforms_key]))
 
-            # self.waveforms_qubit_flux[ii] = ap.sideband(self.ftpts,
-            #                                             np.zeros(len(self.ftpts)), np.zeros(len(self.ftpts)),
-            #                                             0, 0)[0]
-            # self.markers_qubit_buffer[ii] = ap.square(self.mtpts, 0, 0, 0)
             pulse_location = 0
             flux_pulse_location = total_pulse_span_length_list[ii]
             flux_pulse_started = False
             flux_end_location = 0
+
             # The range defined in this way means having the for loop with index backward.
             for jj in range(len(pulse_sequence_matrix[ii]) - 1, -1, -1):
                 pulse_defined = True
@@ -492,20 +477,7 @@ class PulseSequenceBuilder():
                             raise ValueError('Wrong pulse type has been defined for flux pulses')
 
                         if pulse_defined:
-
-                            flux_idx = int(pulse.target[-1])
-                            if self.cfg["flux_pulse_info"]["fast_flux_pulse_shaping"]:
-
-                                flux_kernel = np.load(r'C:\slab_data_temp\fast_flux_kernels\kernel_flux_'+str(flux_idx)+'_v3.npy')
-                                # pad zeros to avoid boundary effects
-                                waveform_padded = np.concatenate( (np.zeros(len(flux_kernel)), qubit_waveforms[0], np.zeros(len(flux_kernel))))
-                                shaped_waveform = np.convolve(waveform_padded, flux_kernel, 'same')[len(flux_kernel):len(flux_kernel)+len(qubit_waveforms[0])]
-
-                                self.waveforms_dict[waveforms_key][ii] +=  shaped_waveform
-                                print "flux pulse shaping.. flux_a_max/min: before:", [max(qubit_waveforms[0]), min(qubit_waveforms[0])],\
-                                            ", after:", [max(shaped_waveform), min(shaped_waveform)]
-                            else:
-                                self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[0] ## always zero index
+                            self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[0] ## always zero index
 
                         flux_pulse_location_list[flux_index] -= pulse.span_length
 
@@ -517,5 +489,25 @@ class PulseSequenceBuilder():
             #                                     self.origin - flux_end_location - total_pulse_span_length_list[
             #                                         ii] - self.tek2_trigger_delay,
             #                                     self.card_trig_width)
+
+            if self.cfg["flux_pulse_info"]["fast_flux_pulse_shaping"]:
+
+                for ff in range(0,8):
+                    flux_target = 'flux_'+str(ff)
+                    flux_kernel = np.load(r'C:\slab_data_temp\fast_flux_kernels\kernel_flux_' + str(ff) + '_v3.npy')
+                    # pad zeros to avoid boundary effects
+                    waveform_original = self.waveforms_dict[flux_target][ii]
+                    lims = [max(waveform_original), min(waveform_original)]
+                    waveform_padded = np.concatenate(
+                        (np.zeros(len(flux_kernel)), waveform_original, np.zeros(len(flux_kernel))))
+                    shaped_waveform = np.convolve(waveform_padded, flux_kernel, 'same')[
+                                      len(flux_kernel):len(flux_kernel) + len(waveform_original)]
+
+                    self.waveforms_dict[flux_target][ii] = shaped_waveform
+
+                    print "Seq #", ii, flux_target, "pulse shaping.. flux_a_max/min: before:", lims, \
+                        ", after:", [max(shaped_waveform), min(shaped_waveform)]
+                    if max(abs(shaped_waveform))>=1:
+                        raise Exception('Error - Shaped flux value >= 1!')
 
         return self.waveforms_dict
