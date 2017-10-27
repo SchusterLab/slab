@@ -246,8 +246,9 @@ class QubitPulseSequence(PulseSequence):
         print 'het_IFreqList', het_IFreqList
 
         # phase slope, referenced to het_carrier_freq
-        het_phase_list = [(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * ii )%360 * 0.0
-                          for ii in het_IFreqList]
+        # het_phase_list = [(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * ii )%360
+        #                   for ii in het_IFreqList]
+        het_phase_list = [0.0 for ii in het_IFreqList]
 
         if sum(het_a_list) > 1:
             print 'Warning! Sum of heterodyne amplitudes > 1 in QubitPulseSequence.'
