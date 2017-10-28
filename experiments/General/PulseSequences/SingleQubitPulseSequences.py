@@ -701,7 +701,7 @@ class RabiThermalizerSequence(QubitPulseSequence):
         # thermalizer_2_length = abs((expt_cfg['drive2_flux_a_start'][0] - expt_cfg['drive2_flux_a_stop'][0])/0.18*400)
 
         thermalizer_1_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer_pulse_type'], thermalizer_1_length)
-        thermalizer_2_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer_pulse_type'], thermalizer_2_length)
+        thermalizer_2_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer2_pulse_type'], thermalizer_2_length)
 
         # general
         flux_settle_dur = expt_cfg['flux_settle_dur']
@@ -908,7 +908,7 @@ class RabiThermalizerSequence(QubitPulseSequence):
                                 override_iq_freq=override_iq_freq)
 
                 self.psb.idle(thermalizer_2_start_time - excite_end_time)
-                self.psb.append(drive_target, 'general', expt_cfg['thermalizer_pulse_type'],
+                self.psb.append(drive_target, 'general', expt_cfg['thermalizer2_pulse_type'],
                                 amp=expt_cfg['drive2_a'], length=thermalizer_2_length, freq=drive2_iq_freq,
                                 override_iq_freq=override_iq_freq)
 
