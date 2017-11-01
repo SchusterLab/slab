@@ -152,6 +152,23 @@ class T1Experiment(QubitPulseSequenceExperiment):
         print "T1: " + str(fitdata[3]) + " ns"
 
 
+
+class T1rhoExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='T1rho', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=T1rhoSequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+    def pre_run(self):
+        # self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
+
+        pass
+
+    def post_run(self, expt_pts, expt_avg_data):
+        print "Analyzing T1 Data"
+        fitdata = fitexp(expt_pts, expt_avg_data)
+        print "T1: " + str(fitdata[3]) + " ns"
+
 class RamseyExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Ramsey', config_file='..\\config.json', **kwargs):
         self.extra_args = {}
@@ -441,6 +458,24 @@ class RabiSweepExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         # print self.data_file
+        pass
+
+
+class PulseProbeIQExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='pulse_probe_iq', config_file='..\\config.json', **kwargs):
+        self.extra_args = {}
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+        # self.drive_freq = self.extra_args['drive_freq']
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=PulseProbeIQSequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+
+    def pre_run(self):
+        pass
+
+    def post_run(self, expt_pts, expt_avg_data):
         pass
 
 

@@ -50,7 +50,7 @@ class MultimodeRabiSequence(QubitPulseSequence):
         # self.psb.append('q','pi_q_ef', self.pulse_type)
 
         self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q:mm','general', 'square', amp=1.0, length=100,freq=pt)
+        self.psb.append('q:mm','general', 'square', amp=self.expt_cfg['a'], length=1000,freq=pt)
 
 
 class MultimodeEFRabiSequence(QubitPulseSequence):

@@ -117,7 +117,9 @@ def run_seq_experiment(expt_name,lp_enable=True):
 
     if expt_name.lower() == 'sequential_single_qubit_rb':
         for i in arange(32):
-            #pulse_calibration(seq_exp,phase_exp=True)
+            if i %4 == 0:
+                frequency_stabilization(seq_exp)
+                pulse_calibration(seq_exp,phase_exp=True)
             seq_exp.run('randomized_benchmarking_phase_offset',{"data_file":data_file})
 
     if expt_name.lower() == 'rabi_sweep':
@@ -129,3 +131,47 @@ def run_seq_experiment(expt_name,lp_enable=True):
         ef_freq_pts = arange(4.525e9,4.535e9,0.2e6)
         for ii, ef_freq in enumerate(ef_freq_pts):
             seq_exp.run('ef_rabi_sweep',{"ef_freq":ef_freq, "data_file":data_file})
+
+    if expt_name.lower() == 't1_rho_sweep':
+        amp_list = np.logspace(-3,0,15)
+        for amp in amp_list:
+            seq_exp.run('T1rho',{'amp':amp, "data_file":data_file})
+            #seq_exp.run('T1')
+
+    if expt_name.lower() == 'echo_spectroscopy':
+        number_list = array([20,26,36,45,55,65,75])
+        for ii,number in enumerate(number_list):
+            if ii%5 is 0:
+                frequency_stabilization(seq_exp)
+                pulse_calibration(seq_exp)
+            seq_exp.run('spin_echo',{'number':number, "data_file":data_file})
+
+    if expt_name.lower() == 'pulse_probe_amp_sweep':
+        alist = logspace(-3,0,10)
+        for a in alist:
+            # seq_exp.run('pulse_probe_iq', {'amp':a,"data_file":data_file})
+            seq_exp.run('pulse_probe_iq', {'amp':a})
+
+
+    if expt_name.lower() == 'qubit_temperature_measurement':
+
+        seq_exp.run('ef_rabi', {'ge_pi':True,'data_file':data_file})
+        seq_exp.run('ef_rabi',{'ge_pi':False,'data_file':data_file})
+
+
+    if expt_name.lower() == 'resonator_temperature_measurement':
+        print "NOTE: Make sure that the drive attenuation is small enough to resolve number split peak"
+        seq_exp.run('pulse_probe_iq', {'data_file': data_file})
+
+
+    if expt_name.lower() == 'sequential_t1':
+
+        number  = 3
+        for i in arange(number):
+            seq_exp.run('T1', {'data_file':data_file})
+
+
+    if expt_name.lower() == 'sequential_ramsey':
+        number  = 3
+        for i in arange(number):
+            seq_exp.run('Ramsey',{'data_file':data_file})

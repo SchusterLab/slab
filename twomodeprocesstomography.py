@@ -768,6 +768,7 @@ def two_qubit_gate_inversion(m_ab):
 
     return get_alpha().reshape(16,16)
 
+
 def two_qubit_gate_maximum_likelihood(m_ab):
 
     # Making Chi equal to CZ
@@ -931,11 +932,12 @@ def two_qubit_gate_maximum_likelihood(m_ab):
 
         return err
 
-    def callbackF(Xi):
-        global Nfeval
-        Nfeval += 1
 
-        cost = error_function(Xi)
+    def callbackF(Xi):
+        #global Nfeval
+        #Nfeval += 1
+
+        #cost = error_function(Xi)
         print str(Nfeval)+ ': cost function: ' + str(cost)
 
         global Xeval

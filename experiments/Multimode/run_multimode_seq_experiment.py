@@ -420,22 +420,28 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
     if expt_name.lower() == 'multimode_ef_rabi_scan':
 
-        freqspan = linspace(-10,10,21)
-        # freqlist = array([1.668,1.776, 1.868, 1.941, 2.125, 2.305, 2.363, 2.481, 2.578])*1e9 +200e6
-        # modelist = array([0,1,3,4,5,6,7,9,10])\
-        modelist = array([0,1,5,6,7,9,10])
-        freqlist = array([ 1.88853803,  1.98834533,  2.33440622,  2.5123926 ,  2.58623578,
-        2.69057381,  2.79586452])*1e9
+        # freqspan = linspace(-10,10,21)
+        # # freqlist = array([1.668,1.776, 1.868, 1.941, 2.125, 2.305, 2.363, 2.481, 2.578])*1e9 +200e6
+        # # modelist = array([0,1,3,4,5,6,7,9,10])\
+        # modelist = array([0,1,5,6,7,9,10])
+        # freqlist = array([ 1.88853803,  1.98834533,  2.33440622,  2.5123926 ,  2.58623578,
+        # 2.69057381,  2.79586452])*1e9
+        #
+        # modeindexlist = kwargs['modeindexlist']
+        # amplist = array([ 2.24314571,  1.6329959 ,  1.23798758,  0.99347393,  2.33564694,
+        # 2.62137547,  6.30935376])
+        #
+        # freqspan = linspace(0,180,181)
+        # freqlist = array([ 2.672])*1e9
+        # modelist = array([-1])
+        # modeindexlist = kwargs['modeindexlist']
+        # amplist = array([0.5])
 
-        modeindexlist = kwargs['modeindexlist']
-        amplist = array([ 2.24314571,  1.6329959 ,  1.23798758,  0.99347393,  2.33564694,
-        2.62137547,  6.30935376])
-
-        freqspan = linspace(0,180,181)
-        freqlist = array([ 2.672])*1e9
-        modelist = array([-1])
-        modeindexlist = kwargs['modeindexlist']
-        amplist = array([0.5])
+        freqspan = linspace(0,10,21)
+        freqlist = array([ 1.52])*1e9
+        modelist = array([1])
+        modeindexlist = [0]#kwargs['modeindexlist']
+        amplist = array([1.0])
 
         for i in modeindexlist:
             frequency_stabilization(seq_exp)
@@ -451,8 +457,8 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
         # freqspan = linspace(0,1000,301)
         # freqlist = array([1.54])*1e9
-        freqspan = linspace(0,10,101)
-        freqlist = array([3.451])*1e9
+        freqspan = linspace(0,20,11)
+        freqlist = array([3.08])*1e9
         modelist = array([-1])
 
         amp = kwargs['amp']
@@ -496,6 +502,7 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         modelist = kwargs['modelist']
         # frequency_stabilization(seq_exp)
         for mode in modelist:
+            frequency_stabilization(seq_exp)
             seq_exp.run('multimode_state_dep_shift',{'mode':mode,'exp':0,'qubit_shift_ge':1,'qubit_shift_ef':0,'update_config':True,'data_file':data_file})
 
     if expt_name.lower() == 'sequential_state_dep_qubit_pulse_calibration':
@@ -594,10 +601,12 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
             multimode_cz_2modes_calibration(seq_exp, mode, mode2,data_file)
     if expt_name.lower() == 'sequential_single_mode_rb':
         for i in arange(kwargs['number']):
-            # if i%8 == 0:
-            #     pulse_calibration(seq_exp,phase_exp=True)
-            #     multimode_pulse_calibration(seq_exp,kwargs['mode'])
-            #     multimode_pi_pi_phase_calibration(seq_exp,kwargs['mode'])
+            if i%4 == 0:
+                #pulse_calibration(seq_exp,phase_exp=True)
+                #multimode_pulse_calibration(seq_exp,kwargs['mode'])
+                #multimode_pi_pi_phase_calibration(seq_exp,kwargs['mode'])
+                frequency_stabilization(seq_exp)
+                pulse_calibration(seq_exp,phase_exp=True)
             seq_exp.run('single_mode_rb',{'mode':kwargs['mode'],"data_file":data_file})
 
 
@@ -1335,11 +1344,10 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
     if expt_name.lower() == 'multimode_bluesideband_sweep':
 
         # offset_list=[-81656602.748319939, -80685740.24701868, -79599004.754083157, -78597136.31114462, -7.77e+07, -76807382.828515679, -76009899.855674267, -75209535.153403714, -74459064.946205765, -73689192.183382601, -72983759.987144202, -72272657.000603467, -71674416.255530506, -71201969.173228472, -70642005.063694507, -70177149.894169152, -69898846.796902165, -69611643.262061238, -69518137.464103252, -69601738.595220476, -69552498.380955413, -69494148.22051169, -69394164.918533742, -69319497.915831298, -69006328.29023242, -68794345.798679218, -6.865e+07, -68505009.638900757, -68590321.673740223, -68604714.195392057]
-        freqspan = linspace(0,20,21) #MHz
-        freqcenter = 2.96e9#2.745e9
+        freqspan = linspace(0,15,31) #MHz
+        freqcenter = 3.085e9#2.745e9
 
-        # freqspan = linspace(-1,1,11)
-        # freqcenter = -array([66.6])*1e6
+        # freqspan = linspace(-1,1,11)        # freqcenter = -array([66.6])*1e6
 
         # phasespan = linspace(-30,30,201)
         # phasecenter = array([0])

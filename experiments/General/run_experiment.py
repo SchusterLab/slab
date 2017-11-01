@@ -27,6 +27,11 @@ def run_experiment(expt_name,lp_enable = True, **kwargs):
         # Do CW drive experiment
         expt = PulseProbeExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 'pulse_probe_iq':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import PulseProbeIQExperiment
+        # Do CW drive experiment
+        expt = PulseProbeIQExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower() == 'rabi':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import RabiExperiment
         # Do Rabi Experiment
@@ -51,6 +56,11 @@ def run_experiment(expt_name,lp_enable = True, **kwargs):
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import T1Experiment
         # Do T1 Experiment
         expt = T1Experiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower() == 't1rho':
+        from slab.experiments.General.SingleQubitPulseSequenceExperiment import T1rhoExperiment
+        # Do T1 Experiment
+        expt = T1rhoExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower() == 'ramsey':
         from slab.experiments.General.SingleQubitPulseSequenceExperiment import RamseyExperiment

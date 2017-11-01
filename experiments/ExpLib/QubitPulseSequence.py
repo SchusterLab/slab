@@ -20,10 +20,10 @@ class QubitPulseSequence(PulseSequence):
         define_parameters()
         sequence_length = len(self.expt_pts)
 
-        if "multimode" not in name.lower():
-            cfg['awgs'][1]['upload'] = False
-        else:
-            cfg['awgs'][1]['upload'] = True
+       # if "multimode" not in name.lower():
+       #     cfg['awgs'][1]['upload'] = False
+       # else:
+       #     cfg['awgs'][1]['upload'] = True
 
         if (expt_cfg['use_pi_calibration']):
             sequence_length+=2
@@ -38,9 +38,10 @@ class QubitPulseSequence(PulseSequence):
         for ii, pt in enumerate(self.expt_pts):
 
             ## sideband cool
-            if 'sb_cool' in kwargs:
-                if kwargs['sb_cool']:
-                    self.psb.append('q,mm'+str(10),'pi_ge')
+            #if 'sb_cool' in kwargs:
+            #    if kwargs['sb_cool']:
+            #        self.psb.append('q,mm'+str(8),'pi_ge')
+            #self.psb.append('q,mm'+str(8),'pi_ge')
 
             # obtain pulse sequence for each experiment point
             define_pulses(pt)
@@ -53,17 +54,25 @@ class QubitPulseSequence(PulseSequence):
 
             for jj, pt in enumerate(calibration_pts):
                 if jj ==0:
-                    if 'sb_cool' in kwargs:
-                        if kwargs['sb_cool']:
-                            self.psb.append('q,mm'+str(10),'pi_ge')
+                    #if 'sb_cool' in kwargs:
+                    #    if kwargs['sb_cool']:
+                    #        self.psb.append('q,mm'+str(8),'pi_ge')
+                    #self.psb.append('q,mm'+str(8),'pi_ge')
                     self.psb.idle(10)
                 if jj ==1:
-                    if 'sb_cool' in kwargs:
-                        if kwargs['sb_cool']:
-                            self.psb.append('q,mm'+str(10),'pi_ge')
+                    #if 'sb_cool' in kwargs:
+                    #    if kwargs['sb_cool']:
+                    #        self.psb.append('q,mm'+str(8),'pi_ge')
+                    #self.psb.append('q,mm'+str(8),'pi_ge')
                     # self.psb.append('q','cal_pi', self.pulse_type)
                     # print self.pulse_type
-                    self.psb.append('q','cal_pi', self.pulse_type)
+                    # use pi
+                    #self.psb.append('q','cal_pi', self.pulse_type)
+
+                    # use two half - pi
+                    self.psb.append('q','half_pi', self.pulse_type)
+                    self.psb.append('q','half_pi', self.pulse_type, phase = cfg['pulse_info'][self.pulse_type]['offset_phase'])
+
                 self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
                 total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
                 self.total_flux_pulse_span_length_list.append(self.psb.get_total_flux_pulse_span_length())
