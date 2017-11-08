@@ -73,7 +73,11 @@ class Experiment:
         if group is not None:
             f = f.require_group(group)
         if 'config' not in f.attrs:
-            f.attrs['config'] = json.dumps(self.cfg)
+            try:
+                f.attrs['config'] = json.dumps(self.cfg)
+            except TypeError as err:
+                print('Error in saving cfg into datafile (experiment.py):', err)
+
         return f
 
     def go(self):
