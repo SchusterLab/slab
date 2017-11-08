@@ -8,7 +8,7 @@ def square(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_locati
                                        origin - pulse_location - pulse.length - 0.5*(pulse.span_length - pulse.length), pulse.length,
                                        pulse_cfg['square']['ramp_sigma']),
                              np.zeros(len(wtpts)),
-                             pulse.freq, pulse.phase,t0=t0)
+                             pulse.freq, pulse.phase,origin=t0)
     qubit_marker = ap.square(mtpts, 1, origin - pulse_location - pulse.span_length - marker_start_buffer,
                                                               pulse.span_length + marker_start_buffer - marker_end_buffer)
 
@@ -22,7 +22,7 @@ def gauss(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pulse_locatio
                              ap.gauss(wtpts, pulse.amp,
                                       origin - pulse_location - 0.5*pulse.span_length,
                                       pulse.length), np.zeros(len(wtpts)),
-                             pulse.freq, pulse.phase,t0=t0)
+                             pulse.freq, pulse.phase,origin=t0)
     qubit_marker = ap.square(mtpts, 1,
                                               origin - pulse_location - pulse.span_length - marker_start_buffer,
                                               pulse.span_length + marker_start_buffer- marker_end_buffer)
@@ -51,7 +51,7 @@ def gauss_phase_fix(wtpts,mtpts,origin,marker_start_buffer,marker_end_buffer,pul
                                  ap.gauss(wtpts, pulse.amp,
                                           origin - pulse_location - 0.5*pulse.span_length,
                                           pulse.length), np.zeros(len(wtpts)),
-                                 pulse.freq, pulse.phase,t0=t0)
+                                 pulse.freq, pulse.phase,origin=t0)
         qubit_marker = ap.square(mtpts, 1,
                                                   origin - pulse_location - pulse.span_length - marker_start_buffer,
                                                   pulse.span_length + marker_start_buffer- marker_end_buffer)
