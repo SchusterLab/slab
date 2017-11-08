@@ -17,7 +17,7 @@ import os.path
 
 
 def polar2mag(xs, ys):
-    return np.sqrt(xs ** 2 + ys ** 2), np.arctan(ys / xs)
+    return np.sqrt(xs ** 2 + ys ** 2), np.arctan2(ys, xs)
 
 
 class N5242A(SocketInstrument):

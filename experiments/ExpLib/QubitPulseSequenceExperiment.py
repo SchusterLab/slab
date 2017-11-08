@@ -11,6 +11,7 @@ from slab.instruments.pulseblaster.pulseblaster import *
 from slab.instruments.RedPitaya.RedPitayaADC import *
 
 
+
 class QubitPulseSequenceExperiment(Experiment):
     '''
     Parent class for all the single qubit pulse sequence experiment.
@@ -318,3 +319,4 @@ class QubitPulseSequenceExperiment(Experiment):
         LocalInstruments().inst_dict['pxdac4800_1'].run_experiment()
         # LocalInstruments().inst_dict['pxdac4800_2'].run_experiment()
         run_pulseblaster()
+        # stop_pulseblaster()

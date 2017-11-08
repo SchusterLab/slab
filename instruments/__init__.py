@@ -15,6 +15,8 @@ from ipsmagnet import *
 from TestInstruments import EchoInstrument,RandomInstrument
 from TDS7104 import TekTDS7104
 from RCA18 import MCRCA18
+from multimeter import Keithley199
+from AD5780 import *
 
 try: from labbrick.labbrick import LMS_get_device_info,LMS103,LPS802,LabbrickWindow,LDA602
 except: print "Could not load labbrick"
@@ -25,6 +27,8 @@ except: print "Could not load heliummanifold"
 try: from relaybox.RFSwitch import RFSwitch
 except: print "Could not load heliummanifold"
 try: from bkpowersupply import BKPowerSupply
+except: print "Could not load BKPowerSupply"
+try: from bkpowersupply import BKPowerSupplynew
 except: print "Could not load BKPowerSupply"
 try: from KEPCOPowerSupply import KEPCOPowerSupply
 except: print "Could not load KEPCOPowerSupply"

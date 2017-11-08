@@ -925,3 +925,31 @@ def fitpoly(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fa
                     label=label)
 
     return p1
+
+
+def dispersiveshift(p, x):
+    """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""
+    return p[0]+p[1]/(1+(x-p[2])**2/p[3]**2) + p[4]/(1+(x-p[5])**2/p[6]**2)
+
+def fitdispersiveshift(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",debug=False):
+    """fit lorentzian:
+        returns [offset,amplitude,center,hwhm]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:
+        fitparams=[0,0,0,0,0,0,0]
+        fitparams[0]=(fitdatay[0]+fitdatay[-1])/2.
+        fitparams[1]=max(fitdatay)-min(fitdatay)
+        fitparams[2]=fitdatax[np.argmax(fitdatay)]
+        fitparams[3]=(max(fitdatax)-min(fitdatax))/10.
+        fitparams[4]=0
+        fitparams[5]=fitdatax[np.argmax(fitdatay)]
+        fitparams[6]=(max(fitdatax)-min(fitdatax))/10.
+    if debug==True: print fitparams
+    p1 = fitgeneral(fitdatax, fitdatay, dispersiveshift, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
+                    label=label)
+    p1[3]=abs(p1[3])
+    return p1
