@@ -43,6 +43,12 @@ def zipsort(xdata,ydata):
 def fitgeneral(xdata, ydata, fitfunc, fitparams, domain=None, showfit=False, showstartfit=False, showdata=True,
                label="", mark_data='bo', mark_fit='r-'):
     """Uses optimize.leastsq to fit xdata ,ydata using fitfunc and adjusting fit params"""
+
+    # sort data
+    order = np.argsort(xdata)
+    xdata = xdata[order]
+    ydata = ydata[order]
+
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
     else:
@@ -220,7 +226,7 @@ def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfi
     if fitparams is None:    
         FFT=scipy.fft(fitdatay)
         fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
-        max_ind=np.argmax(abs(FFT[4:len(fitdatay)/2.]))+4
+        max_ind=np.argmax(abs(FFT[4:int(len(fitdatay)/2)]))+4
         fft_val=FFT[max_ind]
         
         fitparams=[0,0,0,0,0]
@@ -298,9 +304,6 @@ def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
     p1 = fitgeneral(fitdatax, fitdatay, sin2, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
     return p1  
-
-
-
 
 def hangerfunc_old(p,x):
     """p=[f0,Q,S21Min,Tmax]
