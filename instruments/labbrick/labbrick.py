@@ -280,9 +280,6 @@ class LPS802(Instrument):
         rp['hold']=float(self.dll.fnLPS_GetHoldTime(self.devid)) /1000.
         rp['idle']=float(self.dll.fnLPS_GetIdleTime(self.devid)) /1000.
         return rp
-
-
-
               
 class LMS103(Instrument):
     'The interface to the Lab Brick signal generator'
