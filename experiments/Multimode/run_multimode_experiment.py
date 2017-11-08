@@ -24,6 +24,13 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
         #Multimode ef Rabi sweep experiment
         expt=MultimodeRabiSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
+
+    if expt_name.lower()=='multimode_rabi_line_cut_sweep':
+        #Multimode ef Rabi sweep experiment
+        expt=MultimodeRabiLineCutSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+
+
     if expt_name.lower()=='multimode_bluesideband_sweep':
         #Multimode Blue sideband sweep experiment
         expt=MultimodeBlueSidebandSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
@@ -39,6 +46,10 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
     if expt_name.lower()=='multimode_ef_rabi_sweep':
         #Multimode ef Rabi sweep experiment
         expt=MultimodeEFRabiSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_charge_sideband_rabi_sweep':
+        #Multimode ef Rabi sweep experiment
+        expt=MultimodeChargeSidebandRabiSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_ramsey':
         #Do Multimode Rabi

@@ -72,6 +72,18 @@ def flux_square(ftpts,pulse_location,pulse,pulse_cfg):
                                       pulse.freq, pulse.phase,offset=False)[0]
     return waveforms_qubit_flux
 
+def flux_square_tt(ftpts,pulse_location,pulse,pulse_cfg):
+    freq_c = pulse_cfg['twotonecfreq']
+    relphase = pulse_cfg['twotonephase']
+    waveforms_qubit_flux = ap.sideband(ftpts,
+                                     ap.square(ftpts, pulse.amp, pulse_location-pulse.length-0.5*(pulse.span_length - pulse.length) , pulse.length, pulse_cfg['square'][
+                                                                  'ramp_sigma']), np.zeros(len(ftpts)),
+                                      freq_c-pulse.freq/2.0, pulse.phase,offset=False)[0] + ap.sideband(ftpts,
+                                     ap.square(ftpts, pulse.amp, pulse_location-pulse.length-0.5*(pulse.span_length - pulse.length) , pulse.length, pulse_cfg['square'][
+                                                                  'ramp_sigma']), np.zeros(len(ftpts)),
+                                      freq_c+pulse.freq/2.0, pulse.phase + relphase,offset=False)[0]
+    return waveforms_qubit_flux
+
 def flux_square_phase_fix(ftpts,pulse_location,pulse,pulse_cfg, mm_target_info, flux_pulse_info):
 
     if flux_pulse_info['chirp'] and flux_pulse_info['fix_phase']:

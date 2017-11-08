@@ -420,35 +420,20 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
     if expt_name.lower() == 'multimode_ef_rabi_scan':
 
-        # freqspan = linspace(-10,10,21)
-        # # freqlist = array([1.668,1.776, 1.868, 1.941, 2.125, 2.305, 2.363, 2.481, 2.578])*1e9 +200e6
-        # # modelist = array([0,1,3,4,5,6,7,9,10])\
-        # modelist = array([0,1,5,6,7,9,10])
-        # freqlist = array([ 1.88853803,  1.98834533,  2.33440622,  2.5123926 ,  2.58623578,
-        # 2.69057381,  2.79586452])*1e9
-        #
-        # modeindexlist = kwargs['modeindexlist']
-        # amplist = array([ 2.24314571,  1.6329959 ,  1.23798758,  0.99347393,  2.33564694,
-        # 2.62137547,  6.30935376])
-        #
-        # freqspan = linspace(0,180,181)
-        # freqlist = array([ 2.672])*1e9
-        # modelist = array([-1])
-        # modeindexlist = kwargs['modeindexlist']
-        # amplist = array([0.5])
 
-        freqspan = linspace(0,10,21)
-        freqlist = array([ 1.52])*1e9
-        modelist = array([1])
-        modeindexlist = [0]#kwargs['modeindexlist']
-        amplist = array([1.0])
+        freqspan = [linspace(-2.5,2.5,15),linspace(-5.0,5.0,15)]
+        freqlist = array([ 5.03583899,  5.69091682])*1e9
+        modelist = arange(len(freqlist))
+        modeindexlist = arange(len(freqlist))#kwargs['modeindexlist']
+        amplist = ones(len(freqlist))
 
         for i in modeindexlist:
-            frequency_stabilization(seq_exp)
             print "running ef Rabi sweep around mode %s"%(modelist[i])
-            for freq in freqspan:
+            for freq in freqspan[i]:
                 flux_freq = freqlist[i] + freq*1e6
                 seq_exp.run('multimode_ef_rabi_sweep',{'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
+
+
 
 
 ####################################################################### DC offset scans ########################################
@@ -1333,8 +1318,8 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
     if expt_name.lower() == 'cphase_amplification':
         mode1 = kwargs['control_mode']
         mode2 = kwargs['target_mode']
-        seq_exp.run('multimode_ef_pi_pi_experiment',{'mode_1':mode1,'mode_2':mode2,'update_config':True})
-        seq_exp.run('multimode_cphase_amplification',{'mode_1':mode1,'mode_2':mode2,'number':15})
+        seq_exp.run('multimode_ef_pi_pi_experiment',expt_kwargs={'mode_1':mode1,'mode_2':mode2,'update_config':True})
+        seq_exp.run('multimode_cphase_amplification',expt_kwargs={'mode_1':mode1,'mode_2':mode2,'number':15})
 
 
 
@@ -1368,7 +1353,7 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
             #add_freq = offset_list[ii]
             print "running BlueSideband sweep at %s"%(sweep_freq)
             #print "qubit DC offset at %s"%(add_freq)
-            seq_exp.run('multimode_bluesideband_sweep',{'flux_freq':sweep_freq,"data_file":data_file})
+            seq_exp.run('multimode_bluesideband_sweep',expt_kwargs={'flux_freq':sweep_freq,"data_file":data_file})
 
         # for freq in freqspan:
         #     sweep_freq = freqcenter + freq*1e6
@@ -1392,3 +1377,45 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         # for predrive in predrive_time:
         #     print "predrive time set to %s"%(predrive)
         #     seq_exp.run('multimode_bluesideband_sweep',{'predrive':predrive,"data_file":data_file})
+
+
+##### 2017/11/06 Charge sideband experiments: Quantum flute
+
+
+    if expt_name.lower() == 'multimode_rabi_line_cut_scan':
+
+
+        freqspan = arange(-100,150,50.0)
+        freqlist = array([ 5.668])*1e9
+        modelist = array([1])
+        modeindexlist = [0]#kwargs['modeindexlist']
+        amplist = array([1.0])
+
+        for i in modeindexlist:
+            print "running charge Rabi sweep around mode %s"%(modelist[i])
+            for freq in freqspan:
+                flux_freq = freqlist[i] + freq*1e6
+                seq_exp.run('multimode_rabi_line_cut_sweep',expt_kwargs={'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
+
+
+
+    if expt_name.lower() == 'multimode_rabi_line_cut_all':
+
+        freqlist = array([0.77531355 ,0.92060819,1.16491355,  1.35761355,  1.55951355,1.75491355,  1.95901355])*1e9
+        modelist = array([1])
+        amplist = 1*ones(len(freqlist))
+
+        for i,flux_freq in enumerate(freqlist):
+            print "running ef Rabi sweep around mode %s"%(i)
+            seq_exp.run('multimode_rabi_line_cut_sweep',expt_kwargs={'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
+
+
+    if expt_name.lower() == 'multimode_charge_sideband_rabi':
+
+        freqlist = array([0.802427224096])*1e9
+        modelist = array([0])
+        amplist = 1*ones(len(freqlist))
+
+        for i,flux_freq in enumerate(freqlist):
+            print "running charge sideband Rabi sweep at nu = %s GHz"%(flux_freq/1e9)
+            seq_exp.run('multimode_charge_sideband_rabi_sweep',expt_kwargs={'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})

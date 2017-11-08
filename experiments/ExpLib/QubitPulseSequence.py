@@ -95,14 +95,15 @@ class QubitPulseSequence(PulseSequence):
         waveforms_qubit_flux = self.waveforms['qubit 1 flux']
         markers_qubit_buffer = self.markers['qubit buffer']
         markers_ch3m1 = self.markers['ch3m1']
+        markers_ch4m1 = self.markers['ch4m1']
         self.psb.prepare_build(wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q, waveforms_qubit_flux,
-                              markers_qubit_buffer, markers_ch3m1)
+                              markers_qubit_buffer, markers_ch3m1, markers_ch4m1)
         generated_sequences = self.psb.build(self.pulse_sequence_matrix,self.total_flux_pulse_span_length_list)
 
 
 
         self.markers['readout pulse'], self.markers['card trigger'], self.waveforms['qubit drive I'], self.waveforms[
-            'qubit drive Q'], self.waveforms['qubit 1 flux'], self.markers['qubit buffer'], self.markers['ch3m1'] = generated_sequences
+            'qubit drive Q'], self.waveforms['qubit 1 flux'], self.markers['qubit buffer'], self.markers['ch3m1'], self.markers['ch4m1'] = generated_sequences
 
         # # Testing inversion of line profile
         #

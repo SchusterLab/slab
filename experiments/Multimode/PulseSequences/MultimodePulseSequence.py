@@ -19,7 +19,7 @@ class MultimodeRabiSequence(QubitPulseSequence):
 
 
     def define_points(self):
-        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])#np.repeat(arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']),2)
 
     def define_parameters(self):
         self.pulse_type =  self.expt_cfg['pulse_type']
@@ -50,7 +50,7 @@ class MultimodeRabiSequence(QubitPulseSequence):
         # self.psb.append('q','pi_q_ef', self.pulse_type)
 
         self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q:mm','general', 'square', amp=self.expt_cfg['a'], length=1000,freq=pt)
+        self.psb.append('q:mm','general', 'square', amp=self.expt_cfg['a'], length=500,freq=pt)
 
 
 class MultimodeEFRabiSequence(QubitPulseSequence):
@@ -408,7 +408,7 @@ class MultimodeCalibrateEFSidebandSequence(QubitPulseSequence):
             self.psb.append('q','pi_q_ef')
             # self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.multimode_cfg[self.mode]['a_ef'], length=pt,freq=self.multimode_cfg[self.mode]['flux_pulse_freq_ef'])
             self.psb.append('q,mm'+str(self.mode),'general_f', self.flux_pulse_type, amp=self.multimode_cfg[self.mode]['a_ef'], length=pt,freq=self.multimode_cfg[self.mode]['flux_pulse_freq_ef'])
-            self.psb.append('q','pi', self.pulse_type)
+            # self.psb.append('q','pi', self.pulse_type)# for f0 --> g1
             self.psb.append('q','pi_q_ef')
 
         else:
@@ -743,8 +743,89 @@ class MultimodeEFRabiSweepSequence(QubitPulseSequence):
         self.psb.append('q','pi', self.pulse_type)
         self.psb.append('q','pi_q_ef')
         self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=pt,freq=self.flux_freq)
-        self.psb.append('q','pi', self.pulse_type)
+
+        self.psb.append('q','pi', self.pulse_type)    ### This is a hack for f0-g1 sb
         self.psb.append('q','pi_q_ef', self.pulse_type)
+
+class MultimodeChargeSidebandRabiSweepSequence(QubitPulseSequence):
+    def __init__(self,name, cfg, expt_cfg, **kwargs):
+        self.extra_args={}
+        self.qubit_cfg = cfg['qubit']
+        self.pulse_cfg = cfg['pulse_info']
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
+        self.flux_freq = self.extra_args['flux_freq']
+        if 'amp' in kwargs:
+            self.amp = kwargs['amp']
+        else:
+            self.amp = self.expt_cfg['a']
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool=False)
+
+
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pulse_type =  self.expt_cfg['pulse_type']
+        self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
+        self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
+        ef_freq = self.qubit_cfg['frequency']+self.qubit_cfg['alpha']
+        self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-ef_freq)
+
+
+    def define_pulses(self,pt):
+        if self.expt_cfg['f0g1']:
+            self.psb.append('q','pi', self.pulse_type)
+            self.psb.append('q','pi_q_ef')
+            self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=pt,freq=self.flux_freq)
+            self.psb.append('q','pi_q_ef', self.pulse_type)
+        elif self.expt_cfg['g0e1']:
+            self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=pt,freq=self.flux_freq)
+        else:
+            self.psb.append('q','pi', self.pulse_type)
+            self.psb.append('q:tt','general', self.flux_pulse_type, amp=self.amp, length=pt,freq=self.flux_freq)
+
+
+class MultimodeRabiLineCutSweepSequence(QubitPulseSequence):
+    def __init__(self,name, cfg, expt_cfg, **kwargs):
+        self.extra_args={}
+        self.qubit_cfg = cfg['qubit']
+        self.pulse_cfg = cfg['pulse_info']
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
+        self.flux_freq = self.extra_args['flux_freq']
+        if 'amp' in kwargs:
+            self.amp = kwargs['amp']
+        else:
+            self.amp = self.expt_cfg['a']
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool=False)
+
+
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pulse_type =  self.expt_cfg['pulse_type']
+        self.length = self.expt_cfg['length']
+        self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
+        self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
+        ef_freq = self.qubit_cfg['frequency']+self.qubit_cfg['alpha']
+        self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-ef_freq)
+
+
+    def define_pulses(self,pt):
+        if self.expt_cfg['f0g1']:
+            self.psb.append('q','pi', self.pulse_type)
+            self.psb.append('q','pi_q_ef')
+            self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=self.length,freq=self.flux_freq + pt)
+            self.psb.append('q','pi_q_ef', self.pulse_type)
+        elif self.expt_cfg['g0e1']:
+            self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=self.length,freq=self.flux_freq + pt)
+        else:
+            self.psb.append('q','pi', self.pulse_type)
+            self.psb.append('q:tt','general', self.flux_pulse_type, amp=self.amp, length=self.length,freq=self.flux_freq + pt)
 
 class MultimodeT1Sequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):

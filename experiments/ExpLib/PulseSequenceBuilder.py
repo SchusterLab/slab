@@ -183,6 +183,15 @@ class PulseSequenceBuilder():
             self.pulse_span_length_list_temp = []
             self.total_flux_pulse_span_length += flux_pulse_span_length
 
+        elif target[:4] == "q:tt":
+            self.flux_pulse_started = True
+            pulse_span_length = ap.get_pulse_span_length(self.cfg['flux_pulse_info'], type, length)
+            flux_pulse_span_length = pulse_span_length
+            for span_length_temp in self.pulse_span_length_list_temp:
+                flux_pulse_span_length += span_length_temp
+            self.pulse_span_length_list_temp = []
+            self.total_flux_pulse_span_length += flux_pulse_span_length
+
         else:
             raise ValueError('Wrong target has been defined')
 
@@ -261,7 +270,7 @@ class PulseSequenceBuilder():
 
     def prepare_build(self, wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q,
                       waveforms_qubit_flux,
-                      markers_qubit_buffer, markers_ch3m1):
+                      markers_qubit_buffer, markers_ch3m1, markers_ch4m1):
         '''
         Being called internally to set the variables.
         '''
@@ -275,6 +284,7 @@ class PulseSequenceBuilder():
         self.waveforms_qubit_flux = waveforms_qubit_flux
         self.markers_qubit_buffer = markers_qubit_buffer
         self.markers_ch3m1 = markers_ch3m1
+        self.markers_ch4m1 = markers_ch4m1
 
 
     def build(self, pulse_sequence_matrix, total_flux_pulse_span_length_list):
@@ -395,6 +405,22 @@ class PulseSequenceBuilder():
                         raise ValueError('Wrong pulse type has been defined')
                     if pulse_defined:
                         self.waveforms_qubit_flux[ii] += waveforms_qubit_flux
+                elif pulse.target[:4] == "q:tt":
+                    self.uses_tek2 = True
+                    if flux_pulse_started == False:
+                        flux_end_location = pulse_location
+                        flux_pulse_started = True
+                    if pulse.type == "square":
+                        waveforms_qubit_flux = flux_square_tt(self.ftpts, flux_pulse_location, pulse,
+                                                           self.cfg['flux_pulse_info'])
+                    elif pulse.type == "gauss":
+                        waveforms_qubit_flux = flux_gauss(self.ftpts, flux_pulse_location, pulse)
+                    else:
+                        raise ValueError('Wrong pulse type has been defined')
+                    if pulse_defined:
+                        self.waveforms_qubit_flux[ii] += waveforms_qubit_flux
+
+
                 elif pulse.target == "idle":
                     pass
 
@@ -404,6 +430,9 @@ class PulseSequenceBuilder():
                 pulse_location += pulse.span_length
                 if flux_pulse_started:
                     flux_pulse_location -= pulse.span_length
+
+            if False: #ii % 2 == 0:
+                self.markers_ch4m1[ii] = np.ones(len(self.wtpts))
 
             if self.uses_tek2:
                 self.markers_ch3m1[ii] = ap.square(self.mtpts, 1,
@@ -421,4 +450,5 @@ class PulseSequenceBuilder():
                 self.waveforms_qubit_Q,
                 self.waveforms_qubit_flux,
                 self.markers_qubit_buffer,
-                self.markers_ch3m1)
+                self.markers_ch3m1,
+                self.markers_ch4m1)
