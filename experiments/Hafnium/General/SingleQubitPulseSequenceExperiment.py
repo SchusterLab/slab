@@ -2,7 +2,7 @@ __author__ = 'Nelson'
 
 from slab import *
 from slab.instruments.Alazar import Alazar
-from slab.experiments.ExpLib.QubitPulseSequenceExperiment import *
+from slab.experiments.Hafnium.ExpLib.QubitPulseSequenceExperiment import *
 from slab.dsfit import *
 from numpy import mean, arange,around
 

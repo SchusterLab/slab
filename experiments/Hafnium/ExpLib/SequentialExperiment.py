@@ -1,7 +1,7 @@
 __author__ = 'Nelson'
 
-from slab.experiments.General.run_experiment import *
-from slab.experiments.Multimode.run_multimode_experiment import *
+from slab.experiments.Hafnium.General.run_experiment import *
+from slab.experiments.Hafnium.Multimode.run_multimode_experiment import *
 import numbers
 from slab import *
 import json

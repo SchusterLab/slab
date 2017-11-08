@@ -1,9 +1,9 @@
 __author__ = 'Nelson'
 
 from slab.instruments.awg.PulseSequence import *
-from slab.experiments.ExpLib import awgpulses as ap
+from slab.experiments.Hafnium.ExpLib import awgpulses as ap
 from numpy import arange, linspace
-from slab.experiments.ExpLib.PulseWaveformBuildingLibrary import *
+from slab.experiments.Hafnium.ExpLib.PulseWaveformBuildingLibrary import *
 from slab.instruments.pulseblaster.pulseblaster import start_pulseblaster
 import math
 from liveplot import LivePlotClient

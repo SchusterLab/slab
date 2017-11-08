@@ -1,6 +1,6 @@
 __author__ = 'Nelson'
 
-from slab.experiments.ExpLib.SequentialExperiment import *
+from slab.experiments.Hafnium.ExpLib.SequentialExperiment import *
 from slab import *
 from slab.instruments import InstrumentManager
 import os

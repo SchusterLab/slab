@@ -2,7 +2,6 @@
 """
 PXDAC4800
 ================================
-
 :Author: Nelson Leung
 """
 import ctypes as C
@@ -11,17 +10,26 @@ import time
 from struct import *
 from array import array as barray
 
+# SERIAL_NUMBER = [301450,301483, 300727]
+# SERIAL_NUMBER = [300727, 301483, 301450]
 
 class PXDAC4800:
     def __init__(self,brdNum):
         self.brdNum = brdNum
 
-    def load_sequence_file(self, waveform_file_name,offset_bytes_list,clock_speed):
+    def load_sequence_file(self, waveform_file_name,awg):
 
         print "load_sequence_file inputs:"
-        print waveform_file_name
-        print offset_bytes_list
-        print clock_speed
+
+        offset_bytes_list  = awg['iq_offsets_bytes']
+        clock_speed = awg['clock_speed']
+        self.channels_num = awg['channels_num']
+        self.sample_size = awg['sample_size']
+        DLL_path = awg['DLL_path']
+
+        print 'waveform_file_name =', waveform_file_name
+        print 'offset_bytes_list =', offset_bytes_list
+        print 'clock_speed =', clock_speed
 
         U8 = C.c_uint8
         U8P = C.POINTER(U8)
@@ -44,9 +52,7 @@ class PXDAC4800:
         unsigned_short_length = 2
 
         try:
-            # DACdllpath = r'C:\Program Files\Signatec\PXDAC4800\PXDAC4800_64.dll'
-            DACdllpath = r'C:\Program Files (x86)\Signatec\PXDAC4800\Lib64\PXDAC4800_64.dll'
-
+            DACdllpath = str(DLL_path)
             DACDLL = C.CDLL(DACdllpath)
             print "DPXDAC4800.dll loaded"
         except:
@@ -54,9 +60,10 @@ class PXDAC4800:
 
         ppHandle = U32PP(U32P(U32(0)))
 
-        print "Connecting to PXDAC4800 device."
+        print "Connecting to PXDAC4800 Board #", self.brdNum
         dll = DACDLL
-        dll.ConnectToDeviceXD48(ppHandle, U32(self.brdNum))
+        # dll.ConnectToDeviceXD48(ppHandle, U32(SERIAL_NUMBER[self.brdNum-1]))
+        dll.ConnectToDeviceXD48(ppHandle, U32(awg['SERIAL_NUMBER']))
 
         self.dll = dll
 
@@ -77,26 +84,54 @@ class PXDAC4800:
         print "Setting DAC"
 
         dll.SetPowerupDefaultsXD48(pHandle)
+        # dll._SetOperatingModeXD48(pHandle, U32(1))
         dll.SetTriggerModeXD48(pHandle, U32(0))  # Set trigger mode in PLAY PER TRIGGER mode
         dll.SetPlaybackClockSourceXD48(pHandle, U32(0))  # Set clock source - Internal 1.2 GHz
 
         dll.SetExternalReferenceClockEnableXD48(pHandle, U32(1))  ## External 10MHz clock
 
+        time.sleep(1)
+
+
+
         dll.SetDacSampleFormatXD48(pHandle, U32(1))  # Set DAC format to signed
-        dll.SetDacSampleSizeXD48(pHandle, U32(2))  # Set DAC sample size to 16 bit LSB pad
+
+        if self.sample_size == 16:
+            dll.SetDacSampleSizeXD48(pHandle, U32(2))  # Set DAC sample size to 16 bit LSB pad
+        elif self.sample_size == 8:
+            dll.SetDacSampleSizeXD48(pHandle, U32(0))  # Set DAC sample size to 8 bit
+        else:
+            raise ValueError('Invalid sample size %s' %sample_size)
         # dll.SetDigitalIoModeXD48(pHandle, U32(1)) # Set Digital IO pulse at the begining of a playback
 
         ### Set Active Channel Mask
-        dll.SetActiveChannelMaskXD48(pHandle, U32(3))
+        if self.channels_num == 2:
+            dll.SetActiveChannelMaskXD48(pHandle, U32(3)) # dual chn1/2
+            #dll.SetActiveChannelMaskXD48(pHandle, U32(12)) # dual chn 3/4
+        elif self.channels_num == 4:
+            dll.SetActiveChannelMaskXD48(pHandle, U32(15)) # four channels
+
+        ## start DAC auto calibration
+        for ii in range(4):
+            calibration_result = dll.StartDacAutoCalibrationXD48(pHandle)
+            print "Calibration status: " + str(calibration_result)
+            if calibration_result == 0:
+                break
+                # if not calibration_result == 0:
+                #     exit()
 
         ### Set output voltage to max
         dll.SetOutputVoltageCh1XD48(pHandle, U32(1023))
         dll.SetOutputVoltageCh2XD48(pHandle, U32(1023))
+        dll.SetOutputVoltageCh3XD48(pHandle, U32(1023))
+        dll.SetOutputVoltageCh4XD48(pHandle, U32(1023))
 
         ### Set Dac Default value
-        dll.SetCustomDacValueEnableXD48(pHandle, U32(3))
-        for ii in range(1,3,1):
-            dll.SetCustomDacDefaultValueXD48(pHandle,U32(ii),U32(offset_bytes_list[ii-1]))
+        # works only on the channels enabled
+        dll.SetCustomDacValueEnableXD48(pHandle, U32(15))  # chn 1234
+        for ii in range(1,5,1):# chn 1/2/3/4
+            dll.SetCustomDacDefaultValueXD48(pHandle, U32(ii), I32(offset_bytes_list[ii - 1]))
+            # print 'offset_bytes_list on chn', ii, ':', dll.GetCustomDacDefaultValueXD48(pHandle, U32(ii))
 
         ### Set clock division
         dll.SetClockDivider1XD48(pHandle, U32(clock_divider))
@@ -124,17 +159,17 @@ class PXDAC4800:
 
     def run_experiment(self):
         U32 = C.c_uint32
-        unsigned_short_length = 2
+        unsigned_short_length = int(self.sample_size/8)
         # print "Begining Ram Playback."
         self.dll.BeginRamPlaybackXD48(self.pHandle, self.offset, self.PlaybackBytes, U32(
-            2 * self.waveform_length * unsigned_short_length))  ## Only play sequence's single waveform byte length for each trigger
+            self.channels_num * self.waveform_length * unsigned_short_length))  ## Only play sequence's single waveform byte length for each trigger
 
     def stop(self):
         # print "Stopping Ram Playback."
         self.dll.EndRamPlaybackXD48(self.pHandle)
 
 
-def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=None, do_string_io=False):
+def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, sample_size=None, options=None, do_string_io=False):
     """
     Main function for writing a PXDAC4800 AWG format file (.rd16 binary file).
     """
@@ -143,8 +178,8 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
     #print "Sequence length: " + str(sequence_length)
 
     ## max value for signed short
-    max_value = 2 ** 15 - 1
-    min_value = -2 ** 15
+    max_value = 2 ** (sample_size-1) - 1
+    min_value = -2 ** (sample_size-1)
     # clock_rate = 1.2  # G/s
 
     ## max voltage
@@ -165,18 +200,27 @@ def write_PXDAC4800_file(waveforms, filename, seq_name, offsets=None, options=No
     # generate waveforms
     waveforms = np.reshape(waveforms, (len(waveforms), len(waveforms[0][0]) * len(waveforms[0])))
     #print "reshaped"
-    for ii, offset in enumerate(offsets):
-        # offset_bytes = int((offset + awg_output_offsets[ii]) / max_output_volt * max_value)
-        # offset_bytes_list.append(offset_bytes)
-        waveforms[ii] = waveforms[ii] * scale + offset
-    #print "scaled"
+
+    # old
+    # for ii, offset in enumerate(offsets):
+    #     # offset_bytes = int((offset + awg_output_offsets[ii]) / max_output_volt * max_value)
+    #     # offset_bytes_list.append(offset_bytes)
+    #     waveforms[ii] = waveforms[ii] * scale + offset
+    # #print "scaled"
+
+    #
+
+    # new
+    for ii in range(len(waveforms)):
+        waveforms[ii] = waveforms[ii] * scale + offsets[ii]
+    #
 
     interleaved_waveforms = np.ravel(np.column_stack(waveforms))
 
     #print "interleaved"
 
     with open(filename, 'wb')  as f:
-        interleaved_waveforms.astype('int16').tofile(f)
+        interleaved_waveforms.astype('int%d'%sample_size).tofile(f)
 
 
     #print 'finished generating waveform file'
