@@ -7,7 +7,7 @@ from slab.experiments.Hafnium.Multimode.PulseSequences.MultimodePulseSequence im
 from numpy import mean, arange
 from tqdm import tqdm
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
-from slab.instruments.pulseblaster.pulseblaster import *
+from slab.instruments.pulseblaster.pulseblaster_hafnium import *
 from slab.instruments.RedPitaya.RedPitayaADC import *
 
 
