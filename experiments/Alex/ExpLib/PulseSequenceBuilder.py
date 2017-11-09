@@ -4,7 +4,7 @@ from slab.instruments.awg.PulseSequence import *
 from slab.experiments.Alex.ExpLib import awgpulses as ap
 from numpy import arange, linspace
 from slab.experiments.Alex.ExpLib.PulseWaveformBuildingLibrary import *
-from slab.instruments.pulseblaster.pulseblaster import start_pulseblaster
+from slab.instruments.pulseblaster.pulseblaster_alex import start_pulseblaster
 import math
 from liveplot import LivePlotClient
 

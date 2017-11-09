@@ -8,7 +8,7 @@ from numpy import mean, arange
 import numpy as np
 from tqdm import tqdm
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
-from slab.instruments.pulseblaster.pulseblaster import *
+from slab.instruments.pulseblaster.pulseblaster_alex import *
 
 
 class QubitPulseSequenceExperiment(Experiment):
