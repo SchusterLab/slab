@@ -1,7 +1,7 @@
 __author__ = 'Nelson'
 
-from slab.experiments.General.run_experiment import *
-from slab.experiments.Multimode.run_multimode_experiment import *
+from slab.experiments.Alex.General.run_experiment import *
+from slab.experiments.Alex.Multimode.run_multimode_experiment import *
 
 import gc
 

@@ -2,7 +2,7 @@ __author__ = 'Nelson'
 
 from slab.instruments.awg.PulseSequence import *
 from numpy import arange, linspace, array
-from slab.experiments.ExpLib.PulseSequenceBuilder import *
+from slab.experiments.Alex.ExpLib.PulseSequenceBuilder import *
 import time
 from liveplot import LivePlotClient
 

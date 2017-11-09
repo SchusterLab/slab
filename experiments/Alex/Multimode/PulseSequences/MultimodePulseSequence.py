@@ -2,9 +2,9 @@ __author__ = 'Nelson'
 
 from slab.instruments.awg.PulseSequence import *
 from numpy import arange, linspace, sin, pi, sign, append
-from slab.experiments.ExpLib.PulseSequenceBuilder import *
-from slab.experiments.ExpLib.QubitPulseSequence import *
-from slab.experiments.ExpLib.PulseSequenceGroup import *
+from slab.experiments.Alex.ExpLib.PulseSequenceBuilder import *
+from slab.experiments.Alex.ExpLib.QubitPulseSequence import *
+from slab.experiments.Alex.ExpLib.PulseSequenceGroup import *
 
 from liveplot import LivePlotClient
 

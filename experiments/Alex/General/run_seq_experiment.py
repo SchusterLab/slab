@@ -1,6 +1,6 @@
 __author__ = 'Nelson'
 
-from slab.experiments.ExpLib.SequentialExperiment import *
+from slab.experiments.Alex.ExpLib.SequentialExperiment import *
 from slab import *
 import os
 import json

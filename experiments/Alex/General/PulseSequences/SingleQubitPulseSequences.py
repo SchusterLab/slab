@@ -2,8 +2,8 @@ __author__ = 'Nelson'
 
 from slab.instruments.awg.PulseSequence import *
 from numpy import arange, linspace
-from slab.experiments.ExpLib.PulseSequenceBuilder import *
-from slab.experiments.ExpLib.QubitPulseSequence import *
+from slab.experiments.Alex.ExpLib.PulseSequenceBuilder import *
+from slab.experiments.Alex.ExpLib.QubitPulseSequence import *
 import random
 from liveplot import LivePlotClient
 

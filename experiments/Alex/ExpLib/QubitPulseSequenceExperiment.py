@@ -2,8 +2,8 @@ __author__ = 'Nelson'
 
 from slab import *
 from slab.instruments.Alazar import Alazar
-from slab.experiments.General.PulseSequences.SingleQubitPulseSequences import *
-from slab.experiments.Multimode.PulseSequences.MultimodePulseSequence import *
+from slab.experiments.Alex.General.PulseSequences.SingleQubitPulseSequences import *
+from slab.experiments.Alex.Multimode.PulseSequences.MultimodePulseSequence import *
 from numpy import mean, arange
 import numpy as np
 from tqdm import tqdm

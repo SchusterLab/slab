@@ -1,4 +1,4 @@
-from slab.experiments.ExpLib import awgpulses as ap
+from slab.experiments.Alex.ExpLib import awgpulses as ap
 import numpy as np
 
 def square(wtpts,origin,marker_start_buffer,marker_end_buffer,pulse_location,pulse,pulse_cfg):
