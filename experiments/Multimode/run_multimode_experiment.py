@@ -160,6 +160,12 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
 
     if expt_name.lower()=='multimode_qubit_mode_cross_kerr':
         expt=MultimodeQubitModeCrossKerrExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_pulse_probe_iq':
+        #Multimode ef Rabi sweep experiment
+        expt=MultimodePulseProbeIQExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+
     if expt !=None:
         expt.go()
 
