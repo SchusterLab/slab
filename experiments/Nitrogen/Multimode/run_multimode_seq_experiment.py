@@ -1419,3 +1419,12 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         for i,flux_freq in enumerate(freqlist):
             print "running charge sideband Rabi sweep at nu = %s GHz"%(flux_freq/1e9)
             seq_exp.run('multimode_charge_sideband_rabi_sweep',expt_kwargs={'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
+
+
+    if expt_name.lower() == 'multimode_pulse_probe_iq_amp_sweep':
+
+
+        amplist = arange(0,0.7,0.1)
+
+        for i,amp in enumerate(amplist):
+            seq_exp.run('multimode_pulse_probe_iq',expt_kwargs={'amp':amp,"data_file":data_file})

@@ -8615,4 +8615,50 @@ class MultimodeProcessTomographySequence_2_old(QubitPulseSequence):
             cnot_v2(self.psb,self.id2,self.id1,cnot_phase=self.pi_ef_qubit_phase,efsbphase_0=self.cnot_phase_cx,efsbphase_1=self.cnot_phase2_cx,gesbphase1=self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0,efsbphase_2=self.add_cnot_phase_2+self.ef_phase_1)
             self.psb.append('q,mm'+str(self.id1),'pi_ge',phase=-self.multimode_cfg[self.id1]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
 
+class MultimodePulseProbeIQSequence(QubitPulseSequence):
+    def __init__(self,name, cfg, expt_cfg, **kwargs):
+        self.extra_args={}
+        self.qubit_cfg = cfg['qubit']
+        self.pulse_cfg = cfg['pulse_info']
+        self.expt_cfg = cfg['multimode_pulse_probe_iq']
+        for key, value in kwargs.iteritems():
+            self.extra_args[key] = value
+            #print str(key) + ": " + str(value)
 
+        if 'amp' in kwargs:
+            self.amp = kwargs['amp']
+        else:
+            self.amp = self.expt_cfg['a']
+
+        if 'ppa' in kwargs:
+            self.ppa = kwargs['ppa']
+        else:
+            self.ppa = self.expt_cfg['ppa']
+
+        if 'flux_freq' in kwargs:
+            self.flux_freq = kwargs['flux_freq']
+        else:
+            self.flux_freq = self.expt_cfg['flux_freq']
+
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses,sb_cool=False)
+
+
+
+
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pulse_type =  self.expt_cfg['pulse_type']
+        self.ef_pulse_type = self.expt_cfg['ef_pulse_type']
+        self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
+        ef_freq = self.qubit_cfg['frequency']+self.qubit_cfg['alpha']
+        self.ef_sideband_freq = self.pulse_cfg[self.pulse_type]['iq_freq']-(self.qubit_cfg['frequency']-ef_freq)
+        self.pulse_probe_length = self.expt_cfg['pulse_probe_len']
+        self.flux_length = self.expt_cfg['flux_pulse_length']
+
+
+    def define_pulses(self,pt):
+
+        self.psb.append('q:mm','general', self.flux_pulse_type, amp=self.amp, length=self.flux_length,freq=self.flux_freq)
+        self.psb.append('q', 'general', self.pulse_type, amp=self.ppa, length=self.pulse_probe_length, freq=self.pulse_cfg[self.expt_cfg['pulse_type']]['iq_freq'] + pt)

@@ -1899,3 +1899,19 @@ class MultimodeProcessTomographyExperiment_2(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
 
         pass
+
+
+class MultimodePulseProbeIQExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_pulse_probe_iq', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodePulseProbeIQSequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+        #print self.data_file
+        pass
