@@ -709,11 +709,15 @@ class RabiThermalizerSequence(QubitPulseSequence):
 
         drive1_flux_settle_dur = expt_cfg['drive1_flux_settle_dur']
         excite_flux_settle_dur = expt_cfg['excite_flux_settle_dur']
+        excite_flux_settle_mid_dur = expt_cfg['excite_flux_settle_mid_dur']
         drive2_flux_settle_dur = expt_cfg['drive2_flux_settle_dur']
         read_flux_settle_dur = expt_cfg['read_flux_settle_dur']
 
         drive1_flux_ramp_dur = expt_cfg['drive1_flux_ramp_dur']
+
+        excite_flux_ramp_mid_dur = expt_cfg['excite_flux_ramp_mid_dur']
         excite_flux_ramp_dur = expt_cfg['excite_flux_ramp_dur']
+
         drive2_flux_ramp_dur = expt_cfg['drive2_flux_ramp_dur']
         read_flux_ramp_dur = expt_cfg['read_flux_ramp_dur']
 
@@ -743,6 +747,7 @@ class RabiThermalizerSequence(QubitPulseSequence):
             flux_drive2_mod_freq = expt_cfg['flux_drive2_mod_freq'][ii]
 
             flux_a_excite = expt_cfg['excite_flux_a'][ii]
+            flux_a_excite_mid = expt_cfg['excite_flux_mid_a'][ii]
 
             excite_length_ge = expt_cfg['excite_ge_length'][excite_idx]
             excite_length_ef = expt_cfg['excite_ef_length'][excite_idx]
@@ -761,10 +766,26 @@ class RabiThermalizerSequence(QubitPulseSequence):
                 else:
                     excite_length = 0.
                     excite_dur = 0.
+
+                    # if no excite pulse, make it 0 time, does NOT affect cal pulses
+                    excite_flux_settle_dur = 0.0
+                    excite_flux_settle_mid_dur = 0.0
+                    excite_flux_ramp_mid_dur = 0.0
+                    excite_flux_ramp_dur = 0.0
+                    flux_a_excite = flux_a_drive1
+                    flux_a_excite_mid = flux_a_drive1
+
             else:
                 # if cal pts, always keep duration for ge and ef pulse
                 # todo: maybe also for data seq?
                 excite_dur = excite_dur_ge + excite_dur_ef
+
+                # but kill drive2
+                thermalizer_2_dur = 0.0
+                drive2_flux_settle_dur = 0.0
+                drive2_flux_ramp_dur = 0.0
+                flux_a_drive2_start = flux_a_excite
+                flux_a_drive2_stop = flux_a_excite
 
             read_dur = self.cfg['readout']['delay'] + self.cfg['readout']['width']
 
@@ -777,11 +798,14 @@ class RabiThermalizerSequence(QubitPulseSequence):
             thermalizer_1_end_time = thermalizer_1_start_time + thermalizer_1_dur
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive1, stop_amp=flux_a_drive1, length=thermalizer_1_dur)
 
+            # ramp to a_excite_mid
+            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive1, stop_amp=flux_a_excite_mid, length=excite_flux_ramp_mid_dur)
+            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_excite_mid, stop_amp=flux_a_excite_mid, length=excite_flux_settle_mid_dur)
             # ramp to a_excite for excitation pulses
-            self.psb.append(target, 'general', 'logistic_ramp', start_amp=flux_a_drive1, stop_amp=flux_a_excite, length=excite_flux_ramp_dur)
+            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_excite_mid, stop_amp=flux_a_excite, length=excite_flux_ramp_dur)
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_excite, stop_amp=flux_a_excite, length=excite_flux_settle_dur)
             # excite pulse
-            excite_start_time = thermalizer_1_end_time + excite_flux_ramp_dur + excite_flux_settle_dur
+            excite_start_time = thermalizer_1_end_time + excite_flux_ramp_mid_dur + excite_flux_settle_mid_dur + excite_flux_ramp_dur + excite_flux_settle_dur
             excite_end_time = excite_start_time + excite_dur
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_excite, stop_amp=flux_a_excite, length=excite_dur)
 
@@ -835,11 +859,12 @@ class RabiThermalizerSequence(QubitPulseSequence):
             #####
 
             a_comp_temp = - flux_area/(comp_length_temp + flux_ramp_dur)
-            a_comp = np.sign(a_comp_temp)* min(0.3, abs(a_comp_temp))
+            a_comp = np.sign(a_comp_temp)* min(0.4, abs(a_comp_temp))
             if a_comp == 0:
                 comp_length = 0.0
             else:
                 comp_length =  - flux_area/a_comp - flux_ramp_dur
+            # print 'a_comp', a_comp, 'comp_length', comp_length
 
             # compensation pulse
             self.psb.append(target, 'general', 'logistic_ramp', start_amp=0, stop_amp=a_comp, length=flux_ramp_dur)
