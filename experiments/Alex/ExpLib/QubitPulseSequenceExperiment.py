@@ -546,6 +546,14 @@ class QubitPulseSequenceExperiment(Experiment):
     def awg_run(self):
 
         im = InstrumentManager()
+
+        # # hack to fix attenuator jumping
+        # try:
+        #     im['atten2'].set_attenuator(self.cfg['readout']['dig_atten'])
+        #     time.sleep(1.0)
+        # except:
+        #     print "Digital attenuator not loaded."
+
         im['M8195A'].start_output()
 
         for key, value in LocalInstruments().inst_dict.iteritems():
