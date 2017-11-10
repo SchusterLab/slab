@@ -27,6 +27,11 @@ def dBm_to_W(dBm):
 
 dBmtoW=dBm_to_W
 
+def W_to_dBm(W):
+    """convert dBm to Watts"""
+    return np.log(W*1e3)/np.log(10)*10.
+
+
 def dBm_to_V(dBm):
     """convert dBm to V"""
     return sqrt(dBm_to_W(dBm)*50)*sqrt(2)
@@ -39,6 +44,7 @@ figureStyles=[
     {'name':'default','width':8,'height':8./1.61,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True,'dpi':72,'transparent':False},
     {'name':'prl1','width':3.4,'height':3.4,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True,'dpi':300},
     {'name':'prl2','width':7,'height':3.4,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True,'dpi':300},
+    {'name':'prl21','width':1.2,'height':3.4,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True,'dpi':300},
     {'name':'small','width':5,'height':5./1.61,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True},
     {'name':'medium','width':8,'height':8./1.61,'title_size':12,'label_size':8,'tick_size':7,'wspace':0.5,'tight':True},
     {'name':'big','width':16,'height':16./1.61,'title_size':22,'label_size':16,'tick_size':14,'wspace':0.5,'tight':True},
