@@ -2,10 +2,10 @@ __author__ = 'Nelson'
 
 from slab.instruments.awg.PulseSequence import *
 from numpy import arange, linspace, sin, pi, sign, append, around, mean, delete,arcsin,sqrt,load,save
-from slab.experiments.ExpLib.PulseSequenceBuilder import *
-from slab.experiments.ExpLib.QubitPulseSequence import *
-from slab.experiments.ExpLib.QubitPulseSequence_SB_cool import *
-from slab.experiments.ExpLib.PulseSequenceGroup import *
+from slab.experiments.Nitrogen.ExpLib.PulseSequenceBuilder import *
+from slab.experiments.Nitrogen.ExpLib.QubitPulseSequence import *
+from slab.experiments.Nitrogen.ExpLib.QubitPulseSequence_SB_cool import *
+from slab.experiments.Nitrogen.ExpLib.PulseSequenceGroup import *
 import random
 # from numpy import around, mean, delete,arcsin
 from liveplot import LivePlotClient

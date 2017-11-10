@@ -1,9 +1,9 @@
 __author__ = 'Nelson'
 
 from slab.instruments.awg.PulseSequence import *
-from slab.experiments.ExpLib import awgpulses as ap
+from slab.experiments.Nitrogen.ExpLib import awgpulses as ap
 from numpy import arange, linspace
-from slab.experiments.ExpLib.PulseWaveformBuildingLibrary import *
+from slab.experiments.Nitrogen.ExpLib.PulseWaveformBuildingLibrary import *
 
 from liveplot import LivePlotClient
 
@@ -256,7 +256,7 @@ class PulseSequenceBuilder():
         self.acquire_readout_cfg()
         max_total_pulse_span_length = max(total_pulse_span_length_list)
         max_total_pulse_span_length += self.tek2_trigger_delay  #
-        self.max_length = round_samples_2(
+        self.max_length = round_samples(
             (max_total_pulse_span_length + self.measurement_delay + self.measurement_width + 2 * self.start_end_buffer),increment=1./1.2)
         return self.max_length
 
@@ -293,7 +293,7 @@ class PulseSequenceBuilder():
         For each pulse sequence, location of readout and card is fixed.
         Pulses are appended backward, from the last pulse to the first pulse.
         '''
-        self.origin = self.max_length - round_samples_2((self.measurement_delay + self.measurement_width + self.start_end_buffer),increment=1./1.2)
+        self.origin = self.max_length - round_samples((self.measurement_delay + self.measurement_width + self.start_end_buffer),increment=1./1.2)
         self.uses_tek2 = False
         for ii in range(len(pulse_sequence_matrix)):
 

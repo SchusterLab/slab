@@ -2,8 +2,8 @@ __author__ = 'Nelson'
 
 from slab import *
 from slab.instruments.Alazar import Alazar
-from slab.experiments.General.PulseSequences.SingleQubitPulseSequences import *
-from slab.experiments.Multimode.PulseSequences.MultimodePulseSequence import *
+from slab.experiments.Nitrogen.General.PulseSequences.SingleQubitPulseSequences import *
+from slab.experiments.Nitrogen.Multimode.PulseSequences.MultimodePulseSequence import *
 from numpy import mean, arange
 from tqdm import tqdm
 
@@ -96,8 +96,8 @@ class QubitPulseSequenceExperiment(Experiment):
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=True)
-        self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (
-            self.cfg['readout']['frequency'] - self.cfg['readout']['bare_frequency']), self.cfg['readout']['frequency'])
+        # self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (
+        #     self.cfg['readout']['frequency'] - self.cfg['readout']['bare_frequency']), self.cfg['readout']['frequency'])
 
         self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         self.drive.set_power(self.cfg['drive']['power'])
