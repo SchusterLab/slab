@@ -25,6 +25,8 @@ try: from relaybox.RFSwitch import RFSwitch
 except: print "Could not load heliummanifold"
 try: from bkpowersupply import BKPowerSupply
 except: print "Could not load BKPowerSupply"
+try: from bkpowersupply import BKPowerSupply2
+except: print "Could not load BKPowerSupply2"
 try: from KEPCOPowerSupply import KEPCOPowerSupply
 except: print "Could not load KEPCOPowerSupply"
 try: from voltsource import SRS900
