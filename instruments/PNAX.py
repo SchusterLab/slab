@@ -75,7 +75,7 @@ class N5242A(SocketInstrument):
         SINGle - channel accepts ONE trigger, then goes to HOLD.
         """
 
-        allowed_modes = ['cont', 'continuous', 'hold', "groups", 'gro', 'sing', 'single']
+        allowed_modes = ['cont', 'continuous', 'hold', 'groups', 'gro', 'sing', 'single']
         if mode.lower() not in allowed_modes:
             return
         else:
@@ -190,6 +190,11 @@ class N5242A(SocketInstrument):
             return bool(int(data.strip()))
 
     def set_trigger_continuous(self, state=True):
+        """
+        This command sets the trigger mode to continuous (internal) or manual
+        NB: to refresh the display, use set_sweep_mode("CONT") in combination
+        with this command.
+        """
         if state:
             _state = "on"
         else:
@@ -207,7 +212,6 @@ class N5242A(SocketInstrument):
             self.write('sense:AVER:mode ' + mode)
         else:
             print "trigger average mode needs to be one of " + ', '.join(allowed_modes)
-
 
     def get_trigger_average_mode (self):
         data = self.query('sense:AVER:mode?')
@@ -546,7 +550,7 @@ class N5242A(SocketInstrument):
         self.set_trigger_source("imm")
         self.set_format('POL')
         self.set_trigger_continuous()
-        
+
         if averages is not None:
             self.set_averages_and_group_count(averages, True)
         elif averages_state is not None:
