@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Aug 01 21:26:31 2011
-
 @author: Dave
+
+For the programming manual see http://ena.support.keysight.com/e5071c/manuals/webhelp/eng/
 """
 from slab.instruments import SocketInstrument, VisaInstrument
 import time, glob, re
@@ -443,6 +444,22 @@ class E5071(SocketInstrument):
         return float(self.query(":SENSe%d:SWEep:POINts?" % (channel)))
 
     #### Scale
+    def get_phase_offset(self, channel=1):
+        """
+        This command gets the phase offset of the active trace of selected channel
+        :return: float
+        """
+        answer = self.query(":CALC%d:CORR:OFFS:PHAS?" % (channel))
+        return float(answer.strip())
+
+    def set_phase_offset(self, offset, channel=1):
+        """
+        This command sets the phase offset of the active trace of selected channel
+        :param offset: offset in degrees
+        :param channel: integer
+        :return: None
+        """
+        self.write(":CALC%d:CORR:OFFS:PHAS %.4f" % (channel, offset))
 
     def get_electrical_delay(self, channel=1):
         """

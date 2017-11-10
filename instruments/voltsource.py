@@ -195,7 +195,7 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
                 curr_str = '%smA' % (current * 1e3)
                 self.set_level(curr_str)
         else:
-            raise Exception("ERROR: Need to set Yoko current in voltage mode")
+            raise Exception("ERROR: Need to set Yoko current in current mode")
 
     def get_current(self):
         """Get yoko current (in Amps!)"""
@@ -210,7 +210,7 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
         if self.get_mode() == "VOLT":
             self.set_level(voltage)
         else:
-            raise Exception("ERROR: Need to set Yoko voltage in current mode")
+            raise Exception("ERROR: Need to set Yoko voltage in voltage mode")
 
     def get_volt(self, channel=0):
         # channel does nothing...for compatibility with the SRS - alex
@@ -218,7 +218,7 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
         if self.get_mode() == "VOLT":
             return self.get_level()
         else:
-            raise Exception("ERROR: Need to set Yoko voltage in current mode")
+            raise Exception("ERROR: Need to set Yoko voltage in voltage mode")
 
     def set_measure_state(self, state=True):
         """Set measurement state of instrument"""
