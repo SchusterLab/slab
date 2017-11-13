@@ -1,6 +1,6 @@
 __author__ = 'Nitrogen'
 
-from liveplot import LivePlotClient
+# from liveplot import LivePlotClient
 # from dataserver import dataserver_client
 import os.path
 import json
@@ -55,7 +55,7 @@ class Experiment:
         except:
             pass
         if self.cfg is not None:
-            for alias, inst in self.cfg['aliases'].iteritems():
+            for alias, inst in self.cfg['aliases'].items():
                 setattr(self, alias, self.im[inst])
 
     def save_config(self):
@@ -76,7 +76,7 @@ class Experiment:
             try:
                 f.attrs['config'] = json.dumps(self.cfg)
             except TypeError as err:
-                print('Error in saving cfg into datafile (experiment.py):', err)
+                print(('Error in saving cfg into datafile (experiment.py):', err))
 
         return f
 

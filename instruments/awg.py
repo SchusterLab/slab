@@ -111,7 +111,7 @@ class AWG81180A(SocketInstrument):
         """Sets marker properties for current channel"""
         s=('MARKER%d:STATE %d;MARKER%d:POSITION %d;MARKER%d:WIDTH %d; MARKER%d:VOLTAGE:HIGH %f;MARKER%d:VOLTAGE:LOW %f' %
                    (marker,state,marker,position,marker,width,marker,high,marker,low))
-        print s.split(';')
+        print(s.split(';'))
         for cmd in s.split(';'):
             self.write(cmd)
         
@@ -132,9 +132,9 @@ class AWG81180A(SocketInstrument):
         else:
             mind, maxd = float_range
         if maxd==mind:
-            idata=zeros(len(floatdata),dtype=long)
+            idata=zeros(len(floatdata),dtype=int)
         else:
-            idata=array(4095*((floatdata-mind)/(maxd-mind)),dtype=long)
+            idata=array(4095*((floatdata-mind)/(maxd-mind)),dtype=int)
         
         return idata
 
@@ -168,10 +168,10 @@ class AWG81180A(SocketInstrument):
         #    for jj in range(32):
         #        #interlace?
         #        data[jj+ii] = tmpdata[(jj%4)*8+floor(jj/4)]
-        for ii in xrange(len(data)):
+        for ii in range(len(data)):
             b[ii*2] = (data[ii] & 0xFF)
             b[ii*2+1] = (data[ii] & 0xFF00)>>8
-        print "Uploading trace %d to AWG" % segnum
+        print("Uploading trace %d to AWG" % segnum)
         #print len(b)
         self.binblockwrite(":TRACe:DATA",b)
 
@@ -200,7 +200,7 @@ class AWG81180A(SocketInstrument):
         #    for jj in range(32):
         #        #interlace?
         #        data[jj+ii] = tmpdata[(jj%4)*8+floor(jj/4)]
-        for ii in xrange(len(data)):
+        for ii in range(len(data)):
             b[ii*2] = (data[ii] & 0xFF)
             b[ii*2+1] = (data[ii] & 0xFF00)>>8
         #print "Uploading trace %d to AWG" % segnum
@@ -321,11 +321,11 @@ if __name__=="__main__":
 #    plot(a,b)
 #    show()
 
-    print "Initializing Instrument"
+    print("Initializing Instrument")
     #awg=AWG81180A (name='awg',address="GPIB0::04::INSTR")
     awg=AWG81180A (name='awg',address="192.168.14.134:5025")
-    print awg.get_id()
-    print "Changing arb waveform"
+    print(awg.get_id())
+    print("Changing arb waveform")
     awg.set_output(False)
     awg.select_channel(1)
     awg.set_mode("USER")    
@@ -334,15 +334,15 @@ if __name__=="__main__":
     awg.delete_all()
     awg.select_sequence(1)
     arr=[]
-    print "Calculating waveform"
+    print("Calculating waveform")
     for i in range(20):
         b=zeros(100000)
         for j in range(i*5000):
             b[j]=4095
         arr.append(b)
-    print "Convert to integer waveform"
+    print("Convert to integer waveform")
     idata=[awg.convert_float_to_int_data(seg) for seg in arr]    
-    print "Uploading waveform"
+    print("Uploading waveform")
     for ii,seg in enumerate(idata):
         awg.add_intsegment(seg,ii+1)
         awg.define_sequence_step(ii+1,ii+1)
@@ -352,6 +352,6 @@ if __name__=="__main__":
     awg.set_output(True) 
     awg.set_mode("SEQUENCE")
      
-    print "Finished uploading data."
+    print("Finished uploading data.")
     
         

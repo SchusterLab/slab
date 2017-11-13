@@ -30,7 +30,7 @@ class E4440(SocketInstrument):
         Performs a full alignment
         :return:
         """
-        print "Performing full alignment..."
+        print("Performing full alignment...")
         self.write(":CAL:ALL")
 
     #### Frequency setup
@@ -176,7 +176,7 @@ class E4440(SocketInstrument):
             try:
                 s = self.read()
             except:
-                print "read %d failed!" % ii
+                print("read %d failed!" % ii)
             data_str += s
             done = data_str[-1] == '\n'
         #print data_str
@@ -242,8 +242,8 @@ class E4440(SocketInstrument):
 if __name__ == '__main__':
     #    condense_nwa_files(r'C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data','C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data\\test')
     sa = E4440("E4440", address="192.168.14.152")
-    print sa.get_id()
-    print"Taking data"
+    print(sa.get_id())
+    print("Taking data")
     data = sa.take_one()
     sa.set_default_state()
     #print data

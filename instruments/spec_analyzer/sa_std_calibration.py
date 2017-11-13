@@ -9,7 +9,7 @@ Created on Tue Sep 06 12:30:19 2011
 
 @author: Dai
 """
-from spectrum_analyzer import *
+from .spectrum_analyzer import *
 from instruments import E8257D
 import time
 import numpy as np
@@ -54,9 +54,9 @@ def find_min_pwr(sa, frequency, lo, rf, threshold=50.0,
         rf.set_power((lp+rp)/2.0)
         time.sleep(0.1)
         
-        if verbose: print str(lo.get_frequency())+', '+str(rf.get_frequency())
+        if verbose: print(str(lo.get_frequency())+', '+str(rf.get_frequency()))
         m = sa.get_avg_power()
-        if verbose: print m
+        if verbose: print(m)
         #rf.set_output(False)        
         if (m > 50.0):
             rp = (lp + rp) / 2.0
@@ -66,7 +66,7 @@ def find_min_pwr(sa, frequency, lo, rf, threshold=50.0,
             #print 'lp = '+str(lp)
     return (rp+lp)/2.0
 
-def plot_output_power(sa, frequency, lo, rf, powers=range(-50, 10, 10)):
+def plot_output_power(sa, frequency, lo, rf, powers=list(range(-50, 10, 10))):
     """plotting sa output over RF power"""
     #lo.set_output(False)
     #rf.set_output(False)
@@ -94,7 +94,7 @@ def plot_output_offset(sa, frequency, rf_pwr, lo, rf, offsets=np.arange(10e6,11e
     time.sleep(0.1)
     lo.set_frequency(frequency)
     #very strange behavior of LMS! does not work without this line
-    print lo.get_frequency()
+    print(lo.get_frequency())
     
     lo.set_output()
     rf.set_power(rf_pwr)
@@ -169,12 +169,12 @@ if __name__ =='__main__':
         for pwr in np.arange(mp, 5.0, step):
             nd = calibrate(sa, freq, pwr, lo, rf)        
             cali.append(nd)
-            print nd
+            print(nd)
         time.sleep(0.05)
     #"""
     #"""
     
-    print cali
+    print(cali)
     pickle.dump(cali, open('10dBm_LMS_cali_11182011.data', 'w'))
     
     c = np.array(cali)

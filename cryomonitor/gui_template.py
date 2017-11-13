@@ -35,7 +35,7 @@ class MyDataThread(gui.DataThread):
     def my_script(self):
         # parameters in self.params["param_name"]
         # plots in self.plots["plot_name"]
-        print self.params.keys()
+        print(list(self.params.keys()))
     
 class MyWindow(gui.SlabWindow, Ui_MainWindow):
     def __init__(self):
@@ -175,11 +175,11 @@ class MyWindow(gui.SlabWindow, Ui_MainWindow):
     def nwa_set_labels(self):
         mode = str(self.comboBox_nwa_mode.currentText())
         if 'Center' in mode:
-            print mode
+            print(mode)
             self.label_nwa_center_or_start.setText("<font style='color: %s'><b>%s</b></font>"%("Black", "Center"))
             self.label_nwa_span_or_stop.setText("<font style='color: %s'><b>%s</b></font>"%("Black", "Span"))
         else:
-            print mode
+            print(mode)
             self.label_nwa_center_or_start.setText("<font style='color: %s'><b>%s</b></font>"%("Black", "Start"))
             self.label_nwa_span_or_stop.setText("<font style='color: %s'><b>%s</b></font>"%("Black", "Stop"))
 
@@ -218,7 +218,7 @@ class MyWindow(gui.SlabWindow, Ui_MainWindow):
         self.M.NWA.set_sweep_points(points)
         self.M.NWA.set_ifbw(ifbw)
 
-        print "Setup complete"
+        print("Setup complete")
 
         self.M.scriptname = None
         date = time.strftime("%y%m%d")
@@ -227,7 +227,7 @@ class MyWindow(gui.SlabWindow, Ui_MainWindow):
 
         FileHandler = dataCacheProxy(expInst="nwa_scan", filepath=os.path.join(datafoldername, 'nwa_scan.h5'))
 
-        print "Taking data"
+        print("Taking data")
         fpoints, mags, phases = self.M.NWA.take_one_averaged_trace()
 
         FileHandler.post('fpoints', fpoints)
@@ -352,8 +352,8 @@ class MyWindow(gui.SlabWindow, Ui_MainWindow):
         timeout = int(80E3)
         trigger_rate = 1e1
 
-        print "Your trigger pulse width should be > %.3e s." % (1/sample_rate)
-        print "Time out should be higher than %.3e" % (noof_samples/sample_rate*1e3 )
+        print("Your trigger pulse width should be > %.3e s." % (1/sample_rate))
+        print("Time out should be higher than %.3e" % (noof_samples/sample_rate*1e3 ))
 
         config = {'clock_edge': 'rising',
                   'clock_source': 'reference',
@@ -381,13 +381,13 @@ class MyWindow(gui.SlabWindow, Ui_MainWindow):
                   'trigger_coupling': 'DC',
                   'trigger_delay': 0}
 
-        print "Total time trace signal is %.2f seconds" % (noof_samples/float(sample_rate))
+        print("Total time trace signal is %.2f seconds" % (noof_samples/float(sample_rate)))
 
         alazar = Alazar()
 
-        print "new configuration file"
+        print("new configuration file")
         cfg = AlazarConfig(config)
-        print "config file has to pass through the AlazarConfig middleware."
+        print("config file has to pass through the AlazarConfig middleware.")
         alazar.configure(cfg)
 
         self.x = sweep_points
@@ -519,7 +519,7 @@ class MyWindow(gui.SlabWindow, Ui_MainWindow):
     def clean_manifold(self):
         current_status = M.heman.get_manifold_status_bits()
         noof_cleans = np.int(self.spinBox_noof_cleans.value())
-        print noof_cleans
+        print(noof_cleans)
         self.label_cleaning_status.setText("<font style='color: %s'>%s</font>"%('Red', "Cleaning..."))
         gui.QApplication.processEvents()
         M.heman.clean_manifold(noof_cleans)
@@ -564,15 +564,15 @@ class MyWindow(gui.SlabWindow, Ui_MainWindow):
             gui.QApplication.processEvents()
             time.sleep(self.dt)
 
-            print self.x
-            print self.y
+            print(self.x)
+            print(self.y)
 
-            print N
+            print(N)
 
         # Now keep the array size constant
         while self.running:
 
-            print "Doing it!"
+            print("Doing it!")
             T = M.heman.get_pressure()
             #T = M.fridge.get_temperature('MC RuO2')*1E3
             ts = time.time() - t0
@@ -590,8 +590,8 @@ class MyWindow(gui.SlabWindow, Ui_MainWindow):
             self.update_plots(xlabel='Time (s)', ylabel='Manifold Pressure (bar)')
             #self.update_plots(xlabel='Time (s)', ylabel='MC RuO2 (mK)')
 
-            print self.x
-            print self.y
+            print(self.x)
+            print(self.y)
 
             time.sleep(self.dt)
             gui.QApplication.processEvents()

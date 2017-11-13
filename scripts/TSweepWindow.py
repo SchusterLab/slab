@@ -56,7 +56,7 @@ class nwa_DataThread(DataThread):
                
         #im.save_settings(datapath,prefix,{'delay':0})
         
-        print "Taking temperature data"
+        print("Taking temperature data")
         count=0
         while(True):
             Temperature=fridge.get_temperature('MC RuO2')

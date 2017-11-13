@@ -10,7 +10,7 @@ import struct
 import io
 import h5py
 import numpy as np
-import StringIO
+import io
 
 
 #This creates a waveform file that can be loaded into the awg
@@ -26,7 +26,7 @@ def create_waveform_file(filename,data):
     #first write to a string to determine the data offset!
     for i in range(2):
         if i==0:
-            FID = StringIO.StringIO()
+            FID = io.StringIO()
         else:
             str_length = len(FID.getvalue())
             FID = io.open(filename, 'wb')

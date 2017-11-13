@@ -32,7 +32,7 @@ class VacuumRabiExperiment(Experiment):
         if self.liveplot_enabled:
             self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_output(True)
         self.readout.set_power(self.cfg['readout']['power'])
         if (self.cfg[self.expt_cfg_name]['pulsed']):
@@ -55,13 +55,13 @@ class VacuumRabiExperiment(Experiment):
         try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
         except:
-            print "Error in setting digital attenuator."
+            print("Error in setting digital attenuator.")
 
         try:
             self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
             self.awg.run()
         except:
-            print "error in setting self.awg"
+            print("error in setting self.awg")
 
 
 
@@ -69,7 +69,7 @@ class VacuumRabiExperiment(Experiment):
         for freq in self.expt_pts:
             self.readout.set_frequency(freq)
             self.readout_shifter.set_phase((self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (freq - self.cfg['readout']['frequency']))%360, freq)
-            print self.readout_shifter.get_phase()
+            print(self.readout_shifter.get_phase())
 
             expt_data_ch1 = None
             expt_data_ch2 = None
@@ -91,7 +91,7 @@ class VacuumRabiExperiment(Experiment):
                     f.append_pt('ch2_mean', ch2_pts)
 
             else:
-                print "Prep Card"
+                print("Prep Card")
                 adc = Alazar(self.cfg['alazar'])
                 for ii in tqdm(arange(max(1, self.cfg[self.expt_cfg_name]['averages'] / 100))):
 
@@ -125,7 +125,7 @@ class VacuumRabiExperiment(Experiment):
                     f.append_pt('mag_mean', mean(expt_mag[0:]))
 
 
-                print cfg['readout']['start_phase']
+                print(cfg['readout']['start_phase'])
 
     def awg_prep(self):
         stop_pulseblaster()

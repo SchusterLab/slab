@@ -28,13 +28,13 @@ class HistogramHeteroExperiment(QubitPulseSequenceExperiment):
     # this overrides the method in QubitPulseSequenceExperiment
     def take_data(self):
 
-        print 'take_data() in HistogramHetero'
+        print('take_data() in HistogramHetero')
 
         if self.pre_run is not None:
             self.pre_run()
 
         if self.adc == None:
-            print "Prep Card"
+            print("Prep Card")
             adc = Alazar(self.cfg['alazar'])
         else:
             adc = self.adc
@@ -57,9 +57,9 @@ class HistogramHeteroExperiment(QubitPulseSequenceExperiment):
 
             try:
                 self.readout_atten.set_attenuator(atten)
-                print "Digital atten:", atten
+                print("Digital atten:", atten)
             except:
-                print "Digital attenuator not loaded."
+                print("Digital attenuator not loaded.")
 
             # (ch1/2, exp_pts, heterodyne_freq, cos/sin, all averages)
             ss_data = zeros((2, len(self.expt_pts), len(het_IFreqList), 2, avgPerAcquisition * numAcquisition))

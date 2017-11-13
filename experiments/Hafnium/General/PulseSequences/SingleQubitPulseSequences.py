@@ -5,7 +5,7 @@ from numpy import arange, linspace
 from slab.experiments.Hafnium.ExpLib.PulseSequenceBuilder import *
 from slab.experiments.Hafnium.ExpLib.QubitPulseSequence import *
 import random
-from liveplot import LivePlotClient
+# from liveplot import LivePlotClient
 
 
 class RabiSequence(QubitPulseSequence):
@@ -29,7 +29,7 @@ class PulseProbeIQSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
         self.pulse_cfg = cfg['pulse_info']
         self.extra_args = {}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
@@ -54,7 +54,7 @@ class BlueSidebandRabisequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
         self.pulse_cfg = cfg['pulse_info']
         self.extra_args = {}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
@@ -82,7 +82,7 @@ class PulseProbeEFIQSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.alpha = cfg['qubit']['alpha']
         self.extra_args = {}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
@@ -126,7 +126,7 @@ class SpinEchoSequence(QubitPulseSequence):
         self.expt_cfg = cfg['spin_echo']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         if 'number' in self.extra_args:
@@ -163,7 +163,7 @@ class EFRabiSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.extra_args={}
 
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
         if 'ge_pi' in self.extra_args:
             self.ge_pi = self.extra_args['ge_pi']
@@ -282,7 +282,7 @@ class T1rhoSequence(QubitPulseSequence):
         self.qubit_cfg = cfg['qubit']
         self.pulse_cfg = cfg['pulse_info']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         if 'amp' in self.extra_args:
@@ -352,7 +352,7 @@ class HalfPiXOptimizationSweepSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.expt_cfg = expt_cfg
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.pulse_length = self.extra_args['pulse_length']
@@ -424,7 +424,7 @@ class HalfPiYPhaseOptimizationSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
         self.pulse_cfg = cfg['pulse_info']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         if 'qubit_dc_offset' in self.extra_args:
@@ -481,7 +481,7 @@ class PiXOptimizationSweepSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.expt_cfg = expt_cfg
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.pulse_length = self.extra_args['pulse_length']
@@ -532,7 +532,7 @@ class RabiRamseyT1FluxSweepSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg, **kwargs):
         self.pulse_cfg = cfg['pulse_info']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.exp = self.extra_args['exp']
@@ -625,13 +625,13 @@ class RandomizedBenchmarkingPhaseOffsetSequence(QubitPulseSequence):
         if self.expt_cfg['phase_offset']:
             self.offset_phase = self.pulse_cfg['gauss']['offset_phase']
             if not self.expt_cfg['split_pi']:
-                print "ERROR: Running offset phase correction without splitting pi pulse"
+                print("ERROR: Running offset phase correction without splitting pi pulse")
             else:
                 pass
         else:
             self.offset_phase = 0
 
-        print "Offset phase = %s"%(self.offset_phase)
+        print("Offset phase = %s"%(self.offset_phase))
         clist1 = [0,1,1,1,3,3] # index of IXYZ
         clist2 = [0, np.pi/2,np.pi,-np.pi/2,np.pi/2,-np.pi/2]
 
@@ -644,8 +644,8 @@ class RandomizedBenchmarkingPhaseOffsetSequence(QubitPulseSequence):
         # self.random_cliffords_1 =  np.concatenate((np.array([0]),0*np.ones(max(self.expt_pts)-1)),axis=0).astype(int)
         # self.random_cliffords_2 =  np.concatenate((np.array([1]),1*np.ones(max(self.expt_pts)-1)),axis=0).astype(int)
 
-        print [self.clifford_pulse_1_list[jj] for jj in self.random_cliffords_1]
-        print [self.clifford_pulse_2_list[jj] for jj in self.random_cliffords_2]
+        print([self.clifford_pulse_1_list[jj] for jj in self.random_cliffords_1])
+        print([self.clifford_pulse_2_list[jj] for jj in self.random_cliffords_2])
 
 
     def define_pulses(self,pt):
@@ -719,10 +719,10 @@ class RandomizedBenchmarkingPhaseOffsetSequence(QubitPulseSequence):
 
                     if np.allclose(np.real(self.I),np.real(np.dot(C,R))) and np.allclose(np.imag(self.I),np.imag(np.dot(C,R))):
                         found +=1
-                        print "---" + str(self.n)
-                        print "Number of z pulses in creation sequence %s" %(self.znumber)
-                        print self.clifford_inv_pulse_1_list[ii]
-                        print self.clifford_inv_pulse_2_list[jj]
+                        print("---" + str(self.n))
+                        print("Number of z pulses in creation sequence %s" %(self.znumber))
+                        print(self.clifford_inv_pulse_1_list[ii])
+                        print(self.clifford_inv_pulse_2_list[jj])
                         if (ii == 2) and self.expt_cfg['split_pi']:
                             self.psb.append('q','half_pi_y', self.pulse_type, addphase=self.xnumber*self.offset_phase+self.znumber*90)
                             self.xnumber+=1
@@ -761,11 +761,11 @@ class RandomizedBenchmarkingPhaseOffsetSequence(QubitPulseSequence):
                                 self.xnumber+=1
 
         if found == 0 :
-            print "Error! Some pulse's inverse was not found."
+            print("Error! Some pulse's inverse was not found.")
         elif found > 1:
-            print "Error! Non unique inverse."
+            print("Error! Non unique inverse.")
 
-        print "Total number of half pi pulses = %s"%(self.xnumber)
+        print("Total number of half pi pulses = %s"%(self.xnumber))
 
 
 class RandomizedBenchmarkingSequence(QubitPulseSequence):
@@ -822,8 +822,8 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
         # self.random_cliffords_2 = 2*np.ones(len(self.expt_pts)).astype(int)### no z pulse
         # self.random_cliffords_2 = [random.randint(0,4) for r in range(len(self.expt_pts))] ### no z pulse
 
-        print [self.clifford_pulse_1_list[jj] for jj in self.random_cliffords_1]
-        print [self.clifford_pulse_2_list[jj] for jj in self.random_cliffords_2]
+        print([self.clifford_pulse_1_list[jj] for jj in self.random_cliffords_1])
+        print([self.clifford_pulse_2_list[jj] for jj in self.random_cliffords_2])
 
 
     def final_pulse_dictionary(self,R_input):
@@ -845,9 +845,9 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
                     if np.allclose(np.real(R),np.real(C)) and np.allclose(np.imag(R),np.imag(C)):
                         found +=1
 
-                        print "---" + str(self.n)
-                        print self.clifford_inv_pulse_2_list[jj]
-                        print self.clifford_inv_pulse_1_list[ii]
+                        print("---" + str(self.n))
+                        print(self.clifford_inv_pulse_2_list[jj])
+                        print(self.clifford_inv_pulse_1_list[ii])
 
                         if jj == 4:
                             self.psb.append('q','neg_half_pi', self.pulse_type)
@@ -864,9 +864,9 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
                         self.psb.append('q',self.clifford_inv_pulse_1_list[ii], self.pulse_type)
 
         if found == 0 :
-            print "Error! Some pulse's inverse was not found."
+            print("Error! Some pulse's inverse was not found.")
         elif found > 1:
-            print "Error! Non unique inverse."
+            print("Error! Non unique inverse.")
 
 
     def define_pulses(self,pt):

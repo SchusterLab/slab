@@ -10,4 +10,4 @@ im = InstrumentManager()
 
 #nwa = im['PNAX2']
 bk = im['bkp_bf2']
-print bk.get_id()
+print(bk.get_id())

@@ -32,7 +32,7 @@ class HistogramExperiment(Experiment):
     def go(self):
         #self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=True)
@@ -45,7 +45,7 @@ class HistogramExperiment(Experiment):
 
         self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
 
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(self.cfg['alazar'])
 
         attenpts = arange(self.cfg[self.expt_cfg_name]['atten_start'], self.cfg[self.expt_cfg_name]['atten_stop'], self.cfg[self.expt_cfg_name]['atten_step'])
@@ -58,7 +58,7 @@ class HistogramExperiment(Experiment):
             max_contrast_data_ch2 = zeros(len(freqpts))
             #self.plotter.clear('max contrast')
 
-            print "atten at: %s" %atten
+            print("atten at: %s" %atten)
 
             for yy, freq in enumerate(freqpts):
                 self.readout.set_frequency(freq)
@@ -103,7 +103,7 @@ class HistogramExperiment(Experiment):
                 max_contrast_data_ch2[yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
                 #self.plotter.append_xy('max contrast', freq, max_contrast_data[yy])
             if len(attenpts)>1:
-                print "plotting max contrast 2"
+                print("plotting max contrast 2")
                 pass
                 # self.plotter.append_z('max contrast 2', max_contrast_data, start_step=(
                 #  (attenpts[0], attenpts[1] - attenpts[0]),(freqpts[0] / 1.0e9, (freqpts[1] - freqpts[0]) / 1.0e9)))

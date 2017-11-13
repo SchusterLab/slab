@@ -34,166 +34,166 @@ import h5py
 import inspect
 import Pyro4
 import threading
-import PyQt4.Qt as qt
+# import PyQt4.Qt as qt
 import datetime
 import json
 
 
-def get_SlabFile(fname, local=False):
-    """Retrieves a Pyro4 proxy object representing a SlabFile"""
-    if local:
-        return SlabFile(fname)
-    ns = Pyro4.locateNS()
-
-    def create_file():
-        try:
-            fileserver = Pyro4.Proxy(ns.lookup('fileserver'))
-            fileserver._ping()
-        except Pyro4.errors.NamingError:
-            print 'FileServer not found, create it?'
-            raise
-        except Pyro4.errors.CommunicationError:
-            print 'FileServer not responding, removing from NS'
-            ns.remove('fileserver')
-            raise
-        fileserver.add_file(fname)
-        return DSetProxy(fname, ns.lookup(fname))
-
-    try:
-        ds = DSetProxy(fname, ns.lookup(fname))
-    except Pyro4.errors.NamingError:
-        print "didn't find on server, creating..."
-        return create_file()
-    try:  # Make sure the daemon is alive
-        ds._ping()
-        print "pre-existing file is alive"
-        return ds
-    except (Pyro4.errors.CommunicationError, Pyro4.errors.DaemonError):
-        print fname, "not responding, replacing NameServer entry..."
-        ns.remove(fname)
-        return create_file()
-
-
-class DSetProxy(object):
-    def __init__(self, fname, uri_or_proxy, dspath=[]):
-        if isinstance(uri_or_proxy, Pyro4.Proxy):
-            self.proxy = uri_or_proxy
-        else:  # It's a URI
-            self.proxy = Pyro4.Proxy(uri_or_proxy)
-        self.proxy._pyroOneway.update(['create_group', 'create_dataset'])
-        self.dspath = dspath
-        self.fname = fname
-
-    def __getitem__(self, ds):
-        newpath = self.dspath + [ds]
-        res = self.proxy._get_dset_array(newpath)
-        if res == "group":
-            return DSetProxy(self.fname, self.proxy, newpath)
-        data_arr, attrs = res
-        data_arr.attrs = DSetAttrsProxy(self.dspath + [ds], self.proxy, attrs)
-        return data_arr
-
-    def __setitem__(self, ds, value):
-        self.proxy._my_assign_dset(self.dspath, ds, value)
-
-    def __getattr__(self, attr):
-        # Fall back to behaving like a proxy
-        return lambda *args, **kwargs: self.proxy._call_with_path(self.dspath, attr, args, kwargs)
-
-    def items(self):
-        return [(k, self.__getitem__(k)) for k in self.proxy.keys()]
-
-    def values(self):
-        return [self.__getitem__(k) for k in self.proxy.keys()]
-
-    def create_group(self, groupname, *args, **kwargs):
-        self.proxy.create_group(groupname, *args, **kwargs)
-        return DSetProxy(self.fname, self.proxy, self.dspath + [groupname])
-
-    def create_dataset(self, ds, *args, **kwargs):
-        self.proxy.create_group(ds, *args, **kwargs)
-        return DSetProxy(self.fname, self.proxy, self.dspath + [ds])
-
-    def close(self):
-        Pyro4.Proxy(Pyro4.locateNS().lookup('fileserver')).remove(self.fname)
+# def get_SlabFile(fname, local=False):
+#     """Retrieves a Pyro4 proxy object representing a SlabFile"""
+#     if local:
+#         return SlabFile(fname)
+#     ns = Pyro4.locateNS()
+#
+#     def create_file():
+#         try:
+#             fileserver = Pyro4.Proxy(ns.lookup('fileserver'))
+#             fileserver._ping()
+#         except Pyro4.errors.NamingError:
+#             print('FileServer not found, create it?')
+#             raise
+#         except Pyro4.errors.CommunicationError:
+#             print('FileServer not responding, removing from NS')
+#             ns.remove('fileserver')
+#             raise
+#         fileserver.add_file(fname)
+#         return DSetProxy(fname, ns.lookup(fname))
+#
+#     try:
+#         ds = DSetProxy(fname, ns.lookup(fname))
+#     except Pyro4.errors.NamingError:
+#         print("didn't find on server, creating...")
+#         return create_file()
+#     try:  # Make sure the daemon is alive
+#         ds._ping()
+#         print("pre-existing file is alive")
+#         return ds
+#     except (Pyro4.errors.CommunicationError, Pyro4.errors.DaemonError):
+#         print(fname, "not responding, replacing NameServer entry...")
+#         ns.remove(fname)
+#         return create_file()
 
 
-class DSetAttrsProxy(dict):
-    def __init__(self, dspath, proxy, *args, **kwargs):
-        self.proxy = proxy
-        self.dspath = dspath
-        dict.__init__(self, *args, **kwargs)
+# class DSetProxy(object):
+#     def __init__(self, fname, uri_or_proxy, dspath=[]):
+#         if isinstance(uri_or_proxy, Pyro4.Proxy):
+#             self.proxy = uri_or_proxy
+#         else:  # It's a URI
+#             self.proxy = Pyro4.Proxy(uri_or_proxy)
+#         self.proxy._pyroOneway.update(['create_group', 'create_dataset'])
+#         self.dspath = dspath
+#         self.fname = fname
+#
+#     def __getitem__(self, ds):
+#         newpath = self.dspath + [ds]
+#         res = self.proxy._get_dset_array(newpath)
+#         if res == "group":
+#             return DSetProxy(self.fname, self.proxy, newpath)
+#         data_arr, attrs = res
+#         data_arr.attrs = DSetAttrsProxy(self.dspath + [ds], self.proxy, attrs)
+#         return data_arr
+#
+#     def __setitem__(self, ds, value):
+#         self.proxy._my_assign_dset(self.dspath, ds, value)
+#
+#     def __getattr__(self, attr):
+#         # Fall back to behaving like a proxy
+#         return lambda *args, **kwargs: self.proxy._call_with_path(self.dspath, attr, args, kwargs)
+#
+#     def items(self):
+#         return [(k, self.__getitem__(k)) for k in list(self.proxy.keys())]
+#
+#     def values(self):
+#         return [self.__getitem__(k) for k in list(self.proxy.keys())]
+#
+#     def create_group(self, groupname, *args, **kwargs):
+#         self.proxy.create_group(groupname, *args, **kwargs)
+#         return DSetProxy(self.fname, self.proxy, self.dspath + [groupname])
+#
+#     def create_dataset(self, ds, *args, **kwargs):
+#         self.proxy.create_group(ds, *args, **kwargs)
+#         return DSetProxy(self.fname, self.proxy, self.dspath + [ds])
+#
+#     def close(self):
+#         Pyro4.Proxy(Pyro4.locateNS().lookup('fileserver')).remove(self.fname)
 
-    def __setitem__(self, item, value):
-        print self.dspath
-        self.proxy._set_attr(self.dspath, item, value)
-        dict.__setitem__(self, item, value)
+
+# class DSetAttrsProxy(dict):
+#     def __init__(self, dspath, proxy, *args, **kwargs):
+#         self.proxy = proxy
+#         self.dspath = dspath
+#         dict.__init__(self, *args, **kwargs)
+#
+#     def __setitem__(self, item, value):
+#         print(self.dspath)
+#         self.proxy._set_attr(self.dspath, item, value)
+#         dict.__setitem__(self, item, value)
 
 
-class H5Array(np.ndarray):
-    def __new__(cls, dset):
-        obj = np.asarray(dset).view(cls)
-        return obj
+# class H5Array(np.ndarray):
+#     def __new__(cls, dset):
+#         obj = np.asarray(dset).view(cls)
+#         return obj
+#
+#     def __array_finalize__(self, obj):
+#         self.attrs = None
 
-    def __array_finalize__(self, obj):
-        self.attrs = None
 
-
-class FileServer():
-    fileAddedSignal = qt.SIGNAL('fileAdded')
-    fileRemovedSignal = qt.SIGNAL('fileRemoved')
-    resetSignal = qt.SIGNAL('resetServer')
-
-    def __init__(self, gui=None):
-        self.ns = Pyro4.locateNS()
-        self.gui = gui
-        self.start_server()
-        self.files = {}
-
-    def add_file(self, fname):
-        print 'adding', fname
-        sfile = SlabFile(fname)
-        self.ns.register(fname, self.daemon.register(sfile))
-        self.files[fname] = sfile
-        if self.gui is not None:
-            self.gui.emit(FileServer.fileAddedSignal, fname)
-
-    def start_server(self):
-        self.selfdaemon = Pyro4.Daemon()
-        self.ns.register('fileserver', self.selfdaemon.register(self))
-        self.self_th = threading.Thread(target=self.selfdaemon.requestLoop)
-        self.self_th.daemon = True
-        self.self_th.start()
-        self.daemon = Pyro4.Daemon()
-        self.file_th = threading.Thread(target=self.daemon.requestLoop)
-        self.file_th.daemon = True
-        self.file_th.start()
-
-    def restart(self):
-        self.close()
-        self.start_server()
-        if self.gui is not None:
-            self.gui.emit(FileServer.resetSignal)
-
-    def remove(self, fname):
-        self.daemon.unregister(self.files.pop(fname))
-        if self.gui is not None:
-            self.gui.emit(FileServer.fileRemovedSignal, fname)
-
-    def close(self):
-        for v in self.daemon.objectsById.values():
-            try:
-                self.ns.remove(v.filename)
-                self.daemon.unregister(v)
-            except AttributeError:
-                pass
-        self.ns.remove('fileserver')
-        self.selfdaemon.unregister(self)
-        self.selfdaemon.shutdown()
-        self.daemon.shutdown()
-
-    def _ping(self):
-        return 'OK'
+# class FileServer():
+#     fileAddedSignal = qt.SIGNAL('fileAdded')
+#     fileRemovedSignal = qt.SIGNAL('fileRemoved')
+#     resetSignal = qt.SIGNAL('resetServer')
+#
+#     def __init__(self, gui=None):
+#         self.ns = Pyro4.locateNS()
+#         self.gui = gui
+#         self.start_server()
+#         self.files = {}
+#
+#     def add_file(self, fname):
+#         print('adding', fname)
+#         sfile = SlabFile(fname)
+#         self.ns.register(fname, self.daemon.register(sfile))
+#         self.files[fname] = sfile
+#         if self.gui is not None:
+#             self.gui.emit(FileServer.fileAddedSignal, fname)
+#
+#     def start_server(self):
+#         self.selfdaemon = Pyro4.Daemon()
+#         self.ns.register('fileserver', self.selfdaemon.register(self))
+#         self.self_th = threading.Thread(target=self.selfdaemon.requestLoop)
+#         self.self_th.daemon = True
+#         self.self_th.start()
+#         self.daemon = Pyro4.Daemon()
+#         self.file_th = threading.Thread(target=self.daemon.requestLoop)
+#         self.file_th.daemon = True
+#         self.file_th.start()
+#
+#     def restart(self):
+#         self.close()
+#         self.start_server()
+#         if self.gui is not None:
+#             self.gui.emit(FileServer.resetSignal)
+#
+#     def remove(self, fname):
+#         self.daemon.unregister(self.files.pop(fname))
+#         if self.gui is not None:
+#             self.gui.emit(FileServer.fileRemovedSignal, fname)
+#
+#     def close(self):
+#         for v in list(self.daemon.objectsById.values()):
+#             try:
+#                 self.ns.remove(v.filename)
+#                 self.daemon.unregister(v)
+#             except AttributeError:
+#                 pass
+#         self.ns.remove('fileserver')
+#         self.selfdaemon.unregister(self)
+#         self.selfdaemon.shutdown()
+#         self.daemon.shutdown()
+#
+#     def _ping(self):
+#         return 'OK'
 
 
 class h5File(h5py.File):
@@ -265,7 +265,7 @@ class SlabFile(h5py.File):
         return branch
 
     def _my_assign_dset(self, dspath, ds, val):
-        print 'assigning', ds, val
+        print('assigning', ds, val)
         branch = self._my_ds_from_path(dspath)
         branch[ds] = val
 
@@ -305,7 +305,7 @@ class SlabFile(h5py.File):
             dataset.attrs["_axes_labels"] = (x_lab, y_lab)
 
     def append_line(self, dataset, line, axis=0):
-        if isinstance(dataset,unicode): dataset=str(dataset)
+        if isinstance(dataset,str): dataset=str(dataset)
         if isinstance(dataset, str):
             try:
                 dataset = self[dataset]
@@ -325,7 +325,7 @@ class SlabFile(h5py.File):
         self.flush()
 
     def append_pt(self, dataset, pt):
-        if isinstance(dataset,unicode): dataset=str(dataset)
+        if isinstance(dataset,str): dataset=str(dataset)
         if isinstance(dataset, str) :
             try:
                 dataset = self[dataset]
@@ -362,7 +362,7 @@ class SlabFile(h5py.File):
         except:
             notes = []
         if print_notes:
-            print '\n'.join(notes)
+            print('\n'.join(notes))
         if one_string:
             notes = '\n'.join(notes)
         return notes
@@ -421,12 +421,12 @@ class SlabFile(h5py.File):
     def save_dict(self, dict, group='/'):
         if group not in self:
             self.create_group(group)
-        for k in dict.keys():
+        for k in list(dict.keys()):
             self[group].attrs[k] = dict[k]
 
     def get_dict(self, group='/'):
         d = {}
-        for k in self[group].attrs.keys():
+        for k in list(self[group].attrs.keys()):
             d[k] = self[group].attrs[k]
         return d
 
@@ -441,7 +441,7 @@ class SlabFile(h5py.File):
         return self.get_dict(group)
 
     def load_config(self):
-        if 'config' in self.attrs.keys():
+        if 'config' in list(self.attrs.keys()):
             return AttrDict(json.loads(self.attrs['config']))
         else:
             return None
@@ -512,7 +512,7 @@ class AttrDict(dict):
             for key in value:
                 self.__setitem__(key, value[key])
         else:
-            raise TypeError, 'expected dict'
+            raise TypeError('expected dict')
 
     def __setitem__(self, key, value):
         if isinstance(value, dict) and not isinstance(value, AttrDict):
@@ -530,36 +530,36 @@ class AttrDict(dict):
     __getattr__ = __getitem__
 
 
-if __name__ == "__main__":
-    app = qt.QApplication([])
-    win = qt.QMainWindow()
-    server = FileServer(gui=app)
-    widget = qt.QWidget()
-    layout = qt.QVBoxLayout(widget)
-
-    class FileList(qt.QListWidget):
-        def __init__(self):
-            qt.QListWidget.__init__(self)
-            self.file_position = {}
-
-        def add_file(self, fname):
-            row = self.count()
-            self.insertItem(row, fname)
-            self.file_position[fname] = row
-
-        def remove_file(self, fname):
-            self.takeItem(self.file_position[fname])
-
-    filelist = FileList()
-    app.connect(app, server.fileAddedSignal, filelist.add_file)
-    app.connect(app, server.fileRemovedSignal, filelist.remove_file)
-    app.connect(app, server.resetSignal, filelist.clear)
-
-    reset_button = qt.QPushButton('Reset Server')
-    reset_button.clicked.connect(server.restart)
-    layout.addWidget(filelist)
-    layout.addWidget(reset_button)
-    win.setCentralWidget(widget)
-    app.connect(app, qt.SIGNAL("lastWindowClosed()"), server.close)
-    win.show()
-    app.exec_()
+# if __name__ == "__main__":
+#     app = qt.QApplication([])
+#     win = qt.QMainWindow()
+#     server = FileServer(gui=app)
+#     widget = qt.QWidget()
+#     layout = qt.QVBoxLayout(widget)
+#
+#     class FileList(qt.QListWidget):
+#         def __init__(self):
+#             qt.QListWidget.__init__(self)
+#             self.file_position = {}
+#
+#         def add_file(self, fname):
+#             row = self.count()
+#             self.insertItem(row, fname)
+#             self.file_position[fname] = row
+#
+#         def remove_file(self, fname):
+#             self.takeItem(self.file_position[fname])
+#
+#     filelist = FileList()
+#     app.connect(app, server.fileAddedSignal, filelist.add_file)
+#     app.connect(app, server.fileRemovedSignal, filelist.remove_file)
+#     app.connect(app, server.resetSignal, filelist.clear)
+#
+#     reset_button = qt.QPushButton('Reset Server')
+#     reset_button.clicked.connect(server.restart)
+#     layout.addWidget(filelist)
+#     layout.addWidget(reset_button)
+#     win.setCentralWidget(widget)
+#     app.connect(app, qt.SIGNAL("lastWindowClosed()"), server.close)
+#     win.show()
+#     app.exec_()

@@ -14,7 +14,7 @@ import msvcrt
 try:
     from liveplot import LivePlotClient
 except:
-    print "Error in loading liveplot"
+    print("Error in loading liveplot")
 
 class wigglewiggle():
     def __init__(self, msmtname, datapath, scriptname,
@@ -117,7 +117,7 @@ class wigglewiggle():
 
     def create_file_for_write(self, datafoldername, measurement_name):
         fname = get_next_filename(datafoldername + '\\', measurement_name, suffix='.h5')
-        print 'Created file %s...' % fname
+        print('Created file %s...' % fname)
         FileHandler = dataCacheProxy(expInst=measurement_name, filepath=os.path.join(datafoldername, fname + '.h5'))
         return FileHandler, fname
 
@@ -141,10 +141,10 @@ class wigglewiggle():
             if instrument not in do_not_test:
                 try:
                     getattr(self.im[instrument], query)()
-                    print "Established connection with {}".format(instrument)
+                    print("Established connection with {}".format(instrument))
                     time.sleep(0.1)
                 except:
-                    print "ERROR for {}".format(instrument)
+                    print("ERROR for {}".format(instrument))
                     no_error = False
 
         if no_error:
@@ -154,7 +154,7 @@ class wigglewiggle():
 
     def power_ok(self, power, threshold=0):
         if power > threshold:
-            print "Power exceeded threshold of %d dBm. Aborting measurement." % threshold
+            print("Power exceeded threshold of %d dBm. Aborting measurement." % threshold)
             return False
         else:
             return True
@@ -162,7 +162,7 @@ class wigglewiggle():
 
     def flux_bias_ok(self, current, threshold):
         if np.abs(current) > threshold:
-            print "Current exceeds threshold of %d mA. Aborting measurement." % threshold
+            print("Current exceeds threshold of %d mA. Aborting measurement." % threshold)
             return False
         else:
             return True
@@ -172,9 +172,9 @@ class wigglewiggle():
         self.alazar = Alazar()
 
         try:
-            print "new configuration file"
+            print("new configuration file")
             cfg = AlazarConfig(config_dict)
-            print "config file has to pass through the AlazarConfig middleware."
+            print("config file has to pass through the AlazarConfig middleware.")
             self.alazar.configure(cfg)
             return True
         except:
@@ -192,7 +192,7 @@ class wigglewiggle():
 
         if self.power_ok(power, threshold=self.na_cfg['na_power_threshold']):
 
-            if verbose: print "Configuring the NWA"
+            if verbose: print("Configuring the NWA")
             self.na.set_start_frequency(fstart)
             self.na.set_stop_frequency(fstop)
             self.na.set_power(power)
@@ -204,7 +204,7 @@ class wigglewiggle():
 
             time.sleep(0.1)
 
-            if verbose: print "Taking data"
+            if verbose: print("Taking data")
             fpoints, mags, phases = self.na.take_one_averaged_trace()
 
             if save:
@@ -225,7 +225,7 @@ class wigglewiggle():
         for the power and the number of steps. 
         """
         p = np.linspace(pwr_start, pwr_stop, steps)
-        print "Starting NWA powersweep..."
+        print("Starting NWA powersweep...")
 
         fpoints = np.empty((steps, self.na_cfg['na_sweep_pts']), dtype=np.float64)
         mags = np.empty((steps, self.na_cfg['na_sweep_pts']), dtype=np.float64)
@@ -234,7 +234,7 @@ class wigglewiggle():
         self.plotter.clear()
 
         for sweep_idx, P in enumerate(p):
-            print "\tP = %.2f dBm (%.1f%%)" % (P, sweep_idx / float(steps) * 100)
+            print("\tP = %.2f dBm (%.1f%%)" % (P, sweep_idx / float(steps) * 100))
             f, db, phi = self.take_single_trace(FileHandler,
                                                 self.na_cfg['na_start'],
                                                 self.na_cfg['na_stop'],
@@ -281,7 +281,7 @@ class wigglewiggle():
         """
 
         i = np.linspace(current_start, current_stop, steps)
-        print "Starting Yoko currentsweep..."
+        print("Starting Yoko currentsweep...")
 
         self.jpa_bias.set_mode(mode='curr')
         self.jpa_bias.set_current(0)
@@ -298,7 +298,7 @@ class wigglewiggle():
             if self.flux_bias_ok(I, self.jpa_cfg['flux_bias_limit']):
                 self.jpa_bias.set_current(I)
                 time.sleep(0.2)
-                print "\tI = %.6f mA (%.1f%%)" % (I * 1E3, sweep_idx / float(steps) * 100)
+                print("\tI = %.6f mA (%.1f%%)" % (I * 1E3, sweep_idx / float(steps) * 100))
                 f, db, phi = self.take_single_trace(FileHandler,
                                                     self.na_cfg['na_start'],
                                                     self.na_cfg['na_stop'],
@@ -342,7 +342,7 @@ class wigglewiggle():
         The time between each puff is specified by wait_time, and is 1s by default. 
         After each puff a spectrum is taken and after noof_puffs puffs the file is saved.
         """
-        user_is_awake = raw_input("Starting helium puff sequence. Press 'c' to continue.")
+        user_is_awake = input("Starting helium puff sequence. Press 'c' to continue.")
         datafoldername = self.create_new_datafolder(datapath, measurement_name, self.today, self.timestamp)
         shutil.copy(os.path.join(self.scriptpath, self.scriptname),
                     os.path.join(datafoldername, self.scriptname))
@@ -355,14 +355,14 @@ class wigglewiggle():
                                              filepath=os.path.join(datafoldername, '%s.h5' % measurement_name))
                 time.sleep(0.1)
 
-            print "Helium puff sequence about to start..."
+            print("Helium puff sequence about to start...")
 
             puff = np.arange(noof_puffs)
 
             for puff_idx in puff:
 
                 if manual:
-                    another_puff = raw_input("Press 'c' for another puff")
+                    another_puff = input("Press 'c' for another puff")
                     if another_puff == 'c':
                         pass
                     else:
@@ -372,7 +372,7 @@ class wigglewiggle():
                     start_time = time.time()
 
                     while not settled:
-                        print "...",
+                        print("...", end=' ')
                         settled = (self.fridge.get_mc_temperature() < max_temp) and ((time.time() - start_time) > 60)
                         #start pumping
                         self.heman.set_cryostat(False)
@@ -381,8 +381,8 @@ class wigglewiggle():
                         time.sleep(1)
 
                 self.heman.puff(pressure=puff_pressure, min_time=60, timeout=pressure_drop_timeout)
-                print "\n%s Puff %d (%.1f%% done)" % (time.strftime("%H%M%S"), puff_idx + 1,
-                                                      (puff_idx + 1) / float(noof_puffs) * 100)
+                print("\n%s Puff %d (%.1f%% done)" % (time.strftime("%H%M%S"), puff_idx + 1,
+                                                      (puff_idx + 1) / float(noof_puffs) * 100))
 
                 if start_stop_pairs is None:
 
@@ -443,15 +443,15 @@ class wigglewiggle():
 
                 if save:
                     self.save_nwa_config(FileHandler)
-                    print "Done writing to stack %s..." % FileHandler.current_stack
+                    print("Done writing to stack %s..." % FileHandler.current_stack)
                 else:
                     return points, mags, phases
 
         else:
             if self.heman.get_pressure() > pressure_limit:
-                print "Measurement aborted, pressure > %.2e mbar" % pressure_limit
+                print("Measurement aborted, pressure > %.2e mbar" % pressure_limit)
             else:
-                print "Measurement aborted by user."
+                print("Measurement aborted by user.")
 
 
     def get_sa_trace(self):

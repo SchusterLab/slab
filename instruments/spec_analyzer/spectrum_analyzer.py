@@ -40,7 +40,7 @@ class SpectrumAnalyzer(SerialInstrument, SocketInstrument):
                                       timeout, recv_length, baudrate=baudrate, querysleep=query_sleep)
             self.term_char = ''
             time.sleep(2)
-            print self.read()
+            print(self.read())
         elif self.protocol == 'socket':
             if ':' in address:
                 SocketInstrument.__init__(self, name, address, enabled, 
@@ -52,7 +52,7 @@ class SpectrumAnalyzer(SerialInstrument, SocketInstrument):
             self.term_char = ''
             self.query_sleep = query_sleep
         else:
-            print 'The protocol requested is not valid.' 
+            print('The protocol requested is not valid.') 
         
     def read(self):
         if self.protocol == 'serial':
@@ -99,5 +99,5 @@ if __name__ == '__main__':
     #lo.set_output()
     #rf.set_output()
     
-    print sa.get_power()
-    print sa.get_avg_power()
+    print(sa.get_power())
+    print(sa.get_avg_power())

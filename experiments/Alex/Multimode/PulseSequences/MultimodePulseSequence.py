@@ -89,7 +89,7 @@ class MultimodeCalibrateOffsetSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.exp = self.extra_args['exp']
@@ -129,7 +129,7 @@ class MultimodeCalibrateEFSidebandSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.exp = self.extra_args['exp']
@@ -206,7 +206,7 @@ class MultimodeRabiSweepSequence(QubitPulseSequence):
         self.qubit_cfg = cfg['qubit']
         self.pulse_cfg = cfg['pulse_info']
 
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.flux_freq = self.extra_args['flux_freq']
@@ -228,7 +228,7 @@ class MultimodeRabiSweepSequence(QubitPulseSequence):
 class MultimodeDCOffsetSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
         self.extra_args = {}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         self.amp = self.extra_args['amp']
@@ -256,7 +256,7 @@ class MultimodeEFRabiSweepSequence(QubitPulseSequence):
         self.extra_args={}
         self.qubit_cfg = cfg['qubit']
         self.pulse_cfg = cfg['pulse_info']
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.flux_freq = self.extra_args['flux_freq']
@@ -311,7 +311,7 @@ class MultimodeGeneralEntanglementSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         self.id1 = self.extra_args['id1']
@@ -352,7 +352,7 @@ class MultimodeEntanglementScalingSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         self.id1 = self.extra_args['id1']
@@ -1171,7 +1171,7 @@ class CPhaseOptimizationSweepSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.idle_time = self.extra_args['idle_time']
@@ -1520,7 +1520,7 @@ class MultimodeTwoResonatorTomographyPhaseSweepSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.tomography_num = self.extra_args['tomography_num']
@@ -1733,7 +1733,7 @@ class MultimodeThreeModeCorrelationSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.tomo_index = self.extra_args['tomography_num']

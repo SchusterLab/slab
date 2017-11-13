@@ -6,7 +6,7 @@ from numpy import arange, linspace
 from slab.experiments.Hafnium.ExpLib.PulseWaveformBuildingLibrary import *
 from slab.instruments.pulseblaster.pulseblaster_hafnium import start_pulseblaster
 import math
-from liveplot import LivePlotClient
+#from liveplot import LivePlotClient
 
 
 class Pulse():

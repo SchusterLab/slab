@@ -28,9 +28,9 @@ def test_slabfile():
     error=False
     for k in d:
         if d2[k]!=d[k]:
-            print "Error! loaded item != to original: ", str(d2[k])," != ", str(d[k])
-    if not error: print "Passed: Save/load settings."
-    else: print "Failed: Rewrite settings."
+            print("Error! loaded item != to original: ", str(d2[k])," != ", str(d[k]))
+    if not error: print("Passed: Save/load settings.")
+    else: print("Failed: Rewrite settings.")
     
     #print "Test rewriting settings"
     d3={'a':2,'b':2.1,'c':'This is a string!','d':'Extra string'}    
@@ -44,9 +44,9 @@ def test_slabfile():
     error=False
     for k in d:
         if d4[k]!=d3[k]:
-            print "Error! loaded item != to original: ", str(d4[k])," != ", str(d3[k])
-    if not error: print "Passed: Rewrite settings."
-    else: print "Failed: Rewrite settings."
+            print("Error! loaded item != to original: ", str(d4[k])," != ", str(d3[k]))
+    if not error: print("Passed: Rewrite settings.")
+    else: print("Failed: Rewrite settings.")
     os.remove(fname)
     
 def test_append_data():
@@ -82,7 +82,7 @@ def test_append_data():
         f.append_pt(f['fpts'],freqs[ii])
         f.close()
 
-    print "Append test: %f" %(time.time()-t0)
+    print("Append test: %f" %(time.time()-t0))
     f2=SlabFile(fname)
     data2=array(f['Rabi'])
     f2.close()
@@ -90,8 +90,8 @@ def test_append_data():
     plt.imshow(data2)
     plt.show()
 
-    if not error: print "Passed: Append data."
-    else: print "Failed: Append data."
+    if not error: print("Passed: Append data.")
+    else: print("Failed: Append data.")
         
     
     

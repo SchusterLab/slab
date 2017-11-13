@@ -25,12 +25,12 @@ class QubitPulseSequence(PulseSequence):
         calibration_pts = []
 
         if (expt_cfg['use_g-e-f_calibration']):
-            calibration_pts = range(3)
+            calibration_pts = list(range(3))
             sequence_length+=3
         elif (expt_cfg['use_pi_calibration']):
-            calibration_pts = range(2)
+            calibration_pts = list(range(2))
             sequence_length+=2
-        print 'calibration_pts =', calibration_pts
+        print('calibration_pts =', calibration_pts)
 
         PulseSequence.__init__(self, name, cfg['awgs'], sequence_length)
 
@@ -68,7 +68,7 @@ class QubitPulseSequence(PulseSequence):
                 self.total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())
                 self.total_flux_pulse_span_length_list.append(self.psb.get_total_flux_pulse_span_length())
 
-        print 'total_pulse_span_length_list', self.total_pulse_span_length_list
+        print('total_pulse_span_length_list', self.total_pulse_span_length_list)
 
         max_length = self.psb.get_max_length(self.total_pulse_span_length_list)
         max_flux_length = self.psb.get_max_flux_length(self.total_flux_pulse_span_length_list)
@@ -109,12 +109,12 @@ class QubitPulseSequence(PulseSequence):
         max_flux_length = round_samples( max(self.flux_pulse_span_list)+ 2 * self.psb.start_end_buffer)
         self.set_all_lengths(max(max_flux_length,max_length))
 
-        print 'max length =', max_length, 'ns'
-        print 'max flux length =', max_flux_length, 'ns'
+        print('max length =', max_length, 'ns')
+        print('max flux length =', max_flux_length, 'ns')
         if max(max_flux_length,max_length) >= self.cfg["expt_trigger"]["period_ns"]:
-            print 'Error!! Max sequence length larger than Exp period! '
-        print 'flux_max_area_list = [', ', '.join(map(str, flux_max_area_list)), ']'
-        print 'flux_max_power_list = [', ', '.join(map(str, flux_max_power_list)), ']'
+            print('Error!! Max sequence length larger than Exp period! ')
+        print('flux_max_area_list = [', ', '.join(map(str, flux_max_area_list)), ']')
+        print('flux_max_power_list = [', ', '.join(map(str, flux_max_power_list)), ']')
 
         # import csv
         # with open(r'C:\slab_data_temp\fast_flux_kernels\flux_max_area.csv', 'a') as csvfile:
@@ -240,10 +240,10 @@ class QubitPulseSequence(PulseSequence):
                 het_a_list = array([self.cfg['readout']['heterodyne_a']])
                 het_IFreqList = het_read_freq_list - het_carrier_freq
 
-        print 'het_carrier_freq', het_carrier_freq
-        print 'het_read_freq_list', het_read_freq_list
-        print 'het_a_list', het_a_list
-        print 'het_IFreqList', het_IFreqList
+        print('het_carrier_freq', het_carrier_freq)
+        print('het_read_freq_list', het_read_freq_list)
+        print('het_a_list', het_a_list)
+        print('het_IFreqList', het_IFreqList)
 
         # phase slope, referenced to het_carrier_freq
         # het_phase_list = [(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * ii )%360
@@ -251,7 +251,7 @@ class QubitPulseSequence(PulseSequence):
         het_phase_list = [0.0 for ii in het_IFreqList]
 
         if sum(het_a_list) > 1:
-            print 'Warning! Sum of heterodyne amplitudes > 1 in QubitPulseSequence.'
+            print('Warning! Sum of heterodyne amplitudes > 1 in QubitPulseSequence.')
 
         if not self.cfg['readout']['is_fast_awg']:
 
@@ -309,7 +309,7 @@ class QubitPulseSequence(PulseSequence):
                 self.waveforms_tpts_dict[waveform['name']] = self.get_waveform_times(waveform['name'])
 
         start_time = time.time()
-        print '\nStart building sequences...(QubitPulseSequence.py)'
+        print('\nStart building sequences...(QubitPulseSequence.py)')
 
         self.psb.prepare_build(self.waveforms_tpts_dict,self.waveforms_dict)
 
@@ -323,7 +323,7 @@ class QubitPulseSequence(PulseSequence):
             self.waveforms[waveform_key] = self.waveforms_dict[waveform_key]
 
         end_time = time.time()
-        print 'Finished building sequences in', end_time - start_time, 'seconds.\n'
+        print('Finished building sequences in', end_time - start_time, 'seconds.\n')
 
         # np.save('S:\\_Data\\160711 - Nb Tunable Coupler\\data\\waveform.npy',self.waveforms['qubit drive Q'])
         ### in ipython notebook: call np.load('file_path/file_name.npy')

@@ -1,10 +1,10 @@
 import rpyc
 
-from raw_memory import BoardRawMemory
+from .raw_memory import BoardRawMemory
 
 class MyService(rpyc.Service):
     def on_connect(self):
-        print "CONNECTION"
+        print("CONNECTION")
         self._mem = BoardRawMemory()
         self._conn._config.update(dict(
             allow_all_attrs = True,
@@ -23,6 +23,6 @@ class MyService(rpyc.Service):
 
 if __name__=="__main__":
     from rpyc.utils.server import ThreadedServer
-    print 'START SERVER'
+    print('START SERVER')
     t = ThreadedServer(MyService, port = 18861)
     t.start()

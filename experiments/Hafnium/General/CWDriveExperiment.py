@@ -27,7 +27,7 @@ class CWDriveExperiment(Experiment):
         if self.liveplot_enabled:
             self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_output(True)
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=False)
@@ -47,7 +47,7 @@ class CWDriveExperiment(Experiment):
         except:
             print("error in setting awg")
 
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(self.cfg['alazar'])
 
         for freq in self.expt_pts:

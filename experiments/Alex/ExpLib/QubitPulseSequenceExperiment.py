@@ -21,7 +21,7 @@ class QubitPulseSequenceExperiment(Experiment):
 
         self.extra_args = {}
 
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             # print str(key) + ": " + str(value)
 
@@ -96,7 +96,7 @@ class QubitPulseSequenceExperiment(Experiment):
         # print 'wait 30 secs'
         # time.sleep(30)
 
-        print "Prep Instruments"
+        print("Prep Instruments")
 
         try:
             if self.cfg['readout']['is_multitone_heterodyne']:
@@ -107,7 +107,7 @@ class QubitPulseSequenceExperiment(Experiment):
             self.readout.set_ext_pulse(mod=self.cfg['readout']['mod'])
             self.readout.set_output(True)
         except:
-            print "No readout found."
+            print("No readout found.")
 
         try:
             if self.cfg['readout']['is_multitone_heterodyne']:
@@ -117,7 +117,7 @@ class QubitPulseSequenceExperiment(Experiment):
                     self.cfg['readout']['frequency'] - self.cfg['readout']['bare_frequency']),
                                                self.cfg['readout']['frequency'])
         except:
-            print "Digital phase shifter not loaded."
+            print("Digital phase shifter not loaded.")
 
         try:
             self.drive.set_frequency(
@@ -126,12 +126,12 @@ class QubitPulseSequenceExperiment(Experiment):
             self.drive.set_ext_pulse(mod=self.cfg['drive']['mod'])
             self.drive.set_output(True)
         except:
-            print "No drive found"
+            print("No drive found")
 
         try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
         except:
-            print "Digital attenuator not loaded."
+            print("Digital attenuator not loaded.")
 
         try:
             self.cfg['freq_flux']['flux'] = self.extra_args['flux']
@@ -159,9 +159,9 @@ class QubitPulseSequenceExperiment(Experiment):
         try:
             self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
         except:
-            print "self.awg not loaded."
+            print("self.awg not loaded.")
 
-        print '\nFilename:', self.slab_file.filename, '\n'
+        print('\nFilename:', self.slab_file.filename, '\n')
 
         self.take_data()
 
@@ -179,7 +179,7 @@ class QubitPulseSequenceExperiment(Experiment):
         if not TEST_REDPITAYA:
 
             if self.adc == None:
-                print "Prep Card"
+                print("Prep Card")
                 adc = Alazar(self.cfg['alazar'])
             else:
                 adc = self.adc
@@ -285,7 +285,7 @@ class QubitPulseSequenceExperiment(Experiment):
 
                 if self.prefix == 'Vacuum_Rabi':
 
-                    print 'vacuum_rabi'
+                    print('vacuum_rabi')
                     het_IFreqList = [self.cfg['readout']['heterodyne_freq']]
                     het_read_freq_list = [0]
 
@@ -540,7 +540,7 @@ class QubitPulseSequenceExperiment(Experiment):
         im = InstrumentManager()
         im['M8195A'].stop_output()
 
-        for key, value in LocalInstruments().inst_dict.iteritems():
+        for key, value in LocalInstruments().inst_dict.items():
             value.stop()
 
     def awg_run(self):
@@ -556,7 +556,7 @@ class QubitPulseSequenceExperiment(Experiment):
 
         im['M8195A'].start_output()
 
-        for key, value in LocalInstruments().inst_dict.iteritems():
+        for key, value in LocalInstruments().inst_dict.items():
             value.run_experiment()
 
         time.sleep(1)

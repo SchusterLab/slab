@@ -16,7 +16,7 @@ class HistogramHeteroExperiment(Experiment):
 
         self.extra_args={}
 
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -79,7 +79,7 @@ class HistogramHeteroExperiment(Experiment):
         if self.liveplot_enabled:
             self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=self.cfg['readout']['mod'])
@@ -92,9 +92,9 @@ class HistogramHeteroExperiment(Experiment):
         try:
             self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
         except:
-            print "self.awg not loaded."
+            print("self.awg not loaded.")
 
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(self.cfg['alazar'])
 
         heterodyne_carrier_freq = self.cfg['readout']['heterodyne_carrier_freq']
@@ -116,7 +116,7 @@ class HistogramHeteroExperiment(Experiment):
             try:
                 self.readout_atten.set_attenuator(atten)
             except:
-                print "Digital attenuator not loaded."
+                print("Digital attenuator not loaded.")
 
             max_contrast_data = zeros((2,len(freqpts)))
 
@@ -131,7 +131,7 @@ class HistogramHeteroExperiment(Experiment):
                 ss_data = zeros((len(self.expt_pts), num_bins))
                 sss_data = zeros((len(self.expt_pts), num_bins))
 
-                print "runnning atten no.", xx, ", freq no.", yy
+                print("runnning atten no.", xx, ", freq no.", yy)
 
                 single_data1, single_data2, single_record1, single_record2 = \
                     adc.acquire_singleshot_heterodyne_data(self.cfg['readout']['heterodyne_freq'],\
@@ -164,7 +164,7 @@ class HistogramHeteroExperiment(Experiment):
 
                     ssthis = reshape(ssthis, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
 
-                    print 'ss i/q ch', str(kk+1), 'max/min =', ssthis.max(), ssthis.min()
+                    print('ss i/q ch', str(kk+1), 'max/min =', ssthis.max(), ssthis.min())
                     dist = ssthis.max() - ssthis.min()
                     histo_range = (ssthis.min() - 0.01*dist, ssthis.max() + 0.01*dist)
 

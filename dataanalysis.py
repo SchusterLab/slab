@@ -14,7 +14,7 @@ from numpy import linspace,argmin,argmax, argsort, genfromtxt,loadtxt,array,tran
 import dateutil
 import time
 #import inspect
-from datamanagement import get_script
+from .datamanagement import get_script
 import matplotlib
 import matplotlib.pyplot as plt
 ###################################################
@@ -223,7 +223,7 @@ def tic():
 def toc(log=False):
     global last_tic
     t=time.time()
-    if log: print "Tic-Toc: %.0f ms" % ((t-last_tic)*1000.)
+    if log: print("Tic-Toc: %.0f ms" % ((t-last_tic)*1000.))
     return t-last_tic
     
 def digital_homodyne(time_pts,ch1_pts,ch2_pts=None,IFfreq=1,dfactor=1.,AmpPhase=False):
@@ -277,7 +277,7 @@ def heterodyne(time_pts,ch1_pts,ch2_pts=None,IFfreq=1,AmpPhase=True,anti_alias=T
     #anti alias makes sure that there are an integer number of IFFreq cycles in the array of points
     if anti_alias:    
         stop_pt=int(np.floor(len(time_pts)*(IFfreq*(time_pts[1]-time_pts[0])))/(IFfreq*(time_pts[1]-time_pts[0])))
-        print stop_pt
+        print(stop_pt)
     else:
         stop_pt=len(time_pts)
         

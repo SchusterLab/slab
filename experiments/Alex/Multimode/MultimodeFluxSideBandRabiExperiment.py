@@ -21,14 +21,14 @@ class MultimodeFluxSideBandRabiExperiment(Experiment):
             self.mm_flux_sideband_freq_pts = linspace(self.mm_flux_sideband_cfg['start_freq'], self.mm_flux_sideband_cfg['stop_freq'], self.mm_flux_sideband_cfg['freq_num_pts'])
 
         if self.cfg['pulse_info'][self.pulse_type] is None:
-            print "This pulse type is not valid."
+            print("This pulse type is not valid.")
             self.ready_to_go = False
             return
 
         pulse_calibrated = self.cfg['pulse_info'][self.pulse_type]['rabi_calibrated']
 
         if not pulse_calibrated:
-            print "This pulse type has not been calibrated."
+            print("This pulse type has not been calibrated.")
             self.ready_to_go = False
             return
 
@@ -55,7 +55,7 @@ class MultimodeFluxSideBandRabiExperiment(Experiment):
 
         # self.save_config()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=True)
@@ -90,7 +90,7 @@ class MultimodeFluxSideBandRabiExperiment(Experiment):
             self.plotter.plot_z('MM Flux Sideband Rabi Data', mm_flux_sideband_data.T)
             mm_flux_sideband_avg_data = mean(mm_flux_sideband_data, 1)
             self.plotter.plot_xy('MM Flux Sideband Rabi XY', self.pulse_sequence.mm_flux_sideband_pts, mm_flux_sideband_avg_data)
-            print ii * min(self.cfg['mm_flux_sideband']['averages'], 100)
+            print(ii * min(self.cfg['mm_flux_sideband']['averages'], 100))
 
         #self.plotter.append_z('MM Flux Sideband Rabi Freq Sweep',mm_flux_sideband_avg_data)
         with self.datafile() as f:
@@ -102,7 +102,7 @@ class MultimodeFluxSideBandRabiExperiment(Experiment):
 
     ## hard coding tek7 preparation, why need to stop and run, but not just preping it??
     def awgs_prep(self):
-        print "Preparing TEKs"
+        print("Preparing TEKs")
         self.awg.stop_and_prep()
         self.tek7.stop()
         self.tek7.prep_experiment()

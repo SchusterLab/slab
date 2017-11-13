@@ -32,7 +32,7 @@ class VacuumRabiExperiment(Experiment):
         if self.liveplot_enabled:
             self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_output(True)
         self.readout.set_power(self.cfg['readout']['power'])
         if (self.cfg[self.expt_cfg_name]['pulsed']):
@@ -50,25 +50,25 @@ class VacuumRabiExperiment(Experiment):
                 self.drive.set_output(True)
             else:
                 self.drive.set_output(False)
-            print "Drive set successfully.."
+            print("Drive set successfully..")
 
         except:
-            print "No drive found"
+            print("No drive found")
 
         self.drive.set_ext_pulse(mod=False)
 
         try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
         except:
-            print "Error in setting digital attenuator."
+            print("Error in setting digital attenuator.")
 
         try:
             self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
             self.awg.run()
         except:
-            print "error in setting self.awg"
+            print("error in setting self.awg")
 
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(self.cfg['alazar'])
 
 

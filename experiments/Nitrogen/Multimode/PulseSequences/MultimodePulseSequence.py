@@ -120,7 +120,7 @@ class MultimodeCalibrateOffsetSequence(QubitPulseSequence):
         self.flux_pulse_cfg = cfg['flux_pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.exp = self.extra_args['exp']
@@ -144,7 +144,7 @@ class MultimodeCalibrateOffsetSequence(QubitPulseSequence):
                 self.phase_freq = self.expt_cfg[self.exp]['ramsey_freq']
             else:
                 self.phase_freq = self.dc_offset_guess+ self.expt_cfg[self.exp]['ramsey_freq']
-                print "DC offset guess (pulse sequence)= " + str(self.dc_offset_guess) + " Hz"
+                print("DC offset guess (pulse sequence)= " + str(self.dc_offset_guess) + " Hz")
 
 
     def define_pulses(self,pt):
@@ -168,7 +168,7 @@ class MultimodeEchoSidebandSequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         if 'modelist' in self.extra_args:
@@ -217,7 +217,7 @@ class MultimodeEchoSidebandSequence(QubitPulseSequence):
             self.load_photon = self.expt_cfg['load_photon']
 
 
-        print "Target id: " +str(self.id)
+        print("Target id: " +str(self.id))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -306,7 +306,7 @@ class MultimodeQubitModeCrossKerrSequence(QubitPulseSequence):
         self.flux_pulse_cfg = cfg['flux_pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -349,7 +349,7 @@ class MultimodeCalibrateEFSidebandSequence(QubitPulseSequence):
         self.flux_pulse_cfg=cfg['flux_pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         if 'mode' in self.extra_args:
@@ -399,7 +399,7 @@ class MultimodeCalibrateEFSidebandSequence(QubitPulseSequence):
             else:
                 self.phase_freq = self.dc_offset_guess_ef + self.expt_cfg[self.exp]['ramsey_freq']
 
-                print "ef DC offset guess (pulse sequence) = "+str(self.dc_offset_guess_ef) + " Hz"
+                print("ef DC offset guess (pulse sequence) = "+str(self.dc_offset_guess_ef) + " Hz")
 
     def define_pulses(self,pt):
 
@@ -463,12 +463,12 @@ class MultimodeRabiSweepSequence(QubitPulseSequence):
         self.qubit_cfg = cfg['qubit']
         self.pulse_cfg = cfg['pulse_info']
 
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
         self.flux_freq = self.extra_args['flux_freq']
-        print "flux_freq: " +str(self.flux_freq)
+        print("flux_freq: " +str(self.flux_freq))
 
         if 'amp' in kwargs:
             self.amp = kwargs['amp']
@@ -504,7 +504,7 @@ class MultimodeBlueSidebandSweepSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -654,7 +654,7 @@ class MultimodeBlueSidebandSweepSequence(QubitPulseSequence):
 class MultimodeDCOffsetSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
         self.extra_args = {}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         self.multimode_cfg = cfg['multimodes']
@@ -717,7 +717,7 @@ class MultimodeEFRabiSweepSequence(QubitPulseSequence):
         self.extra_args={}
         self.qubit_cfg = cfg['qubit']
         self.pulse_cfg = cfg['pulse_info']
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.flux_freq = self.extra_args['flux_freq']
@@ -752,7 +752,7 @@ class MultimodeChargeSidebandRabiSweepSequence(QubitPulseSequence):
         self.extra_args={}
         self.qubit_cfg = cfg['qubit']
         self.pulse_cfg = cfg['pulse_info']
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.flux_freq = self.extra_args['flux_freq']
@@ -792,7 +792,7 @@ class MultimodeRabiLineCutSweepSequence(QubitPulseSequence):
         self.extra_args={}
         self.qubit_cfg = cfg['qubit']
         self.pulse_cfg = cfg['pulse_info']
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.flux_freq = self.extra_args['flux_freq']
@@ -834,7 +834,7 @@ class MultimodeT1Sequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args = {}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -869,7 +869,7 @@ class MultimodeGeneralEntanglementSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         if 'id1' in self.extra_args:
@@ -898,10 +898,10 @@ class MultimodeGeneralEntanglementSequence(QubitPulseSequence):
         else:
             self.ghz = True
 
-        print "id1 = "  + str(self.id1)
-        print "id2 = "  + str(self.id2)
-        print "id3 = "  + str(self.id3)
-        print "idm = "  + str(self.idm)
+        print("id1 = "  + str(self.id1))
+        print("id2 = "  + str(self.id2))
+        print("id3 = "  + str(self.id3))
+        print("idm = "  + str(self.idm))
 
 
         self.number = self.extra_args['number']
@@ -958,7 +958,7 @@ class MultimodeEntanglementScalingSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         self.id1 = self.extra_args['id1']
@@ -1048,7 +1048,7 @@ class MultimodeEntanglementSequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
@@ -1106,7 +1106,7 @@ class MultimodeEntanglementSequence(QubitPulseSequence):
 
         if self.two_mode:
 
-             print "(id1, id2, idm) = (" + str(self.id1) + ", " + str(self.id2) + ", " + str(self.idm) +")"
+             print("(id1, id2, idm) = (" + str(self.id1) + ", " + str(self.id2) + ", " + str(self.idm) +")")
 
     def define_pulses(self,pt):
         #
@@ -1142,7 +1142,7 @@ class MultimodePi_PiSequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         if 'sweep_time' in self.extra_args:
@@ -1167,7 +1167,7 @@ class MultimodePi_PiSequence(QubitPulseSequence):
         else:
             self.id = self.expt_cfg['id']
 
-        print "Target id: " +str(self.id)
+        print("Target id: " +str(self.id))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -1224,7 +1224,7 @@ class MultimodePi_PiTestSequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -1240,7 +1240,7 @@ class MultimodePi_PiTestSequence(QubitPulseSequence):
         else:
             self.id = self.expt_cfg['id']
 
-        print "Target id: " +str(self.id)
+        print("Target id: " +str(self.id))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -1315,7 +1315,7 @@ class Multimode_Qubit_Mode_CZ_Offset_Sequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -1355,7 +1355,7 @@ class Multimode_Qubit_Mode_CZ_Offset_Sequence(QubitPulseSequence):
             self.fix_qubit_freq = self.extra_args['fix_qubit_freq']
         else:
             self.fix_qubit_freq = self.expt_cfg['fix_qubit_freq']
-        print "Target id: " +str(self.id)
+        print("Target id: " +str(self.id))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -1500,7 +1500,7 @@ class Multimode_Qubit_Mode_CZ_V2_Offset_Sequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -1536,7 +1536,7 @@ class Multimode_Qubit_Mode_CZ_V2_Offset_Sequence(QubitPulseSequence):
         else:
             self.load_photon = self.expt_cfg['load_photon']
 
-        print "Target id: " +str(self.id)
+        print("Target id: " +str(self.id))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -1627,7 +1627,7 @@ class Multimode_Mode_Mode_CNOT_V2_Offset_Sequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -1665,8 +1665,8 @@ class Multimode_Mode_Mode_CNOT_V2_Offset_Sequence(QubitPulseSequence):
         else:
             self.number = self.expt_cfg['number']
 
-        print "Target id: " +str(self.id)
-        print "Target id2: " +str(self.id2)
+        print("Target id: " +str(self.id))
+        print("Target id2: " +str(self.id2))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -1850,7 +1850,7 @@ class Multimode_Mode_Mode_CZ_V3_Offset_Sequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         if 'sb_cool' in self.extra_args:
@@ -1898,8 +1898,8 @@ class Multimode_Mode_Mode_CZ_V3_Offset_Sequence(QubitPulseSequence):
         else:
             self.include_cz_correction = True
 
-        print "Target id: " +str(self.id)
-        print "Target id2: " +str(self.id2)
+        print("Target id: " +str(self.id))
+        print("Target id2: " +str(self.id2))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -2065,7 +2065,7 @@ class Multimode_Mode_Mode_CZ_V3_Offset_Sequence_Debug(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         if 'sb_cool' in self.extra_args:
@@ -2113,8 +2113,8 @@ class Multimode_Mode_Mode_CZ_V3_Offset_Sequence_Debug(QubitPulseSequence):
         else:
             self.include_cz_correction = True
 
-        print "Target id: " +str(self.id)
-        print "Target id2: " +str(self.id2)
+        print("Target id: " +str(self.id))
+        print("Target id2: " +str(self.id2))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -2191,7 +2191,7 @@ class Multimode_Mode_Mode_CZ_V4_Offset_Sequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -2234,8 +2234,8 @@ class Multimode_Mode_Mode_CZ_V4_Offset_Sequence(QubitPulseSequence):
         else:
             self.include_cz_correction = True
 
-        print "Target id: " +str(self.id)
-        print "Target id2: " +str(self.id2)
+        print("Target id: " +str(self.id))
+        print("Target id2: " +str(self.id2))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -2410,7 +2410,7 @@ class Multimode_Mode_Mode_CNOT_V3_Offset_Sequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         if 'sb_cool' in self.extra_args:
@@ -2457,8 +2457,8 @@ class Multimode_Mode_Mode_CNOT_V3_Offset_Sequence(QubitPulseSequence):
         else:
             self.include_cz_correction = True
 
-        print "Target id: " +str(self.id)
-        print "Target id2: " +str(self.id2)
+        print("Target id: " +str(self.id))
+        print("Target id2: " +str(self.id2))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -2581,7 +2581,7 @@ class Multimode_Mode_Mode_CZ_V2_Offset_Sequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -2623,8 +2623,8 @@ class Multimode_Mode_Mode_CZ_V2_Offset_Sequence(QubitPulseSequence):
         else:
             self.load_photon = self.expt_cfg['load_photon']
 
-        print "Target id: " +str(self.id)
-        print "Target id2: " +str(self.id2)
+        print("Target id: " +str(self.id))
+        print("Target id2: " +str(self.id2))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -2789,7 +2789,7 @@ class Multimode_AC_Stark_Shift_Offset_Sequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -2831,8 +2831,8 @@ class Multimode_AC_Stark_Shift_Offset_Sequence(QubitPulseSequence):
         else:
             self.load_photon = self.expt_cfg['load_photon']
 
-        print "Target id: " +str(self.id)
-        print "Target id2: " +str(self.id2)
+        print("Target id: " +str(self.id))
+        print("Target id2: " +str(self.id2))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -2878,7 +2878,7 @@ class Multimode_ef_2pi_Sequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
@@ -2898,8 +2898,8 @@ class Multimode_ef_2pi_Sequence(QubitPulseSequence):
         else:
             self.id2 = self.expt_cfg['id2']
 
-        print "ge mode id: " +str(self.id1)
-        print "ef mode id: " +str(self.id2)
+        print("ge mode id: " +str(self.id1))
+        print("ef mode id: " +str(self.id2))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -2930,7 +2930,7 @@ class Multimode_ef_Pi_PiSequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
@@ -2950,8 +2950,8 @@ class Multimode_ef_Pi_PiSequence(QubitPulseSequence):
         else:
             self.id2 = self.expt_cfg['id2']
 
-        print "ge mode id: " +str(self.id1)
-        print "ef mode id: " +str(self.id2)
+        print("ge mode id: " +str(self.id1))
+        print("ef mode id: " +str(self.id2))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -2987,7 +2987,7 @@ class CPhaseOptimizationSweepSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.idle_time = self.extra_args['idle_time']
@@ -3330,7 +3330,7 @@ class MultimodeTwoResonatorTomographyPhaseSweepSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.tomography_num = self.extra_args['tomography_num']
@@ -3543,7 +3543,7 @@ class MultimodeTwoResonatorTomographyPhaseSweepSequenceNEW(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.tomography_num = self.extra_args['tomography_num']
@@ -3774,7 +3774,7 @@ class MultimodeGHZEntanglementWitnessSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.tomography_num = self.extra_args['tomography_num']
@@ -3945,7 +3945,7 @@ class MultimodeconcatenatedGHZEntanglementWitnessSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.tomography_num = self.extra_args['tomography_num']
@@ -3969,7 +3969,7 @@ class MultimodeconcatenatedGHZEntanglementWitnessSequence(QubitPulseSequence):
             self.startstopstep = [0.0,1500.0,15.0]
 
 
-        print "Echo pi sweep = " + str(self.echo_pi_time_sweep)
+        print("Echo pi sweep = " + str(self.echo_pi_time_sweep))
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
 
 
@@ -3982,7 +3982,7 @@ class MultimodeconcatenatedGHZEntanglementWitnessSequence(QubitPulseSequence):
         sequence_num = self.states_num*self.tomography_pulse_num
         if self.echo_pi_time_sweep:
             self.expt_pts = arange(self.startstopstep[0],self.startstopstep[1],self.startstopstep[2])
-            print "Goes here"
+            print("Goes here")
         else:
             self.expt_pts = np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
 
@@ -4236,7 +4236,7 @@ class MultimodeThreeModeCorrelationSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.tomo_index = self.extra_args['tomography_num']
@@ -4397,7 +4397,7 @@ class MultimodeSingleResonatorRandomizedBenchmarkingSequenceb(QubitPulseSequence
         else:
             self.id = self.expt_cfg['id']
 
-        print "Target id: " +str(self.id)
+        print("Target id: " +str(self.id))
 
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
 
@@ -4444,13 +4444,13 @@ class MultimodeSingleResonatorRandomizedBenchmarkingSequenceb(QubitPulseSequence
         if self.expt_cfg['phase_offset']:
             self.offset_phase = self.pulse_cfg['gauss']['offset_phase']
             if not self.expt_cfg['split_pi']:
-                print "ERROR: Running offset phase correction without splitting pi pulse"
+                print("ERROR: Running offset phase correction without splitting pi pulse")
             else:
                 pass
         else:
             self.offset_phase = 0
 
-        print "Offset phase = %s"%(self.offset_phase)
+        print("Offset phase = %s"%(self.offset_phase))
         clist1 = [0,1,1,1,3,3] # index of IXYZ
         clist2 = [0, np.pi/2,np.pi,-np.pi/2,np.pi/2,-np.pi/2]
 
@@ -4583,9 +4583,9 @@ class MultimodeSingleResonatorRandomizedBenchmarkingSequenceb(QubitPulseSequence
                                 self.xnumber+=1
 
         if found == 0 :
-            print "Error! Some pulse's inverse was not found."
+            print("Error! Some pulse's inverse was not found.")
         elif found > 1:
-            print "Error! Non unique inverse."
+            print("Error! Non unique inverse.")
 
 class MultimodeSingleResonatorRandomizedBenchmarkingSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -4597,7 +4597,7 @@ class MultimodeSingleResonatorRandomizedBenchmarkingSequence(QubitPulseSequence)
         else:
             self.id = self.expt_cfg['id']
 
-        print "Target id: " +str(self.id)
+        print("Target id: " +str(self.id))
 
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
 
@@ -4644,13 +4644,13 @@ class MultimodeSingleResonatorRandomizedBenchmarkingSequence(QubitPulseSequence)
         if self.expt_cfg['phase_offset']:
             self.offset_phase = self.pulse_cfg['gauss']['offset_phase']
             if not self.expt_cfg['split_pi']:
-                print "ERROR: Running offset phase correction without splitting pi pulse"
+                print("ERROR: Running offset phase correction without splitting pi pulse")
             else:
                 pass
         else:
             self.offset_phase = 0
 
-        print "Offset phase = %s"%(self.offset_phase)
+        print("Offset phase = %s"%(self.offset_phase))
         clist1 = [0,1,1,1,3,3] # index of IXYZ
         clist2 = [0, np.pi/2,np.pi,-np.pi/2,np.pi/2,-np.pi/2]
 
@@ -4783,9 +4783,9 @@ class MultimodeSingleResonatorRandomizedBenchmarkingSequence(QubitPulseSequence)
                                 self.xnumber+=1
 
         if found == 0 :
-            print "Error! Some pulse's inverse was not found."
+            print("Error! Some pulse's inverse was not found.")
         elif found > 1:
-            print "Error! Non unique inverse."
+            print("Error! Non unique inverse.")
 
 
         #print "Total number of half pi pulses = %s"%(self.xnumber)
@@ -4800,7 +4800,7 @@ class MultimodeQubitModeRandomizedBenchmarkingSequence(QubitPulseSequence):
         else:
             self.id = self.expt_cfg['id']
 
-        print "Target id: " +str(self.id)
+        print("Target id: " +str(self.id))
 
         QubitPulseSequence.__init__(self,name, cfg, expt_cfg,self.define_points, self.define_parameters, self.define_pulses)
 
@@ -4847,13 +4847,13 @@ class MultimodeQubitModeRandomizedBenchmarkingSequence(QubitPulseSequence):
         if self.expt_cfg['phase_offset']:
             self.offset_phase = self.pulse_cfg['gauss']['offset_phase']
             if not self.expt_cfg['split_pi']:
-                print "ERROR: Running offset phase correction without splitting pi pulse"
+                print("ERROR: Running offset phase correction without splitting pi pulse")
             else:
                 pass
         else:
             self.offset_phase = 0
 
-        print "Offset phase = %s"%(self.offset_phase)
+        print("Offset phase = %s"%(self.offset_phase))
         clist1 = [0,1,1,1,3,3] # index of IXYZ
         clist2 = [0, np.pi/2,np.pi,-np.pi/2,np.pi/2,-np.pi/2]
 
@@ -4990,9 +4990,9 @@ class MultimodeQubitModeRandomizedBenchmarkingSequence(QubitPulseSequence):
                                 self.xnumber+=1
 
         if found == 0 :
-            print "Error! Some pulse's inverse was not found."
+            print("Error! Some pulse's inverse was not found.")
         elif found > 1:
-            print "Error! Non unique inverse."
+            print("Error! Non unique inverse.")
 
 class MultimodeCPhaseAmplificationSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -5000,7 +5000,7 @@ class MultimodeCPhaseAmplificationSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -5064,7 +5064,7 @@ class MultimodeCNOTAmplificationSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.multimode_cfg = cfg['multimodes']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -5131,7 +5131,7 @@ class Multimode_State_Dep_Shift_Sequence(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -5195,7 +5195,7 @@ class Multimode_State_Dep_Shift_Sequence(QubitPulseSequence):
 
 
 
-        print "Target id: " +str(self.id)
+        print("Target id: " +str(self.id))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -5383,7 +5383,7 @@ class Multimode_State_Dep_Shift_Sequenceb(QubitPulseSequenceSBcool):
         self.multimode_cfg = cfg['multimodes']
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
         QubitPulseSequenceSBcool.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
@@ -5477,7 +5477,7 @@ class Multimode_State_Dep_Shift_Sequenceb(QubitPulseSequenceSBcool):
 
 
 
-        print "Target id: " +str(self.id)
+        print("Target id: " +str(self.id))
 
         self.pulse_type =  self.expt_cfg['pulse_type']
         self.flux_pulse_type = self.expt_cfg['flux_pulse_type']
@@ -5636,7 +5636,7 @@ class Multimode_State_Dep_Shift_Sequenceb(QubitPulseSequenceSBcool):
                 self.freq_shift_q=0
 
             half_pi_length = self.multimode_cfg[int(self.id)]['flux_pi_length'] -  (self.multimode_cfg[int(self.id)]['flux_2pi_length']-self.multimode_cfg[int(self.id)]['flux_pi_length'])/2.0
-            print half_pi_length
+            print(half_pi_length)
 
 
 
@@ -5816,7 +5816,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_1(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
         self.proc_tom = cfg['proc_tom_phases']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -5829,7 +5829,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_1(QubitPulseSequence):
             self.pair_index = self.extra_args['pair_index']
         else:
             self.pair_index = 0
-        print "Pair index= " + str(self.pair_index)
+        print("Pair index= " + str(self.pair_index))
 
 
         self.tomography_num = self.extra_args['tomography_num']
@@ -5843,25 +5843,25 @@ class MultimodeProcessTomographyPhaseSweepSequence_1(QubitPulseSequence):
             self.sweep_time = 0
 
         if 'phase_correct_cz' in self.extra_args:
-            print 'phase_correct_cz: ' + str(self.extra_args['phase_correct_cz'])
+            print('phase_correct_cz: ' + str(self.extra_args['phase_correct_cz']))
             if self.extra_args['phase_correct_cz']:
                 self.ef_phase_0 = self.proc_tom[self.pair_index]['ef_phase_0'][self.state_num][self.tomography_num]
-                print "ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0)
+                print("ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0))
 
         if 'phase_correct_cnot' in self.extra_args:
-            print 'phase_correct_cnot: ' + str(self.extra_args['phase_correct_cnot'])
+            print('phase_correct_cnot: ' + str(self.extra_args['phase_correct_cnot']))
             self.phase_correct_cnot = self.extra_args['phase_correct_cnot']
         else:
             self.phase_correct_cnot = False
 
         if self.phase_correct_cnot:
             self.ef_phase_1 = self.proc_tom[self.pair_index]['ef_phase_1'][self.state_num][self.tomography_num]
-            print "Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1)
+            print("Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1))
 
 
 
         if 'sweep_cnot' in self.extra_args:
-            print "CNOT phase sweep: " +str(self.extra_args['sweep_cnot'])
+            print("CNOT phase sweep: " +str(self.extra_args['sweep_cnot']))
             self.sweep_cnot = self.extra_args['sweep_cnot']
         else:
             self.sweep_cnot = False
@@ -5869,25 +5869,25 @@ class MultimodeProcessTomographyPhaseSweepSequence_1(QubitPulseSequence):
 
         if 'cnot_ef_qubit_phase' in self.extra_args:
             self.pi_ef_qubit_phase = self.extra_args['cnot_ef_qubit_phase']
-            print "Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg"
+            print("Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg")
         else:
             self.pi_ef_qubit_phase = 0
 
         if 'sweep_final_sb' in self.extra_args:
             self.sweep_final_sb = self.extra_args['sweep_final_sb']
-            print "Sweeping final sideband: " + str(self.sweep_final_sb)
+            print("Sweeping final sideband: " + str(self.sweep_final_sb))
         else:
             self.sweep_final_sb = False
 
         if 'ef_sb_offset' in self.extra_args:
             self.ef_sb_offset = self.extra_args['ef_sb_offset']
-            print "Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset)
+            print("Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset))
         else:
             self.ef_sb_offset = 0
 
         if 'sweep_ef_qubit_phase' in self.extra_args:
             self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
-            print "Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase)
+            print("Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase))
             self.ef_phase_1 += self.ef_sb_offset
         else:
             self.sweep_ef_qubit_phase = False
@@ -6171,7 +6171,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_2(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
         self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations.npy")
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -6205,26 +6205,26 @@ class MultimodeProcessTomographyPhaseSweepSequence_2(QubitPulseSequence):
             self.phase_correct_cz = self.extra_args['phase_correct_cz']
         else:
             self.phase_correct_cz = False
-        print 'phase_correct_cz: ' + str(self.phase_correct_cz)
+        print('phase_correct_cz: ' + str(self.phase_correct_cz))
 
         if self.phase_correct_cz:
             self.ef_phase_0 = self.proc_tom[0][self.state_num][self.tomography_num]
-            print "ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0)
+            print("ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0))
 
         if 'phase_correct_cnot' in self.extra_args:
             self.phase_correct_cnot = self.extra_args['phase_correct_cnot']
         else:
             self.phase_correct_cnot = False
 
-        print 'phase_correct_cnot: ' + str(self.phase_correct_cnot)
+        print('phase_correct_cnot: ' + str(self.phase_correct_cnot))
 
         if self.phase_correct_cnot:
             self.ef_phase_1 =  self.proc_tom[1][self.state_num][self.tomography_num]
-            print "Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1)
+            print("Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1))
 
         if 'cnot_ef_qubit_phase' in self.extra_args:
             self.pi_ef_qubit_phase = self.extra_args['cnot_ef_qubit_phase']
-            print "Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg"
+            print("Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg")
         else:
             self.pi_ef_qubit_phase = 0
 
@@ -6238,7 +6238,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_2(QubitPulseSequence):
             # self.pi_ef_qubit_phase = 0
 
         if 'sweep_cnot' in self.extra_args:
-            print "CNOT phase sweep: " +str(self.extra_args['sweep_cnot'])
+            print("CNOT phase sweep: " +str(self.extra_args['sweep_cnot']))
             self.sweep_cnot = self.extra_args['sweep_cnot']
         else:
             self.sweep_cnot = False
@@ -6246,26 +6246,26 @@ class MultimodeProcessTomographyPhaseSweepSequence_2(QubitPulseSequence):
 
         if 'sweep_final_sb' in self.extra_args:
             self.sweep_final_sb = self.extra_args['sweep_final_sb']
-            print "Sweeping final sideband: " + str(self.sweep_final_sb)
+            print("Sweeping final sideband: " + str(self.sweep_final_sb))
         else:
             self.sweep_final_sb = False
 
         if 'ef_sb_offset' in self.extra_args:
             self.ef_sb_offset = self.extra_args['ef_sb_offset']
-            print "Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset)
+            print("Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset))
         else:
             self.ef_sb_offset = 0
 
         if 'sweep_ef_qubit_phase' in self.extra_args:
             self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
-            print "Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase)
+            print("Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase))
             # self.ef_phase_1 += self.ef_sb_offset
         else:
             self.sweep_ef_qubit_phase = False
 
         if 'sweep_ef_sb_offset_phase' in self.extra_args:
             self.sweep_ef_sb_offset_phase = self.extra_args['sweep_ef_sb_offset_phase']
-            print "Sweeping ef sb offset phase: " + str(self.sweep_ef_sb_offset_phase)
+            print("Sweeping ef sb offset phase: " + str(self.sweep_ef_sb_offset_phase))
             # self.ef_phase_1 += self.ef_sb_offset
         else:
             self.sweep_ef_sb_offset_phase = False
@@ -6468,12 +6468,12 @@ class MultimodeProcessTomographyPhaseSweepSequence_2(QubitPulseSequence):
             self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
             self.psb.append('q','half_pi_y', self.pulse_type)
 
-            print "ef qubit phase = " +str(self.pi_ef_qubit_phase)
-            print "add c phase = " +str(self.add_cphase)
-            print "add cnot phase 2 = " +str(self.add_cnot_phase_2)
-            print "cnot_phase_2_cx = " +str(self.cnot_phase2_cx)
-            print "ef phase 1 = " +str(self.ef_phase_1)
-            print "ef phase 0 = "+str(self.ef_phase_0)
+            print("ef qubit phase = " +str(self.pi_ef_qubit_phase))
+            print("add c phase = " +str(self.add_cphase))
+            print("add cnot phase 2 = " +str(self.add_cnot_phase_2))
+            print("cnot_phase_2_cx = " +str(self.cnot_phase2_cx))
+            print("ef phase 1 = " +str(self.ef_phase_1))
+            print("ef phase 0 = "+str(self.ef_phase_0))
 
 
         elif tomo_index == 5:
@@ -6560,7 +6560,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_3(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
         self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations.npy")
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -6594,26 +6594,26 @@ class MultimodeProcessTomographyPhaseSweepSequence_3(QubitPulseSequence):
             self.phase_correct_cz = self.extra_args['phase_correct_cz']
         else:
             self.phase_correct_cz = False
-        print 'phase_correct_cz: ' + str(self.phase_correct_cz)
+        print('phase_correct_cz: ' + str(self.phase_correct_cz))
 
         if self.phase_correct_cz:
             self.ef_phase_0 = self.proc_tom[0][self.state_num][self.tomography_num]
-            print "ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0)
+            print("ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0))
 
         if 'phase_correct_cnot' in self.extra_args:
             self.phase_correct_cnot = self.extra_args['phase_correct_cnot']
         else:
             self.phase_correct_cnot = False
 
-        print 'phase_correct_cnot: ' + str(self.phase_correct_cnot)
+        print('phase_correct_cnot: ' + str(self.phase_correct_cnot))
 
         if self.phase_correct_cnot:
             self.ef_phase_1 =  self.proc_tom[1][self.state_num][self.tomography_num]
-            print "Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1)
+            print("Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1))
 
         if 'cnot_ef_qubit_phase' in self.extra_args:
             self.pi_ef_qubit_phase = self.extra_args['cnot_ef_qubit_phase']
-            print "Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg"
+            print("Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg")
         else:
             self.pi_ef_qubit_phase = 0
 
@@ -6627,7 +6627,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_3(QubitPulseSequence):
             # self.pi_ef_qubit_phase = 0
 
         if 'sweep_cnot' in self.extra_args:
-            print "CNOT phase sweep: " +str(self.extra_args['sweep_cnot'])
+            print("CNOT phase sweep: " +str(self.extra_args['sweep_cnot']))
             self.sweep_cnot = self.extra_args['sweep_cnot']
         else:
             self.sweep_cnot = False
@@ -6635,26 +6635,26 @@ class MultimodeProcessTomographyPhaseSweepSequence_3(QubitPulseSequence):
 
         if 'sweep_final_sb' in self.extra_args:
             self.sweep_final_sb = self.extra_args['sweep_final_sb']
-            print "Sweeping final sideband: " + str(self.sweep_final_sb)
+            print("Sweeping final sideband: " + str(self.sweep_final_sb))
         else:
             self.sweep_final_sb = False
 
         if 'ef_sb_offset' in self.extra_args:
             self.ef_sb_offset = self.extra_args['ef_sb_offset']
-            print "Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset)
+            print("Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset))
         else:
             self.ef_sb_offset = 0
 
         if 'sweep_ef_qubit_phase' in self.extra_args:
             self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
-            print "Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase)
+            print("Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase))
             # self.ef_phase_1 += self.ef_sb_offset
         else:
             self.sweep_ef_qubit_phase = False
 
         if 'sweep_ef_sb_offset_phase' in self.extra_args:
             self.sweep_ef_sb_offset_phase = self.extra_args['sweep_ef_sb_offset_phase']
-            print "Sweeping ef sb offset phase: " + str(self.sweep_ef_sb_offset_phase)
+            print("Sweeping ef sb offset phase: " + str(self.sweep_ef_sb_offset_phase))
             # self.ef_phase_1 += self.ef_sb_offset
         else:
             self.sweep_ef_sb_offset_phase = False
@@ -6956,7 +6956,7 @@ class MultimodeProcessTomographySequence_2(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
         self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations.npy")
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -7173,12 +7173,12 @@ class MultimodeProcessTomographySequence_2(QubitPulseSequence):
             self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
             self.psb.append('q','half_pi_y', self.pulse_type)
 
-            print "ef qubit phase = " +str(self.pi_ef_qubit_phase)
-            print "add c phase = " +str(self.add_cphase)
-            print "add cnot phase 2 = " +str(self.add_cnot_phase_2)
-            print "cnot_phase_2_cx = " +str(self.cnot_phase2_cx)
-            print "ef phase 1 = " +str(self.ef_phase_1)
-            print "ef phase 0 = "+str(self.ef_phase_0)
+            print("ef qubit phase = " +str(self.pi_ef_qubit_phase))
+            print("add c phase = " +str(self.add_cphase))
+            print("add cnot phase 2 = " +str(self.add_cnot_phase_2))
+            print("cnot_phase_2_cx = " +str(self.cnot_phase2_cx))
+            print("ef phase 1 = " +str(self.ef_phase_1))
+            print("ef phase 0 = "+str(self.ef_phase_0))
 
 
         elif tomo_index == 5:
@@ -7264,7 +7264,7 @@ class MultimodeProcessTomographySequence_3(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
         self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations.npy")
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -7491,12 +7491,12 @@ class MultimodeProcessTomographySequence_3(QubitPulseSequence):
             self.psb.append('q,mm'+str(self.id2),'pi_ge',phase=-self.multimode_cfg[self.id2]['pi_pi_offset_phase']/2.0 + 90.0 + self.final_sb_phase)
             self.psb.append('q','half_pi_y', self.pulse_type)
 
-            print "ef qubit phase = " +str(self.pi_ef_qubit_phase)
-            print "add c phase = " +str(self.add_cphase)
-            print "add cnot phase 2 = " +str(self.add_cnot_phase_2)
-            print "cnot_phase_2_cx = " +str(self.cnot_phase2_cx)
-            print "ef phase 1 = " +str(self.ef_phase_1)
-            print "ef phase 0 = "+str(self.ef_phase_0)
+            print("ef qubit phase = " +str(self.pi_ef_qubit_phase))
+            print("add c phase = " +str(self.add_cphase))
+            print("add cnot phase 2 = " +str(self.add_cnot_phase_2))
+            print("cnot_phase_2_cx = " +str(self.cnot_phase2_cx))
+            print("ef phase 1 = " +str(self.ef_phase_1))
+            print("ef phase 0 = "+str(self.ef_phase_0))
 
 
         elif tomo_index == 5:
@@ -7582,7 +7582,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_test(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
         self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations_test.npy")
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -7595,7 +7595,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_test(QubitPulseSequence):
             self.pair_index = self.extra_args['pair_index']
         else:
             self.pair_index = 0
-        print "Pair index= " + str(self.pair_index)
+        print("Pair index= " + str(self.pair_index))
 
         if 'id1' in self.extra_args:
             self.id1 = self.extra_args['id1']
@@ -7619,24 +7619,24 @@ class MultimodeProcessTomographyPhaseSweepSequence_test(QubitPulseSequence):
             self.sweep_time = 0
 
         if 'phase_correct_cz' in self.extra_args:
-            print 'phase_correct_cz: ' + str(self.extra_args['phase_correct_cz'])
+            print('phase_correct_cz: ' + str(self.extra_args['phase_correct_cz']))
             if self.extra_args['phase_correct_cz']:
                 self.ef_phase_0 = self.proc_tom[0][self.state_num][self.tomography_num]
-                print "ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0)
+                print("ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0))
 
         if 'phase_correct_cnot' in self.extra_args:
-            print 'phase_correct_cnot: ' + str(self.extra_args['phase_correct_cnot'])
+            print('phase_correct_cnot: ' + str(self.extra_args['phase_correct_cnot']))
             self.phase_correct_cnot = self.extra_args['phase_correct_cnot']
         else:
             self.phase_correct_cnot = False
 
         if self.phase_correct_cnot:
             self.ef_phase_1 =  self.proc_tom[1][self.state_num][self.tomography_num]
-            print "Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1)
+            print("Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1))
 
         if 'cnot_ef_qubit_phase' in self.extra_args:
             self.pi_ef_qubit_phase = self.extra_args['cnot_ef_qubit_phase']
-            print "Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg"
+            print("Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg")
         else:
             self.pi_ef_qubit_phase = 0
 
@@ -7649,7 +7649,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_test(QubitPulseSequence):
             self.pi_ef_qubit_phase = self.proc_tom[2][6][4]
 
         if 'sweep_cnot' in self.extra_args:
-            print "CNOT phase sweep: " +str(self.extra_args['sweep_cnot'])
+            print("CNOT phase sweep: " +str(self.extra_args['sweep_cnot']))
             self.sweep_cnot = self.extra_args['sweep_cnot']
         else:
             self.sweep_cnot = False
@@ -7657,26 +7657,26 @@ class MultimodeProcessTomographyPhaseSweepSequence_test(QubitPulseSequence):
 
         if 'sweep_final_sb' in self.extra_args:
             self.sweep_final_sb = self.extra_args['sweep_final_sb']
-            print "Sweeping final sideband: " + str(self.sweep_final_sb)
+            print("Sweeping final sideband: " + str(self.sweep_final_sb))
         else:
             self.sweep_final_sb = False
 
         if 'ef_sb_offset' in self.extra_args:
             self.ef_sb_offset = self.extra_args['ef_sb_offset']
-            print "Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset)
+            print("Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset))
         else:
             self.ef_sb_offset = 0
 
         if 'sweep_ef_qubit_phase' in self.extra_args:
             self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
-            print "Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase)
+            print("Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase))
             self.ef_phase_1 += self.ef_sb_offset
         else:
             self.sweep_ef_qubit_phase = False
 
         if 'sweep_ef_sb_offset_phase' in self.extra_args:
             self.sweep_ef_sb_offset_phase = self.extra_args['sweep_ef_sb_offset_phase']
-            print "Sweeping ef sb offset phase: " + str(self.sweep_ef_sb_offset_phase)
+            print("Sweeping ef sb offset phase: " + str(self.sweep_ef_sb_offset_phase))
             self.ef_phase_1 += self.ef_sb_offset
         else:
             self.sweep_ef_sb_offset_phase = False
@@ -7967,7 +7967,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_2_old(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
         self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations.npy")
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -7980,7 +7980,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_2_old(QubitPulseSequence):
             self.pair_index = self.extra_args['pair_index']
         else:
             self.pair_index = 0
-        print "Pair index= " + str(self.pair_index)
+        print("Pair index= " + str(self.pair_index))
 
         if 'id1' in self.extra_args:
             self.id1 = self.extra_args['id1']
@@ -8004,24 +8004,24 @@ class MultimodeProcessTomographyPhaseSweepSequence_2_old(QubitPulseSequence):
             self.sweep_time = 0
 
         if 'phase_correct_cz' in self.extra_args:
-            print 'phase_correct_cz: ' + str(self.extra_args['phase_correct_cz'])
+            print('phase_correct_cz: ' + str(self.extra_args['phase_correct_cz']))
             if self.extra_args['phase_correct_cz']:
                 self.ef_phase_0 = self.proc_tom[0][self.state_num][self.tomography_num]
-                print "ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0)
+                print("ef phase in first ef sideband of CPhase: " + str(self.ef_phase_0))
 
         if 'phase_correct_cnot' in self.extra_args:
-            print 'phase_correct_cnot: ' + str(self.extra_args['phase_correct_cnot'])
+            print('phase_correct_cnot: ' + str(self.extra_args['phase_correct_cnot']))
             self.phase_correct_cnot = self.extra_args['phase_correct_cnot']
         else:
             self.phase_correct_cnot = False
 
         if self.phase_correct_cnot:
             self.ef_phase_1 =  self.proc_tom[1][self.state_num][self.tomography_num]
-            print "Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1)
+            print("Added (subtracted) phase in first (second) ef sideband of CPhase (CNOT): " + str(self.ef_phase_1))
 
         if 'cnot_ef_qubit_phase' in self.extra_args:
             self.pi_ef_qubit_phase = self.extra_args['cnot_ef_qubit_phase']
-            print "Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg"
+            print("Phase ef pi pulse in CNOT gate: " + str(self.pi_ef_qubit_phase) + " deg")
         else:
             self.pi_ef_qubit_phase = 0
 
@@ -8034,7 +8034,7 @@ class MultimodeProcessTomographyPhaseSweepSequence_2_old(QubitPulseSequence):
             self.pi_ef_qubit_phase = self.proc_tom[2][6][4]
 
         if 'sweep_cnot' in self.extra_args:
-            print "CNOT phase sweep: " +str(self.extra_args['sweep_cnot'])
+            print("CNOT phase sweep: " +str(self.extra_args['sweep_cnot']))
             self.sweep_cnot = self.extra_args['sweep_cnot']
         else:
             self.sweep_cnot = False
@@ -8042,26 +8042,26 @@ class MultimodeProcessTomographyPhaseSweepSequence_2_old(QubitPulseSequence):
 
         if 'sweep_final_sb' in self.extra_args:
             self.sweep_final_sb = self.extra_args['sweep_final_sb']
-            print "Sweeping final sideband: " + str(self.sweep_final_sb)
+            print("Sweeping final sideband: " + str(self.sweep_final_sb))
         else:
             self.sweep_final_sb = False
 
         if 'ef_sb_offset' in self.extra_args:
             self.ef_sb_offset = self.extra_args['ef_sb_offset']
-            print "Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset)
+            print("Additional offset to CZ/CNOT ef sidebands: " + str(self.ef_sb_offset))
         else:
             self.ef_sb_offset = 0
 
         if 'sweep_ef_qubit_phase' in self.extra_args:
             self.sweep_ef_qubit_phase = self.extra_args['sweep_ef_qubit_phase']
-            print "Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase)
+            print("Sweeping ef qubit phase: " + str(self.sweep_ef_qubit_phase))
             self.ef_phase_1 += self.ef_sb_offset
         else:
             self.sweep_ef_qubit_phase = False
 
         if 'sweep_ef_sb_offset_phase' in self.extra_args:
             self.sweep_ef_sb_offset_phase = self.extra_args['sweep_ef_sb_offset_phase']
-            print "Sweeping ef sb offset phase: " + str(self.sweep_ef_sb_offset_phase)
+            print("Sweeping ef sb offset phase: " + str(self.sweep_ef_sb_offset_phase))
             self.ef_phase_1 += self.ef_sb_offset
         else:
             self.sweep_ef_sb_offset_phase = False
@@ -8334,7 +8334,7 @@ class MultimodeProcessTomographySequence_2_old(QubitPulseSequence):
         self.multimode_cfg = cfg['multimodes']
         self.proc_tom_phase_matrix = load("S:\\_Data\\160912 - 2D Multimode Qubit (Chip MM3, 11 modes)\\process_tomography_correlations.npy")
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -8621,7 +8621,7 @@ class MultimodePulseProbeIQSequence(QubitPulseSequence):
         self.qubit_cfg = cfg['qubit']
         self.pulse_cfg = cfg['pulse_info']
         self.expt_cfg = cfg['multimode_pulse_probe_iq']
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 

@@ -8,7 +8,7 @@ Created on Fri Sep 14 09:21:37 2012
 try:
     import qutip
 except:
-    print "Warning no qutip!"
+    print("Warning no qutip!")
 from matplotlib.pyplot import *
 import numpy as np
 
@@ -213,7 +213,7 @@ class Schrodinger2D(Schrodinger):
         @param num_levels (-1 by default) number of levels to plot"""
         if num_levels == -1:
             num_levels = len(self.energies())
-        print self.energies(num_levels)
+        print(self.energies(num_levels))
         figure(figsize=(20, 5))
         subplot(1, num_levels + 1, 1)
         self.plot_potential()
@@ -502,7 +502,7 @@ def test_zeropi():
 
 def test_fluxqubit():
     flux_qubit = FluxQubit(Ej=17., El=1.5, Ec=1., phi=.49, solve=True)
-    print flux_qubit.n_operator(5)
+    print(flux_qubit.n_operator(5))
     flux_qubit.plot(5)
     ylim(-10, 30)
     xlim(-5, 10)
@@ -513,7 +513,7 @@ def test_transmon():
     Ej = 30.3
     Ec = 5
     t = transmon(Ej, Ec, charges=20)
-    print "E_01 = %f\t<0|n|1> = %f\talpha = %f" % (t.Emn(), t.charge(0, 1), t.alpha())
+    print("E_01 = %f\t<0|n|1> = %f\talpha = %f" % (t.Emn(), t.charge(0, 1), t.alpha()))
 
     nglist = np.linspace(-4, 4., 100)
     levels = 20
@@ -526,7 +526,7 @@ def test_transmon():
 
 if __name__ == "__main__":
     #test_transmon()
-    print "Testing flux qubit solver"
+    print("Testing flux qubit solver")
     test_fluxqubit()
-    print "Testing Zero-Pi qubit solver"
+    print("Testing Zero-Pi qubit solver")
     test_zeropi()

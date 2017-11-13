@@ -6,7 +6,7 @@ Lock in amplifiers
 """
 
 #from slab.instruments import VisaInstrument
-from instrumenttypes import *
+from .instrumenttypes import *
 import time
 import numpy as np
 
@@ -84,7 +84,7 @@ class SR844(VisaInstrument):
             # Bug fixed by Nick Schade, 2016-01-07
             self.write("FREQ %.2f"%frequency)
         else:
-            print "Reference mode is external or 2f! Set to internal, 1f first."
+            print("Reference mode is external or 2f! Set to internal, 1f first.")
 
     def get_reference_frequency(self):
         return float(self.query("FREQ?"))
@@ -99,7 +99,7 @@ class SR844(VisaInstrument):
         elif mode_2f == 1:
             self.write("HARM 1")
         else:
-            print "mode_2f must be 0 (off) or 1 (on).  Value ignored."
+            print("mode_2f must be 0 (off) or 1 (on).  Value ignored.")
     
     def get_mode_2f(self):
         """
@@ -177,7 +177,7 @@ class SR844(VisaInstrument):
         if mode in [0, 1, 2]:
             self.write("WRSV %d"%mode)
         else:
-            print "Specified mode is invalid! Specify mode as 0, 1 or 2, for high reserve, normal or low noise, resp."
+            print("Specified mode is invalid! Specify mode as 0, 1 or 2, for high reserve, normal or low noise, resp.")
 
     def get_wide_reserve_mode(self):
         ans = np.int(self.query("WRSV?"))
@@ -193,7 +193,7 @@ class SR844(VisaInstrument):
         if mode in [0, 1, 2]:
             self.write("CRSV %d"%mode)
         else:
-            print "Specified mode is invalid! Specify mode as 0, 1 or 2, for high reserve, normal or low noise, resp."
+            print("Specified mode is invalid! Specify mode as 0, 1 or 2, for high reserve, normal or low noise, resp.")
 
     def get_close_reserve_mode(self):
         """
@@ -209,7 +209,7 @@ class SR844(VisaInstrument):
         :param sensitivity:
         :return:
         """
-        i = range(0, 15)
+        i = list(range(0, 15))
         sens = i[self.find_nearest(sensitivity, self.sensitivities)]
         self.write("SENS %d"%sens)
 
@@ -222,7 +222,7 @@ class SR844(VisaInstrument):
         :param time_constant:
         :return:
         """
-        i = range(0, 18)
+        i = list(range(0, 18))
         timec = i[self.find_nearest(time_constant, self.tc)]
         self.write("OFLT %d"%timec)
 
@@ -240,7 +240,7 @@ class SR844(VisaInstrument):
             i = self.find_nearest(self.slopes, slope)
             self.write("OFSL %d"%i)
         else:
-            print "Slope input is invalid. Please select from 6, 12, 18 or 24."
+            print("Slope input is invalid. Please select from 6, 12, 18 or 24.")
 
     def get_filter_slope(self):
         """
@@ -322,8 +322,8 @@ class SR844(VisaInstrument):
         noof_points = np.int(self.query("SPTS?"))
 
         # Read out buffer
-        raw_ch1 = filter(None, self.query("TRCA? 1,0,%d"%(noof_points-1)).split(','))
-        raw_ch2 = filter(None, self.query("TRCA? 2,0,%d"%(noof_points-1)).split(','))
+        raw_ch1 = [_f for _f in self.query("TRCA? 1,0,%d"%(noof_points-1)).split(',') if _f]
+        raw_ch2 = [_f for _f in self.query("TRCA? 2,0,%d"%(noof_points-1)).split(',') if _f]
 
         ch1 = [np.float(raw_ch1[i]) for i in range(len(raw_ch1))]
         ch2 = [np.float(raw_ch2[i]) for i in range(len(raw_ch2))]
@@ -331,7 +331,7 @@ class SR844(VisaInstrument):
         return ch1, ch2
 
 if __name__ == '__main__':
-    print "Testing SR844"
+    print("Testing SR844")
 
     get_func_list = [self.get_id,
                      self.get_reference_frequency,
@@ -341,7 +341,7 @@ if __name__ == '__main__':
         try:
             p()
         except:
-            print "%d. Error!"%idx
+            print("%d. Error!"%idx)
 
 
 '''
@@ -417,7 +417,7 @@ class SR830(VisaInstrument):
         if (self.get_reference_mode() == 'int'):
             self.write("FREQ %.2f"%frequency)
         else:
-            print "Warning: Reference mode is external.  Set to internal first."
+            print("Warning: Reference mode is external.  Set to internal first.")
 
     def get_reference_frequency(self):
         return float(self.query("FREQ?"))
@@ -431,9 +431,9 @@ class SR830(VisaInstrument):
         :return:
         """
         if amplitude < 0.004:
-            print "Reference amplitude must be at least 4 mV.  Value ignored."
+            print("Reference amplitude must be at least 4 mV.  Value ignored.")
         elif amplitude > 5.000:
-            print "Reference amplitude must be less than 5 V.  Value ignored."
+            print("Reference amplitude must be less than 5 V.  Value ignored.")
         else:
             self.write("SLVL %.2f"%amplitude)
 
@@ -451,14 +451,14 @@ class SR830(VisaInstrument):
         """
         newfreq = self.get_reference_frequency() * harmonic
         if harmonic <= 0:
-            print "Warning: Detection harmonic must be positive.  Value ignored."
+            print("Warning: Detection harmonic must be positive.  Value ignored.")
         elif harmonic > 19999:
-            print "Warning: Detection harmonic must be < 20000.  Value ignored."
+            print("Warning: Detection harmonic must be < 20000.  Value ignored.")
 
         elif newfreq < 102000:
             self.write("HARM %d"%harmonic)
         else:
-            print "Warning: Detection frequency too high.  Value ignored."
+            print("Warning: Detection frequency too high.  Value ignored.")
     
     def get_detection_harmonic(self):
         """
@@ -492,7 +492,7 @@ class SR830(VisaInstrument):
         if (config >=0 and config <= 3):
             self.write("ISRC %d"%config)
         else:
-            print "Warning: input config must be 0, 1, 2, or 3.  Value ignored."
+            print("Warning: input config must be 0, 1, 2, or 3.  Value ignored.")
 
     def get_input_config(self):
         """
@@ -512,7 +512,7 @@ class SR830(VisaInstrument):
         if (mode==0 or mode==1):
             self.write("IGND %d"%mode)
         else:
-            print "Input shield grounding must be 0 or 1.  Value ignored."
+            print("Input shield grounding must be 0 or 1.  Value ignored.")
 
     def get_input_shield_ground(self):
         """
@@ -532,7 +532,7 @@ class SR830(VisaInstrument):
         if (mode==0 or mode==1):
             self.write("ICPL %d"%mode)
         else:
-            print "Warning: Input coupling must be 0 or 1.  Value ignored."
+            print("Warning: Input coupling must be 0 or 1.  Value ignored.")
 
     def get_input_coupling(self):
         """
@@ -555,7 +555,7 @@ class SR830(VisaInstrument):
         if (mode >= 0 and mode <= 3):
             self.write("ILIN %d"%mode)
         else:
-            print "Input notch filter must be 0, 1, 2, or 3.  Value ignored."
+            print("Input notch filter must be 0, 1, 2, or 3.  Value ignored.")
 
     def get_input_notch(self):
         """
@@ -571,7 +571,7 @@ class SR830(VisaInstrument):
         if mode in [0, 1, 2]:
             self.write("RMOD %d"%mode)
         else:
-            print "Specified mode is invalid! Specify mode as 0, 1 or 2, for high reserve, normal or low noise, resp."
+            print("Specified mode is invalid! Specify mode as 0, 1 or 2, for high reserve, normal or low noise, resp.")
 
     def get_reserve_mode(self):
         ans = np.int(self.query("RMOD?"))
@@ -663,7 +663,7 @@ class SR830(VisaInstrument):
         :param time_constant:
         :return:
         """
-        i = range(0, 20)
+        i = list(range(0, 20))
         timec = i[self.find_nearest(time_constant, self.tc)]
         self.write("OFLT %d"%timec)
 
@@ -681,7 +681,7 @@ class SR830(VisaInstrument):
             i = self.find_nearest(self.slopes, slope)
             self.write("OFSL %d"%i)
         else:
-            print "Slope input is invalid. Please select from 6, 12, 18 or 24."
+            print("Slope input is invalid. Please select from 6, 12, 18 or 24.")
 
     def get_filter_slope(self):
         """
@@ -765,8 +765,8 @@ class SR830(VisaInstrument):
         noof_points = np.int(self.query("SPTS?"))
 
         # Read out buffer
-        raw_ch1 = filter(None, self.query("TRCA? 1,0,%d"%(noof_points-1)).split(','))
-        raw_ch2 = filter(None, self.query("TRCA? 2,0,%d"%(noof_points-1)).split(','))
+        raw_ch1 = [_f for _f in self.query("TRCA? 1,0,%d"%(noof_points-1)).split(',') if _f]
+        raw_ch2 = [_f for _f in self.query("TRCA? 2,0,%d"%(noof_points-1)).split(',') if _f]
 
         ch1 = [np.float(raw_ch1[i]) for i in range(len(raw_ch1))]
         ch2 = [np.float(raw_ch2[i]) for i in range(len(raw_ch2))]

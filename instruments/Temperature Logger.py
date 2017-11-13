@@ -23,13 +23,13 @@ channels=[]
 for i in range(0, len(thermometer_labels)):
     channels[i]=cryocon_channels[i]
 
-print "Monitering temperature in"+expt.fname
+print("Monitering temperature in"+expt.fname)
 while True:
 
     try:
         temps=[fridge.get_temp(ch) for ch in channels]
         t=time.time()-start_time
-        print temps, t
+        print(temps, t)
         time.sleep(interval)
         with expt.datafile() as f:
             f.append_pt('tpts', t)
@@ -37,4 +37,4 @@ while True:
                 f.append_pt(ch, temp)
 
     except:
-        print 'Exception occured...trying to continue....'
+        print('Exception occured...trying to continue....')

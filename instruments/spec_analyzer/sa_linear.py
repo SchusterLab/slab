@@ -6,7 +6,7 @@ Created on Wed Aug 24 15:58:02 2011
 """
 from instruments import *
 from rfgenerators import *
-from spectrum_analyzer import *
+from .spectrum_analyzer import *
 import matplotlib.pyplot as plt
 import time
 from numpy import *

@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import ctypes as C
 import numpy as np
@@ -172,7 +172,7 @@ class AlazarConfig:
 
     def __init__(self, config_dict=None, **kwargs):
         config_dict = config_dict if config_dict else kwargs
-        assert all([k in self.__dict__ for k in config_dict.keys()])
+        assert all([k in self.__dict__ for k in list(config_dict.keys())])
         self.__dict__.update(config_dict)
 
     def normalize(self):
@@ -266,7 +266,7 @@ class Alazar():
             for (rate, value) in AlazarConstants.sample_rate:
                 if rate >= self.config.sample_rate:
                     if rate > self.config.sample_rate:
-                        print "Warning: sample_rate not found. Using first smaller value", rate, "Khz"
+                        print("Warning: sample_rate not found. Using first smaller value", rate, "Khz")
                         self.config.sample_rate = rate
                     sample_rate = value
                     break
@@ -284,14 +284,14 @@ class Alazar():
             sample_rate = U32(1000000000)
             decimation = int(1e9 / (self.config.sample_rate * 1e3))
             if (decimation != 1) and (decimation != 2) and (decimation != 1) and (decimation % 10 != 0):
-                print "Warning: sample_rate must be 1Gs/s / 1,2,4 or a multiple of 10. Using 1Gs/s."
+                print("Warning: sample_rate must be 1Gs/s / 1,2,4 or a multiple of 10. Using 1Gs/s.")
                 decimation = 1
             decimation = U32(decimation)
         else:
             raise ValueError("reference signal not implemented yet")
         ret = self.Az.AlazarSetCaptureClock(self.handle, source, sample_rate,
                                             AlazarConstants.clock_edge[self.config.clock_edge], decimation)
-        if DEBUGALAZAR: print "ClockConfig:", ret_to_str(ret, self.Az)
+        if DEBUGALAZAR: print("ClockConfig:", ret_to_str(ret, self.Az))
 
     def configure_trigger(self, source=None, source2=None, edge=None, edge2=None,
                           level=None, level2=None, operation=None, coupling=None, timeout=None, delay=0):
@@ -331,7 +331,7 @@ class Alazar():
         else:
             op = AlazarConstants.trigger_operation[self.config.trigger_operation]
 
-        print 'Z', op,  AlazarConstants.trigger_engine_1, AlazarConstants.trigger_source[self.config.trigger_source1], AlazarConstants.trigger_edge[self.config.trigger_edge1], U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255)),  AlazarConstants.trigger_engine_2, AlazarConstants.trigger_source[self.config.trigger_source2], AlazarConstants.trigger_edge[self.config.trigger_edge2], U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255))
+        print('Z', op,  AlazarConstants.trigger_engine_1, AlazarConstants.trigger_source[self.config.trigger_source1], AlazarConstants.trigger_edge[self.config.trigger_edge1], U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255)),  AlazarConstants.trigger_engine_2, AlazarConstants.trigger_source[self.config.trigger_source2], AlazarConstants.trigger_edge[self.config.trigger_edge2], U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255)))
 
         ret = self.Az.AlazarSetTriggerOperation(self.handle, op,
                                                 AlazarConstants.trigger_engine_1,
@@ -342,16 +342,16 @@ class Alazar():
                                                 AlazarConstants.trigger_source[self.config.trigger_source2],
                                                 AlazarConstants.trigger_edge[self.config.trigger_edge2],
                                                 U32(int_linterp(self.config.trigger_level1, -100, 100, 0, 255)))
-        if DEBUGALAZAR: print "Set Trigger:", ret_to_str(ret, self.Az)
+        if DEBUGALAZAR: print("Set Trigger:", ret_to_str(ret, self.Az))
         if self.config.trigger_source1 == "external":
             ret = self.Az.AlazarSetExternalTrigger(self.handle,
                                                    AlazarConstants.trigger_coupling[self.config.trigger_coupling],
                                                    U32(0))
-            if DEBUGALAZAR: print "Set External Trigger:", ret_to_str(ret, self.Az)
+            if DEBUGALAZAR: print("Set External Trigger:", ret_to_str(ret, self.Az))
 
         self.triggerDelay_samples = int(self.config.trigger_delay * self.config.sample_rate * 1e3 + 0.5)
         ret = self.Az.AlazarSetTriggerDelay(self.handle, U32(self.triggerDelay_samples))
-        if DEBUGALAZAR: print "Set Trigger Delay:", ret_to_str(ret, self.Az)
+        if DEBUGALAZAR: print("Set Trigger Delay:", ret_to_str(ret, self.Az))
 
     def configure_inputs(self, enabled1=None, coupling1=None, range1=None, filter1=None, enabled2=None, coupling2=None,
                          range2=None, filter2=None):
@@ -373,17 +373,17 @@ class Alazar():
         if range2 is not None: self.config.ch2_range = range2
         if filter2 is not None: self.config.ch2_filter
 
-        for (voltage, value) in AlazarConstants.input_range.items():
+        for (voltage, value) in list(AlazarConstants.input_range.items()):
             if self.config.ch1_range <= voltage:
                 if self.config.ch1_range < voltage:
-                    if DEBUGALAZAR: print "Warning: input range not found, using closest value,", voltage, "Volts"
+                    if DEBUGALAZAR: print("Warning: input range not found, using closest value,", voltage, "Volts")
                 self.config.ch1_range = voltage
                 ch1_range_value = value
                 break
-        for (voltage, value) in AlazarConstants.input_range.items():
+        for (voltage, value) in list(AlazarConstants.input_range.items()):
             if self.config.ch2_range <= voltage:
                 if self.config.ch2_range < voltage:
-                    if DEBUGALAZAR: print "Warning: input range not found, using closest value,", voltage, "Volts"
+                    if DEBUGALAZAR: print("Warning: input range not found, using closest value,", voltage, "Volts")
                 self.config.ch2_range = voltage
                 ch2_range_value = value
                 break
@@ -392,18 +392,18 @@ class Alazar():
             ret = self.Az.AlazarInputControl(self.handle, AlazarConstants.channel["CH_A"],
                                              AlazarConstants.input_coupling[self.config.ch1_coupling], ch1_range_value,
                                              U32(2))
-            if DEBUGALAZAR: print "Input Control CH1:", ret_to_str(ret, self.Az)
+            if DEBUGALAZAR: print("Input Control CH1:", ret_to_str(ret, self.Az))
             ret = self.Az.AlazarSetBWLimit(self.handle, AlazarConstants.channel["CH_A"],
                                            AlazarConstants.input_filter[self.config.ch1_filter])
-            if DEBUGALAZAR: print "Set BW Limit:", ret_to_str(ret, self.Az)
+            if DEBUGALAZAR: print("Set BW Limit:", ret_to_str(ret, self.Az))
         if self.config.ch2_enabled:
             ret = self.Az.AlazarInputControl(self.handle, AlazarConstants.channel["CH_B"],
                                              AlazarConstants.input_coupling[self.config.ch2_coupling], ch2_range_value,
                                              U32(2))
-            if DEBUGALAZAR: print "Input Control CH1:", ret_to_str(ret, self.Az)
+            if DEBUGALAZAR: print("Input Control CH1:", ret_to_str(ret, self.Az))
             ret = self.Az.AlazarSetBWLimit(self.handle, AlazarConstants.channel["CH_B"],
                                            AlazarConstants.input_filter[self.config.ch2_filter])
-            if DEBUGALAZAR: print "Set BW Limit:", ret_to_str(ret, self.Az)
+            if DEBUGALAZAR: print("Set BW Limit:", ret_to_str(ret, self.Az))
 
     def configure_buffers(self, samplesPerRecord=None, recordsPerBuffer=None, recordsPerAcquisition=None,
                           bufferCount=None):
@@ -425,14 +425,14 @@ class Alazar():
         flags = U32(513) #ADMA flags, should update to be more general
 
         ret = self.Az.AlazarSetRecordSize(self.handle, U32(0), U32(self.config.samplesPerRecord))
-        if DEBUGALAZAR: print "Set Record Size:", ret_to_str(ret, self.Az)
+        if DEBUGALAZAR: print("Set Record Size:", ret_to_str(ret, self.Az))
 
         ret = self.Az.AlazarBeforeAsyncRead(self.handle, U32(channel), pretriggers,
                                             U32(self.config.samplesPerRecord),
                                             U32(self.config.recordsPerBuffer),
                                             U32(self.config.recordsPerAcquisition),
                                             flags)
-        if DEBUGALAZAR: print "Before Read:", ret_to_str(ret, self.Az)
+        if DEBUGALAZAR: print("Before Read:", ret_to_str(ret, self.Az))
 
         self.config.bytesPerBuffer = (
         self.config.samplesPerRecord * self.config.recordsPerBuffer * self.config.channelCount)
@@ -443,7 +443,7 @@ class Alazar():
             for j in range(self.config.bytesPerBuffer):
                 self.bufs[i][j] = U8(0)
                 #ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[i],U32(self.config.bytesPerBuffer))
-        if DEBUGALAZAR: print "Posted buffers: ", ret_to_str(ret, self.Az)
+        if DEBUGALAZAR: print("Posted buffers: ", ret_to_str(ret, self.Az))
         self.arrs = [np.ctypeslib.as_array(b) for b in self.bufs]
 
     def assert_az(self, retCode, buffers_acquired, name):
@@ -481,7 +481,7 @@ class Alazar():
             ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[i],U32(self.config.bytesPerBuffer))
             #print ret, self.config.bytesPerBuffer
             if ret != 512:
-                print "Failed to post Buffer", ret_to_str(ret, self.Az)
+                print("Failed to post Buffer", ret_to_str(ret, self.Az))
 
 
     def acquire_avg_data(self, excise=None):
@@ -491,15 +491,15 @@ class Alazar():
         buffersCompleted=0
         buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
         ret = self.Az.AlazarStartCapture(self.handle)
-        if DEBUGALAZAR: print "Start Capture: ", ret_to_str(ret,self.Az)
-        if DEBUGALAZAR: print "Buffers per Acquisition: ", buffersPerAcquisition
+        if DEBUGALAZAR: print("Start Capture: ", ret_to_str(ret,self.Az))
+        if DEBUGALAZAR: print("Buffers per Acquisition: ", buffersPerAcquisition)
         while (buffersCompleted < buffersPerAcquisition):
-            if DEBUGALAZAR: print "Waiting for buffer ", buffersCompleted
+            if DEBUGALAZAR: print("Waiting for buffer ", buffersCompleted)
             buf_idx = buffersCompleted % self.config.bufferCount
             buffersCompleted+=1           
             ret = self.Az.AlazarWaitAsyncBufferComplete(self.handle,self.bufs[buf_idx],U32(self.config.timeout))
             if ret != 512:
-                print "Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az)            
+                print("Abort AsyncRead, WaitAsyncBuffer: ", ret_to_str(ret,self.Az))            
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
                 break       
             for n in range(self.config.recordsPerBuffer):
@@ -508,11 +508,11 @@ class Alazar():
             #plot(self.arrs[buf_idx])
             ret = self.Az.AlazarPostAsyncBuffer(self.handle,self.bufs[buf_idx],U32(self.config.bytesPerBuffer))
             if ret != 512:
-                print "Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az)            
+                print("Abort AsyncRead, PostAsyncBuffer: ", ret_to_str(ret,self.Az))            
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
                 break       
-            if DEBUGALAZAR: print "PostAsyncBuffer: ", ret_to_str(ret,self.Az) 
-        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+            if DEBUGALAZAR: print("PostAsyncBuffer: ", ret_to_str(ret,self.Az)) 
+        if DEBUGALAZAR: print("buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition))
         avg_data1/=float(self.config.recordsPerAcquisition)
         avg_data2/=float(self.config.recordsPerAcquisition)
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
@@ -522,8 +522,8 @@ class Alazar():
         avg_data2*=(self.config.ch2_range/128.)
         if not self.config.ch2_enabled: avg_data2=np.zeros(self.config.samplesPerRecord,dtype=float)
         tpts=np.arange(self.config.samplesPerRecord)/float(self.config.sample_rate*1e3)
-        if DEBUGALAZAR: print "Acquisition finished."
-        if DEBUGALAZAR: print "buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition)
+        if DEBUGALAZAR: print("Acquisition finished.")
+        if DEBUGALAZAR: print("buffersCompleted: %d, self.config.recordsPerAcquisition: %d" % (buffersCompleted, self.config.recordsPerAcquisition))
         ret = self.Az.AlazarAbortAsyncRead(self.handle)
         if excise is not None:
             return tpts[excise[0]:excise[1]],avg_data1[excise[0]:excise[1]],avg_data2[excise[0]:excise[1]]
@@ -542,9 +542,9 @@ class Alazar():
         import time
 
         acquire_buffer_time = self.samples_per_buffer / (self.samples_per_second)
-        print 'Acquire buffer time %.2e' % acquire_buffer_time
-        print 'Inter-buffer time %.2e' % self.seconds_per_buffer
-        print 'Duty Cycle', acquire_buffer_time / self.seconds_per_buffer
+        print('Acquire buffer time %.2e' % acquire_buffer_time)
+        print('Inter-buffer time %.2e' % self.seconds_per_buffer)
+        print('Duty Cycle', acquire_buffer_time / self.seconds_per_buffer)
 
         try:
             # I don't know why this needs to happen again?
@@ -632,7 +632,7 @@ class Alazar():
                             plotter.plot(np.frombuffer(res_buffer.get_obj()), 'Data')
                         plot_count += 1
                     else:
-                        print buffers_acquired, buffers_completed
+                        print(buffers_acquired, buffers_completed)
                         plot_count += 1
         finally:
             pass
@@ -715,7 +715,7 @@ class SingleShotWorker(Worker):
 
         with self.res_buffer.get_lock():
             n = self.buffers_merged.value
-            print iterations, len(results), n, len(self.res_buffer)
+            print(iterations, len(results), n, len(self.res_buffer))
             self.res_buffer[(n - 1) * iterations:n * iterations] = np.array(results)
             self.buffers_merged.value += 1
 
@@ -761,7 +761,7 @@ def profile_single_shot(*args):
 
 
 def main():
-    print 'starting'
+    print('starting')
 #    config = {'clock_edge': 'rising', 'clock_source': 'reference',  
 #            'trigger_coupling': 'DC',  'trigger_operation': 'or', 
 #            'trigger_source2': 'disabled','trigger_level2': 1.0, 'trigger_edge2': 'rising', 
@@ -774,7 +774,7 @@ def main():
     import time
     conf = AlazarConfig()
     conf.validate()
-    print hasattr(conf, 'seconds_per_buffer')
+    print(hasattr(conf, 'seconds_per_buffer'))
     c = Alazar(conf)
     #c.configure()
     c.configure_clock()
@@ -795,4 +795,4 @@ if __name__ == "__main__":
     #s = pstats.Stats('worker_stats')
     #s.sort_stats('cumulative').print_stats(20)
     
-    print 'done'
+    print('done')

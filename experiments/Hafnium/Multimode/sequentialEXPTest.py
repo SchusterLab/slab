@@ -4,14 +4,14 @@ from slab.experiments.Multimode.MultimodePulseSequenceExperiment import *
 from slab.experiments.General.SingleQubitPulseSequenceExperiment import *
 
 def foo(**kwargs):
-    for key, value in kwargs.iteritems():
-            print key
-            print value
+    for key, value in kwargs.items():
+            print(key)
+            print(value)
 
 class SequentialExperiment():
     def __init__(self,exp_list,kwargs_list=None,adc=None):
         for ii in arange(len(exp_list)):
-            print exp_list[ii]
+            print(exp_list[ii])
             foo(**kwargs_list[ii])
 
 

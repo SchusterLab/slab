@@ -54,8 +54,8 @@ class VacuumRabiSequence(PulseSequence):
         ii = 0
         w =self.pi_length
         a=self.pulse_cfg['a']
-        print a
-        print w
+        print(a)
+        print(w)
 
         if self.pi_pulse:
             if self.pulse_type == 'square':
@@ -143,7 +143,7 @@ class MultimodeVacuumRabiSequence(PulseSequence):
 
 
         self.max_length = round_samples((max_pulse_width + self.measurement_delay + self.measurement_width + 2*self.start_end_buffer+self.card_delay+self.card_trig_width))
-        print self.max_length
+        print(self.max_length)
         self.origin = self.max_length - (self.measurement_delay + self.measurement_width + self.start_end_buffer)
 
         if self.load_photon:
@@ -154,7 +154,7 @@ class MultimodeVacuumRabiSequence(PulseSequence):
             self.max_length = self.max_length + self.flux_length
             self.flux_pulse_freq = self.multimode_cfg[self.mode]['flux_pulse_freq']
 
-        print self.max_length
+        print(self.max_length)
 
         self.set_all_lengths(self.max_length)
         self.set_waveform_length("qubit 1 flux", self.flux_length)
@@ -164,10 +164,10 @@ class MultimodeVacuumRabiSequence(PulseSequence):
         wtpts = self.get_waveform_times('qubit drive I')
         mtpts = self.get_marker_times('qubit buffer')
         ftpts = self.get_waveform_times('qubit 1 flux')
-        print len(ftpts)
+        print(len(ftpts))
 
-        print "max = " +str(np.max(ftpts))
-        print "min = " +str(np.min(ftpts))
+        print("max = " +str(np.max(ftpts)))
+        print("min = " +str(np.min(ftpts)))
 
         ii = 0
         w =self.pi_length
@@ -177,8 +177,8 @@ class MultimodeVacuumRabiSequence(PulseSequence):
         else:
             start_pi = 0
 
-        print a
-        print w
+        print(a)
+        print(w)
 
         if self.pi_pulse:
             if self.pulse_type == 'square':
@@ -205,7 +205,7 @@ class MultimodeVacuumRabiSequence(PulseSequence):
 
         if self.load_photon:
 
-            print "Amp = " + str(self.a_flux)
+            print("Amp = " + str(self.a_flux))
             # self.waveforms['qubit 1 flux'] = ap.sideband(ftpts,0.5, np.zeros(len(ftpts)),
             #                           self.flux_pulse_freq, 0,offset=False)[0]
             self.waveforms['qubit 1 flux'] = ap.sideband(ftpts,ap.square(ftpts, self.a_flux, 0, self.ramp_sigma_flux), np.zeros(len(ftpts)),
@@ -223,7 +223,7 @@ class MultimodeVacuumRabiSequence(PulseSequence):
         self.markers['card trigger'][ii] = ap.square(mtpts, 1,
                                                       self.origin - self.card_delay + self.measurement_delay,
                                                       self.card_trig_width)
-        print self.a_flux
+        print(self.a_flux)
         np.save("qtime",wtpts)
         np.save("qpulse",self.waveforms['qubit drive I'])
         np.save("ftime",ftpts)

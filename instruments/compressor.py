@@ -221,9 +221,9 @@ class CP2800(SerialInstrument):
 if __name__ == "__main__":
     cp = CP2800(address='COM6', baudrate=115200, timeout=0.1)
 
-    print("The compressor status is %d"%cp.get_compressor_status())
-    print("The compressor runtime is %d minutes"%cp.get_compressor_runtime())
-    print("The input water temperature is %.1fC"%cp.get_input_water_temperature())
-    print("The output water temperature is %.1fC"%cp.get_output_water_temperature())
-    print("The helium temperature is %.1fC"%cp.get_helium_temperature())
-    print("The oil temperature is %.1fC"%cp.get_oil_temperature())
+    print(("The compressor status is %d"%cp.get_compressor_status()))
+    print(("The compressor runtime is %d minutes"%cp.get_compressor_runtime()))
+    print(("The input water temperature is %.1fC"%cp.get_input_water_temperature()))
+    print(("The output water temperature is %.1fC"%cp.get_output_water_temperature()))
+    print(("The helium temperature is %.1fC"%cp.get_helium_temperature()))
+    print(("The oil temperature is %.1fC"%cp.get_oil_temperature()))

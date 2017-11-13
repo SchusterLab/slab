@@ -16,7 +16,7 @@ class HistogramExperiment(Experiment):
 
         self.extra_args={}
 
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -77,7 +77,7 @@ class HistogramExperiment(Experiment):
         if self.liveplot_enabled:
             self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=True)
@@ -90,9 +90,9 @@ class HistogramExperiment(Experiment):
         try:
             self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
         except:
-            print "self.awg not loaded."
+            print("self.awg not loaded.")
 
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(self.cfg['alazar'])
 
         attenpts = arange(self.cfg[self.expt_cfg_name]['atten_start'], self.cfg[self.expt_cfg_name]['atten_stop'], self.cfg[self.expt_cfg_name]['atten_step'])
@@ -104,7 +104,7 @@ class HistogramExperiment(Experiment):
             try:
                 self.readout_atten.set_attenuator(atten)
             except:
-                print "Digital attenuator not loaded."
+                print("Digital attenuator not loaded.")
 
             max_contrast_data = zeros(len(freqpts))
 
@@ -153,7 +153,7 @@ class HistogramExperiment(Experiment):
                     self.plotter.append_xy('max contrast', freq, max_contrast_data[yy])
             if len(attenpts)>1:
                 if self.liveplot_enabled:
-                    print "plotting max contrast 2"
+                    print("plotting max contrast 2")
                     self.plotter.append_z('max contrast 2', max_contrast_data, start_step=(
                         (attenpts[0], attenpts[1] - attenpts[0]),(freqpts[0] / 1.0e9, (freqpts[1] - freqpts[0]) / 1.0e9)))
 

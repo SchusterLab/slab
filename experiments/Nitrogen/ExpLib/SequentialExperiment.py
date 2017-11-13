@@ -11,7 +11,7 @@ import gc
 
 
 def update_dict(d, u):
-    for k, v in u.iteritems():
+    for k, v in u.items():
         if isinstance(v, collections.Mapping):
             r = update_dict(d.get(k, {}), v)
             d[k] = r
@@ -43,12 +43,12 @@ class SequentialExperiment():
         with open('config.json', 'w') as fp:
             json.dump(cfg_dict_temp, fp)
 
-        print "--------Parameters varied in config file ---------"
-        print vary_dict
-        print "--------------------------------------------------"
-        print "--------Parameters changed through extra_args---------"
-        print expt_kwargs
-        print "--------------------------------------------------"
+        print("--------Parameters varied in config file ---------")
+        print(vary_dict)
+        print("--------------------------------------------------")
+        print("--------Parameters changed through extra_args---------")
+        print(expt_kwargs)
+        print("--------------------------------------------------")
 
         ## automatically save kwargs to data_file
         if 'data_file' in expt_kwargs:
@@ -75,7 +75,7 @@ class SequentialExperiment():
 
     def save_config(self):
         self.expt.save_config()
-        print "config saved!"
+        print("config saved!")
 
 
 

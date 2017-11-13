@@ -22,7 +22,7 @@ class HistogramSequence(PulseSequence):
         self.pulse_type = histo_cfg['pulse_type']
         self.a = pulse_cfg['a']
         self.pi_length = pulse_cfg['pi_length']
-        print self.pi_length
+        print(self.pi_length)
         self.measurement_delay = readout_cfg['delay']
         self.measurement_width = readout_cfg['width']
         self.card_delay = readout_cfg['card_delay']

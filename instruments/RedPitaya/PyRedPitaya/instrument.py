@@ -305,7 +305,7 @@ class Scope(MemoryInterface):
                 break
             if f == 65537:
                 self.data_decimation = 65536
-                print "Frequency too low: Impossible to sample the entire waveform"
+                print("Frequency too low: Impossible to sample the entire waveform")
 
 
 class Scope2(MemoryInterface):
@@ -442,7 +442,7 @@ class Scope2(MemoryInterface):
                 break
             if f == 65537:
                 self.data_decimation = 65536
-                print "Frequency too low: Impossible to sample the entire waveform"
+                print("Frequency too low: Impossible to sample the entire waveform")
 
 
 class ASG(MemoryInterface):
@@ -749,4 +749,4 @@ if __name__ == "__main__":
     sleep(1)
     t0 = time()
     red_pitaya.scope.data_ch1
-    print time() - t0
+    print(time() - t0)

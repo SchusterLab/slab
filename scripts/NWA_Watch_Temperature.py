@@ -96,18 +96,18 @@ class NWAWindow(SlabWindow):
 
 
     def save_bookmark(self,filename):
-        print json.dumps(self.guidata.get())
+        print(json.dumps(self.guidata.get()))
 
     def go(self):
-        print "GO!"
+        print("GO!")
         #d=self.guidata.get()
         #d={'fileprefix': 'NWA_temp_sweep', 'center': 10000000000.0, 'power': -30.0, 'ifbw': 1000.0, 'datapath': 'S:\\_DataH804 - Bing Cavity with Indium seal\\x01 - test NWA Watch Temperature\\', 'delay': 0, 'timeout': 10000, 'fridge_address': 'fridge.circuitqed.com', 'span': 20000000000.0, 'nwa_address': 'nwa.circuitqed.com', 'avgs': 16}
         #print d
-        print self.guidata.dataset.datapath
+        print(self.guidata.dataset.datapath)
             
         self.p = Process(target=acquire_data, args=(self.guidata.dataset,self.pipes))
         self.p.start()
-        print "Process started"
+        print("Process started")
         #print self.guidata.get()
         self.statusBar().showMessage("Acquiring Data", 5000)
 

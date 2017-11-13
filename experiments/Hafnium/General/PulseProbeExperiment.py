@@ -36,7 +36,7 @@ class PulseProbeExperiment(Experiment):
 
         # self.save_config()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=self.cfg['readout']['mod'])
@@ -80,7 +80,7 @@ class PulseProbeExperiment(Experiment):
                     f.append_pt('ch1_mean', ch1_pts)
                     f.append_pt('ch2_mean', ch2_pts)
             else:
-                print "Prep Card"
+                print("Prep Card")
                 adc = Alazar(self.cfg['alazar'])
                 expt_data_ch1 = None
                 expt_data_ch2 = None

@@ -9,7 +9,7 @@ import json
 import gc
 
 def update_dict(d, u):
-    for k, v in u.iteritems():
+    for k, v in u.items():
         if isinstance(v, collections.Mapping):
             r = update_dict(d.get(k, {}), v)
             d[k] = r
@@ -69,7 +69,7 @@ class SequentialExperiment():
 
     def save_config(self):
         self.expt.save_config()
-        print "config saved!"
+        print("config saved!")
 
 
 

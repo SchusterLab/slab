@@ -10,7 +10,7 @@ import math as math
 try:
     import guiqwt.pyplot as plt1 # Original version doesn't seem to work. Changed to a better coding style 
 except:
-    print "DSFIT could not import guiqwt"
+    print("DSFIT could not import guiqwt")
 import matplotlib.pyplot as plt2
 import scipy
 import scipy.fftpack
@@ -90,7 +90,7 @@ def fitlor(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
         fitparams[1]=max(fitdatay)-min(fitdatay)
         fitparams[2]=fitdatax[np.argmax(fitdatay)]
         fitparams[3]=(max(fitdatax)-min(fitdatax))/10.
-    if debug==True: print fitparams
+    if debug==True: print(fitparams)
     p1 = fitgeneral(fitdatax, fitdatay, lorfunc, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
     p1[3]=abs(p1[3])
@@ -117,14 +117,14 @@ def fitharm(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fa
 
 #         fitparams[3]=(max(fitdatax)-min(fitdatax))/50.
 #         fitparams[3] = 2.88606749e+05
-    if debug==True: print fitparams
+    if debug==True: print(fitparams)
     p1 = fitgeneral(fitdatax,fitdatay,harmfunc,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
     p1[3]=abs(p1[3])
     p1[2] = abs(p1[2])
     return p1
 
 def print_cavity_Q(fit):
-    print fit[2]/2/fit[3]
+    print(fit[2]/2/fit[3])
     return fit[2]/2/fit[3]
 
 def gaussfunc(p, x):
@@ -414,8 +414,8 @@ def fithanger_new(xdata, ydata, fitparams=None, domain=None, showfit=False, show
                            showstartfit=showstartfit, label=label, mark_data=mark_data, mark_fit=mark_fit)
     fitresult[1]=abs(fitresult[1])
     #fitresult[2]=abs(fitresult[2])
-    if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}'.format(fitresult[0], fitresult[1],
-                                                                                        fitresult[2], fitresult[3])
+    if printresult: print('-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}'.format(fitresult[0], fitresult[1],
+                                                                                        fitresult[2], fitresult[3]))
     return fitresult
     
 
@@ -450,11 +450,11 @@ def fithanger_new_withQc(xdata, ydata, fitparams=None, domain=None, showfit=Fals
                            showstartfit=showstartfit, label=label, mark_data=mark_data, mark_fit=mark_fit)
     fitresult[1]=abs(fitresult[1])
     fitresult[2]=abs(fitresult[2])
-    if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nscale: {4}'.format(fitresult[0],
+    if printresult: print('-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nscale: {4}'.format(fitresult[0],
                                                                                                     fitresult[1],
                                                                                                     fitresult[2],
                                                                                                     fitresult[3],
-                                                                                                    fitresult[4])
+                                                                                                    fitresult[4]))
     return fitresult
 
 
@@ -486,11 +486,11 @@ def fithanger(xdata, ydata, fitparams=None, domain=None, showfit=False, showstar
         #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
     fitresult = fitgeneral(fitdatax, fitdatay, hangerfunc, fitparams, domain=None, showfit=showfit,
                            showstartfit=showstartfit, label=label, mark_data=mark_data, mark_fit=mark_fit)
-    if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}'.format(fitresult[0],
+    if printresult: print('-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}'.format(fitresult[0],
                                                                                                     fitresult[1],
                                                                                                     fitresult[2],
                                                                                                     fitresult[3],
-                                                                                                    fitresult[4])
+                                                                                                    fitresult[4]))
     return fitresult
     
 
@@ -521,8 +521,8 @@ def fithangertilt(xdata, ydata, fitparams=None, domain=None, showfit=False, show
         #print '--------------Initial Parameter Set--------------\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nScale: {4}\nSlope: {5}\nOffset:{6}\n'.format(f0,Qi,Qc,0.,scale,slope, offset)
         fitresult = fitgeneral(fitdatax, fitdatay, hangerfunctilt, fitparams, domain=None, showfit=showfit,
                                showstartfit=showstartfit, label=label)
-        if printresult: print '-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nslope: {4}\noffset: {5}\n'.format(
-            fitresult[0], fitresult[1], fitresult[2], fitresult[3], fitresult[4], fitresult[5])
+        if printresult: print('-- Fit Result --\nf0: {0}\nQi: {1}\nQc: {2}\ndf: {3}\nslope: {4}\noffset: {5}\n'.format(
+            fitresult[0], fitresult[1], fitresult[2], fitresult[3], fitresult[4], fitresult[5]))
     return fitresult
 
 def polynomial(p,x):
@@ -559,7 +559,7 @@ def fit_SNT(xdata, ydata, fitparams=None, domain=None, showfit=False, showstartf
         voff_guess = 0.002
         fitparams = (Tn_guess, GB_guess, T_guess, voff_guess)
 
-    if debug == True: print fitparams
+    if debug == True: print(fitparams)
     p1 = fitgeneral(fitdatax, fitdatay, SNT_func, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
     return p1
@@ -610,11 +610,10 @@ def fitbackground(xdata,ydata,fitparams=None, showfit=False,showstartfit=False,l
 
 def _datacheck_peakdetect(x_axis, y_axis):
     if x_axis is None:
-        x_axis = range(len(y_axis))
+        x_axis = list(range(len(y_axis)))
     
     if len(y_axis) != len(x_axis):
-        raise (ValueError, 
-                'Input vectors y_axis and x_axis must have same length')
+        raise ValueError
     
     #needs to be a numpy array
     y_axis = np.array(y_axis)
@@ -665,9 +664,9 @@ def peakdetect(y_axis, x_axis = None, lookahead = 300, delta=0):
     
     #perform some checks
     if lookahead < 1:
-        raise ValueError, "Lookahead must be '1' or above in value"
+        raise ValueError("Lookahead must be '1' or above in value")
     if not (np.isscalar(delta) and delta >= 0):
-        raise ValueError, "delta must be a positive number"
+        raise ValueError("delta must be a positive number")
     
     #maxima and minima candidates are temporarily stored in
     #mx and mn respectively
@@ -750,14 +749,14 @@ if __name__ =='__main__':
     noise=0.
     plt.figure(2)
     params2=[7.8,200,200.,0.005,1.,0.,0.]
-    print '{0}\n--------------Test Parameter---------- \nf0: {1}\nQi: {2}\nQc: {3}\ndf: {4}\nScale: {5}\nSlope: {6}\nOffset:{7}\n'.format\
-          ('',params2[0],params2[1],params2[2],params2[3],params2[4],params2[5],params2[6])
+    print('{0}\n--------------Test Parameter---------- \nf0: {1}\nQi: {2}\nQc: {3}\ndf: {4}\nScale: {5}\nSlope: {6}\nOffset:{7}\n'.format\
+          ('',params2[0],params2[1],params2[2],params2[3],params2[4],params2[5],params2[6]))
 #    params2=[7.8,200,0.01,1.]
     xdata2=np.linspace(7,9,1000)
     ydata2=hangerfunc(params2,xdata2)-noise/2.+noise*np.random.rand(len(xdata2))
     fit=fithanger(xdata2,ydata2,showfit=True,showstartfit=True)   
-    print '{0}\n--------------Best Fit---------- \nf0: {1}\nQi: {2}\nQc: {3}\ndf: {4}\nScale: {5}\nSlope: {6}\nOffset:{7}\n'.format\
-          ('hanger',fit[0],fit[1],fit[2],fit[3],fit[4],fit[5],fit[6])
+    print('{0}\n--------------Best Fit---------- \nf0: {1}\nQi: {2}\nQc: {3}\ndf: {4}\nScale: {5}\nSlope: {6}\nOffset:{7}\n'.format\
+          ('hanger',fit[0],fit[1],fit[2],fit[3],fit[4],fit[5],fit[6]))
     #print hangerqs(p3)
     
     plt.show()
@@ -885,7 +884,7 @@ def fitrabisatfunc(xdata,ydata,fitparams=None,domain=None,showfit=False,showstar
         fitdatay=ydata
     if fitparams is None:
         fitparams=[0,1]
-    if debug==True: print fitparams
+    if debug==True: print(fitparams)
     p1 = fitgeneral(fitdatax, fitdatay, rabisatfunc, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
 
@@ -904,7 +903,7 @@ def fitrabiwidth(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartf
         fitdatay=ydata
     if fitparams is None:
         fitparams=[sqrt((ydata[-1]-ydata[0])/(xdata[-1]-xdata[0])),ydata[0]]
-    if debug==True: print fitparams
+    if debug==True: print(fitparams)
     p1 = fitgeneral(fitdatax, fitdatay, rabiwidth, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
 
@@ -923,7 +922,7 @@ def fitpoly(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fa
         fitdatay=ydata
     if fitparams is None:
         fitparams=[ydata[0],(ydata[-1]-ydata[0])/(xdata[-1]-xdata[0]),0,xdata[0]]
-    if debug==True: print fitparams
+    if debug==True: print(fitparams)
     p1 = fitgeneral(fitdatax, fitdatay, poly, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
 
@@ -951,7 +950,7 @@ def fitdispersiveshift(xdata,ydata,fitparams=None,domain=None,showfit=False,show
         fitparams[4]=0
         fitparams[5]=fitdatax[np.argmax(fitdatay)]
         fitparams[6]=(max(fitdatax)-min(fitdatax))/10.
-    if debug==True: print fitparams
+    if debug==True: print(fitparams)
     p1 = fitgeneral(fitdatax, fitdatay, dispersiveshift, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
     p1[3]=abs(p1[3])

@@ -2,8 +2,8 @@ try:
     import visa
 
 except Exception as e:
-    print e
-    print "Warning VISA library import failed"
+    print(e)
+    print("Warning VISA library import failed")
 import telnetlib
 import socket
 import time
@@ -11,7 +11,7 @@ import time
 try:
     import serial
 except ImportError:
-    print "Warning serial library import failed."
+    print("Warning serial library import failed.")
 
 
 class Instrument(object):
@@ -78,7 +78,7 @@ class Instrument(object):
         return settings
 
     def set_settings(self, settings):
-        print settings
+        print(settings)
 
     def attr(self, name):
         "re-naming of __getattr__ which is unavailable when proxied"
@@ -96,7 +96,7 @@ class VisaInstrument(Instrument):
             self.instrument.timeout = timeout*1000
 
     def write(self, s):
-        if self.enabled: self.instrument.write(s + self.term_char)
+        if self.enabled: self.instrument.write((s + self.term_char).encode())
 
     def read(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
@@ -115,7 +115,7 @@ class TelnetInstrument(Instrument):
             self.tn = telnetlib.Telnet(address.split(':')[0], self.port)
 
     def write(self, s):
-        if self.enabled: self.tn.write(s + self.term_char)
+        if self.enabled: self.tn.write( (s + self.term_char).encode())
 
     def read(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
@@ -156,12 +156,12 @@ class SocketInstrument(Instrument):
         if self.enabled: self.socket.settimeout(self.timeout)
 
     def write(self, s):
-        if self.enabled: self.socket.send(s + self.term_char)
+        if self.enabled: self.socket.send( (s + self.term_char).encode())
 
     def query(self, s):
         self.write(s)
         time.sleep(self.query_sleep)
-        return ''.join(self.read_line())
+        return self.read()
 
     def read(self, timeout=None):
         if timeout == None: timeout = self.timeout
@@ -193,7 +193,7 @@ class SerialInstrument(Instrument):
             try:
                 self.ser = serial.Serial(address, baudrate)
             except serial.SerialException:
-                print 'Cannot create a connection to port ' + str(address) + '.\n'
+                print('Cannot create a connection to port ' + str(address) + '.\n')
         self.set_timeout(timeout)
         self.recv_length = recv_length
         self.query_sleep = query_sleep
@@ -206,7 +206,7 @@ class SerialInstrument(Instrument):
         self.ser.setTimeout(self.timeout)
 
     def write(self, s):
-        if self.enabled: self.ser.write(s + self.term_char)
+        if self.enabled: self.ser.write((s + self.term_char).encode())
 
     def read(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
@@ -221,8 +221,8 @@ class SerialInstrument(Instrument):
         try:
             self.ser.close()
         except Exception as e:
-            print e
-            print 'cannot properly close the serial connection.'
+            print(e)
+            print('cannot properly close the serial connection.')
 
 class WebInstrument(Instrument):
     def __init__(self, name, address='', enabled=True):

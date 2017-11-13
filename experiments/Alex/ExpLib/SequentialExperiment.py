@@ -36,7 +36,7 @@ class SequentialExperiment():
 
     def save_config(self):
         self.expt.save_config()
-        print "config saved!"
+        print("config saved!")
 
 
 

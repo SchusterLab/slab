@@ -114,7 +114,7 @@ class N5242A(SocketInstrument):
 
     def setup_two_tone_measurement(self, read_frequency=None, read_power=None, probe_start=None, probe_stop=None, probe_power=None, two_tone=True ):
         if two_tone:
-            print "TWO TONE ON"
+            print("TWO TONE ON")
             self.write('SENSE:FOM:RANGE4:COUPLED 1')
             self.write('SENSE:FOM:RANGE2:COUPLED 0')
             self.write('SENSE:FOM:RANGE3:COUPLED 0')
@@ -140,7 +140,7 @@ class N5242A(SocketInstrument):
             if probe_power is not None:
                 self.set_power(probe_power, channel=1, port=3)
         else:
-            print "TWO TONE OFF"
+            print("TWO TONE OFF")
             self.write('SENSE:FOM:RANGE2:COUPLED 1')
             self.write('SENSE:FOM:RANGE3:COUPLED 1')
             self.write('SENSE:FOM:RANGE4:COUPLED 0')
@@ -232,7 +232,7 @@ class N5242A(SocketInstrument):
         elif mode.lower() in allowed_modes:
             self.write('sense:AVER:mode ' + mode)
         else:
-            print "trigger average mode needs to be one of " + ', '.join(allowed_modes)
+            print("trigger average mode needs to be one of " + ', '.join(allowed_modes))
 
     def get_trigger_average_mode (self):
         data = self.query('sense:AVER:mode?')
@@ -251,7 +251,7 @@ class N5242A(SocketInstrument):
     def set_trigger_source(self, source="immediate"):  # IMMEDIATE, MANUAL, EXTERNAL
         allowed_sources = ['ext', 'imm', 'man', 'immediate', 'external', 'manual']
         if source.lower() not in allowed_sources:
-            print "source need to be one of " + ', '.join(allowed_sources)
+            print("source need to be one of " + ', '.join(allowed_sources))
         self.write('TRIG:SEQ:SOUR ' + source)
 
     def get_trigger_source(self):  # INTERNAL, MANUAL, EXTERNAL,BUS
@@ -281,7 +281,7 @@ class N5242A(SocketInstrument):
             self.write(":SOURCE%d:POWER%d:MODE ON" % (channel, port))
             self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
         else:
-            print "Turning off the port %d" %(port)
+            print("Turning off the port %d" %(port))
             self.write(":SOURCE%d:POWER%d:MODE OFF" % (channel, port))
             # self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
 
@@ -321,7 +321,7 @@ class N5242A(SocketInstrument):
             return None
         else:
             data_list = data.strip().split(',')
-            return zip(*[iter(data_list)] * 2)
+            return list(zip(*[iter(data_list)] * 2))
 
     def select_measurement(self, name=None, channel=1):
         query = "calc%d:par:sel '%s'" % (channel, name)
@@ -619,4 +619,4 @@ class N5242A(SocketInstrument):
 
 if __name__ == '__main__':
     na = N5242A("N5242A", address="192.168.14.242")
-    print na.get_id()
+    print(na.get_id())

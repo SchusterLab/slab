@@ -19,7 +19,7 @@ class PXDAC4800:
 
     def load_sequence_file(self, waveform_file_name,awg):
 
-        print "load_sequence_file inputs:"
+        print("load_sequence_file inputs:")
 
         offset_bytes_list  = awg['iq_offsets_bytes']
         clock_speed = awg['clock_speed']
@@ -27,9 +27,9 @@ class PXDAC4800:
         self.sample_size = awg['sample_size']
         DLL_path = awg['DLL_path']
 
-        print 'waveform_file_name =', waveform_file_name
-        print 'offset_bytes_list =', offset_bytes_list
-        print 'clock_speed =', clock_speed
+        print('waveform_file_name =', waveform_file_name)
+        print('offset_bytes_list =', offset_bytes_list)
+        print('clock_speed =', clock_speed)
 
         U8 = C.c_uint8
         U8P = C.POINTER(U8)
@@ -54,34 +54,34 @@ class PXDAC4800:
         try:
             DACdllpath = str(DLL_path)
             DACDLL = C.CDLL(DACdllpath)
-            print "DPXDAC4800.dll loaded"
+            print("DPXDAC4800.dll loaded")
         except:
-            print "Warning could not load PXDAC4800 dll, check that dll located at '%s'" % DACdllpath
+            print("Warning could not load PXDAC4800 dll, check that dll located at '%s'" % DACdllpath)
 
         ppHandle = U32PP(U32P(U32(0)))
 
-        print "Connecting to PXDAC4800 Board #", self.brdNum
+        print("Connecting to PXDAC4800 Board #", self.brdNum)
         dll = DACDLL
         # dll.ConnectToDeviceXD48(ppHandle, U32(SERIAL_NUMBER[self.brdNum-1]))
         dll.ConnectToDeviceXD48(ppHandle, U32(awg['SERIAL_NUMBER']))
 
         self.dll = dll
 
-        print "PXDAC4800 device connected."
+        print("PXDAC4800 device connected.")
 
         pHandle = dll.GetHandleXD48(ppHandle)
 
         self.pHandle = pHandle
 
-        print "Getting Serial Number."
+        print("Getting Serial Number.")
 
         SerialNumber = U32(0)
         pSerialNumber = U32P(SerialNumber)
         outSerial = dll.GetSerialNumberXD48(pHandle, pSerialNumber)
         SerialNumber = pSerialNumber.contents.value
-        print "Serial Number: " + str(SerialNumber)
+        print("Serial Number: " + str(SerialNumber))
 
-        print "Setting DAC"
+        print("Setting DAC")
 
         dll.SetPowerupDefaultsXD48(pHandle)
         # dll._SetOperatingModeXD48(pHandle, U32(1))
@@ -114,7 +114,7 @@ class PXDAC4800:
         ## start DAC auto calibration
         for ii in range(4):
             calibration_result = dll.StartDacAutoCalibrationXD48(pHandle)
-            print "Calibration status: " + str(calibration_result)
+            print("Calibration status: " + str(calibration_result))
             if calibration_result == 0:
                 break
                 # if not calibration_result == 0:
@@ -137,23 +137,23 @@ class PXDAC4800:
         dll.SetClockDivider1XD48(pHandle, U32(clock_divider))
 
 
-        print "Active Channel Mask: " + str(dll.GetActiveChannelMaskXD48(pHandle, U32(1)))
+        print("Active Channel Mask: " + str(dll.GetActiveChannelMaskXD48(pHandle, U32(1))))
 
-        print "Load waveform file."
+        print("Load waveform file.")
 
         offset = U32(0)
         self.offset = offset
 
-        filePath = CHARP(waveform_file_name + '\0')
+        filePath = CHARP((waveform_file_name + '\0').encode())
         # fileSize= U32(os.path.getsize(filePath))
 
-        print "Loading.."
+        print("Loading..")
         dll._LoadFileIntoRamAXD48(pHandle, offset, U32(0), filePath, U32(0), U32(0), offset)
-        print "Loaded!"
+        print("Loaded!")
         pPlaybackBytes = U32P(U32(0))
         dll._GetActiveMemoryRegionXD48(pHandle, None, pPlaybackBytes)
         PlaybackBytes = pPlaybackBytes.contents
-        print "Playback Bytes: " + str(PlaybackBytes.value)
+        print("Playback Bytes: " + str(PlaybackBytes.value))
 
         self.PlaybackBytes = PlaybackBytes
 

@@ -72,12 +72,12 @@ trig.set_output(True)
 def trig_stop():
     trig.set_output(False)
     dac.stop()
-    print "trig stop"
+    print("trig stop")
 
 def trig_start():
     trig.set_output(True)
     dac.run(trigger_now=False)
-    print "trig start"
+    print("trig start")
 
 tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=None, start_function=None)
 

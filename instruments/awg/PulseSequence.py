@@ -49,10 +49,10 @@ class PulseSequence:
                     self.marker_info[marker['name']]['tpts'] = np.linspace(0., (marker_clk_length-1)/awg['clock_speed'],marker_clk_length)
 
     def set_all_lengths(self, length):
-        for name in self.marker_info.keys():
+        for name in list(self.marker_info.keys()):
             self.set_marker_length(name, length)
 
-        for name in self.waveform_info.keys():
+        for name in list(self.waveform_info.keys()):
             self.set_waveform_length(name, length)
 
     def set_waveform_length(self, name, length):
@@ -75,7 +75,7 @@ class PulseSequence:
                           'M8195A': self.write_M8195A_sequence}
         for awg in self.awg_info:
             # try:
-            print awg['type']
+            print(awg['type'])
             if not awg['type'] == "NONE":
                 write_function[awg['type']](awg, path, file_prefix, awg['upload'])
             # except KeyError:
@@ -84,8 +84,8 @@ class PulseSequence:
     def write_M8195A_sequence(self, awg, path, file_prefix, upload=False):
 
         start_time = time.time()
-        print '\nStart writing M8195A sequences...(PulseSequence.py)'
-        print 'fast awg waveforms (ch1-4):', [waveform['name'] for waveform in awg['waveforms']]
+        print('\nStart writing M8195A sequences...(PulseSequence.py)')
+        print('fast awg waveforms (ch1-4):', [waveform['name'] for waveform in awg['waveforms']])
 
         # todo: this is where RAM blows up..
         waveform_matrix = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
@@ -96,7 +96,7 @@ class PulseSequence:
         upload_M8195A_sequence(m8195a,waveform_matrix, awg)
 
         end_time = time.time()
-        print 'Finished writing M8195A sequences in', end_time - start_time, 'seconds.\n'
+        print('Finished writing M8195A sequences in', end_time - start_time, 'seconds.\n')
 
     def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
@@ -108,7 +108,7 @@ class PulseSequence:
             im[awg['name']].pre_load()
             # print "Sequence preloaded"
             im[awg['name']].load_sequence_file(os.path.join(path, file_prefix + '.awg'), force_reload=True)
-            print "Sequence file uploaded"
+            print("Sequence file uploaded")
             im[awg['name']].prep_experiment()
 
     def write_Tek70001_sequence(self, awg, path, file_prefix, upload=False):
@@ -142,10 +142,10 @@ class PulseSequence:
         if upload:
             pxdac4800 = LocalInstruments().inst_dict['pxdac4800_%d' % brdNum]
             pxdac4800.load_sequence_file(os.path.join(path, file_prefix + '_%d.rd16' % brdNum), awg)
-            print "Sequence file uploaded"
-            print "Waveform length: " + str(len(waveforms[0][0]))
+            print("Sequence file uploaded")
+            print("Waveform length: " + str(len(waveforms[0][0])))
             pxdac4800.waveform_length = len(waveforms[0][0])
-            print "PXDAC4800 waveform length: " + str(pxdac4800.waveform_length)
+            print("PXDAC4800 waveform length: " + str(pxdac4800.waveform_length))
             pxdac4800.run_experiment()
 
             return pxdac4800

@@ -9,7 +9,7 @@ from guiqwt.pyplot import *
 from time import *
 import matplotlib.pyplot as plt
 
-from spectrum_analyzer import *
+from .spectrum_analyzer import *
 
 pwr = []
 ts = []
@@ -18,7 +18,7 @@ t0 = time.time();
 for i in range(1000):
     pwr.append(sa.get_power())
     ts.append(time.time()-t0)
-    print i
+    print(i)
     
 figure(0)
 xlabel('time (s)')

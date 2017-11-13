@@ -124,7 +124,7 @@ class Keithley199(VisaInstrument):
         return np.mean(np.array(v)), np.std(np.array(v))
 
 if __name__ == '__main__':
-    print "HERE"
+    print("HERE")
     # #magnet=IPSMagnet(address='COM1')
     # V=Keithley199(address='GPIB0::26::INSTR')
     # print V.get_id()

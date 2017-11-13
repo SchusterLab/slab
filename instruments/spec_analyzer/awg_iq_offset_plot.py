@@ -12,8 +12,8 @@ import pickle
 
 #from instruments import AWG81180A
 from slab.instruments import InstrumentManager
-from spectrum_analyzer import *
-from sa_calibration_manager import *
+from .spectrum_analyzer import *
+from .sa_calibration_manager import *
 
 def set_DC(awg, channel, offset):
     awg.write('inst:sel '+str(channel)+'; function:shape DC; DC '+str(offset))
@@ -75,7 +75,7 @@ if __name__ == '__main__':
             for d1 in xs:
                 set_DC(awg, 1, d1)
                 set_DC(awg, 2, d2)
-                print 'd1 = '+str(d1)+', d2 = '+str(d2)
+                print('d1 = '+str(d1)+', d2 = '+str(d2))
                 #time.sleep(0.01)
                 pwr = sa.get_avg_power()
                 if pwr <= min_op:
@@ -84,7 +84,7 @@ if __name__ == '__main__':
                     min_d2 = d2
                 if pwr > max_op:
                     max_op = pwr
-                print 'pwr = '+str(pwr)
+                print('pwr = '+str(pwr))
                 try:
                     zs.append(pwr)
                     X.append(d1)
@@ -92,10 +92,10 @@ if __name__ == '__main__':
                     
                     #zs.append(sacm.get_rf_power(4.99e9, pwr))
                 except OutputOutOfRangeError as e:
-                    print e
+                    print(e)
                     #zs.append(sacm.get_rf_power(4.99e9, e.lower_bound))
         
-        print 'step = '+str(step)+' minimal (d1, d2) = ('+str(min_d1)+', '+str(min_d2)+')'
+        print('step = '+str(step)+' minimal (d1, d2) = ('+str(min_d1)+', '+str(min_d2)+')')
         step *= 0.1
     #X, Y = np.meshgrid(xs, ys)
     

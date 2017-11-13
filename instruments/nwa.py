@@ -99,14 +99,14 @@ class HP3577A(VisaInstrument):
             N = float(self.read())
             time.sleep(1)
             if N > N_old and verbose:
-                print "%d/%d" % (N, number_of_averages)
+                print("%d/%d" % (N, number_of_averages))
             N_old = N
 
         self.write('DT1')
         time.sleep(3)
-        print "reading magnitude..."
+        print("reading magnitude...")
         rawlogmag = self.read()
-        logmag = map(float, rawlogmag.split(','))
+        logmag = list(map(float, rawlogmag.split(',')))
 
         self.write('DF5')
         N = 0
@@ -116,15 +116,15 @@ class HP3577A(VisaInstrument):
             time.sleep(0.1)
             N = float(self.read())
             if N > N_old and verbose:
-                print "%d/%d" % (N, number_of_averages)
+                print("%d/%d" % (N, number_of_averages))
             time.sleep(1)
             N_old = N
 
         self.write('DT1')
         time.sleep(3)
-        print "reading phase..."
+        print("reading phase...")
         rawphase = self.read()
-        phase = map(float, rawphase.split(','))
+        phase = list(map(float, rawphase.split(',')))
 
         fminch1, fmaxch1, fminch2, fmaxch2, amp = self.get_status()
         freq = np.linspace(fminch1, fmaxch1, len(phase))
@@ -343,7 +343,7 @@ class E5071(SocketInstrument):
             do_set = 'ON' if state == 'point' else 'OFF'
             self.write(':TRIG:POIN %s'%do_set)
         else:
-            print "keyword state should be either 'sweep' or 'point'"
+            print("keyword state should be either 'sweep' or 'point'")
 
     def get_trigger_event(self):
         """
@@ -567,15 +567,15 @@ class E5071(SocketInstrument):
         span = stop - start
         total_sweep_pts = span / step
         if total_sweep_pts <= 1601:
-            print "Segmented sweep unnecessary"
+            print("Segmented sweep unnecessary")
         segments = np.ceil(total_sweep_pts / 1600.)
         segspan = span / segments
         starts = start + segspan * np.arange(0, segments)
         stops = starts + segspan
 
-        print span
-        print segments
-        print segspan
+        print(span)
+        print(segments)
+        print(segspan)
 
         # Set Save old settings and set up for automated data taking
         time.sleep(self.query_sleep)
@@ -619,7 +619,7 @@ class E5071(SocketInstrument):
         span = stop - start
         total_sweep_pts = span / step
         if total_sweep_pts < 1600:
-            print "Segmented sweep unnecessary"
+            print("Segmented sweep unnecessary")
             self.set_sweep_points(max(sweep_pts, total_sweep_pts))
             self.set_start_frequency(start)
             self.set_stop_frequency(stop)
@@ -771,7 +771,7 @@ def nwa_watch_temperature_sweep(na, fridge, datapath, fileprefix, windows, power
             Temperature = fridge.get_temperature('MC RuO2')
             if not Temperature > 0:
                 Temperature = fridge.get_temperature('MC cernox')
-            print "Trace: %d\t\tWindow: %d\tTemperature: %3.3f" % (count, ii, Temperature)
+            print("Trace: %d\t\tWindow: %d\tTemperature: %3.3f" % (count, ii, Temperature))
             na.set_center_frequency(w[0])
             na.set_span(w[1])
             na.set_power(powers[ii])
@@ -828,7 +828,7 @@ def nwa_test3(na):
     na.set_averages(10)
     na.set_average_state(True)
 
-    print na.get_settings()
+    print(na.get_settings())
     na.clear_averages()
     na.take_one_averaged_trace("test.csv")
 
@@ -857,7 +857,7 @@ def convert_nwa_files_to_hdf(nwa_file_dir, h5file, sweep_min, sweep_max, sweep_l
 if __name__ == '__main__':
     #    condense_nwa_files(r'C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data','C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data\\test')
     na = E5071("E0571", address="192.168.14.130")
-    print na.get_id()
+    print(na.get_id())
 
 
 # print "Setting window"

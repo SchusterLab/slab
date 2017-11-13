@@ -13,8 +13,8 @@ import pickle
 
 #from instruments import AWG81180A
 from slab.instruments import InstrumentManager
-from spectrum_analyzer import *
-from sa_calibration_manager import *
+from .spectrum_analyzer import *
+from .sa_calibration_manager import *
 
 def set_DC(awg, channel, offset):
     awg.write('inst:sel '+str(channel)+'; function:shape DC;')
@@ -116,7 +116,7 @@ if __name__ == '__main__':
                 """set the awg ch1 to the optimal p1"""
                 set_sin(awg, 1, m_amp, m_freq, d1, 90.0+min_p1)
                 set_sin(awg, 2, m_amp, m_freq, d2, 0.0)
-                print 'd1 = '+str(d1)+', d2 = '+str(d2)
+                print('d1 = '+str(d1)+', d2 = '+str(d2))
                 time.sleep(0.05)
                 #evaluation the configuration
                 #lsb_pwr = get_power_at(sa, lo, c_freq-m_freq)
@@ -135,10 +135,10 @@ if __name__ == '__main__':
                 #if pwr > max_op:
                 #    max_op = pwr
                 #print 'op = '+str(op)+': lsb_pwr = '+str(lsb_pwr)+', c_pwr = '+str(c_pwr)+', usb_pwr = '+str(usb_pwr)
-                print 'c_pwr = '+str(c_pwr)
+                print('c_pwr = '+str(c_pwr))
 
         #print 'd_step = '+str(d_step)+' p_step = '+str(p_step)+' minimal (d1, d2, p1) = ('+str(min_d1)+', '+str(min_d2)+', '+str(min_p1)+')'
-        print 'best (d1, d2) = ('+str(min_d1)+', '+str(min_d2)+') at c_pwr = '+str(min_op)
+        print('best (d1, d2) = ('+str(min_d1)+', '+str(min_d2)+') at c_pwr = '+str(min_op))
         d_step *= 0.1    
     
     """search for optimal (p1) config"""
@@ -150,7 +150,7 @@ if __name__ == '__main__':
         for p1 in p1s:
             set_sin(awg, 1, m_amp, m_freq, min_d1, 90.0 + p1)
             set_sin(awg, 2, m_amp, m_freq, min_d2, 0.0)
-            print 'p1 = '+str(p1)
+            print('p1 = '+str(p1))
             """awg takes time to adjust"""
             time.sleep(0.05)
             try:
@@ -174,9 +174,9 @@ if __name__ == '__main__':
             if op < min_op:
                 min_op = op
                 min_p1 = p1
-            print 'lsb_pwr = '+str(lsb_pwr)
-            print 'usb_pwr = '+str(usb_pwr)
-        print 'best p1 = '+str(min_p1)
+            print('lsb_pwr = '+str(lsb_pwr))
+            print('usb_pwr = '+str(usb_pwr))
+        print('best p1 = '+str(min_p1))
         p_step *= 0.1
     
 

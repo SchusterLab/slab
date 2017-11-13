@@ -54,8 +54,8 @@ class VacuumRabiSequence(PulseSequence):
         ii = 0
         w =self.pi_length
         a=self.pulse_cfg['a']
-        print a
-        print w
+        print(a)
+        print(w)
 
         if self.pi_pulse:
             if self.pulse_type == 'square':
@@ -101,12 +101,12 @@ class MultimodeVacuumRabiSequencePSB(PulseSequence):
     def __init__(self, awg_info, vacuum_rabi_cfg, readout_cfg,buffer_cfg,pulse_cfg,cfg,**kwargs):
 
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
 
-        print "Multimode VR PSB"
+        print("Multimode VR PSB")
 
         self.vacuum_rabi_cfg = vacuum_rabi_cfg
         self.multimode_cfg = cfg['multimodes']

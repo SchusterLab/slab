@@ -1,17 +1,17 @@
 __author__ = 'Nelson'
 
-from spinapi import *
+from .spinapi import *
 
 # Enable the log file
 pb_set_debug(1)
 
-print("Using SpinAPI Library version %s" % pb_get_version())
-print("Found %d boards in the system.\n" % pb_count_boards())
+print(("Using SpinAPI Library version %s" % pb_get_version()))
+print(("Found %d boards in the system.\n" % pb_count_boards()))
 
 pb_select_board(0)
 
 if pb_init() != 0:
-	print("Error initializing board: %s" % pb_get_error())
+	print(("Error initializing board: %s" % pb_get_error()))
 	exit()
 
 # time settings

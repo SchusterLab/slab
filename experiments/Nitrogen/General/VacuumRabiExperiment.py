@@ -28,7 +28,7 @@ class VacuumRabiExperiment(Experiment):
     def go(self):
         # self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_output(True)
         self.readout.set_power(self.cfg['readout']['power'])
         if (self.cfg[self.expt_cfg_name]['pulsed']):
@@ -53,7 +53,7 @@ class VacuumRabiExperiment(Experiment):
 
         self.awg.run()
 
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(self.cfg['alazar'])
 
 
@@ -118,7 +118,7 @@ class MultimodeVacuumRabiExperiment(Experiment):
     def go(self):
         self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_output(True)
         self.readout.set_power(self.cfg['readout']['power'])
         if (self.cfg[self.expt_cfg_name]['pulsed']):
@@ -141,7 +141,7 @@ class MultimodeVacuumRabiExperiment(Experiment):
 
         self.awg.run()
 
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(self.cfg['alazar'])
 
 

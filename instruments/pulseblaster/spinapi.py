@@ -24,7 +24,7 @@ FREQ_REGS = 1
 
 try:
     spinapi = ctypes.CDLL("spinapi64")
-    print "spinapi64 DLL loaded!"
+    print("spinapi64 DLL loaded!")
 except:
     try:
         spinapi = ctypes.CDLL("spinapi")
@@ -88,6 +88,14 @@ spinapi.pb_stop.restype = (ctypes.c_int)
 spinapi.pb_reset.restype = (ctypes.c_int)
 spinapi.pb_close.restype = (ctypes.c_int)
 
+
+spinapi.pb_inst_pbonly64.argtype = (
+	ctypes.c_int, #Flags
+	ctypes.c_int, #inst
+	ctypes.c_int, #inst data
+	ctypes.c_double, #timing value (double)
+)
+
 spinapi.pb_inst_dds2.argtype = (
 	ctypes.c_int, #Frequency register DDS0
 	ctypes.c_int, #Phase register DDS0
@@ -149,6 +157,7 @@ def pb_stop_programming():
 
 def pb_inst_pbonly64(*args):
 	t = list(args)
+	t[2] = int(t[2])
 	#Argument 3 must be a double
 	t[3] = ctypes.c_double(t[3])
 	args = tuple(t)

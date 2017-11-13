@@ -1,6 +1,6 @@
 __author__ = 'Nelson'
 
-from MultimodeFluxSideBandFreqSweepExperiment3 import *
+from .MultimodeFluxSideBandFreqSweepExperiment3 import *
 import gc
 import json
 from slab.instruments.Alazar import Alazar
@@ -16,7 +16,7 @@ with open(config_file, 'r') as fid:
 
 cfg = AttrDict(json.loads(cfg_str))
 
-print "Prep Card"
+print("Prep Card")
 adc = Alazar(cfg['alazar'])
 
 for ii, flux_freq in enumerate(flux_freq_pts):

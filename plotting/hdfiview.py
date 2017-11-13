@@ -10,7 +10,7 @@ from slab import gui
 from collections import defaultdict, namedtuple
 from copy import copy
 import os, glob, sys
-import syntax
+from . import syntax
 UiClass = loadui(__file__.split(".")[0] + ".ui")
 
 h5py_types = { h5py.File : "File",
@@ -227,7 +227,7 @@ class HDFViewThread(gui.DataThread):
                         x_data = np.linspace(x0, x1, h5file.shape[0])
                         self.msg('set up axes')
                     except:
-                        x_data = range(h5file.shape[0])
+                        x_data = list(range(h5file.shape[0]))
                 try:
                     xlab, ylab = original_h5file.attrs["_axes_labels"]
                 except Exception as e:
@@ -256,7 +256,7 @@ class HDFViewThread(gui.DataThread):
         if isinstance(obj, h5py.Dataset):
             tree.meta["type"] += str(obj.shape)
         tree.meta["attrs"] = {}
-        for k, v in obj.attrs.iteritems():
+        for k, v in obj.attrs.items():
             tree.meta["attrs"][k] = v
 
     def process_items(self, tree=None, parent=None):
@@ -264,13 +264,13 @@ class HDFViewThread(gui.DataThread):
             tree = self.dsettree
             self.tree_items = []
         else:
-            for k, v in tree.meta["attrs"].iteritems():
+            for k, v in tree.meta["attrs"].items():
                 ti = DataSetTreeItem(k, "attr")
                 ti.val = v
                 parent.addChild(ti)
 
         if isinstance(tree, dict):
-            for k, v in tree.iteritems():
+            for k, v in tree.items():
                 try: ti = DataSetTreeItem(k, v.meta["type"])
                 except: ti = DataSetTreeItem(k, "")
                 if parent is None:

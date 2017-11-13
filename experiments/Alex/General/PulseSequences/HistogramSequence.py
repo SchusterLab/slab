@@ -20,7 +20,7 @@ class HistogramSequence(PulseSequence):
         else:
             seq_len = 2
 
-        self.histo_pts = range(seq_len)
+        self.histo_pts = list(range(seq_len))
 
         self.start_end_buffer = buffer_cfg['tek1_start_end']
         self.marker_start_buffer = buffer_cfg['marker_start']

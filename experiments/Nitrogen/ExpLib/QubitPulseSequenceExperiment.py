@@ -17,7 +17,7 @@ class QubitPulseSequenceExperiment(Experiment):
 
         self.extra_args={}
 
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -42,7 +42,7 @@ class QubitPulseSequenceExperiment(Experiment):
 
         if 'trigger_period' in self.extra_args:
             self.trigger_period = self.extra_args['trigger_period']
-            print "Trigger period has been set to %s microseconds"%(self.trigger_period*1e6)
+            print("Trigger period has been set to %s microseconds"%(self.trigger_period*1e6))
         else:
             try:
                 self.trigger_period = self.cfg['expt_trigger']['period']
@@ -92,7 +92,7 @@ class QubitPulseSequenceExperiment(Experiment):
         if self.liveplot_enabled:
             self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=True)
@@ -136,7 +136,7 @@ class QubitPulseSequenceExperiment(Experiment):
             self.pre_run()
 
         if self.adc==None:
-            print "Prep Card"
+            print("Prep Card")
             adc = Alazar(self.cfg['alazar'])
         else:
             adc = self.adc

@@ -47,8 +47,8 @@ def P1H(B):
 
 def P1_transition_weights(ekets):
     weights=[]
-    for ii in xrange(len(ekets)):
-        for jj in xrange (ii+1,len(ekets)):
+    for ii in range(len(ekets)):
+        for jj in range (ii+1,len(ekets)):
             weights.append([ii,jj,abs((ekets[ii].dag()*tensor(sigmax(),qeye(3))*ekets[jj]).tr())+abs((ekets[ii].dag()*tensor(sigmay(),qeye(3))*ekets[jj]).tr()) +abs((ekets[ii].dag()*tensor(sigmaz(),qeye(3))*ekets[jj]).tr())])
     return weights
 
@@ -71,8 +71,8 @@ def NVH(B):
 
 def NV_allowed_transitions(ekets,threshold=.001):
     allowed_transitions=[]
-    for ii in xrange(len(ekets)):
-        for jj in xrange (ii+1,len(ekets)):
+    for ii in range(len(ekets)):
+        for jj in range (ii+1,len(ekets)):
             if abs((ekets[ii].dag()*jmat(1,'x')*ekets[jj]).tr())+abs((jmat(1,'x').dag()*jmat(1,'y')*ekets[jj]).tr()) +abs((ekets[ii].dag()*jmat(1,'z')*ekets[jj]).tr())>threshold:
                 allowed_transitions.append([ii,jj])
     return allowed_transitions
@@ -84,8 +84,8 @@ def transition_frequencies(enlist,transitions):
 def plot_transitions(xpts,enlist,label='',allowed_transitions=None):
     if allowed_transitions is None:
         allowed_transitions=[]
-        for ii in xrange(len(enlist)):
-            for jj in xrange(ii+1,len(enlist)):
+        for ii in range(len(enlist)):
+            for jj in range(ii+1,len(enlist)):
                 allowed_transitions.append([ii,jj])
     if label!='': label+="-"
     for trans in allowed_transitions:
@@ -111,7 +111,7 @@ if __name__=="__main__":
     R2=RotateAtoB([0,0,1.],[-1.,-1., 1.])
     R3=RotateAtoB([0,0,1.],[ 1.,-1.,-1.])
     R4=RotateAtoB([0,0,1.],[-1., 1.,-1.])
-    print "Calculating transitions"
+    print("Calculating transitions")
     for b in blist:
         B=b*Bn
         B1=dot(R1,B)
@@ -173,7 +173,7 @@ if __name__=="__main__":
 #    plot_transitions(blist,nvlist_4,'NV_4',NV_allowed_transitions(nv_ekets))
     #print P1_allowed_transitions(p1_ekets)
     figure(3)
-    print "Calculating density plot"
+    print("Calculating density plot")
     f0=5.
     kc=.01
     kci=0.0001

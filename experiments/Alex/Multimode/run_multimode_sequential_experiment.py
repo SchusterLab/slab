@@ -32,7 +32,7 @@ def run_multimode_sequential_experiment(expt_name):
             cfg['alazar']['recordsPerBuffer'] = sequence_length
             cfg['alazar']['recordsPerAcquisition'] = int(
                 sequence_length * min(cfg[expt_name.lower()]['averages'], 100))
-            print "Prep Card"
+            print("Prep Card")
             adc = Alazar(cfg['alazar'])
         else:
             cfg['alazar']['samplesPerRecord'] = 2 ** (cfg['readout']['width'] - 1).bit_length()
@@ -44,7 +44,7 @@ def run_multimode_sequential_experiment(expt_name):
             cfg['alazar']['recordsPerBuffer'] = sequence_length
             cfg['alazar']['recordsPerAcquisition'] = int(
                 sequence_length * min(cfg[expt_name.lower()][expt]['averages'], 100))
-            print "Prep Card"
+            print("Prep Card")
             adc = Alazar(cfg['alazar'])
         return adc
 
@@ -64,7 +64,7 @@ def run_multimode_sequential_experiment(expt_name):
         cfg['alazar']['recordsPerBuffer'] = sequence_length
         cfg['alazar']['recordsPerAcquisition'] = int(
             sequence_length * min(cfg[expt_name.lower()]['averages'], 100))
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(cfg['alazar'])
         flux_freq_pts = arange(cfg[expt_name.lower()]['freq_start'], cfg[expt_name.lower()]['freq_stop'],
                                cfg[expt_name.lower()]['freq_step'])
@@ -73,7 +73,7 @@ def run_multimode_sequential_experiment(expt_name):
         from slab.experiments.Multimode.MultimodePulseSequenceExperiment import MultimodeRabiSweepExperiment
         # Do Multimode Rabi
         for ii, flux_freq in enumerate(flux_freq_pts):
-            print "Running Multimode Rabi Sweep with flux frequency: " + str(flux_freq)
+            print("Running Multimode Rabi Sweep with flux frequency: " + str(flux_freq))
             expt = MultimodeRabiSweepExperiment(path=datapath, data_file=data_file, adc=adc, flux_freq=flux_freq,
                                                 liveplot_enabled=False)
             expt.go()
@@ -94,7 +94,7 @@ def run_multimode_sequential_experiment(expt_name):
         cfg['alazar']['recordsPerBuffer'] = sequence_length
         cfg['alazar']['recordsPerAcquisition'] = int(
             sequence_length * min(cfg[expt_name.lower()]['averages'], 100))
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(cfg['alazar'])
         flux_freq_pts = arange(cfg[expt_name.lower()]['freq_start'], cfg[expt_name.lower()]['freq_stop'],
                                cfg[expt_name.lower()]['freq_step'])
@@ -103,7 +103,7 @@ def run_multimode_sequential_experiment(expt_name):
         from slab.experiments.Multimode.MultimodePulseSequenceExperiment import MultimodeEFRabiSweepExperiment
         # Do Multimode Rabi
         for ii, flux_freq in enumerate(flux_freq_pts):
-            print "Running Multimode EF Rabi Sweep with flux frequency: " + str(flux_freq)
+            print("Running Multimode EF Rabi Sweep with flux frequency: " + str(flux_freq))
             expt = MultimodeEFRabiSweepExperiment(path=datapath, data_file=data_file, adc=adc, flux_freq=flux_freq,
                                                   liveplot_enabled=False)
             expt.go()
@@ -128,7 +128,7 @@ def run_multimode_sequential_experiment(expt_name):
         data_file = os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
 
         for ii, idle_time in enumerate(idle_time_pts):
-            print "Idle_time: " + str(idle_time)
+            print("Idle_time: " + str(idle_time))
             expt = CPhaseOptimizationSweepExperiment(path=datapath, data_file=data_file, adc=adc, idle_time=idle_time,
                                                      liveplot_enabled=True)
             expt.go()
@@ -174,7 +174,7 @@ def run_multimode_sequential_experiment(expt_name):
                 for ii, idm in enumerate(idm_list):
                     prefix = 'multimode_general_entanglement_' + str(number) + '_l_' + str(list)+'_experiment'
                     data_file = os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
-                    print "Measured mode " + str(idm)
+                    print("Measured mode " + str(idm))
                     expt = MultimodeGeneralEntanglementExperiment(path=datapath, data_file=data_file, adc=adc, idm=idm, id1=idm_list[0],
                                                                   id2=idm_list[1], id3=idm_list[2], id4=idm_list[3], id5=idm_list[4], id6=idm_list[5], number=number,
                                                                   liveplot_enabled=True)
@@ -200,14 +200,14 @@ def run_multimode_sequential_experiment(expt_name):
         data_file = os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
 
         for state_num in state_pts:
-            print "State_number: " + str(state_num)
+            print("State_number: " + str(state_num))
             # frequency_stabilization()
 
             for ii, tomography_num in enumerate(tom_pts):
                 prefix = 'multimode_two_resonator_tomography_phase_sweep_' + str(state_num) + '_' + str(
                     tomography_num) + '_experiment'
                 data_file = os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
-                print "Tomography_pulse_number: " + str(tomography_num)
+                print("Tomography_pulse_number: " + str(tomography_num))
                 expt = MultimodeTwoResonatorTomographyPhaseSweepExperiment(path=datapath, data_file=data_file, adc=adc,
                                                                            tomography_num=tomography_num,
                                                                            state_num=state_num, liveplot_enabled=True)
@@ -233,14 +233,14 @@ def run_multimode_sequential_experiment(expt_name):
         data_file = os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
 
         for state_num in state_pts:
-            print "State_number: " + str(state_num)
+            print("State_number: " + str(state_num))
             # frequency_stabilization()
 
             for ii, tomography_num in enumerate(tom_pts):
                 prefix = 'multimode_three_mode_tomography_4_' + str(state_num) + '_' + str(
                     tomography_num) + '_experiment'
                 data_file = os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
-                print "Tomography_pulse_number: " + str(tomography_num)
+                print("Tomography_pulse_number: " + str(tomography_num))
                 expt = MultimodeThreeModeCorrelationExperiment(path=datapath, data_file=data_file, adc=adc,
                                                                            tomography_num=tomography_num,
                                                                            state_num=state_num, liveplot_enabled=True)
@@ -277,7 +277,7 @@ def run_multimode_sequential_experiment(expt_name):
                 expt.go()
                 if save_to_file:
                     expt.save_config()
-                    print "Saved Multimode Rabi pi and 2pi lengths to the config file"
+                    print("Saved Multimode Rabi pi and 2pi lengths to the config file")
                 else:
                     pass
 
@@ -296,7 +296,7 @@ def run_multimode_sequential_experiment(expt_name):
                                                           exp='short_multimode_ramsey', dc_offset_guess=0,
                                                           mode=mode_num, liveplot_enabled=True)
                 expt.go()
-                print expt.suggested_dc_offset_freq
+                print(expt.suggested_dc_offset_freq)
                 dc_offset_guess = expt.suggested_dc_offset_freq
                 adc.close()
                 expt = None
@@ -311,7 +311,7 @@ def run_multimode_sequential_experiment(expt_name):
                                                           exp='long_multimode_ramsey', mode=mode_num,
                                                           dc_offset_guess=dc_offset_guess, liveplot_enabled=True)
                 expt.go()
-                print expt.suggested_dc_offset_freq
+                print(expt.suggested_dc_offset_freq)
                 expt.save_config()
                 expt = None
                 adc.close()
@@ -346,7 +346,7 @@ def run_multimode_sequential_experiment(expt_name):
                 expt = MultimodeDCOffsetExperiment(path=datapath, data_file=data_file, adc=adc,amp = amp, freq= freq, data_prefix = prefix, liveplot_enabled=True)
                 expt.go()
                 expt = None
-                print
+                print()
                 del expt
                 gc.collect()
 
@@ -354,8 +354,8 @@ def run_multimode_sequential_experiment(expt_name):
 
     if not experiment_started:
         close_match = difflib.get_close_matches(expt_name, expt_list)
-        print "No experiment found for: " + expt_name
-        print "Do you mean: " + close_match[0] + "?"
+        print("No experiment found for: " + expt_name)
+        print("Do you mean: " + close_match[0] + "?")
 
 
 

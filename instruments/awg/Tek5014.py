@@ -8,11 +8,11 @@ from slab.instruments import VisaInstrument, InstrumentManager
 import numpy as np
 from numpy import array, floor, zeros
 from collections import namedtuple
-from TekPattern import write_Tek_file
+from .TekPattern import write_Tek_file
 import hashlib
 import struct
 import io
-import StringIO
+import io
 import time
 
 #comment out if not debugging
@@ -582,7 +582,7 @@ def write_Tek5014_file(waveforms, markers, filename, seq_name, options=None, do_
 
     # Open the file
     if do_string_io:
-        FID = StringIO.StringIO()
+        FID = io.StringIO()
     else:
         FID = io.open(filename, 'wb')
 
@@ -627,7 +627,7 @@ def write_Tek5014_file(waveforms, markers, filename, seq_name, options=None, do_
     # Now write the waveforms (i.e. extract out the waveform data from the dictionaries)
     for seqct in range(num_seqs):
         # On the Tek, all four channels need to have the same length
-        print "x",
+        print("x", end=' ')
         for wfct in range(4):
             data = pack_waveform(waveforms[wfct][seqct], markers[2 * wfct][seqct], markers[2 * wfct + 1][seqct])
             write_waveform(FID, '{0}Ch{1}{2:03d}'.format(seq_name, wfct + 1, seqct + 1), 4 * seqct + 1 + wfct, data)
@@ -651,7 +651,7 @@ def write_Tek5014_file(waveforms, markers, filename, seq_name, options=None, do_
     if do_string_io:
         return FID.getvalue()
     FID.close()
-    print "\nFinished writing sequence with %d steps to %s" % (num_seqs,filename)
+    print("\nFinished writing sequence with %d steps to %s" % (num_seqs,filename))
 
 
 #### Creating pattern files
@@ -725,4 +725,4 @@ class Tek5014Sequence:
 
 if __name__ == "__main__":
     awg = Tek5014(address='192.168.14.136')
-    print awg.get_id()
+    print(awg.get_id())

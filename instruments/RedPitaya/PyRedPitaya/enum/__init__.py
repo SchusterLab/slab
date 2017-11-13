@@ -1,1 +1,1 @@
-from enum import *
+from .enum import *

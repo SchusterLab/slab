@@ -21,7 +21,7 @@ and an InstrumentManager server
 from slab.instruments import InstrumentManager
 
 im=InstrumentManager()
-print im.keys()
-print im['echo'].echo('This is a test')
-print im['random'].random()
+print(list(im.keys()))
+print(im['echo'].echo('This is a test'))
+print(im['random'].random())
 #print im['FRIDGE'].get_status()

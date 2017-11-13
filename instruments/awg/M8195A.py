@@ -847,7 +847,7 @@ class M8195A(SocketInstrument):
                 segment_data_csv = ','.join(['%d' %num for num in segment_data_array])
                 m8195a.set_segment_data(channel,sequence_id,0,segment_data_csv)
 
-        print '\n'
+        print('\n')
 
 
     def define_segments_binary(m8195a,waveform_matrix):
@@ -865,7 +865,7 @@ class M8195A(SocketInstrument):
         segment_length = waveform_matrix[0].shape[1]
 
         sys.stdout.write('Writing and uploading M8195A sequences...')
-        for sequence_id in tqdm(range(1,sequence_length+1)):
+        for sequence_id in tqdm(list(range(1,sequence_length+1))):
 
             m8195a.set_segment_size(1,sequence_id,segment_length)
 
@@ -912,7 +912,7 @@ class M8195A(SocketInstrument):
             segment_data_csv = ','.join(['%d' %num for num in segment_data_array])
             m8195a.set_segment_data(3,ii,0,segment_data_csv)
 
-        print '\n'
+        print('\n')
 
 
     def define_sequence(m8195a,sequence_length):
@@ -992,9 +992,9 @@ def upload_M8195A_sequence(m8195a,waveform_matrix,awg):
     # m8195a.set_internal_trigger_frequency(1./period)
 
     # confirm upload complete by waiting for response
-    print 'Wait for upload to finish...'
-    print m8195a.get_id()
-    print 'Upload to M8195A finished.'
+    print('Wait for upload to finish...')
+    print(m8195a.get_id())
+    print('Upload to M8195A finished.')
 
     m8195a.start_output()
 

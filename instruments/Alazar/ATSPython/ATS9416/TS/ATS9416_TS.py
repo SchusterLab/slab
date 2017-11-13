@@ -1,4 +1,4 @@
-from __future__ import division
+
 import numpy as np
 import os
 import signal
@@ -229,7 +229,7 @@ def AcquireData(board, acquireData):
 
     start = time.clock() # Keep track of when acquisition started
     board.startCapture() # Start the acquisition
-    print("Capturing %d buffers. Press any key to abort" % buffersPerAcquisition)
+    print(("Capturing %d buffers. Press any key to abort" % buffersPerAcquisition))
     buffersCompleted = 0
     bytesTransferred = 0
     while buffersCompleted < buffersPerAcquisition and not waitBar.hasUserCancelled():
@@ -273,14 +273,14 @@ def AcquireData(board, acquireData):
         board.postAsyncBuffer(buffer.addr, buffer.size_bytes)
     # Compute the total transfer time, and display performance information.
     transferTime_sec = time.clock() - start
-    print("Capture completed in %f sec" % transferTime_sec)
+    print(("Capture completed in %f sec" % transferTime_sec))
     buffersPerSec = 0
     bytesPerSec = 0
     if transferTime_sec > 0:
         buffersPerSec = buffersCompleted / transferTime_sec
         bytesPerSec = bytesTransferred / transferTime_sec
-    print("Captured %d buffers (%f buffers per sec)" % (buffersCompleted, buffersPerSec))
-    print("Transferred %d bytes (%f bytes per sec)" % (bytesTransferred, bytesPerSec))
+    print(("Captured %d buffers (%f buffers per sec)" % (buffersCompleted, buffersPerSec)))
+    print(("Transferred %d bytes (%f bytes per sec)" % (bytesTransferred, bytesPerSec)))
 
     # Abort transfer.
     board.abortAsyncRead()

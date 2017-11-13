@@ -21,7 +21,7 @@ class QubitPulseSequenceExperiment(Experiment):
 
         self.extra_args={}
 
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -91,7 +91,7 @@ class QubitPulseSequenceExperiment(Experiment):
         # if self.liveplot_enabled:
         #     self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
 
         try:
             self.readout.set_frequency(self.readout_freq)
@@ -99,13 +99,13 @@ class QubitPulseSequenceExperiment(Experiment):
             self.readout.set_ext_pulse(mod=True)
             self.readout.set_output(True)
         except:
-            print "No readout found."
+            print("No readout found.")
 
         try:
             self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (
                 self.cfg['readout']['frequency'] - self.cfg['readout']['bare_frequency']), self.cfg['readout']['frequency'])
         except:
-            print "Digital phase shifter not loaded."
+            print("Digital phase shifter not loaded.")
 
         try:
             self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
@@ -113,7 +113,7 @@ class QubitPulseSequenceExperiment(Experiment):
             self.drive.set_ext_pulse(mod=False)
             self.drive.set_output(True)
         except:
-            print "No drive found"
+            print("No drive found")
 
         try:
             self.flux_drive.set_frequency(self.cfg['sidebands']['blue'] + self.cfg['flux_pulse_info'][self.pulse_type]['iq_freq'])
@@ -121,12 +121,12 @@ class QubitPulseSequenceExperiment(Experiment):
             self.flux_drive.set_ext_pulse(mod=False)
             self.flux_drive.set_output(False)
         except:
-            print "No flux drive found"
+            print("No flux drive found")
 
         try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
         except:
-            print "Digital attenuator not loaded."
+            print("Digital attenuator not loaded.")
 
         try:
             self.cfg['freq_flux']['flux']=self.extra_args['flux']
@@ -151,12 +151,12 @@ class QubitPulseSequenceExperiment(Experiment):
                 self.flux_volt.ramp_volt(self.cfg['freq_flux']['flux'])
 
         except:
-            print "Voltage source not loaded."
+            print("Voltage source not loaded.")
 
         try:
             self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
         except:
-            print "self.awg not loaded."
+            print("self.awg not loaded.")
 
         if self.pre_run is not None:
             self.pre_run()
@@ -171,7 +171,7 @@ class QubitPulseSequenceExperiment(Experiment):
         if not TEST_REDPITAYA:
 
             if self.cfg['readout']['adc'] == 'redpitaya':
-                print "Using Red Pitaya ADC"
+                print("Using Red Pitaya ADC")
 
                 if not self.cfg[self.expt_cfg_name]['use_pi_calibration']:
                     num_experiments = len(self.pulse_sequence.expt_pts)
@@ -202,7 +202,7 @@ class QubitPulseSequenceExperiment(Experiment):
                         if ((expt_avg_data_raw[1:] - expt_avg_data_raw[:-1]) > 0).all():
                             correct_counter += 1
 
-                    print "correct percent: " + str(correct_counter / float(repeat))
+                    print("correct percent: " + str(correct_counter / float(repeat)))
 
                 if self.cfg[self.expt_cfg_name]['use_pi_calibration']:
                     zero_amp = expt_avg_data_raw[-2]
@@ -214,9 +214,9 @@ class QubitPulseSequenceExperiment(Experiment):
                 else:
                     expt_avg_data = expt_avg_data_raw
 
-                print shape(expt_avg_data)
+                print(shape(expt_avg_data))
                 expt_avg_data = expt_avg_data.flatten()
-                print shape(expt_avg_data)
+                print(shape(expt_avg_data))
 
                 if self.data_file != None:
                     self.slab_file = SlabFile(self.data_file)
@@ -236,7 +236,7 @@ class QubitPulseSequenceExperiment(Experiment):
 
             else:
                 if self.adc==None:
-                    print "Prep Card"
+                    print("Prep Card")
                     adc = Alazar(self.cfg['alazar'])
                 else:
                     adc = self.adc

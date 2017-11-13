@@ -1,19 +1,19 @@
 __author__ = 'Nelson'
 
-from spinapi import *
+from .spinapi import *
 
 
 def start_pulseblaster(exp_period_ns,awg_trig_len,card_trig_time,readout_trig_time,card_trig_len,readout_trig_len):
     # Enable the log file
     pb_set_debug(1)
 
-    print("Using SpinAPI Library version %s" % pb_get_version())
-    print("Found %d PulseBlaster boards in the system.\n" % pb_count_boards())
+    print(("Using SpinAPI Library version %s" % pb_get_version()))
+    print(("Found %d PulseBlaster boards in the system.\n" % pb_count_boards()))
 
     pb_select_board(0)
 
     if pb_init() != 0:
-        print("Error initializing board: %s" % pb_get_error())
+        print(("Error initializing board: %s" % pb_get_error()))
         # exit()
         # TODO: pulseblaster intialization fails for sequential experiment
         pass

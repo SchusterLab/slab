@@ -96,7 +96,7 @@ class Seekat(SerialInstrument):
         :return: None
         """
         if verbose:
-            print 'Channel = ' + str(channel) + ',  Voltage = ' + str(round(voltage, 3)),
+            print('Channel = ' + str(channel) + ',  Voltage = ' + str(round(voltage, 3)), end=' ')
         n1, n2, m1, m2 = self.get_channel_bits(channel)
         d1, d2 = self.get_voltage_bits(voltage)
 
@@ -170,7 +170,7 @@ class Seekat(SerialInstrument):
         self.set_voltage(channel, offset_voltage)
         blah = self.get_voltage(channel, 9)
         offset = -blah
-        print 'Offset calibration:\nSet to 0 V volt\nMeasure %.6fV' % (blah)
+        print('Offset calibration:\nSet to 0 V volt\nMeasure %.6fV' % (blah))
 
         offsetsteps = round(offset / (38.14 * math.exp(-6)))
 
@@ -192,7 +192,7 @@ class Seekat(SerialInstrument):
         time.sleep(2)
         blah = self.get_voltage(channel, 9)
         offset = blah - min_voltage
-        print 'Gain calibration:\nSet to -10 V volt\nMeasure %.6fV' % (blah)
+        print('Gain calibration:\nSet to -10 V volt\nMeasure %.6fV' % (blah))
         offsetsteps = round(offset / (152.59 * math.exp(-6)))
         offest8 = gbin(int(offsetsteps) % (2 ** 8), 8)
         d1 = 0
@@ -209,7 +209,7 @@ class Seekat(SerialInstrument):
         offset_voltage = 0
         self.set_voltage(channel, offset_voltage)
 
-        print "Calibration Complete !!!"
+        print("Calibration Complete !!!")
 
     def ramp(self, channel=1, period=0, start=-10, stop=10, step=40):
         """
@@ -232,7 +232,7 @@ class Seekat(SerialInstrument):
         for i in np.linspace(start, stop, step):
             d1, d2 = self.get_voltage_bits(i)
             code[rd] = [255, 254, 253, n1, d1 * m1, d2 * m1, n2, d1 * m2, d2 * m2]
-            print code[rd]
+            print(code[rd])
             rd += 1
 
         delay = 0
@@ -256,7 +256,7 @@ class Seekat(SerialInstrument):
                     time.sleep(delay)
             btoc = time.time()
             delay -= ((btoc - btic) - float(period)) / (step * 2)
-            print btoc - btic
+            print(btoc - btic)
 
 
 if __name__ == "__main__":
@@ -264,5 +264,5 @@ if __name__ == "__main__":
     time.sleep(3)
 
     for k in range(8):
-        print "ch%d: Measured voltage is %.2f V" % (k + 1, o.get_voltage(k + 1))
+        print("ch%d: Measured voltage is %.2f V" % (k + 1, o.get_voltage(k + 1)))
         time.sleep(1)

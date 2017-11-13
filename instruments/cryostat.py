@@ -35,7 +35,7 @@ class Triton(SocketInstrument):
 
     def get_help(self):
         self.write('help')
-        print self.read().strip('\n')
+        print(self.read().strip('\n'))
 
     def get_pressures(self):
         """get_pressure returns the pressures detected by the fridge as a dictionary"""
@@ -75,13 +75,13 @@ class Triton(SocketInstrument):
         # use buffered temperature data.
         now = time.time()
         if not hasattr(self, 'temperatures') or \
-                        'time' not in self.temperatures.keys() or \
+                        'time' not in list(self.temperatures.keys()) or \
                         (now - self.temperatures['time']) > 6.0:
             self.temperatures = self.get_temperatures()
             if self.temperatures is not None:
                 self.temperatures['time'] = time.time()
 
-        if channel in self.temperatures.keys():
+        if channel in list(self.temperatures.keys()):
             return self.temperatures[channel]
         else:
             return None
@@ -104,4 +104,4 @@ if __name__ == '__main__':
     # print fridge.get_status()
     d = fridge.get_temperatures()
     # print fridge.get_temperatures()
-    print fridge.get_settings()
+    print(fridge.get_settings())

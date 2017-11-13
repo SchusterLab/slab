@@ -24,7 +24,7 @@ class Pulse():
         self.start_amp = start_amp
         self.stop_amp = stop_amp
 
-        for key, value in kwargs.items():
+        for key, value in list(kwargs.items()):
             setattr(self, key, value)
 
 class PulseSequenceBuilder():
@@ -423,7 +423,7 @@ class PulseSequenceBuilder():
                     pulse_location += pulse.span_length
 
                 if self.DEBUG_PSB:
-                    print 'pulse target =', pulse.target, ', current pulse_location =', pulse_location
+                    print('pulse target =', pulse.target, ', current pulse_location =', pulse_location)
                 # high_values_indices = self.markers_qubit_buffer[ii] > 1
                 # self.markers_qubit_buffer[ii][high_values_indices] = 1
 
@@ -434,7 +434,7 @@ class PulseSequenceBuilder():
             flux_pulse_location_list = [pulse_location]*8
 
             if self.DEBUG_PSB:
-                print 'flux_pulse_location_list', flux_pulse_location_list
+                print('flux_pulse_location_list', flux_pulse_location_list)
 
             for jj in range(0, len(pulse_sequence_matrix[ii])):
 
@@ -482,8 +482,8 @@ class PulseSequenceBuilder():
                         flux_pulse_location_list[flux_index] -= pulse.span_length
 
                         if self.DEBUG_PSB:
-                            print 'add flux pulse target=', pulse.target, 'delay=', pulse.delay, 'span=', pulse.span_length
-                            print 'flux_pulse_location_list, [flux_index]=', flux_index, flux_pulse_location_list[flux_index]
+                            print('add flux pulse target=', pulse.target, 'delay=', pulse.delay, 'span=', pulse.span_length)
+                            print('flux_pulse_location_list, [flux_index]=', flux_index, flux_pulse_location_list[flux_index])
             # if self.uses_tek2:
             #     self.markers_ch3m1[ii] = ap.square(self.mtpts, 1,
             #                                     self.origin - flux_end_location - total_pulse_span_length_list[
@@ -505,8 +505,8 @@ class PulseSequenceBuilder():
 
                     self.waveforms_dict[flux_target][ii] = shaped_waveform
 
-                    print "Seq #", ii, flux_target, "pulse shaping.. flux_a_max/min: before:", lims, \
-                        ", after:", [max(shaped_waveform), min(shaped_waveform)]
+                    print("Seq #", ii, flux_target, "pulse shaping.. flux_a_max/min: before:", lims, \
+                        ", after:", [max(shaped_waveform), min(shaped_waveform)])
                     if max(abs(shaped_waveform))>=1:
                         raise Exception('Error - Shaped flux value >= 1!')
 

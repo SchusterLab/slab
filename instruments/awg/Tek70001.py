@@ -11,7 +11,7 @@ Created on Fri Aug 23 14:59:04 2013
 from slab.instruments import VisaInstrument
 import numpy as np
 from numpy import array, floor
-import StringIO
+import io
 import io
 import os
 
@@ -397,7 +397,7 @@ def write_Tek70001_waveform_file(filename, waveform):
     # first write to a string to determine the data offset!
     for i in range(2):
         if i == 0:
-            FID = StringIO.StringIO()
+            FID = io.StringIO()
         else:
             str_length = len(FID.getvalue())
             FID = io.open(filename, 'wb')
@@ -453,7 +453,7 @@ def write_Tek70001_sequence(waveforms, path, prefix, awg=None):
 
         write_Tek70001_waveform_file(filename, wf)
 
-        print "Loading Waveform File" + filename + " into TEK70001"
+        print("Loading Waveform File" + filename + " into TEK70001")
         if awg is not None:
             awg.load_waveform_file(filename)
             awg.operation_complete()
@@ -463,4 +463,4 @@ def write_Tek70001_sequence(waveforms, path, prefix, awg=None):
 
 if __name__ == "__main__":
     awg = Tek70001(address='192.168.14.137')
-    print awg.get_id()
+    print(awg.get_id())

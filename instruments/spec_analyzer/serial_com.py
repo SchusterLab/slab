@@ -26,16 +26,16 @@ def scan():
 
 
 if __name__ == '__main__':
-    print scan()
-    numPort = int(raw_input('Enter the port number: '))
+    print(scan())
+    numPort = int(input('Enter the port number: '))
     try:
         ser = serial.Serial(numPort)
     except serial.SerialException:
-        print 'Serial object cannot be created on port '+str(numPort)+'.\n'
+        print('Serial object cannot be created on port '+str(numPort)+'.\n')
         exit()
         
     time.sleep(0.1)
-    print ser.readline()
+    print(ser.readline())
     
     #create data files to record data
     fout = open('data/data.txt', 'w')
@@ -48,4 +48,4 @@ if __name__ == '__main__':
     
     ser.close()
     fout.close()
-    print 'END'
+    print('END')

@@ -19,7 +19,7 @@ class PPMS:
         self.tn = telnetlib.Telnet(HOST, PORT)
         # Remember to open up the server on the PPMS computer.
         # This will print "Connected to QDinstrument socket server" if connection is successful. Do not remove.
-        print self.tn.read_some()
+        print(self.tn.read_some())
 
 
     def get_temp(self, verbose=False):
@@ -29,7 +29,7 @@ class PPMS:
         if response[0]=="0": # call successful
             text = "Temp. = " + response[1] + " K, Status = " + response[2]
             if verbose:
-                print text
+                print(text)
             return [float(response[1]), int(response[2])]
         else:
             return -1
@@ -40,8 +40,8 @@ class PPMS:
         #0: Fast settle
         #1: No overshoot
         command = "TEMP " + str(setpoint) + ", " + str(rate) + ", " + str(mode) + "\r\n"
-        print "Setting PPMS temperature:"
-        print command.strip()
+        print("Setting PPMS temperature:")
+        print(command.strip())
         self.tn.write(command)
         response = self.tn.read_some().strip()
 
@@ -51,7 +51,7 @@ class PPMS:
                 try:
                     temp, temp_status = self.get_temp()
                     if temp_status == 1: # stable
-                        print "Temperature settled."
+                        print("Temperature settled.")
                         break
                     else:
                         time.sleep(10)
@@ -59,7 +59,7 @@ class PPMS:
                     pass
             return 0
         else:
-            print "Call failed"
+            print("Call failed")
             return -1
 
     def get_field(self):
@@ -72,7 +72,7 @@ class PPMS:
         response = self.tn.read_some().strip().split(", ")
         if response[0]=="0": # call successful
             text = "Field = " + response[1] + " Oe, Status = " + response[2]
-            print text
+            print(text)
             return [float(response[1]), int(response[2])]
         else:
             return -1
@@ -89,8 +89,8 @@ class PPMS:
         #1: Driven
 
         command = "FIELD " + str(setpoint) + ", " + str(rate) + ", " + str(approach_mode) + ", " + str(mode) + "\r\n"
-        print "Setting PPMS field:"
-        print command.strip()
+        print("Setting PPMS field:")
+        print(command.strip())
         self.tn.write(command)
         response = self.tn.read_some().strip()
 
@@ -100,7 +100,7 @@ class PPMS:
                 try:
                     field, field_status = self.get_field()
                     if field_status == 1 or field_status == 4: # stable
-                        print "Field settled."
+                        print("Field settled.")
                         break
                     else:
                         time.sleep(2)
@@ -108,7 +108,7 @@ class PPMS:
                     pass
             return 0
         else:
-            print "Call failed"
+            print("Call failed")
             return -1
 
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     PORT = 5000
     tn = telnetlib.Telnet(HOST, PORT)
     # This will print "Connected to QDinstrument socket server" if connection is successful. Do not remove.
-    print tn.read_some()
+    print(tn.read_some())
 
     # Test
     get_temp()

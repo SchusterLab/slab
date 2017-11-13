@@ -1,4 +1,4 @@
-from __future__ import division
+
 import numpy as np
 import os
 import signal
@@ -160,7 +160,7 @@ def AcquireData(boards, acquireData):
     start = time.clock() # Keep track of when acquisition started
     boards[0].startCapture() # Start the acquisition
     buffersPerAcquisitionAllBoards = len(boards) * buffersPerAcquisition
-    print("Capturing %d buffers. Press any key to abort" % buffersPerAcquisitionAllBoards)
+    print(("Capturing %d buffers. Press any key to abort" % buffersPerAcquisitionAllBoards))
     buffersCompletedPerBoard = 0
     buffersCompletedAllBoards = 0
     bytesTransferredAllBoards = 0
@@ -207,7 +207,7 @@ def AcquireData(boards, acquireData):
 
     # Compute the total transfer time, and display performance information.
     transferTime_sec = time.clock() - start
-    print("Capture completed in %f sec" % transferTime_sec)
+    print(("Capture completed in %f sec" % transferTime_sec))
     buffersPerSec = 0
     bytesPerSec = 0
     recordsPerSec = 0
@@ -215,9 +215,9 @@ def AcquireData(boards, acquireData):
         buffersPerSec = buffersCompletedAllBoards / transferTime_sec
         bytesPerSec = bytesTransferredAllBoards / transferTime_sec
         recordsPerSec = recordsPerBuffer * buffersCompletedAllBoards / transferTime_sec
-    print("Captured %d buffers (%f buffers per sec)" % (buffersCompletedAllBoards, buffersPerSec))
-    print("Captured %d records (%f records per sec)" % (recordsPerBuffer * buffersCompletedAllBoards, recordsPerSec))
-    print("Transferred %d bytes (%f bytes per sec)" % (bytesTransferredAllBoards, bytesPerSec))
+    print(("Captured %d buffers (%f buffers per sec)" % (buffersCompletedAllBoards, buffersPerSec)))
+    print(("Captured %d records (%f records per sec)" % (recordsPerBuffer * buffersCompletedAllBoards, recordsPerSec)))
+    print(("Transferred %d bytes (%f bytes per sec)" % (bytesTransferredAllBoards, bytesPerSec)))
 
     # Abort transfer.
     board.abortAsyncRead()

@@ -4,7 +4,7 @@ from ctypes import *
 import numpy as np
 from time import time
 
-if 'PyRedPitayaTest' in sys.modules.keys():
+if 'PyRedPitayaTest' in list(sys.modules.keys()):
     from PyRedPitayaTest import libmonitor_file
 else:
     libmonitor_file = 'libmonitor.so'

@@ -16,7 +16,7 @@ class HistogramExperiment(Experiment):
 
         self.extra_args={}
 
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
 
@@ -77,13 +77,13 @@ class HistogramExperiment(Experiment):
 
         if "vary_twpa" in self.cfg[self.expt_cfg_name]:
             if self.cfg[self.expt_cfg_name]["vary_twpa"]:
-                print "Running histogram for TWPA optimization"
+                print("Running histogram for TWPA optimization")
                 self.run_vary_twpa()
             else:
-                print "Running histogram as usual"
+                print("Running histogram as usual")
                 self.run_normal()
         else:
-            print "Running histogram as usual"
+            print("Running histogram as usual")
             self.run_normal()
 
 
@@ -92,7 +92,7 @@ class HistogramExperiment(Experiment):
         if self.liveplot_enabled:
             self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=self.cfg['readout']['mod'])
@@ -105,9 +105,9 @@ class HistogramExperiment(Experiment):
         try:
             self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
         except:
-            print "self.awg not loaded."
+            print("self.awg not loaded.")
 
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(self.cfg['alazar'])
 
         attenpts = arange(self.cfg[self.expt_cfg_name]['atten_start'], self.cfg[self.expt_cfg_name]['atten_stop'], self.cfg[self.expt_cfg_name]['atten_step'])
@@ -123,7 +123,7 @@ class HistogramExperiment(Experiment):
             try:
                 self.readout_atten.set_attenuator(atten)
             except:
-                print "Digital attenuator not loaded."
+                print("Digital attenuator not loaded.")
 
             max_contrast_data = zeros((2,len(freqpts))) # (chn, freq)
             max_contrast_data_ef = zeros((2, len(freqpts)))  # (chn, freq)
@@ -139,7 +139,7 @@ class HistogramExperiment(Experiment):
                 ss_data = zeros((len(self.expt_pts), num_bins))
                 sss_data = zeros((len(self.expt_pts), num_bins))
 
-                print "runnning atten no.", xx, ", freq no.", yy
+                print("runnning atten no.", xx, ", freq no.", yy)
 
                 ss1, ss2 = adc.acquire_singleshot_data(prep_function=self.awg_prep, start_function=self.awg_run,
                                                        excise=self.cfg['readout']['window'])
@@ -149,7 +149,7 @@ class HistogramExperiment(Experiment):
                     ssthis = reshape(ssthis, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
                     ss_data_all[kk, xx, yy, :, :] = ssthis
 
-                    print 'ss ch', str(kk+1), 'max/min =', ssthis.max(), ssthis.min()
+                    print('ss ch', str(kk+1), 'max/min =', ssthis.max(), ssthis.min())
                     dist = ssthis.max() - ssthis.min()
                     histo_range = (ssthis.min() - 0.01*dist, ssthis.max() + 0.01*dist)
 
@@ -199,7 +199,7 @@ class HistogramExperiment(Experiment):
         if self.liveplot_enabled:
             self.plotter.clear()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=self.cfg['readout']['mod'])
@@ -215,9 +215,9 @@ class HistogramExperiment(Experiment):
         try:
             self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
         except:
-            print "self.awg not loaded."
+            print("self.awg not loaded.")
 
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(self.cfg['alazar'])
 
         attenpts = arange(self.cfg[self.expt_cfg_name]['twpa_pow_start'], self.cfg[self.expt_cfg_name]['twpa_pow_stop'],
@@ -251,7 +251,7 @@ class HistogramExperiment(Experiment):
                 ss_data = zeros((len(self.expt_pts), num_bins))
                 sss_data = zeros((len(self.expt_pts), num_bins))
 
-                print "runnning atten no.", xx, ", freq no.", yy
+                print("runnning atten no.", xx, ", freq no.", yy)
 
                 ss1, ss2 = adc.acquire_singleshot_data(prep_function=self.awg_prep, start_function=self.awg_run,
                                                        excise=self.cfg['readout']['window'])
@@ -262,7 +262,7 @@ class HistogramExperiment(Experiment):
                     self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
                     ss_data_all[kk, xx, yy, :, :] = ssthis
 
-                    print 'ss ch', str(kk + 1), 'max/min =', ssthis.max(), ssthis.min()
+                    print('ss ch', str(kk + 1), 'max/min =', ssthis.max(), ssthis.min())
                     dist = ssthis.max() - ssthis.min()
                     histo_range = (ssthis.min() - 0.01 * dist, ssthis.max() + 0.01 * dist)
 

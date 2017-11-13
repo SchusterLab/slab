@@ -21,9 +21,9 @@ import os
 
 from sys import version_info
 if version_info.major == 2:
-    import Tkinter as tk
-    import ttk
-    import thread
+    import tkinter as tk
+    import tkinter.ttk
+    import _thread
 elif version_info.major == 3:
     import tkinter as tk
     import tkinter.ttk as ttk
@@ -369,7 +369,7 @@ class WaitBar:
             self.quit()
 
         def createWidgets(self):
-            self.progressBar = ttk.Progressbar(self, length=200)
+            self.progressBar = tkinter.ttk.Progressbar(self, length=200)
             self.progressBar.grid(padx=10, pady=10)
             self.cancelButton = tk.Button(self,
                                           text='Cancel',
@@ -377,7 +377,7 @@ class WaitBar:
             self.cancelButton.grid(padx=10, pady=10)
 
     def __init__(self):
-        thread.start_new_thread(self.createAndRunFrame, ())
+        _thread.start_new_thread(self.createAndRunFrame, ())
 
     def createAndRunFrame(self):
         self.frame = WaitBar.WaitBarFrame()
@@ -430,7 +430,7 @@ class DMABuffer:
             libc.valloc.argtypes = [c_long]
             libc.valloc.restype = c_void_p
             self.addr = libc.valloc(size_bytes)
-            print("Allocated data : " + str(self.addr))
+            print(("Allocated data : " + str(self.addr)))
         else:
             raise Exception("Unsupported OS")
 

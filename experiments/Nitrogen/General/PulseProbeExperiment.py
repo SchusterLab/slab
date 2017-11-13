@@ -32,7 +32,7 @@ class PulseProbeExperiment(Experiment):
 
         # self.save_config()
 
-        print "Prep Instruments"
+        print("Prep Instruments")
         self.readout.set_frequency(self.cfg['readout']['frequency'])
         self.readout.set_power(self.cfg['readout']['power'])
         self.readout.set_ext_pulse(mod=True)
@@ -50,7 +50,7 @@ class PulseProbeExperiment(Experiment):
 
         self.awg.run()
 
-        print "Prep Card"
+        print("Prep Card")
         adc = Alazar(self.cfg['alazar'])
 
         for freq in self.expt_pts:

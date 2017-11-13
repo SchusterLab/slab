@@ -14,7 +14,7 @@ class VoltageSource:
     def ramp_volt(self, v, sweeprate=1, channel=1):
         # channel is only for SRS, YOKO ignore channel
         start = self.get_volt(channel=channel)
-        print start
+        print(start)
         stop = v
         if stop == start: return
         start_t = time.time()
@@ -309,9 +309,9 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
 
     def flush_program_memory(self):
         """Deletes all programs from the memory"""
-        print "Deleting programs from memory:"
+        print("Deleting programs from memory:")
         for program in self.get_programs():
-            print "\t%s"%program
+            print("\t%s"%program)
             self.delete_program(program)
 
     def linear_ramp(self, Vi, Vf, dt=0.1):
@@ -343,12 +343,12 @@ def test_yoko(yoko=None):
     if yoko is None:
         yoko = YokogawaGS200(address='10.120.35.219')
 
-    print yoko.get_id()
+    print(yoko.get_id())
     yoko.set_mode('current')
-    print yoko.get_mode()
-    print yoko.get_volt()
+    print(yoko.get_mode())
+    print(yoko.get_volt())
     yoko.set_measure_state()
-    print yoko.get_measure()
+    print(yoko.get_measure())
 
 
 if __name__ == "__main__":

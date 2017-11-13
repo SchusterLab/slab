@@ -293,7 +293,7 @@ class HalfPiXOptimizationSweepSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.expt_cfg = expt_cfg
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.pulse_length = self.extra_args['pulse_length']
@@ -365,7 +365,7 @@ class HalfPiYPhaseOptimizationSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
         self.pulse_cfg = cfg['pulse_info']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         if 'qubit_dc_offset' in self.extra_args:
@@ -422,7 +422,7 @@ class PiXOptimizationSweepSequence(QubitPulseSequence):
         self.pulse_cfg = cfg['pulse_info']
         self.expt_cfg = expt_cfg
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.pulse_length = self.extra_args['pulse_length']
@@ -473,7 +473,7 @@ class RabiRamseyT1FluxSweepSequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg, **kwargs):
         self.pulse_cfg = cfg['pulse_info']
         self.extra_args={}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
             #print str(key) + ": " + str(value)
         self.exp = self.extra_args['exp']
@@ -574,8 +574,8 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
         # self.random_cliffords_2 = 2*np.ones(len(self.expt_pts)).astype(int)### no z pulse
         # self.random_cliffords_2 = [random.randint(0,4) for r in range(len(self.expt_pts))] ### no z pulse
 
-        print [self.clifford_pulse_1_list[jj] for jj in self.random_cliffords_1]
-        print [self.clifford_pulse_2_list[jj] for jj in self.random_cliffords_2]
+        print([self.clifford_pulse_1_list[jj] for jj in self.random_cliffords_1])
+        print([self.clifford_pulse_2_list[jj] for jj in self.random_cliffords_2])
 
 
     def final_pulse_dictionary(self,R_input):
@@ -597,9 +597,9 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
                     if np.allclose(np.real(R),np.real(C)) and np.allclose(np.imag(R),np.imag(C)):
                         found +=1
 
-                        print "---" + str(self.n)
-                        print self.clifford_inv_pulse_2_list[jj]
-                        print self.clifford_inv_pulse_1_list[ii]
+                        print("---" + str(self.n))
+                        print(self.clifford_inv_pulse_2_list[jj])
+                        print(self.clifford_inv_pulse_1_list[ii])
 
                         if jj == 4:
                             self.psb.append('q','neg_half_pi', self.pulse_type)
@@ -616,9 +616,9 @@ class RandomizedBenchmarkingSequence(QubitPulseSequence):
                         self.psb.append('q',self.clifford_inv_pulse_1_list[ii], self.pulse_type)
 
         if found == 0 :
-            print "Error! Some pulse's inverse was not found."
+            print("Error! Some pulse's inverse was not found.")
         elif found > 1:
-            print "Error! Non unique inverse."
+            print("Error! Non unique inverse.")
 
 
     def define_pulses(self,pt):
@@ -854,8 +854,8 @@ class RabiThermalizerSequence(QubitPulseSequence):
                     self.psb.append(target, 'general', 'logistic_ramp', start_amp=a_pad, stop_amp=0, length=flux_ramp_dur)
 
                 else:
-                    print 'Warning: area of flux', ii, 'at',flux_area, 'exceeds the padding value of', flux_pad_area_list[ii],\
-                            ', define_pulses pt =', pt
+                    print('Warning: area of flux', ii, 'at',flux_area, 'exceeds the padding value of', flux_pad_area_list[ii],\
+                            ', define_pulses pt =', pt)
             #####
 
             a_comp_temp = - flux_area/(comp_length_temp + flux_ramp_dur)

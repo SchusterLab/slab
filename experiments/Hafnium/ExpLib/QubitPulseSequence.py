@@ -4,7 +4,7 @@ from slab.instruments.awg.PulseSequence import *
 from numpy import arange, linspace
 from slab.experiments.Hafnium.ExpLib.PulseSequenceBuilder import *
 
-from liveplot import LivePlotClient
+#from liveplot import LivePlotClient
 
 class QubitPulseSequence(PulseSequence):
     '''

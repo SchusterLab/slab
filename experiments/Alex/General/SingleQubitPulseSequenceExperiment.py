@@ -47,13 +47,13 @@ class RabiExperiment(QubitPulseSequenceExperiment):
         try:
             self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg[self.expt_cfg_name]['iq_freq'])
         except:
-            print "No drive found."
+            print("No drive found.")
 
     def post_run(self, expt_pts, expt_avg_data):
 
 
         if self.cfg[self.expt_cfg_name]['calibrate_pulse']:
-            print "Analyzing Rabi Data"
+            print("Analyzing Rabi Data")
             fitdata = fitdecaysin(expt_pts, expt_avg_data)
             pulse_type = self.cfg[self.expt_cfg_name]['pulse_type']
             # determine the start location of the rabi oscillation. +1 if it starts top; -1 if it starts bottom.
@@ -73,7 +73,7 @@ class RabiExperiment(QubitPulseSequenceExperiment):
             self.iq_freq = self.cfg[self.expt_cfg_name]['iq_freq']
 
         else:
-            print "Analyzing Rabi Data"
+            print("Analyzing Rabi Data")
             self.pi_length = self.cfg['pulse_info']['gauss']['pi_length']
             self.half_pi_length = self.cfg['pulse_info']['gauss']['half_pi_length']
 
@@ -96,12 +96,12 @@ class RabiExperiment(QubitPulseSequenceExperiment):
 
                 self.pi_length = 0.5/fitdata[1]
                 self.half_pi_length = 0.25/(fitdata[1])
-                print 'Rabi pi: %s ns' % (0.5 / fitdata[1])
-                print 'Rabi pi/2: %s ns' % (0.25 / fitdata[1])
-                print 'T1*: %s ns' % (fitdata[3])
+                print('Rabi pi: %s ns' % (0.5 / fitdata[1]))
+                print('Rabi pi/2: %s ns' % (0.25 / fitdata[1]))
+                print('T1*: %s ns' % (fitdata[3]))
 
             except:
-                print "fitdata failed"
+                print("fitdata failed")
 
             if (self.cfg['pulse_info']['save_to_file']):
 
@@ -111,7 +111,7 @@ class RabiExperiment(QubitPulseSequenceExperiment):
                      else:
                          temp = (self.cfg['pulse_info']['gauss']['a'])*((self.cfg['pulse_info']['gauss']['pi_length'])/self.pi_length)
                          if(temp > 1):
-                             print "Increase pi length"
+                             print("Increase pi length")
                              pass
                          else:
                             self.cfg['pulse_info']['gauss']['a'] =  temp
@@ -129,7 +129,7 @@ class RabiThermalizerExperiment(QubitPulseSequenceExperiment):
         try:
             self.drive.set_frequency(self.cfg[self.expt_cfg_name]['drive_carrier_freq'])
         except:
-            print "No drive found."
+            print("No drive found.")
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
@@ -147,9 +147,9 @@ class T1Experiment(QubitPulseSequenceExperiment):
         pass
 
     def post_run(self, expt_pts, expt_avg_data):
-        print "Analyzing T1 Data"
+        print("Analyzing T1 Data")
         fitdata = fitexp(expt_pts, expt_avg_data)
-        print "T1: " + str(fitdata[3]) + " ns"
+        print("T1: " + str(fitdata[3]) + " ns")
 
 
 class RamseyExperiment(QubitPulseSequenceExperiment):
@@ -163,12 +163,12 @@ class RamseyExperiment(QubitPulseSequenceExperiment):
         try:
             self.drive.set_frequency(
                 self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
-            print self.cfg['pulse_info'][self.pulse_type]['iq_freq']
+            print(self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         except:
-            print 'Ramsey Exp - No Drive.'
+            print('Ramsey Exp - No Drive.')
 
     def post_run(self, expt_pts, expt_avg_data):
-        print "Analyzing Ramsey Data"
+        print("Analyzing Ramsey Data")
         fitdata = fitdecaysin(expt_pts, expt_avg_data)
 
         self.offset_freq = self.cfg['ramsey']['ramsey_freq'] - fitdata[1] * 1e9
@@ -178,11 +178,11 @@ class RamseyExperiment(QubitPulseSequenceExperiment):
 
         self.suggested_qubit_freq = self.cfg['qubit']['frequency'] - (fitdata[1] * 1e9 - self.cfg['ramsey']['ramsey_freq'])
         # This equation had the wrong sign..?
-        print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
-        print "T2*: " + str(fitdata[3]) + " ns"
+        print("Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz")
+        print("T2*: " + str(fitdata[3]) + " ns")
 
-        print "Suggested Qubit Frequency: " + str(self.suggested_qubit_freq)
-        print "Or Suggested Flux: " + str(self.flux - self.offset_freq / self.freq_flux_slope)
+        print("Suggested Qubit Frequency: " + str(self.suggested_qubit_freq))
+        print("Or Suggested Flux: " + str(self.flux - self.offset_freq / self.freq_flux_slope))
         self.cfg['freq_flux']['flux'] = self.flux - self.offset_freq / self.freq_flux_slope
 
 class SpinEchoExperiment(QubitPulseSequenceExperiment):
@@ -196,15 +196,15 @@ class SpinEchoExperiment(QubitPulseSequenceExperiment):
             self.drive.set_frequency(
                 self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         except:
-            print 'Spin echo: No Drive.'
+            print('Spin echo: No Drive.')
 
     def post_run(self, expt_pts, expt_avg_data):
-        print "Analyzing Spin Echo Data"
+        print("Analyzing Spin Echo Data")
         fitdata = fitdecaysin(expt_pts, expt_avg_data)
         suggested_qubit_freq = self.cfg['qubit']['frequency'] + (fitdata[1] * 1e9 - self.cfg['ramsey']['ramsey_freq'])
-        print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
-        print "T2*: " + str(fitdata[3]) + " ns"
-        print "Suggested Qubit Frequency: " + str(suggested_qubit_freq)
+        print("Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz")
+        print("T2*: " + str(fitdata[3]) + " ns")
+        print("Suggested Qubit Frequency: " + str(suggested_qubit_freq))
 
 
 class EFRabiExperiment(QubitPulseSequenceExperiment):
@@ -218,24 +218,24 @@ class EFRabiExperiment(QubitPulseSequenceExperiment):
             self.drive.set_frequency(
                 self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         except:
-            print 'No Drive.'
+            print('No Drive.')
 
     def post_run(self, expt_pts, expt_avg_data):
-        print "Analyzing ef Rabi Data"
+        print("Analyzing ef Rabi Data")
         try:
             self.pi_ef_length = self.cfg['pulse_info']['gauss']['pi_ef_length']
             self.half_pi_ef_length = self.cfg['pulse_info']['gauss']['half_pi_ef_length']
             fitdata = fitdecaysin(expt_pts[3:], expt_avg_data[3:])
             self.pi_ef_length = 0.5 / fitdata[1]
             self.half_pi_ef_length = 0.25 / (fitdata[1])
-            print 'ef Rabi pi: %s ns' % (0.5 / fitdata[1])
-            print 'ef Rabi pi/2: %s ns' % (0.25 / fitdata[1])
-            print 'ef T1*: %s ns' % (fitdata[3])
+            print('ef Rabi pi: %s ns' % (0.5 / fitdata[1]))
+            print('ef Rabi pi/2: %s ns' % (0.25 / fitdata[1]))
+            print('ef T1*: %s ns' % (fitdata[3]))
             if (self.cfg['pulse_info']['save_to_file']):
                     self.cfg['pulse_info']['gauss']['pi_ef_length'] = self.pi_ef_length
                     self.cfg['pulse_info']['gauss']['half_pi_ef_length'] =  self.half_pi_ef_length
         except:
-            print 'fitting failed'
+            print('fitting failed')
 
 class EFRamseyExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_Ramsey', config_file='..\\config.json', **kwargs):
@@ -248,11 +248,11 @@ class EFRamseyExperiment(QubitPulseSequenceExperiment):
             self.drive.set_frequency(
                 self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         except:
-            print 'No Drive.'
+            print('No Drive.')
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
-        print "Analyzing EF Ramsey Data"
+        print("Analyzing EF Ramsey Data")
         try:
             fitdata = fitdecaysin(expt_pts, expt_avg_data)
 
@@ -262,17 +262,17 @@ class EFRamseyExperiment(QubitPulseSequenceExperiment):
 
             suggested_anharm = self.cfg['qubit']['alpha'] + (+fitdata[1] * 1e9 - self.cfg['ef_ramsey']['ramsey_freq'])
 
-            print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
-            print "T2*ef: " + str(fitdata[3]) + " ns"
+            print("Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz")
+            print("T2*ef: " + str(fitdata[3]) + " ns")
             #if round(self.offset_freq/ self.freq_flux_slope,4)==0.0000:
             #   print "Qubit frequency is well calibrated."
             #else:
-            print "Suggested Anharmonicity: " + str(suggested_anharm)
+            print("Suggested Anharmonicity: " + str(suggested_anharm))
             #  print "Or Suggested Flux Voltage: " +str(round(self.flux_volt -self.offset_freq/ self.freq_flux_slope,4))
             if (self.cfg['pulse_info']['save_to_file']):
                     self.cfg['qubit']['alpha'] = suggested_anharm
         except:
-            print 'fitting failed'
+            print('fitting failed')
 
 class EFT1Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_T1', config_file='..\\config.json', **kwargs):
@@ -285,12 +285,12 @@ class EFT1Experiment(QubitPulseSequenceExperiment):
             self.drive.set_frequency(
                 self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         except:
-            print 'No Drive.'
+            print('No Drive.')
 
     def post_run(self, expt_pts, expt_avg_data):
-        print "Analyzing EF T1 Data"
+        print("Analyzing EF T1 Data")
         fitdata = fitexp(expt_pts, expt_avg_data)
-        print "EF T1: " + str(fitdata[3]) + " ns"
+        print("EF T1: " + str(fitdata[3]) + " ns")
 
 
 class EFT1Experiment(QubitPulseSequenceExperiment):
@@ -304,12 +304,12 @@ class EFT1Experiment(QubitPulseSequenceExperiment):
             self.drive.set_frequency(
                 self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
         except:
-            print 'No Drive.'
+            print('No Drive.')
 
     def post_run(self, expt_pts, expt_avg_data):
-        print "Analyzing EF T1 Data"
+        print("Analyzing EF T1 Data")
         fitdata = fitexp(expt_pts, expt_avg_data)
-        print "EF T1: " + str(fitdata[3]) + " ns"
+        print("EF T1: " + str(fitdata[3]) + " ns")
 
 
 class EFT1Experiment(QubitPulseSequenceExperiment):
@@ -322,9 +322,9 @@ class EFT1Experiment(QubitPulseSequenceExperiment):
         self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
 
     def post_run(self, expt_pts, expt_avg_data):
-        print "Analyzing EF T1 Data"
+        print("Analyzing EF T1 Data")
         fitdata = fitexp(expt_pts, expt_avg_data)
-        print "EF T1: " + str(fitdata[3]) + " ns"
+        print("EF T1: " + str(fitdata[3]) + " ns")
 
 
 class HalfPiXOptimizationExperiment(QubitPulseSequenceExperiment):
@@ -368,7 +368,7 @@ class PiXoptimizationChangeAmpExperiment(QubitPulseSequenceExperiment):
 class HalfPiYPhaseOptimizationExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='HalfPiYPhaseOptimization', config_file='..\\config.json', **kwargs):
         self.extra_args = {}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
         if 'qubit_dc_offset' in self.extra_args:
             self.qubit_dc_offset = self.extra_args['qubit_dc_offset']
@@ -404,7 +404,7 @@ class TomographyExperiment(QubitPulseSequenceExperiment):
 class HalfPiXOptimizationSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='HalfPiXOptimization_Sweep', config_file='..\\config.json', **kwargs):
         self.extra_args = {}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
         self.pulse_length = self.extra_args['pulse_length']
         self.pulse_amp = self.extra_args['pulse_amp']
@@ -429,7 +429,7 @@ class HalfPiXOptimizationSweepExperiment(QubitPulseSequenceExperiment):
 class PiXOptimizationSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='PiXOptimization_Sweep', config_file='..\\config.json', **kwargs):
         self.extra_args = {}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
         self.pulse_length = self.extra_args['pulse_length']
         self.pulse_amp = self.extra_args['pulse_amp']
@@ -454,7 +454,7 @@ class PiXOptimizationSweepExperiment(QubitPulseSequenceExperiment):
 class RabiSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Rabi_Sweep', config_file='..\\config.json', **kwargs):
         self.extra_args = {}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
         self.drive_freq = self.extra_args['drive_freq']
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -480,7 +480,7 @@ class RabiSweepExperiment(QubitPulseSequenceExperiment):
 class RabiRamseyT1FluxSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='rabi_ramsey_t1_flux_sweep', config_file='..\\config.json', **kwargs):
         self.extra_args = {}
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self.extra_args[key] = value
 
 
@@ -504,7 +504,7 @@ class RabiRamseyT1FluxSweepExperiment(QubitPulseSequenceExperiment):
         # print self.data_file
 
         if self.exp == 'rabi' or self.exp == 'ef_rabi':
-            print "Analyzing Rabi Data"
+            print("Analyzing Rabi Data")
             fitdata = fitdecaysin(expt_pts, expt_avg_data)
 
             # determine the start location of the rabi oscillation. +1 if it starts top; -1 if it starts bottom.
@@ -529,11 +529,11 @@ class RabiRamseyT1FluxSweepExperiment(QubitPulseSequenceExperiment):
             self.pi_length = pi_length
             self.half_pi_length = half_pi_length
 
-            print "Pi length: " + str(self.pi_length)
-            print "Half pi: " + str(self.half_pi_length)
+            print("Pi length: " + str(self.pi_length))
+            print("Half pi: " + str(self.half_pi_length))
 
         if self.exp == 'ramsey' or self.exp == 'ramsey_long':
-            print "Analyzing Ramsey Data"
+            print("Analyzing Ramsey Data")
             fitdata = fitdecaysin(expt_pts, expt_avg_data)
 
             self.offset_freq = self.cfg['ramsey']['ramsey_freq'] - fitdata[1] * 1e9
@@ -543,36 +543,36 @@ class RabiRamseyT1FluxSweepExperiment(QubitPulseSequenceExperiment):
 
             self.suggested_qubit_freq = self.drive_freq - (
             fitdata[1] * 1e9 - self.cfg[self.expt_cfg_name]['ramsey']['ramsey_freq'])
-            print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
-            print "T2*: " + str(fitdata[3]) + " ns"
+            print("Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz")
+            print("T2*: " + str(fitdata[3]) + " ns")
             self.t2 = fitdata[3]
 
-            print "Suggested Qubit Frequency: " + str(self.suggested_qubit_freq)
-            print "Or Suggested Flux: " + str(self.flux - self.offset_freq / self.freq_flux_slope)
+            print("Suggested Qubit Frequency: " + str(self.suggested_qubit_freq))
+            print("Or Suggested Flux: " + str(self.flux - self.offset_freq / self.freq_flux_slope))
 
         if self.exp == 't1' or self.exp == 'ef_t1':
-            print "Analyzing T1 Data"
+            print("Analyzing T1 Data")
             fitdata = fitexp(expt_pts, expt_avg_data)
-            print "T1: " + str(fitdata[3]) + " ns"
+            print("T1: " + str(fitdata[3]) + " ns")
             self.t1 = fitdata[3]
 
         if self.exp == 'ef_ramsey' or self.exp == 'ef_ramsey_long':
             self.alpha = self.extra_args['alpha']
-            print "Analyzing EF Ramsey Data"
+            print("Analyzing EF Ramsey Data")
             fitdata = fitdecaysin(expt_pts, expt_avg_data)
 
             self.suggested_qubit_alpha = self.alpha - (
             fitdata[1] * 1e9 - self.cfg[self.expt_cfg_name]['ef_ramsey']['ramsey_freq'])
-            print "Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz"
-            print "T2*: " + str(fitdata[3]) + " ns"
+            print("Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz")
+            print("T2*: " + str(fitdata[3]) + " ns")
             self.t2 = fitdata[3]
 
         if self.exp == 'half_pi_phase_sweep':
-            print "Analyzing Half Pi Phase Sweep Data"
+            print("Analyzing Half Pi Phase Sweep Data")
             fitdata = fitdecaysin(expt_pts, expt_avg_data)
 
             self.half_pi_phase = fitdata[2] % 360
-            print "Oscillation phase: " + str(self.half_pi_phase)
+            print("Oscillation phase: " + str(self.half_pi_phase))
 
         slab_file = SlabFile(self.data_file)
         with slab_file as f:

@@ -1,9 +1,9 @@
 from rpyc import connect
 #from PyRedPitaya.pc import RedPitaya
-from PyRedPitaya.client_memory import ClientMemory
-from PyRedPitaya.memory import MemoryInterface
-from PyRedPitaya.enum import Enum
-from PyRedPitaya.instrument import *
+from .PyRedPitaya.client_memory import ClientMemory
+from .PyRedPitaya.memory import MemoryInterface
+from .PyRedPitaya.enum import Enum
+from .PyRedPitaya.instrument import *
 from slab.instruments import write_PXDAC4800_file
 import time
 import tqdm
@@ -184,8 +184,8 @@ class Scope2(MemoryInterface):
             prep_function()
 
         if stop is None: stop = samples
-        shot_data_ch1 = np.zeros(shots, dtype=long)
-        if dual_ch: shot_data_ch2 = np.zeros(shots, dtype=long)
+        shot_data_ch1 = np.zeros(shots, dtype=int)
+        if dual_ch: shot_data_ch2 = np.zeros(shots, dtype=int)
         shots_read = 0
         loops = 0
         data_length = self.data_length
@@ -210,10 +210,10 @@ class Scope2(MemoryInterface):
         self.reset_writestate_machine(v=False)
         self.arm_trigger()
 
-        print "###########################"
-        print "sleeping 0.1s!"
+        print("###########################")
+        print("sleeping 0.1s!")
         time.sleep(0.1)
-        print "###########################"
+        print("###########################")
 
         if not start_function == None:
             start_function()
@@ -221,7 +221,7 @@ class Scope2(MemoryInterface):
         cnt = self.avg_cnt
         while (cnt < shots or shots_read < cnt):
             if cnt - shots_read > data_length:
-                print "Overflow after %d shots, with %d shots read!" % (cnt, shots_read)
+                print("Overflow after %d shots, with %d shots read!" % (cnt, shots_read))
                 break
             mem_start = 4 * (shots_read % data_length)
             read_length = cnt - shots_read
@@ -251,7 +251,7 @@ class Scope2(MemoryInterface):
             self.writes(0x40000, np.zeros(self.data_length).astype('int16'))
             self.writes(0x50000, (np.ones(self.data_length)).astype('int16'))
             self.writes(0x60000, (np.ones(self.data_length)).astype('int16'))
-            print "clear conv buffer"
+            print("clear conv buffer")
         else:
             self.writes(0x30000, ((xg+xe)/2).astype('int16'))
             self.writes(0x40000, ((yg+ye)/2).astype('int16'))
@@ -292,7 +292,7 @@ class Scope2(MemoryInterface):
                 break
             if f == 65537:
                 self.data_decimation = 65536
-                print "Frequency too low: Impossible to sample the entire waveform"
+                print("Frequency too low: Impossible to sample the entire waveform")
 
 def plot_trajectory(x,y,cmap='winter'):
     points = np.array([x, y]).T.reshape(-1, 1, 2)
@@ -330,14 +330,14 @@ def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14
 
     samples = stop+1
 
-    print "Start: " + str(start)
-    print "Stop: " + str(stop)
+    print("Start: " + str(start))
+    print("Stop: " + str(stop))
 
-    print "Samples: " + str(samples)
+    print("Samples: " + str(samples))
 
     ### Test Single Shot Mode
     rp = RedPitaya(connect(REDPITAYA_IP, port=18861))
-    print "RedPitaya .bit version: %d" % rp.scope.version
+    print("RedPitaya .bit version: %d" % rp.scope.version)
 
     rp.scope.setup_trigger (trigger_source=6, threshold_ch1 = 2000, threshold_ch2 = 2000)
 
@@ -372,9 +372,9 @@ def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14
                                                          , use_filter=False, start_function= start_function, prep_function = stop_function)
 
     data_crop1 = shot_data1[0:math.floor(shots / num_experiments) * num_experiments]
-    print shape(data_crop1)
+    print(shape(data_crop1))
     data_crop1_matrix = np.reshape(data_crop1, (-1, num_experiments))
-    print shape(data_crop1_matrix)
+    print(shape(data_crop1_matrix))
     data_crop1_avg = np.mean(data_crop1_matrix, axis=0)
     data_crop1_std = np.std(data_crop1_matrix, axis=0)
 
@@ -384,8 +384,8 @@ def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14
     data_crop2_avg = np.mean(data_crop2_matrix, axis=0)
     data_crop2_std = np.std(data_crop2_matrix, axis=0)
 
-    print "hw_avgs: %d, avg_cnt: %d, adc_trigged: %d, npt_mode: %d, avg_mode: %d, avg_do: %d, ss_mode: %d" %(rp.scope.hw_avgs,rp.scope.avg_cnt,rp.scope.adc_trigged, rp.scope.npt_mode, rp.scope.avg_mode, rp.scope.avg_do,rp.scope.ss_mode )
-    print "t1: %d, t2: %d, t3: %d, t4: %d, t5: %d" % (rp.scope.t1,rp.scope.t2,rp.scope.t3,rp.scope.t4,rp.scope.t5)
+    print("hw_avgs: %d, avg_cnt: %d, adc_trigged: %d, npt_mode: %d, avg_mode: %d, avg_do: %d, ss_mode: %d" %(rp.scope.hw_avgs,rp.scope.avg_cnt,rp.scope.adc_trigged, rp.scope.npt_mode, rp.scope.avg_mode, rp.scope.avg_do,rp.scope.ss_mode ))
+    print("t1: %d, t2: %d, t3: %d, t4: %d, t5: %d" % (rp.scope.t1,rp.scope.t2,rp.scope.t3,rp.scope.t4,rp.scope.t5))
 
     if plot_data:
         plt.subplot(132,xlabel="Shot #", ylabel="Score", title="Single Shot Raw")

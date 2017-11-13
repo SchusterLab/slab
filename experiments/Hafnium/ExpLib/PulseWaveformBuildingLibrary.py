@@ -84,7 +84,7 @@ def flux_square_phase_fix(ftpts,pulse_location,pulse,pulse_cfg, mm_target_info, 
 
         else:
             dc_offset = mm_target_info['dc_offset_freq']
-            print dc_offset
+            print(dc_offset)
             shifted_frequency = mm_target_info['flux_pulse_freq']
             bare_frequency = shifted_frequency+dc_offset
             waveforms_qubit_flux = ap.sideband(ftpts,
