@@ -7,22 +7,17 @@ Created on Wed Apr 06 15:41:58 2011
 
 import numpy as np
 import math as math
-try:
-    import guiqwt.pyplot as plt1 # Original version doesn't seem to work. Changed to a better coding style 
-except:
-    print("DSFIT could not import guiqwt")
-import matplotlib.pyplot as plt2
+import matplotlib.pyplot as plt
 import scipy
 import scipy.fftpack
 import cmath
 import numpy
-plt=plt2
 
 from scipy import optimize
 
-def set_fit_plotting(pkg='matplotlib'):
-    global plt
-    plt={'guiqwt':plt1,'matplotlib':plt2}[pkg]
+# def set_fit_plotting(pkg='matplotlib'):
+#     global plt
+#     plt={'guiqwt':plt1,'matplotlib':plt2}[pkg]
     
 def argselectdomain(xdata,domain):
     ind=np.searchsorted(xdata,domain)
