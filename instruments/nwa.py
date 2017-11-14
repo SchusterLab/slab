@@ -521,7 +521,7 @@ class E5071(SocketInstrument):
         if timeout is None:
             timeout = self.timeout
 
-        data_str = ''.join(self.read_line(timeout=timeout))
+        data_str = ''.join(self.read_lineb(timeout=timeout))
         data = np.fromstring(data_str, dtype=float, sep=',')
         sweep_points = int(self.get_sweep_points())
         fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), sweep_points)

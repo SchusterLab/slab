@@ -55,6 +55,11 @@ class Instrument(object):
         time.sleep(self.query_sleep)
         return self.read(timeout)
 
+    def queryb(self, cmd, timeout=None):
+        self.write(cmd)
+        time.sleep(self.query_sleep)
+        return self.readb(timeout)
+
     def set_timeout(self, timeout=None):
         if timeout is not None:
             self.timeout = timeout
@@ -100,6 +105,10 @@ class VisaInstrument(Instrument):
 
     def read(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
+        if self.enabled: return self.instrument.read().decode()
+
+    def readb(self, timeout=None):
+        # todo: implement timeout, reference SocketInstrument.read
         if self.enabled: return self.instrument.read()
 
     def close(self):
@@ -119,7 +128,12 @@ class TelnetInstrument(Instrument):
 
     def read(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
+        if self.enabled: return self.tn.read_some().decode()
+
+    def readb(self, timeout=None):
+        # todo: implement timeout, reference SocketInstrument.read
         if self.enabled: return self.tn.read_some()
+
 
     def close(self):
         if self.enabled: self.tn.close()
@@ -158,21 +172,41 @@ class SocketInstrument(Instrument):
     def write(self, s):
         if self.enabled: self.socket.send( (s + self.term_char).encode())
 
-    def query(self, s):
-        self.write(s)
-        time.sleep(self.query_sleep)
-        return self.read()
+    # def query(self, s):
+    #     self.write(s)
+    #     time.sleep(self.query_sleep)
+    #     return self.read()
 
     def read(self, timeout=None):
         if timeout == None: timeout = self.timeout
         ready = select.select([self.socket], [], [], timeout)
         if (ready[0] and self.enabled):
+            return self.socket.recv(self.recv_length).decode()
+
+    def readb(self, timeout=None):
+        if timeout == None: timeout = self.timeout
+        ready = select.select([self.socket], [], [], timeout)
+        if (ready[0] and self.enabled):
             return self.socket.recv(self.recv_length)
 
-    def read_line(self, eof_char='\n', timeout=None):
+
+    def read_line(self, eof_char=b'\n', timeout=None):
         done = False
         while done is False:
             buffer_str = self.read(timeout)
+            # print "buffer_str", [buffer_str]
+            if buffer_str is None:
+                pass # done = True
+            elif buffer_str[-len(eof_char):] == eof_char:
+                done = True
+                yield buffer_str
+            else:
+                yield buffer_str
+
+    def read_lineb(self, eof_char=b'\n', timeout=None):
+        done = False
+        while done is False:
+            buffer_str = self.readb(timeout)
             # print "buffer_str", [buffer_str]
             if buffer_str is None:
                 pass # done = True
@@ -209,6 +243,10 @@ class SerialInstrument(Instrument):
         if self.enabled: self.ser.write((s + self.term_char).encode())
 
     def read(self, timeout=None):
+        # todo: implement timeout, reference SocketInstrument.read
+        if self.enabled: return self.ser.read(self.recv_length).decode()
+
+    def readb(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
         if self.enabled: return self.ser.read(self.recv_length)
 

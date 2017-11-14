@@ -505,7 +505,7 @@ class N5242A(SocketInstrument):
             timeout = self.timeout
         self.get_operation_completion()
         self.write("CALC%d:DATA? FDATA" % channel)
-        data_str = ''.join(self.read_line(timeout=timeout))
+        data_str = b''.join(self.read_lineb(timeout=timeout))
 
         if data_format == 'binary':
             len_data_dig = np.int(data_str[1])
@@ -514,7 +514,7 @@ class N5242A(SocketInstrument):
             # It may happen that only part of the message is received. We know that this is the case by checking
             # the checksum. If the received data is too short, just read out again.
             while len_data_actual != len_data_expected:
-                data_str += ''.join(self.read_line(timeout=timeout))
+                data_str += b''.join(self.read_lineb(timeout=timeout))
                 len_data_actual = len(data_str[2 + len_data_dig:-1])
 
         data = np.fromstring(data_str, dtype=float, sep=',') if data_format=='ascii' else np.fromstring(data_str[2+len_data_dig:-1], dtype=np.float32)
