@@ -25,6 +25,7 @@ class N5242A(SocketInstrument):
     def __init__(self, name="E5071", address=None, enabled=True, **kwargs):
         SocketInstrument.__init__(self, name, address, enabled=enabled, recv_length=2 ** 20, **kwargs)
         self.query_sleep = 0.05
+        self.decode_response = True
 
     def get_id(self):
         return self.query('*IDN?')
@@ -62,7 +63,7 @@ class N5242A(SocketInstrument):
         self.write(query)
 
     def get_sweep_points(self, channel=1):
-        data = self.query(":sense%d:sweep:points?" % (channel))
+        data = self.query(":sense%d:sweep:points?" % channel)
         return int(data)
 
     def set_sweep_mode(self, mode='CONT'):
@@ -368,7 +369,7 @@ class N5242A(SocketInstrument):
         query_string = "calculate%d:parameter:mnumber:select?" % channel
         data = self.query(query_string)
         if data is None:
-            return data;
+            return data
         else:
             return int(data)
 
@@ -474,7 +475,7 @@ class N5242A(SocketInstrument):
         :param channel: Measurement channel
         :return: Numeric, returned value always in degrees
         """
-        query = "CALC%d:OFFS:PHAS?"
+        query = "CALC%d:OFFS:PHAS?" % channel
         data = self.query(query)
         if data is None:
             return None
@@ -504,21 +505,26 @@ class N5242A(SocketInstrument):
         if timeout is None:
             timeout = self.timeout
         self.get_operation_completion()
+        self.read(timeout=0.1)
         self.write("CALC%d:DATA? FDATA" % channel)
-        data_str = ''.join(self.read_line(timeout=timeout))
 
         if data_format == 'binary':
-            len_data_dig = np.int(data_str[1])
+            self.decode_response = False
+            data_str = b''.join(self.read_line(timeout=timeout))
+            len_data_dig = np.int(data_str[1:2])
             len_data_expected = int(data_str[2: 2+len_data_dig])
             len_data_actual = len(data_str[2 + len_data_dig:-1])
             # It may happen that only part of the message is received. We know that this is the case by checking
             # the checksum. If the received data is too short, just read out again.
             while len_data_actual != len_data_expected:
-                data_str += ''.join(self.read_line(timeout=timeout))
+                data_str += b''.join(self.read_line(timeout=timeout))
                 len_data_actual = len(data_str[2 + len_data_dig:-1])
+        else:
+            data_str = ''.join(self.read_line(timeout=timeout))
 
         data = np.fromstring(data_str, dtype=float, sep=',') if data_format=='ascii' else np.fromstring(data_str[2+len_data_dig:-1], dtype=np.float32)
         fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), sweep_points)
+        self.decode_response = True
         if len(data) == 2 * sweep_points:
             data = data.reshape((-1, 2))
             data = data.transpose()
