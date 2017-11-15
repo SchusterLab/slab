@@ -381,6 +381,37 @@ class ZeroPi(Schrodinger2D):
 #        #ylabel('$\theta$')
 #        Schrodinger2D.plot(self,num_levels)
 
+class SingleElectron(Schrodinger2D):
+    def __init__(self, x, y, potential_function, sparse_args=None, solve=True):
+        """
+        https://docs.scipy.org/doc/scipy-0.19.1/reference/generated/generated/scipy.sparse.linalg.eigsh.html
+        potential_function: a function that takes as arguments a meshgrid of x, y coordinates. For a positive voltage on the
+        electrodes, this function is negative!
+        """
+        self.x = x
+        self.y = y
+
+        self.numxpts = len(x)
+        self.numypts = len(y)
+
+        self.potential = potential_function
+
+        Vxy = self.evaluate_potential(self.x, self.y)
+        Schrodinger2D.__init__(self, x=self.x, y=self.y, U=Vxy, KEx=1, KEy=1,
+                               periodic_x=False, periodic_y=False, qx=0, qy=0,
+                               sparse_args=sparse_args, solve=solve)
+
+    def evaluate_potential(self, x, y):
+        X, Y = np.meshgrid(x, y)
+        return + 2 * m_e * q_e * self.potential(X, Y) / hbar ** 2
+
+    def sparsify(self, num_levels=10):
+        self.U = self.evaluate_potential(self.x, self.y)
+        self.sparse_args = {'k': num_levels,  # Find k eigenvalues and eigenvectors
+                            'which': 'LM',  # ‘LM’ : Largest (in magnitude) eigenvalues
+                            'sigma': np.min(self.U),  # 'sigma' : Find eigenvalues near sigma using shift-invert mode.
+                            'maxiter': None}  # Maximum number of Arnoldi update iterations allowed Default: n*10
+
 class Rydberg(Schrodinger1D):
     """Schrodinger1D class to evaluate Rydberg states of electrons on helium, by default Energy units are GHz and length units are nm's"""
 
