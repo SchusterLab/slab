@@ -1,6 +1,8 @@
-from .instrumenttypes import Instrument, VisaInstrument, TelnetInstrument, SocketInstrument, SerialInstrument, WebInstrument
 from .instrumentmanager import InstrumentManager
+from .instrumenttypes import Instrument, VisaInstrument, TelnetInstrument, SocketInstrument, SerialInstrument, \
+    WebInstrument
 from .localinstruments import LocalInstruments
+
 try: from .InstrumentManagerWindow import InstrumentManagerWindow
 except: print("Could not load InstrumentManagerWindow")
 
@@ -16,8 +18,9 @@ from .TestInstruments import EchoInstrument,RandomInstrument
 from .TDS7104 import TekTDS7104
 from .RCA18 import MCRCA18
 from .multimeter import Keithley199
-from .AD5780 import *
 
+try: from .AD5780DAC.AD5780 import AD5780
+except: print("Could not load AD5780 dac")
 try: from .labbrick.labbrick import LMS_get_device_info,LMS103,LPS802,LDA602
 except: print("Could not load labbrick")
 try: from .relaybox.relaybox import RelayBox
