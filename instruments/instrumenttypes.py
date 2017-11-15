@@ -139,6 +139,7 @@ class SocketInstrument(Instrument):
             self.ip = address
             self.port = self.default_port
         self.on_enable()
+        self.decode_response = True # set to True for ascii, False for binary
 
     def on_enable(self):
         if self.enabled:
@@ -167,13 +168,22 @@ class SocketInstrument(Instrument):
         if timeout == None: timeout = self.timeout
         ready = select.select([self.socket], [], [], timeout)
         if (ready[0] and self.enabled):
-            return self.socket.recv(self.recv_length)
+            if self.decode_response:
+                return self.socket.recv(self.recv_length).decode("utf-8")
+            else:
+                return self.socket.recv(self.recv_length)
 
-    def read_line(self, eof_char='\n', timeout=None):
+    def read_line(self, eof_char=None, timeout=None):
         done = False
+        if eof_char is None:
+            eof_char = '\n' if self.decode_response else b'\n'
+        elif (not self.decode_response) == (type(eof_char) != bytes):
+            raise TypeError("eof_char is of a different type than the response type from the instrument")
+
         while done is False:
             buffer_str = self.read(timeout)
-            # print "buffer_str", [buffer_str]
+            # print("buffer_str", [buffer_str])
+            # print(buffer_str[-len(eof_char):])
             if buffer_str is None:
                 pass # done = True
             elif buffer_str[-len(eof_char):] == eof_char:
