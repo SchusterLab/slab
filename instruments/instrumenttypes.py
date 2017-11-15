@@ -53,11 +53,14 @@ class Instrument(object):
 
     def encode_s(self, s):
         if type(self.term_char) == str:
-            self.term_char.encode()
-        if type(s) == str:
-            return s.encode() + self.term_char
+            term_char = self.term_char.encode()
         else:
-            return s + self.term_char
+            term_char = self.term_char
+
+        if type(s) == str:
+            return s.encode() + term_char
+        else:
+            return s + term_char
 
     def query(self, cmd, timeout=None):
         self.write(cmd)

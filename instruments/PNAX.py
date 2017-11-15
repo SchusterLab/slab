@@ -474,7 +474,7 @@ class N5242A(SocketInstrument):
         :param channel: Measurement channel
         :return: Numeric, returned value always in degrees
         """
-        query = "CALC%d:OFFS:PHAS?"
+        query = "CALC%d:OFFS:PHAS?" % channel
         data = self.query(query)
         if data is None:
             return None
@@ -504,11 +504,12 @@ class N5242A(SocketInstrument):
         if timeout is None:
             timeout = self.timeout
         self.get_operation_completion()
+        self.read(timeout=0.1)
         self.write("CALC%d:DATA? FDATA" % channel)
         data_str = b''.join(self.read_lineb(timeout=timeout))
 
         if data_format == 'binary':
-            len_data_dig = np.int(data_str[1])
+            len_data_dig = np.int(data_str[1:2])
             len_data_expected = int(data_str[2: 2+len_data_dig])
             len_data_actual = len(data_str[2 + len_data_dig:-1])
             # It may happen that only part of the message is received. We know that this is the case by checking
