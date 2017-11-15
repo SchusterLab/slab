@@ -28,6 +28,7 @@ class Instrument(object):
     id_string = ''  # id string
     query_sleep = 0  # seconds to wait between write and read
     term_char = '\n'  # character to be appended to all writes
+
     # operation_range={}        #map to hold the operation range
 
     def __init__(self, name, address='', enabled=True, timeout=1, query_sleep=0):
@@ -41,7 +42,7 @@ class Instrument(object):
         self.name = name
         self.address = address
         self.enabled = enabled
-        self.timeout = timeout # timeout for connection, different from timeout for query
+        self.timeout = timeout  # timeout for connection, different from timeout for query
         self.query_sleep = query_sleep
 
     def get_name(self):
@@ -49,6 +50,14 @@ class Instrument(object):
 
     def get_id(self):
         return "Default Instrument %s" % (self.name)
+
+    def encode_s(self, s):
+        if type(self.term_char) == str:
+            self.term_char.encode()
+        if type(s) == str:
+            return s.encode() + self.term_char
+        else:
+            return s + self.term_char
 
     def query(self, cmd, timeout=None):
         self.write(cmd)
@@ -73,7 +82,6 @@ class Instrument(object):
     def get_query_sleep(self):
         return self.query_sleep
 
-
     def get_settings(self):
         settings = {}
         settings['name'] = self.name
@@ -97,11 +105,11 @@ class VisaInstrument(Instrument):
             self.protocol = 'VISA'
             self.timeout = timeout
             address = address.upper()
-            self.instrument=visa.ResourceManager().open_resource(address)
-            self.instrument.timeout = timeout*1000
+            self.instrument = visa.ResourceManager().open_resource(address)
+            self.instrument.timeout = timeout * 1000
 
     def write(self, s):
-        if self.enabled: self.instrument.write((s + self.term_char).encode())
+        if self.enabled: self.instrument.write(self.encode_s(s))
 
     def read(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
@@ -114,6 +122,7 @@ class VisaInstrument(Instrument):
     def close(self):
         if self.enabled: self.instrument.close()
 
+
 class TelnetInstrument(Instrument):
     def __init__(self, name, address='', enabled=True, timeout=10):
         Instrument.__init__(self, name, address, enabled, timeout, **kwargs)
@@ -124,7 +133,7 @@ class TelnetInstrument(Instrument):
             self.tn = telnetlib.Telnet(address.split(':')[0], self.port)
 
     def write(self, s):
-        if self.enabled: self.tn.write( (s + self.term_char).encode())
+        if self.enabled: self.tn.write(self.encode_s(s))
 
     def read(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
@@ -134,11 +143,13 @@ class TelnetInstrument(Instrument):
         # todo: implement timeout, reference SocketInstrument.read
         if self.enabled: return self.tn.read_some()
 
-
     def close(self):
         if self.enabled: self.tn.close()
 
+
 import select
+
+
 class SocketInstrument(Instrument):
     default_port = 23
 
@@ -165,12 +176,12 @@ class SocketInstrument(Instrument):
         self.enabled = enable
         self.on_enable()
 
-    def set_timeout(self,timeout):
-        Instrument.set_timeout(self,timeout)
+    def set_timeout(self, timeout):
+        Instrument.set_timeout(self, timeout)
         if self.enabled: self.socket.settimeout(self.timeout)
 
     def write(self, s):
-        if self.enabled: self.socket.send( (s + self.term_char).encode())
+        if self.enabled: self.socket.send(self.encode_s(s))
 
     # def query(self, s):
     #     self.write(s)
@@ -189,14 +200,13 @@ class SocketInstrument(Instrument):
         if (ready[0] and self.enabled):
             return self.socket.recv(self.recv_length)
 
-
     def read_line(self, eof_char=b'\n', timeout=None):
         done = False
         while done is False:
             buffer_str = self.read(timeout)
             # print "buffer_str", [buffer_str]
             if buffer_str is None:
-                pass # done = True
+                pass  # done = True
             elif buffer_str[-len(eof_char):] == eof_char:
                 done = True
                 yield buffer_str
@@ -209,12 +219,13 @@ class SocketInstrument(Instrument):
             buffer_str = self.readb(timeout)
             # print "buffer_str", [buffer_str]
             if buffer_str is None:
-                pass # done = True
+                pass  # done = True
             elif buffer_str[-len(eof_char):] == eof_char:
                 done = True
                 yield buffer_str
             else:
                 yield buffer_str
+
 
 class SerialInstrument(Instrument):
     # todo: the `baudrate` and `querysleep` need to be updated to band_rate and query_sleep
@@ -233,14 +244,14 @@ class SerialInstrument(Instrument):
         self.query_sleep = query_sleep
 
     def set_timeout(self, timeout):
-         Instrument.set_timeout(self, timeout)
-         if self.enabled: self.ser.timeout=self.timeout
+        Instrument.set_timeout(self, timeout)
+        if self.enabled: self.ser.timeout = self.timeout
 
     def test(self):
         self.ser.setTimeout(self.timeout)
 
     def write(self, s):
-        if self.enabled: self.ser.write((s + self.term_char).encode())
+        if self.enabled: self.ser.write(self.encode_s(s))
 
     def read(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
@@ -261,6 +272,7 @@ class SerialInstrument(Instrument):
         except Exception as e:
             print(e)
             print('cannot properly close the serial connection.')
+
 
 class WebInstrument(Instrument):
     def __init__(self, name, address='', enabled=True):
