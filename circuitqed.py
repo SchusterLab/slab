@@ -17,7 +17,7 @@ from scipy.sparse.linalg import eigsh
 from numpy import pi, linspace, cos, sin, ones, transpose, reshape, array, argsort, sort, \
     meshgrid, amax, amin, dot, sqrt, exp, tanh, sign, argmax
 from numpy.linalg import eig
-
+from scipy.constants import hbar, m_e, elementary_charge as q_e
 
 class Schrodinger:
     """Abstract class for solving the 1D and 2D Schrodinger equation 
