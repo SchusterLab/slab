@@ -5,6 +5,8 @@ from numpy import arange, linspace, array
 from slab.experiments.Alex.ExpLib.PulseSequenceBuilder import *
 import time
 from liveplot import LivePlotClient
+import visdom
+
 
 class QubitPulseSequence(PulseSequence):
     '''
@@ -285,20 +287,8 @@ class QubitPulseSequence(PulseSequence):
                                 delay=self.cfg['readout']['width'] / 2.0 + 100)  # the 100ns is a mysterious delay
 
     def build_sequence(self):
+
         PulseSequence.build_sequence(self)
-        # wtpts = self.get_waveform_times('qubit drive I')
-        # # mtpts = self.get_marker_times('qubit buffer')
-        # # ftpts = self.get_waveform_times('qubit 1 flux')
-        # # markers_readout = self.markers['readout pulse']
-        # # markers_card = self.markers['card trigger']
-        # waveforms_qubit_I = self.waveforms['qubit drive I']
-        # waveforms_qubit_Q = self.waveforms['qubit drive Q']
-        # # waveforms_qubit_flux = self.waveforms['qubit 1 flux']
-        # # markers_qubit_buffer = self.markers['qubit buffer']
-        # # markers_ch3m1 = self.markers['ch3m1']
-        # # for second PXDAC4800
-        # waveforms_pxdac4800_2_ch1 = self.waveforms['pxdac4800_2_ch1']
-        # waveforms_pxdac4800_2_ch2 = self.waveforms['pxdac4800_2_ch2']
 
         self.waveforms_dict = {}
         self.waveforms_tpts_dict = {}
@@ -313,10 +303,7 @@ class QubitPulseSequence(PulseSequence):
 
         self.psb.prepare_build(self.waveforms_tpts_dict,self.waveforms_dict)
 
-        # self.psb.prepare_build(wtpts, mtpts, ftpts, markers_readout, markers_card, waveforms_qubit_I, waveforms_qubit_Q, waveforms_qubit_flux,
-        #                       markers_qubit_buffer, markers_ch3m1,waveforms_pxdac4800_2_ch1,waveforms_pxdac4800_2_ch2)
         generated_sequences = self.psb.build(self.pulse_sequence_matrix,self.total_flux_pulse_span_length_list)
-
         self.waveforms_dict = generated_sequences
 
         for waveform_key in self.waveforms_dict:
@@ -328,9 +315,31 @@ class QubitPulseSequence(PulseSequence):
         # np.save('S:\\_Data\\160711 - Nb Tunable Coupler\\data\\waveform.npy',self.waveforms['qubit drive Q'])
         ### in ipython notebook: call np.load('file_path/file_name.npy')
 
+        if self.cfg["visdom_plot_seq"]:
 
-        # change amplitude
-        # self.waveforms['pxdac4800_2_ch2'] = 0.5 * self.waveforms['pxdac4800_2_ch2']
+            print 'Plotting sequences in Visdom...'
+            print 'Plot seq list (cfg):', self.cfg["visdom_plot_seq_list"]
+
+            viz = visdom.Visdom()
+            assert viz.check_connection(), "Visdom server not connected!"
+            # added two environments "seq_builder.json", and "live_plot.json" in C:\Users\slab\.visdom
+            eid = "seq_builder"
+            viz.close(win=None, env=eid)
+
+            for sequence_id in self.cfg["visdom_plot_seq_list"]: #range(len(self.pulse_sequence_matrix)):
+
+                win = viz.line(
+                    X=np.arange(0, 1),
+                    Y=np.arange(0, 1),
+                    env=eid,
+                    opts=dict( height=750, width=1800, title='Seq #%d' % sequence_id, xlabel='Time to origin (ns)'))
+
+                for waveform_key in self.waveforms_dict:
+
+                    viz.updateTrace(
+                        X= self.waveforms_tpts_dict[waveform_key] - self.psb.origin,
+                        Y= self.waveforms_dict[waveform_key][sequence_id] ,
+                        env=eid, win = win, name = waveform_key, append = False)
 
     def reshape_data(self, data):
         return np.reshape(data, (self.sequence_length, self.waveform_length))
