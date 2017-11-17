@@ -3,8 +3,8 @@ __author__ = 'Nelson'
 from slab import *
 from slab.instruments.Alazar import Alazar
 from numpy import mean, arange, sqrt
-from slab.experiments.General.PulseSequences.VacuumRabiSequence import *
-from slab.experiments.General.PulseSequences.VacuumRabiSequencePSB import *
+from slab.experiments.Nitrogen.General.PulseSequences.VacuumRabiSequence import *
+from slab.experiments.Nitrogen.General.PulseSequences.VacuumRabiSequencePSB import *
 from tqdm import tqdm
 
 class VacuumRabiExperiment(Experiment):
