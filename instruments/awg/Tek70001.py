@@ -397,45 +397,48 @@ def write_Tek70001_waveform_file(filename, waveform):
     # first write to a string to determine the data offset!
     for i in range(2):
         if i == 0:
-            FID = io.StringIO()
+            FID = io.BytesIO()
         else:
             str_length = len(FID.getvalue())
             FID = io.open(filename, 'wb')
 
+        write_string = ""
+
         if i == 0:
-            FID.write("<DataFile offset=\"000000000\" version=\"0.1\">")
+            write_string += "<DataFile offset=\"000000000\" version=\"0.1\">"
         else:
-            FID.write("<DataFile offset=\"" + "{:09d}".format(str_length) + "\" version=\"0.1\">")
-        FID.write(
-            "<DataSetsCollection xmlns=\"http://www.tektronix.com\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.tektronix.com file:///C:\\Program%20Files\\Tektronix\\AWG70000\\AWG\\Schemas\\awgDataSets.xsd\">")
-        FID.write("<DataSets version=\"1\" xmlns=\"http://www.tektronix.com\">")
-        FID.write("<DataDescription>")
-        FID.write("<NumberSamples>" + str(len(waveform)) + "</NumberSamples>")
-        FID.write("<SamplesType>AWGWaveformSample</SamplesType>")
-        FID.write("<MarkersIncluded>false</MarkersIncluded>")
+            write_string += "<DataFile offset=\"" + "{:09d}".format(str_length) + "\" version=\"0.1\">"
+        write_string +="<DataSetsCollection xmlns=\"http://www.tektronix.com\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.tektronix.com file:///C:\\Program%20Files\\Tektronix\\AWG70000\\AWG\\Schemas\\awgDataSets.xsd\">"
+        write_string +="<DataSets version=\"1\" xmlns=\"http://www.tektronix.com\">"
+        write_string +="<DataDescription>"
+        write_string +="<NumberSamples>" + str(len(waveform)) + "</NumberSamples>"
+        write_string +="<SamplesType>AWGWaveformSample</SamplesType>"
+        write_string +="<MarkersIncluded>false</MarkersIncluded>"
 
         # number formats: Single, UInt16, Int32, Double
-        FID.write("<NumberFormat>Single</NumberFormat>")
-        FID.write("<Endian>Big</Endian>")
-        FID.write("<Timestamp>2014-04-01T16:29:23.8235574-07:00</Timestamp>")
-        FID.write("</DataDescription>")
-        FID.write("<ProductSpecific name=\"\">")
-        FID.write("<ReccSamplingRate units=\"Hz\">50000000000</ReccSamplingRate>")
-        FID.write("<ReccAmplitude units=\"Volts\">1.0</ReccAmplitude>")
-        FID.write("<ReccOffset units=\"Volts\">0</ReccOffset>")
-        FID.write("<SerialNumber />")
-        FID.write("<SoftwareVersion>2.0.0211</SoftwareVersion>")
-        FID.write("<UserNotes />")
+        write_string +="<NumberFormat>Single</NumberFormat>"
+        write_string +="<Endian>Big</Endian>"
+        write_string +="<Timestamp>2014-04-01T16:29:23.8235574-07:00</Timestamp>"
+        write_string +="</DataDescription>"
+        write_string +="<ProductSpecific name=\"\">"
+        write_string +="<ReccSamplingRate units=\"Hz\">50000000000</ReccSamplingRate>"
+        write_string +="<ReccAmplitude units=\"Volts\">1.0</ReccAmplitude>"
+        write_string +="<ReccOffset units=\"Volts\">0</ReccOffset>"
+        write_string +="<SerialNumber />"
+        write_string +="<SoftwareVersion>2.0.0211</SoftwareVersion>"
+        write_string +="<UserNotes />"
 
         # Floating, EightBit, NineBit, TenBit (What do these mean?)
-        FID.write("<OriginalBitDepth>Floating</OriginalBitDepth>")
-        FID.write("<Thumbnail />")
-        FID.write("<CreatorProperties name=\"\" />")
-        FID.write("  </ProductSpecific>")
-        FID.write("</DataSets>")
-        FID.write("</DataSetsCollection>")
-        FID.write("<Setup />")
-        FID.write("</DataFile>")
+        write_string +="<OriginalBitDepth>Floating</OriginalBitDepth>"
+        write_string +="<Thumbnail />"
+        write_string +="<CreatorProperties name=\"\" />"
+        write_string +="  </ProductSpecific>"
+        write_string +="</DataSets>"
+        write_string +="</DataSetsCollection>"
+        write_string +="<Setup />"
+        write_string +="</DataFile>"
+
+        FID.write(write_string.encode())
 
     FID.write(waveform.tostring())
 
