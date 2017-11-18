@@ -487,9 +487,9 @@ def write_field(FID, fieldName, data, dataType):
         dataSize = typeSizes[dataType]
 
     FID.write(struct.pack('<II', len(fieldName) + 1, dataSize))
-    FID.write(fieldName + chr(0))
+    FID.write((fieldName + chr(0)).encode())
     if dataType == 'char':
-        FID.write(data)
+        FID.write(data.encode())
     elif dataType == 'uint128':
         # struct doesn't support uint128 so write two 64bits
         # there are smarter ways but we really only need this for the fake timestamp
@@ -554,7 +554,7 @@ def write_waveform(FID, WFname, WFnumber, data):
     tmpString = 'WAVEFORM_DATA_' + numString + chr(0)
     dataSize = 2 * data.size
     FID.write(struct.pack('<II', len(tmpString), dataSize))
-    FID.write(tmpString)
+    FID.write(tmpString.encode())
     FID.write(data.tostring())
 
 
