@@ -347,10 +347,12 @@ class Tek5014(VisaInstrument):
 
     def load_sequence_file(self, filename, force_reload=False):
 
-        sequence_hash = hashlib.md5(open(filename).read().encode()).hexdigest()
-        if (self.current_sequence_hash != sequence_hash) or force_reload:
-            self.current_sequence_hash = sequence_hash
-            self.write("AWGControl:SREStore '%s' \n" % (filename))
+        self.write("AWGControl:SREStore '%s' \n" % (filename))
+
+        # sequence_hash = hashlib.md5(open(filename).read().encode()).hexdigest()
+        # if (self.current_sequence_hash != sequence_hash) or force_reload:
+        #     self.current_sequence_hash = sequence_hash
+        #     self.write("AWGControl:SREStore '%s' \n" % (filename))
 
     def prep_experiment(self):
         self.write("SEQuence:JUMP 1")
