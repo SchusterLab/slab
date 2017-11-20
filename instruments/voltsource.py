@@ -128,7 +128,7 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
     default_port = 7655
 
     def __init__(self, name='YOKO', address='', enabled=True, timeout=10, recv_length=1024):
-        SocketInstrument.__init__(self, name, address, enabled, timeout, recv_length)
+        SocketInstrument.__init__(self, name, address, enabled, timeout=timeout, recv_length=recv_length)
         self.query_sleep=0.01
 
     def get_id(self):
