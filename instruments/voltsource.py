@@ -127,8 +127,8 @@ class SRS900(SerialInstrument, VisaInstrument, VoltageSource):
 class YokogawaGS200(SocketInstrument, VoltageSource):
     default_port = 7655
 
-    def __init__(self, name='YOKO', address='', enabled=True, timeout=10, recv_length=1024):
-        SocketInstrument.__init__(self, name, address, enabled, timeout, recv_length)
+    def __init__(self, name='YOKO', address='', enabled=True,  recv_length=1024,timeout=10):
+        SocketInstrument.__init__(self, name=name, address=address, enabled=enabled, recv_length=recv_length,timeout=timeout)
         self.query_sleep=0.01
 
     def get_id(self):
