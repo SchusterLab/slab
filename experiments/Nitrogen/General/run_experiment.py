@@ -29,8 +29,12 @@ def run_experiment(expt_name,lp_enable = True, **kwargs):
 
     if expt_name.lower() == 'pulse_probe_iq':
         from slab.experiments.Nitrogen.General.SingleQubitPulseSequenceExperiment import PulseProbeIQExperiment
-        # Do CW drive experiment
         expt = PulseProbeIQExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower() == 'pulse_probe_ef_iq':
+        from slab.experiments.Nitrogen.General.SingleQubitPulseSequenceExperiment import PulseProbeEFIQExperiment
+        expt = PulseProbeEFIQExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
 
     if expt_name.lower() == 'rabi':
         from slab.experiments.Nitrogen.General.SingleQubitPulseSequenceExperiment import RabiExperiment

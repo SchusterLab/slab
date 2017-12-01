@@ -9,9 +9,9 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
                'Multimode_EF_Ramsey','Multimode_Entanglement','Multimode_CPhase_Experiment','multimode_Pi_Pi_experiment','multimode_ef_rabi_sweep']
     datapath=os.getcwd()+'\data'
     expt = None
-    from slab.experiments.Multimode.MultimodePulseSequenceExperiment import *
-    if expt_name.lower()=='multimode_rabi':
 
+    if expt_name.lower()=='multimode_rabi':
+        from slab.experiments.Nitrogen.Multimode.MultimodePulseSequenceExperiment import MultimodeRabiExperiment
         #Do Multimode Rabi
         expt=MultimodeRabiExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
@@ -33,6 +33,7 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
 
     if expt_name.lower()=='multimode_bluesideband_sweep':
         #Multimode Blue sideband sweep experiment
+        from slab.experiments.Nitrogen.Multimode.MultimodePulseSequenceExperiment import MultimodeBlueSidebandSweepExperiment
         expt=MultimodeBlueSidebandSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_echo_sideband_experiment':
@@ -105,6 +106,7 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
         expt=Multimode_AC_Stark_Shift_Offset_Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_dc_offset_experiment':
+        from slab.experiments.Nitrogen.Multimode.MultimodePulseSequenceExperiment import MultimodeDCOffsetExperiment
         expt=MultimodeDCOffsetExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_state_dep_shift':

@@ -2,7 +2,7 @@ __author__ = 'Nelson'
 
 from slab import *
 from slab.instruments.Alazar import Alazar
-from slab.experiments.General.PulseSequences.HistogramSequence import HistogramSequence
+from slab.experiments.Nitrogen.General.PulseSequences.HistogramSequence import HistogramSequence
 from numpy import *
 
 
@@ -63,7 +63,7 @@ class HistogramExperiment(Experiment):
             for yy, freq in enumerate(freqpts):
                 self.readout.set_frequency(freq)
                 #self.readout_shifter.set_phase(self.cfg['readout']['start_phase'] , freq)
-                self.readout_shifter.set_phase((self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (freq - self.cfg['readout']['frequency']))%360, freq)
+                # self.readout_shifter.set_phase((self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * (freq - self.cfg['readout']['frequency']))%360, freq)
                 tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=self.awg.stop_and_prep, start_function=self.awg.run,excise=self.cfg['readout']['window'])
                 # self.plotter.plot_z("current",ch1_pts)
                 # with self.datafile() as f:
@@ -79,7 +79,7 @@ class HistogramExperiment(Experiment):
                 #    f.append_line('ss2', ss2)
 
 
-                ss1 = reshape(ss1, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+                ss1 = reshape(ss1, (int(self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts)), len(self.expt_pts))).T
                 histo_range = (ss1.min() / 1.05, ss1.max() * 1.05)
                 for jj, ss in enumerate(ss1):
                     sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)
@@ -90,7 +90,7 @@ class HistogramExperiment(Experiment):
 
                 max_contrast_data_ch1[yy] = abs(((sss_data[0] - sss_data[1]) / ss_data[0].sum())).max()
 
-                ss2 = reshape(ss2, (self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts), len(self.expt_pts))).T
+                ss2 = reshape(ss2, (int(self.cfg['alazar']['recordsPerAcquisition'] / len(self.expt_pts)), len(self.expt_pts))).T
                 histo_range = (ss2.min() / 1.05, ss2.max() * 1.05)
                 for jj, ss in enumerate(ss2):
                     sshisto, ssbins = np.histogram(ss, bins=num_bins, range=histo_range)

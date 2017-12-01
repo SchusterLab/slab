@@ -2,10 +2,10 @@ __author__ = 'Nelson'
 
 from slab import *
 from slab.instruments.Alazar import Alazar
-from slab.experiments.ExpLib.QubitPulseSequenceExperiment import *
+from slab.experiments.Nitrogen.ExpLib.QubitPulseSequenceExperiment import *
 from numpy import mean, arange, abs,load,save
 from slab.dsfit import *
-from slab.twomodeprocesstomography import *
+# from slab.twomodeprocesstomography import *
 
 
 class MultimodeRabiExperiment(QubitPulseSequenceExperiment):

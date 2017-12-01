@@ -1,6 +1,6 @@
 __author__ = 'Nelson'
 
-from slab.experiments.ExpLib.SequentialExperiment import *
+from slab.experiments.Nitrogen.ExpLib.SequentialExperiment import *
 from slab import *
 import os
 import json
@@ -103,7 +103,7 @@ def run_seq_experiment(expt_name,lp_enable=True):
         ef_frequency_calibration(seq_exp)
 
     if expt_name.lower() == 'pulse_calibration':
-        pulse_calibration(seq_exp,phase_exp = True)
+        pulse_calibration(seq_exp,phase_exp = False)
 
     if expt_name.lower() == 'ef_pulse_calibration':
         # ef_frequency_calibration(seq_exp)
@@ -175,3 +175,82 @@ def run_seq_experiment(expt_name,lp_enable=True):
         number  = 3
         for i in arange(number):
             seq_exp.run('Ramsey',{'data_file':data_file})
+
+
+
+    if expt_name.lower() == 'coherence_and_qubit_temperature':
+
+        # Only works if the number of points are the same for all experiments
+
+        seq_exp.run('T1', expt_kwargs={'data_file': data_file})
+        seq_exp.run('Ramsey', expt_kwargs={'data_file': data_file})
+        vary_dict = {"ef_rabi": {"averages": 5000}}
+        seq_exp.run('ef_rabi',vary_dict=vary_dict, expt_kwargs={'ge_pi': True, 'data_file': data_file})
+        vary_dict = {"ef_rabi": {"averages": 20000}}
+        seq_exp.run('ef_rabi',vary_dict=vary_dict, expt_kwargs={'ge_pi': False, 'data_file': data_file})
+
+
+    if expt_name.lower() == 'sequential_qp_pumping':
+
+        numberlist = arange(0,20,2)
+        delaylist = arange(1000,20000,2000)
+        for delay in delaylist:
+            for number in numberlist:
+                vary_dict = {"qp_pumping": {"number_pump_pulses": number,"pump_delay":delay},"expt_trigger": {"period_ns": number*delay + 350000}}
+                seq_exp.run('qp_pumping', vary_dict=vary_dict, expt_kwargs={'data_file': data_file})
+
+    if expt_name.lower() == 'sequential_qp_pumping_vs_pulse_number':
+
+        numberlist = arange(0, 21, 2)
+        delay = 500
+
+        for number in numberlist:
+            vary_dict = {"qp_pumping": {"number_pump_pulses": number, "pump_delay": delay},"expt_trigger": {"period_ns": 400000}}
+            seq_exp.run('qp_pumping', vary_dict=vary_dict, expt_kwargs={'data_file': data_file})
+
+
+    if expt_name.lower() == 'dispersive_shift_calibration_res_spec':
+
+        seq_exp.run('vacuum_rabi', vary_dict={"vacuum_rabi": {"pi_pulse": False}}, expt_kwargs={'data_file': data_file})
+        seq_exp.run('vacuum_rabi', vary_dict={"vacuum_rabi": {"pi_pulse": True}}, expt_kwargs={'data_file': data_file})
+
+
+    if expt_name.lower() == 'single_tone_read_power_sweep':
+        powerlist = arange(-31.5,0.0,1.0)
+        for p in powerlist:
+            seq_exp.run('vacuum_rabi', vary_dict={"readout": {"dig_atten": p}}, expt_kwargs={'data_file': data_file})
+
+
+    if expt_name.lower() == 'bluesideband_spectrum_vs_power':
+        amplist = arange(0.1,1.1,0.1) # rough calibration gave delta_{AC} = 60a**2 MHz
+
+        for ii,a in enumerate(amplist):
+            start = 58e6*a**2 - 15e6 #-695e6
+            stop =  58e6*a**2 + 15e6#-695e6
+            step = 100e4
+
+            vary_dict = {"pulse_probe_iq": {"start": start,"stop":stop,"step":step}}
+            seq_exp.run('pulse_probe_iq', vary_dict=vary_dict, expt_kwargs={'amp':a, 'data_file': data_file})
+
+
+    if expt_name.lower() == 'dispersive_shift_weak_measurment':
+        im = InstrumentManager()
+        rf = im['RF5']
+        frequency = 7082519722.31
+        powerlist = arange(0,20,1)
+        rf.set_output(False)
+        seq_exp.run('Ramsey', expt_kwargs={'data_file': data_file})
+        rf.set_output(True)
+        for ii,pow in enumerate(powerlist):
+            rf.set_power(pow)
+            rf.set_frequency(frequency)
+            seq_exp.run('Ramsey',expt_kwargs={'data_file': data_file})
+
+
+    if expt_name.lower() == 'ef_rabi_scan':
+        alphalist = arange(-375e6,-325e6,2e6)
+        for ii,alpha in enumerate(alphalist):
+            vary_dict = {"qubit": {"alpha": alpha}}
+            seq_exp.run('ef_rabi',vary_dict=vary_dict,expt_kwargs={'data_file': data_file})
+
+
