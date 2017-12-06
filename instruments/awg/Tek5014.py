@@ -32,6 +32,13 @@ class Tek5014(VisaInstrument):
         self._loaded_waveforms = []
         self.current_sequence_hash = ''
 
+    def write(self, s):
+        if self.enabled: self.instrument.write(s)
+
+    def read(self, timeout=None):
+        # todo: implement timeout, reference SocketInstrument.read
+        if self.enabled: return self.instrument.read()
+
     def get_id(self):
         return self.query("*IDN?")
 

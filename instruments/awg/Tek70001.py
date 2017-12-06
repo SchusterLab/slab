@@ -26,6 +26,13 @@ class Tek70001(VisaInstrument):
         VisaInstrument.__init__(self, name, address, enabled, timeout)
         self.term_char = ''
 
+    def write(self, s):
+        if self.enabled: self.instrument.write(s)
+
+    def read(self, timeout=None):
+        # todo: implement timeout, reference SocketInstrument.read
+        if self.enabled: return self.instrument.read()
+
     def get_id(self):
         return self.query("*IDN?")
 
