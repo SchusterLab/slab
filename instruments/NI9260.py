@@ -5,11 +5,14 @@ http://zone.ni.com/reference/en-XX/help/370471AE-01/cdaqmxsupp/cdaq-9188/ (for t
 """
 
 import time
+from tabulate import tabulate
 from matplotlib import pyplot as plt
 import PyDAQmx
 import numpy as np
 from PyDAQmx.DAQmxFunctions import *
 from PyDAQmx.DAQmxConstants import *
+import warnings
+warnings.simplefilter("ignore", PotentialGlitchDuringWriteWarning)
 
 int32 = ctypes.c_long
 uInt32 = ctypes.c_ulong
@@ -21,7 +24,7 @@ class NI9260():
 
     def __init__(self, name="cDAQ9189-1C742CBMod1"):
         self.slot_name = name
-        self.query_sleep = 0.50
+        self.query_sleep = 0.05
         self.create_task()
 
     def get_id(self):
@@ -99,8 +102,10 @@ class NI9260():
         the task to avoid allocating unnecessary memory.
         """
         DAQmxClearTask(self.handle)
+        delattr(self, 'handle')
+        self.__init__()
 
-    def get_voltage_output_mode(self):
+    def get_sample_timing_type(self):
         """
         Sample Timing Type
         http://zone.ni.com/reference/en-XX/help/370471AG-01/mxcprop/attr1347/
@@ -113,7 +118,7 @@ class NI9260():
                     '12504' : 'change_detection', '14668' : 'pipelined_sample_clock'}
         return datadict[str(data.value)]
 
-    def set_voltage_output_mode(self, mode='on_demand'):
+    def set_sample_timing_type(self, mode='on_demand'):
         """
         Sample Timing Type
         http://zone.ni.com/reference/en-XX/help/370471AG-01/mxcprop/attr1347/
@@ -129,16 +134,29 @@ class NI9260():
         samplingMode = DAQmx_Val_OnDemand if mode == 'on_demand' else DAQmx_Val_SampClk
         DAQmxSetSampTimingType(self.handle, samplingMode)
 
-    def set_volt(self, value):
+    def set_volt(self, value, first_time=False):
         """
         Run after
-        - create_task()
-        - setup_channel()
-        - setup_timing()
+        - self.__init__()
 
-        to engage output, run start_task() and trigger, if necessary.
+        The DC mode works in user buffer regeneration mode. This means the output buffer is repeated at the computer
+        and constantly transferred into the FIFO buffer of the NIDAQ. This means the sampleRate must be fast enough
+        such that the buffer is emptied quickly to allow for quick updating of a DC value by the user. The sampleSize
+        also plays a role, with this too large, the buffer fills up too quickly and the output won't update either.
         """
-        DAQmxWriteAnalogScalarF64(self.handle, autoStart=False, timeout=self.query_sleep, value=float64(value), reserved=None)
+        sampleSize = 15
+        sampleRate = 25600
+
+        if first_time:
+            self.setup_channel()
+            self.set_write_regeneration_mode(True)
+            self.set_sample_clock(runContinuous=True, sampleRate=sampleRate, sampleSize=sampleSize)
+            self.set_write_relative_to('first')
+            self.set_idle_output_setting("MaintainCurrentValue")
+            self.set_bypass_memory_buffer(False)
+
+        self.set_waveform(value * np.ones(sampleSize), numSamplesPerChan=sampleSize, autostart=True)
+        # DAQmxWriteAnalogScalarF64(self.handle, autoStart=False, timeout=self.query_sleep, value=float64(value), reserved=None)
 
     def set_waveform(self, waveformData, numSamplesPerChan, autostart=True):
         """
@@ -525,9 +543,74 @@ class NI9260():
         if mechanism in list(dataDict.keys()):
             DAQmxSetAODataXferMech(self.handle, "", dataDict[mechanism])
 
+    def get_data_transfer_request_condition(self):
+        """
+        Specifies under what condition to transfer data from the buffer to the onboard memory of the device.
+        http://zone.ni.com/reference/en-XX/help/370471AE-01/mxcprop/attr183c/
+        :return:
+        """
+        data = int32()
+        DAQmxGetAODataXferReqCond(self.handle, "", byref(data))
+        dataDict = {"10235" : "empty",
+                    "10239" : "halfempty",
+                    "10242" : "notfull"}
+        return dataDict[str(data.value)]
+
+    def set_data_transfer_request_condition(self, condition):
+        """
+        Specifies under what condition to transfer data from the buffer to the onboard memory of the device.
+        http://zone.ni.com/reference/en-XX/help/370471AE-01/mxcprop/attr183c/
+        :condition: must be one of "empty", "halfempty", "notfull"
+        :return:
+        """
+        dataDict = {"empty" : DAQmx_Val_OnBrdMemEmpty,
+                    "halfempty" : DAQmx_Val_OnBrdMemHalfFullOrLess,
+                    "notfull" : DAQmx_Val_OnBrdMemNotFull}
+        DAQmxSetAODataXferReqCond(self.handle, "", dataDict[condition])
+
+    def get_usb_transfer_request_size(self):
+        """
+        Specifies the maximum size of a USB transfer request in bytes.
+        Modify this value to affect performance under different combinations of operating system and device.
+        http://zone.ni.com/reference/en-XX/help/370471AA-01/mxcprop/attr2a8f/
+        :return:
+        """
+        data = uInt32()
+        DAQmxGetAOUsbXferReqSize(self.handle, "", byref(data))
+        return data.value
+
+    def set_usb_transfer_request_size(self, size):
+        """
+        Specifies the maximum size of a USB transfer request in bytes.
+        Modify this value to affect performance under different combinations of operating system and device.
+        http://zone.ni.com/reference/en-XX/help/370471AA-01/mxcprop/attr2a8f/
+        :param size: Integer > 0.
+        :return:
+        """
+        DAQmxSetAOUsbXferReqSize(self.handle, "", uInt32(size))
+
+    def print_settings(self):
+        names = ["id", "voltage_output_mode", "sample_clock_rate", "resolution",
+                 "idle_output_setting", "write_regeneration_mode", "write_relative_to",
+                 "current_write_position", "write_offset", "available_buffer_size",
+                 "output_buffer_size", "onboard_buffer_size", "bypass_memory_buffer",
+                 "data_transfer_mechanism", "data_transfer_request_condition",
+                 "usb_transfer_request_size", "usb_transfer_request_count"]
+        props = list()
+        for n in names:
+            try:
+                props.append(getattr(self, "get_%s" % n)())
+            except:
+                props.append("Error")
+
+        print(tabulate(zip(names, props), headers=["Parameter", "Value"],
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign="left"))
+
+        return zip(names, props)
+
 if __name__ == "__main__":
     sampleRate = 20000
-    sampleSize = 250
+    sampleSize = 20
 
     ni = NI9260()
 
@@ -576,53 +659,12 @@ if __name__ == "__main__":
 
         ni.start_task(wait=True)
     if 1:
-        ni.setup_channel()
-        ni.set_write_regeneration_mode(True)
-        ni.set_sample_clock(runContinuous=True, sampleSize=sampleSize, sampleRate=sampleRate)
-        ni.set_idle_output_setting("MaintainCurrentValue")
-        ni.set_bypass_memory_buffer(False)
-        ni.set_write_relative_to('first')
-        ni.set_write_offset(0)
-
-        actualSampleRate = ni.get_sample_clock_rate()
-
-        t = np.linspace(0, 1 / float(actualSampleRate) * sampleSize, sampleSize)
-        y = 0.5 * np.cos(2 * np.pi * 4 * t * actualSampleRate)
-
-        ni.set_waveform(y, numSamplesPerChan=sampleSize, autostart=True)
-        time.sleep(2.0)
-
-        plt.figure()
-        plt.plot(t, y, 'g')
-        # plt.plot(t, a * np.sin(2 * np.pi * t), 'b')
-        plt.show()
-
-        print("Sample clock rate: ", ni.get_sample_clock_rate())
-        print("Write regeneration mode: ", ni.get_write_regeneration_mode())
-        print("Write offset: ", ni.get_write_offset())
-        print("Write relative to: ", ni.get_write_relative_to())
-        print("Output buffer size: ", ni.get_output_buffer_size())
-        print("Onboard buffer size: ", ni.get_onboard_buffer_size())
+        # DC Mode: dynamically update a waveform
+        ni.set_volt(0.5, first_time=True)
+        ni.print_settings()
 
         for k in range(10):
-            print(k, )
-            y = (0.6 + k * 0.1) * np.cos(2 * np.pi * 4 * t * actualSampleRate)
-            print(ni.set_waveform(y, numSamplesPerChan=sampleSize, autostart=True))
-            time.sleep(2.0)
-            # ni.stop_task()
-
-            # ni.wait_until_operation_completion(maxtime=2.0)
-            # time.sleep(0.1)
-            # ni.set_write_offset(-ni.get_current_write_position())
-            # time.sleep(0.1)# + sampleSize / float(sampleRate))
-            # ni.stop_task()
-
-        print("Sample clock rate: ", ni.get_sample_clock_rate())
-        print("Write regeneration mode: ", ni.get_write_regeneration_mode())
-        print("Write offset: ", ni.get_write_offset())
-        print("Write relative to: ", ni.get_write_relative_to())
-        print("Output buffer size: ", ni.get_output_buffer_size())
-        print("Onboard buffer size: ", ni.get_onboard_buffer_size())
-
-
-
+            curr_write_pos = ni.get_current_write_position()
+            print(0.0 + k * 0.1, ": Current write position: ", curr_write_pos)
+            ni.set_volt(0.0 + k * 0.1)
+            time.sleep(1.0)
