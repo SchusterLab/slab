@@ -21,6 +21,7 @@ class M8195A(SocketInstrument):
 
         SocketInstrument.__init__(self, name, address, enabled, timeout)
         self._loaded_waveforms = []
+        self.socket.setblocking(1)
 
     ## 6.5 System Related Commands
 
@@ -956,11 +957,10 @@ class M8195A(SocketInstrument):
 
 def upload_M8195A_sequence(m8195a,waveform_matrix,awg, path):
 
-    period_us = awg['period_us']
     amplitudes = awg['amplitudes']
 
     # m8195a = M8195A(address ='192.168.14.234:5025')
-    m8195a.socket.setblocking(1)
+    # m8195a.socket.setblocking(1)
 
     # waveform_shape = waveform_matrix.shape
     #
@@ -977,8 +977,6 @@ def upload_M8195A_sequence(m8195a,waveform_matrix,awg, path):
     dt = float(num_channels)/64. #ns
 
     # waveform_matrix = get_sample_sequence(4,segment_length,sequence_length,dt)
-
-    period = period_us * 1e-6 #s
 
     # define_segments_test(m8195a,segment_length,sequence_length,dt)
 
