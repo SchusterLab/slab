@@ -1332,7 +1332,7 @@ class Alazar():
 
     #this takes single shot data and does not process it!
     #Exports the entire 2D array so don't take to many points!
-    def acquire_singleshot_data2(self, excise=None):
+    def acquire_singleshot_data2(self, prep_function=None, start_function=None, excise=None):
         self.post_buffers()
         single_data1=np.zeros((self.config.recordsPerAcquisition,self.config.samplesPerRecord),dtype=float)
         single_data2=np.zeros((self.config.recordsPerAcquisition,self.config.samplesPerRecord),dtype=float)
@@ -1340,8 +1340,11 @@ class Alazar():
         recordsCompleted=0
         buffersCompleted=0
         buffersPerAcquisition=self.config.recordsPerAcquisition/self.config.recordsPerBuffer
+
+        if prep_function is not None: prep_function()
         ret = self.Az.AlazarStartCapture(self.handle)
-        
+        if start_function is not None: start_function()
+
         if DEBUGALAZAR: 
             print("Start Capture: ", ret_to_str(ret,self.Az))
         if DEBUGALAZAR: 
@@ -1359,10 +1362,10 @@ class Alazar():
                 ret = self.Az.AlazarAbortAsyncRead(self.handle)
                 break       
             for n in range(self.config.recordsPerBuffer):
-                if self.config.ch1_enabled: 
+                if self.config.ch1_enabled:
                     single_data1[recordsCompleted]=self.arrs[buf_idx][n*self.config.samplesPerRecord:(n+1)*self.config.samplesPerRecord]
                     
-                if self.config.ch2_enabled: 
+                if self.config.ch2_enabled:
                     single_data2[recordsCompleted]=self.arrs[buf_idx][(n+self.config.recordsPerBuffer)*self.config.samplesPerRecord:(n+self.config.recordsPerBuffer+1)*self.config.samplesPerRecord]
                     
                 recordsCompleted+=1
