@@ -47,12 +47,13 @@ class NI9260():
         self.task_name = task_name
         DAQmxCreateTask(self.task_name, byref(self.handle))
 
-    def setup_channel(self, channel=0, channelLimits=(-4.23, +4.23)):
+    def setup_channel(self, name=None, channel=0, channelLimits=(-4.23, +4.23)):
         """
         Run after
         - create_task()
         """
-        name = "%s/ao%d" % (self.slot_name, channel)
+        if name is None:
+            name = "%s/ao%d" % (self.slot_name, channel)
         DAQmxCreateAOVoltageChan(self.handle, name, "", channelLimits[0], channelLimits[1], DAQmx_Val_Volts, None)
 
     def setup_all_channels(self, channelLimits=(-4.23, +4.23)):
@@ -83,10 +84,10 @@ class NI9260():
         DAQmxGetSampClkRate(self.handle, byref(data))
         return data.value
 
-    def start_task(self, wait=True):
+    def start_task(self, wait=10.0):
         DAQmxStartTask(self.handle)
         if wait:
-            return self.wait_until_operation_completion()
+            return self.wait_until_operation_completion(maxtime=wait)
 
     def stop_task(self):
         DAQmxStopTask(self.handle)
@@ -406,14 +407,14 @@ class NI9260():
         DAQmxGetAOUseOnlyOnBrdMem(self.handle, "", byref(data))
         return data.value
 
-    def set_bypass_memory_buffer(self, bypass=True):
+    def set_bypass_memory_buffer(self, bypass=True, channel=""):
         """
         Specifies whether to write samples directly to the onboard memory of the device, bypassing the memory buffer.
         Generally, you cannot update onboard memory directly after you start the task. Onboard memory includes data FIFOs.
         http://zone.ni.com/reference/en-XX/help/370471AE-01/mxcprop/attr183a/
         :return:
         """
-        DAQmxSetAOUseOnlyOnBrdMem(self.handle, "", bypass)
+        DAQmxSetAOUseOnlyOnBrdMem(self.handle, channel, uInt32(bypass))
 
     def wait_until_operation_completion(self, maxtime=10.0):
         """
@@ -590,7 +591,7 @@ class NI9260():
         DAQmxSetAOUsbXferReqSize(self.handle, "", uInt32(size))
 
     def print_settings(self):
-        names = ["id", "voltage_output_mode", "sample_clock_rate", "resolution",
+        names = ["id", "sample_timing_type", "sample_clock_rate", "resolution",
                  "idle_output_setting", "write_regeneration_mode", "write_relative_to",
                  "current_write_position", "write_offset", "available_buffer_size",
                  "output_buffer_size", "onboard_buffer_size", "bypass_memory_buffer",
@@ -609,57 +610,108 @@ class NI9260():
         return zip(names, props)
 
 if __name__ == "__main__":
-    sampleRate = 20000
-    sampleSize = 20
-
+    sampleRate = 51200
     ni = NI9260()
 
-    if 0:
-        self.setup_all_channels()
-        self.set_sample_clock(runContinuous=True, sampleSize=sampleSize, sampleRate=sampleRate)
-        self.set_idle_output_setting("ZeroVolts")
-        self.configure_pause_trigger(polarity=1)
-        # self.set_onboard_buffer_size(sampleSize)
-        # self.set_write_regeneration_mode(True)
-        # self.set_write_relative_to('current')
-        # self.set_bypass_memory_buffer(True)
+    if 1:
+        # Sharing a sample clock between different modules across the same device
+        sampleSize = 5120
 
-        t = np.linspace(0, 1 / float(sampleRate) * sampleSize, sampleSize);
-        a = 0.5
-        self.set_waveform(np.append(a * np.cos(2 * np.pi * t), a * np.sin(2 * np.pi * t)), autostart=False)
-        # self.start_task()
+        ni.setup_channel(name="cDAQ9189-1C742CBMod1/ao0:1, cDAQ9189-1C742CBMod2/ao0")
+        # ni.setup_channel(name="cDAQ9189-1C742CBMod2/ao0")
+        # ni.setup_channel(name="cDAQ9189-1C742CBMod1/ao0:1")
 
-        # self.setup_timing()
-        # self.set_waveform(0.5*np.ones(1000))
-        # self.start_task()
+        ni.set_sample_clock(runContinuous=True, sampleSize=sampleSize, sampleRate=sampleRate)
+        ni.set_idle_output_setting("MaintainCurrentValue")
+        ni.set_write_regeneration_mode(True)
+        ni.set_write_relative_to('first')
+        actualSampleRate = ni.get_sample_clock_rate()
 
-        print("Write regeneration mode: ", self.get_write_regeneration_mode())
-        print("Pause trigger polarity: ", self.get_pause_trigger_polarity())
-        print("Output buffer size: ", self.get_output_buffer_size())
-        print("Onboard buffer size: ", self.get_onboard_buffer_size())
+        t = np.linspace(0, 1 / float(actualSampleRate) * sampleSize, sampleSize);
+        y1 = 0.5 * np.sin(2 * np.pi * t * actualSampleRate / float(sampleSize))
+        y2 = y1
+        y3 = y1
 
         plt.figure()
-        plt.plot(t, a * np.cos(2 * np.pi * t), 'g')
-        plt.plot(t, a * np.sin(2 * np.pi * t), 'b')
+        plt.plot(t, y2, '.-b', label='cDAQ9189-1C742CBMod1/ao1')
+        plt.plot(t, y1, '.-g', label='cDAQ9189-1C742CBMod1/ao0')
+        plt.plot(t, y3, '.-r', label='cDAQ9189-1C742CBMod2/ao0')
+        plt.legend(loc=0, prop={"size" : 10}, frameon=False)
         plt.show()
+
+        ni.set_waveform(np.append(np.append(y1, y2), y3), numSamplesPerChan=sampleSize, autostart=True)
+        # ni.set_waveform(y1, numSamplesPerChan=sampleSize, autostart=True)
+        time.sleep(50)
+        # ni.start_task()
+
+    if 0:
+        sys.path.append(r"S:\_Data\170422 - EonHe M018V6 with L3 etch\experiment")
+        from ni_fast_sweep import triangular, pulse_train
+
+        Vmin = 0.350
+        Vmax = 0.600
+        triggerPoints = 10
+
+        assert sampleRate == 51200
+
+        t, y1 = triangular(Vmin, Vmax, dV=.5E-3/triggerPoints, dt=1/sampleRate, Ncopies=1)
+        y2 = pulse_train(t, frequency=sampleRate/(triggerPoints), waveformperiod=t[-1] - t[0])
+
+        plt.figure()
+        plt.plot(t, y2, '.-b', label='ch1')
+        plt.plot(t, y1, '.-g', label='ch0')
+        plt.legend(loc=0, prop={"size" : 10}, frameon=False)
+        plt.show()
+
+        m = 100
+        y1 = np.tile(y1, m)
+        y2 = np.tile(y2, m)
+
+        actualSampleSize = len(y1)
+
+        ni.setup_all_channels()
+        ni.set_sample_clock(runContinuous=False, sampleSize=actualSampleSize, sampleRate=sampleRate)
+        ni.set_idle_output_setting("MaintainCurrentValue")
+        # ni.set_write_regeneration_mode(True)
+        ni.set_write_relative_to('first')
+        actualSampleRate = ni.get_sample_clock_rate()
+
+        ni.set_waveform(np.append(y1, y2), numSamplesPerChan=actualSampleSize, autostart=False)
+        ni.print_settings()
+        ni.start_task(wait=60.0)
+
     if 0:
         ni.setup_channel()
         ni.set_sample_clock(runContinuous=True, sampleSize=sampleSize, sampleRate=sampleRate)
         ni.set_idle_output_setting("MaintainCurrentValue")
         ni.configure_pause_trigger(polarity=0)
+        ni.set_write_regeneration_mode(True)
+        ni.set_write_relative_to('first')
 
-        t = np.linspace(0, 1 / float(sampleRate) * sampleSize, sampleSize);
-        a = 0.5
-        ni.set_waveform(a * np.cos(2 * np.pi * t), autostart=False)
+        actualSampleRate = ni.get_sample_clock_rate()
 
-        print("Write regeneration mode: ", self.get_write_regeneration_mode())
-        print("Pause trigger polarity: ", self.get_pause_trigger_polarity())
-        print("Output buffer size: ", self.get_output_buffer_size())
-        print("Onboard buffer size: ", self.get_onboard_buffer_size())
+        t = np.linspace(0, 1 / float(actualSampleRate) * sampleSize, sampleSize);
+        y1 = 0.5 * np.sin(2 * np.pi * t * sampleRate/float(sampleSize))
+        # y2 = 0.5 * np.sin(2 * np.pi * t * sampleRate/float(sampleSize))
 
+        plt.figure()
+        plt.plot(t, y1, 'g')
+        # plt.plot(t, y2, 'b')
+        plt.show()
+
+        # ni.set_bypass_memory_buffer(bypass=1, channel="cDAQ9189-1C742CBMod1/ao0")
+
+        ni.set_waveform(y1, numSamplesPerChan=sampleSize, autostart=False)
+        # ni.set_waveform(np.append(y1, y2), numSamplesPerChan=sampleSize, autostart=False)
+        ni.print_settings()
         ni.start_task(wait=True)
-    if 1:
-        # DC Mode: dynamically update a waveform
+
+        # for k in range(10):
+        #     print("Current write position: ", ni.get_current_write_position())
+        #     time.sleep(0.5)
+
+    if 0:
+        # DC Mode: dynamically update the value of a constant DC offset
         ni.set_volt(0.5, first_time=True)
         ni.print_settings()
 
