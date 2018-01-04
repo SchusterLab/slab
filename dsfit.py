@@ -777,10 +777,10 @@ def fitdecayrabi(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartf
         fitdatax=xdata
         fitdatay=ydata
     if fitparams is None:
-        # FFT=scipy.fft(fitdatay)
-        # fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
-        # max_ind=np.argmax(abs(FFT[4:len(fitdatay)/2.]))+4
-        # fft_val=FFT[max_ind]
+        FFT=scipy.fft(fitdatay)
+        fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
+        max_ind=np.argmax(abs(FFT[2:int(len(fitdatay)/2.)]))+2
+        fft_val=FFT[max_ind]
 
         fitparams=[0,0,0,0,0,0]
         fitparams[0]= min(fitdatay)
@@ -789,7 +789,7 @@ def fitdecayrabi(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartf
         fitparams[2]= 0
         fitparams[3]= (max(fitdatax)-min(fitdatax))
         #fitparams[4]= 2*abs(fft_val)/len(fitdatay)
-        fitparams[4]= 0.001
+        fitparams[4]= fft_freqs[max_ind]
         # fitparams[5]= 0  #2*abs(fft_val)/len(fitdatay)
 
     p1 = fitgeneral(fitdatax,fitdatay,decayrabifunc1,fitparams,domain=None,showfit=showfit,showstartfit=showstartfit,label=label)
@@ -827,7 +827,7 @@ def fitsin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
     if fitparams is None:
         FFT=scipy.fft(fitdatay)
         fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
-        max_ind=np.argmax(abs(FFT[4:len(fitdatay)/2.]))+4
+        max_ind=np.argmax(abs(FFT[4:int(len(fitdatay)/2.)]))+4
         fft_val=FFT[max_ind]
 
         fitparams=[0,0,0,0]
