@@ -162,7 +162,7 @@ class NI9260():
         if first_time:
             self.setup_channel()
             self.set_write_regeneration_mode(True)
-            self.set_sample_clock(runContinuous=True, sampleRate=sampleRate, sampleSize=sampleSize)
+            self.set_sample_clock(runContinuous=True, clockSource="", sampleRate=sampleRate, sampleSize=sampleSize)
             self.set_write_relative_to('first')
             self.set_idle_output_setting("MaintainCurrentValue")
             self.set_bypass_memory_buffer(False)
