@@ -64,14 +64,25 @@ class NI9260():
         name = "%s/ao0:1" % self.slot_name
         DAQmxCreateAOVoltageChan(self.handle, name, "", channelLimits[0], channelLimits[1], DAQmx_Val_Volts, None)
 
-    def set_sample_clock(self, runContinuous=True, sampleSize=1000, sampleRate=1000):
+    def set_sample_clock(self, runContinuous=True, clockSource="", sampleSize=1000, sampleRate=1000):
         """
+        http://zone.ni.com/reference/en-XX/help/370471AE-01/daqmxcfunc/daqmxcfgsampclktiming/
+
         Run after
         - create_task()
         - setup_channel()
+        :param runContinuous: True/False; If true the waveform is repeated continuously
+        :param clockSource: "PFI0" for a 10 MHz reference clock hooked up to the PFI0 port or "" for the onboard clock
+        :param sampleSize: Number of samples in the waveform
+        :param sampleRate: Waveform timebase. If you use an external source for the Sample Clock, set this value to
+        the maximum expected rate of that clock.
+        :return: None
         """
         sampleMode = DAQmx_Val_ContSamps if runContinuous else DAQmx_Val_FiniteSamps
-        DAQmxCfgSampClkTiming(self.handle, "", float64(sampleRate), DAQmx_Val_Rising, sampleMode, uInt64(sampleSize))
+        if clockSource is not "":
+            clockSource = "PFI0"
+
+        DAQmxCfgSampClkTiming(self.handle, clockSource, float64(sampleRate), DAQmx_Val_Rising, sampleMode, uInt64(sampleSize))
 
     def get_sample_clock_rate(self):
         """
