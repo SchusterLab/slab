@@ -168,6 +168,28 @@ class E5071(SocketInstrument):
     def get_query_sleep(self):
         return self.query_sleep
 
+    def set_display_state(self, state=True):
+        """
+        SCPI commands should be processed quickly to improve throughput when such commands are frequently executed
+        (for example, reading out traces for each measurement).
+        With the E5071C, the processing time for SCPI commands can be improved by decreasing the refresh rate of the LCD display.
+        http://ena.support.keysight.com/e5071c/manuals/webhelp/eng/
+        :param state: True/False
+        :return: None
+        """
+        enable = 'ON' if state else 'OFF'
+        self.write("DISP:ENAB %s" % enable)
+
+    def get_display_state(self):
+        """
+        SCPI commands should be processed quickly to improve throughput when such commands are frequently executed
+        (for example, reading out traces for each measurement).
+        With the E5071C, the processing time for SCPI commands can be improved by decreasing the refresh rate of the LCD display.
+        http://ena.support.keysight.com/e5071c/manuals/webhelp/eng/
+        :return:
+        """
+        return self.query("DISP:ENAB?")
+
     #### Frequency setup
     def set_start_frequency(self, freq, channel=1):
         self.write(":SENS%d:FREQ:START %f" % (channel, freq))
