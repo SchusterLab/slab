@@ -601,6 +601,36 @@ class NI9260():
         """
         DAQmxSetAOUsbXferReqSize(self.handle, "", uInt32(size))
 
+    def get_underflow_behavior(self):
+        """
+        Set how the NI deals with FIFO underflow error: specifies the action to take when the onboard
+        memory of the device becomes empty.
+        http://zone.ni.com/reference/en-XX/help/370471AE-01/mxcprop/attr2efd/
+        :return: "HaltOutputAndError" or "PauseUntilAvailable"
+        """
+        data = int32()
+        DAQmxGetImplicitUnderflowBehavior(self.handle, byref(data))
+        dataDict = {"14615": "HaltOutputAndError",
+                    "14616": "PauseUntilAvailable"}
+        return dataDict[str(data.value)]
+
+    def set_underflow_behavior(self, mode='HaltOutputAndError'):
+        """
+        Set how the NI deals with FIFO underflow error: specifies the action to take when the onboard
+        memory of the device becomes empty.
+        http://zone.ni.com/reference/en-XX/help/370471AE-01/mxcprop/attr2efd/
+        :param mode: One of "HaltOutputAndError" (throws exception), "PauseUntilAvailable" (waits for buffer to fill)
+        :return: None
+        """
+        allowed_modes = ['PauseUntilAvailable', 'HaltOutputAndError']
+        if mode in allowed_modes:
+            if mode == 'PauseUntilAvailable':
+                DAQmxSetImplicitUnderflowBehavior(self.handle, DAQmx_Val_PauseUntilDataAvailable)
+            else:
+                DAQmxSetImplicitUnderflowBehavior(self.handle, DAQmx_Val_HaltOutputAndError)
+        else:
+            print("ERROR in setting underflow behavior: mode must be one of the following", allowed_modes)
+
     def print_settings(self):
         names = ["id", "sample_timing_type", "sample_clock_rate", "resolution",
                  "idle_output_setting", "write_regeneration_mode", "write_relative_to",
