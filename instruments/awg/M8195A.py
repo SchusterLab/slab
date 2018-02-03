@@ -19,7 +19,7 @@ class M8195A(SocketInstrument):
     def __init__(self, name='M8195A', address='', enabled=True,timeout = 1000):
         address = address.upper()
 
-        SocketInstrument.__init__(self, name, address, enabled, timeout)
+        SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=timeout)
         self._loaded_waveforms = []
         self.socket.setblocking(1)
 
