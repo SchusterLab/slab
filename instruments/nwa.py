@@ -163,6 +163,7 @@ class E5071(SocketInstrument):
         self.query_sleep = 0.05
 
     def get_id(self):
+        #return "FLAG"
         return self.query('*IDN?')
 
     def get_query_sleep(self):
@@ -543,7 +544,8 @@ class E5071(SocketInstrument):
         if timeout is None:
             timeout = self.timeout
 
-        data_str = ''.join(self.read_lineb(timeout=timeout))
+        data_temp = self.read_lineb(timeout=timeout)
+        data_str = ''.join([ss.decode() for ss in data_temp])
         data = np.fromstring(data_str, dtype=float, sep=',')
         sweep_points = int(self.get_sweep_points())
         fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), sweep_points)
