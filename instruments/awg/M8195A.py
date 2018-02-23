@@ -10,6 +10,7 @@ from slab.instruments import SocketInstrument
 import numpy as np
 import sys
 from tqdm import tqdm
+import os
 
 
 class M8195A(SocketInstrument):
@@ -18,8 +19,9 @@ class M8195A(SocketInstrument):
     def __init__(self, name='M8195A', address='', enabled=True,timeout = 1000):
         address = address.upper()
 
-        SocketInstrument.__init__(self, name, address, enabled, timeout)
+        SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=timeout)
         self._loaded_waveforms = []
+        self.socket.setblocking(1)
 
     ## 6.5 System Related Commands
 
@@ -850,7 +852,7 @@ class M8195A(SocketInstrument):
         print('\n')
 
 
-    def define_segments_binary(m8195a,waveform_matrix):
+    def define_segments_binary(m8195a,waveform_matrix, path):
 
         # waveform_shape = waveform_matrix.shape
         #
@@ -876,8 +878,9 @@ class M8195A(SocketInstrument):
                 # todo:
                 # hack: M8195A sequence start from second sequence - '(sequence_id-2)'
                 segment_data_array = 127*waveform_matrix[channel-1][(sequence_id-2)%sequence_length]
-                #filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)
-                filename = r'C:\M8195_sequences\m8195a_%d_%d.bin8' % (sequence_id, channel)
+                # filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)
+                filename = os.path.join(path, r'sequences\m8195a_%d_%d.bin8' %(sequence_id,channel))
+                # filename = r'C:\M8195_sequences\m8195a_%d_%d.bin8' % (sequence_id, channel)
                 with open(filename, 'wb')  as f:
                     segment_data_array.astype('int8').tofile(f)
 
@@ -885,8 +888,9 @@ class M8195A(SocketInstrument):
                 # np.save(name, segment_data_array)
 
                 #sys.stdout.write('uploading..\n')
-                #filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
-                filename = '\"' + r'\\THORIUM-PC\M8195_sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
+                # filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
+                # filename = '\"' + r'\\THORIUM-PC\M8195_sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
+                filename = '\"' + os.path.join(path, r'sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)) + '\"'
                 #m8195a.set_segment_data_from_bin_file(channel,sequence_id,filename)
 
                 m8195a.set_segment_data_from_bin_file(channel, sequence_id, filename)
@@ -951,13 +955,12 @@ class M8195A(SocketInstrument):
         return waveform_channel_array
 
 
-def upload_M8195A_sequence(m8195a,waveform_matrix,awg):
+def upload_M8195A_sequence(m8195a,waveform_matrix,awg, path):
 
-    period_us = awg['period_us']
     amplitudes = awg['amplitudes']
 
     # m8195a = M8195A(address ='192.168.14.234:5025')
-    m8195a.socket.setblocking(1)
+    # m8195a.socket.setblocking(1)
 
     # waveform_shape = waveform_matrix.shape
     #
@@ -975,13 +978,11 @@ def upload_M8195A_sequence(m8195a,waveform_matrix,awg):
 
     # waveform_matrix = get_sample_sequence(4,segment_length,sequence_length,dt)
 
-    period = period_us * 1e-6 #s
-
     # define_segments_test(m8195a,segment_length,sequence_length,dt)
 
     # define_segments(m8195a,waveform_matrix)
 
-    m8195a.define_segments_binary(waveform_matrix)
+    m8195a.define_segments_binary(waveform_matrix, path)
 
     m8195a.set_mode('STS')
     m8195a.define_sequence(sequence_length)

@@ -47,7 +47,7 @@ class RabiExperiment(QubitPulseSequenceExperiment):
             ydata = expt_avg_data
             FFT=scipy.fft(ydata)
             fft_freqs=scipy.fftpack.fftfreq(len(ydata),xdata[1]-xdata[0])
-            max_ind=np.argmax(abs(FFT[2:len(ydata)/2]))+2
+            max_ind=np.argmax(abs(FFT[2:int(len(ydata)/2)]))+2
             fft_val=FFT[max_ind]
 
             fitparams=[0,0,0,0,0]
@@ -101,7 +101,7 @@ class EFRabiExperiment(QubitPulseSequenceExperiment):
         ydata = expt_avg_data
         FFT=scipy.fft(ydata)
         fft_freqs=scipy.fftpack.fftfreq(len(ydata),xdata[1]-xdata[0])
-        max_ind=np.argmax(abs(FFT[2:len(ydata)/2]))+2
+        max_ind=np.argmax(abs(FFT[2:int(len(ydata)/2)]))+2
         fft_val=FFT[max_ind]
 
         fitparams=[0,0,0,0,0]
@@ -469,6 +469,24 @@ class PulseProbeIQExperiment(QubitPulseSequenceExperiment):
         # self.drive_freq = self.extra_args['drive_freq']
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
                                               PulseSequence=PulseProbeIQSequence, pre_run=self.pre_run,
+                                              post_run=self.post_run, **kwargs)
+
+
+    def pre_run(self):
+        pass
+
+    def post_run(self, expt_pts, expt_avg_data):
+        pass
+
+
+class PulseProbeEFIQExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='pulse_probe_ef_iq', config_file='..\\config.json', **kwargs):
+        self.extra_args = {}
+        for key, value in kwargs.items():
+            self.extra_args[key] = value
+        # self.drive_freq = self.extra_args['drive_freq']
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                              PulseSequence=PulseProbeEFIQSequence, pre_run=self.pre_run,
                                               post_run=self.post_run, **kwargs)
 
 

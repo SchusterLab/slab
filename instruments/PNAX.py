@@ -25,12 +25,32 @@ class N5242A(SocketInstrument):
     def __init__(self, name="E5071", address=None, enabled=True, **kwargs):
         SocketInstrument.__init__(self, name, address, enabled=enabled, recv_length=2 ** 20, **kwargs)
         self.query_sleep = 0.05
+        self.timeout = 100
 
     def get_id(self):
         return self.query('*IDN?')
 
     def get_query_sleep(self):
         return self.query_sleep
+
+    def set_display_state(self, state=True):
+        """
+        Specifies whether to disable or enable all analyzer display information in all windows in the analyzer application.
+        Marker data is not updated. More CPU time is spent making measurements instead of updating the display.
+        http://na.support.keysight.com/pna/help/latest/Programming/GP-IB_Command_Finder/Display.htm
+        :param state: True/False
+        :return: None
+        """
+        enable = 1 if state else 0
+        self.write("DISP:ENAB %d" % enable)
+
+    def get_display_state(self):
+        """
+        Specifies whether to disable or enable all analyzer display information in all windows in the analyzer application.
+        Marker data is not updated. More CPU time is spent making measurements instead of updating the display.
+        :return:
+        """
+        return self.query("DISP:ENAB?")
 
     #### Frequency setup
     def set_start_frequency(self, freq, channel=1):
@@ -274,6 +294,34 @@ class N5242A(SocketInstrument):
                 self.write("TRIG:SLOP NEG")
         else:
             raise ValueError("Input not understood!")
+
+    def set_channel_trigger_state(self, state):
+        """
+        Trigger mode. choose from:
+
+        CHANnel - Each trigger signal causes ALL traces in that channel to be swept.
+        SWEep - Each Manual or External trigger signal causes ALL traces that share a source port to be swept.
+        POINt -- Each Manual or External trigger signal causes one data point to be measured.
+        TRACe - Allowed ONLY when SENS:SWE:GEN:POIN is enabled. Each trigger signal causes two identical measurements to be
+        triggered separately - one trigger signal is required for each measurement. Other trigger mode settings cause two
+        identical parameters to be measured simultaneously.
+        :param state: 'CHAN', 'POIN', 'SWE', 'TRAC'
+        :return: None
+        """
+        if state.upper() in ['CHAN', 'POIN', 'SWE', 'TRAC']:
+            self.write("SENS:SWE:TRIG:MODE %s" % state)
+
+    def get_channel_trigger_state(self):
+        """
+        CHANnel - Each trigger signal causes ALL traces in that channel to be swept.
+        SWEep - Each Manual or External trigger signal causes ALL traces that share a source port to be swept.
+        POINt -- Each Manual or External trigger signal causes one data point to be measured.
+        TRACe - Allowed ONLY when SENS:SWE:GEN:POIN is enabled. Each trigger signal causes two identical measurements to be
+        triggered separately - one trigger signal is required for each measurement. Other trigger mode settings cause two
+        identical parameters to be measured simultaneously.
+        :return:
+        """
+        return self.query("SENS:SWE:TRIG:MODE?")
 
     #### Source
     def set_power(self, power, channel=1, port=1, state=1):

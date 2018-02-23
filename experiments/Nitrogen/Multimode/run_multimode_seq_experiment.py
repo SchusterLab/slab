@@ -1,7 +1,7 @@
 __author__ = 'Nelson/Vatsan'
 
-from slab.experiments.ExpLib.SequentialExperiment import *
-from slab.experiments.General.run_seq_experiment import *
+from slab.experiments.Nitrogen.ExpLib.SequentialExperiment import *
+from slab.experiments.Nitrogen.General.run_seq_experiment import *
 from numpy import delete,linspace
 from slab import *
 import os
@@ -442,8 +442,8 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
         # freqspan = linspace(0,1000,301)
         # freqlist = array([1.54])*1e9
-        freqspan = linspace(0,20,11)
-        freqlist = array([3.08])*1e9
+        freqspan = linspace(0,2500,51)
+        freqlist = array([0.8])*1e9
         modelist = array([-1])
 
         amp = kwargs['amp']
@@ -452,7 +452,7 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
             # print "running DC offset scan around mode %s"%(modelist[i])
             for freq in freqspan:
                 flux_freq = freqlist[i] + freq*1e6
-                seq_exp.run('multimode_dc_offset_experiment',{'freq':flux_freq,'amp':amp,'sideband':"ge","data_file":data_file})
+                seq_exp.run('multimode_dc_offset_experiment', expt_kwargs = {'freq':flux_freq,'amp':amp,'sideband':"ge","data_file":data_file})
 
     if expt_name.lower() == 'multimode_dc_offset_vs_amplitude':
 
@@ -1329,8 +1329,8 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
     if expt_name.lower() == 'multimode_bluesideband_sweep':
 
         # offset_list=[-81656602.748319939, -80685740.24701868, -79599004.754083157, -78597136.31114462, -7.77e+07, -76807382.828515679, -76009899.855674267, -75209535.153403714, -74459064.946205765, -73689192.183382601, -72983759.987144202, -72272657.000603467, -71674416.255530506, -71201969.173228472, -70642005.063694507, -70177149.894169152, -69898846.796902165, -69611643.262061238, -69518137.464103252, -69601738.595220476, -69552498.380955413, -69494148.22051169, -69394164.918533742, -69319497.915831298, -69006328.29023242, -68794345.798679218, -6.865e+07, -68505009.638900757, -68590321.673740223, -68604714.195392057]
-        freqspan = linspace(0,15,31) #MHz
-        freqcenter = 3.085e9#2.745e9
+        freqspan = linspace(0,20,21) #MHz
+        freqcenter = 3.21e9#2.745e9
 
         # freqspan = linspace(-1,1,11)        # freqcenter = -array([66.6])*1e6
 

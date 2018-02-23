@@ -61,7 +61,7 @@ def plot_fitresult(xdata, ydata, bestfitparams, fitparam_errors, fitparam_names=
     plt.ylim(ylims)
 
 def fitbetter(xdata, ydata, fitfunc, fitparams, parambounds=None, domain=None, showfit=False, showstartfit=False,
-              showdata=True, mark_data='ko', mark_fit='r-', **kwargs):
+              showdata=False, mark_data='.o', mark_fit='r-', **kwargs):
     """
     Uses curve_fit from scipy.optimize to fit a non-linear least squares function to ydata, xdata
     Note: when applying bounds the fit method used is a different one than with an unconstrained fit. It's good
@@ -177,7 +177,7 @@ def fit_lor(xdata, ydata, fitparams=None, no_offset=False, domain=None, showfit=
             parnames.pop(0)
 
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
 
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
@@ -226,7 +226,7 @@ def fit_kinetic_fraction(xdata, ydata, fitparams=None, Tc_fixed=False, domain=No
     if verbose:
         parnames = ['f0', 'Kinetic Inductance fraction', 'Tc']
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
 
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
@@ -261,7 +261,7 @@ def fit_double_lor(xdata, ydata, fitparams=None, domain=None, showfit=False, sho
     if verbose:
         parnames = ['Offset', 'A1', 'f1', 'HWHM1', 'A2', 'f2', 'HWHM2']
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
 
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
@@ -344,7 +344,7 @@ def fit_exp(xdata, ydata, fitparams=None, domain=None, showfit=False, showstartf
     if verbose:
         parnames = ['Offset', 'Amplitude', chr(964)]
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
 
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
@@ -415,7 +415,7 @@ def fit_decaysin(xdata, ydata, fitparams=None, domain=None, showfit=False, shows
     if verbose:
         parnames = ['Amplitude', 'Frequency', chr(966), chr(964), 'Offset', 'Start time']
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
     return params, param_errs
@@ -441,7 +441,7 @@ def fit_sin(xdata, ydata, fitparams=None, domain=None, showfit=False, showstartf
     if fitparams is None:
         FFT = scipy.fft(fitdatay)
         fft_freqs = scipy.fftpack.fftfreq(len(fitdatay), fitdatax[1] - fitdatax[0])
-        max_ind = np.argmax(abs(FFT[4:len(fitdatay) / 2.])) + 4
+        max_ind = np.argmax(abs(FFT[4: int(len(fitdatay) / 2.)])) + 4
         fft_val = FFT[max_ind]
 
         fitparams = [0, 0, 0, 0]
@@ -454,9 +454,9 @@ def fit_sin(xdata, ydata, fitparams=None, domain=None, showfit=False, showstartf
                                    showstartfit=showstartfit, **kwarg)
 
     if verbose:
-        parnames = ['Amplitude', 'Frequency (Hz)', chr(966), 'Offset']
+        parnames = ['Amplitude', 'Frequency (Hz)', chr(966)+" (deg)", 'Offset']
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
     return params, param_errs
@@ -506,7 +506,7 @@ def fit_gauss(xdata, ydata, fitparams=None, no_offset=False, domain=None, showfi
             parnames = ['Offset', 'Amplitude', chr(956), chr(963)]
 
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
     return params, param_errs
@@ -547,7 +547,7 @@ def fit_hanger(xdata, ydata, fitparams=None, domain=None, showfit=False, showsta
     if verbose:
         parnames = ['f0', 'Qi', 'Qc', 'df', 'scale']
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
     return params, param_errs
@@ -582,7 +582,7 @@ def fit_parabola(xdata, ydata, fitparams=None, domain=None, showfit=False, shows
     if verbose:
         parnames = ["a%d" % idx for idx in range(len(params))]
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
     return params, param_errs
@@ -640,7 +640,7 @@ def fit_s11(xdata, ydata, mode='oneport', fitparams=None, domain=None, showfit=F
 
     if verbose:
         print(tabulate(zip(names, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=names)
 
     return params, param_errs
@@ -677,7 +677,7 @@ def fit_fano(xdata, ydata, fitparams=None, domain=None, showfit=False, showstart
     if verbose:
         parnames = ['f0', 'FWHM', 'Fano factor', 'Amplitude']
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
     return params, param_errs
@@ -715,7 +715,7 @@ def fit_lor_asym(xdata, ydata, fitparams=None, domain=None, showfit=False, shows
     if verbose:
         parnames = ['Amplitude', 'f0', 'FWHM', 'Parallel capacitance']
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
     return params, param_errs
@@ -763,7 +763,7 @@ def fit_poly(xdata, ydata, mode=None, fitparams=None, domain=None, showfit=False
         print(fitfunc_string)
         parnames = ["a%d" % idx for idx in range(len(params))]
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
     return params, param_errs
@@ -800,7 +800,7 @@ def fit_powerlaw(xdata, ydata, fitparams=None, domain=None, showfit=False, shows
         print(fitfunc_string)
         parnames = ["Offset", "Multiplicator", "Exponent"]
         print(tabulate(zip(parnames, params, param_errs), headers=["Parameter", "Value", "Std"],
-                       tablefmt="rst", floatfmt="", numalign="center", stralign='left'))
+                       tablefmt="fancy_grid", floatfmt="", numalign="center", stralign='left'))
         plot_fitresult(fitdatax, fitdatay, params, param_errs, fitparam_names=parnames)
 
     return params, param_errs

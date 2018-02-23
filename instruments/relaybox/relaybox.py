@@ -45,7 +45,7 @@ class RelayBox(SerialInstrument, WebInstrument):
             relay_status.reverse()
         if self.protocol=="http":
             f = urllib.request.urlopen(self.address+ "/relaybox/json?RS0")
-            relay_status=[int(y[0]) for y in f.read(1000).split(':')[2:]]
+            relay_status=[int(y[0]) for y in f.read(1000).decode().split(':')[2:]]
         if port !=0: return relay_status[port-1]
         else: return relay_status
             
@@ -56,7 +56,7 @@ class RelayBox(SerialInstrument, WebInstrument):
             analog_inputs=[int(x) for x in ans.split()[1:]]
         if self.protocol=="http":
             f = urllib.request.urlopen(self.address+ "/relaybox/json?"+"AI0")
-            analog_inputs=[int(y.split(',')[0]) for y in f.read(1000).split(':')[2:]]
+            analog_inputs=[int(y.split(',')[0]) for y in f.read(1000).decode().split(':')[2:]]
         if port!=0: return analog_inputs[port-1]
         else: return analog_inputs
             

@@ -9,6 +9,7 @@ import numpy as np
 from tqdm import tqdm
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
 from slab.instruments.pulseblaster.pulseblaster_alex import *
+import visdom
 
 
 class QubitPulseSequenceExperiment(Experiment):
@@ -72,29 +73,28 @@ class QubitPulseSequenceExperiment(Experiment):
         self.pulse_type = self.cfg[self.expt_cfg_name]['pulse_type']
         self.pulse_sequence = PulseSequence(prefix, self.cfg, self.cfg[self.expt_cfg_name], **kwargs)
 
+        self.pulse_sequence.build_sequence()
+
+        self.expt_pts = self.pulse_sequence.expt_pts
+        self.cfg['alazar']['samplesPerRecord'] = 2 ** (self.cfg['readout']['width'] - 1).bit_length()
+        self.cfg['alazar']['recordsPerBuffer'] = self.pulse_sequence.sequence_length
+        self.cfg['alazar']['recordsPerAcquisition'] = int(
+            self.pulse_sequence.sequence_length * min(self.cfg[self.expt_cfg_name]['averages'], 100))
+
         if self.cfg["upload_exp"]:
-            self.pulse_sequence.build_sequence()
+            print('upload_exp = True, awg seq upload started...\n')
             self.pulse_sequence.write_sequence(os.path.join(self.path, '../sequences/'), prefix, upload=True)
-
-            self.expt_pts = self.pulse_sequence.expt_pts
-            self.cfg['alazar']['samplesPerRecord'] = 2 ** (self.cfg['readout']['width'] - 1).bit_length()
-            self.cfg['alazar']['recordsPerBuffer'] = self.pulse_sequence.sequence_length
-
-            self.cfg['alazar']['recordsPerAcquisition'] = int(
-                self.pulse_sequence.sequence_length * min(self.cfg[self.expt_cfg_name]['averages'], 100))
-
-            self.ready_to_go = True
         else:
-            self.ready_to_go = False
+            print('upload_exp = False, awg seq upload skipped.\n')
+
+        self.ready_to_go = True
 
         return self.ready_to_go
 
     def go(self):
+
         # if self.liveplot_enabled:
         #     self.plotter.clear()
-
-        # print 'wait 30 secs'
-        # time.sleep(30)
 
         print("Prep Instruments")
 
@@ -148,25 +148,42 @@ class QubitPulseSequenceExperiment(Experiment):
         except:
             pass
 
-        # try:
-        #     if self.cfg['freq_flux']['current']:
-        #         self.flux_volt.ramp_current(self.cfg['freq_flux']['flux'])
-        #     elif self.cfg['freq_flux']['voltage']:
-        #         self.flux_volt.ramp_volt(self.cfg['freq_flux']['flux'])
-        # except:
-        #     print "Voltage source not loaded."
-
         try:
             self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
         except:
             print("self.awg not loaded.")
 
-        print('\nFilename:', self.slab_file.filename, '\n')
+        if self.cfg['take_data']:
+            print('\nTaking data with filename:', self.slab_file.filename, '\n')
+            self.take_data()
+        else:
+            print('\ntake_data = False, data acquisition skipped.')
 
-        self.take_data()
+        if self.cfg['stop_awgs'] == True:
+            print('stop_awg = True, seqs stopped.')
+        else:
+            self.awg_run()
+            print('stop_awg = False, seqs left running.')
 
 
     def take_data(self):
+
+        ####
+        if self.cfg["visdom_plot_livedata"]:
+
+            viz = visdom.Visdom()
+            assert viz.check_connection(), "Visdom server not connected!"
+            # added two environments "seq_builder.json", and "live_plot.json" in C:\Users\slab\.visdom
+            eid = "live_plot"
+            viz.close(win=None, env=eid)
+
+            win1 = viz.line( X=np.arange(0, 1), Y=np.arange(0, 1), env=eid,
+                opts=dict(height=400, width=700, title='expt_avg_data', showlegend=True, xlabel='expt_pts'))
+            win2 = viz.line( X=np.arange(0, 1), Y=np.arange(0, 1), env=eid,
+                opts=dict(height=400, width=700, title='expt_avg_data2', showlegend=True, xlabel='expt_pts'))
+            win3 = viz.line( X=np.arange(0, 1), Y=np.arange(0, 1), env=eid,
+                opts=dict(height=400, width=700, title='single_record (of only first run)', showlegend=True, xlabel='time ns'))
+        ####
 
         if self.pre_run is not None:
             self.pre_run()
@@ -363,8 +380,8 @@ class QubitPulseSequenceExperiment(Experiment):
                     # index: (ch1/2, hetero_freqs, cos / sin, avgs, seq(exp_pts))
                     single_data = np.reshape(single_data,
                                              (single_data.shape[0], single_data.shape[1], single_data.shape[2],
-                                              self.cfg['alazar'][
-                                                  'recordsPerAcquisition'] / self.pulse_sequence.sequence_length,
+                                              int(self.cfg['alazar'][
+                                                  'recordsPerAcquisition'] / self.pulse_sequence.sequence_length),
                                               self.pulse_sequence.sequence_length))
 
                     # index: (ch1/2, exp_pts, hetero_freqs, cos / sin, avgs)
@@ -525,27 +542,37 @@ class QubitPulseSequenceExperiment(Experiment):
 
                         f.close()
 
+                    ####
+                    if self.cfg["visdom_plot_livedata"]:
+                        viz.updateTrace(X=self.expt_pts, Y=expt_avg_data, env=eid, win=win1, append=False)
+                        viz.updateTrace(X=self.expt_pts, Y=expt_avg_data2, env=eid, win=win2, append=False)
+                        if ii==0:
+                            viz.updateTrace(X=array(range(len(single_record1))), Y=single_record2, env=eid, win=win3, name='2', append=False)
+                            viz.updateTrace(X=array(range(len(single_record1))), Y=single_record1, env=eid, win=win3, name='1', append=False)
+                    ####
+
             if self.post_run is not None:
                 self.post_run(self.expt_pts, expt_avg_data)
 
             if self.cfg['stop_awgs'] == True:
                 self.awg_prep()
+                print('stop_awg = True, seqs stopped.')
+            else:
+                print('stop_awg = False, seqs left running.')
 
             # closes Alazar card and releases buffer
             adc.close()
 
     def awg_prep(self):
+
         stop_pulseblaster()
 
-        im = InstrumentManager()
-        im['M8195A'].stop_output()
+        self.im['M8195A'].stop_output()
 
         for key, value in LocalInstruments().inst_dict.items():
             value.stop()
 
     def awg_run(self):
-
-        im = InstrumentManager()
 
         # # hack to fix attenuator jumping
         # try:
@@ -554,7 +581,7 @@ class QubitPulseSequenceExperiment(Experiment):
         # except:
         #     print "Digital attenuator not loaded."
 
-        im['M8195A'].start_output()
+        self.im['M8195A'].start_output()
 
         for key, value in LocalInstruments().inst_dict.items():
             value.run_experiment()

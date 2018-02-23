@@ -2,10 +2,10 @@ __author__ = 'Nelson'
 
 
 from slab.instruments.awg.PulseSequence import *
-from slab.experiments.ExpLib import awgpulses as ap
+from slab.experiments.Nitrogen.ExpLib import awgpulses as ap
 from numpy import arange, linspace
-from slab.experiments.ExpLib.TEK1PulseOrganizer import *
-from slab.experiments.ExpLib.PulseSequenceBuilder import *
+# from slab.experiments.ExpLib.TEK1PulseOrganizer import *
+from slab.experiments.Nitrogen.ExpLib.PulseSequenceBuilder import *
 
 class VacuumRabiSequence(PulseSequence):
     def __init__(self, awg_info, vacuum_rabi_cfg, readout_cfg,buffer_cfg,pulse_cfg):

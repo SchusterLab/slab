@@ -163,10 +163,33 @@ class E5071(SocketInstrument):
         self.query_sleep = 0.05
 
     def get_id(self):
+        #return "FLAG"
         return self.query('*IDN?')
 
     def get_query_sleep(self):
         return self.query_sleep
+
+    def set_display_state(self, state=True):
+        """
+        SCPI commands should be processed quickly to improve throughput when such commands are frequently executed
+        (for example, reading out traces for each measurement).
+        With the E5071C, the processing time for SCPI commands can be improved by decreasing the refresh rate of the LCD display.
+        http://ena.support.keysight.com/e5071c/manuals/webhelp/eng/
+        :param state: True/False
+        :return: None
+        """
+        enable = 'ON' if state else 'OFF'
+        self.write("DISP:ENAB %s" % enable)
+
+    def get_display_state(self):
+        """
+        SCPI commands should be processed quickly to improve throughput when such commands are frequently executed
+        (for example, reading out traces for each measurement).
+        With the E5071C, the processing time for SCPI commands can be improved by decreasing the refresh rate of the LCD display.
+        http://ena.support.keysight.com/e5071c/manuals/webhelp/eng/
+        :return:
+        """
+        return self.query("DISP:ENAB?")
 
     #### Frequency setup
     def set_start_frequency(self, freq, channel=1):
@@ -521,7 +544,8 @@ class E5071(SocketInstrument):
         if timeout is None:
             timeout = self.timeout
 
-        data_str = ''.join(self.read_lineb(timeout=timeout))
+        data_temp = self.read_lineb(timeout=timeout)
+        data_str = ''.join([ss.decode() for ss in data_temp])
         data = np.fromstring(data_str, dtype=float, sep=',')
         sweep_points = int(self.get_sweep_points())
         fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), sweep_points)
