@@ -240,6 +240,10 @@ class Scope2(MemoryInterface):
 
             cnt = self.avg_cnt
 
+        #convert from 2's complement
+        shot_data_ch1[shot_data_ch1 > 2 ** 31] -= 2 ** 31
+        shot_data_ch2[shot_data_ch2 > 2 ** 31] -= 2 ** 31
+
         if dual_ch:
             return shot_data_ch1, shot_data_ch2
         else:
