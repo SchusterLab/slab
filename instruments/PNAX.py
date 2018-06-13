@@ -295,6 +295,25 @@ class N5242A(SocketInstrument):
         else:
             raise ValueError("Input not understood!")
 
+    def set_external_trigger_connector(self, connector="MAIN"):
+        """
+        Specifies the connector to use for the external trigger input.
+        Meas Trig In BNC || material handler I/O Pin 18 || Internal routing of  pulse 3 output to the MEAS TRIG IN on the rear panel.
+        :param trigger_connector: string; one of the following: ["MAIN", "MATH", "PULSE3"]
+        :return: None
+        """
+        if connector.upper() in ["MAIN", "MATH", "PULSE3"]:
+            self.write("TRIG:ROUTE:INP %s" % connector.upper())
+
+    def get_external_trigger_connector(self):
+        """
+            Gets the connector to use for the external trigger input.
+            Meas Trig In BNC || material handler I/O Pin 18 || Internal routing of  pulse 3 output to the MEAS TRIG IN on the rear panel.
+            :param trigger_connector: string; one of the following: ["MAIN", "MATH", "PULSE3"]
+            :return: None
+            """
+        return self.query("TRIG:ROUTE:INP?")
+
     def set_channel_trigger_state(self, state):
         """
         Trigger mode. choose from:
