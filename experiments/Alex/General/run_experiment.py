@@ -29,6 +29,17 @@ def run_experiment(expt_name,lp_enable = False, **kwargs):
         # Do pulse_probe experiment
         expt = PulseProbeExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower() == 'pulse_probe2':
+        # from slab.experiments.Alex.General.PulseProbeExperiment import PulseProbeExperiment
+        from slab.experiments.Alex.General.SingleQubitPulseSequenceExperiment import PulseProbe2Experiment
+        # Do pulse_probe experiment
+        expt = PulseProbe2Experiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower() == 'pulse_cal':
+        from slab.experiments.Alex.General.SingleQubitPulseSequenceExperiment import PulseCalExperiment
+        # Do pulse_cal experiment
+        expt = PulseCalExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
+
     if expt_name.lower() == 'rabi':
         from slab.experiments.Alex.General.SingleQubitPulseSequenceExperiment import RabiExperiment
         # Do Rabi Experiment

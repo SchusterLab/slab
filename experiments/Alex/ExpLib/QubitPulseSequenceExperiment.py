@@ -130,6 +130,7 @@ class QubitPulseSequenceExperiment(Experiment):
 
         try:
             self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
+            print("Readout digital attenuator set to:", self.cfg['readout']['dig_atten'])
         except:
             print("Digital attenuator not loaded.")
 
@@ -183,6 +184,9 @@ class QubitPulseSequenceExperiment(Experiment):
                 opts=dict(height=400, width=700, title='expt_avg_data2', showlegend=True, xlabel='expt_pts'))
             win3 = viz.line( X=np.arange(0, 1), Y=np.arange(0, 1), env=eid,
                 opts=dict(height=400, width=700, title='single_record (of only first run)', showlegend=True, xlabel='time ns'))
+            win4 = viz.scatter(X=array([[1,2,3],[1,2,3]]).transpose(), env=eid,
+                        opts=dict(height=400, width=700, title='g/e/f cal single shot', showlegend=True, xlabel=''))
+
         ####
 
         if self.pre_run is not None:
@@ -546,6 +550,16 @@ class QubitPulseSequenceExperiment(Experiment):
                     if self.cfg["visdom_plot_livedata"]:
                         viz.updateTrace(X=self.expt_pts, Y=expt_avg_data, env=eid, win=win1, append=False)
                         viz.updateTrace(X=self.expt_pts, Y=expt_avg_data2, env=eid, win=win2, append=False)
+
+                        # if (self.cfg[self.expt_cfg_name]['use_pi_calibration']):
+                        #
+                        #     f_idx = 0
+                        #     viz.scatter(X=array([ss_cal_g[0, f_idx, 0, :],ss_cal_g[0, f_idx, 1, :]]).transpose(),
+                        #                     Y=None, env=eid, win=win4, name='test')
+                        #
+                        # if (self.cfg[self.expt_cfg_name]['use_g-e-f_calibration']):
+                        #     pass
+
                         if ii==0:
                             viz.updateTrace(X=array(range(len(single_record1))), Y=single_record2, env=eid, win=win3, name='2', append=False)
                             viz.updateTrace(X=array(range(len(single_record1))), Y=single_record1, env=eid, win=win3, name='1', append=False)
