@@ -521,9 +521,9 @@ class KeysightChannelIn(KeysightChannel):
                     prescaler)
         err3 = self._module.DAQconfig(self._channel_number, points_per_cycle,
                     cycles, delay, trigger_mode)
-        err3 = self._module.DAQdigitalTriggerConfig(self._channel_number, 0,
+        err4 = self._module.DAQdigitalTriggerConfig(self._channel_number, 0,
                     digital_trigger_behavior)
-        return (err1, err2, err3)
+        return (err1, err2, err3, err4)
     
     def readData(self, data_points, timeout = KeysightConstants.INFINITY):
         '''Reads data from the channel buffer.
