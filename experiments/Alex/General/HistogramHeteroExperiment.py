@@ -2,7 +2,7 @@ __author__ = 'AlexMa'
 
 from slab import *
 from slab.instruments.Alazar import Alazar
-from slab.experiments.ExpLib.QubitPulseSequenceExperiment import *
+from slab.experiments.Alex.ExpLib.QubitPulseSequenceExperiment import *
 from numpy import mean, arange
 import numpy as np
 from tqdm import tqdm
@@ -56,10 +56,30 @@ class HistogramHeteroExperiment(QubitPulseSequenceExperiment):
         for xx, atten in enumerate(attenpts):
 
             try:
+                # im = InstrumentManager()
+                # atten2 = im['atten2']
+                # atten2.set_attenuator(atten)
                 self.readout_atten.set_attenuator(atten)
-                print("Digital atten:", atten)
+                print(atten, "Digital atten:") #, self.readout_atten.get_attenuator())
+                time.sleep(0.5)
+                atten2 = None
             except:
                 print("Digital attenuator not loaded.")
+
+            # pump_freqs = arange(6.90e9, 7.04e9, 4e6)
+            # pump_powers = arange(-6.0, -5, 0.2)
+            #
+            # self.im['RF6'].set_power( pump_powers[(atten % 5)] )
+            # print("TWPA Pump power:", pump_powers[(atten % 5)])
+            # self.im['RF6'].set_frequency( pump_freqs[int(atten/5)] )
+            # print("TWPA Pump freq:", pump_freqs[int(atten/5)])
+            #
+            # try:
+            #     self.readout_atten.set_attenuator(16.0)
+            #     # print("Digital atten:", atten)
+            # except:
+            #     print("Digital attenuator not loaded.")
+
 
             # (ch1/2, exp_pts, heterodyne_freq, cos/sin, all averages)
             ss_data = zeros((2, len(self.expt_pts), len(het_IFreqList), 2, avgPerAcquisition * numAcquisition))
@@ -94,9 +114,9 @@ class HistogramHeteroExperiment(QubitPulseSequenceExperiment):
                 # index: (ch1/2, hetero_freqs(0), cos / sin, avgs, freqpts(exp seq), g/e/f)
                 single_data = np.reshape(single_data,
                                          (single_data.shape[0], single_data.shape[1], single_data.shape[2],
-                                          self.cfg['alazar'][
-                                              'recordsPerAcquisition'] / self.pulse_sequence.sequence_length,
-                                          self.pulse_sequence.sequence_length/3, 3))
+                                            int(self.cfg['alazar'][
+                                              'recordsPerAcquisition'] / self.pulse_sequence.sequence_length),
+                                          int(self.pulse_sequence.sequence_length/3), 3))
 
                 # (channel, hetero_freqs(0), cos/sin, freqpts(exp seq), g/e/f, average)
                 single_data = np.transpose(single_data, (0, 1, 2, 4, 5, 3))

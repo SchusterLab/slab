@@ -96,6 +96,11 @@ class QubitPulseSequence(PulseSequence):
                 flux_max_area_list = np.where(np.abs(flux_max_area_list) >= np.abs(flux_area_list), flux_max_area_list, flux_area_list)
                 flux_max_power_list = np.where(flux_max_power_list >= flux_power_list, flux_max_power_list, flux_power_list)
                 # flux_total_span = self.psb.get_total_pulse_span_length() # also clears
+
+            # 0426 hack for ramsey fast flux scope, ignore cal pts
+            # elif self.name == 'ramsey':
+            #     flux_total_span = self.add_flux_pulses_hack(idx=ii, pulse_span_length = self.total_pulse_span_length_list[ii])
+
             else:
                 flux_total_span = self.add_flux_pulses(pulse_span_length = self.total_pulse_span_length_list[ii])
             temp_seqs = self.psb.get_pulse_sequence() # also clears seq
@@ -193,6 +198,9 @@ class QubitPulseSequence(PulseSequence):
         flux_a = self.cfg['flux_pulse_info']['flux_a']
         flux_freq = self.cfg['flux_pulse_info']['flux_freq']
 
+        flux_mod_freq = self.cfg['flux_pulse_info']['flux_mod_freq']
+        flux_mod_a = self.cfg['flux_pulse_info']['flux_mod_a']
+
         #print 'desired flux_width= ', flux_width, ', delay=', flux_delay
 
         flux_total_span_list = []
@@ -204,6 +212,12 @@ class QubitPulseSequence(PulseSequence):
                 self.psb.append('flux_'+str(ii), 'general', 'square', amp=flux_a[ii],
                             length = flux_width, freq = flux_freq[ii],
                             delay = flux_delay)
+
+                # # hard rise/end for now
+                # self.psb.append('flux_'+str(ii), 'general', 'linear_ramp_with_mod', start_amp=flux_a[ii],
+                #                 stop_amp=flux_a[ii], length=flux_width, \
+                #                 mod_amp=flux_mod_a[ii], mod_freq=flux_mod_freq[ii], mod_start_phase=0.0, delay = flux_delay)
+
             if flux_comp_width > 0:
                 self.psb.append('flux_' + str(ii), 'general', 'square', amp=flux_comp_a,
                             length = flux_comp_width, freq = flux_freq[ii],
@@ -214,6 +228,52 @@ class QubitPulseSequence(PulseSequence):
 
         return max(flux_total_span_list)
 
+    def add_flux_pulses_hack(self, idx, pulse_span_length):
+
+        # only for ramsey fast flux scope
+
+        if idx >= len(self.expt_pts):
+            # cal pts
+            return 0.0
+
+        else:
+            # this is to align flux pulse to readout? (diff in 2 pxdac cards)
+            hw_delay = self.cfg['flux_pulse_info']['pxdac_hw_delay']
+
+            flux_width = self.expt_cfg['flux_width']
+            flux_comp_width = flux_width
+
+            self.cfg['pulse_info']['square']['ramp_sigma'] = 0.0
+
+            gap = 50
+            flux_delay = self.cfg['pulse_info']['gauss']['half_pi_length']*4 + gap + hw_delay
+            flux_idle = (pulse_span_length - flux_delay - flux_width) \
+                        + self.cfg['readout']['delay'] + self.cfg['readout']['width'] + 100
+
+            flux_a = self.cfg['flux_pulse_info']['flux_a']
+            flux_freq = self.cfg['flux_pulse_info']['flux_freq']
+            flux_mod_freq = self.cfg['flux_pulse_info']['flux_mod_freq']
+            flux_mod_a = self.cfg['flux_pulse_info']['flux_mod_a']
+
+            flux_total_span_list = []
+            for ii in range(8):
+
+                flux_comp_a = - flux_a[ii]  # flux_area/float(flux_comp_width)
+
+                if flux_width > 0:
+                    self.psb.append('flux_'+str(ii), 'general', 'square', amp=flux_a[ii],
+                                length = flux_width, freq = flux_freq[ii],
+                                delay = flux_delay)
+
+                if flux_comp_width > 0:
+                    self.psb.append('flux_' + str(ii), 'general', 'square', amp=flux_comp_a,
+                                length = flux_comp_width, freq = flux_freq[ii],
+                                delay = flux_delay + flux_idle)
+
+                # also clears
+                flux_total_span_list.append(self.psb.get_total_pulse_span_length())
+
+            return max(flux_total_span_list)
 
     def add_heterodyne_pulses(self, hetero_read_freq = None, hetero_a = None):
 
@@ -241,15 +301,14 @@ class QubitPulseSequence(PulseSequence):
                 het_a_list = array([self.cfg['readout']['heterodyne_a']])
                 het_IFreqList = het_read_freq_list - het_carrier_freq
 
-        print('het_carrier_freq', het_carrier_freq)
-        print('het_read_freq_list', het_read_freq_list)
-        print('het_a_list', het_a_list)
-        print('het_IFreqList', het_IFreqList)
+        # print('het_carrier_freq', het_carrier_freq)
+        # print('het_read_freq_list', het_read_freq_list)
+        # print('het_a_list', het_a_list)
+        # print('het_IFreqList', het_IFreqList)
 
-        # phase slope, referenced to het_carrier_freq
-        # het_phase_list = [(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * ii )%360
-        #                   for ii in het_IFreqList]
-        het_phase_list = [0.0 for ii in het_IFreqList]
+        het_phase_list = [(self.cfg['readout']['start_phase'] + self.cfg['readout']['phase_slope'] * ii )%360
+                          for ii in het_read_freq_list]
+        # het_phase_list = [0.0 for ii in het_IFreqList]
 
         if sum(het_a_list) > 1:
             print('Warning! Sum of heterodyne amplitudes > 1 in QubitPulseSequence.')
@@ -262,28 +321,28 @@ class QubitPulseSequence(PulseSequence):
                                 length=self.cfg['readout']['width'],
                                 freq= het_IFreqList[ii],
                                 phase=het_phase_list[ii],
-                                delay=self.cfg['readout']['width']/2.0 + 100) # the 100ns is a mysterious delay
+                                delay=self.cfg['readout']['width']/2.0 + self.cfg['readout']['delay'])
         else:
 
             # heterodyne carrier - LO
             self.psb.append('hetero_carrier', 'general', 'square', amp=self.cfg['readout']['hetero_carrier_a'],
                             length=self.cfg['readout']['width'],
                             freq=het_carrier_freq,
-                            delay=self.cfg['readout']['width'] / 2.0 + 100)  # the 100ns is a mysterious delay
+                            delay=self.cfg['readout']['width'] / 2.0 + self.cfg['readout']['delay'])
             if self.cfg['readout']['is_hetero_phase_ref']:
                 # hetero phase reference to solve alazar jitter
                 self.psb.append('hetero_carrier', 'general', 'square', amp=self.cfg['readout']['hetero_phase_ref_a'],
                                 length=self.cfg['readout']['width'],
                                 freq=self.cfg['readout']['hetero_phase_ref_freq'],
-                                delay=self.cfg['readout']['width'] / 2.0 + 100)  # the 100ns is a mysterious delay
+                                delay=self.cfg['readout']['width'] / 2.0 + self.cfg['readout']['delay'])
             # fast awg: read_freq
             for ii in range(len(het_IFreqList)):
-                # q2 pulses are hacked to be fixed in time, so can append multiple pulses for heterodyne readout
+                # pulses are hacked to be fixed in time, so can append multiple pulses for heterodyne readout
                 self.psb.append('hetero', 'general', 'square', amp= het_a_list[ii],
                                 length=self.cfg['readout']['width'],
                                 freq=het_read_freq_list[ii],
                                 phase=het_phase_list[ii],
-                                delay=self.cfg['readout']['width'] / 2.0 + 100)  # the 100ns is a mysterious delay
+                                delay=self.cfg['readout']['width'] / 2.0 + self.cfg['readout']['delay'])
 
     def build_sequence(self):
 

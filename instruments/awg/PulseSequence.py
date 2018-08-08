@@ -95,7 +95,7 @@ class PulseSequence:
         # im = InstrumentManager()
         # print type(im[awg['name']])
         m8195a = M8195A(address='192.168.14.244:5025')
-        upload_M8195A_sequence(m8195a,waveform_matrix, awg)
+        upload_M8195A_sequence(m8195a,waveform_matrix, awg, path)
 
         end_time = time.time()
         print('Finished writing M8195A sequences in', end_time - start_time, 'seconds.\n')

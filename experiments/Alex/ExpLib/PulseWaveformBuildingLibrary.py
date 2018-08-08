@@ -117,19 +117,26 @@ def linear_ramp(wtpts,origin,pulse_location,pulse):
     qubit_waveforms = ap.sideband(wtpts,
                              ap.linear_ramp(wtpts, pulse.start_amp, pulse.stop_amp,
                                        origin - pulse_location - pulse.length, pulse.length),
-                             np.zeros(len(wtpts)), 0, 0, origin=origin)
+                             np.zeros(len(wtpts)), pulse.freq, pulse.phase, origin=origin)
     return qubit_waveforms
 
 def logistic_ramp(wtpts,origin,pulse_location,pulse):
     qubit_waveforms = ap.sideband(wtpts,
                              ap.logistic_ramp(wtpts, pulse.start_amp, pulse.stop_amp,
                                        origin - pulse_location - pulse.length, pulse.length),
-                             np.zeros(len(wtpts)), 0, 0, origin=origin)
+                             np.zeros(len(wtpts)), pulse.freq, pulse.phase, origin=origin)
     return qubit_waveforms
 
 def linear_ramp_with_mod(wtpts,origin,pulse_location,pulse):
     qubit_waveforms = ap.sideband(wtpts,
                              ap.linear_ramp_with_mod(wtpts, pulse.start_amp, pulse.stop_amp,
                                        origin - pulse_location - pulse.length, pulse.length, pulse.mod_amp, pulse.mod_freq, pulse.mod_start_phase),
-                             np.zeros(len(wtpts)), 0, 0, origin=origin)
+                             np.zeros(len(wtpts)), pulse.freq, pulse.phase, origin=origin)
+    return qubit_waveforms
+
+def lz_arctan_ramp(wtpts,origin,pulse_location,pulse):
+    qubit_waveforms = ap.sideband(wtpts,
+                             ap.lz_arctan_ramp(wtpts, pulse.start_amp, pulse.stop_amp,
+                                       origin - pulse_location - pulse.length, pulse.length, pulse.aspectratio),
+                             np.zeros(len(wtpts)), pulse.freq, pulse.phase, origin=origin)
     return qubit_waveforms

@@ -47,8 +47,56 @@ class PulseProbeSequence(QubitPulseSequence):
         if self.expt_cfg['ge_pi']:
             self.psb.append('q', 'cal_pi', self.expt_cfg['ge_pi_pulse_type'])
 
+        # hack to add cavity drive
+        if self.expt_cfg['a2'] > 0:
+            delay =  ap.get_pulse_span_length(self.pulse_cfg, self.pulse_type, self.expt_cfg['pulse_length'])
+            self.psb.append('q2', 'general', self.expt_cfg['pulse_type2'], amp=self.expt_cfg['a2'],
+                            length=self.expt_cfg['length2'],
+                            freq=self.expt_cfg['f2'], override_iq_freq=True,
+                            delay = delay)
+
         self.psb.append('q', 'general', self.pulse_type, amp=self.expt_cfg['a'], length=self.expt_cfg['pulse_length'],
-                        freq= pt-(self.cfg['qubit']['frequency'] - self.pulse_cfg[self.pulse_type]['iq_freq']))
+                        freq=pt - (self.cfg['qubit']['frequency'] - self.pulse_cfg[self.pulse_type]['iq_freq']))
+
+        if self.expt_cfg['end_ge_pi']:
+            self.psb.append('q', 'cal_pi', self.expt_cfg['ge_pi_pulse_type'])
+
+        self.psb.idle(200)
+
+class PulseProbe2Sequence(QubitPulseSequence):
+    def __init__(self, name, cfg, expt_cfg, **kwargs):
+        self.pulse_cfg = cfg['pulse_info']
+        self.cfg = cfg
+        QubitPulseSequence.__init__(self, name, cfg, expt_cfg, self.define_points, self.define_parameters,
+                                    self.define_pulses)
+
+    def define_points(self):
+        self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+
+    def define_parameters(self):
+        self.pulse_type = self.expt_cfg['pulse_type']
+
+    def define_pulses(self, pt):
+
+        if self.expt_cfg['ge_pi']:
+            self.psb.append('q', 'cal_pi', self.expt_cfg['ge_pi_pulse_type'])
+
+        self.psb.idle(100)
+        self.psb.append('hetero', 'general', 'square', amp = self.expt_cfg['cavity_drive_a'],
+                        length=self.expt_cfg['cavity_drive_width'],
+                        freq=self.expt_cfg['cavity_drive_freq'], phase=0,
+                        delay= - self.expt_cfg['cavity_drive_width']/2.0)
+
+        self.psb.idle(self.expt_cfg['cavity_drive_end_wait'])
+
+        # this is the wrong implementation, see pulse_probe above.
+        # should be delaying the cavity drive by the qubit drive length
+        # otherwise there's a gap behind
+        delay =  - ap.get_pulse_span_length(self.pulse_cfg, self.pulse_type, self.expt_cfg['pulse_length'])
+        self.psb.append('q', 'general', self.pulse_type, amp=self.expt_cfg['a'],
+                        length=self.expt_cfg['pulse_length'],
+                        freq=pt - (self.cfg['qubit']['frequency'] - self.pulse_cfg[self.pulse_type]['iq_freq']),
+                        delay = delay)
 
         if self.expt_cfg['end_ge_pi']:
             self.psb.append('q', 'cal_pi', self.expt_cfg['ge_pi_pulse_type'])
@@ -96,14 +144,90 @@ class RabiSequence(QubitPulseSequence):
         self.pulse_type =  self.expt_cfg['pulse_type']
 
     def define_pulses(self,pt):
+
+        if self.expt_cfg['is_driveline']:
+            target = 'q2'
+        else:
+            target = 'q'
+
         if self.expt_cfg['sweep_amp']:
-            self.psb.append('q','general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],
+            self.psb.append(target,'general', self.pulse_type, amp=pt, length=self.expt_cfg['length'],
                             freq=self.pulse_cfg[self.pulse_type]['iq_freq'])
         else:
-            self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,
+
+            # hack 0330- vs Q7 state
+            # self.psb.append('q', 'general', 'gauss', amp= 0.22, length= 8.0,
+            #                 freq= 5042764093.18, override_iq_freq=True)
+            # self.psb.append('q', 'general', 'gauss', amp= 0.15, length= 4.0,
+            #                 freq= 5042764093.18-248.30e6, override_iq_freq=True)
+            # self.psb.idle(10)
+
+            self.psb.append(target,'general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,
                             freq=self.pulse_cfg[self.pulse_type]['iq_freq'])
+
             # self.psb.append('q2', 'general', 'square', amp=0.5, length=self.cfg['readout']['width']+1000,
             #                 freq=self.cfg['readout']['heterodyne_freq'],delay=(self.cfg['readout']['width']+1000)/2)
+
+class PulseCalSequence(QubitPulseSequence):
+    def __init__(self,name, cfg, expt_cfg,**kwargs):
+        self.pulse_cfg = cfg['pulse_info']
+        self.qubit_cfg = cfg['qubit']
+        self.cfg = cfg
+        QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
+
+    def define_points(self):
+
+        if self.expt_cfg['is_repeated_ge_pi'] or self.expt_cfg['is_repeated_ef_pi']:
+
+            if self.expt_cfg['sweep_amp']:
+                self.expt_pts = arange(self.expt_cfg['start_amp'], self.expt_cfg['stop_amp'], self.expt_cfg['step_amp'])
+            else:
+                self.expt_pts = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+        else:
+            self.expt_pts = array([0])
+
+    def define_parameters(self):
+        self.pulse_type =  self.expt_cfg['pulse_type']
+
+    def define_pulses(self,pt):
+
+        if self.expt_cfg['is_repeated_ge_pi']:
+
+            self.psb.idle(10)
+
+            if self.expt_cfg['sweep_amp']:
+                for ii in range(self.expt_cfg['num_pi_pulses']):
+                    self.psb.append('q', 'general', self.pulse_type, amp=pt,
+                                    length=self.pulse_cfg[self.pulse_type]['pi_length'],
+                                    freq=self.pulse_cfg[self.pulse_type]['iq_freq'])
+            else:
+                for ii in range(pt):
+                    self.psb.append('q', 'cal_pi', self.pulse_type)
+
+        elif self.expt_cfg['is_repeated_ef_pi']:
+
+            self.psb.idle(10)
+            self.psb.append('q', 'pi', self.pulse_type)
+
+            if self.expt_cfg['sweep_amp']:
+                for ii in range(self.expt_cfg['num_pi_pulses']):
+                    self.psb.append('q', 'general', self.pulse_type, amp=pt,
+                                    length=self.pulse_cfg[self.pulse_type]['pi_ef_length'],
+                                    freq=self.pulse_cfg[self.pulse_type]['iq_freq'] + self.qubit_cfg['alpha'])
+            else:
+                for ii in range(pt):
+                    self.psb.append('q', 'pi_q_ef', self.pulse_type)
+
+            # self.psb.append('q', 'pi', self.pulse_type)
+            # self.psb.append('q', 'pi_q_ef', self.pulse_type)
+
+        else:
+            # pi_ef without ge_pi
+            if pt == 0:
+                self.psb.append('q', 'pi_q_ef', self.pulse_type)
+            else:
+                self.psb.idle(10)
+
 
 
 class RamseySequence(QubitPulseSequence):
@@ -119,16 +243,27 @@ class RamseySequence(QubitPulseSequence):
         self.pulse_type =  self.expt_cfg['pulse_type']
 
     def define_pulses(self,pt):
+
+        # hack 0330- vs Q7 state
+        # self.psb.append('q', 'general', 'gauss', amp= 0.22, length= 8.0,
+        #                 freq= 5042764093.18, override_iq_freq=True)
+        # self.psb.append('q', 'general', 'gauss', amp= 0.15, length= 4.0,
+        #                 freq= 5042764093.18-248.30e6, override_iq_freq=True)
+        # self.psb.idle(10)
+
+        # # # hack to add cavity drive
+        # pulse_dur_total = 200
+        # delay =  pt + pulse_dur_total
+        # self.psb.append('q', 'general', 'square', amp=self.expt_cfg['a2'],
+        #                 length= delay + 1000,
+        #                 freq=self.expt_cfg['f2'], override_iq_freq=True,
+        #                 delay = delay)
+
         self.psb.append('q','half_pi', self.pulse_type)
         self.psb.idle(pt)
         # self.psb.append('q','general', "square", amp=1.0, length=pt,freq=-200e6)
         self.psb.append('q','half_pi', self.pulse_type, phase = 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
 
-        # # Does not work because of introducing phase in definition of half_pi
-        #
-        # self.psb.append('q','general', self.pulse_type, amp=self.pulse_cfg[self.pulse_type]['half_pi_a'], length=self.pulse_cfg[self.pulse_type]['half_pi_length'],freq=self.pulse_cfg[self.pulse_type]['iq_freq'], phase= 0)
-        # self.psb.idle(pt)
-        # self.psb.append('q','general', self.pulse_type, amp=self.pulse_cfg[self.pulse_type]['half_pi_a'], length=self.pulse_cfg[self.pulse_type]['half_pi_length'],freq=self.pulse_cfg[self.pulse_type]['iq_freq'], phase= self.pulse_cfg[self.pulse_type]['phase']+ 360.0*self.expt_cfg['ramsey_freq']*pt/(1.0e9))
 
 
 class SpinEchoSequence(QubitPulseSequence):
@@ -177,7 +312,14 @@ class EFRabiSequence(QubitPulseSequence):
     def define_pulses(self,pt):
         if self.expt_cfg['ge_pi']:
            self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q','general', self.ef_pulse_type, amp=self.expt_cfg['ef_a'], length=pt,freq=self.ef_sideband_freq)
+
+        if self.expt_cfg['sweep_amp']:
+            self.psb.append('q', 'general', self.ef_pulse_type, amp= pt, length=self.expt_cfg['length'],
+                            freq=self.ef_sideband_freq)
+        else:
+            self.psb.append('q', 'general', self.ef_pulse_type, amp=self.expt_cfg['ef_a'], length=pt,
+                            freq=self.ef_sideband_freq)
+
         #self.psb.append('q','general', self.pulse_type, amp=self.expt_cfg['a'], length=pt,freq=self.ef_sideband_freq)
         #self.psb.idle(4*pt)
 
@@ -234,11 +376,10 @@ class EFT1Sequence(QubitPulseSequence):
     def define_pulses(self,pt):
         if self.expt_cfg['ge_pi']:
             self.psb.append('q','pi', self.pulse_type)
-        self.psb.append('q','general', self.ef_pulse_type,amp=self.expt_cfg['a'],length = self.expt_cfg['pi_ef'], freq=self.ef_sideband_freq )
+        self.psb.append('q', 'pi_q_ef', self.pulse_type)
+        # self.psb.append('q','general', self.ef_pulse_type,amp=self.expt_cfg['a'],length = self.expt_cfg['pi_ef'], freq=self.ef_sideband_freq )
         self.psb.idle(pt)
-        self.psb.append('q','pi', self.pulse_type)
-
-
+        # self.psb.append('q','pi', self.pulse_type)
 
 class T1Sequence(QubitPulseSequence):
     def __init__(self,name, cfg, expt_cfg,**kwargs):
@@ -696,21 +837,32 @@ class RabiThermalizerSequence(QubitPulseSequence):
 
         thermalizer_1_length = expt_cfg["drive1_length"]
         thermalizer_2_length = expt_cfg["drive2_length"]
+        thermalizer_2_ramp_length = expt_cfg["drive2_length"] * expt_cfg["drive2_ramps_ratio"] / 2.0
+
 
         # hack for AF ramp
         # thermalizer_2_length = abs((expt_cfg['drive2_flux_a_start'][0] - expt_cfg['drive2_flux_a_stop'][0])/0.18*400)
 
         thermalizer_1_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer_pulse_type'], thermalizer_1_length)
-        thermalizer_2_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer2_pulse_type'], thermalizer_2_length)
+
+        # thermalizer_2_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer2_pulse_type'], thermalizer_2_length)
+        thermalizer_2_dur = thermalizer_2_length
 
         # general
         flux_settle_dur = expt_cfg['flux_settle_dur']
         flux_ramp_dur = expt_cfg['flux_ramp_dur']
 
         drive1_flux_settle_dur = expt_cfg['drive1_flux_settle_dur']
-        excite_flux_settle_dur = expt_cfg['excite_flux_settle_dur']
+        if isCalPt:
+            excite_flux_settle_dur = expt_cfg['cal_flux_settle_dur']
+        else:
+            excite_flux_settle_dur = expt_cfg['excite_flux_settle_dur']
+
+
         excite_flux_settle_mid_dur = expt_cfg['excite_flux_settle_mid_dur']
+        drive2_flux_settle_mid_dur = expt_cfg['drive2_flux_settle_mid_dur']
         drive2_flux_settle_dur = expt_cfg['drive2_flux_settle_dur']
+        jump_flux_settle_dur = expt_cfg['jump_flux_settle_dur']
         read_flux_settle_dur = expt_cfg['read_flux_settle_dur']
 
         drive1_flux_ramp_dur = expt_cfg['drive1_flux_ramp_dur']
@@ -718,7 +870,9 @@ class RabiThermalizerSequence(QubitPulseSequence):
         excite_flux_ramp_mid_dur = expt_cfg['excite_flux_ramp_mid_dur']
         excite_flux_ramp_dur = expt_cfg['excite_flux_ramp_dur']
 
+        drive2_flux_ramp_mid_dur = expt_cfg['drive2_flux_ramp_mid_dur']
         drive2_flux_ramp_dur = expt_cfg['drive2_flux_ramp_dur']
+        jump_flux_ramp_dur = expt_cfg['jump_flux_ramp_dur']
         read_flux_ramp_dur = expt_cfg['read_flux_ramp_dur']
 
 
@@ -734,39 +888,53 @@ class RabiThermalizerSequence(QubitPulseSequence):
         flux_area_list = []
         flux_power_list = []
 
+        excite_pulses_gap = 5.0  # 5ns gap between pulses
+
         for ii in range(8):
 
             target = 'flux_' + str(ii)
 
             flux_a_drive1 = expt_cfg['drive1_flux_a'][ii]
+            flux_a_drive2_mid = expt_cfg['drive2_flux_a_mid'][ii]
             flux_a_drive2_start = expt_cfg['drive2_flux_a_start'][ii]
             flux_a_drive2_stop = expt_cfg['drive2_flux_a_stop'][ii]
+            flux_a_jump = expt_cfg['jump_flux_a'][ii]
             flux_a_read = expt_cfg['read_flux_a'][ii]
+
+            flux_drive1_mod_amp = expt_cfg['flux_drive1_mod_amp'][ii]
+            flux_drive1_mod_freq = expt_cfg['flux_drive1_mod_freq'][ii]
 
             flux_drive2_mod_amp = expt_cfg['flux_drive2_mod_amp'][ii]
             flux_drive2_mod_freq = expt_cfg['flux_drive2_mod_freq'][ii]
 
-            flux_a_excite = expt_cfg['excite_flux_a'][ii]
-            flux_a_excite_mid = expt_cfg['excite_flux_mid_a'][ii]
-
-            excite_length_ge = expt_cfg['excite_ge_length'][excite_idx]
-            excite_length_ef = expt_cfg['excite_ef_length'][excite_idx]
+            if isCalPt:
+                flux_a_excite = expt_cfg['cal_flux_a'][ii]
+                flux_a_excite_mid = expt_cfg['cal_flux_mid_a'][ii]
+                excite_length_ge = expt_cfg['cal_ge_length'][excite_idx]
+                excite_length_ef = expt_cfg['cal_ef_length'][excite_idx]
+            else:
+                flux_a_excite = expt_cfg['excite_flux_a'][ii]
+                flux_a_excite_mid = expt_cfg['excite_flux_mid_a'][ii]
+                excite_length_ge = expt_cfg['excite_ge_length'][excite_idx]
+                excite_length_ef = expt_cfg['excite_ef_length'][excite_idx]
 
             excite_type = self.pulse_type
             excite_dur_ge = ap.get_pulse_span_length(pulse_cfg, excite_type, excite_length_ge)
             excite_dur_ef = ap.get_pulse_span_length(pulse_cfg, excite_type, excite_length_ef)
 
             if not isCalPt:
-                if expt_cfg['is_excite_ge']:
+
+                if expt_cfg['is_excite_ge'] and not expt_cfg['is_excite_ef']:
                     excite_length = excite_length_ge
                     excite_dur = excite_dur_ge
-                elif expt_cfg['is_excite_ef']:
+                elif expt_cfg['is_excite_ef'] and not expt_cfg['is_excite_ge']:
                     excite_length = excite_length_ef
                     excite_dur = excite_dur_ef
+                elif expt_cfg['is_excite_ge'] and expt_cfg['is_excite_ef']:
+                    excite_dur = excite_dur_ge + excite_dur_ef + excite_pulses_gap
                 else:
                     excite_length = 0.
                     excite_dur = 0.
-
                     # if no excite pulse, make it 0 time, does NOT affect cal pulses
                     excite_flux_settle_dur = 0.0
                     excite_flux_settle_mid_dur = 0.0
@@ -784,8 +952,12 @@ class RabiThermalizerSequence(QubitPulseSequence):
                 thermalizer_2_dur = 0.0
                 drive2_flux_settle_dur = 0.0
                 drive2_flux_ramp_dur = 0.0
+                drive2_flux_settle_mid_dur = 0.0
+                drive2_flux_ramp_mid_dur = 0.0
+                flux_a_drive2_mid = flux_a_excite
                 flux_a_drive2_start = flux_a_excite
                 flux_a_drive2_stop = flux_a_excite
+                flux_a_jump = flux_a_excite
 
             read_dur = self.cfg['readout']['delay'] + self.cfg['readout']['width']
 
@@ -797,6 +969,9 @@ class RabiThermalizerSequence(QubitPulseSequence):
             thermalizer_1_start_time = flux_drive1_start_time + drive1_flux_ramp_dur + drive1_flux_settle_dur - hw_delay
             thermalizer_1_end_time = thermalizer_1_start_time + thermalizer_1_dur
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive1, stop_amp=flux_a_drive1, length=thermalizer_1_dur)
+            # self.psb.append(target, 'general', 'linear_ramp_with_mod', start_amp=flux_a_drive1, stop_amp=flux_a_drive1, length=thermalizer_1_dur,\
+            #                 mod_amp = flux_drive1_mod_amp, mod_freq = flux_drive1_mod_freq, mod_start_phase = 0.0)
+
 
             # ramp to a_excite_mid
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive1, stop_amp=flux_a_excite_mid, length=excite_flux_ramp_mid_dur)
@@ -809,20 +984,38 @@ class RabiThermalizerSequence(QubitPulseSequence):
             excite_end_time = excite_start_time + excite_dur
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_excite, stop_amp=flux_a_excite, length=excite_dur)
 
+            # ramp to a_drive2_mid
+            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_excite, stop_amp=flux_a_drive2_mid,
+                            length=drive2_flux_ramp_mid_dur)
+            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive2_mid, stop_amp=flux_a_drive2_mid,
+                            length=drive2_flux_settle_mid_dur)
             # ramp to a_drive2
-            self.psb.append(target, 'general', 'logistic_ramp', start_amp=flux_a_excite, stop_amp=flux_a_drive2_start, length=drive2_flux_ramp_dur)
+            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive2_mid, stop_amp=flux_a_drive2_start, length=drive2_flux_ramp_dur)
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive2_start, stop_amp=flux_a_drive2_start, length=drive2_flux_settle_dur)
             # 2nd thermalizer pulse
-            thermalizer_2_start_time = excite_end_time + drive2_flux_ramp_dur + drive2_flux_settle_dur
+            thermalizer_2_start_time = excite_end_time + drive2_flux_ramp_dur + drive2_flux_settle_dur \
+                                        + drive2_flux_ramp_mid_dur + drive2_flux_settle_mid_dur
             thermalizer_2_end_time = thermalizer_2_start_time + thermalizer_2_dur
-            self.psb.append(target, 'general', 'linear_ramp_with_mod', start_amp=flux_a_drive2_start, stop_amp=flux_a_drive2_stop, length=thermalizer_2_dur,\
-                            mod_amp = flux_drive2_mod_amp, mod_freq = flux_drive2_mod_freq, mod_start_phase = 0.0)
+
+            # self.psb.append(target, 'general', 'linear_ramp_with_mod', start_amp=flux_a_drive2_start, stop_amp=flux_a_drive2_stop, length=thermalizer_2_dur,\
+            #                 mod_amp = flux_drive2_mod_amp, mod_freq = flux_drive2_mod_freq, mod_start_phase = 0.0)
+
+            self.psb.append(target, 'general', 'lz_arctan_ramp', start_amp=flux_a_drive2_start,
+                            stop_amp=flux_a_drive2_stop, length=thermalizer_2_dur, \
+                            aspectratio= expt_cfg['lz_arctan_aspectratio'])
+
+            # ramp to a_jump
+            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive2_stop, stop_amp=flux_a_jump, length=jump_flux_ramp_dur)
+            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_jump, stop_amp=flux_a_jump, length=jump_flux_settle_dur)
+            # readout
+            jump_start_time = thermalizer_2_end_time + jump_flux_ramp_dur + jump_flux_settle_dur
+            jump_end_time = jump_start_time
 
             # ramp to a_read
-            self.psb.append(target, 'general', 'logistic_ramp', start_amp=flux_a_drive2_stop, stop_amp=flux_a_read, length=read_flux_ramp_dur)
+            self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_jump, stop_amp=flux_a_read, length=read_flux_ramp_dur)
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_read, stop_amp=flux_a_read, length=read_flux_settle_dur)
             # readout
-            read_start_time = thermalizer_2_end_time + read_flux_ramp_dur + read_flux_settle_dur
+            read_start_time = jump_end_time + read_flux_ramp_dur + read_flux_settle_dur
             read_end_time = read_start_time + read_dur
             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_read, stop_amp=flux_a_read, length=read_dur)
 
@@ -897,10 +1090,17 @@ class RabiThermalizerSequence(QubitPulseSequence):
             drive1_iq_freq = expt_cfg['drive1_freq'] - drive_carrier_freq
             drive2_iq_freq = expt_cfg['drive2_freq'] - drive_carrier_freq
 
-            excite_iq_freq_ge = expt_cfg['excite_ge_freq'][excite_idx] - drive_carrier_freq
-            excite_a_ge = expt_cfg['excite_ge_a'][excite_idx]
-            excite_iq_freq_ef = expt_cfg['excite_ge_freq'][excite_idx] + expt_cfg['excite_alpha'][excite_idx] - drive_carrier_freq
-            excite_a_ef = expt_cfg['excite_ef_a'][excite_idx]
+            if isCalPt:
+                excite_iq_freq_ge = expt_cfg['cal_ge_freq'][excite_idx] - drive_carrier_freq
+                excite_a_ge = expt_cfg['cal_ge_a'][excite_idx]
+                excite_iq_freq_ef = expt_cfg['cal_ge_freq'][excite_idx] + expt_cfg['cal_alpha'][
+                    excite_idx] - drive_carrier_freq
+                excite_a_ef = expt_cfg['cal_ef_a'][excite_idx]
+            else:
+                excite_iq_freq_ge = expt_cfg['excite_ge_freq'][excite_idx] - drive_carrier_freq
+                excite_a_ge = expt_cfg['excite_ge_a'][excite_idx]
+                excite_iq_freq_ef = expt_cfg['excite_ge_freq'][excite_idx] + expt_cfg['excite_alpha'][excite_idx] - drive_carrier_freq
+                excite_a_ef = expt_cfg['excite_ef_a'][excite_idx]
 
             if not isCalPt:
 
@@ -914,27 +1114,110 @@ class RabiThermalizerSequence(QubitPulseSequence):
                     excite_iq_freq = 0.
                     excite_a = 0.
 
-                if expt_cfg['separate_drive']:
-                    drive_target = 'q2'
-                    excite_target = 'q'
+                excite_target = 'q'
+
+                if expt_cfg['separate_drive1']:
+                    drive1_target = 'q2'
                 else:
-                    drive_target = 'q'
-                    excite_target = 'q'
+                    drive1_target = 'q'
+
+                if expt_cfg['separate_drive2']:
+                    drive2_target = 'q2'
+                else:
+                    drive2_target = 'q'
+
+                def multilor(p, modelx, num=4):
+                    # use 9 peaks
+                    A0 = 0
+                    w0 = p[0]  # 4.772-0.154
+                    Dw = p[1]  # 154 * 1e-3
+                    dw = p[2]  # 20 * 1e-3
+
+                    modely = np.zeros(len(modelx)) + A0
+                    for ii in range(-num, num + 1):
+                        dw = p[ii + 5]
+                        amp = p[ii + 5 + 2 * num + 1]
+                        if ii == -1:
+                            amp = 2
+                            dw = 0.02
+                        phase = p[ii + 5 + 2 * (2 * num + 1)]
+                        modely = modely + amp * np.exp(1j * phase) / (dw / 2 + 1j * (modelx - w0 - ii * Dw))
+
+                    return abs(modely)
+
+                def driveline_comp_a(target_freq_Hz, ref_freq_Hz, ref_a):
+
+                    if target_freq_Hz > 5.0e9 or target_freq_Hz < 4.27e9:
+                        return ref_a
+
+                    else:
+
+                        driveline_response_fit = array([4.61808050e+00, 1.55191295e-01, -3.94146225e-01,
+                                                        1.73060365e-02, 2.00000000e-02, 1.88146988e-02,
+                                                        1.81064973e-02, 2.65485311e-02, 2.75162663e+00,
+                                                        -2.84328512e+00, -9.20886568e+01, 5.04503389e+01,
+                                                        1.92483554e+00, 2.00000000e+00, 1.43559766e+00,
+                                                        1.03232163e+00, 7.29266726e-01, 3.05996663e+02,
+                                                        2.72076859e+02, 2.41359620e+02, -1.57900712e+00,
+                                                        -2.45382946e+00, 2.56245690e+00, 3.47591362e+00,
+                                                        3.41138194e+00, 2.95078211e+00, 5.55575891e+00,
+                                                        5.23806045e+00, 5.02654825e+00])
+
+                        target_a = ref_a * multilor(driveline_response_fit, [ref_freq_Hz / 1.0e9])[0] \
+                                   / multilor(driveline_response_fit, [target_freq_Hz / 1.0e9])[0]
+
+                        return min(target_a, 0.99)
+
+                if expt_cfg['is_driveline_comp'] and expt_cfg['separate_drive1']:
+                    drive1_a = driveline_comp_a(expt_cfg['drive1_freq'] ,
+                                                     expt_cfg['driveline_a_ref_freq'] , expt_cfg['drive1_a'])
+                else:
+                    drive1_a = expt_cfg['drive1_a']
+
+                if expt_cfg['is_driveline_comp'] and expt_cfg['separate_drive2']:
+                    drive2_a = driveline_comp_a(expt_cfg['drive2_freq'],
+                                                     expt_cfg['driveline_a_ref_freq'], expt_cfg['drive2_a'])
+                else:
+                    drive2_a = expt_cfg['drive2_a']
 
                 #
                 self.psb.idle(thermalizer_1_start_time)
-                self.psb.append(drive_target, 'general', expt_cfg['thermalizer_pulse_type'],
-                                amp=expt_cfg['drive1_a'], length=thermalizer_1_length, freq=drive1_iq_freq,
+                self.psb.append(drive1_target, 'general', expt_cfg['thermalizer_pulse_type'],
+                                amp= drive1_a, length=thermalizer_1_length, freq=drive1_iq_freq,
                                 override_iq_freq=override_iq_freq)
 
                 self.psb.idle(excite_start_time - thermalizer_1_end_time)
-                self.psb.append(excite_target, 'general', self.pulse_type,
-                                amp=excite_a, length=excite_length, freq=excite_iq_freq,
-                                override_iq_freq=override_iq_freq)
+
+                if expt_cfg['is_excite_ge'] and expt_cfg['is_excite_ef']:
+
+                    self.psb.append(excite_target, 'general', self.pulse_type,
+                                    amp=excite_a_ge, length=excite_length_ge, freq=excite_iq_freq_ge,
+                                    override_iq_freq=override_iq_freq)
+                    self.psb.idle(excite_pulses_gap)
+                    self.psb.append(excite_target, 'general', self.pulse_type,
+                                    amp=excite_a_ef, length=excite_length_ef, freq=excite_iq_freq_ef,
+                                    override_iq_freq=override_iq_freq)
+
+                else:
+                    self.psb.append(excite_target, 'general', self.pulse_type,
+                                    amp=excite_a, length=excite_length, freq=excite_iq_freq,
+                                    override_iq_freq=override_iq_freq)
 
                 self.psb.idle(thermalizer_2_start_time - excite_end_time)
-                self.psb.append(drive_target, 'general', expt_cfg['thermalizer2_pulse_type'],
-                                amp=expt_cfg['drive2_a'], length=thermalizer_2_length, freq=drive2_iq_freq,
+
+                # self.psb.append(drive_target, 'general', expt_cfg['thermalizer2_pulse_type'],
+                #                 amp= drive2_a, length=thermalizer_2_length, freq=drive2_iq_freq,
+                #                 override_iq_freq=override_iq_freq)
+
+                # 04 15 add linear ramp to start/stop of drive2
+                self.psb.append(drive2_target, 'general', 'linear_ramp',
+                                start_amp=0, stop_amp= drive2_a, length=thermalizer_2_ramp_length, freq=drive2_iq_freq,
+                                override_iq_freq=override_iq_freq)
+                self.psb.append(drive2_target, 'general', 'linear_ramp',
+                                start_amp=drive2_a, stop_amp= drive2_a, length=thermalizer_2_length - 2*thermalizer_2_ramp_length, freq=drive2_iq_freq,
+                                override_iq_freq=override_iq_freq)
+                self.psb.append(drive2_target, 'general', 'linear_ramp',
+                                start_amp=drive2_a, stop_amp= 0, length=thermalizer_2_ramp_length, freq=drive2_iq_freq,
                                 override_iq_freq=override_iq_freq)
 
             else:
@@ -946,13 +1229,20 @@ class RabiThermalizerSequence(QubitPulseSequence):
                 if pt == 0:
                     self.psb.idle(excite_dur)
 
-                if pt == 1:
+                if not expt_cfg["swap_e-f_calibration"]:
+                    e_idx = 1
+                    f_idx = 2
+                else:
+                    e_idx = 2
+                    f_idx = 1
+
+                if pt == e_idx:
                     self.psb.append(excite_target, 'general', self.pulse_type,
                                     amp=excite_a_ge, length=excite_length_ge, freq=excite_iq_freq_ge,
                                     override_iq_freq=override_iq_freq)
                     self.psb.idle(excite_dur_ef)
 
-                if pt == 2:
+                if pt == f_idx:
                     self.psb.append(excite_target, 'general', self.pulse_type,
                                     amp=excite_a_ge, length=excite_length_ge, freq=excite_iq_freq_ge,
                                     override_iq_freq=override_iq_freq)
@@ -963,6 +1253,346 @@ class RabiThermalizerSequence(QubitPulseSequence):
                 self.psb.idle(thermalizer_2_start_time + thermalizer_2_dur - excite_end_time)
 
         return max(flux_total_span_list), flux_area_list, flux_power_list
+
+# class RabiThermalizerSequence_0211Backup(QubitPulseSequence):
+#     def __init__(self, name, cfg, expt_cfg, **kwargs):
+#         self.pulse_cfg = cfg['pulse_info']
+#         self.cfg = cfg
+#         QubitPulseSequence.__init__(self,name, cfg, expt_cfg, self.define_points, self.define_parameters, self.define_pulses)
+#
+#     def define_points(self):
+#
+#         if self.expt_cfg['vary_by_list']:
+#             self.expt_pts_value = array(self.expt_cfg['vary_list'])
+#         else:
+#             self.expt_pts_value = arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
+#
+#         # pts are idx here
+#         self.expt_pts = arange(0,len(self.expt_pts_value),1)
+#
+#     def define_parameters(self):
+#
+#         #used for cal pulses
+#         self.pulse_type =  self.expt_cfg['pulse_type']
+#
+#     def define_pulses(self, pt, isFlux = False):
+#
+#         # pt: idx, not actual value
+#         if pt < len(self.expt_pts):
+#             flux_max_span, flux_area_list, flux_power_list = self.add_thermalizer_pulses(pt, isFlux)
+#         else:
+#             cal_pt = pt - len(self.expt_pts) # 0,1,2
+#             flux_max_span, flux_area_list, flux_power_list = self.add_thermalizer_pulses(cal_pt, isFlux, isCalPt=True)
+#
+#         return flux_max_span, flux_area_list, flux_power_list
+#
+#     def add_thermalizer_pulses(self, pt, isFlux, isCalPt=False):
+#
+#         # all pulses need to have target 'flux_x' (so cannot use idle)
+#         # because psb.build is modified to have the flux channels independent
+#
+#         expt_cfg = dict(self.cfg['rabi_thermalizer']) # copy by value
+#         pulse_cfg = self.cfg['pulse_info']
+#         flux_cfg = self.cfg['flux_pulse_info']
+#
+#         if not isCalPt:
+#             # update expt_cfg for this pt:
+#             expt_cfg[expt_cfg['vary_param']] = self.expt_pts_value[pt]
+#         # calpt use the orinigal not varied value
+#
+#         hw_delay = flux_cfg['pxdac_hw_delay']
+#
+#         thermalizer_1_length = expt_cfg["drive1_length"]
+#         thermalizer_2_length = expt_cfg["drive2_length"]
+#
+#         # hack for AF ramp
+#         # thermalizer_2_length = abs((expt_cfg['drive2_flux_a_start'][0] - expt_cfg['drive2_flux_a_stop'][0])/0.18*400)
+#
+#         thermalizer_1_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer_pulse_type'], thermalizer_1_length)
+#         thermalizer_2_dur = ap.get_pulse_span_length(pulse_cfg, expt_cfg['thermalizer2_pulse_type'], thermalizer_2_length)
+#
+#         # general
+#         flux_settle_dur = expt_cfg['flux_settle_dur']
+#         flux_ramp_dur = expt_cfg['flux_ramp_dur']
+#
+#         drive1_flux_settle_dur = expt_cfg['drive1_flux_settle_dur']
+#         if isCalPt:
+#             excite_flux_settle_dur = expt_cfg['cal_flux_settle_dur']
+#         else:
+#             excite_flux_settle_dur = expt_cfg['excite_flux_settle_dur']
+#
+#
+#         excite_flux_settle_mid_dur = expt_cfg['excite_flux_settle_mid_dur']
+#         drive2_flux_settle_dur = expt_cfg['drive2_flux_settle_dur']
+#         read_flux_settle_dur = expt_cfg['read_flux_settle_dur']
+#
+#         drive1_flux_ramp_dur = expt_cfg['drive1_flux_ramp_dur']
+#
+#         excite_flux_ramp_mid_dur = expt_cfg['excite_flux_ramp_mid_dur']
+#         excite_flux_ramp_dur = expt_cfg['excite_flux_ramp_dur']
+#
+#         drive2_flux_ramp_dur = expt_cfg['drive2_flux_ramp_dur']
+#         read_flux_ramp_dur = expt_cfg['read_flux_ramp_dur']
+#
+#
+#         comp_length_temp = flux_cfg['dc_comp_pulse_length']
+#         flux_pad_area_list = flux_cfg['flux_pad_area_list']
+#
+#         if isCalPt:
+#             excite_idx = expt_cfg['cal_idx']
+#         else:
+#             excite_idx = expt_cfg['excite_idx']
+#
+#         flux_total_span_list = []
+#         flux_area_list = []
+#         flux_power_list = []
+#
+#         for ii in range(8):
+#
+#             target = 'flux_' + str(ii)
+#
+#             flux_a_drive1 = expt_cfg['drive1_flux_a'][ii]
+#             flux_a_drive2_start = expt_cfg['drive2_flux_a_start'][ii]
+#             flux_a_drive2_stop = expt_cfg['drive2_flux_a_stop'][ii]
+#             flux_a_read = expt_cfg['read_flux_a'][ii]
+#
+#             flux_drive2_mod_amp = expt_cfg['flux_drive2_mod_amp'][ii]
+#             flux_drive2_mod_freq = expt_cfg['flux_drive2_mod_freq'][ii]
+#
+#             flux_a_excite = expt_cfg['excite_flux_a'][ii]
+#             flux_a_excite_mid = expt_cfg['excite_flux_mid_a'][ii]
+#
+#             excite_length_ge = expt_cfg['excite_ge_length'][excite_idx]
+#             excite_length_ef = expt_cfg['excite_ef_length'][excite_idx]
+#
+#             excite_type = self.pulse_type
+#             excite_dur_ge = ap.get_pulse_span_length(pulse_cfg, excite_type, excite_length_ge)
+#             excite_dur_ef = ap.get_pulse_span_length(pulse_cfg, excite_type, excite_length_ef)
+#
+#             if not isCalPt:
+#
+#                 if expt_cfg['is_excite_ge'] and not expt_cfg['is_excite_ef']:
+#                     excite_length = excite_length_ge
+#                     excite_dur = excite_dur_ge
+#                 elif expt_cfg['is_excite_ef'] and not expt_cfg['is_excite_ge']:
+#                     excite_length = excite_length_ef
+#                     excite_dur = excite_dur_ef
+#                 elif expt_cfg['is_excite_ge'] and expt_cfg['is_excite_ef']:
+#                     excite_pulses_gap = 5.0 # 5ns gap between pulses
+#                     excite_dur = excite_dur_ge + excite_dur_ef + excite_pulses_gap
+#                 else:
+#                     excite_length = 0.
+#                     excite_dur = 0.
+#
+#                     # if no excite pulse, make it 0 time, does NOT affect cal pulses
+#                     excite_flux_settle_dur = 0.0
+#                     excite_flux_settle_mid_dur = 0.0
+#                     excite_flux_ramp_mid_dur = 0.0
+#                     excite_flux_ramp_dur = 0.0
+#                     flux_a_excite = flux_a_drive1
+#                     flux_a_excite_mid = flux_a_drive1
+#
+#             else:
+#                 # if cal pts, always keep duration for ge and ef pulse
+#                 # todo: maybe also for data seq?
+#                 excite_dur = excite_dur_ge + excite_dur_ef
+#
+#                 # but kill drive2
+#                 thermalizer_2_dur = 0.0
+#                 drive2_flux_settle_dur = 0.0
+#                 drive2_flux_ramp_dur = 0.0
+#                 flux_a_drive2_start = flux_a_excite
+#                 flux_a_drive2_stop = flux_a_excite
+#
+#             read_dur = self.cfg['readout']['delay'] + self.cfg['readout']['width']
+#
+#             # ramp to a_drive1
+#             flux_drive1_start_time = 0
+#             self.psb.append(target, 'general', 'logistic_ramp', start_amp=0, stop_amp=flux_a_drive1, length=drive1_flux_ramp_dur)
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive1, stop_amp=flux_a_drive1, length=drive1_flux_settle_dur)
+#             # 1st thermalizer pulse
+#             thermalizer_1_start_time = flux_drive1_start_time + drive1_flux_ramp_dur + drive1_flux_settle_dur - hw_delay
+#             thermalizer_1_end_time = thermalizer_1_start_time + thermalizer_1_dur
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive1, stop_amp=flux_a_drive1, length=thermalizer_1_dur)
+#
+#             # ramp to a_excite_mid
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive1, stop_amp=flux_a_excite_mid, length=excite_flux_ramp_mid_dur)
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_excite_mid, stop_amp=flux_a_excite_mid, length=excite_flux_settle_mid_dur)
+#             # ramp to a_excite for excitation pulses
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_excite_mid, stop_amp=flux_a_excite, length=excite_flux_ramp_dur)
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_excite, stop_amp=flux_a_excite, length=excite_flux_settle_dur)
+#             # excite pulse
+#             excite_start_time = thermalizer_1_end_time + excite_flux_ramp_mid_dur + excite_flux_settle_mid_dur + excite_flux_ramp_dur + excite_flux_settle_dur
+#             excite_end_time = excite_start_time + excite_dur
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_excite, stop_amp=flux_a_excite, length=excite_dur)
+#
+#             # ramp to a_drive2
+#             self.psb.append(target, 'general', 'logistic_ramp', start_amp=flux_a_excite, stop_amp=flux_a_drive2_start, length=drive2_flux_ramp_dur)
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_drive2_start, stop_amp=flux_a_drive2_start, length=drive2_flux_settle_dur)
+#             # 2nd thermalizer pulse
+#             thermalizer_2_start_time = excite_end_time + drive2_flux_ramp_dur + drive2_flux_settle_dur
+#             thermalizer_2_end_time = thermalizer_2_start_time + thermalizer_2_dur
+#             self.psb.append(target, 'general', 'linear_ramp_with_mod', start_amp=flux_a_drive2_start, stop_amp=flux_a_drive2_stop, length=thermalizer_2_dur,\
+#                             mod_amp = flux_drive2_mod_amp, mod_freq = flux_drive2_mod_freq, mod_start_phase = 0.0)
+#
+#             # ramp to a_read
+#             self.psb.append(target, 'general', 'logistic_ramp', start_amp=flux_a_drive2_stop, stop_amp=flux_a_read, length=read_flux_ramp_dur)
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_read, stop_amp=flux_a_read, length=read_flux_settle_dur)
+#             # readout
+#             read_start_time = thermalizer_2_end_time + read_flux_ramp_dur + read_flux_settle_dur
+#             read_end_time = read_start_time + read_dur
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=flux_a_read, stop_amp=flux_a_read, length=read_dur)
+#
+#             # ramp down to 0
+#             self.psb.append(target, 'general', 'logistic_ramp', start_amp=flux_a_read, stop_amp=0, length=flux_ramp_dur)
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=0, stop_amp=0, length=flux_settle_dur)
+#
+#             comp_start_time = read_end_time + flux_ramp_dur + flux_settle_dur
+#
+#             # get area of flux pulses
+#             flux_area = self.psb.get_total_flux_pulse_area(target = target)
+#             flux_power = self.psb.get_total_flux_pulse_power(target = target)
+#
+#             #####
+#             if self.cfg["flux_pulse_info"]["flux_pad_area"]:
+#
+#                 if abs(flux_area) <= flux_pad_area_list[ii]:
+#                     # a_pad = 0.4 * np.sign(flux_area)
+#                     # pad_length = (flux_pad_area_list[ii]* np.sign(flux_area) - flux_area)/a_pad
+#
+#                     a_pad = 0.5 * np.sign(flux_area)
+#                     pad_length = (flux_pad_area_list[ii]* np.sign(flux_area) - flux_area)/a_pad
+#
+#                     flux_area = flux_pad_area_list[ii]* np.sign(flux_area)
+#
+#                     # pad area
+#                     self.psb.append(target, 'general', 'logistic_ramp', start_amp=0, stop_amp=a_pad, length=flux_ramp_dur)
+#                     self.psb.append(target, 'general', 'linear_ramp', start_amp=a_pad, stop_amp=a_pad, length=pad_length)
+#                     self.psb.append(target, 'general', 'logistic_ramp', start_amp=a_pad, stop_amp=0, length=flux_ramp_dur)
+#
+#                 else:
+#                     print('Warning: area of flux', ii, 'at',flux_area, 'exceeds the padding value of', flux_pad_area_list[ii],\
+#                             ', define_pulses pt =', pt)
+#             #####
+#
+#             a_comp_temp = - flux_area/(comp_length_temp + flux_ramp_dur)
+#             a_comp = np.sign(a_comp_temp)* min(0.4, abs(a_comp_temp))
+#             if a_comp == 0:
+#                 comp_length = 0.0
+#             else:
+#                 comp_length =  - flux_area/a_comp - flux_ramp_dur
+#             # print 'a_comp', a_comp, 'comp_length', comp_length
+#
+#             # compensation pulse
+#             self.psb.append(target, 'general', 'logistic_ramp', start_amp=0, stop_amp=a_comp, length=flux_ramp_dur)
+#             self.psb.append(target, 'general', 'linear_ramp', start_amp=a_comp, stop_amp=a_comp, length=comp_length)
+#             self.psb.append(target, 'general', 'logistic_ramp', start_amp=a_comp, stop_amp=0, length=flux_ramp_dur)
+#
+#             flux_area_list.append(flux_area)
+#             flux_power_list.append(flux_power)
+#             # also clears
+#             flux_total_span_list.append(self.psb.get_total_pulse_span_length())
+#
+#
+#         # if not flux, clear psb and add drive pulses
+#         if not isFlux:
+#
+#             # clear psb
+#             dummy = self.psb.get_pulse_sequence()
+#             dummy = self.psb.get_total_pulse_span_length()
+#             dummy = self.psb.get_total_flux_pulse_span_length()
+#
+#             # todo: check how are gauss/sq pulses aligned
+#
+#             if self.cfg['pulse_info']['is_direct_synth']:
+#                 drive_carrier_freq = 0.0
+#                 override_iq_freq = True
+#             else:
+#                 drive_carrier_freq = expt_cfg['drive_carrier_freq']
+#                 override_iq_freq = False
+#
+#             drive1_iq_freq = expt_cfg['drive1_freq'] - drive_carrier_freq
+#             drive2_iq_freq = expt_cfg['drive2_freq'] - drive_carrier_freq
+#
+#             excite_iq_freq_ge = expt_cfg['excite_ge_freq'][excite_idx] - drive_carrier_freq
+#             excite_a_ge = expt_cfg['excite_ge_a'][excite_idx]
+#             excite_iq_freq_ef = expt_cfg['excite_ge_freq'][excite_idx] + expt_cfg['excite_alpha'][excite_idx] - drive_carrier_freq
+#             excite_a_ef = expt_cfg['excite_ef_a'][excite_idx]
+#
+#             if not isCalPt:
+#
+#                 if expt_cfg['is_excite_ge']:
+#                     excite_iq_freq = excite_iq_freq_ge
+#                     excite_a = excite_a_ge
+#                 elif expt_cfg['is_excite_ef']:
+#                     excite_iq_freq = excite_iq_freq_ef
+#                     excite_a = excite_a_ef
+#                 else:
+#                     excite_iq_freq = 0.
+#                     excite_a = 0.
+#
+#                 if expt_cfg['separate_drive']:
+#                     drive_target = 'q2'
+#                     excite_target = 'q'
+#                 else:
+#                     drive_target = 'q'
+#                     excite_target = 'q'
+#
+#                 #
+#                 self.psb.idle(thermalizer_1_start_time)
+#                 self.psb.append(drive_target, 'general', expt_cfg['thermalizer_pulse_type'],
+#                                 amp=expt_cfg['drive1_a'], length=thermalizer_1_length, freq=drive1_iq_freq,
+#                                 override_iq_freq=override_iq_freq)
+#
+#                 self.psb.idle(excite_start_time - thermalizer_1_end_time)
+#
+#                 if expt_cfg['is_excite_ge'] and expt_cfg['is_excite_ge']:
+#
+#                     self.psb.append(excite_target, 'general', self.pulse_type,
+#                                     amp=excite_a_ge, length=excite_length_ge, freq=excite_iq_freq_ge,
+#                                     override_iq_freq=override_iq_freq)
+#                     self.psb.idle(excite_pulses_gap)
+#                     self.psb.append(excite_target, 'general', self.pulse_type,
+#                                     amp=excite_a_ef, length=excite_length_ef, freq=excite_iq_freq_ef,
+#                                     override_iq_freq=override_iq_freq)
+#
+#                 else:
+#                     self.psb.append(excite_target, 'general', self.pulse_type,
+#                                     amp=excite_a, length=excite_length, freq=excite_iq_freq,
+#                                     override_iq_freq=override_iq_freq)
+#
+#                 self.psb.idle(thermalizer_2_start_time - excite_end_time)
+#                 self.psb.append(drive_target, 'general', expt_cfg['thermalizer2_pulse_type'],
+#                                 amp=expt_cfg['drive2_a'], length=thermalizer_2_length, freq=drive2_iq_freq,
+#                                 override_iq_freq=override_iq_freq)
+#
+#             else:
+#
+#                 excite_target = 'q'
+#
+#                 self.psb.idle(excite_start_time)
+#
+#                 if pt == 0:
+#                     self.psb.idle(excite_dur)
+#
+#                 if pt == 1:
+#                     self.psb.append(excite_target, 'general', self.pulse_type,
+#                                     amp=excite_a_ge, length=excite_length_ge, freq=excite_iq_freq_ge,
+#                                     override_iq_freq=override_iq_freq)
+#                     self.psb.idle(excite_dur_ef)
+#
+#                 if pt == 2:
+#                     self.psb.append(excite_target, 'general', self.pulse_type,
+#                                     amp=excite_a_ge, length=excite_length_ge, freq=excite_iq_freq_ge,
+#                                     override_iq_freq=override_iq_freq)
+#                     self.psb.append(excite_target, 'general', self.pulse_type,
+#                                     amp=excite_a_ef, length=excite_length_ef, freq=excite_iq_freq_ef,
+#                                     override_iq_freq=override_iq_freq)
+#
+#                 self.psb.idle(thermalizer_2_start_time + thermalizer_2_dur - excite_end_time)
+#
+#         return max(flux_total_span_list), flux_area_list, flux_power_list
+#
 
 
 class HistogramRabiThermalizerSequence(RabiThermalizerSequence):
