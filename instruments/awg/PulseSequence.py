@@ -4,6 +4,7 @@ import numpy as np
 from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence, write_PXDAC4800_file, M8195A, upload_M8195A_sequence
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
 from slab.instruments import InstrumentManager, LocalInstruments
+from slab.instruments.keysight import KeysightPulseSequence as kps
 import os
 import time
 
@@ -72,7 +73,8 @@ class PulseSequence:
                           'PXDAC4800_1': self.write_PXDAC4800_1_sequence,
                           'PXDAC4800_2': self.write_PXDAC4800_2_sequence,
                           'PXDAC4800_3': self.write_PXDAC4800_3_sequence,
-                          'M8195A': self.write_M8195A_sequence}
+                          'M8195A': self.write_M8195A_sequence,
+                          'KeysightM31xxA': self.write_keysightM31xxA_sequence}
         for awg in self.awg_info:
             # try:
             print(awg['type'])
@@ -108,6 +110,18 @@ class PulseSequence:
             im[awg['name']].pre_load()
             # print "Sequence preloaded"
             im[awg['name']].load_sequence_file(os.path.join(path, file_prefix + '.awg'), force_reload=True)
+            print("Sequence file uploaded")
+            im[awg['name']].prep_experiment()
+            
+    def write_keysightM31xxA_sequence(self, awg, path, file_prefix, upload=False):
+        waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
+        markers = [self.markers[marker['name']] for marker in awg['waveforms']]
+        kps.writeKeysightFile(waveforms, markers, os.path.join(path, file_prefix + '.kst'))
+        
+        if upload:
+            im = InstrumentManager()
+            im[awg['name']].pre_load()
+            im[awg['name']].load_sequence_file(os.path.join(path, file_prefix + '.kst'))
             print("Sequence file uploaded")
             im[awg['name']].prep_experiment()
 
@@ -168,3 +182,4 @@ class PulseSequenceArray:
 
     def reshape_data(self, data):
         pass
+    

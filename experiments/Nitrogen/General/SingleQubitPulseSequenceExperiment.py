@@ -5,6 +5,7 @@ from slab.instruments.Alazar import Alazar
 from slab.experiments.Nitrogen.ExpLib.QubitPulseSequenceExperiment import *
 from slab.dsfit import *
 from numpy import mean, arange,around
+import numpy as np
 
 
 class RabiExperiment(QubitPulseSequenceExperiment):
