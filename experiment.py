@@ -23,7 +23,7 @@ class Experiment:
 
             also loads InstrumentManager, LivePlotter, and other helpers
         """
-
+        '''
         self.__dict__.update(kwargs)
         self.path = path
         self.prefix = prefix
@@ -38,7 +38,7 @@ class Experiment:
         # self.dataserver= dataserver_client()
         self.fname = os.path.join(path, get_next_filename(path, prefix, suffix='.h5'))
 
-        self.load_config()
+        self.load_config()'''
 
     def load_config(self):
         if self.config_file is None:
@@ -54,6 +54,8 @@ class Experiment:
             self.cfg = AttrDict(json.loads(cfg_str))
         except:
             pass
+        print(self.cfg['aliases'].items()) #TODO: remove
+        print(self.im.keys()) #TODO: remove
         if self.cfg is not None:
             for alias, inst in self.cfg['aliases'].items():
                 setattr(self, alias, self.im[inst])

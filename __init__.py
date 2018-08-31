@@ -1,4 +1,4 @@
-from .instruments import InstrumentManager, LocalInstruments
+from .instruments import InstrumentManager, LocalInstruments, keysight
 from .datamanagement import SlabFile, h5File, AttrDict
 #
 # try:
