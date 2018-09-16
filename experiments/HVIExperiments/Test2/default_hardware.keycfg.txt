@@ -1,0 +1,7 @@
+#Hardware configuration file for our Keysight modules. Update as needed
+
+Chassis Number: 1
+
+#as lists
+Input Modules: [10]
+Output Modules: [6, 7, 8, 9]

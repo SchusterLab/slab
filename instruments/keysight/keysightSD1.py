@@ -297,7 +297,6 @@ class SD_Module(SD_Object) :
 
 	def getType(self) :
 		objectType = self._SD_Object__core_dll.SD_Module_getType(self._SD_Object__handle)
-
 		if objectType < SD_Object_Type.AOU or objectType > SD_Object_Type.AIO or objectType == SD_Object_Type.WAVE:
 			objectType = SD_Error.INVALID_MODULEID
 
@@ -1630,7 +1629,7 @@ class SD_AIN(SD_Module) :
 					return np.empty(0, dtype=np.short)
 		else :
 			return SD_Error.MODULE_NOT_OPENED
-
+        
 	def FFT(self, channel, data, dB = False, windowType = 0) :
 		error = SD_Error.INVALID_PARAMETERS
 
@@ -1678,7 +1677,7 @@ class SD_HVI(SD_Object) :
 		if self._SD_Object__handle > 0 :
 			self._SD_Object__handle = self._SD_Object__core_dll.SD_HVI_close(self._SD_Object__handle);
 
-		return self._SD_Object__core_dll;
+		return self._SD_Object__handle #TODO modified to fix bug in native code, but look for fix in future release
 
 	def getType(self) :
 		return SD_Object_Type.HVI;
@@ -1811,8 +1810,7 @@ class SD_HVI(SD_Object) :
 					SD_Object_Type.AIN: SD_AIN(),
 ##					SD_Object_Type.AIO: SD_AIO(),
 				}
-
-				requestModule = switcher.get(SD_Module.getType(moduleHandle), "nothing");
+				requestModule = switcher.get(SD_Module.getType(moduleHandle), "nothing"); #TODO contains bug -- passes int to method that takes object
 
 				if requestModule == "nothing" :
 					return SD_Error.MODULE_NOT_FOUND;

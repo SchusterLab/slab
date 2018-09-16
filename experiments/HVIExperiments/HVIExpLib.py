@@ -9,6 +9,14 @@ Because the HVI paradigm is a very different paradigm than our previous
 experiments, this class replicates much of the functionality of, and borrows
 some code from, the QubitPulseSequenceExperiment, but with a different
 underlying architecture.
+
+DEBUG: current problems
+1) Latency issues. Should be fixed by replacing DataHandlerHelper and 
+ChannelQueue objects with the datahandlerhelper class exported from C. May also
+want to consider launching Workers at end of experiment to reduce CPU usage
+and prevent missed data.
+
+2) AWG's don't seem to be working in extension classes. Need to see why.
 """
 
 #import error fix
@@ -19,13 +27,13 @@ sys.path.append(r'C:\_Lib\python\slab\instruments\keysight')
 from slab.experiment import Experiment
 from slab.instruments.keysight import KeysightLib as key
 from threading import Thread
-from queue import Empty, Queue
+import multiprocessing
+from queue import Empty
 import numpy as np
 import os
 import time
 import json
 import ast
-
 
 '''-------------------------------------------------------------------------'''
 
@@ -106,13 +114,14 @@ class HVIEnabledQubitExperiment(Experiment):
         self._HVI_query_pause = HVI_query_pause
         self._save_in_register = save_in_register
         self._dispatcher = Dispatcher(self.channelsListening(),
-                                      save_in_register)
+                                      save_in_register, self)
     
     def addChannelToListen(self, channel):
         '''Adds a channel to which the experiment will listen for data.
         Params:
             channel: The channel object from which to listen'''
         self._data[channel.serialize()] = []
+        self._dispatcher.addChannelToListen(channel)
         
     def channelsListening(self):
         '''Returns a list of the channels to which the experiment is listening
@@ -159,31 +168,58 @@ class HVIEnabledQubitExperiment(Experiment):
         '''Starts the experiment. May be extended/overridden in subclasses if
         necessary. However, to the extent possible, to preserve workflow,
         only override self.pre_run() and self.post_run() if at all possible.'''
-        self.pre_run()
-        self.takeData()
-        self.waitForHVIToComplete()
-        self.stopDataHandling()
-        self.post_run()
+        try:
+            print("Pre-run started")
+            self.pre_run()
+            print("Experiment started")
+            self.takeData()
+            self.waitForHVIToComplete()
+            print("HVI complete")       
+            self.stopDataHandling()
+            print("Post-run started")
+            self.post_run()
+        finally: #want to clean up even if there's a crash!
+            self._HVI.close()  
+            print("HVI closed")
+            self._dispatcher.stopAllWhenReady()
+            
+            #Rest of code prevents zombie threads.
+            #If you get rid of it or bypass it somehow,
+            #you will have problems in future runs
+            for handler in self._dispatcher._data_handlers.values():
+                if handler.is_alive():
+                    handler.join()
+            print("Data handlers closed")
+            for worker in self._dispatcher._workers:
+                if isinstance(worker, Stoppable) and worker.is_alive():
+                    worker.join()
+            print("Workers closed")
         
     def takeData(self):
         '''Begins taking data.'''
-        self.writeHVIDoneFlag(False)
-        self._dispatcher.takeData()
-        self._HVI.start()
+        self.writeHVIDoneFlag(False) #Ensure HVI status registers as incomplete
+        self._dispatcher.takeData() #Begins background data handling/worker threads
+        self._HVI.start() #Starts the HVI routine itself
         
     def waitForHVIToComplete(self):
         '''Waits until the signal is received from the HVI that all data has
         been taken.'''
-        while not self.readHVIDoneFlag():
-            time.sleep(self._HVI_query_pause)
-        
+        try:
+            while not self.readHVIDoneFlag():
+                time.sleep(self._HVI_query_pause)
+        except BaseException as e: #mainly to catch KeyboardInterrupt
+            self._dispatcher.killAll() #end everything as fast as possible
+            raise e
+            
     def stopDataHandling(self):
         '''Stops data handling. If we are saving the data in local register,
         also waits until all the data is ready.'''
         self._dispatcher.stopAllWhenReady()
         if self._save_in_register:
-            for handler in self._dispatcher._data_handlers:
-                handler.join()
+            for handler in self._dispatcher._data_handlers.values():
+                #prevent zombie threads
+                if handler.is_alive():
+                    handler.join()
     
     def post_run(self):
         '''Method used to perform post-processing on the data. Override in
@@ -207,8 +243,18 @@ class HVIEnabledQubitExperiment(Experiment):
         Params:
             module_number: The module number where the channel is located
             channel_number: The channel number of the desired channel
-        Returns: The desired channel'''
+        Returns: The desired channel object'''
         return self._HVI.getChannel(module_number, channel_number)
+    
+    def getModule(self, module_number):
+        '''Gets a module by module number. The primary reason you would want to
+        call this is to send a command to a specific module (i.e. query a
+        regiser).
+        
+        Params:
+            module_number: The slot number of the desired module
+        Returns: The desired module object'''
+        return self._HVI.getModule(module_number)
     
     def getData(self, channel):
         '''Gets the saved data for a particular channel.
@@ -247,13 +293,14 @@ class HVIEnabledQubitExperiment(Experiment):
         '''Reads the signal register regarding whether HVI is done.
         Returns: The value on the port (True = on, False = off).
         '''
-        return self._control_module.readRegister(
-                ControlModuleConstants.Registers.STATUS)
+        return bool(self._control_module.readRegister(
+                ControlModuleConstants.Registers.STATUS))
+
 '''-------------------------------------------------------------------------'''
 
 class Stoppable():
-    '''Interface class that offers simple way to control threads and loops. Classes
-    implementing this interface must read self._stop_flag and self._kill_flag
+    '''Class that offers simple way to control threads and loops. Classes
+    extending Stoppable must read self._stop_flag and self._kill_flag
     periodically. They must halt execution as soon as practical (usually within
     one loop of a constantly running loop) when self._kill_flag becomes True.
     They must halt execution once their current pipeline is empty upon
@@ -282,7 +329,8 @@ class Dispatcher():
     internally in Experiment class or directs Worker classes (see below)
     to enable multithreaded real time data processing..''' 
 
-    def __init__(self, channels = [], save_in_register = False):
+    def __init__(self, channels = [], save_in_register = False,
+                 experiment = None):
         '''Initializes the Data Handler class.
         Params:
             channels: A list of the channel objects that the DataHandler is
@@ -290,15 +338,27 @@ class Dispatcher():
             save_in_register: Whether to save data in local register for
                 fast access after the experiment. If data is not explicitly
                 needed immediately after the experiment, set this parameter
-                to False to save time and RAM.'''
-        
+                to False to save RAM.
+            experiment: The experiment object for which the Dispatcher is
+                handling data. This is only necessary if save_in_register is
+                True.'''
         self._save_in_register = save_in_register
         self._data_handlers = {}
         self._workers = []
+        self._experiment = experiment
         for channel in channels:
-            self._data_handlers[channel.serialize()] = DataHandler(
-                    save_in_register)
+            self.addChannelToListen(channel)
         self._started = False
+        
+    def addChannelToListen(self, channel):
+        '''Adds a channel to which the dispatcher is listening for data.
+        Params:
+            channel: The channel object to which the dispatcher should listen.'''
+        self._data_handlers[channel.serialize()] = DataHandler(channel, 
+                self._save_in_register, self._experiment,
+                name = "Data handler, module " + str(
+                        channel.module().moduleNumber())
+                + ", channel " + str(channel.channelNumber()))
     
     def addWorker(self, worker):
         '''Adds a worker to the dispatcher.'''
@@ -309,7 +369,7 @@ class Dispatcher():
     def takeData(self):
         '''Starts all the data handler and worker threads'''
         self._started = True
-        for data_handler in self._data_handlers:
+        for data_handler in self._data_handlers.values():
             data_handler.start()
         for worker in self._workers:
             worker.start()
@@ -318,7 +378,7 @@ class Dispatcher():
         '''Stops all the Stoppable data handlers and workers that the
         dispatcher controls when they are done processing data. No loss of
         data.'''
-        for data_handler in self._data_handlers:
+        for data_handler in self._data_handlers.values():
             data_handler.stopWhenReady()
         for worker in self._workers:
             if isinstance(worker, Stoppable):
@@ -329,20 +389,34 @@ class Dispatcher():
         then stops Stoppable workers when they are done processing the data
         queued so by the data handlers. May lose data that hasn't been handled
         yet.'''
-        for data_handler in self._data_handlers:
+        for data_handler in self._data_handlers.values():
             data_handler.kill()
         for worker in self._workers:
             if isinstance(worker, Stoppable):
                 worker.stopWhenReady()
+        for data_handler in self._data_handlers.values():
+            if data_handler.is_alive():
+                data_handler.join()
+        for worker in self._workers:
+            if isinstance(worker, Stoppable) and worker.is_alive():
+                worker.join()
             
     def killAll(self):
         '''Kills every data handler and killable worker as fast as possible.
         Bye bye data.'''
-        for data_handler in self._data_handlers:
+        for data_handler in self._data_handlers.values():
             data_handler.kill()
+            print("Stopping " + data_handler.name)
         for worker in self._workers:
             if isinstance(worker, Stoppable):
                 worker.kill()
+                print("Stopping " + worker.name)
+        for data_handler in self._data_handlers.values():
+            if data_handler.is_alive():
+                data_handler.join()
+        for worker in self._workers:
+            if isinstance(worker, Stoppable) and worker.is_alive():
+                worker.join()
                 
     def hasStarted(self):
         '''Returns whether the Dispatcher has started taking data.'''
@@ -355,7 +429,7 @@ class Dispatcher():
         Keysight module.'''
         if not self._started:
             return False
-        for handler in self._data_handlers:
+        for handler in self._data_handler.values():
             if not handler.isDone():
                 return True
         return False
@@ -363,7 +437,8 @@ class Dispatcher():
 
 class DataHandler(Thread, Stoppable):
     
-    def __init__(self, channel, save_in_register = False, experiment = None):
+    def __init__(self, channel, save_in_register = False, experiment = None,
+                 name = None):
         '''Initializes the Data Handler.
         Params:
             channel: The KeysightChannelIn object from which the DataHandler
@@ -371,17 +446,22 @@ class DataHandler(Thread, Stoppable):
             save_in_register: Whether to save the data in register for faster
                 processing later, at expense of RAM capacity and speed now.
             experiment: A reference back to the experiment. Only necessary
-                if save_in_register is enabled.'''
-                
+                if save_in_register is enabled.
+            name: An optional parameter that passes the '''
+        Thread.__init__(self, name = name) #TODO ??
+        Stoppable.__init__(self)
         self._channel = channel
         self._queues = []
         self._save_in_register = save_in_register
         self._experiment = experiment
+        self._data_collected = 0
+        self._data_errors = 0
+        self._data_empty = 0
         
     def addQueue(self, queue):
         '''Adds a ChannelQueue to the handler as a destination for data.'''
         if self._channel is not queue.channel():
-            raise QueueError('''Queue appended to data handler for different 
+            raise QueueSetUpError('''Queue appended to data handler for different 
                              thread.''')
         self._queues.append(queue)
         
@@ -394,25 +474,34 @@ class DataHandler(Thread, Stoppable):
         if self._save_in_register or self._queues:
             Thread.start(self)
             return True
-        else:
-            return False
+        return False
         
     def run(self):
         '''Loop that runs in the background while data is being collected.
         Overrides Thread.run(). Exits when kill flag is set to True, or
         if stop flag is set to True and there is no more data.'''
         while not self._kill_flag:
-            data = self._channel.readDataBuffered()
-            if DataHandler._isError(data):
-                if self._stop_flag or self._kill_flag:
+            #data = self._channel.readDataBuffered()
+            data = self._channel.readDataQuiet(timeout = 100) #TODO: change? currently 0.5 sec #ms
+            
+            if type(data) != np.ndarray:
+                self._data_errors += 1
+                if self._stop_flag:
+                    break
+            elif data.size == 0:
+                self._data_empty += 1
+                if self._stop_flag:
                     break
             else:
+                self._data_collected += 1
                 for queue in self.queues():
                     queue.put(data)
                 if self._save_in_register:
                     self._experiment._data[self._channel.serialize()].append(
                             data)
-        
+                #TODO: fix this section and make sure it's threadsafe
+
+            
     def isDone(self):
         '''Returns whether the data handler is done processing data after kill()
         or stopWhenNoMoreData() is called. Useful
@@ -420,25 +509,46 @@ class DataHandler(Thread, Stoppable):
         '''
         return not self.is_alive()
     
-    @staticmethod #private helper method
-    def _isError(data):
-        '''Checks whether the output of readDataBuffered is an error or
-            represents valid data.'''
-        return type(data) != np.ndarray or len(data) == 0
+    def queues(self):
+        '''Returns the list of queues to which the DataHandler puts data.'''
+        return self._queues
     
+    def printStatistics(self):
+        '''Prints the amount of data points attempted to take and the result.
+        Call after the thread finishes and .join() is called.'''
+        print('Data Handler ' + str(self.name) + ' results')
+        print("Num samples collected: " + str(self._data_collected))
+        print("Num samples empty: " + str(self._data_empty))
+        print("Num errors: " + str(self._data_errors))
     
 '''-------------------------------------------------------------------------'''
 
-class Worker(Thread):
-    '''Base class for workers, which are autonomous threads that
-    handle data in real time.'''
+class Worker(multiprocessing.Process):
+    '''Base class for workers, which are autonomous processes that
+    do work with data in real time. Workers are intended for saving,
+    plotting, and similar tasks. They read data from a multiprocessing-safe
+    queue object containing copies of the data. As such, their speed does not
+    affect the overall data acquisition process (other than amount of RAM used)
+    so delays in processing the data will not result in missed data. Moreover,
+    because workers are implemented as a separate process (vs. merely a
+    separate thread for data handlers) they are not affected by the Python GIL,
+    allowing full advantage to be taken of multiprocessing.
     
-    def __init__(self, num_channels = 1):
+    Note: In general, all subclasses should extend Stoppable to ensure they
+    are stopped automatically by the main program. See Stoppable for more
+    information. The only reason not to extend Stoppable would be for a Worker
+    that has its own way for the process to terminate, and may want to persist
+    after the main thread has stopped. An example would be a GUI for plotting.
+    '''
+    
+    def __init__(self, num_channels = 1, name = None):
         '''Initializes the Worker.
         Params:
             num_channels: The number of channels that the worker will process.
+            name: An optional name that will allow the process running the
+                worker to be easily identified for debugging, etc.
         '''
-        Thread.__init__(self)
+        multiprocessing.Process.__init__(self, name = name)
         self._queues = []
         self._num_channels = num_channels
         
@@ -454,7 +564,7 @@ class Worker(Thread):
     def start(self):
         '''Launches the worker. May need to extend (with prior instructions)
         in subclasses.'''
-        Thread.start(self)
+        multiprocessing.Process.start(self)
         
     def run(self):
         '''Code called when Worker is activated by start() method. Override
@@ -470,52 +580,72 @@ class Worker(Thread):
                 worker will read data from. A channel may be assigned to
                 multiple workers, which will receive independent queues of data,
                 but the data will not be stored in RAM twice.
-        Throws: QueueError if wrong number of channels are assigned.
+        Throws: QueueSetUpError if wrong number of channels are assigned.
             '''
         if len(channels) != self._num_channels:
-            raise QueueError("""Wrong Number of channels assigned to worker of
+            raise QueueSetUpError("""Wrong Number of channels assigned to worker of
                              type """ + str(type(self)))
         for channel in channels:
-            self._queues.append(ChannelQueue(channel))
+            self._queues.append(DataQueue(channel))
             
 '''-------------------------------------------------------------------------'''
 
-class ChannelQueue(Queue):
-    '''Thread-safe queue for storing of data retrieved from Keysight modules.
-    Inherits all methods from queue.Queue, including put() and get().
-    Only difference is that, for convenience, ChannelQueue also stores its own
-    channel.'''
+class DataQueue():
+    '''Process-safe queue for storing of data retrieved from Keysight modules.
+    Essentially boilerplate over the multiprocessing.queues.Queue class with
+    the added benefit that the queue stores its own class and method calls
+    are simplified for the application at hand. DataQueue is first-in-first out.
+    '''
     
     def __init__(self, channel):
-        '''Initializes the queue and extends init method of Queue.
+        '''Initializes the queue.
         Params:
             channel: The channel object form which the queue will obtain data.
         '''
-        Queue.__init__(self)
         self._channel = channel
+        self._queue = multiprocessing.Queue()
         
     def channel(self):
         '''Returns the channel object from which the queue receives data.'''
         return self._channel
     
+    def get(self, timeout = key.KeysightConstants.INFINITY):
+        '''Gets the first item from the queue.
+        Params:
+            timeout: The time to wait before raising Empty exception.
+        Returns: the item from the queue.'''
+        return self._queue.get(True, timeout)
+
+    def put(self, item):
+        '''Puts an item into the queue.
+        Params:
+            item: The item to put into the queue.'''
+        self._queue.put(item, False)
+    
 '''-------------------------------------------------------------------------'''
 
-class QueueError(RuntimeError):
-    '''Exception thrown when queues have not been assigned correctly.'''
+class QueueSetUpError(RuntimeError):
+    '''Exception thrown when queues have not been assigned correctly
+    in the Dispatcher-DataHandler-DataQueue setup.'''
     pass #no extension necessary beyond renaming      
     
     
 '''-------------------------------------------------------------------------'''
 
 class Saver(Worker, Stoppable):
-    '''Helper class that saves data to disk as a background thread without
-        bogging down the rest of the computer.'''
+    '''Helper class that saves data to disk as a background thread'
+    Note: very slow, may need to save time by bunching data together in one
+    file, or else waiting until after experiment is over to start thread
+    to avoid missing data.
+    
+    Other Workers can be developed analogously to this example.'''
         
-    DATA_WAIT_TIMEOUT = 0.5
+    DATA_WAIT_TIMEOUT = 3
     '''Timeout after stopWhenReady() called and no more data available before
         quitting (sec)''' #FEEL FREE TO EDIT AS NEEDED
         
-    def __init__(self, channel, filepath = None, prefix = None):
+    def __init__(self, channel, filepath = None, prefix = None,
+                 name = None, num_trials_per_save = 1):
         '''Initializes the Saver object.
         
         Params:
@@ -525,38 +655,52 @@ class Saver(Worker, Stoppable):
                 to the directory containing the code initially launched.
             prefix: The prefix of the file where the data is saved. Each trial
                 will be saved as XXX#####.npy where ###### is the order in
-                which the trial ran.'''
+                which the trial ran.
+            name: An optional name used to name the thread for debugging
+                purposes.'''
         if filepath is None:
             filepath = os.path.dirname(os.path.realpath(__file__))
         if prefix is None:
             prefix = "data" + str(channel.channelNumber())
-        Worker.__init__(self, num_channels = 1)
+        Worker.__init__(self, num_channels = 1, name = name)
         Stoppable.__init__(self)
         self.assignChannels(channel)
         self._filepath = filepath
         self._prefix = prefix
+        self._num_trials_per_save = num_trials_per_save
         
     def run(self):
         '''Runs in the background, checking for data and saving it. Overrides
         the Worker.run() method.'''
+        while not self.start_signal:
+            time.sleep(0.1)
+        
         count = 0
+        print("Saver has started")
         while not self._kill_flag:
-            timeout = Saver.DATA_WAIT_TIMEOUT if self._stop_flag else (
-                    key.KeysightConstants.INFINITY)
             try:
+                timeout = Saver.DATA_WAIT_TIMEOUT if self._stop_flag else key.KeysightConstants.INFINITY
                 data = self._queues[0].get(timeout=timeout)
-            except(Empty): #Queue is empty and timeout has elapsed
-                break
-            np.save(self._filepath + self._prefix + str(count).zfill(5), data)
-            count += 1
+                np.save(os.path.join(self._filepath, self._prefix + str(count).zfill(5)), data)
+                count += 1
+            except Empty:
+                pass #works but no flexibility in number per save''
+        print("Saver has exited")
+        
+    def printStatistics(self):
+        print("Saver " + self.name)
+        print("Entered while loop " + str(self.in_while_loop))
+        print("Got data " + str(self.got_data))
+        print("Saved " + str(self.saved))
+        print("Error from queue " + str(self.errored))
+        
+        
             
 '''-------------------------------------------------------------------------'''
 
-class Plotter1Var(Worker):
+class Plotter(Worker):
     pass #TODO: Implement this class
-
-class Plotter2Var(Worker):
-    pass #TODO: Implement this class
+    #Probably use liveplot
     
 '''-------------------------------------------------------------------------'''
 
@@ -579,6 +723,7 @@ class HVIPulseSequence():
         self._registers = {}
         self._params = {}
         self._keycfg_file = module_config_file
+        self._PXI_ports = {}
         
     def setHVIFile(self, filename):
         '''Sets the HVI file that is to be used to execute the pulse sequence.
@@ -748,10 +893,8 @@ class HVIPulseSequence():
         Returns:
             The HVI object, or None if HVI cannot be initialized
         '''
-        chassis_number, modules = key.FileDecodingTools._readHardwareConfigFile(
-                self._keycfg_file)
-        HVI = key.HVI(self._HVI_file, chassis_number, modules)
-        for waveform, modules in self._waveforms:
+        HVI = key.HVI(self._HVI_file, self._keycfg_file)
+        for waveform, modules in self._waveforms.values():
             for module_number in modules:
                 waveform.loadToModule(HVI.getModule(module_number))
         for module, register in self._registers:
@@ -846,8 +989,6 @@ class HVIPulseSequence():
                                  header in HVI ports subsection: ''' + header)
         destination[(module, port)] = value #last port
         
-        
-'''-------------------------------------------------------------------------'''
 
 
     

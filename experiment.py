@@ -54,8 +54,6 @@ class Experiment:
             self.cfg = AttrDict(json.loads(cfg_str))
         except:
             pass
-        print(self.cfg['aliases'].items()) #TODO: remove
-        print(self.im.keys()) #TODO: remove
         if self.cfg is not None:
             for alias, inst in self.cfg['aliases'].items():
                 setattr(self, alias, self.im[inst])
