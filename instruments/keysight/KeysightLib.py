@@ -3,37 +3,23 @@
 """
 Created on July 26, 2018
 
-Version: 1.1.3 updated 8/31/18
-Changes since 1.0:
-    Implemented HVI class to represent a Keysight chassis functioning as
-        an HVI.
-    Added __str__ methods to each class to aid debugging
-    Added close() methods to several classes to ensure modules are closed
-        before they go out of scope.
-    Added serialize methods to serialize channel numbers (useful for 
-        saving experiments to disk)
-    Added mute() methods to mute unwanted channels without having to redo an
-        HVI
-    Added static Tools.decodeError and Tools.isError methods
-    Fixed a couple of minor bugs and added documentation throughout.
-    Added FileDecodingTools class
-    Made several additions to HVI class
-Changes since 1.1.2:
-    Added support for exception handling throughout
-    Several bug fixes
-    
+Updated 9/12/18 to fix bug in 
 
 @author: Josephine Meyer (jcmeyer@stanford.edu)
 
 Library classes for Python interface with Keysight M31xxA and M32xxA modules.
 Use instead of the native keysightSD1 classes for better functionality and
-compatibility with our existing code base.
+compatibility with our existing code base. This code offers largely the same 
+capabilities as KeysightSD1, but bypassing the many native bugs to the extent
+possible, offering exception handling (important for any end user), and offering
+a much more intuitive interface for writing scripts.
 
-See native keysightSD1 code for definitions of error messages and some 
-enumerated types. 
+See native keysightSD1 code for definitions of enumerated types not listed here. 
+Other than that, there should be no need to run native functions from keysightSD1,
+except to debug.
 """
 
-import keysightSD1 as SD1
+import slab.instruments.keysight.keysightSD1 as SD1
 import numpy as np
 import ast
 
@@ -41,16 +27,18 @@ import ast
 
 class KeysightConstants:
     '''Useful general constants'''
-    NUM_CHANNELS = 4 #number of modules
-    PRODUCT = ""
-    MASK_ALL = 30 #2**1 + 2**2 + 2**3 + 2**4 -- mask for all 4 channels
+    NUM_CHANNELS = 4 #number of channels per module
+    PRODUCT = "" #ok to put an empty string in, not a helpful parameter
+    MASK_ALL = 0b1111 #input to perform same action on all channels of a module simultaneously
     INPUT_IMPEDANCE = 1 #50 ohm
     DC_COUPLING = 0 #we are DC coupled
     INFINITY = 0 #Blame Keysight for this one!
     MODULE_CONFIG_SUFFIX = ".keycfg" #suffix for hardware config file
+    ZEROES_APPEND_LIST = [0] * 1000 #To add to the end of waveforms to prevent glitches
+    ZEROES_APPEND_NUMPY = np.array(ZEROES_APPEND_LIST) #The same but as a np array
 
 class ModuleType:
-    '''Integer code representing the module type of a given module.'''
+    '''Integer enum code representing the module type of a given module.'''
     INPUT = 1
     OUTPUT = 0
     M3102A = INPUT #convenient aliases
@@ -59,16 +47,21 @@ class ModuleType:
     
 class ChannelNumber:
     '''Generates effective channel numbers for the trigger and clock channels
-    to enable them to be treated on par with numbered channels.'''
+    to enable them to be treated on par with numbered channels. This is largely
+    to enable greater control of these channels in the future should that
+    be desired. So far most of their functionality has not been implemented,
+    but we might want to if we connect to an atomic clock, for instance.'''
     TRIG = 9
     TRIGGER = TRIG
     CLK = 0
     CLOCK = CLK
     
 class TriggerIODirection:
-    '''Trigger channel in or out'''
+    '''Whether trigger channel is to be used as an input (usually for triggering)
+    or an output (usually as a marker).'''
     IN = 1
     OUT = 0
+    MARKER = OUT #if using as a marker
     
 class HVIStatus:
     '''Status of an HVI'''
@@ -88,8 +81,8 @@ class Tools:
         Returns: A mask representing the channels. User should have no need
             to call this method directly.'''
         mask = 0
-        for c in channels:
-            mask += 2**c
+        for c in channels[0]:
+            mask += 2**(c-1)
         return mask
     
     @staticmethod
@@ -98,7 +91,7 @@ class Tools:
             chassis assembly. Note: to serialize a channel object already
             created, simply call serialize() on the channel, as this value
             is stored when the object is created. The primary reason you would
-            want to do this is to store the channel as a unique dict key.
+            want to do either is to store the channel as a unique dict key.
         Params:
             chassis_number: The chassis number where the channel is located
             slot_number: The slot number where the channel is located
@@ -143,17 +136,18 @@ class Tools:
         Returns: a descriptive string describing the error code'''
         if error >= 0:
             return "No error"
-        elif error not in Tools.error_defs:
+        elif error not in error_defs:
             return "Error code not in dictionary: " + str(error)
         else:
-            return Tools.error_defs[error] 
+            return error_defs[error] 
     
     
-    #Error definitions as given in native SD1 code
-    error_defs = {
+#Error definitions as given in native SD1 code
+error_defs = {
             -8000: "Opening module",        -8001: "Closing module",
             -8002: "Opening HVI",           -8003: "Closing HVI",
-            -8004: "Module not opened",     -8005: "Module not opened by user",
+            -8004: "Module not opened, or indices wrong",
+            -8005: "Module not opened by user",
             -8006: "Module already opened", -8007: "HVI not opened",
             -8008: "Invalid ObjectID",      -8009: "Invalid ModuleID",
             -8010: "Invalid module user name",
@@ -193,7 +187,7 @@ class Tools:
             }
 
 
-class KeysightError(Exception):
+class KeysightError(RuntimeError):
     '''Exception thrown caused by error within this library or native code.
     Automatically translates native error codes to message.'''
     
@@ -205,7 +199,7 @@ class KeysightError(Exception):
             or None if there is no native error code.'''
         if code is not None:
             msg += (": " + Tools.decodeError(code))
-        Exception.__init__(self, msg)
+        RuntimeError.__init__(self, msg)
         
 
 '''-------------------------------------------------------------------------'''
@@ -213,9 +207,8 @@ class KeysightError(Exception):
 class KeysightChassis:
     '''Class representing a Keysight chassis.'''
     
-    def __init__(self, chassis_number, modules_dict = {}):
-        '''Initializes the Keysight Chassis object.
-        Params:
+    def __init__(self, chassis_number = None, modules_dict = {}):
+        '''Initializes the Keysight Chassis object. 
             chassis_number: The chassis number of the chassis we are creating
             modules_dict: A dictionary representing the modules formatted as
                {slot number: ModuleType}
@@ -283,7 +276,7 @@ class KeysightChassis:
                 
     def save(self, filename):
         '''Saves the hardware configuration information (chassis and slot
-        numbers) to file.
+        numbers) to file. Builds a .keycfg file.
         Params:
             filename: The name and path at which to store the file.
         Returns: Whether the save was successful. Prints any error message.'''
@@ -331,53 +324,26 @@ class HVI(KeysightChassis, SD1.SD_HVI):
     reason to call SD_HVI methods directly in implementation.
     '''
     
-    def __init__(self, HVI_filename, chassis_number, modules_dict={}):
+    def __init__(self, HVI_filename, hardware_config_filename):
         '''Initializes the underlying Keysight Chassis object and loads
             the HVI.
         Params:
-            HVI_filename: The filename (including path) where the compiled
-                HVI code is stored.
-            chassis_number: The chassis number of the chassis we are creating
-            modules_dict: A dictionary representing the modules formatted as
-               {slot number: ModuleType}.
+            HVI_filename: The filename (including path) where the .HVI file
+                is stored.
+            hardware_config_filename: The filename (including path) where the
+                .keycfg Keysight hardware config file is stored.
         '''
         SD1.SD_HVI.__init__(self)
-        KeysightChassis.__init__(self, chassis_number, modules_dict)
-        
-        #TODO: remove
-        ch = self.getChannel(6, 1)
-        print(ch)
-        waveform = Waveform(arr = np.arange(0, 1, 101), append_zero = True,
-                            waveform_number = 1000)
-        waveform.loadToModule(ch.module())
-        waveform.queue(ch, trigger_mode=SD1.SD_TriggerModes.AUTOTRIG,
-                       delay = 0, cycles = 0)
-        ch.start()
-        
-        print(HVI_filename)
-        
-        err0 = self.open(HVI_filename)
-        if err0 < 0:
-            raise KeysightError("Error opening HVI file", err0)
-            
-        num_errors = self.compile()
-        if num_errors > 0:
-            msg = ""
-            for i in range(num_errors):
-                msg += Tools.decodeError(self.compilationErrorMessage(i))
-                msg += "\n"
-            raise KeysightError("Error(s) compiling HVI file:\n" + msg) 
-            
-        err1 = self.load()     
-        if err1 < 0:
-            raise KeysightError("Error loading HVI to modules", err1)
-            
+        chassis, modules = FileDecodingTools._readHardwareConfigFile(
+                hardware_config_filename)
+        KeysightChassis.__init__(self, chassis, modules)
         self._is_running = HVIStatus.STOPPED
         self._filename = HVI_filename
-        self._nicknames = self._generateModuleNicknamesDict()
+        self._prepare_HVI(HVI_filename)
         
     def close(self):
-        '''Closes the HVI.'''
+        '''Closes the HVI. Must call at end or you'll get weird behavior on 
+        next run.'''
         err = SD1.SD_HVI.close(self)
         if err < 0:
             raise KeysightError("Error closing HVI", err)
@@ -444,37 +410,58 @@ class HVI(KeysightChassis, SD1.SD_HVI):
             raise KeysightError("Cannot open file")
         return HVI(HVI_filename, chassis, modules)
     
-    #internal methods used for implementation
-    
-    def _generateModuleNicknamesDict(self):
-        '''Generates a dictionary that holds the slot numbers as keys and the 
-        nicknames as values'''
-        nicknames_dict = {}
-        num_modules = self.getNumberOfModules()
-        if num_modules < 0: #native method returned an error
-            raise KeysightError("Error getting number of modules from HVI", 
-                                num_modules)
-        
-        for i in range(num_modules):
-            nickname = self.getModuleName(i)
-            if not isinstance(nickname, str):
-                raise KeysightError("Error getting module nickname from HVI",
-                                    nickname)
-                
-            module_base = self.getModuleByIndex(i)
-            if not isinstance(module_base, SD1.SD_Module):
-                raise KeysightError("Error getting module from nickname", 
-                                    module_base)
-                
-            slot = module_base.getSlot()
-            if slot < 0:
-                raise KeysightError("Error getting slot", slot)
-                
-            nicknames_dict[slot] = nickname
-        return nicknames_dict
+    #internal methods used for implementation purposes only
             
+    def _prepare_HVI(self, HVI_filename):
+        '''Opens the HVI file, then compiles it and loads it to the modules.
+        Params:
+            HVI_filename: The name and path of the .HVI file to be loaded.'''
+            
+        err = self.open(HVI_filename)
+        if err < 0 and err != -8031 and err != -8038: #bug fix
+            raise KeysightError("Error opening HVI file", err)
+        self._assign_hardware()
+        self._compile_and_load()
+            
+    
+    def _compile_and_load(self):
+        '''Compiles the HVI file for the specific module configuration and
+        loads it onto the hardware.'''
+        num_errors = self.compile()
+        if num_errors == 0: #compilation successful
+            err1 = self.load()
+            if err1 < 0:
+                raise KeysightError("Error loading HVI to modules", err1)
+        elif num_errors < 0: #error before compilation; returns error code
+            raise KeysightError("Error before compiling HVI file", num_errors)
+        else: #errors during compilation, num_errors gives number of errors
+            msg = "Error(s) compiling HVI file:\n"
+            for i in range(num_errors):
+                msg += self.compilationErrorMessage(i)
+                msg += "\n"
+            raise KeysightError(msg)
+            
+    def _assign_hardware(self):
+        '''Assigns the modules into HVI to the correct modules in the chassis.
+        Must be called before compilation.
         
-
+        Assumes: Modules are given nicknames in HVI according to the convention
+            "SLOT [slot_number]", i.e. "SLOT 6" or "SLOT 10".'''
+        num_modules_HVI = self.getNumberOfModules()
+        if num_modules_HVI < 0: #native method returned an error
+            raise KeysightError("Error getting number of modules from HVI",
+                                num_modules_HVI)
+        
+        for i in range(num_modules_HVI):
+            nickname = self.getModuleName(i).strip()
+            if not nickname.startswith("SLOT "):
+                raise KeysightError(
+                "HVI module nickname should be of form 'SLOT X'")
+            slot_number = int(nickname[4:])
+            module = self.getModule(slot_number)
+            self.assignHardwareWithUserNameAndModuleID(nickname, module)
+            module._nickname = nickname
+            
 "----------------------------------------------------------------------------"
 
 class KeysightModule(SD1.SD_Module):
@@ -491,6 +478,7 @@ class KeysightModule(SD1.SD_Module):
         self._chassis = chassis
         self._slot_number = slot_number
         self._channels = {}
+        self._nickname = None
         
         #configure channels common to all module types
         self._channels[ChannelNumber.CLK] = KeysightChannelClk(self)
@@ -560,7 +548,7 @@ class KeysightModule(SD1.SD_Module):
         value = self.PXItriggerRead()
         if value < 0: #there is an error
             raise KeysightError("Error reading PXI " + str(PXI_number), value)
-        return not value #not a bug; native method gives inverted logic
+        return not value #Not a bug!
         
     def writePXI(self, PXI_number, value):
         '''Writes a boolean value to a PXI trigger.
@@ -572,29 +560,36 @@ class KeysightModule(SD1.SD_Module):
             raise KeysightError("Error writing value to PXI " + 
                                 str(PXI_number), err)
     
-    def readHVIConstant(self, constant_name, constant_type = float):
+    def readHVIConstant(self, constant_name, constant_type = int):
         '''Reads the value of an HVI constant associated with this module.
         Params:
             constant_name: The name of the constant (string)
             constant_type: int or float, corresponding to the type of constant
-        Returns: The value of the constant'''
-        chassis = self._chassis
-        if not isinstance(chassis, HVI):
-            raise KeysightError("No HVI loaded")
+        Returns: The value of the constant
+        '''
+        if not isinstance(self._chassis, HVI):
+            raise KeysightError("Not an HVI")  
+        assert self._nickname is not None
+        
         if constant_type == int:
-            err, value = chassis.readIntegerConstantWithUserName(
-                    chassis._nicknames[self._slot_number])
+            err, value = self._chassis.readIntegerConstantWithUserName(
+                    self._nickname)
         elif constant_type == float:
-            err, value = chassis.readDoubleConstantWithUserName(
-                    chassis._nicknames[self._slot_number])
+            err, value = self._chassis.readDoubleConstantWithUserName(
+                    self._nickname)
         else:
             raise ValueError("constant_type must be int or float")
         
         if err < 0:
-            raise KeysightError("Error reading constant", err)
+            if err == -8012:
+                raise KeysightError(
+                        "Invalid constant name. Must match HVI file.")
+            else:
+                raise KeysightError("Error reading constant", err)
+                
         return value
     
-    def writeHVIConstant(self, constant_name, value, constant_type = float,
+    def writeHVIConstant(self, constant_name, value, constant_type = None,
                          unit = ""):
         chassis = self._chassis
         '''Writes a new value to an HVI constant associated with this module.
@@ -602,23 +597,33 @@ class KeysightModule(SD1.SD_Module):
             constant_name: The name of the constant (string) as defined in file
             value: The value of the constant
             constant_type: int or float, corresponding to the type of constant
-                declared in the HVI file. Will convert "value" to this type
+                declared in the HVI file. Will convert "value" to this type. If
+                None, type inferred from type of value.
             unit: Optional parameter for declaring units for constants of type
-                "float."
+                "float." Should be a string, e.g. "ms".
         '''
-        if not isinstance(chassis, HVI):
-            raise KeysightError("No HVI loaded")
+        if not isinstance(self._chassis, HVI):
+            raise KeysightError("Not an HVI")
+        assert self._nickname is not None
+            
+        if constant_type is None:
+            constant_type = type(value)
+            
         if constant_type == int:
             err = chassis.writeIntegerConstantWithUserName(
-                    chassis._nicknames[self._slot_number], int(value))
+                    self._nickname, int(value))
         elif constant_type == float:
             err = chassis.writeDoubleConstantWithUserName(
-                    chassis._nicknames[self._slot_number], float(value), unit)
+                    self._nickname, float(value), unit)
         else:
             raise ValueError("constant_type must be int or float")
         
         if err < 0:
-            raise KeysightError("Error writing constant", err)
+            if err == -8012:
+                raise KeysightError(
+                        "Invalid constant name. Must match HVI file.")
+            else:
+                raise KeysightError("Error writing constant", err)
     
 "----------------------------------------------------------------------------"
 
@@ -634,31 +639,11 @@ class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
             chassis: The chassis object where the module is housed
             slot_number: The slot where the module is housed
         '''
-        
-        
         SD1.SD_AIN.__init__(self)
-        module_in_ID = self.openWithSlot(KeysightConstants.PRODUCT,
-                                         chassis.chassisNumber(), slot_number)
-        
-        if module_in_ID < 0:
-            raise KeysightError("Could not open module:\n Chassis "
-                + str(chassis) + "\n Slot " + str(slot_number), module_in_ID)
-        else:
-            print("===== MODULE IN =====")
-            print("ID:\t\t", module_in_ID)
-            print("Product name:\t", self.getProductName())
-            print("Serial number:\t", self.getSerialNumber())
-            print("Chassis:\t", self.getChassis())
-            print("Slot:\t\t", self.getSlot())
-            print()
-        
+        self._printInitInfo(self.openWithSlot(KeysightConstants.PRODUCT,
+                                         chassis.chassisNumber(), slot_number))
         KeysightModule.__init__(self, chassis, slot_number)
-        
-        #initialize channels
-        for i in range(1, 1 + KeysightConstants.NUM_CHANNELS):
-            self._channels[i] = KeysightChannelIn(self, i)
-        
-        self.flushAll()
+        self._initChannels()
             
     def getModuleType(self):
         '''Returns a constant corresponding to the module type as given in 
@@ -772,7 +757,6 @@ class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
     
     def close(self):
         '''Closes the current module.'''
-        self.clearAll()
         err = SD1.SD_AIN.close(self)
         if err < 0:
             raise KeysightError("Error closing module", err)
@@ -781,6 +765,32 @@ class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
         '''Returns a string representation of the module.'''
         return ("Module in. Chassis = " + str(self.chassis().chassisNumber()) +
                 ", Slot = " + str(self.slotNumber()))
+        
+    #private helper methods
+    def _initChannels(self):
+        '''Initializes the channels objects the module controls.'''
+        for i in range(1, 1 + KeysightConstants.NUM_CHANNELS):
+            self._channels[i] = KeysightChannelIn(self, i)
+        
+        self.flushAll()
+        
+    def _printInitInfo(self, module_in_ID):
+        '''Prints information on the module at initialization.
+        Params:
+            module_in_ID: The handle returned by the native constructor'''
+        if module_in_ID < 0:
+            raise KeysightError("Could not open module:\n Chassis "
+                + str(self._chassis.chassisNumber()) + "\n Slot " + 
+                str(self._slot_number), 
+                module_in_ID)
+        else:
+            print("===== MODULE IN =====")
+            print("ID:\t\t", module_in_ID)
+            print("Product name:\t", self.getProductName())
+            print("Serial number:\t", self.getSerialNumber())
+            print("Chassis:\t", self.getChassis())
+            print("Slot:\t\t", self.getSlot())
+            print()
     
 "-----------------------------------------------------------------------------"
 
@@ -797,30 +807,11 @@ class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
             slot_number: The slot where the module is housed
         '''
         SD1.SD_AOU.__init__(self)
-        module_out_ID = self.openWithSlot(KeysightConstants.PRODUCT, 
-                                          chassis.chassisNumber(), slot_number)
-
-        if module_out_ID < 0:
-            raise KeysightError("Could not open module:\n Chassis "
-                + str(chassis) + "\n Slot " + str(slot_number), module_out_ID)
-        else:
-            print("===== MODULE OUT =====")
-            print("Module opened:", module_out_ID)
-            print("Module name:", self.getProductName())
-            print("slot:", self.getSlot())
-            print("Chassis:", self.getChassis())
-            print()
-            
+        self._printInitInfo(self.openWithSlot(KeysightConstants.PRODUCT, 
+                                        chassis.chassisNumber(), slot_number))
         KeysightModule.__init__(self, chassis, slot_number)
-        
-        #initialize channels
-        for i in range(1, 1 + KeysightConstants.NUM_CHANNELS):
-            self._channels[i] = KeysightChannelOut(self, i)
-            
-        err = self.waveformFlush()
-        if err < 0:
-            raise KeysightError("Error flushing waveforms", err)
-            
+        self._initChannels()
+    
     def getModuleType(self):
         '''Returns a constant corresponding to the module type as given in 
         class ModuleType.'''
@@ -917,8 +908,7 @@ class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
             raise KeysightError("Error triggering all channels", err)
     
     def close(self):
-        '''Closes the current module..'''
-        self.clearAll()
+        '''Closes the current module.'''
         err = SD1.SD_AOU.close(self)
         if err < 0:
             raise KeysightError("Err closing module", err)
@@ -932,10 +922,10 @@ class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
         err0 = wave.newFromArrayDouble(SD1.SD_WaveformTypes.WAVE_ANALOG,
                                 waveform.getBaseArray())
         if err0 < 0:
-            raise KeysightError("Error creating native waveform object: ", err0)
+            raise KeysightError("Error creating native waveform object", err0)
         err1 = self.waveformLoad(wave, waveform.getWaveformNumber())
         if err1 < 0:
-            raise KeysightError("Error loading waveform to module: ", err1)
+            raise KeysightError("Error loading waveform to module", err1)
     
     def clearAll(self):
         '''Stops all AWG's, deletes waveforms from memory, and flushes queues
@@ -949,6 +939,32 @@ class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
         '''Returns a string representation of the module.'''
         return ("Module out. Chassis = " + str(self.chassis().chassisNumber()) 
                 + ", Slot = " + str(self.slotNumber()))
+        
+    #private helper methods
+    def _initChannels(self):
+        '''Initializes the channel objects and clears the channels.'''
+        for i in range(1, 1 + KeysightConstants.NUM_CHANNELS):
+            self._channels[i] = KeysightChannelOut(self, i)
+            
+        err = self.waveformFlush()
+        if err < 0:
+            raise KeysightError("Error flushing waveforms", err)
+            
+    def _printInitInfo(self, module_out_ID):
+        '''Prints information on the module upon initialization.
+        Params:
+            module_out_ID: The value returned by the native SD_AOU constructor
+        '''
+        if module_out_ID < 0:
+            raise KeysightError("Could not open module")
+        else:
+            print("===== MODULE OUT =====")
+            print("Module opened:", module_out_ID)
+            print("Module name:", self.getProductName())
+            print("slot:", self.getSlot())
+            print("Chassis:", self.getChassis())
+            print()
+            
 
 "-----------------------------------------------------------------------------"
 
@@ -1006,7 +1022,8 @@ class KeysightChannelIn(KeysightChannel):
                   SD1.SD_TriggerBehaviors.TRIGGER_RISE,
                   use_buffering = True,
                   buffer_size = None,
-                  buffer_time_out = KeysightConstants.INFINITY):
+                  buffer_time_out = KeysightConstants.INFINITY,
+                  cycles_per_return = 1):
         '''Configures the Keysight input module.
         Params:
             full_scale: The full scale of the input signal, in volts
@@ -1048,17 +1065,17 @@ class KeysightChannelIn(KeysightChannel):
                     digital_trigger_behavior)
         if err3 < 0:
             raise KeysightError("Error configuring trigger", err3)
-            
-        err4 = self._module.DAQbufferPoolConfig(self._channel_number,
+        if use_buffering:    
+            err4 = self._module.DAQbufferPoolConfig(self._channel_number,
                             buffer_size, buffer_time_out)
-        if err4 < 0:
-            raise KeysightError("Error configuring buffer pool", err4)
+            if err4 < 0:
+                raise KeysightError("Error configuring buffer pool", err4)
+        self._points_per_return = points_per_cycle * cycles_per_return
     
     def readData(self, data_points, timeout = KeysightConstants.INFINITY):
         '''Reads arbitrary length of data from the digitizer. Useful for
-        testing purposes. Normally, for experiments would want to call
-        readDataBuffered().
-        Params:
+        testing purposes. In practice, readDataQuiet() is usually more useful
+        unless you suspect there's a bug.
             data_points: The number of data points to acquire
             timeout: The timeout in ms for which to wait for data, or
                 KeysightConstants.INFINITY for no timeout
@@ -1068,13 +1085,14 @@ class KeysightChannelIn(KeysightChannel):
             raise KeysightError("Error acquiring data", data)
         return data
     
-    def readDataBuffered(self):
-        '''Reads one buffer of data.
-        Returns: The data as a numpy array, or an error message that can
-        be read by Tools.decodeError(). "Quietly" does not throw an exception
-        because we don't want to interrupt experiment.'''
-        return self._module.DAQbufferGet(self._channel_number)
-    
+    def readDataQuiet(self, timeout = KeysightConstants.INFINITY):
+        '''Alternative to readData() (above) that gets the expected number of data points
+        and does not throw errors. The advantage is that it almost always works,
+        and you don't have to worry about it raising exceptions in separate
+        threads. The disadvantage is you don't have exception handling.'''
+        return self._module.DAQread(self._channel_number, self._points_per_return, 
+                                    timeout)
+                
     def start(self):
         '''Starts the channel.'''
         err = self._module.DAQstart(self._channel_number)
@@ -1261,7 +1279,8 @@ class KeysightChannelOut(KeysightChannel):
                 raise KeysightError("Error setting amplitude", err)
                 
     def mute(self):
-        '''Mutes the channel by setting amplitude to 0.'''
+        '''Mutes the channel by setting amplitude to 0 and storing
+        the previous amplitude.'''
         err = self._module.channelAmplitude(self._channel_number, 0)
         if err < 0:
             raise KeysightError("Error setting amplitude to mute", err)
@@ -1370,15 +1389,18 @@ class Waveform:
                will be assigned automatically in a way that prevents naming
                collisions. If any are assigned manually, user is responsible
                for consequences of naming collisions.
-            append_zero: Appends a zero at the end of the waveform if none
+            append_zero: Appends 10 zeros at the end of the waveform if none
                present, to prevent nonzero signal from continuing after
                waveform stops.
         Note: when loaded into memory, all waveforms will have zeros appended
         to end until length of base array is at least 5. Thus, putting in a
         single value to output a constant signal will give unexpected results.
         '''
-        if append_zero and arr[len(arr)-1] != 0:
-            np.append(arr, [0])
+        if append_zero:
+            if isinstance(arr, np.ndarray):
+                arr = np.append(arr, KeysightConstants.ZEROES_APPEND_NUMPY)
+            else:
+                arr = np.array(arr + KeysightConstants.ZEROES_APPEND_LIST)
         self._arr = np.array(arr)
         self.setWaveformNumber(waveform_number)
         
@@ -1434,7 +1456,7 @@ class Waveform:
         
 "----------------------------------------------------------------------------"
 '''Internal helper class with useful methods for implementation. Not intended
-to be exported.'''
+to be exported or used outside this class or HVIExpLib.'''
 class FileDecodingTools:
     @staticmethod #internal helper method
     def _isCommentOrWhitespace(line):
@@ -1465,9 +1487,7 @@ class FileDecodingTools:
         Returns:
             chassis_number: The number of the chassis
             modules_dict: A dictionary of {Slot number: module type} to
-                feed into chassis/HVI object constructor.
-            If an error, both are None.'''
-                
+                feed into chassis/HVI object constructor.   '''             
         if not filename.endswith(KeysightConstants.MODULE_CONFIG_SUFFIX):
             filename.append(KeysightConstants.MODULE_CONFIG_SUFFIX)
         try:
