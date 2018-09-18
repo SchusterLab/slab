@@ -1,14 +1,34 @@
+<<<<<<< HEAD
 
+=======
+<<<<<<< HEAD
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
 # -*- coding: utf-8 -*-
 """
 Created on July 26, 2018
 
+<<<<<<< HEAD
 Updated 9/12/18 to fix bug in 
+=======
+Version: 1.1.0 updated 8/8/18
+Changes since 1.0:
+    Implemented HVI class to represent a Keysight chassis functioning as
+        an HVI.
+    Added __str__ methods to each class to aid debugging
+    Added __del__ methods to several classes to ensure modules are closed
+        before they go out of scope.
+    Added serialize methods to serialize channel numbers (useful for 
+        saving experiments to disk)
+    Added mute() methods to mute unwanted channels without having to redo an
+        HVI
+    Fixed a couple of minor bugs and added documentation throughout.
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
 
 @author: Josephine Meyer (jcmeyer@stanford.edu)
 
 Library classes for Python interface with Keysight M31xxA and M32xxA modules.
 Use instead of the native keysightSD1 classes for better functionality and
+<<<<<<< HEAD
 compatibility with our existing code base. This code offers largely the same 
 capabilities as KeysightSD1, but bypassing the many native bugs to the extent
 possible, offering exception handling (important for any end user), and offering
@@ -22,11 +42,23 @@ except to debug.
 import slab.instruments.keysight.keysightSD1 as SD1
 import numpy as np
 import ast
+=======
+compatibility with our existing code base.
+
+See native keysightSD1 code for definitions of error messages and some 
+enumerated types. 
+"""
+
+import keysightSD1 as SD1
+import numpy as np
+
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
 
 '''Short auxiliary classes and constants'''
 
 class KeysightConstants:
     '''Useful general constants'''
+<<<<<<< HEAD
     NUM_CHANNELS = 4 #number of channels per module
     PRODUCT = "" #ok to put an empty string in, not a helpful parameter
     MASK_ALL = 0b1111 #input to perform same action on all channels of a module simultaneously
@@ -39,6 +71,17 @@ class KeysightConstants:
 
 class ModuleType:
     '''Integer enum code representing the module type of a given module.'''
+=======
+    NUM_CHANNELS = 4 #number of modules
+    PRODUCT = ""
+    MASK_ALL = 30 #2**1 + 2**2 + 2**3 + 2**4 -- mask for all 4 channels
+    INPUT_IMPEDANCE = 1 #50 ohm
+    DC_COUPLING = 0 #we are DC coupled
+    INFINITY = 0 #Blame Keysight for this one!
+
+class ModuleType:
+    '''Integer code representing the module type of a given module.'''
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     INPUT = 1
     OUTPUT = 0
     M3102A = INPUT #convenient aliases
@@ -47,6 +90,7 @@ class ModuleType:
     
 class ChannelNumber:
     '''Generates effective channel numbers for the trigger and clock channels
+<<<<<<< HEAD
     to enable them to be treated on par with numbered channels. This is largely
     to enable greater control of these channels in the future should that
     be desired. So far most of their functionality has not been implemented,
@@ -65,33 +109,66 @@ class TriggerIODirection:
     
 class HVIStatus:
     '''Status of an HVI'''
+=======
+    to enable them to be treated on par with numbered channels.'''
+    TRIG = 101
+    TRIGGER = TRIG
+    CLK = 102
+    CLOCK = CLK
+    
+class TriggerIODirection:
+    '''Trigger channel in or out'''
+    IN = 1
+    OUT = 0
+    
+class HVIStatus:
+    '''Status of an HVI or channel'''
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     STOPPED = 0
     RUNNING = 1
     PAUSED = 2
 
 class Tools:
+<<<<<<< HEAD
     '''Useful static methods used in implementation and debugging.'''
+=======
+    '''Useful static methods used in implementation.'''
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     @staticmethod
     def channelsToMask(*channels):
         '''Converts list of channels to a mask accepted by several native
+<<<<<<< HEAD
             methods in SD1.
+=======
+            methods in SD1,
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         Params:
             *channels: Any number of channel numbers from same module
         Returns: A mask representing the channels. User should have no need
             to call this method directly.'''
+<<<<<<< HEAD
         mask = 0
         for c in channels[0]:
             mask += 2**(c-1)
+=======
+        mask= 0
+        for c in channels:
+            mask += 2**c
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         return mask
     
     @staticmethod
     def serializeChannel(chassis_number, slot_number, channel_number):
         '''Generates serial representation of channel's location within the
             chassis assembly. Note: to serialize a channel object already
+<<<<<<< HEAD
             created, simply call serialize() on the channel, as this value
             is stored when the object is created. The primary reason you would
             want to do either is to store the channel as a unique dict key.
+=======
+            created, simply call serialize() on the channel.
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         Params:
             chassis_number: The chassis number where the channel is located
             slot_number: The slot number where the channel is located
@@ -100,8 +177,13 @@ class Tools:
                 channels
         Returns: the serial representation of the channel
         '''
+<<<<<<< HEAD
         return (str(chassis_number) + str(slot_number % 10) +
                 str(channel_number))
+=======
+        return (str(chassis_number) + str(slot_number).zfill(2) +
+                str(channel_number).zfill(3))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         
     @staticmethod
     def deserializeChannel(serial):
@@ -109,6 +191,7 @@ class Tools:
             Undoes the Tools.serializeChannel() method
         Params: The serial representation of the channel
         Returns: a tuple of (chassis_number, slot_number, channel_number)'''
+<<<<<<< HEAD
         chassis_number = int(serial[0])
         slot_number = int(serial[1])
         if slot_number == 0:
@@ -203,12 +286,23 @@ class KeysightError(RuntimeError):
         
 
 '''-------------------------------------------------------------------------'''
+=======
+        return (int(serial[0]), int(serial[1:3]), int(serial[3:6]))
+
+"-----------------------------------------------------------------------------"
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
 
 class KeysightChassis:
     '''Class representing a Keysight chassis.'''
     
+<<<<<<< HEAD
     def __init__(self, chassis_number = None, modules_dict = {}):
         '''Initializes the Keysight Chassis object. 
+=======
+    def __init__(self, chassis_number, modules_dict = {}):
+        '''Initializes the Keysight Chassis object.
+        Params:
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
             chassis_number: The chassis number of the chassis we are creating
             modules_dict: A dictionary representing the modules formatted as
                {slot number: ModuleType}
@@ -258,7 +352,11 @@ class KeysightChassis:
         Returns: The channel object corresponding to the given channel'''
         return self._modules[slot_number].getChannel(channel_number)
     
+<<<<<<< HEAD
     def close(self):
+=======
+    def closeAll(self):
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         '''Clears and closes all modules associated with the chassis.'''
         for module in self.modulesList():
             module.close()
@@ -273,6 +371,7 @@ class KeysightChassis:
         return ("Keysight chassis. Chassis number: " +
                 str(self._chassis_number) + "\n    Modules:" + 
                 str(self._modules))
+<<<<<<< HEAD
                 
     def save(self, filename):
         '''Saves the hardware configuration information (chassis and slot
@@ -315,6 +414,13 @@ class KeysightChassis:
         chassis, modules = FileDecodingTools._readHardwareConfigFile(filename)
         return KeysightChassis(chassis, modules)
     
+=======
+        
+    def __del__(self):
+        '''Called automatically when chassis object goes out of scope.'''
+        self.closeAll()
+
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
 "----------------------------------------------------------------------------"
 
 class HVI(KeysightChassis, SD1.SD_HVI):
@@ -324,6 +430,7 @@ class HVI(KeysightChassis, SD1.SD_HVI):
     reason to call SD_HVI methods directly in implementation.
     '''
     
+<<<<<<< HEAD
     def __init__(self, HVI_filename, hardware_config_filename):
         '''Initializes the underlying Keysight Chassis object and loads
             the HVI.
@@ -376,6 +483,63 @@ class HVI(KeysightChassis, SD1.SD_HVI):
         if err < 0:
             raise KeysightError("Error stopping HVI", err)
         self._is_running = HVIStatus.STOPPED
+=======
+    def __init__(self, HVI_filename, chassis_number, modules_dict={}):
+        '''Initializes the underlying Keysight Chassis object and loads
+            the HVI.
+        Params:
+            HVI_filename: The filename (including path) where the compiled
+                HVI code is stored.
+            chassis_number: The chassis number of the chassis we are creating
+            modules_dict: A dictionary representing the modules formatted as
+               {slot number: ModuleType}
+        Throws: an exception if cannot load the HVI (unable to return error
+                code directly out of __init__ method).
+        '''
+        SD1.SD_HVI.__init__(self)
+        KeysightChassis.__init__(self, chassis_number, modules_dict)
+        err1 = self.load(HVI_filename)
+        
+        if err1 < 0: #if we have an error
+            raise IOError("Cannot load HVI file. Error code: " + str(err1))
+            
+        err2 = self.compile()
+        if err2 < 0 or self.compilationErrorMessage():
+            raise IOError("Cannot compile HVI file. Error code: " + str(err2)
+            + "\n" + str(self.compilationErrorMessage()))
+            
+        self._is_running = HVIStatus.STOPPED
+        self._filename = HVI_filename
+            
+    def __del__(self):
+        '''Called automatically when HVI object is destructed'''
+        self.close() #inherited from SD_HVI; closes the HVI
+        KeysightChassis.__del__(self)
+        
+    def start(self):
+        '''Starts the HVI.
+        Returns: any error messages'''
+        self._is_running = HVIStatus.RUNNING
+        return SD1.SD_HVI.start(self)
+    
+    def pause(self):
+        '''Pauses the operation of the HVI.
+        Returns: any error messages'''
+        self._is_running = HVIStatus.PAUSED
+        return SD1.SD_HVI.pause(self)
+    
+    def resume(self):
+        '''Resumes the operation of the HVI.
+        Returns: any error messages'''
+        self._is_running = HVIStatus.RUNNING
+        return SD1.SD_HVI.resume(self)
+    
+    def stop(self):
+        '''Stops the operation of the HVI.
+        Returns: any error messages.'''
+        self._is_running = HVIStatus.STOPPED
+        return SD1.SD_HVI.stop(self)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def getStatus(self):
         '''Returns the status of the HVI using codes defined in Status class.
@@ -384,14 +548,21 @@ class HVI(KeysightChassis, SD1.SD_HVI):
         return self._is_running
     
     def reset(self):
+<<<<<<< HEAD
         '''Resets the HVI to beginning.'''
         err = SD1.SD_HVI.reset(self)
         if err < 0:
             raise KeysightError("Error resetting HVI", err)
+=======
+        '''Resets the HVI to beginning.
+        Returns: any error messages'''
+        return SD1.SD_HVI.reset(self)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def __str__(self):
         '''Returns a string representation of the chassis functioning as an
             HVI.'''
+<<<<<<< HEAD
         return (KeysightChassis.__str__(self) + "\n   HVI: " + self._filename)
     
     @staticmethod #factory method #overrides method in KeysightChassis
@@ -465,6 +636,13 @@ class HVI(KeysightChassis, SD1.SD_HVI):
 "----------------------------------------------------------------------------"
 
 class KeysightModule(SD1.SD_Module):
+=======
+        return (KeysightChassis.__str__() + "/n   HVI: " + self._filename)
+
+"----------------------------------------------------------------------------"
+
+class KeysightModule:
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     '''Abstract base class representing a Keysight module (M31xxA or M32xxA). 
     DO NOT INSTANTIATE THIS CLASS DIRECTLY. Instead, instantiate one of the
     daughter classes KeysightModuleIn or KeysightModuleOut.'''
@@ -478,7 +656,10 @@ class KeysightModule(SD1.SD_Module):
         self._chassis = chassis
         self._slot_number = slot_number
         self._channels = {}
+<<<<<<< HEAD
         self._nickname = None
+=======
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         
         #configure channels common to all module types
         self._channels[ChannelNumber.CLK] = KeysightChannelClk(self)
@@ -492,11 +673,14 @@ class KeysightModule(SD1.SD_Module):
         '''Returns the slot number where the module is housed'''
         return self._slot_number
     
+<<<<<<< HEAD
     def moduleNumber(self):
         '''Returns the slot number where the module is housed. Alias for
         slotNumber().'''
         return self.slotNumber()
     
+=======
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     def channelsDict(self):
         '''Returns a dictionary mapping the channel number of each channel
             to its corresponding channel object. 
@@ -518,6 +702,7 @@ class KeysightModule(SD1.SD_Module):
         Returns: The desired channel'''
         return self._channels[channel_number]
     
+<<<<<<< HEAD
     def readRegister(self, register_number):
         '''Reads the (int) value from a register associated with the module.
         Params:
@@ -625,6 +810,10 @@ class KeysightModule(SD1.SD_Module):
             else:
                 raise KeysightError("Error writing constant", err)
     
+=======
+
+
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
 "----------------------------------------------------------------------------"
 
 class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
@@ -639,11 +828,37 @@ class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
             chassis: The chassis object where the module is housed
             slot_number: The slot where the module is housed
         '''
+<<<<<<< HEAD
         SD1.SD_AIN.__init__(self)
         self._printInitInfo(self.openWithSlot(KeysightConstants.PRODUCT,
                                          chassis.chassisNumber(), slot_number))
         KeysightModule.__init__(self, chassis, slot_number)
         self._initChannels()
+=======
+        
+        
+        SD1.SD_AIN.__init__(self)
+        module_in_ID = self.openWithSlot(KeysightConstants.PRODUCT,
+                                         chassis.chassisNumber(), slot_number)
+        
+        if module_in_ID < 0:
+            print("Error opening module IN - error code:", module_in_ID, 
+                  "Slot:", slot_number)
+        else:
+            print("===== MODULE IN =====")
+            print("ID:\t\t", module_in_ID)
+            print("Product name:\t", self.getProductName())
+            print("Serial number:\t", self.getSerialNumber())
+            print("Chassis:\t", self.getChassis())
+            print("Slot:\t\t", self.getSlot())
+            print()
+        
+        KeysightModule.__init__(self, chassis, slot_number)
+        
+        #initialize channels
+        for i in range(1, 1 + KeysightConstants.NUM_CHANNELS):
+            self._channels[i] = KeysightChannelIn(self, i)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
             
     def getModuleType(self):
         '''Returns a constant corresponding to the module type as given in 
@@ -652,56 +867,81 @@ class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
     
     def clearAll(self):
         '''Clears the data acquisition buffers on all channels.'''
+<<<<<<< HEAD
         for channel in self.channelsList():
             if isinstance(channel, KeysightChannelIn) or isinstance(
                     channel, KeysightChannelOut):
                 channel.clear()
+=======
+        return self.DAQflushMultiple(KeysightConstants.MASK_ALL)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def startChannels(self, *channels):
         '''Starts channels on a given module simultaneously. Alternative to
         calling start() on individual channels.
         Params:
             *channels: Any number of channel numbers on the same module
+<<<<<<< HEAD
         '''
         err = self.DAQstartMultiple(Tools.channelsToMask(channels))
         if err < 0:
             raise KeysightError("Error starting channels " + str(channels), err)
+=======
+        Returns: Any error message'''
+        return self.DAQstartMultiple(Tools.channelsToMask(channels))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def stopChannels(self, *channels):
         '''Stops channels on a given module simultaneously. Alternative to
         calling stop() on individual channels.
         Params:
             *channels: Any number of channel numbers on the same module
+<<<<<<< HEAD
         '''
         err = self.DAQstopMultiple(Tools.channelsToMask(channels))
         if err < 0:
             raise KeysightError("Error stopping channels " + str(channels), err)
+=======
+        Returns: Any error message'''
+        return self.DAQstopMultiple(Tools.channelsToMask(channels))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def pauseChannels(self, *channels):
         '''Pauses channels on a given module simultaneously. Alternative to
         calling pause() on individual channels.
         Params:
             *channels: Any number of channel numbers on the same module
+<<<<<<< HEAD
         '''
         err = self.DAQpauseMultiple(Tools.channelsToMask(channels))
         if err < 0:
             raise KeysightError("Error pausing channels " + str(channels), err)
+=======
+        Returns: Any error message'''
+        return self.DAQpauseMultiple(Tools.channelsToMask(channels))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
 
     def resumeChannels(self, *channels):
         '''Resumes channels on a given module simultaneously. Alternative to
         calling resume() on individual channels.
         Params:
             *channels: Any number of channel numbers on the same module
+<<<<<<< HEAD
         '''
         err = self.DAQresumeMultiple(Tools.channelsToMask(channels))
         if err < 0:
             raise KeysightError("Error resuming channels " + str(channels), err)
+=======
+        Returns: Any error message'''
+        return self.DAQresumeMultiple(Tools.channelsToMask(channels))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def triggerChannels(self, *channels):
         '''Triggers channels on a given module simultaneously. Alternative to
         calling trigger() on individual channels.
         Params:
             *channels: Any number of channel numbers on the same module
+<<<<<<< HEAD
         '''
         err = self.DAQtriggerMultiple(Tools.channelsToMask(channels))
         if err < 0:
@@ -715,34 +955,61 @@ class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
         err = self.DAQstartMultiple(KeysightConstants.MASK_ALL)
         if err < 0:
             raise KeysightError("Error starting all channels", err)
+=======
+        Returns: Any error message'''
+        return self.DAQresumeMultiple(Tools.channelsToMask(channels))
+        
+    
+    def startAll(self):
+        '''Starts ALL channels on a given module simultaneously. Alternative to
+        calling start() on individual channels.
+        Returns: Any error message'''
+        return self.DAQstartMultiple(KeysightConstants.MASK_ALL)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def stopAll(self):
         '''Stops ALL channels on a given module simultaneously. Alternative to
         calling stop() on individual channels.
+<<<<<<< HEAD
         '''
         err = self.DAQstopMultiple(KeysightConstants.MASK_ALL)
         if err < 0:
             raise KeysightError("Error stopping all channels", err)
+=======
+        Returns: Any error message'''
+        return self.DAQstopMultiple(KeysightConstants.MASK_ALL)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def pauseAll(self):
         '''Pauses channels on a given module simultaneously. Alternative to
         calling pause() on individual channels.
+<<<<<<< HEAD
         '''
         err = self.DAQpauseMultiple(KeysightConstants.MASK_ALL)
         if err < 0:
             raise KeysightError("Error pausing all channels", err)
+=======
+        Returns: Any error message'''
+        return self.DAQpauseMultiple(KeysightConstants.MASK_ALL)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
 
     def resumeAll(self):
         '''Resumes channels on a given module simultaneously. Alternative to
         calling resume() on individual channels.
+<<<<<<< HEAD
         '''
         err = self.DAQresumeMultiple(KeysightConstants.MASK_ALL)
         if err < 0:
             raise KeysightError("Error resuming all channels", err)
+=======
+        Returns: Any error message'''
+        return self.DAQresumeMultiple(KeysightConstants.MASK_ALL)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def triggerAll(self):
         '''Triggers channels on a given module simultaneously. Alternative to
         calling trigger() on individual channels.
+<<<<<<< HEAD
         '''
         err = self.DAQtriggerMultiple(KeysightConstants.MASK_ALL)
         if err < 0:
@@ -760,11 +1027,22 @@ class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
         err = SD1.SD_AIN.close(self)
         if err < 0:
             raise KeysightError("Error closing module", err)
+=======
+        Returns: Any error message'''
+        return self.DAQtriggerMultiple(KeysightConstants.MASK_ALL)
+    
+    def close(self):
+        '''Closes the current module.
+        Returns: any error messages.'''
+        self.clearAll()
+        return SD1.SD_AIN.close(self)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def __str__(self):
         '''Returns a string representation of the module.'''
         return ("Module in. Chassis = " + str(self.chassis().chassisNumber()) +
                 ", Slot = " + str(self.slotNumber()))
+<<<<<<< HEAD
         
     #private helper methods
     def _initChannels(self):
@@ -791,6 +1069,8 @@ class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
             print("Chassis:\t", self.getChassis())
             print("Slot:\t\t", self.getSlot())
             print()
+=======
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
 "-----------------------------------------------------------------------------"
 
@@ -807,11 +1087,33 @@ class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
             slot_number: The slot where the module is housed
         '''
         SD1.SD_AOU.__init__(self)
+<<<<<<< HEAD
         self._printInitInfo(self.openWithSlot(KeysightConstants.PRODUCT, 
                                         chassis.chassisNumber(), slot_number))
         KeysightModule.__init__(self, chassis, slot_number)
         self._initChannels()
     
+=======
+        module_out_ID = self.openWithSlot(KeysightConstants.PRODUCT, 
+                                          chassis.chassisNumber(), slot_number)
+
+        if module_out_ID < 0:
+            print("Error opening module OUT - error coode:", module_out_ID)
+        else:
+            print("===== MODULE OUT =====")
+            print("Module opened:", module_out_ID)
+            print("Module name:", self.getProductName())
+            print("slot:", self.getSlot())
+            print("Chassis:", self.getChassis())
+            print()
+            
+        KeysightModule.__init__(self, chassis, slot_number)
+        
+        #initialize channels
+        for i in range(1, 1 + KeysightConstants.NUM_CHANNELS):
+            self._channels[i] = KeysightChannelOut(self, i)
+            
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     def getModuleType(self):
         '''Returns a constant corresponding to the module type as given in 
         class ModuleType.'''
@@ -822,79 +1124,121 @@ class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
         calling start() on individual channels.
         Params:
             *channels: Any number of channel numbers on the same module
+<<<<<<< HEAD
         '''
         err = self.AWGstartMultiple(Tools.channelsToMask(channels))
         if err < 0:
             raise KeysightError("Error starting channels " + str(channels), err)
+=======
+        Returns: Any error message'''
+        return self.AWGstartMultiple(Tools.channelsToMask(channels))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def stopChannels(self, *channels):
         '''Stops channels on a given module simultaneously. Alternative to
         calling stop() on individual channels.
         Params:
             *channels: Any number of channel numbers on the same module
+<<<<<<< HEAD
         '''
         err = self.AWGstopMultiple(Tools.channelsToMask(channels))
         if err < 0:
             raise KeysightError("Error stopping channels " + str(channels), err)
+=======
+        Returns: Any error message'''
+        return self.AWGstopMultiple(Tools.channelsToMask(channels))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def pauseChannels(self, *channels):
         '''Pauses channels on a given module simultaneously. Alternative to
         calling pause() on individual channels.
         Params:
             *channels: Any number of channel numbers on the same module
+<<<<<<< HEAD
         '''
         err = self.AWGpauseMultiple(Tools.channelsToMask(channels))
         if err < 0:
             raise KeysightError("Error pausing channels " + str(channels), err)
+=======
+        Returns: Any error message'''
+        return self.AWGpauseMultiple(Tools.channelsToMask(channels))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
 
     def resumeChannels(self, *channels):
         '''Resumes channels on a given module simultaneously. Alternative to
         calling start() on individual channels.
         Params:
             *channels: Any number of channel numbers on the same module
+<<<<<<< HEAD
         '''
         err = self.AWGresumeMultiple(Tools.channelsToMask(channels))
         if err < 0:
             raise KeysightError("Error resuming channels " + str(channels), err)
+=======
+        Returns: Any error message'''
+        
+        return self.AWGresumeMultiple(Tools.channelsToMask(channels))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def triggerChannels(self, *channels):
         '''Triggers channels on a given module simultaneously. Alternative to
         calling trigger() on individual channels.
         Params:
             *channels: Any number of channel numbers on the same module
+<<<<<<< HEAD
         '''
         err = self.AWGtriggerMultiple(Tools.channelsToMask(channels))
         if err < 0:
             raise KeysightError("Error triggering channels " + str(channels),
                                 err)
+=======
+        Returns: Any error message'''
+        return self.AWGtriggerMultiple(Tools.channelsToMask(channels))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def startAll(self):
         '''Starts ALL channels on a given module simultaneously. Alternative to
         calling start() on individual channels.
+<<<<<<< HEAD
         '''
         err = self.AWGstartMultiple(KeysightConstants.MASK_ALL)
         if err < 0:
             raise KeysightError("Error starting all channels", err)
+=======
+        Returns: Any error message'''
+        return self.AWGstartMultiple(KeysightConstants.MASK_ALL)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def stopAll(self):
         '''Stops ALL channels on a given module simultaneously. Alternative to
         calling stop() on individual channels.
+<<<<<<< HEAD
         '''
         err = self.AWGstopMultiple(KeysightConstants.MASK_ALL)
         if err < 0:
             raise KeysightError("Error stopping all channels", err)
+=======
+        Returns: Any error message'''
+        return self.AWGstopMultiple(KeysightConstants.MASK_ALL)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def pauseAll(self):
         '''Pauses channels on a given module simultaneously. Alternative to
         calling pause() on individual channels.
+<<<<<<< HEAD
         '''
         err = self.AWGpauseMultiple(KeysightConstants.MASK_ALL)
         if err < 0:
             raise KeysightError("Error pausing all channels", err)
+=======
+        Returns: Any error message'''
+        return self.AWGpauseMultiple(KeysightConstants.MASK_ALL)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
 
     def resumeAll(self):
         '''Resumes channels on a given module simultaneously. Alternative to
         calling start() on individual channels.
+<<<<<<< HEAD
         '''
         err = self.AWGresumeMultiple(KeysightConstants.MASK_ALL)
         if err < 0:
@@ -912,11 +1256,28 @@ class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
         err = SD1.SD_AOU.close(self)
         if err < 0:
             raise KeysightError("Err closing module", err)
+=======
+        Returns: Any error message'''
+        return self.AWGresumeMultiple(KeysightConstants.MASK_ALL)
+    
+    def triggerAll(self):
+        '''Triggers channels on a given module simultaneously. Alternative to
+        calling trigger() on individual channels.
+        Returns: Any error message'''
+        return self.AWGtriggerMultiple(KeysightConstants.MASK_ALL)
+    
+    def close(self):
+        '''Closes the current module.
+        Returns: any error messages.'''
+        self.clearAll()
+        return SD1.SD_AOU.close(self)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def loadWaveform(self, waveform):
         '''Loads a waveform into memory on the specific module.
         Params:
             waveform: The waveform object to load
+<<<<<<< HEAD
         '''
         wave = SD1.SD_Wave()
         err0 = wave.newFromArrayDouble(SD1.SD_WaveformTypes.WAVE_ANALOG,
@@ -926,11 +1287,20 @@ class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
         err1 = self.waveformLoad(wave, waveform.getWaveformNumber())
         if err1 < 0:
             raise KeysightError("Error loading waveform to module", err1)
+=======
+        Returns: a tuple of error messages'''
+        wave = SD1.SD_Wave()
+        err1 = wave.newFromArrayDouble(SD1.SD_WaveformTypes.WAVE_ANALOG,
+                                waveform.getBaseArray())
+        err2 = self.waveformLoad(wave, waveform.getWaveformNumber())
+        return (err1, err2)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def clearAll(self):
         '''Stops all AWG's, deletes waveforms from memory, and flushes queues
         of every channel.'''
         self.stopAll()
+<<<<<<< HEAD
         err = self.waveformFlush()
         if err < 0:
             raise KeysightError("Error flushing waveforms from module", err)
@@ -965,6 +1335,14 @@ class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
             print("Chassis:", self.getChassis())
             print()
             
+=======
+        return self.waveformFlush()
+    
+    def __str__(self):
+        '''Returns a string representation of the module.'''
+        return ("Module out. Chassis = " + str(self.chassis().chassisNumber()) +
+                ", Slot = " + str(self.slotNumber()))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
 
 "-----------------------------------------------------------------------------"
 
@@ -981,9 +1359,12 @@ class KeysightChannel:
                 numbers in ChannelNumber class for CLK and TRIG channels.'''
         self._module = module
         self._channel_number = channel_number
+<<<<<<< HEAD
         self._serial = Tools.serializeChannel(module.chassis().chassisNumber(),
                                               module.moduleNumber(),
                                               channel_number)
+=======
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         
     def module(self):
         '''Returns the module where the channel is housed'''
@@ -999,8 +1380,15 @@ class KeysightChannel:
     
     def serialize(self):
         '''Returns serial representation of the channel's location within
+<<<<<<< HEAD
             the Keysight chassis assembly. Used to store channel as dict key'''
         return self._serial
+=======
+            the Keysight chassis assembly.'''
+        return (str(self.chassis().chassisNumber()) +
+                str(self._module.slotNumber()).zfill(2) +
+                str(self._channel_number).zfill(3))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
 "-----------------------------------------------------------------------------"
 
@@ -1019,11 +1407,15 @@ class KeysightChannelIn(KeysightChannel):
                   cycles = 1, delay = 0,
                   trigger_mode = SD1.SD_TriggerModes.SWHVITRIG,
                   digital_trigger_behavior = 
+<<<<<<< HEAD
                   SD1.SD_TriggerBehaviors.TRIGGER_RISE,
                   use_buffering = True,
                   buffer_size = None,
                   buffer_time_out = KeysightConstants.INFINITY,
                   cycles_per_return = 1):
+=======
+                  SD1.SD_TriggerBehaviors.TRIGGER_RISE):
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         '''Configures the Keysight input module.
         Params:
             full_scale: The full scale of the input signal, in volts
@@ -1036,6 +1428,7 @@ class KeysightChannelIn(KeysightChannel):
             trigger_mode: Where the module should look to find the trigger.
                 Can be AUTOTRIG for no need for trigger; EXTTRIG for external
                 trigger; SWHVITRIG for trigger by software/HVI
+<<<<<<< HEAD
             buffer_size: The number of data points that should be stored in
                 buffer before transmission to PC. If None, defaults to value
                 in points_per_cycle.
@@ -1135,6 +1528,59 @@ class KeysightChannelIn(KeysightChannel):
         err = self._module.DAQtrigger(self._channel_number)
         if err < 0:
             raise KeysightError("Error triggering channel", err)
+=======
+        Returns: a tuple of any error messages
+        '''
+            
+        err1 = self._module.channelInputConfig(self._channel_number,
+                    full_scale, KeysightConstants.INPUT_IMPEDANCE, 
+                    KeysightConstants.DC_COUPLING)
+        err2 = self._module.channelPrescalerConfig(self._channel_number,
+                    prescaler)
+        err3 = self._module.DAQconfig(self._channel_number, points_per_cycle,
+                    cycles, delay, trigger_mode)
+        err4 = self._module.DAQdigitalTriggerConfig(self._channel_number, 0,
+                    digital_trigger_behavior)
+        return (err1, err2, err3, err4)
+    
+    def readData(self, data_points, timeout = KeysightConstants.INFINITY):
+        '''Reads data from the channel buffer.
+        Params:
+            data_points: The number of data points to acquire
+            timeout: The timeout in ms for which to wait for data, or
+                KeysightConstants.INFINITY for no timeout'''
+        return self._module.DAQread(self._channel_number, data_points, timeout)
+    
+    def start(self):
+        '''Starts the channel.
+        Returns: any error messages'''
+        return self._module.DAQstart(self._channel_number)
+    
+    def stop(self):
+        '''Stops the channel.
+        Returns: any error messages'''
+        return self._module.DAQstop(self._channel_number)
+    
+    def pause(self):
+        '''Pauses the channel.
+        Returns: any error messages'''
+        return self._module.DAQpause(self._channel_number)
+
+    def resume(self):
+        '''Resumes the channel after a pause.
+        Returns: any error messages'''
+        return self._module.DAQresume(self._channel_number)
+    
+    def flush(self):
+        '''Flushes the data acquisition buffer.
+        Returns: any error messages'''
+        return self._module.DAQflush(self._channel_number)
+    
+    def trigger(self):
+        '''Triggers data acquisition.
+        Returns: any error messages'''
+        return self._module.DAQtrigger(self._channel_number)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def __str__(self):
         '''Returns a string representing the channel.'''
@@ -1155,17 +1601,25 @@ class KeysightChannelOut(KeysightChannel):
             module: The module object where the channel is housed
             channel_number: The channel number.'''
         KeysightChannel.__init__(self, module, channel_number)
+<<<<<<< HEAD
         err = module.channelWaveShape(channel_number, SD1.SD_Waveshapes.AOU_AWG)
         if err < 0:
             raise KeysightError("Cannot set to AWG mode", err)
+=======
+        module.channelWaveShape(channel_number, SD1.SD_Waveshapes.AOU_AWG)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         #sets to AWG mode rather than preset waveforms
         self._amplitude = None
         self._muted = False
         
     def configure(self, amplitude = 1, offset_voltage = 0, trigger_behavior =
                   SD1.SD_TriggerBehaviors.TRIGGER_RISE, trigger_source = 
+<<<<<<< HEAD
                   SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,
                   repeat_queue = True):
+=======
+                  SD1.SD_TriggerExternalSources.TRIGGER_EXTERN):
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         '''Configures the output channel.
         Params:
             amplitude: The amplitude of the signal when 1 is given in the
@@ -1175,6 +1629,7 @@ class KeysightChannelOut(KeysightChannel):
             trigger_source: Where channel should look for trigger (external
                 port or PXI port). If PXI, input:
                 SD1.SD_TriggerExternalSources.TRIGGER_PXI + trigger_number
+<<<<<<< HEAD
             repeat_queue: Whether to repeat the queue after each run.
         '''
         self.setAmplitude(amplitude)
@@ -1242,6 +1697,54 @@ class KeysightChannelOut(KeysightChannel):
             raise KeysightError("Error querying status of AWG",
                                 is_running)
         return bool(is_running)
+=======
+        Returns: A tuple of error messages'''
+        err1 = self.setAmplitude(amplitude)
+        err2 = self._module.channelOffset(self._channel_number, offset_voltage)
+        err3 = self._module.AWGtriggerExternalConfig(self._channel_number,
+                    trigger_source, trigger_behavior)
+        return (err1, err2, err3)
+    
+    def start(self):
+        '''Starts the channel.
+        Returns: any error messages'''
+        return self._module.AWGstart(self._channel_number)
+    
+    def stop(self):
+        '''Stops the channel.
+        Returns: any error messages'''
+        return self._module.AWGstop(self._channel_number)
+    
+    def pause(self):
+        '''Pauses the channel.
+        Returns: any error messages'''
+        return self._module.AWGpause(self._channel_number)
+
+    def resume(self):
+        '''Resumes the channel after a pause.
+        Returns: any error messages'''
+        return self._module.AWGresume(self._channel_number)
+    
+    def flush(self):
+        '''Flushes the data acquisition buffer.
+        Returns: any error messages'''
+        return self._module.AWGflush(self._channel_number)
+    
+    def trigger(self):
+        '''Triggers data acquisition.
+        Returns: any error messages'''
+        return self._module.AWGtrigger(self._channel_number)
+    
+    def resetQueue(self):
+        '''Resets the channel's queue from beginning.
+        Returns: any error messages'''
+        return self._module.AWGreset(self._channel_number)
+    
+    def isRunning(self):
+        '''Returns whether the channel is currently running (1) or is stopped
+            (0) or a negative number for error.'''
+        return self._module.AWGisRunning(self._channel_number)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def queue(self, waveform_number, trigger_mode = SD1.SD_TriggerModes.EXTTRIG,
               delay = 0, cycles = 1, prescaler = 1):
@@ -1254,11 +1757,18 @@ class KeysightChannelOut(KeysightChannel):
             cycles: Number of cycles that waveform should play, or
                 negative value for infinite
             prescaler: An integer that dictates that only 1 out of n ticks of
+<<<<<<< HEAD
                 clock plays next value in waveform; reduces frequency.'''
         err = self._module.AWGqueueWaveform(self._channel_number,
                     waveform_number, trigger_mode, delay, cycles, prescaler)
         if err < 0:
             raise KeysightError("Error queueing waveform", err)
+=======
+                clock plays next value in waveform; reduces frequency.
+        Returns: Any error messages'''
+        return self._module.AWGqueueWaveform(self._channel_number,
+                    waveform_number, trigger_mode, delay, cycles, prescaler)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         
     def __str__(self):
         '''Returns a string representing the channel.'''
@@ -1268,6 +1778,7 @@ class KeysightChannelOut(KeysightChannel):
                 str(self._channel_number))
         
     def setAmplitude(self, amplitude):
+<<<<<<< HEAD
         '''Sets the amplitude of the channel.'''
         amplitude /= 2 #TODO: This line fixes a bug but is janky. Would be nice
         #to get to the root of the problem.
@@ -1285,10 +1796,25 @@ class KeysightChannelOut(KeysightChannel):
         if err < 0:
             raise KeysightError("Error setting amplitude to mute", err)
         self._muted = True
+=======
+        '''Sets the amplitude of the channel.
+        Returns: any error messages'''
+        amplitude /= 2 #TODO: This line fixes a bug but is janky. Would be nice
+        #to get to the root of the problem.
+        self._amplitude = amplitude
+        return self._module.channelAmplitude(self._channel_number, amplitude)
+    
+    def mute(self):
+        '''Mutes the channel by setting amplitude to 0.
+        Returns: any error messages.'''
+        self._muted = True
+        return self._module.channelAmplitude(self._channel_number, 0)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def unmute(self):
         '''Unmutes the channel. Channel returns to saved amplitude from before
             when mute() was called. If channel not currently muted, has no
+<<<<<<< HEAD
             effect.'''
         if self._muted:
             err = self._module.channelAmplitude(self._channel_number,
@@ -1304,6 +1830,16 @@ class KeysightChannelOut(KeysightChannel):
         Params:
             waveform: The waveform object to load onto the module'''
         self._module.loadWaveform(waveform)
+=======
+            effect.
+        Returns: any error messages'''
+        if self._muted:
+            self._muted = False
+            return self._module.channelAmplitude(self._channel_number,
+                                             self._amplitude)
+        else:
+            return 0 #code for no errors
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         
 "-----------------------------------------------------------------------------"
 
@@ -1336,7 +1872,11 @@ class KeysightChannelTrig(KeysightChannel):
             mode: Whether the trigger channel is used for input or output,
                 given by constants in class TriggerIODirection'''
         KeysightChannel.__init__(self, module, ChannelNumber.TRIG)
+<<<<<<< HEAD
         self.setDirection(mode)
+=======
+        module.triggerIOconfig(mode)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         
     def setDirection(self, mode):
         '''Sets whether the channel is configured for input (triggering/reading)
@@ -1344,6 +1884,7 @@ class KeysightChannelTrig(KeysightChannel):
         Params:
             mode: Whether the trigger channel is used for input or output,
             given by constants in class TriggerIODirection'''
+<<<<<<< HEAD
         err = self._module.triggerIOconfig(mode)
         if err < 0:
             raise KeysightError("Error setting trigger IO mode", err)
@@ -1362,6 +1903,22 @@ class KeysightChannelTrig(KeysightChannel):
         if value < 0: #native method returned error instead of value
             raise KeysightError("Error reading trigger", value)
         return bool(value)
+=======
+        self._module.triggerIOconfig(mode)
+        
+    def write(self, value):
+        '''Writes 0 or 1 to trigger in TriggerIODirection.OUT mode.
+        Params:
+            value: 0 or 1 to write to trigger channel
+        Returns: any error messages'''
+        return self._module.triggerIOwrite(value)
+    
+    def read(self):
+        '''Reads whether trigger is 0 or 1.
+        Returns: 0 or 1 corresponding to digital signal on trigger, or any
+        error codes (negative).'''
+        return self._module.triggerIOread()
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def __str__(self):
         '''Returns a string representing the channel.'''
@@ -1389,18 +1946,27 @@ class Waveform:
                will be assigned automatically in a way that prevents naming
                collisions. If any are assigned manually, user is responsible
                for consequences of naming collisions.
+<<<<<<< HEAD
             append_zero: Appends 10 zeros at the end of the waveform if none
+=======
+            append_zero: Appends a zero at the end of the waveform if none
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
                present, to prevent nonzero signal from continuing after
                waveform stops.
         Note: when loaded into memory, all waveforms will have zeros appended
         to end until length of base array is at least 5. Thus, putting in a
         single value to output a constant signal will give unexpected results.
         '''
+<<<<<<< HEAD
         if append_zero:
             if isinstance(arr, np.ndarray):
                 arr = np.append(arr, KeysightConstants.ZEROES_APPEND_NUMPY)
             else:
                 arr = np.array(arr + KeysightConstants.ZEROES_APPEND_LIST)
+=======
+        if append_zero and arr[len(arr)-1] != 0:
+            arr.append(0)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
         self._arr = np.array(arr)
         self.setWaveformNumber(waveform_number)
         
@@ -1430,8 +1996,14 @@ class Waveform:
     def loadToModule(self, module):
         '''Loads a waveform into memory on the specific module.
         Params:
+<<<<<<< HEAD
             module: The module to which to save the waveform'''
         module.loadWaveform(self)
+=======
+            module: The module to which to save the waveform
+        Returns: a tuple of error messages'''
+        return module.loadWaveform(self)
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
     
     def queue(self, channel, trigger_mode = SD1.SD_TriggerModes.EXTTRIG,
               delay = 0, cycles = 1, prescaler = 1):
@@ -1444,13 +2016,20 @@ class Waveform:
             cycles: Number of cycles that waveform should play, or
                 negative value for infinite
             prescalar: An integer that dictates that only 1 out of n ticks of
+<<<<<<< HEAD
                 clock plays next value in waveform; reduces frequency.'''
         channel.queue(self.getWaveformNumber(), trigger_mode, delay,
+=======
+                clock plays next value in waveform; reduces frequency.
+        Returns: Any error messages'''
+        return channel.queue(self.getWaveformNumber(), trigger_mode, delay,
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
                              cycles, prescaler)
         
     def __str__(self):
         '''Returns a string representation of the waveform'''
         return ("Waveform_number: " + str(self._waveform_number) + "\n" +
+<<<<<<< HEAD
                 str(self.getBaseArray()))
         
         
@@ -1518,3 +2097,817 @@ class FileDecodingTools:
         for module_number in output_modules:
             modules_dict[module_number] = ModuleType.OUTPUT
         return chassis_number, modules_dict
+=======
+=======
+# -*- coding: utf-8 -*-
+"""
+Created on July 26, 2018
+
+@author: Josephine Meyer (jcmeyer@stanford.edu)
+
+Library classes for Python interface with Keysight M31xxA and M32xxA modules.
+Use instead of the native keysightSD1 classes for better functionality and
+compatibility with our existing code base.
+"""
+
+import keysightSD1 as SD1
+import numpy as np
+
+
+'''Short auxiliary classes and constants'''
+
+class KeysightConstants:
+    '''Useful general constants'''
+    NUM_CHANNELS = 4 #number of modules
+    PRODUCT = ""
+    MASK_ALL = 30 #2**1 + 2**2 + 2**3 + 2**4 -- mask for all 4 channels
+    INPUT_IMPEDANCE = 1 #50 ohm
+    DC_COUPLING = 0 #we are DC coupled
+    INFINITY = 0 #Blame Keysight for this one!
+
+class ModuleType:
+    '''Integer code representing the module type of a given module.'''
+    INPUT = 1
+    OUTPUT = 0
+    M3102A = INPUT #convenient aliases
+    M3201A = OUTPUT
+    M3202A = OUTPUT
+    
+class ChannelNumber:
+    '''Generates effective channel numbers for the trigger and clock channels
+    to enable them to be treated on par with numbered channels.'''
+    TRIG = 101
+    TRIGGER = TRIG
+    CLK = 102
+    CLOCK = CLK
+    
+class TriggerIODirection:
+    '''Trigger channel in or out'''
+    IN = 1
+    OUT = 0
+    
+class Tools:
+    '''Useful static methods used in implementation. Should be no reason for
+    end user to call these methods directly.'''
+    
+    @staticmethod
+    def _channelsToMask(*channels):
+        '''Converts list of channels to a mask accepted by several native
+            methods.
+        Params:
+            *channels: Any number of channel numbers from same module
+        Returns: A mask representing the channels. User should have no need
+            to call this method directly.'''
+        mask= 0
+        for c in channels:
+            mask += 2**c
+        return mask
+
+"-----------------------------------------------------------------------------"
+
+class KeysightChassis:
+    '''Class representing a Keysight chassis.'''
+    
+    def __init__(self, chassis_number, modules_dict = {}):
+        '''Initializes the Keysight Chassis object.
+        Params:
+            chassis_number: The chassis number of the chassis we are creating
+            modules_dict: A dictionary representing the modules formatted as
+               {slot number: ModuleType}
+        '''
+        self._chassis_number = chassis_number
+        self._modules = {}
+        
+        #initialize modules
+        for module_number in modules_dict:
+            if modules_dict[module_number] == ModuleType.INPUT:
+                self._modules[module_number] = KeysightModuleIn(
+                        self, module_number)
+            elif modules_dict[module_number] == ModuleType.OUTPUT:
+                self._modules[module_number] = KeysightModuleOut(
+                        self, module_number)
+                
+    def chassisNumber(self):
+        '''Returns the chassis number of the Keysight Chassis object'''
+        return self._chassis_number
+    
+    def modulesDict(self):
+        '''Returns a dictionary mapping the slot number of each active slot
+            to its corresponding module object. {slot number: KeysightModule}
+        '''
+        return self._modules
+    
+    def modulesList(self):
+        '''Returns a list of the active modules that is iterable. Note that the
+        modules may not be in order.'''
+        return self._modules.values()
+    
+    def getModule(self, slot_number):
+        '''Gets the module object corresponding to any module connected to the
+            chassis.
+        Params:
+            slot_number: The slot number of the module to retrieve
+        Returns: The module object corresponding to the given slot'''
+        return self._modules[slot_number]
+    
+    def getChannel(self, slot_number, channel_number):
+        '''Gets a channel associated with any module connected to the chassis.
+        Params:
+            slot_number: The slot number containing the module containing the
+                channel.
+            channel_number: The channel number to retrieve. Should be an
+                integer 1-4, or ChannelNumber.TRIG/ChannelNumber.CLK
+        Returns: The channel object corresponding to the given channel'''
+        return self._modules[slot_number].getChannel(channel_number)
+    
+    def closeAll(self):
+        '''Closes all modules associated with the chassis.'''
+        for module in self.modulesList():
+            module.close()
+            
+    def clearAll(self):
+        '''Clears all modules associated with the chassis.'''
+        for module in self.modulesList():
+            module.clearAll()
+            
+    def __str__(self):
+        '''Returns a string representation of the chassis and its modules.'''
+        return ("Keysight chassis. Chassis number: " +
+                str(self._chassis_number) + "\n Modules:" + str(self._modules))
+
+"----------------------------------------------------------------------------"
+
+class KeysightModule:
+    '''Abstract base class representing a Keysight module (M31xxA or M32xxA). 
+    DO NOT INSTANTIATE THIS CLASS DIRECTLY. Instead, instantiate one of the
+    daughter classes KeysightModuleIn or KeysightModuleOut.'''
+    
+    def __init__(self, chassis, slot_number):
+        '''Initializes the KeysightModule object.
+        Params:
+            chassis: The chassis object corresponding to the chassis where
+                the module is housed.
+            slot_number: The number of the slot where the module is housed'''
+        self._chassis = chassis
+        self._slot_number = slot_number
+        self._channels = {}
+        
+        #configure channels common to all module types
+        self._channels[ChannelNumber.CLK] = KeysightChannelClk(self)
+        self._channels[ChannelNumber.TRIG] = KeysightChannelTrig(self)
+        
+    def chassis(self):
+        '''Returns the chassis object where the module is housed'''
+        return self._chassis
+    
+    def slotNumber(self):
+        '''Returns the slot number where the module is housed'''
+        return self._slot_number
+    
+    def channelsDict(self):
+        '''Returns a dictionary mapping the channel number of each channel
+            to its corresponding channel object. 
+            {channel number: KeysightChannel}
+            Note: Trig and Clk channels assigned channel number through
+                ChannelNumber class constants'''
+        return self._channels
+    
+    def channelsList(self):
+        '''Returns a list of the channels in the module. Note: channels are not
+        guaranteed to be returned in logical order.'''
+        return self._channels.values()
+    
+    def getChannel(self, channel_number):
+        '''Returns a specific channel within the module.
+        Params:
+            channel_number: The channel number of the desired channel. Use
+            ChannelNumber class for Clk and Trg channel numbers.
+        Returns: The desired channel'''
+        return self._channels[channel_number]
+    
+
+
+"----------------------------------------------------------------------------"
+
+class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
+    '''Class representing a Keysight input module (M31xxA). Inherits from
+    the KeysightModule parent class as well as the native SD_AIN class for
+    implementation purposes. However, there should be no reason for user 
+    to directly call methods from SD_AIN.'''
+    
+    def __init__(self, chassis, slot_number):
+        '''Initializes the ModuleIn object.
+        Params:
+            chassis: The chassis object where the module is housed
+            slot_number: The slot where the module is housed
+        '''
+        
+        
+        SD1.SD_AIN.__init__(self)
+        module_in_ID = self.openWithSlot(KeysightConstants.PRODUCT,
+                                         chassis.chassisNumber(), slot_number)
+        
+        if module_in_ID < 0:
+            print("Error opening module IN - error code:", module_in_ID, 
+                  "Slot:", slot_number)
+        else:
+            print("===== MODULE IN =====")
+            print("ID:\t\t", module_in_ID)
+            print("Product name:\t", self.getProductName())
+            print("Serial number:\t", self.getSerialNumber())
+            print("Chassis:\t", self.getChassis())
+            print("Slot:\t\t", self.getSlot())
+            print()
+        
+        KeysightModule.__init__(self, chassis, slot_number)
+        
+        #initialize channels
+        for i in range(1, 1 + KeysightConstants.NUM_CHANNELS):
+            self._channels[i] = KeysightChannelIn(self, i)
+            
+    def getModuleType(self):
+        '''Returns a constant corresponding to the module type as given in 
+        class ModuleType.'''
+        return ModuleType.INPUT
+    
+    def clearAll(self):
+        '''Clears the data acquisition buffers on all channels.'''
+        return self.DAQflushMultiple(KeysightConstants.MASK_ALL)
+    
+    def startChannels(self, *channels):
+        '''Starts channels on a given module simultaneously. Alternative to
+        calling start() on individual channels.
+        Params:
+            *channels: Any number of channel numbers on the same module
+        Returns: Any error message'''
+        return self.DAQstartMultiple(Tools._channelsToMask(channels))
+    
+    def stopChannels(self, *channels):
+        '''Stops channels on a given module simultaneously. Alternative to
+        calling stop() on individual channels.
+        Params:
+            *channels: Any number of channel numbers on the same module
+        Returns: Any error message'''
+        return self.DAQstopMultiple(Tools._channelsToMask(channels))
+    
+    def pauseChannels(self, *channels):
+        '''Pauses channels on a given module simultaneously. Alternative to
+        calling pause() on individual channels.
+        Params:
+            *channels: Any number of channel numbers on the same module
+        Returns: Any error message'''
+        return self.DAQpauseMultiple(Tools._channelsToMask(channels))
+
+    def resumeChannels(self, *channels):
+        '''Resumes channels on a given module simultaneously. Alternative to
+        calling resume() on individual channels.
+        Params:
+            *channels: Any number of channel numbers on the same module
+        Returns: Any error message'''
+        return self.DAQresumeMultiple(Tools._channelsToMask(channels))
+    
+    def triggerChannels(self, *channels):
+        '''Triggers channels on a given module simultaneously. Alternative to
+        calling trigger() on individual channels.
+        Params:
+            *channels: Any number of channel numbers on the same module
+        Returns: Any error message'''
+        return self.DAQresumeMultiple(Tools._channelsToMask(channels))
+        
+    
+    def startAll(self):
+        '''Starts ALL channels on a given module simultaneously. Alternative to
+        calling start() on individual channels.
+        Returns: Any error message'''
+        return self.DAQstartMultiple(KeysightConstants.MASK_ALL)
+    
+    def stopAll(self):
+        '''Stops ALL channels on a given module simultaneously. Alternative to
+        calling stop() on individual channels.
+        Returns: Any error message'''
+        return self.DAQstopMultiple(KeysightConstants.MASK_ALL)
+    
+    def pauseAll(self):
+        '''Pauses channels on a given module simultaneously. Alternative to
+        calling pause() on individual channels.
+        Returns: Any error message'''
+        return self.DAQpauseMultiple(KeysightConstants.MASK_ALL)
+
+    def resumeAll(self):
+        '''Resumes channels on a given module simultaneously. Alternative to
+        calling resume() on individual channels.
+        Returns: Any error message'''
+        return self.DAQresumeMultiple(KeysightConstants.MASK_ALL)
+    
+    def triggerAll(self):
+        '''Triggers channels on a given module simultaneously. Alternative to
+        calling trigger() on individual channels.
+        Returns: Any error message'''
+        return self.DAQtriggerMultiple(KeysightConstants.MASK_ALL)
+    
+    def close(self):
+        '''Closes the current module.
+        Returns: any error messages.'''
+        self.clearAll()
+        return SD1.SD_AIN.close(self)
+    
+    def __str__(self):
+        '''Returns a string representation of the module.'''
+        return ("Module in. Chassis = " + str(self.chassis().chassisNumber()) +
+                ", Slot = " + str(self.slotNumber()))
+    
+"-----------------------------------------------------------------------------"
+
+class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
+    '''Class representing a Keysight output module (M32xxA). Inherits from
+    the KeysightModule parent class as well as the native SD_AOU class for
+    implementation purposes. However, there should be no reason for user 
+    to directly call methods from SD_AOU.'''
+    
+    def __init__(self, chassis, slot_number):
+        '''Initializes the ModuleIn object.
+        Params:
+            chassis: The chassis object where the module is housed
+            slot_number: The slot where the module is housed
+        '''
+        SD1.SD_AOU.__init__(self)
+        module_out_ID = self.openWithSlot(KeysightConstants.PRODUCT, 
+                                          chassis.chassisNumber(), slot_number)
+
+        if module_out_ID < 0:
+            print("Error opening module OUT - error coode:", module_out_ID)
+        else:
+            print("===== MODULE OUT =====")
+            print("Module opened:", module_out_ID)
+            print("Module name:", self.getProductName())
+            print("slot:", self.getSlot())
+            print("Chassis:", self.getChassis())
+            print()
+            
+        KeysightModule.__init__(self, chassis, slot_number)
+        
+        #initialize channels
+        for i in range(1, 1 + KeysightConstants.NUM_CHANNELS):
+            self._channels[i] = KeysightChannelOut(self, i)
+            
+    def getModuleType(self):
+        '''Returns a constant corresponding to the module type as given in 
+        class ModuleType.'''
+        return ModuleType.OUTPUT
+    
+    def startChannels(self, *channels):
+        '''Starts channels on a given module simultaneously. Alternative to
+        calling start() on individual channels.
+        Params:
+            *channels: Any number of channel numbers on the same module
+        Returns: Any error message'''
+        return self.AWGstartMultiple(Tools._channelsToMask(channels))
+    
+    def stopChannels(self, *channels):
+        '''Stops channels on a given module simultaneously. Alternative to
+        calling stop() on individual channels.
+        Params:
+            *channels: Any number of channel numbers on the same module
+        Returns: Any error message'''
+        return self.AWGstopMultiple(Tools._channelsToMask(channels))
+    
+    def pauseChannels(self, *channels):
+        '''Pauses channels on a given module simultaneously. Alternative to
+        calling pause() on individual channels.
+        Params:
+            *channels: Any number of channel numbers on the same module
+        Returns: Any error message'''
+        return self.AWGpauseMultiple(Tools._channelsToMask(channels))
+
+    def resumeChannels(self, *channels):
+        '''Resumes channels on a given module simultaneously. Alternative to
+        calling start() on individual channels.
+        Params:
+            *channels: Any number of channel numbers on the same module
+        Returns: Any error message'''
+        
+        return self.AWGresumeMultiple(Tools._channelsToMask(channels))
+    
+    def triggerChannels(self, *channels):
+        '''Triggers channels on a given module simultaneously. Alternative to
+        calling trigger() on individual channels.
+        Params:
+            *channels: Any number of channel numbers on the same module
+        Returns: Any error message'''
+        return self.AWGtriggerMultiple(Tools._channelsToMask(channels))
+    
+    def startAll(self):
+        '''Starts ALL channels on a given module simultaneously. Alternative to
+        calling start() on individual channels.
+        Returns: Any error message'''
+        return self.AWGstartMultiple(KeysightConstants.MASK_ALL)
+    
+    def stopAll(self):
+        '''Stops ALL channels on a given module simultaneously. Alternative to
+        calling stop() on individual channels.
+        Returns: Any error message'''
+        return self.AWGstopMultiple(KeysightConstants.MASK_ALL)
+    
+    def pauseAll(self):
+        '''Pauses channels on a given module simultaneously. Alternative to
+        calling pause() on individual channels.
+        Returns: Any error message'''
+        return self.AWGpauseMultiple(KeysightConstants.MASK_ALL)
+
+    def resumeAll(self):
+        '''Resumes channels on a given module simultaneously. Alternative to
+        calling start() on individual channels.
+        Returns: Any error message'''
+        return self.AWGresumeMultiple(KeysightConstants.MASK_ALL)
+    
+    def triggerAll(self):
+        '''Triggers channels on a given module simultaneously. Alternative to
+        calling trigger() on individual channels.
+        Returns: Any error message'''
+        return self.AWGtriggerMultiple(KeysightConstants.MASK_ALL)
+    
+    def close(self):
+        '''Closes the current module.
+        Returns: any error messages.'''
+        self.clearAll()
+        return SD1.SD_AOU.close(self)
+    
+    def loadWaveform(self, waveform):
+        '''Loads a waveform into memory on the specific module.
+        Params:
+            waveform: The waveform object to load
+        Returns: a tuple of error messages'''
+        wave = SD1.SD_Wave()
+        err1 = wave.newFromArrayDouble(SD1.SD_WaveformTypes.WAVE_ANALOG,
+                                waveform.getBaseArray())
+        err2 = self.waveformLoad(wave, waveform.getWaveformNumber())
+        return (err1, err2)
+    
+    def clearAll(self):
+        '''Stops all AWG's, deletes waveforms from memory, and flushes queues
+        of every channel.'''
+        self.stopAll()
+        return self.waveformFlush()
+    
+    def __str__(self):
+        '''Returns a string representation of the module.'''
+        return ("Module out. Chassis = " + str(self.chassis().chassisNumber()) +
+                ", Slot = " + str(self.slotNumber()))
+
+"-----------------------------------------------------------------------------"
+
+class KeysightChannel:
+    '''Class representing a single channel. Abstract base class. DO NOT
+        INSTANTIATE THIS CLASS DIRECTLY. Instead use one of the daughter
+        classes below.'''
+    
+    def __init__(self, module, channel_number):
+        '''Initializes the KeysightChannel object.
+        Params:
+            module: The module where the channel is housed
+            channel_number: The channel number, including effective channel
+                numbers in ChannelNumber class for CLK and TRIG channels.'''
+        self._module = module
+        self._channel_number = channel_number
+        
+    def module(self):
+        '''Returns the module where the channel is housed'''
+        return self._module
+    
+    def channelNumber(self):
+        '''Returns the channel number'''
+        return self._channel_number
+    
+    def chassis(self):
+        '''Returns the chassis where the channel is located'''
+        return self._module.chassis()
+    
+"-----------------------------------------------------------------------------"
+
+class KeysightChannelIn(KeysightChannel):
+    '''Class representing a single Keysight input channel, as would be found
+    on an M31xxA module.'''
+    
+    def __init__(self, module, channel_number):
+        '''Initializes the KeysightChannelIn object.
+        Params:
+            module: The module object where the channel is housed
+            channel_number: The channel number.'''
+        KeysightChannel.__init__(self, module, channel_number)
+        
+    def configure(self, full_scale = 1, prescaler = 1, points_per_cycle = 1000,
+                  cycles = 1, delay = 0,
+                  trigger_mode = SD1.SD_TriggerModes.EXTTRIG,
+                  digital_trigger_behavior = 
+                  SD1.SD_TriggerBehaviors.TRIGGER_RISE):
+        '''Configures the Keysight input module.
+        Params:
+            full_scale: The full scale of the input signal, in volts
+            prescaler: Optional setting that only selects 1 out of every n
+                data points to keep. Useful for limiting file size.
+            points_per_cycle: Number of data points to acquire each cycle
+            cycles: Number of data acquisition cycles
+            delay: Number of samples delayed after trigger
+                (or negative to advance)
+            trigger_mode: Where the module should look to find the trigger.
+                Can be AUTOTRIG for no need for trigger; EXTTRIG for external
+                trigger; SWHVITRIG for trigger by software/HVI
+        Returns: a tuple of any error messages
+        '''
+            
+        err1 = self._module.channelInputConfig(self._channel_number,
+                    full_scale, KeysightConstants.INPUT_IMPEDANCE, 
+                    KeysightConstants.DC_COUPLING)
+        err2 = self._module.channelPrescalerConfig(self._channel_number,
+                    prescaler)
+        err3 = self._module.DAQconfig(self._channel_number, points_per_cycle,
+                    cycles, delay, trigger_mode)
+        err4 = self._module.DAQdigitalTriggerConfig(self._channel_number, 0,
+                    digital_trigger_behavior)
+        return (err1, err2, err3, err4)
+    
+    def readData(self, data_points, timeout = KeysightConstants.INFINITY):
+        '''Reads data from the channel buffer.
+        Params:
+            data_points: The number of data points to acquire
+            timeout: The timeout in ms for which to wait for data, or
+                KeysightConstants.INFINITY for no timeout'''
+        return self._module.DAQread(self._channel_number, data_points, timeout)
+    
+    def start(self):
+        '''Starts the channel.
+        Returns: any error messages'''
+        return self._module.DAQstart(self._channel_number)
+    
+    def stop(self):
+        '''Stops the channel.
+        Returns: any error messages'''
+        return self._module.DAQstop(self._channel_number)
+    
+    def pause(self):
+        '''Pauses the channel.
+        Returns: any error messages'''
+        return self._module.DAQpause(self._channel_number)
+
+    def resume(self):
+        '''Resumes the channel after a pause.
+        Returns: any error messages'''
+        return self._module.DAQresume(self._channel_number)
+    
+    def flush(self):
+        '''Flushes the data acquisition buffer.
+        Returns: any error messages'''
+        return self._module.DAQflush(self._channel_number)
+    
+    def trigger(self):
+        '''Triggers data acquisition.
+        Returns: any error messages'''
+        return self._module.DAQtrigger(self._channel_number)
+    
+    def __str__(self):
+        '''Returns a string representing the channel.'''
+        return ("Channel in. Chassis = " +
+                str(self._module.chassis().chassisNumber()) +
+                ", Slot = " + str(self._module.slotNumber()) + ", Channel = " +
+                str(self._channel_number))
+
+"-----------------------------------------------------------------------------"   
+
+class KeysightChannelOut(KeysightChannel):
+    '''Class representing a single Keysight output channel, as would be found
+    on an M32xxA module.'''
+    
+    def __init__(self, module, channel_number):
+        '''Initializes the KeysightChannelOut object.
+        Params:
+            module: The module object where the channel is housed
+            channel_number: The channel number.'''
+        KeysightChannel.__init__(self, module, channel_number)
+        module.channelWaveShape(channel_number, SD1.SD_Waveshapes.AOU_AWG)
+        #sets to AWG mode rather than preset waveforms
+        
+    def configure(self, amplitude = 1, offset_voltage = 0, trigger_behavior =
+                  SD1.SD_TriggerBehaviors.TRIGGER_RISE):
+        '''Configures the output channel.
+        Params:
+            amplitude: The amplitude of the signal when 1 is given in the
+                waveform. (i.e. 0.5 for a sin wave that is 1.0Vpp)
+            offset_voltage: The offset voltage for the channel
+            trigger_behavior: How channel should interpret trigger signal
+        Returns: A tuple of error messages'''
+        amplitude /= 2 #TODO: This line fixes a bug but is janky. Would be nice
+        #to get to the root of the problem.
+        err1 = self._module.channelAmplitude(self._channel_number, amplitude)
+        err2 = self._module.channelOffset(self._channel_number, offset_voltage)
+        err3 = self._module.AWGtriggerExternalConfig(self._channel_number,
+                    0, trigger_behavior)
+        return (err1, err2, err3)
+    
+    def start(self):
+        '''Starts the channel.
+        Returns: any error messages'''
+        return self._module.AWGstart(self._channel_number)
+    
+    def stop(self):
+        '''Stops the channel.
+        Returns: any error messages'''
+        return self._module.AWGstop(self._channel_number)
+    
+    def pause(self):
+        '''Pauses the channel.
+        Returns: any error messages'''
+        return self._module.AWGpause(self._channel_number)
+
+    def resume(self):
+        '''Resumes the channel after a pause.
+        Returns: any error messages'''
+        return self._module.AWGresume(self._channel_number)
+    
+    def flush(self):
+        '''Flushes the data acquisition buffer.
+        Returns: any error messages'''
+        return self._module.AWGflush(self._channel_number)
+    
+    def trigger(self):
+        '''Triggers data acquisition.
+        Returns: any error messages'''
+        return self._module.AWGtrigger(self._channel_number)
+    
+    def resetQueue(self):
+        '''Resets the channel's queue from beginning.
+        Returns: any error messages'''
+        return self._module.AWGreset(self._channel_number)
+    
+    def isRunning(self):
+        '''Returns whether the channel is currently running (1) or is stopped
+            (0) or a negative number for error.'''
+        return self._module.AWGisRunning(self._channel_number)
+    
+    def queue(self, waveform_number, trigger_mode = SD1.SD_TriggerModes.EXTTRIG,
+              delay = 0, cycles = 1, prescaler = 1):
+        '''Queues the desired waveform in the queue for the specified channel.
+        Waveform must already have been loaded into module.
+        Params:
+            waveform_number: The number of the waveform to queue
+            trigger_mode: Indicates how waveform should be triggered
+            delay: Delay between trigger and waveform start, in 10s of ns
+            cycles: Number of cycles that waveform should play, or
+                negative value for infinite
+            prescalar: An integer that dictates that only 1 out of n ticks of
+                clock plays next value in waveform; reduces frequency.
+        Returns: Any error messages'''
+        return self._module.AWGqueueWaveform(self._channel_number,
+                    waveform_number, trigger_mode, delay, cycles, prescaler)
+        
+    def __str__(self):
+        '''Returns a string representing the channel.'''
+        return ("Channel out. Chassis = " +
+                str(self._module.chassis().chassisNumber()) +
+                ", Slot = " + str(self._module.slotNumber()) + ", Channel = " +
+                str(self._channel_number))
+
+        
+"-----------------------------------------------------------------------------"
+
+class KeysightChannelClk(KeysightChannel):
+    '''Class representing a single Keysight clock channel.'''
+    
+    def __init__(self, module):
+        '''Initializes the KeysightChannelClk object.
+        Params:
+            module: The module object where the channel is housed'''
+        KeysightChannel.__init__(self, module, ChannelNumber.CLK)
+        
+    def __str__(self):
+        '''Returns a string representing the channel.'''
+        return ("Channel. Chassis = " +
+                str(self._module.chassis().chassisNumber()) +
+                ", Slot = " + str(self._module.slotNumber()) +
+                ", Channel = Clk")
+
+
+"-----------------------------------------------------------------------------"
+
+class KeysightChannelTrig(KeysightChannel):
+    '''Class representing a single Keysight digital I/O trigger channel.'''
+    
+    def __init__(self, module, mode = TriggerIODirection.IN):
+        '''Initializes the KeysightChannelTrig object.
+        Params:
+            module: The module object where the channel is housed
+            mode: Whether the trigger channel is used for input or output,
+                given by constants in class TriggerIODirection'''
+        KeysightChannel.__init__(self, module, ChannelNumber.TRIG)
+        module.triggerIOconfig(mode)
+        
+    def setDirection(self, mode):
+        '''Sets whether the channel is configured for input (triggering/reading)
+        or output.
+        Params:
+            mode: Whether the trigger channel is used for input or output,
+            given by constants in class TriggerIODirection'''
+        self._module.triggerIOconfig(mode)
+        
+    def write(self, value):
+        '''Writes 0 or 1 to trigger in TriggerIODirection.OUT mode.
+        Params:
+            value: 0 or 1 to write to trigger channel
+        Returns: any error messages'''
+        return self._module.triggerIOwrite(value)
+    
+    def read(self):
+        '''Reads whether trigger is 0 or 1.
+        Returns: 0 or 1 corresponding to digital signal on trigger, or any
+        error codes (negative).'''
+        return self._module.triggerIOread()
+    
+    def __str__(self):
+        '''Returns a string representing the channel.'''
+        return ("Channel. Chassis = " +
+                str(self._module.chassis().chassisNumber()) +
+                ", Slot = " + str(self._module.slotNumber()) +
+                ", Channel = Trig I/O")
+
+
+"-----------------------------------------------------------------------------"
+
+class Waveform:
+    '''Class representing a waveform. Implemented in numpy to easily integrate
+    with rest of code base. Use this instead of the native SD_Wave class for
+    compatibility and simplicity.'''
+    
+    _waveform_number_counter = 0 #used to assign unique waveform numbers
+    
+    def __init__(self, arr = [], waveform_number = None, append_zero = False):
+        '''Initializes the waveform object.
+        Params:
+            arr: A list or numpy array of data points making up the waveform
+            waveform_number: The unique number to be associated with the
+               waveform as an identifier. If None, waveform_number will be
+               assigned automatically in a way that prevents naming collisions.
+               If any are assigned manually, user is responsible for
+               consequences of naming collisions.
+            append_zero: Appends a zero at the end of the waveform if none
+               present, to prevent nonzero signal from continuing after
+               waveform stops.
+        Note: when loaded into memory, all waveforms will have zeros appended
+        to end until length of base array is at least 5. Thus, putting in a
+        single value to output a constant signal will give unexpected results.
+        '''
+        if append_zero and arr[len(arr)-1] != 0:
+            arr.append(0)
+        self._arr = np.array(arr)
+        self.setWaveformNumber(waveform_number)
+        
+    def setWaveformNumber(self, waveform_number = None):
+        '''Sets a waveform's waveform number.
+        Params:
+            waveform_number: The unique number to be associated with the
+               waveform as an identifier. If None, waveform_number will be
+               assigned automatically in a way that prevents naming collisions.
+               If any are assigned manually, user is responsible for
+               consequences of naming collisions.'''
+               
+        if waveform_number is None:
+            Waveform._waveform_number_counter += 1
+            self._waveform_number = Waveform._waveform_number_counter
+        else:
+            self._waveform_number = waveform_number
+            
+    def getWaveformNumber(self):
+        '''Returns the waveform's waveform number.'''
+        return self._waveform_number
+    
+    def getBaseArray(self):
+        '''Returns the base numpy array underlying the waveform object.'''
+        return self._arr
+    
+    def loadToModule(self, module):
+        '''Loads a waveform into memory on the specific module.
+        Params:
+            module: The module to which to save the waveform
+        Returns: a tuple of error messages'''
+        return module.loadWaveform(self)
+    
+    def queue(self, channel, trigger_mode = SD1.SD_TriggerModes.EXTTRIG,
+              delay = 0, cycles = 1, prescaler = 1):
+        '''Queues the waveform for a specific channel, provided it has already
+        been loaded into the corresponding module's memory.
+        Params:
+            channel: The otuput channel object to which to queue the waveform
+            trigger_mode: Indicates how waveform should be triggered
+            delay: Delay between trigger and waveform start, in 10s of ns
+            cycles: Number of cycles that waveform should play, or
+                negative value for infinite
+            prescalar: An integer that dictates that only 1 out of n ticks of
+                clock plays next value in waveform; reduces frequency.
+        Returns: Any error messages'''
+        return channel.queue(self.getWaveformNumber(), trigger_mode, delay,
+                             cycles, prescaler)
+        
+    def __str__(self):
+        '''Returns a string representation of the waveform'''
+        return ("Waveform_number: " + str(self._waveform_number) + "\n" +
+>>>>>>> 25bbc756d92806c5ded7a0e142fb0b0e7a8c9414
+                str(self.getBaseArray()))
+>>>>>>> 37c1a8e3e350f4fd7838545470162c550f9fdc58
