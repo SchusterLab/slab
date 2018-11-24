@@ -1015,7 +1015,7 @@ class KeysightChannelIn(KeysightChannel):
             channel_number: The channel number.'''
         KeysightChannel.__init__(self, module, channel_number)
         
-    def configure(self, full_scale = 1, prescaler = 1, points_per_cycle = 1000,
+    def configure(self, full_scale = 1, prescaler = 0, points_per_cycle = 1000,
                   cycles = 1, delay = 0,
                   trigger_mode = SD1.SD_TriggerModes.SWHVITRIG,
                   digital_trigger_behavior = 
@@ -1244,7 +1244,7 @@ class KeysightChannelOut(KeysightChannel):
         return bool(is_running)
     
     def queue(self, waveform_number, trigger_mode = SD1.SD_TriggerModes.EXTTRIG,
-              delay = 0, cycles = 1, prescaler = 1):
+              delay = 0, cycles = 1, prescaler = 0):
         '''Queues the desired waveform in the queue for the specified channel.
         Waveform must already have been loaded into module.
         Params:
@@ -1254,7 +1254,8 @@ class KeysightChannelOut(KeysightChannel):
             cycles: Number of cycles that waveform should play, or
                 negative value for infinite
             prescaler: An integer that dictates that only 1 out of n ticks of
-                clock plays next value in waveform; reduces frequency.'''
+                clock plays next value in waveform; reduces frequency.
+                0 = full sampling rate, 1 = half'''
         err = self._module.AWGqueueWaveform(self._channel_number,
                     waveform_number, trigger_mode, delay, cycles, prescaler)
         if err < 0:
@@ -1434,13 +1435,13 @@ class Waveform:
         module.loadWaveform(self)
     
     def queue(self, channel, trigger_mode = SD1.SD_TriggerModes.EXTTRIG,
-              delay = 0, cycles = 1, prescaler = 1):
+              delay = 0, cycles = 1, prescaler = 0):
         '''Queues the waveform for a specific channel, provided it has already
         been loaded into the corresponding module's memory.
         Params:
             channel: The otuput channel object to which to queue the waveform
             trigger_mode: Indicates how waveform should be triggered
-            delay: Delay between trigger and waveform start, in 10s of ns
+            delay: Delay between trigger and waveform start, in 100s (corrected from 10--Vatsan) of ns
             cycles: Number of cycles that waveform should play, or
                 negative value for infinite
             prescalar: An integer that dictates that only 1 out of n ticks of
