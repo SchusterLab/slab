@@ -1116,7 +1116,7 @@ class SD_DIO(SD_Module) :
 		else :
 			return SD_Error.MODULE_NOT_OPENED;
 
-	def DWGqueueWaveform(self, nDWG, waveformNumber, triggerMode, startDelay, cycles, prescaler=0) :
+	def DWGqueueWaveform(self, nDWG, waveformNumber, triggerMode, startDelay, cycles, prescaler) :
 		if self._SD_Object__handle > 0 :
 			return self._SD_Object__core_dll.SD_DIO_DWGqueueWaveform(self._SD_Object__handle, nDWG, waveformNumber, triggerMode, startDelay, cycles, prescaler);
 		else :
@@ -1522,7 +1522,7 @@ class SD_AIN(SD_Module) :
 		else :
 			return SD_Error.MODULE_NOT_OPENED;
 
-	def DAQtriggerExternalConfig(self, nDAQ, externalSource, triggerBehavior, sync = SD_SyncModes.SYNC_CLK10) : #Changed SYNC_NONE to SYNC_CLK10
+	def DAQtriggerExternalConfig(self, nDAQ, externalSource, triggerBehavior, sync = SD_SyncModes.SYNC_NONE) :
 		if self._SD_Object__handle > 0 :
 			return self._SD_Object__core_dll.SD_AIN_DAQtriggerExternalConfig(self._SD_Object__handle, nDAQ, externalSource, triggerBehavior, sync);
 		else :
