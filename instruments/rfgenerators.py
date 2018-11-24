@@ -230,9 +230,9 @@ class BNC845(SocketInstrument):
     :py:class:`~slab.instruments.instrumenttypes.SocketInstrument`
     """
     default_port=18
-    def __init__(self,name='BNC845',address='', enabled=True,timeout=10, recv_length=1024):
+    def __init__(self,name='BNC845',address='', enabled=True, recv_length=1024, timeout=10):
         #SocketInstrument.__init__(self,name,address,5025,enabled,timeout,recv_length)        
-        SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
+        SocketInstrument.__init__(self,name,address,enabled,recv_length,timeout)
         
         #default set to external reference
         self.set_reference_source("EXT")
