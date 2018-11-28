@@ -16,7 +16,7 @@ from slab.datamanagement import SlabFile
 from slab.dataanalysis import get_next_filename
 import json
 from slab.experiments.PulseExperiments.get_data import get_iq_data, get_singleshot_data
-from slab.experiments.PulseExperiments.PostExperimentAnalysis import PostExperiment
+from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
 
 class Experiment:
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None):
@@ -32,6 +32,12 @@ class Experiment:
 
         try: self.readout_los = [im[lo] for lo in self.hardware_cfg['readout_los']]
         except: print ("No readout function generator specified in hardware config")
+
+        try: self.attens = [im[atten] for atten in self.hardware_cfg['attens']]
+        except: print ("No digital attenuator specified in hardware config")
+
+        try: self.trig = im['trig']
+        except: print ("No trigger function generator specied in hardware cfg")
 
         self.I = None
         self.Q = None
@@ -110,6 +116,21 @@ class Experiment:
                 d.set_power(self.quantum_device_cfg['readout_drive_lo_powers'][str(ii + 1)])
                 d.set_ext_pulse(mod=True)
         except:print("Error in readout drive LO configuration")
+
+    def initiate_attenuators(self):
+        try:
+            for ii, d in enumerate(self.attens):
+                d.set_attenuator(self.quantum_device_cfg['readout']['dig_atten'])
+        except:
+            print("Error in digital attenuator configuration")
+
+    def set_trigger(self):
+        try:
+            period = self.hardware_cfg['trigger']['period_us']
+            self.trig.set_period(period*1e-6)
+            print ("Trigger period set to ", period,"us")
+        except:
+            print("Error in trigger configuration")
 
     def initiate_flux(self):
         self.flux1.ramp_current(self.quantum_device_cfg['freq_flux']['1']['current_mA'] * 1e-3)
@@ -271,6 +292,23 @@ class Experiment:
 
         return I,Q
 
+    def get_ss_data_pxi(self,expt_cfg, seq_data_file):
+        w = self.pxi.readout_window/self.pxi.dt_dig
+
+        I,Q = self.pxi.SSdata_many(w)
+        if seq_data_file == None:
+            self.slab_file = SlabFile(self.data_file)
+            with self.slab_file as f:
+                f.add('I', I)
+                f.add('Q', Q)
+        else:
+            self.slab_file = SlabFile(seq_data_file)
+            with self.slab_file as f:
+                f.append_line('I', I)
+                f.append_line('Q', Q)
+
+        return I,Q
+
     def run_experiment(self, sequences, path, name, seq_data_file=None, update_awg=True):
 
         self.initiate_readout_rf_m8195a()
@@ -299,23 +337,30 @@ class Experiment:
 
         return self.data_file
 
-    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0):
+    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = True):
         self.expt_cfg = self.experiment_cfg[name]
         self.generate_datafile(path,name,seq_data_file=seq_data_file)
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
+        self.initiate_attenuators()
+        self.set_trigger()
+        time.sleep(0.1)
         # ks_pxi.run_keysight(self.experiment_cfg, self.hardware_cfg, sequences, name)
+        try:
+            self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
+            self.pxi.loadAndQueueWaveforms(sequences)
+            self.pxi.run()
+        except: print('Error in loading/configuring/running PXI')
 
-        self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
-        self.pxi.loadAndQueueWaveforms(sequences)
-        self.pxi.run()
-        # except: print('Error in loading/configuring/running PXI')
-        # try:
-        if self.expt_cfg['singleshot']:
-            self.pxi.acquireandplot(expt_num)
-        else:
-            self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
-        # except:print("Error in data acquisition from PXI")
+        try:
+            if self.expt_cfg['singleshot']:
+                if check_sync:
+                    self.pxi.acquireandplot(expt_num)
+                else:self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+            else:
+                self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+        except:print("Error in data acquisition from PXI")
+
         try:
             self.pxi.AWG_module.stopAll()
             self.pxi.AWG_module.clearAll()
@@ -325,7 +370,9 @@ class Experiment:
             self.pxi.trig_module.clearAll()
             self.pxi.chassis.close()
         except:print('Error in stopping and closing PXI')
+        return self.I,self.Q
 
 
-    def post_analysis(self,experiment_name,P='Q',show = False):
-        PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name, self.I ,self.Q, P,show)
+    def post_analysis(self,experiment_name,P='Q',show = False,check_sync = False):
+        if check_sync:pass
+        else:PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name, self.I ,self.Q, P,show)

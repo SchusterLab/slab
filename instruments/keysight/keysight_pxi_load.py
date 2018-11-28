@@ -80,20 +80,21 @@ class KeysightSingleQubit:
 
         self.chassis = chassis
 
-        # Initialize Analog card
-        self.AWG_ch_1 = chassis.getChannel(self.out_mod_no, 1)  # module 6, channel 1. AWG for I input to mixer
-        self.AWG_ch_2 = chassis.getChannel(self.out_mod_no, 2)  # AWG for Q input into mixer
-        self.AWG_ch_3 = chassis.getChannel(self.out_mod_no, 3)  # AWG used as marker for readout pulse
-        self.AWG_ch_4 = chassis.getChannel(self.out_mod_no, 4)  # AWG used as marker for qubit pulse
+        # Initialize Module 6 = Analog card.  Ch1 = AWG I, CH2 = AWG Q
 
-        # Initialize Marker card
-        self.m_ch_1 = chassis.getChannel(self.marker_mod_no, 1)  # module 8, for digital markers for qubit, readout and digitizer card
+        self.AWG_ch_1 = chassis.getChannel(self.out_mod_no, 1)
+        self.AWG_ch_2 = chassis.getChannel(self.out_mod_no, 2)
+        self.AWG_ch_3 = chassis.getChannel(self.out_mod_no, 3)
+        self.AWG_ch_4 = chassis.getChannel(self.out_mod_no, 4)
+
+        # Initialize Module 8 = Marker card. Digital markers for qubit, readout
+        self.m_ch_1 = chassis.getChannel(self.marker_mod_no, 1)
         self.m_ch_2 = chassis.getChannel(self.marker_mod_no, 2)
         self.m_ch_3 = chassis.getChannel(self.marker_mod_no, 3)
         self.m_ch_4 = chassis.getChannel(self.marker_mod_no, 4)
 
         # Initialize card that generates Triggers
-        self.trig_ch_1 = chassis.getChannel(self.trig_mod_no, 1)  # module 8, for digital markers for qubit, readout and digitizer card
+        self.trig_ch_1 = chassis.getChannel(self.trig_mod_no, 1)
         self.trig_ch_2 = chassis.getChannel(self.trig_mod_no, 2)
         self.trig_ch_3 = chassis.getChannel(self.trig_mod_no, 3)
         self.trig_ch_4 = chassis.getChannel(self.trig_mod_no, 4)
@@ -148,7 +149,6 @@ class KeysightSingleQubit:
         self.m_ch_3.configure(amplitude=amp_mark[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
         self.m_ch_4.configure(amplitude=amp_mark[3], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
 
-
         print("Configuring trigger channels")
 
         self.trig_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
@@ -156,7 +156,6 @@ class KeysightSingleQubit:
         self.trig_ch_2.configure(amplitude=amp_trig[1], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
         self.trig_ch_3.configure(amplitude=amp_trig[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
         self.trig_ch_4.configure(amplitude=amp_trig[3], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-
 
         self.DIG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
 
@@ -198,18 +197,20 @@ class KeysightSingleQubit:
 
     def loadAndQueueWaveforms(self, sequences):
         '''Loads the provided waveforms from a pulse sequence to the appropriate modules.
-        This should easily link into the PulseSequenceBuilder.
 
         Note that all waveforms should consist of values from -1 to 1 (inclusive) only. Amplitude is set in the configureChannels() method.
         If you accidentally pass in an array containing larger values, the code raises a KeysightError: Invalid Waveform.
 
         Params:
-            waveforms_I: A list of numpy arrays representing waveforms (or a 2D array) for the "I" input AWG to the mixer,
-                1 for each unique trial/experiment. Should be the same number of waveforms as num_experiments in the __init__ method. If a 2D array,
-                the "inner" array is a waveform, and the "outer" dimension corresponds to the experiment/trial.
+            waveforms_I: List of numpy arrays representing waveforms (or a 2D array) for the "I" input AWG to the mixer,
+                1 for each unique trial/experiment. Should be the same number of waveforms as num_experiments in the __init__ method.
+                The "inner" array is a waveform, and the "outer" dimension corresponds to the experiment/trial.
             waveforms_Q: Same for the "Q" channel.
-            markers_readout: Same for the readout pulse.
-            markers_qubit: Same for the qubit pulse.'''
+            readout: Readout waveform used to trigger the readout LO
+            markers_readout: Trigger for the digitizer
+            The master trigger for all the cards is generated knowing the length of the AWG waveforms using self.generate_trigger
+            '''
+
 
         pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
         num_expt = sequences['readout'].shape[0]
@@ -220,7 +221,9 @@ class KeysightSingleQubit:
                 wv.append(sequences[channel])
             else:
                 wv.append(np.zeros_like(sequences[pxi_waveform_channels[0]]))
-        # Naming based on Nelson's original nomenclature
+
+        # Based on Nelson's original nomenclature
+
         waveforms_I = wv[0]
         waveforms_Q = wv[1]
         markers_readout = wv[3]
@@ -242,7 +245,6 @@ class KeysightSingleQubit:
         self.m_module.clearAll()
         self.trig_module.clearAll()
 
-
         key.Waveform._waveform_number_counter = 0
         qubit_marker = self.generatemarkers(waveforms_I)
         qubit_marker_dsp = self.generatemarkers(waveforms_I,resample=True,conv_width=self.lo_delay,trig_delay=self.trig_delay)
@@ -251,13 +253,12 @@ class KeysightSingleQubit:
         card_trig_arr = self.generatemarkers(markers_readout,resample=True)
 
         trig_arr_awg = self.generatetrigger(len(readout_marker_dsp[0]),2*self.trig_pulse_length,self.abs_trig_delay)
-        np.save("bwaveform_I",waveforms_I)
-        np.save("breadout_marker",markers_readout)
-        np.save("breadout", readout)
-        np.save("bmaster_trigger", trig_arr_awg)
+        # np.save("bwaveform_I",waveforms_I)
+        # np.save("breadout_marker",markers_readout)
+        # np.save("breadout", readout)
+        # np.save("bmaster_trigger", trig_arr_awg)
 
         for i in tqdm(range(len(waveforms_I))):
-            # Generate KeysightLib.Waveform objects
 
             wave_I = key.Waveform(np.array(waveforms_I[i]),append_zero=True)  # Have to include append_zero or the triggers get messed up!
             wave_Q = key.Waveform(waveforms_Q[i], append_zero=True)
@@ -268,7 +269,6 @@ class KeysightSingleQubit:
             m_qubit_dsp = key.Waveform(qubit_marker_dsp[i], append_zero=True)
 
             trig = key.Waveform(trig_arr_awg, append_zero=True)
-            # trig = key.Waveform(card_trig_arr[0], append_zero=True)
             card_trig = key.Waveform(card_trig_arr[i], append_zero=True)
 
             # Load objects to the modules
@@ -361,18 +361,12 @@ class KeysightSingleQubit:
         print("The digitzer bins were individually averaged for testing synchronization.")
 
     def runacquireandplot(self):
-        print("Experiment starting")
-        print ("For testing snchronization. The digitzer bins are individually averaged")
+
         try:
-            # Calls the run() method of the Data Handlers in new thread.
-            # self.data_handler_I.start()
-            # self.data_handler_Q.start()
+            print("Experiment starting")
+            print("The digitzer bins were individually averaged for testing synchronization.")
+            print("Number of experiments = ", self.num_expt)
 
-            # Start all the channels on the AWG and digitizer modules.
-            self.data_1 = np.zeros((self.num_expt, self.DIG_sampl_record))
-            self.data_2 = np.zeros((self.num_expt, self.DIG_sampl_record))
-
-            # self.DIG_module.startAll()
             self.DIG_ch_1.clear()
             self.DIG_ch_1.start()
             self.DIG_ch_2.clear()
@@ -380,32 +374,36 @@ class KeysightSingleQubit:
             self.AWG_module.startAll()
             self.m_module.startAll()
             self.trig_module.startAll()
-            # self.AWG_module.triggerAll()
 
-            # Run the experiment
-
-            # time.sleep(.1)
             for sweep_ct in tqdm(range(self.num_avg)):
-                # print ("sweep %d" % (sweep_ct))
                 self.data_1 += np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape)
                 self.data_2 += np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape)
-            # for data_pt in range(self.num_data_points):
-            #                     self.idata[data_pt,:] = self.idata[data_pt,:] + self.digitizer_I_channel.readDataQuiet()
-            #                     self.qdata[data_pt,:] = self.qdata[data_pt,:] + self.digitizer_Q_channel.readDataQuiet()
 
             self.data_1 /= self.num_avg
             self.data_2 /= self.num_avg
 
             print("Processed data shape", np.shape(self.data_1))
 
-            plt.subplot(121)
+            fig = plt.figure(figsize=(12, 4))
+            ax = fig.add_subplot(131, title='I')
             plt.imshow(self.data_1, aspect='auto')
-            plt.subplot(122)
-            plt.plot(self.data_1[20])
-            plt.plot(self.data_2[20])
+            ax.set_xlabel('Digitizer bins')
+            ax.set_ylabel('Experiment number')
+            ax2 = fig.add_subplot(132, title='Q')
+            plt.imshow(self.data_2, aspect='auto')
+            ax2.set_xlabel('Digitizer bins')
+            ax2.set_ylabel('Experiment number')
+            ax3 = fig.add_subplot(133, title='Expt num = ' + str(expt_num))
+            ax3.plot(np.arange(self.DIG_sampl_record) * self.dt_dig, self.data_1[expt_num])
+            ax3.plot(np.arange(self.DIG_sampl_record) * self.dt_dig, self.data_2[expt_num])
+            ax3.axvspan(self.readout_window[0], self.readout_window[1], alpha=0.2, color='b')
+            ax3.set_xlabel('Time (ns)')
+            ax3.set_ylabel('Signal')
+            fig.tight_layout()
             plt.show()
 
-            print("Done taking data")
+
+
 
         except BaseException as e:  # Quickly kill everything and risk data loss, mainly in case of keyboard interrupt
             pass
@@ -414,15 +412,33 @@ class KeysightSingleQubit:
         finally:  # Clean up threads to prevent zombies. If this fails, you have to restart program.
             pass
 
-    def SSdata(self,w = [0,-1]):
+    def traj_data_one(self,w = [0,-1]):
         ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[0])].T
         ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[0])].T
         return ch1,ch2
 
-    def meanSSdata(self,w =[0,-1]):
-        ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[0])].T
-        ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[0])].T
-        return np.mean(ch1,1), np.mean(ch2,1)
+    def traj_data_many(self,w = [0,-1]):
+        I = []
+        Q = []
+        for ii in tqdm(range(self.num_avg)):
+            ch1= np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])].T
+            ch2= np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])].T
+            I.append(ch1)
+            Q.append(ch2)
+        return np.array(I),np.array(Q)
+
+    def SSdata_one(self,w =[0,-1]):
+        ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])]
+        ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])]
+        return np.mean(ch1,0), np.mean(ch2,0)
+
+    def SSdata_many(self,w =[0,-1]):
+        I = []
+        Q = []
+        for ii in tqdm(range(self.num_avg)):
+            I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])], 0))
+            Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
+        return np.array(I).T, np.array(Q).T
 
     def acquire_avg_data(self,w = [0,-1],pi_calibration=False):
         for ii in tqdm(range(self.num_avg)):
@@ -450,20 +466,6 @@ def run_keysight(experiment_cfg, hardware_cfg, sequences, name):
         setup.configureChannels(hardware_cfg, experiment_cfg, name)
         setup.loadAndQueueWaveforms(sequences)
         setup.runacquireandplot()
-        # save_path = r"S:\_Data\180828 - Manipulate cavity and 3D readout - Cooldown 2\Jupyter notebooks\keysight_rabi_test"
-        # plt.plot(setup.data_1[20])
-        # plt.plot(setup.data_2[20])
-        # plt.show()
-        # np.save(os.path.join(save_path, "I"), np.array(setup.data_list_I))
-        # np.save(os.path.join(save_path, "Q"), np.array(setup.data_list_Q))
-
-        # self.slab_file = SlabFile(data_file)
-        # with self.slab_file as f:
-        #     f.append('single_data1', single_data1)
-        #     f.append('single_data2', single_data2)
-        #     f.append_line('expt_avg_data_ch1', data_1_avg_list)
-        #     f.append_line('expt_avg_data_ch2', data_2_avg_list)
-        #     f.close()
 
     finally:
         setup.AWG_module.stopAll()

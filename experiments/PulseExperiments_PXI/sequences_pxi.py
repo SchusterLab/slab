@@ -513,31 +513,32 @@ class PulseSequences:
 
     def histogram(self, sequencer):
         # vacuum rabi sequences
-        heterodyne_cfg = self.quantum_device_cfg['heterodyne']
 
-        for ii in range(50):
 
-            sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
-            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'], sideband=True)
-            sequencer.end_sequence()
+        for ii in range(self.expt_cfg['num_seq_sets']):
 
-            # with pi pulse (e state)
-            sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
             for qubit_id in self.expt_cfg['on_qubits']:
-                self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=True)
-            sequencer.end_sequence()
+                sequencer.new_sequence(self)
+                self.pad_start_pxi(sequencer, on_qubits=qubit_id, time=500)
+                self.readout_pxi(sequencer,qubit_id)
+                sequencer.end_sequence()
 
-            # with pi pulse and ef pi pulse (f state)
-            sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
-            for qubit_id in self.expt_cfg['on_qubits']:
-                self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
-            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'], sideband=True)
-            sequencer.end_sequence()
+                # with pi pulse (e state)
+                sequencer.new_sequence(self)
+                self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                self.readout_pxi(sequencer, qubit_id)
+                sequencer.end_sequence()
+
+                # with pi pulse and ef pi pulse (f state)
+                sequencer.new_sequence(self)
+                self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                self.readout_pxi(sequencer, qubit_id)
+                sequencer.end_sequence()
 
         return sequencer.complete(self, plot=False)
 
@@ -740,36 +741,6 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=False)
 
-    def histogram(self, sequencer):
-        # vacuum rabi sequences
-        heterodyne_cfg = self.quantum_device_cfg['heterodyne']
-
-        for ii in range(50):
-
-            # no pi pulse (g state)
-            sequencer.new_sequence(self)
-
-            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=True)
-            sequencer.end_sequence()
-
-            # with pi pulse (e state)
-            sequencer.new_sequence(self)
-
-            for qubit_id in self.expt_cfg['on_qubits']:
-                sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
-            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=True)
-            sequencer.end_sequence()
-
-            # with pi pulse and ef pi pulse (f state)
-            sequencer.new_sequence(self)
-
-            for qubit_id in self.expt_cfg['on_qubits']:
-                sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
-                sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
-            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=True)
-            sequencer.end_sequence()
-
-        return sequencer.complete(self, plot=False)
 
     def t1_sideband(self, sequencer):
 
