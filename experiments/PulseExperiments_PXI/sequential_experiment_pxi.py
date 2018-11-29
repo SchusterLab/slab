@@ -25,32 +25,50 @@ class SequentialExperiment:
         self.Qs = []
 
         eval('self.' + experiment_name)(quantum_device_cfg, experiment_cfg, hardware_cfg,path)
-        if analyze:self.analyze(quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name,show,self.Is,self.Qs,P = 'I')
+        if analyze:
+            try:
+                self.analyze(quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name,show,self.Is,self.Qs,P = 'I')
+            except: print ("No post expt analysis")
         else:pass
 
-    def histogram(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
-        expt_cfg = experiment_cfg['histogram']
+    def histogram_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+
+        expt_cfg = experiment_cfg['histogram_sweep']
+        sweep_amp = expt_cfg['sweep_amp']
+        attens = np.arange(expt_cfg['atten_start'],expt_cfg['atten_stop'],expt_cfg['atten_step'])
+        freqs = np.arange(expt_cfg['freq_start'],expt_cfg['freq_stop'],expt_cfg['freq_step'])
+
+        experiment_name = 'histogram'
+
+        expt_cfg = experiment_cfg[experiment_name]
         data_path = os.path.join(path, 'data/')
-        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram', suffix='.h5'))
-        on_qubits = expt_cfg['on_qubits']
 
-        lo_freq = {"1": quantum_device_cfg['heterodyne']['1']['lo_freq'],
-                   "2": quantum_device_cfg['heterodyne']['2']['lo_freq']}
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram_sweep', suffix='.h5'))
 
-        for amp in np.arange(expt_cfg['amp_start'], expt_cfg['amp_stop'], expt_cfg['amp_step']):
-            for qubit_id in on_qubits:
-                quantum_device_cfg['heterodyne'][qubit_id]['amp'] = amp
-            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
-            sequences = ps.get_experiment_sequences('histogram')
-            update_awg = True
-            for lo_freq_delta in np.arange(expt_cfg['lo_freq_delta_start'], expt_cfg['lo_freq_delta_stop'], expt_cfg['lo_freq_delta_step']):
-                for qubit_id in on_qubits:
-                    quantum_device_cfg['heterodyne'][qubit_id]['lo_freq'] = lo_freq[qubit_id] + lo_freq_delta
+        if sweep_amp:
+            for att in attens:
+                quantum_device_cfg['readout']['dig_atten'] = att
+                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.Is.append(I)
+                self.Qs.append(Q)
+        else:
+            for freq in freqs:
+                quantum_device_cfg['readout']['freq'] = freq
+                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.Is.append(I)
+                self.Qs.append(Q)
 
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
-                exp.run_experiment(sequences, path, 'histogram', seq_data_file, update_awg)
 
-                update_awg = False
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
 
     def resonator_spectroscopy(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         experiment_name = 'resonator_spectroscopy'

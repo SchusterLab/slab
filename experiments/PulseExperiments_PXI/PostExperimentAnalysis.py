@@ -15,8 +15,8 @@ class PostExperiment:
         self.P = P
         self.show = show
 
-        eval('self.' + experiment_name)()
-
+        try:eval('self.' + experiment_name)()
+        except:print("No post experiment analysis yet")
     def resonator_spectroscopy(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         I = self.I.flatten() - mean(self.I.flatten())
@@ -68,7 +68,6 @@ class PostExperiment:
             plt.show()
         else:p = fitlor(f, eval('self.'+self.P), showfit=False)
 
-
         print("Qubit frequency = ", p[2], "GHz")
         print("Pulse probe width = ", p[3] * 1e3, "MHz")
         print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
@@ -77,7 +76,7 @@ class PostExperiment:
         expt_cfg = self.experiment_cfg[self.exptname]
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
-
+        amp = expt_cfg['amp']
         if self.show:
 
             fig = plt.figure(figsize=(14, 7))
@@ -86,15 +85,25 @@ class PostExperiment:
             ax.set_xlabel('Time (ns)')
             ax.set_ylabel(self.P)
             ax.legend()
-            p = fitdecaysin(t, P, showfit=True)
-            ax.axvline(1 / (2 * p[1]), color='k', linestyle='dashed')
-            ax.axvline(1 / (4 * p[1]), color='k', linestyle='dashed')
+            p = fitdecaysin(t[2:], P[2:], showfit=True)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
             plt.show()
 
-        else:p = fitdecaysin(t, P, showfit=False)
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
 
-        print("half pi length =", 1 / (4 * p[1]), "ns")
-        print("pi length =", 1 / (2 * p[1]), "ns")
+        print("Half pi length =", t_half_pi, "ns")
+        print("pi length =", t_pi, "ns")
+        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
+        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_piby2_amp = ",
+              amp * (t_half_pi) / float(int(t_half_pi) + 1))
 
     def t1(self):
         expt_cfg = self.experiment_cfg[self.exptname]
@@ -205,7 +214,7 @@ class PostExperiment:
         expt_cfg = self.experiment_cfg[self.exptname]
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
-
+        amp = expt_cfg['amp']
         if self.show:
 
             fig = plt.figure(figsize=(14, 7))
@@ -214,15 +223,25 @@ class PostExperiment:
             ax.set_xlabel('Time (ns)')
             ax.set_ylabel(self.P)
             ax.legend()
-            p = fitdecaysin(t, P, showfit=True)
-            ax.axvline(1 / (2 * p[1]), color='k', linestyle='dashed')
-            ax.axvline(1 / (4 * p[1]), color='k', linestyle='dashed')
+            p = fitdecaysin(t[2:], P[2:], showfit=True)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
             plt.show()
 
-        else:p = fitdecaysin(t, P, showfit=False)
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
 
-        print("half pi length =", 1 / (4 * p[1]), "ns")
-        print("pi length =", 1 / (2 * p[1]), "ns")
+        print("Half pi length =", t_half_pi, "ns")
+        print("pi length =", t_pi, "ns")
+        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
+        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
+              amp * (t_half_pi) / float(int(t_half_pi) + 1))
 
     def ef_t1(self):
         expt_cfg = self.experiment_cfg[self.exptname]
@@ -401,6 +420,89 @@ class PostExperiment:
         ratio = abs(contrast[1] / contrast[0])
         print("Qubit Temp:", 1e3 * temperature_q(nu_q * 1e9, ratio), " mK")
         print("Qubit Excited State Occupation:", occupation_q(nu_q, 1e3 * temperature_q(nu_q, ratio)))
+
+    def histogram_sweep(self):
+        expt_cfg = self.experiment_cfg['histogram']
+        a_num = expt_cfg['acquisition_num']
+        ns = expt_cfg['num_seq_sets']
+        numbins = expt_cfg['numbins']
+        swp_cfg = self.experiment_cfg['histogram_sweep']
+        attens = np.arange(swp_cfg['atten_start'], swp_cfg['atten_stop'], swp_cfg['atten_step'])
+        freqs = np.arange(swp_cfg['freq_start'], swp_cfg['freq_stop'], swp_cfg['freq_step'])
+        sweep_amp = swp_cfg['sweep_amp']
+        colors = ['r', 'b', 'g']
+        labels = ['g', 'e', 'f']
+        titles = ['-I', '-Q']
+
+        if sweep_amp:x = attens[:]
+        else:x = freqs[:]
+
+        if expt_cfg['singleshot']:
+
+            I = self.I.flatten().reshape(len(x),3*ns,a_num)
+            Q = self.Q.flatten().reshape(len(x),3*ns,a_num)
+
+            IQsss = array([(i.T.flatten()[0::3], Q[ii].T.flatten()[0::3],
+                            i.T.flatten()[1::3], Q[ii].T.flatten()[1::3],
+                            i.T.flatten()[2::3], Q[ii].T.flatten()[2::3]) for ii, i in enumerate(I)])
+
+            Is = mean(I, axis=2).reshape(len(x), ns, 3)
+            Qs = mean(Q, axis=2).reshape(len(x), ns, 3)
+
+            fidsI,fidsQ  = [],[]
+
+            for k, f in enumerate(x):
+                for ii, i in enumerate(['I', 'Q']):
+                    sshg, ssbinsg = np.histogram(IQsss[k][ii], bins=numbins)
+                    sshe, ssbinse = np.histogram(IQsss[k][ii + 2], bins=numbins)
+                    fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / (sshg.sum() / 2.0 + sshe.sum() / 2.0))).max()
+                    if ii == 0:fidsI.append(fid)
+                    else:fidsQ.append(fid)
+
+            arg = argmax(eval('fids' + chan))
+            fig = plt.figure(figsize=(15, 15))
+
+            ax = fig.add_subplot(521, title=expt_name + '-averaged')
+            for j in range(ns):
+                for ii in range(3):
+                    ax.plot(Is[arg][j][ii], Qs[arg][j][ii], 'o', color=colors[ii])
+            ax.set_xlabel('I')
+            ax.set_ylabel('Q')
+
+            ax = fig.add_subplot(522, title=expt_name + '- mean and std ')
+
+            for ii in range(3):
+                ax.errorbar(mean(IQsss[arg][2 * ii]), mean(IQsss[arg][2 * ii + 1]), xerr=std(IQsss[arg][2 * ii]),
+                            yerr=std(IQsss[arg][2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+            ax.set_xlabel('I')
+            ax.set_ylabel('Q')
+
+            for kk in range(6):
+                ax = fig.add_subplot(5, 2, kk + 3, title=expt_name + titles[kk % 2])
+                ax.hist(IQsss[arg][kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
+                ax.set_xlabel('Value' + titles[kk % 2])
+                ax.set_ylabel('Number')
+                ax.legend()
+
+            ax = fig.add_subplot(515, title='Single shot readout fidelity')
+            ax.plot(x, fidsI, 'bo-', label='I')
+            ax.plot(x, fidsQ, 'ro-', label='Q')
+            axvline(x[arg])
+            ax.legend()
+            if sweep_amp:
+                ax.set_xlabel('dig atten (dB)')
+                print('Optimal readout amplitude =  ', x[arg], 'dB')
+            else:
+                ax.set_xlabel('Freq (GHz)')
+                print('Optimal readout freq =  ', x[arg], 'GHz')
+            ax.set_ylabel('Single shot readout fidelity')
+            fig.tight_layout()
+
+        else:
+            print ("Set singleshot to True")
+
+        fig.tight_layout()
+        plt.show()
 
     def save_cfg_info(self, f):
             f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)

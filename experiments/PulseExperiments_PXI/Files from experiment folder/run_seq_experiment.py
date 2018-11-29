@@ -1,14 +1,12 @@
-from slab.experiments.PulseExperiments_PXI.sequences import PulseSequences
-from slab.experiments.PulseExperiments_PXI.pulse_experiment import Experiment
-import slab.experiments.PulseExperiments.sequential_experiment_pxi as seq_exp
+from slab.experiments.PulseExperiments_PXI.sequential_experiment_pxi import SequentialExperiment
 import json
-
 
 '''
 Sequential Experiments:
 =======================
-resonator_spectroscopy_sweep
+resonator_spectroscopy
 qubit_temperature
+histogram_sweep
 =======================
 '''
 
@@ -22,7 +20,6 @@ with open('experiment_config.json', 'r') as f:
 with open('hardware_config.json', 'r') as f:
     hardware_cfg = json.load(f)
 
+experiment_name = 'histogram_sweep'
 
-experiment_name = 'resonator_spectroscopy_sweep'
-
-eval('seq_exp.' + experiment_name)(quantum_device_cfg,experiment_cfg,hardware_cfg, path)
+sexp = SequentialExperiment(quantum_device_cfg,experiment_cfg,hardware_cfg,experiment_name,path,analyze=True,show=True)

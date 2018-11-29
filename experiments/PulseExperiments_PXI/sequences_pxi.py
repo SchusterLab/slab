@@ -448,7 +448,6 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=True)
 
-
     def ef_t1(self, sequencer):
         # t1 for the e and f level
 
@@ -547,14 +546,15 @@ class PulseSequences:
         rabi_freq = self.expt_cfg['freq']
         for rabi_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
 
             for qubit_id in self.expt_cfg['on_qubits']:
-                sequencer.append('charge%s'%qubit_id, self.qubit_pi[qubit_id])
-                sequencer.sync_channels_time(self.channels)
-                sequencer.append('flux%s'%qubit_id,
-                                 Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len, ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'], cutoff_sigma=2, freq=rabi_freq, phase=0,
-                                        plot=False))
-            self.readout(sequencer, self.expt_cfg['on_qubits'])
+                self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                # sequencer.sync_channels_time(self.channels)
+                # sequencer.append('sideband',
+                #                  Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len, ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'], cutoff_sigma=2, freq=rabi_freq, phase=0,
+                #                         plot=False))
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
 
             sequencer.end_sequence()
 
@@ -740,7 +740,6 @@ class PulseSequences:
             sequencer.end_sequence()
 
         return sequencer.complete(self, plot=False)
-
 
     def t1_sideband(self, sequencer):
 

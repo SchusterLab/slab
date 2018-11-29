@@ -10,7 +10,6 @@ path = os.getcwd()
 '''
 General Experiments:
 =======================
-resonator_spectroscopy
 pulse_probe_iq
 rabi
 t1
@@ -35,12 +34,12 @@ with open('hardware_config.json', 'r') as f:
     hardware_cfg = json.load(f)
 
 
-experiment_names = ["ramsey"]
+experiment_names = ['rabi']
 
 for experiment_name in experiment_names:
 
     ps = PulseSequences(quantum_device_cfg , experiment_cfg, hardware_cfg)
     sequences = ps.get_experiment_sequences(experiment_name)
     exp = Experiment(quantum_device_cfg , experiment_cfg, hardware_cfg,sequences, experiment_name)
-    exp.run_experiment_pxi(sequences, path, experiment_name,expt_num=100)
+    exp.run_experiment_pxi(sequences, path, experiment_name,expt_num=0,check_sync=False)
     exp.post_analysis(experiment_name,P = 'Q',show=True)

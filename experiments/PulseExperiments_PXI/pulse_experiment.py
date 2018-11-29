@@ -39,8 +39,26 @@ class Experiment:
         try: self.trig = im['trig']
         except: print ("No trigger function generator specied in hardware cfg")
 
+        try:self.tek2 = im['TEK2']
+        except:print("No tek2")
+
         self.I = None
         self.Q = None
+        self.prep_tek2 = False
+
+    def initiate_pxi(self, name, sequences):
+        pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
+        pxi_sequences = {}
+        for channel in pxi_waveform_channels:
+            pxi_sequences[channel] = sequences[channel]
+        try:
+            self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
+            self.pxi.loadAndQueueWaveforms(pxi_sequences)
+        except:
+            print("Error in configuring and loading sequences to PXI")
+
+    def initiate_tek2(self, name, sequences):
+        print("Connected to", self.tek2.get_id())
 
     def initiate_tek(self, name, path, sequences):
         print(self.tek.get_id())
@@ -77,10 +95,24 @@ class Experiment:
         self.m8195a.stop_output()
         time.sleep(1)
 
-    def awg_run(self):
-        self.m8195a.start_output()
-        time.sleep(1)
-        self.tek.run()
+    def awg_run(self,run_pxi = True):
+        if run_pxi:self.pxi.run()
+        else:
+            self.m8195a.start_output()
+            time.sleep(1)
+            self.tek.run()
+
+    def stop_pxi(self):
+        try:
+            self.pxi.AWG_module.stopAll()
+            self.pxi.AWG_module.clearAll()
+            self.pxi.m_module.stopAll()
+            self.pxi.m_module.clearAll()
+            self.pxi.trig_module.stopAll()
+            self.pxi.trig_module.clearAll()
+            self.pxi.DIG_module.stopAll()
+            self.pxi.chassis.close()
+        except:print('Error in stopping and closing PXI')
 
     def initiate_alazar(self, sequence_length, averages):
         self.hardware_cfg['alazar']['samplesPerRecord'] = 2 ** (
@@ -304,8 +336,8 @@ class Experiment:
         else:
             self.slab_file = SlabFile(seq_data_file)
             with self.slab_file as f:
-                f.append_line('I', I)
-                f.append_line('Q', Q)
+                f.append_line('I', I.flatten())
+                f.append_line('Q', Q.flatten())
 
         return I,Q
 
@@ -337,41 +369,32 @@ class Experiment:
 
         return self.data_file
 
-    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = True):
+    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False):
         self.expt_cfg = self.experiment_cfg[name]
         self.generate_datafile(path,name,seq_data_file=seq_data_file)
+        self.set_trigger()
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
         self.initiate_attenuators()
-        self.set_trigger()
+        self.initiate_tek2(name,sequences)
+        self.initiate_pxi(name, sequences)
+
         time.sleep(0.1)
-        # ks_pxi.run_keysight(self.experiment_cfg, self.hardware_cfg, sequences, name)
-        try:
-            self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
-            self.pxi.loadAndQueueWaveforms(sequences)
-            self.pxi.run()
-        except: print('Error in loading/configuring/running PXI')
+        self.awg_run(run_pxi=True)
 
         try:
-            if self.expt_cfg['singleshot']:
-                if check_sync:
-                    self.pxi.acquireandplot(expt_num)
-                else:self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+            if check_sync:
+                self.pxi.acquireandplot(expt_num)
             else:
-                self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+                if self.expt_cfg['singleshot']:
+                    self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+                else:
+                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
         except:print("Error in data acquisition from PXI")
 
-        try:
-            self.pxi.AWG_module.stopAll()
-            self.pxi.AWG_module.clearAll()
-            self.pxi.m_module.stopAll()
-            self.pxi.m_module.clearAll()
-            self.pxi.trig_module.stopAll()
-            self.pxi.trig_module.clearAll()
-            self.pxi.chassis.close()
-        except:print('Error in stopping and closing PXI')
-        return self.I,self.Q
+        self.stop_pxi()
 
+        return self.I,self.Q
 
     def post_analysis(self,experiment_name,P='Q',show = False,check_sync = False):
         if check_sync:pass
