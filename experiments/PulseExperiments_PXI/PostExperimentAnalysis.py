@@ -102,7 +102,7 @@ class PostExperiment:
         print("Half pi length =", t_half_pi, "ns")
         print("pi length =", t_pi, "ns")
         print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
-        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_piby2_amp = ",
+        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
               amp * (t_half_pi) / float(int(t_half_pi) + 1))
 
     def t1(self):
@@ -503,6 +503,39 @@ class PostExperiment:
 
         fig.tight_layout()
         plt.show()
+
+    def sideband_rabi(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        amp = expt_cfg['amp']
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t[2:], P[2:], showfit=True)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+        print("Half pi length =", t_half_pi, "ns")
+        print("pi length =", t_pi, "ns")
+        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
+        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
+              amp * (t_half_pi) / float(int(t_half_pi) + 1))
 
     def save_cfg_info(self, f):
             f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)

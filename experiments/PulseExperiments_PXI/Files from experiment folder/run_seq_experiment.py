@@ -20,6 +20,6 @@ with open('experiment_config.json', 'r') as f:
 with open('hardware_config.json', 'r') as f:
     hardware_cfg = json.load(f)
 
-experiment_name = 'histogram_sweep'
+experiment_name = 'resonator_spectroscopy'
 
 sexp = SequentialExperiment(quantum_device_cfg,experiment_cfg,hardware_cfg,experiment_name,path,analyze=True,show=True)

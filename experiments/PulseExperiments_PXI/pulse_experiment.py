@@ -5,6 +5,8 @@ from slab.instruments.awg.M8195A import upload_M8195A_sequence
 from slab.instruments.keysight import keysight_pxi_load as ks_pxi
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
+from slab.instruments.awg.Tek70001 import write_Tek70001_sequence
+# from slab.instruments.awg.Tek70001 import write_Tek70001_file
 from slab.instruments.awg import M8195A
 from slab.instruments.Alazar import Alazar
 import numpy as np
@@ -47,6 +49,8 @@ class Experiment:
         self.prep_tek2 = False
 
     def initiate_pxi(self, name, sequences):
+        try:self.tek2.stop()
+        except:pass
         pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
         pxi_sequences = {}
         for channel in pxi_waveform_channels:
@@ -54,11 +58,20 @@ class Experiment:
         try:
             self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
             self.pxi.loadAndQueueWaveforms(pxi_sequences)
-        except:
-            print("Error in configuring and loading sequences to PXI")
+        except:print("Error in configuring and loading sequences to PXI")
 
-    def initiate_tek2(self, name, sequences):
-        print("Connected to", self.tek2.get_id())
+    def initiate_tek2(self, name,path, sequences):
+        if 'sideband' in name:
+            try:
+                print("Connected to", self.tek2.get_id())
+                tek2_waveform_channels = self.hardware_cfg['awg_info']['tek70001a']['waveform_channels']
+                tek2_waveforms = [sequences[channel] for channel in tek2_waveform_channels]
+                for waveform in tek2_waveforms:
+                    write_Tek70001_sequence(waveform,os.path.join(path, 'sequences/'), name,awg=self.tek2)
+                self.tek2.prep_experiment()
+            except:print("tek2 sequence not uploaded")
+
+
 
     def initiate_tek(self, name, path, sequences):
         print(self.tek.get_id())
@@ -95,14 +108,33 @@ class Experiment:
         self.m8195a.stop_output()
         time.sleep(1)
 
-    def awg_run(self,run_pxi = True):
-        if run_pxi:self.pxi.run()
+    def awg_run(self,run_pxi = True,name=None):
+        if run_pxi:
+            self.pxi.run()
+            if 'sideband' in name:
+                try:self.tek2.run()
+                except:print("tek2 is not runnning")
         else:
             self.m8195a.start_output()
             time.sleep(1)
             self.tek.run()
 
-    def stop_pxi(self):
+    def awg_stop(self,name):
+        try:
+            self.pxi.AWG_module.stopAll()
+            self.pxi.AWG_module.clearAll()
+            self.pxi.m_module.stopAll()
+            self.pxi.m_module.clearAll()
+            self.pxi.trig_module.stopAll()
+            self.pxi.trig_module.clearAll()
+            self.pxi.DIG_module.stopAll()
+            self.pxi.chassis.close()
+        except:print('Error in stopping and closing PXI')
+        if 'sideband' in name:
+            try:self.tek2.stop()
+            except:print('Error in stopping TEK2')
+
+    def pxi_stop(self):
         try:
             self.pxi.AWG_module.stopAll()
             self.pxi.AWG_module.clearAll()
@@ -376,15 +408,16 @@ class Experiment:
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
         self.initiate_attenuators()
-        self.initiate_tek2(name,sequences)
         self.initiate_pxi(name, sequences)
+        self.initiate_tek2(name,path,sequences)
+
 
         time.sleep(0.1)
-        self.awg_run(run_pxi=True)
+
+        self.awg_run(run_pxi=True,name=name)
 
         try:
-            if check_sync:
-                self.pxi.acquireandplot(expt_num)
+            if check_sync:self.pxi.acquireandplot(expt_num)
             else:
                 if self.expt_cfg['singleshot']:
                     self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
@@ -392,8 +425,7 @@ class Experiment:
                     self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
         except:print("Error in data acquisition from PXI")
 
-        self.stop_pxi()
-
+        self.awg_stop(name)
         return self.I,self.Q
 
     def post_analysis(self,experiment_name,P='Q',show = False,check_sync = False):

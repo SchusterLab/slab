@@ -1,8 +1,8 @@
 {
   "rabi": {
     "amp": 0.992,
-    "stop": 300, "step": 3.0, "pi_calibration": false,
-    "start": 0.0, "acquisition_num": 4000, "on_qubits": ["1"],"singleshot":false
+    "stop": 303, "step": 3.0, "pi_calibration": false,
+    "start": 0.0, "acquisition_num": 2000, "on_qubits": ["1"],"singleshot":false
   },
   "rabi_sideband": {
     "amp": 1.0,
@@ -20,8 +20,8 @@
   },
 
   "ramsey": {
-    "stop": 10000, "step": 100.0, "singleshot": false,
-    "start": 0.0, "ramsey_freq": 0.001, "acquisition_num": 3000, "on_qubits": ["1"], "pi_calibration": true
+    "stop": 2020.0, "step": 20.0, "singleshot": false,
+    "start": 0.0, "ramsey_freq": 0.004, "acquisition_num": 3001, "on_qubits": ["1"], "pi_calibration": false
   },
 
   "echo": {
@@ -56,13 +56,13 @@
     "start": -0.05, "acquisition_num": 5000, "on_qubits": ["1"],"pi_calibration":false,"pulse_type":"square"
   },
   "histogram": {
-    "acquisition_num": 100, "on_qubits": ["1"], "singleshot": true,"num_seq_sets":42,"numbins":100
+    "acquisition_num": 1000, "on_qubits": ["1"], "singleshot": true,"num_seq_sets":42,"numbins":100
   },
   "histogram_sweep": {
     "atten_start": -14.0, "atten_stop": -8.0,"atten_step": 0.5, "freq_start": 8.070799999, "freq_stop": 8.072799999,"freq_step": 0.0001,"sweep_amp":false
   },
   "sideband_rabi_freq": {
-    "pulse_len": 50.0, "amp": 0.2, "pi_calibration": true,
+    "pulse_len": 50.0, "amp": 1.0, "pi_calibration": true,
     "stop": 3.20, "step": 0.005,
     "start": 0.9, "acquisition_num": 2000, "on_qubits": ["1"], "around": "", "freq_range":0.005
   },
@@ -89,9 +89,9 @@
     "on_qubits": ["1"], "pi_calibration": false,"singleshot":false
   },
   "sideband_rabi": {
-    "amp": 0.2, "freq": 3.146,
-    "stop": 100.0, "step": 1.0, "pi_calibration": false,
-    "start": 0.0, "acquisition_num": 2000, "on_qubits": ["1"],"singleshot":false
+    "amp": 0.5, "freq": 5.146,
+    "stop": 202.0, "step": 2.0, "pi_calibration": false,
+    "start": 0.0, "acquisition_num": 500, "on_qubits": ["1"],"singleshot":false
   },
   "sideband_rabi_2_freq": {
     "amp": 0.2, "freq_1": 3.146, "freq_2":3.146,

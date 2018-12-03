@@ -42,4 +42,4 @@ for experiment_name in experiment_names:
     sequences = ps.get_experiment_sequences(experiment_name)
     exp = Experiment(quantum_device_cfg , experiment_cfg, hardware_cfg,sequences, experiment_name)
     exp.run_experiment_pxi(sequences, path, experiment_name,expt_num=0,check_sync=False)
-    exp.post_analysis(experiment_name,P = 'Q',show=True)
+    exp.post_analysis(experiment_name,P = 'I',show=True)

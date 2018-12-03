@@ -460,8 +460,9 @@ def write_Tek70001_sequence(waveforms, path, prefix, awg=None):
     # make waveform files
     for j, wf in enumerate(waveforms):
         filename = os.path.join(path, prefix + str(j) + '.wfmx')
-
+        print(filename)
         write_Tek70001_waveform_file(filename, wf)
+        # print (filename)
 
         print("Loading Waveform File" + filename + " into TEK70001")
         if awg is not None:

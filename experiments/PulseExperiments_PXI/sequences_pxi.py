@@ -259,6 +259,8 @@ class PulseSequences:
                          Square(max_amp=0.0, flat_len= time, ramp_sigma_len=0.001, cutoff_sigma=2, freq=0.0,
                                 phase=0))
 
+
+
     def readout(self, sequencer, on_qubits=None, sideband = False):
         if on_qubits == None:
             on_qubits = ["1", "2"]
@@ -357,7 +359,6 @@ class PulseSequences:
 
             for qubit_id in self.expt_cfg['on_qubits']:
                 self.gen_q(sequencer,qubit_id,len=rabi_len,phase=0,pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
 
@@ -543,22 +544,23 @@ class PulseSequences:
 
     def sideband_rabi(self, sequencer):
         # sideband rabi time domain
-        rabi_freq = self.expt_cfg['freq']
+        sideband_freq = self.expt_cfg['freq']
         for rabi_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+            self.pad_start_pxi(sequencer,on_qubits=self.expt_cfg['on_qubits'],time=500.0)
 
             for qubit_id in self.expt_cfg['on_qubits']:
                 self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                # sequencer.sync_channels_time(self.channels)
-                # sequencer.append('sideband',
-                #                  Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len, ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'], cutoff_sigma=2, freq=rabi_freq, phase=0,
-                #                         plot=False))
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('sideband',
+                             Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len, ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                    plot=False))
+                sequencer.append('tek2_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
-
             sequencer.end_sequence()
 
-        return sequencer.complete(self,plot=False)
+        return sequencer.complete(self, plot=True)
+
 
     def sideband_rabi_2_freq(self, sequencer):
         # sideband rabi time domain
