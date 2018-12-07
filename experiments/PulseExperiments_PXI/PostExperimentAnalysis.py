@@ -537,6 +537,46 @@ class PostExperiment:
         print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
               amp * (t_half_pi) / float(int(t_half_pi) + 1))
 
+    def sideband_rabi_freq_scan(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        sideband_freq = expt_cfg['freq']
+        P = eval('self.' + self.P)
+        df = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        freqs = sideband_freq + df
+        amp = expt_cfg['amp']
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(freqs, P, 'o-', label=self.P)
+            ax.set_xlabel('Sideband freq (GHz)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            plt.show()
+
+        else:
+            pass
+
+    def sideband_t1(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]/1e3
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (us)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitexp(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitexp(t, P, showfit=False)
+
+        print("T1 =", p[3], "us")
+
     def save_cfg_info(self, f):
             f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
             f.attrs['experiment_cfg'] = json.dumps(self.experiment_cfg)

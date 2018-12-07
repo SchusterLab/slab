@@ -66,6 +66,9 @@ class KeysightSingleQubit:
         self.trig_pulse_length = hardware_cfg['trig_pulse_len']['default']
         self.trig_delay = hardware_cfg['awg_info']['keysight_pxi']['m3201a_trig_delay']
         self.card_delay = hardware_cfg['awg_info']['keysight_pxi']['m3102a_card_delay']
+        self.adc_range =  hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']
+
+
 
         print ("Module used for generating analog pulses = ",self.out_mod_no)
         print ("Module used for generating digital markers = ",self.marker_mod_no)
@@ -74,6 +77,10 @@ class KeysightSingleQubit:
 
         self.num_avg = experiment_cfg[name]['acquisition_num']
         self.num_expt = sequences['readout'].shape[0]
+        self.trigger_period = self.hardware_cfg['trigger']['period_us']
+
+        self.totaltime = self.num_avg*self.num_expt*self.trigger_period*1e-6/60.0
+
         self.DIG_sampl_record = hardware_cfg['awg_info']['keysight_pxi']['samplesPerRecord']
 
 
@@ -178,20 +185,10 @@ class KeysightSingleQubit:
             self.trig_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
 
 
-        print ("Configuring digitizer")
-        self.DIG_ch_1.configure(points_per_cycle=self.DIG_sampl_record,
-                                           # Divide by 2 because bandwidth of digitizer is less than AWG
-                                           # Number of data points to acquire at one time, at 2 ns apiece.
-                                           cycles=num_expt * num_avg,
-                                           # Total number of times digitizer will be asked to take data
-                                           buffer_time_out=100000,  # Time before aborting data read, ms.
-                                           # In general want to be quite large, but not infinite
-                                           trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
-                                           # Triggered externally by linking to readout pulse
-                                           use_buffering=True,  # Unnecessary with a Data Handler subprocess
-                                           cycles_per_return=num_expt)  # Return and log 1 trial's data at a time. Can increase to bundle data together.
-        # time.sleep(0.001)
-        self.DIG_ch_2.configure(points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+        print ("Configuring digitizer. ADC range set to",self.adc_range, "Vpp")
+
+        self.DIG_ch_1.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
 
     def generatemarkers(self,waveform,resample=False,conv_width = 1,trig_delay = 0):
 
@@ -319,7 +316,7 @@ class KeysightSingleQubit:
                                                syncMode=1, length=10, delay=0)
 
     def run(self):
-        print("Experiment starting")
+        print("Experiment starting. Expected time = ", self.totaltime, "mins")
         try:
             # Start all the channels on the AWG and digitizer modules.
             print ("Number of experiments = ",self.num_expt)

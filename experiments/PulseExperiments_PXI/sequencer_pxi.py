@@ -14,6 +14,7 @@ class Sequencer:
         self.awg_info = awg_info
         self.channels_delay = channels_delay
 
+
         channels_awg_info = {}
 
         for channel in channels:
@@ -191,12 +192,12 @@ class Sequencer:
         elif sequences.expt_cfg.get('pi_calibration', False):
 
             self.new_sequence(sequences)
-            sequences.pad_start_pxi(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
+            sequences.pad_start_pxi_tek2(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
             sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["1"]))
             self.end_sequence()
 
             self.new_sequence(sequences)
-            sequences.pad_start_pxi(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
+            sequences.pad_start_pxi_tek2(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
             for qubit_id in sequences.expt_cfg.get('on_qubits',["1"]):
                 sequences.pi_q(self,qubit_id = qubit_id,phase = 0,pulse_type = sequences.pulse_info[qubit_id]['pulse_type'])
             sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["1"]))
@@ -206,8 +207,7 @@ class Sequencer:
         self.equalize_sequences()
         self.delay_channels(self.channels_delay)
 
-        if plot:
-            self.plot_sequences()
+        if plot:self.plot_sequences()
 
         return self.multiple_sequences
 

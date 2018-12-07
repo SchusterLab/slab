@@ -48,9 +48,16 @@ class Experiment:
         self.Q = None
         self.prep_tek2 = False
 
+
     def initiate_pxi(self, name, sequences):
         try:self.tek2.stop()
         except:pass
+        try:
+            self.pxi.AWG_module.stopAll()
+            self.pxi.m_module.stopAll()
+            self.pxi.trig_module.stopAll()
+        except:pass
+
         pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
         pxi_sequences = {}
         for channel in pxi_waveform_channels:
@@ -110,10 +117,10 @@ class Experiment:
 
     def awg_run(self,run_pxi = True,name=None):
         if run_pxi:
-            self.pxi.run()
             if 'sideband' in name:
                 try:self.tek2.run()
                 except:print("tek2 is not runnning")
+            self.pxi.run()
         else:
             self.m8195a.start_output()
             time.sleep(1)
@@ -410,10 +417,7 @@ class Experiment:
         self.initiate_attenuators()
         self.initiate_pxi(name, sequences)
         self.initiate_tek2(name,path,sequences)
-
-
         time.sleep(0.1)
-
         self.awg_run(run_pxi=True,name=name)
 
         try:
