@@ -459,6 +459,18 @@ class KeysightSingleQubit:
         return I,Q
 
 
+    def acquire_avg_std_data(self, w=[0, -1], pi_calibration=False):
+        self.I,self.Q = [],[]
+        for ii in tqdm(range(self.num_avg)):
+            self.I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])], 0))
+            self.Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
+        I,Q = mean(self.I),mean(self.Q)
+        Ierr,Qerr = std(self.I),std(self.Q)
+        if pi_calibration:
+            I = (I[:-2] - I[-2]) / (I[-1] - I[-2])
+            Q = (Q[:-2] - Q[-2]) / (Q[-1] - Q[-2])
+        return I,Q,Ierr,Qerr
+
 def run_keysight(experiment_cfg, hardware_cfg, sequences, name):
 
 

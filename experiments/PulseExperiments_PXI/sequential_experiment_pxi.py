@@ -97,6 +97,8 @@ class SequentialExperiment:
         for ge_pi in [True,False]:
 
             experiment_cfg['ef_rabi']['ge_pi'] = ge_pi
+            if ge_pi:pass
+            else:experiment_cfg['ef_rabi']['acquisition_num'] = 5000
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
@@ -132,10 +134,9 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
-
-    def sideband_rabi_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    def sideband_rabi_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         swp_cfg = experiment_cfg['sideband_rabi_sweep']
-        freqs = np.arange(swp_cfg['start'],swp_cfg['stop'],swp_cfg['step'])
+        freqs = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
 
         experiment_name = 'sideband_rabi'
 
@@ -145,9 +146,36 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sideband_rabi_sweep', suffix='.h5'))
 
         for freq in freqs:
-            print ("Sideband frequency set to", freq, "GHz")
+            print("Sideband frequency set to", freq, "GHz")
 
             experiment_cfg[experiment_name]['freq'] = freq
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+    def sequential_sideband_ramsey(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sequential_sideband_ramsey']
+        stops = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])[1:]
+
+        experiment_name = 'sideband_ramsey'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_sideband_ramsey', suffix='.h5'))
+
+        for ii in range(len(stops)):
+            experiment_cfg[experiment_name]['stop'] = stops[ii]
+            if ii is 0:experiment_cfg[experiment_name]['start'] = swp_cfg['start']
+            else:experiment_cfg[experiment_name]['start'] = stops[ii-1]
+
+            print ("Sideband Ramsey start,stop,step = ",experiment_cfg[experiment_name]['start'],experiment_cfg[experiment_name]['stop'],experiment_cfg[experiment_name]['step'])
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
@@ -157,7 +185,6 @@ class SequentialExperiment:
 
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
-
 
 
     def analyze(self,quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name,show,Is,Qs,P='Q'):
