@@ -1,4 +1,4 @@
-{"qubit": {"1": {"freq": 4.797018151960107, "anharmonicity": -0.139002}, "2": {"freq": 4.742, "anharmonicity": -0.109928}},"qubit_drive_lo_powers":{"1":16},"readout_drive_lo_powers":{"1":16},
+{"qubit": {"1": {"freq": 4.527556074037375, "anharmonicity": -0.139002}, "2": {"freq": 4.742, "anharmonicity": -0.109928}},"qubit_drive_lo_powers":{"1":16},"readout_drive_lo_powers":{"1":16},
   "heterodyne": {
     "1": {
       "sideband_amp": 0.0, "sideband_detune": 0.05, "amp": 0.4, "length": 1500, "freq": -0.1537, "lo_freq": 5.9,
@@ -21,15 +21,15 @@
     "1": {"current_mA": 0.0, "freq_flux_slope": -0.3}, "2": {"current_mA": 0.0, "freq_flux_slope": 0.3}
   },
   "alazar_readout": {"width": 1500, "window": [500, 3000]},
-  "readout": {"amp": 1.0, "length": 5000, "freq": 8.0721,"window":[800, 5000],"dig_atten":-10},
+  "readout": {"amp": 1.0, "length": 5000, "freq": 8.071799999999998,"window":[800, 5000],"dig_atten":-10},
   "pulse_info": {
     "1": {
       "pi_amp": 0.989, "pi_ef_amp": 0.971, "pi_len":  49, "pi_ef_len": 55, "half_pi_amp": 0.969, "half_pi_ef_amp": 0.953,
-      "half_pi_len":  25, "half_pi_ef_len": 28,"iq_freq":0.2,"Q_phase":1.57079,"pulse_type":"gauss","ef_pulse_type":"gauss"
+      "half_pi_len":  25, "half_pi_ef_len": 28,"iq_freq":0.2,"Q_phase":1.57079,"pulse_type":"square","ef_pulse_type":"square"
     },
     "2": {
       "pi_amp": 1.0, "pi_ef_amp": 1.0, "pi_len": 87.25, "pi_ef_len": 29.49, "half_pi_amp": 1.0, "half_pi_ef_amp": 1.0,
-      "half_pi_len": 43.62, "half_pi_ef_len": 14.745,"iq_freq":0.2,"Q_phase":1.57079,"pulse_type":"gauss","ef_pulse_type":"square"
+      "half_pi_len": 43.62, "half_pi_ef_len": 14.745,"iq_freq":0.0,"Q_phase":1.57079,"pulse_type":"gauss","ef_pulse_type":"square"
     }
   },
   "flux_pulse_info": {"1": {"ramp_sigma_len": 0.001,"f0g1_freq":3.4431,"pi_f0g1_len":830.377,"pi_f0g1_amp":2.0,"f0g1_dc_offset":0.6678e-3,"f0g1_pi_pi_offset":3.94}, "2": {"ramp_sigma_len": 0.001}},

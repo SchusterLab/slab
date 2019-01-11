@@ -2,11 +2,20 @@ from slab.experiments.PulseExperiments_PXI.sequential_experiment_pxi import Sequ
 import json
 
 '''
-Sequential Experiments:
+General Sequential Experiments:
 =======================
 resonator_spectroscopy
 qubit_temperature
 histogram_sweep
+=======================
+'''
+
+'''
+Sequential Charge sideband Experiments:
+=======================
+sideband_rabi_sweep
+sideband_rabi_freq_scan_length_sweep
+sequential_sideband_ramsey
 =======================
 '''
 
@@ -20,6 +29,6 @@ with open('experiment_config.json', 'r') as f:
 with open('hardware_config.json', 'r') as f:
     hardware_cfg = json.load(f)
 
-experiment_name = 'resonator_spectroscopy'
+experiment_name = 'sideband_rabi_two_tone_freq_scan'
 
 sexp = SequentialExperiment(quantum_device_cfg,experiment_cfg,hardware_cfg,experiment_name,path,analyze=True,show=True)

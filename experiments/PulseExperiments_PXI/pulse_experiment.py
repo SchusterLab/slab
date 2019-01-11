@@ -78,8 +78,6 @@ class Experiment:
                 self.tek2.prep_experiment()
             except:print("tek2 sequence not uploaded")
 
-
-
     def initiate_tek(self, name, path, sequences):
         print(self.tek.get_id())
         tek_waveform_channels_num = 4

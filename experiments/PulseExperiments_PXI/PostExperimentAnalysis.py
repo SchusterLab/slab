@@ -761,6 +761,26 @@ class PostExperiment:
             f.attrs['hardware_cfg'] = json.dumps(self.hardware_cfg)
             f.close()
 
+    def qp_pumping_t1(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]/1e3
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (us)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitexp(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitexp(t, P, showfit=False)
+
+        print("T1 =", p[3], "us")
+
 def temperature_q(nu, rat):
     Kb = 1.38e-23
     h = 6e-34
