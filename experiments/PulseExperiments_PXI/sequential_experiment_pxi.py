@@ -115,6 +115,36 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+    def resonator_spectroscopy_power_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        sweep_expt_name = 'resonator_spectroscopy_power_sweep'
+        swp_cfg = experiment_cfg[sweep_expt_name]
+
+        experiment_name = 'resonator_spectroscopy'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, sweep_expt_name, suffix='.h5'))
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+
+        for atten in np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step']):
+            print("Attenuation set to ", atten, 'dB')
+            quantum_device_cfg['readout']['dig_atten'] = atten
+            Is_t = []
+            Qs_t = []
+            for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+                quantum_device_cfg['readout']['freq'] = freq
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                Is_t.append(I)
+                Qs_t.append(Q)
+
+            self.Is.append(np.array(Is_t))
+            self.Qs.append(np.array(Qs_t))
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
     def qubit_temperature(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         experiment_name = 'ef_rabi'
         expt_cfg = experiment_cfg[experiment_name]
@@ -136,6 +166,57 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+
+    def sideband_reset_qubit_temperature(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        experiment_name = 'sideband_transmon_reset'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sideband_reset_qubit_temperature', suffix='.h5'))
+
+        for ge_pi in [True,False]:
+
+            experiment_cfg['sideband_transmon_reset']['ge_pi'] = ge_pi
+            if ge_pi:pass
+            else:experiment_cfg['sideband_transmon_reset']['acquisition_num'] = 50000
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+    def sideband_reset_qubit_temperature_wait_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+
+        experiment_name = 'sideband_transmon_reset'
+        expt_cfg = experiment_cfg[experiment_name]
+        swp_cfg = experiment_cfg['sideband_reset_qubit_temperature_wait_sweep']
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path,get_next_filename(data_path, 'sideband_reset_qubit_temperature_wait_sweep', suffix='.h5'))
+
+        wait_times = np.arange(swp_cfg['wait_start'], swp_cfg['wait_stop'], swp_cfg['wait_step'])
+
+        for wait in wait_times:
+
+            for ge_pi in [True, False]:
+
+                experiment_cfg['sideband_transmon_reset']['ge_pi'] = ge_pi
+                if ge_pi:
+                    pass
+                else:
+                    experiment_cfg['sideband_transmon_reset']['acquisition_num'] = 2000
+                experiment_cfg['sideband_transmon_reset']['wait_after_reset'] = wait
+                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.Is.append(I)
+                self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
 
     def sideband_rabi_freq_scan_length_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         expt_cfg = experiment_cfg['sideband_rabi_freq_scan_length_sweep']
@@ -212,6 +293,10 @@ class SequentialExperiment:
 
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
+
+
+    def sequential_qubit_calibration(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        pass
 
 
     def analyze(self,quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name,show,Is,Qs,P='Q'):

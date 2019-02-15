@@ -17,6 +17,7 @@ class PostExperiment:
 
         try:eval('self.' + experiment_name)()
         except:print("No post experiment analysis yet")
+
     def resonator_spectroscopy(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         I = self.I.flatten() - mean(self.I.flatten())
@@ -319,6 +320,99 @@ class PostExperiment:
         print("Echo experiment: CP = ",expt_cfg['cp'],"CPMG = ",expt_cfg['cpmg'])
         print ("Number of echoes = ",expt_cfg['echo_times'])
         print("T2 =",p[3],"ns")
+
+    def pulse_probe_fh_iq(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        alpha = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity']
+
+        self.I = self.I - mean(self.I)
+        self.Q = self.Q - mean(self.Q)
+        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_q + 2 * alpha
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(f, self.I, 'b.-', label='I')
+            ax.plot(f, self.Q, 'r.-', label='Q')
+            ax.set_xlabel('Freq(GHz)')
+            ax.set_ylabel('I/Q')
+            ax.legend()
+            p = fitlor(f, eval('self.' + self.P), showfit=False)
+            ax.plot(f, lorfunc(p, f), 'k--')
+            ax.axvline(p[2], color='g', linestyle='dashed')
+            plt.show()
+        else:
+            p = fitlor(f, eval('self.' + self.P), showfit=False)
+
+        print("fh frequency = ", p[2], "GHz")
+        print("Expected anharmonicity 2 =", p[2] - nu_q - alpha, "GHz")
+        print("ef pulse probe width = ", p[3] * 1e3, "MHz")
+        print("Estimated ef pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
+
+    def fh_rabi(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        amp = expt_cfg['amp']
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t[2:], P[2:], showfit=True)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+        print("Half pi length =", t_half_pi, "ns")
+        print("pi length =", t_pi, "ns")
+        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
+        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
+              amp * (t_half_pi) / float(int(t_half_pi) + 1))
+
+    def fh_ramsey(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        alpha = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity']
+        alpha_fh = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity_fh']
+
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+        alpha_new = alpha_fh + offset
+
+        print("Original alpha_fh choice =", alpha_fh, "GHz")
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested alpha_fh = ", alpha_new, "GHz")
+        print("T2* =", p[3], "ns")
 
     def histogram(self):
         expt_cfg = self.experiment_cfg[self.exptname]
@@ -755,16 +849,129 @@ class PostExperiment:
         print("Pulse probe width = ", p[3] * 1e3, "MHz")
         print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
 
-    def save_cfg_info(self, f):
-            f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
-            f.attrs['experiment_cfg'] = json.dumps(self.experiment_cfg)
-            f.attrs['hardware_cfg'] = json.dumps(self.hardware_cfg)
-            f.close()
+    def sideband_chi_ge_calibration(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+
+        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_e'] + offset
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested ge chi shift = 2 pi x",suggested_chi_shift* 1e3, "MHz")
+        print("T2 =", p[3], "ns")
+
+    def sideband_chi_ef_calibration(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+
+        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_ef'] + offset
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested ef chi shift = 2 pi x",suggested_chi_shift* 1e3, "MHz")
+        print("T2 =", p[3], "ns")
+
+    def sideband_chi_gf_calibration(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+
+        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_f'] + offset
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested f chi shift = 2 pi x",suggested_chi_shift* 1e3, "MHz")
+        print("T2 =", p[3], "ns")
+
+
+    def sideband_reset_qubit_temperature(self):
+        expt_cfg = self.experiment_cfg['sideband_transmon_reset']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:]
+        contrast = []
+
+        fig = plt.figure(figsize=(14, 7))
+        ax = fig.add_subplot(111, title=self.exptname)
+        for i in range(2):
+            ax.plot(t, P[i], 'bo-', label='ge_pi = ' + str(i is 0))
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+
+            ax.legend()
+
+            p = fitdecaysin(t[2:], P[i][2:], showfit=True)
+            contrast.append(p[0])
+
+            ax.axvline(1 / (2 * p[1]), color='k', linestyle='dashed')
+            ax.axvline(1 / (4 * p[1]), color='k', linestyle='dashed')
+
+            print("Half pi length =", 1 / (4 * p[1]), "ns")
+            print("pi length =", 1 / (2 * p[1]), "ns")
+
+        if self.show:
+            plt.show()
+
+        ratio = abs(contrast[1] / contrast[0])
+        print("Qubit Temp:", 1e3 * temperature_q(nu_q * 1e9, ratio), " mK")
+        print("Contrast ratio:",ratio)
+        print("Qubit Excited State Occupation:", occupation_q(nu_q, 1e3 * temperature_q(nu_q, ratio)))
+
 
     def qp_pumping_t1(self):
         expt_cfg = self.experiment_cfg[self.exptname]
-        P = eval('self.'+self.P)
-        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]/1e3
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))] / 1e3
 
         if self.show:
 
@@ -777,9 +984,61 @@ class PostExperiment:
             p = fitexp(t, P, showfit=True)
             plt.show()
 
-        else:p = fitexp(t, P, showfit=False)
+        else:
+            p = fitexp(t, P, showfit=False)
 
         print("T1 =", p[3], "us")
+
+    def sideband_parity_measurement(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['num_expts'])
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Experiment number)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            plt.show()
+
+    def sideband_pulse_probe_iq(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        self.I = self.I - mean(self.I)
+        self.Q = self.Q - mean(self.Q)
+
+        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_q
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(f, self.I, 'b.-', label='I')
+            ax.plot(f, self.Q, 'r.-', label='Q')
+            ax.set_xlabel('Freq(GHz)')
+            ax.set_ylabel('I/Q')
+            ax.legend()
+            p = fitlor(f, eval('self.'+self.P), showfit=False)
+            ax.plot(f, lorfunc(p, f), 'k--')
+            ax.axvline(p[2], color='g', linestyle='dashed')
+            plt.show()
+        else:p = fitlor(f, eval('self.'+self.P), showfit=False)
+
+        print("Qubit frequency = ", p[2], "GHz")
+        print("Pulse probe width = ", p[3] * 1e3, "MHz")
+        print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
+
+
+
+    def save_cfg_info(self, f):
+            f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
+            f.attrs['experiment_cfg'] = json.dumps(self.experiment_cfg)
+            f.attrs['hardware_cfg'] = json.dumps(self.hardware_cfg)
+            f.close()
+
 
 def temperature_q(nu, rat):
     Kb = 1.38e-23
