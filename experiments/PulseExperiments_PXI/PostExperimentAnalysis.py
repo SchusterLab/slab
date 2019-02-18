@@ -1004,7 +1004,7 @@ class PostExperiment:
             ax.legend()
             plt.show()
 
-    def sideband_pulse_probe_iq(self):
+    def sideband_cavity_photon_number(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
 

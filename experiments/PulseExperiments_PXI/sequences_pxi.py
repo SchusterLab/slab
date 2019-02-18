@@ -1122,6 +1122,15 @@ class PulseSequences:
             sequencer.new_sequence(self)
             for qubit_id in self.expt_cfg['on_qubits']:
 
+                offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset']
+                if self.expt_cfg['add_photon']:
+                    if ii > self.expt_cfg['num_expts'] / 2.0:
+                        self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                        self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                        sequencer.sync_channels_time(self.channels)
+                        self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+                        sequencer.sync_channels_time(self.channels)
+
                 if self.expt_cfg['reset']:
                     self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
                     self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
@@ -1134,15 +1143,7 @@ class PulseSequences:
                     sequencer.sync_channels_time(self.channels)
                     self.idle_q_sb(sequencer, qubit_id, time=wait_after_reset)
 
-                offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset']
 
-                if self.expt_cfg['add_photon']:
-                    if ii > self.expt_cfg['num_expts']/2.0:
-                        self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                        self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
-                        sequencer.sync_channels_time(self.channels)
-                        self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = offset_phase/2.0)
-                        sequencer.sync_channels_time(self.channels)
 
                 self.idle_q_sb(sequencer, qubit_id, time=self.expt_cfg['wait_before_parity'])
                 self.parity_measurement(sequencer,qubit_id)
@@ -1152,7 +1153,7 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=self.plot_visdom)
 
-    def sideband_pulse_probe_iq(self, sequencer):
+    def sideband_cavity_photon_number(self, sequencer):
         # sideband parity measurement
 
         cavity_freq = self.expt_cfg['cavity_freq']
