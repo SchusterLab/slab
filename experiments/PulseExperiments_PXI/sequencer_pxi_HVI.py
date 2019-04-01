@@ -6,6 +6,7 @@ try:
 except:
     from pulse_classes import Gauss, Idle, Ones, Square
 
+
 class Sequencer:
     def __init__(self, channels, channels_awg, awg_info, channels_delay):
         self.channels = channels
@@ -140,7 +141,6 @@ class Sequencer:
 
     def complete(self, sequences, plot=True):
         if sequences.expt_cfg.get('9_calibration', False):
-            print("doing the 9 thing")
             qubit_state = ['g','e','f']
 
             for qubit_1_state in qubit_state:
@@ -164,7 +164,6 @@ class Sequencer:
                     self.end_sequence()
 
         elif sequences.expt_cfg.get('4_calibration', False):
-            print("doing the 4 thing")
             self.new_sequence(sequences)
             sequences.readout(self, sequences.expt_cfg.get('on_qubits',["1", "2"]))
             self.end_sequence()
@@ -187,25 +186,21 @@ class Sequencer:
             sequences.readout(self, sequences.expt_cfg.get('on_qubits',["1", "2"]))
             self.end_sequence()
         elif sequences.expt_cfg.get('pi_calibration', False):
-            # print("doing the tek2 thing")
             # print(sequences.expt_cfg)
             # print(sequences.expt_cfg.get('pi_calibration', False))
             # print(sequences.expt_cfg.get('singleshot', False))
             self.new_sequence(sequences)
-            #sequences.pad_start_pxi_tek2(self, on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]), time=500)
-            sequences.pad_start_pxi(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
+            sequences.pad_start_pxi_tek2(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
             sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["1"]))
             self.end_sequence()
 
             self.new_sequence(sequences)
-            #sequences.pad_start_pxi_tek2(self, on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]), time=500)
-            sequences.pad_start_pxi(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
+            sequences.pad_start_pxi_tek2(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
             for qubit_id in sequences.expt_cfg.get('on_qubits',["1"]):
                 sequences.pi_q(self,qubit_id = qubit_id,phase = 0,pulse_type = sequences.pulse_info[qubit_id]['pulse_type'])
             sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["1"]))
             self.end_sequence()
 
-        print("dang")
         self.equalize_sequences()
         self.delay_channels(self.channels_delay)
 

@@ -7,223 +7,223 @@ Agilent E8257D (rfgenerators.py)
 
 from slab.instruments import SocketInstrument
 import time
-
-class N5183B(SocketInstrument):
-    """
-    The interface to the Keysite N5183B RF Generator, implemented on top of
-    :py:class:`~slab.instruments.instrumenttypes.SocketInstrument`
-    """
-    default_port=5025
-    def __init__(self,name='N5183B',address='',enabled=True,timeout=10, recv_length=1024):
-        SocketInstrument.__init__(self,name=name,address=address,enabled=enabled,timeout=timeout,recv_length=recv_length)
-
-    def get_id(self):
-        """Get Instrument ID String"""
-        return self.query('*IDN?').strip()
-
-    def set_output(self,state=True):
-        """Set Output State On/Off"""
-        if state: self.write(':OUTPUT:STATE ON')
-        else:     self.write(':OUTPUT:STATE OFF')
-
-    def get_output(self):
-        """Query Output State"""
-        return int(self.query(':OUTPUT?')) == 1
-
-    def set_mod(self,state=True):
-        """Set Modulation State On/Off"""
-        if state: self.write(':OUTPUT:MOD:STATE ON')
-        else:     self.write(':OUTPUT:MOD:STATE OFF')
-
-    def get_mod(self):
-        """Query Modulation State"""
-        return bool(self.query(':OUTPUT:MOD?'))
-
-    def set_frequency(self, frequency):
-        """Set CW Frequency in Hz"""
-        self.write(':FREQUENCY %f' % frequency)
-
-    def get_frequency(self):
-        """Query CW Frequency"""
-        return float(self.query(':FREQUENCY?'))
-
-    def set_sweep(self,start,stop,numpts,dwell):
-        """Sets up frequency sweeping parameters"""
-        self.write(':FREQUENCY:START %f;:FREQUENCY:STOP %f; :SWEEP:POINTS %f; :SWEEP:DWELL %f' % (start,stop,numpts,dwell))
-
-    def get_sweep(self):
-        """Gets current frequency sweeping parameters"""
-        return [float(s) for s in (self.query(':FREQUENCY:START?'),self.query(':FREQUENCY:STOP?'), self.query(':SWEEP:POINTS?'),self.query(':SWEEP:DWELL?'))]
-
-    def set_sweep_mode(self,enabled=True):
-        """Set's up source for sweep mode"""
-        if enabled:
-            self.write(':LIST:TYPE STEP; :LIST:TRIG:SOURCE EXT; :FREQuency:MODE SWEEP')
-        else:
-            self.write(':FREQ:MODE CW; :LIST:TRIG:SOURCE CONT')
-
-    def set_cw_mode(self):
-        """Set generator into CW mode"""
-        self.write(':FREQ:MODE CW; :LIST:TRIG:SOURCE CONT')
-
-    def set_phase(self,phase):
-        """Set signal Phase in radians"""
-        self.write(':PHASE %f' % phase)
-
-    def get_phase(self):
-        """Query signal phase in radians"""
-        return float(self.query(':PHASE?'))
-
-    def set_power(self,power):
-        """Set CW power in dBm"""
-        self.write(':POWER %f' % power)
-
-    def get_power(self):
-        return float(self.query(':POWER?'))
-
-    def get_settings(self):
-        settings=SocketInstrument.get_settings(self)
-        settings['frequency']=self.get_frequency()
-        settings['power']=self.get_power()
-        settings['phase']=self.get_phase()
-        settings['mod']=self.get_mod()
-        settings['output']=self.get_output()
-        settings['id']=self.get_id()
-        return settings
-
-    def get_settled(self):
-        """Get source settled state"""
-        return bool(self.query(':OUTPut:SETTled?'))
-
-    def wait_to_settle(self, timeout=1):
-        """Block until source settled"""
-        start=time.time()
-        while not self.get_settled() and time.time()-start<timeout: pass
-
-    def set_internal_pulse(self,pulse_time=10e-6):
-        self.write(':SOUR:PULM:SOUR:INT FRUN')
-        self.write(':SOUR:PULM:INT:PERIOD %f S' %(pulse_time))
-        self.write(':SOUR:PULM:INT:PWIDTH %f S' %(pulse_time))
-        self.write(":SOUR:PULM:STAT ON")
-        self.set_mod()
-
-    def set_ext_pulse(self,mod=True):
-        self.write(':SOUR:PULM:SOUR EXT')
-        if mod:
-            self.write(":SOUR:PULM:STAT ON")
-            self.set_mod(True)
-        else:
-            self.write(":SOUR:PULM:STAT OFF")
-            self.set_mod(False)
-
-class E8257D(SocketInstrument):
-    """
-    The interface to the Agilent E8257D RF Generator, implemented on top of 
-    :py:class:`~slab.instruments.instrumenttypes.SocketInstrument`
-    """
-    default_port=5025
-    def __init__(self,name='E8257D',address='',enabled=True,timeout=10, recv_length=1024):
-        SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
-    
-    def get_id(self):
-        """Get Instrument ID String"""
-        return self.query('*IDN?').strip()
-    
-    def set_output(self,state=True):
-        """Set Output State On/Off"""
-        if state: self.write(':OUTPUT:STATE ON')
-        else:     self.write(':OUTPUT:STATE OFF')
-        
-    def get_output(self):
-        """Query Output State"""
-        return int(self.query(':OUTPUT?')) == 1
-    
-    def set_mod(self,state=True):
-        """Set Modulation State On/Off"""
-        if state: self.write(':OUTPUT:MOD:STATE ON')
-        else:     self.write(':OUTPUT:MOD:STATE OFF')
-        
-    def get_mod(self):
-        """Query Modulation State"""
-        return bool(self.query(':OUTPUT:MOD?'))
-            
-    def set_frequency(self, frequency):
-        """Set CW Frequency in Hz"""
-        self.write(':FREQUENCY %f' % frequency)
-    
-    def get_frequency(self):
-        """Query CW Frequency"""
-        return float(self.query(':FREQUENCY?'))
-
-    def set_sweep(self,start,stop,numpts,dwell):
-        """Sets up frequency sweeping parameters"""
-        self.write(':FREQUENCY:START %f;:FREQUENCY:STOP %f; :SWEEP:POINTS %f; :SWEEP:DWELL %f' % (start,stop,numpts,dwell))
-
-    def get_sweep(self):
-        """Gets current frequency sweeping parameters"""
-        return [float(s) for s in (self.query(':FREQUENCY:START?'),self.query(':FREQUENCY:STOP?'), self.query(':SWEEP:POINTS?'),self.query(':SWEEP:DWELL?'))]
-
-    def set_sweep_mode(self,enabled=True):
-        """Set's up source for sweep mode"""
-        if enabled:
-            self.write(':LIST:TYPE STEP; :LIST:TRIG:SOURCE EXT; :FREQuency:MODE SWEEP')
-        else:
-            self.write(':FREQ:MODE CW; :LIST:TRIG:SOURCE CONT')
-
-    def set_cw_mode(self):
-        """Set generator into CW mode"""
-        self.write(':FREQ:MODE CW; :LIST:TRIG:SOURCE CONT')
-
-    def set_phase(self,phase):
-        """Set signal Phase in radians"""
-        self.write(':PHASE %f' % phase)
-    
-    def get_phase(self):
-        """Query signal phase in radians"""
-        return float(self.query(':PHASE?'))
-        
-    def set_power(self,power):
-        """Set CW power in dBm"""
-        self.write(':POWER %f' % power)
-        
-    def get_power(self):
-        return float(self.query(':POWER?'))
-
-    def get_settings(self):
-        settings=SocketInstrument.get_settings(self)
-        settings['frequency']=self.get_frequency()
-        settings['power']=self.get_power()
-        settings['phase']=self.get_phase()
-        settings['mod']=self.get_mod()
-        settings['output']=self.get_output()
-        settings['id']=self.get_id()
-        return settings
-        
-    def get_settled(self):
-        """Get source settled state"""
-        return bool(self.query(':OUTPut:SETTled?'))
-        
-    def wait_to_settle(self, timeout=1):
-        """Block until source settled"""
-        start=time.time()
-        while not self.get_settled() and time.time()-start<timeout: pass
-    
-    def set_internal_pulse(self,pulse_time=10e-6):
-        self.write(':SOUR:PULM:SOUR:INT FRUN')
-        self.write(':SOUR:PULM:INT:PERIOD %f S' %(pulse_time))
-        self.write(':SOUR:PULM:INT:PWIDTH %f S' %(pulse_time))
-        self.write(":SOUR:PULM:STAT ON")
-        self.set_mod()
-    
-    def set_ext_pulse(self,mod=True):
-        self.write(':SOUR:PULM:SOUR EXT')
-        if mod:
-            self.write(":SOUR:PULM:STAT ON")
-            self.set_mod(True)
-        else:
-            self.write(":SOUR:PULM:STAT OFF")
-            self.set_mod(False)
-        
+#
+# class N5183B(SocketInstrument):
+#     """
+#     The interface to the Keysite N5183B RF Generator, implemented on top of
+#     :py:class:`~slab.instruments.instrumenttypes.SocketInstrument`
+#     """
+#     default_port=5025
+#     def __init__(self,name='N5183B',address='',enabled=True,timeout=10, recv_length=1024):
+#         SocketInstrument.__init__(self,name=name,address=address,enabled=enabled,timeout=timeout,recv_length=recv_length)
+#
+#     def get_id(self):
+#         """Get Instrument ID String"""
+#         return self.query('*IDN?').strip()
+#
+#     def set_output(self,state=True):
+#         """Set Output State On/Off"""
+#         if state: self.write(':OUTPUT:STATE ON')
+#         else:     self.write(':OUTPUT:STATE OFF')
+#
+#     def get_output(self):
+#         """Query Output State"""
+#         return int(self.query(':OUTPUT?')) == 1
+#
+#     def set_mod(self,state=True):
+#         """Set Modulation State On/Off"""
+#         if state: self.write(':OUTPUT:MOD:STATE ON')
+#         else:     self.write(':OUTPUT:MOD:STATE OFF')
+#
+#     def get_mod(self):
+#         """Query Modulation State"""
+#         return bool(self.query(':OUTPUT:MOD?'))
+#
+#     def set_frequency(self, frequency):
+#         """Set CW Frequency in Hz"""
+#         self.write(':FREQUENCY %f' % frequency)
+#
+#     def get_frequency(self):
+#         """Query CW Frequency"""
+#         return float(self.query(':FREQUENCY?'))
+#
+#     def set_sweep(self,start,stop,numpts,dwell):
+#         """Sets up frequency sweeping parameters"""
+#         self.write(':FREQUENCY:START %f;:FREQUENCY:STOP %f; :SWEEP:POINTS %f; :SWEEP:DWELL %f' % (start,stop,numpts,dwell))
+#
+#     def get_sweep(self):
+#         """Gets current frequency sweeping parameters"""
+#         return [float(s) for s in (self.query(':FREQUENCY:START?'),self.query(':FREQUENCY:STOP?'), self.query(':SWEEP:POINTS?'),self.query(':SWEEP:DWELL?'))]
+#
+#     def set_sweep_mode(self,enabled=True):
+#         """Set's up source for sweep mode"""
+#         if enabled:
+#             self.write(':LIST:TYPE STEP; :LIST:TRIG:SOURCE EXT; :FREQuency:MODE SWEEP')
+#         else:
+#             self.write(':FREQ:MODE CW; :LIST:TRIG:SOURCE CONT')
+#
+#     def set_cw_mode(self):
+#         """Set generator into CW mode"""
+#         self.write(':FREQ:MODE CW; :LIST:TRIG:SOURCE CONT')
+#
+#     def set_phase(self,phase):
+#         """Set signal Phase in radians"""
+#         self.write(':PHASE %f' % phase)
+#
+#     def get_phase(self):
+#         """Query signal phase in radians"""
+#         return float(self.query(':PHASE?'))
+#
+#     def set_power(self,power):
+#         """Set CW power in dBm"""
+#         self.write(':POWER %f' % power)
+#
+#     def get_power(self):
+#         return float(self.query(':POWER?'))
+#
+#     def get_settings(self):
+#         settings=SocketInstrument.get_settings(self)
+#         settings['frequency']=self.get_frequency()
+#         settings['power']=self.get_power()
+#         settings['phase']=self.get_phase()
+#         settings['mod']=self.get_mod()
+#         settings['output']=self.get_output()
+#         settings['id']=self.get_id()
+#         return settings
+#
+#     def get_settled(self):
+#         """Get source settled state"""
+#         return bool(self.query(':OUTPut:SETTled?'))
+#
+#     def wait_to_settle(self, timeout=1):
+#         """Block until source settled"""
+#         start=time.time()
+#         while not self.get_settled() and time.time()-start<timeout: pass
+#
+#     def set_internal_pulse(self,pulse_time=10e-6):
+#         self.write(':SOUR:PULM:SOUR:INT FRUN')
+#         self.write(':SOUR:PULM:INT:PERIOD %f S' %(pulse_time))
+#         self.write(':SOUR:PULM:INT:PWIDTH %f S' %(pulse_time))
+#         self.write(":SOUR:PULM:STAT ON")
+#         self.set_mod()
+#
+#     def set_ext_pulse(self,mod=True):
+#         self.write(':SOUR:PULM:SOUR EXT')
+#         if mod:
+#             self.write(":SOUR:PULM:STAT ON")
+#             self.set_mod(True)
+#         else:
+#             self.write(":SOUR:PULM:STAT OFF")
+#             self.set_mod(False)
+#
+# class E8257D(SocketInstrument):
+#     """
+#     The interface to the Agilent E8257D RF Generator, implemented on top of
+#     :py:class:`~slab.instruments.instrumenttypes.SocketInstrument`
+#     """
+#     default_port=5025
+#     def __init__(self,name='E8257D',address='',enabled=True,timeout=10, recv_length=1024):
+#         SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
+#
+#     def get_id(self):
+#         """Get Instrument ID String"""
+#         return self.query('*IDN?').strip()
+#
+#     def set_output(self,state=True):
+#         """Set Output State On/Off"""
+#         if state: self.write(':OUTPUT:STATE ON')
+#         else:     self.write(':OUTPUT:STATE OFF')
+#
+#     def get_output(self):
+#         """Query Output State"""
+#         return int(self.query(':OUTPUT?')) == 1
+#
+#     def set_mod(self,state=True):
+#         """Set Modulation State On/Off"""
+#         if state: self.write(':OUTPUT:MOD:STATE ON')
+#         else:     self.write(':OUTPUT:MOD:STATE OFF')
+#
+#     def get_mod(self):
+#         """Query Modulation State"""
+#         return bool(self.query(':OUTPUT:MOD?'))
+#
+#     def set_frequency(self, frequency):
+#         """Set CW Frequency in Hz"""
+#         self.write(':FREQUENCY %f' % frequency)
+#
+#     def get_frequency(self):
+#         """Query CW Frequency"""
+#         return float(self.query(':FREQUENCY?'))
+#
+#     def set_sweep(self,start,stop,numpts,dwell):
+#         """Sets up frequency sweeping parameters"""
+#         self.write(':FREQUENCY:START %f;:FREQUENCY:STOP %f; :SWEEP:POINTS %f; :SWEEP:DWELL %f' % (start,stop,numpts,dwell))
+#
+#     def get_sweep(self):
+#         """Gets current frequency sweeping parameters"""
+#         return [float(s) for s in (self.query(':FREQUENCY:START?'),self.query(':FREQUENCY:STOP?'), self.query(':SWEEP:POINTS?'),self.query(':SWEEP:DWELL?'))]
+#
+#     def set_sweep_mode(self,enabled=True):
+#         """Set's up source for sweep mode"""
+#         if enabled:
+#             self.write(':LIST:TYPE STEP; :LIST:TRIG:SOURCE EXT; :FREQuency:MODE SWEEP')
+#         else:
+#             self.write(':FREQ:MODE CW; :LIST:TRIG:SOURCE CONT')
+#
+#     def set_cw_mode(self):
+#         """Set generator into CW mode"""
+#         self.write(':FREQ:MODE CW; :LIST:TRIG:SOURCE CONT')
+#
+#     def set_phase(self,phase):
+#         """Set signal Phase in radians"""
+#         self.write(':PHASE %f' % phase)
+#
+#     def get_phase(self):
+#         """Query signal phase in radians"""
+#         return float(self.query(':PHASE?'))
+#
+#     def set_power(self,power):
+#         """Set CW power in dBm"""
+#         self.write(':POWER %f' % power)
+#
+#     def get_power(self):
+#         return float(self.query(':POWER?'))
+#
+#     def get_settings(self):
+#         settings=SocketInstrument.get_settings(self)
+#         settings['frequency']=self.get_frequency()
+#         settings['power']=self.get_power()
+#         settings['phase']=self.get_phase()
+#         settings['mod']=self.get_mod()
+#         settings['output']=self.get_output()
+#         settings['id']=self.get_id()
+#         return settings
+#
+#     def get_settled(self):
+#         """Get source settled state"""
+#         return bool(self.query(':OUTPut:SETTled?'))
+#
+#     def wait_to_settle(self, timeout=1):
+#         """Block until source settled"""
+#         start=time.time()
+#         while not self.get_settled() and time.time()-start<timeout: pass
+#
+#     def set_internal_pulse(self,pulse_time=10e-6):
+#         self.write(':SOUR:PULM:SOUR:INT FRUN')
+#         self.write(':SOUR:PULM:INT:PERIOD %f S' %(pulse_time))
+#         self.write(':SOUR:PULM:INT:PWIDTH %f S' %(pulse_time))
+#         self.write(":SOUR:PULM:STAT ON")
+#         self.set_mod()
+#
+#     def set_ext_pulse(self,mod=True):
+#         self.write(':SOUR:PULM:SOUR EXT')
+#         if mod:
+#             self.write(":SOUR:PULM:STAT ON")
+#             self.set_mod(True)
+#         else:
+#             self.write(":SOUR:PULM:STAT OFF")
+#             self.set_mod(False)
+#
 class BNC845(SocketInstrument):
     """
     The interface to the BNC845 RF Generator, implemented on top of 
@@ -235,8 +235,12 @@ class BNC845(SocketInstrument):
         SocketInstrument.__init__(self,name,address,enabled,recv_length,timeout)
         
         #default set to external reference
-        self.set_reference_source("EXT")
-    
+        # d.set_reference_source("INT")
+        self.set_reference_source("EXT",ref_freq=10)
+        #units of MHz for this device
+
+        #self.set_ext_pulse(state=True,mod=True)
+        #self.write(':PULM:MODE:SOUR:PULM:MODE FIX')
     def get_id(self):
         """Get Instrument ID String"""
         return self.query('*IDN?').strip()
@@ -245,6 +249,7 @@ class BNC845(SocketInstrument):
         """Set Output State On/Off"""
         if state: self.write(':OUTPUT:STATE ON')
         else:     self.write(':OUTPUT:STATE OFF')
+
         
     def get_output(self):
         """Query Output State"""
@@ -315,6 +320,7 @@ class BNC845(SocketInstrument):
         """Set pulse state True/False"""
         if state: self.write(":SOUR:PULM:STAT ON")
         else:     self.write(":SOUR:PULM:STAT OFF")
+        #self.write(':SOUR:PULM:MODE FIX')
 
     def set_internal_pulse(self,width,period,state=True):
         """Set up an internally generated pulse with: width, period, and state"""
@@ -326,7 +332,16 @@ class BNC845(SocketInstrument):
     def set_ext_pulse(self,state=True, mod=False):
         self.write(':SOUR:PULM:SOUR EXT')
         self.set_pulse_state(state)
-        
+        #print('pulse mod ON')
+
+    # Not finished!
+    def set_ext_trig(self,state=True,):
+        self.write(':TRIG:SEQ:TYPE NORM')
+        self.write(':TRIG:SEQ:SOUR EXT')
+        self.write(':TRIG:SEQ:RETR ON')
+        self.write('')
+
+
 
 def test_BNC845(rf=None):
     if rf is None:

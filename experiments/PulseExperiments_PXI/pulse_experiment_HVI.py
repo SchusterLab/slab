@@ -2,7 +2,7 @@ from slab import InstrumentManager
 from slab.instruments.awg import write_Tek5014_file
 from slab.instruments.awg.M8195A import upload_M8195A_sequence
 # import keysight_pxi_load as ks_pxi
-from slab.instruments.keysight import keysight_pxi_load as ks_pxi
+from slab.instruments.keysight import keysight_pxi_load_HVI as ks_pxi
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
 from slab.instruments.awg.Tek70001 import write_Tek70001_sequence
@@ -19,16 +19,16 @@ from slab.dataanalysis import get_next_filename
 import json
 from slab.experiments.PulseExperiments_PXI.get_data import get_iq_data, get_singleshot_data
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
+from slab.instruments.keysight import ktqet_exceptions as key_e
 
-class Experiment:
+class Experiment_HVI:
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None):
         self.quantum_device_cfg = quantum_device_cfg
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
         im = InstrumentManager()
-        try: self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
-        except: print("Not connected to keysight PXI")
-
+        self.pxi = ks_pxi.KeysightSingleQubit_HVI(self.experiment_cfg, self.hardware_cfg, self.quantum_device_cfg,
+                                                  sequences, name)
         try: self.drive_los = [im[lo] for lo in self.hardware_cfg['drive_los']]
         except: print ("No drive function generator specified in hardware config")
 
@@ -38,7 +38,7 @@ class Experiment:
         try: self.attens = [im[atten] for atten in self.hardware_cfg['attens']]
         except: print ("No digital attenuator specified in hardware config")
 
-        try: self.trig = im['trig2']
+        try: self.trig = im['trig']
         except: print ("No trigger function generator specied in hardware cfg")
 
         try:self.tek2 = im['TEK2']
@@ -62,10 +62,10 @@ class Experiment:
         pxi_sequences = {}
         for channel in pxi_waveform_channels:
             pxi_sequences[channel] = sequences[channel]
-        try:
-            self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
-            self.pxi.loadAndQueueWaveforms(pxi_sequences)
-        except:print("Error in configuring and loading sequences to PXI")
+        #try:
+        self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
+        self.pxi.loadAndQueueWaveforms(pxi_sequences)
+        #except:print("Error in configuring and loading sequences to PXI")
 
     def initiate_tek2(self, name,path, sequences):
         if 'sideband' in name:
@@ -128,12 +128,16 @@ class Experiment:
         try:
             self.pxi.AWG_module.stopAll()
             self.pxi.AWG_module.clearAll()
-            self.pxi.m_module.stopAll()
-            self.pxi.m_module.clearAll()
-            self.pxi.trig_module.stopAll()
-            self.pxi.trig_module.clearAll()
+            #self.pxi.m_module.stopAll()
+            #self.pxi.m_module.clearAll()
+            #self.pxi.trig_module.stopAll()
+            #self.pxi.trig_module.clearAll()
             self.pxi.DIG_module.stopAll()
+            print("DEBUG: closed DIG and AWG modules")
+            self.pxi.hvi.close()
+            print("DEBUG: closed HVI")
             self.pxi.chassis.close()
+            print("DEBUG: closed chassis")
         except:print('Error in stopping and closing PXI')
         if 'sideband' in name:
             try:self.tek2.stop()
@@ -171,25 +175,19 @@ class Experiment:
     def initiate_drive_LOs(self):
         try:
             for ii,d in enumerate(self.drive_los):
-
-                d.set_ext_pulse(state=True, mod=True)
-                d.set_output(state=True)
                 drive_freq = self.quantum_device_cfg['qubit'][str(ii+1)]['freq'] - self.quantum_device_cfg['pulse_info'][str(ii+1)]['iq_freq']
                 d.set_frequency(drive_freq*1e9)
-                #print("drive frequency = ")
                 d.set_power(self.quantum_device_cfg['qubit_drive_lo_powers'][str(ii+1)])
-
+                d.set_ext_pulse(mod=True)
         except:print ("Error in qubit drive LO configuration")
 
     def initiate_readout_LOs(self):
         try:
             for ii, d in enumerate(self.readout_los):
-                d.set_ext_pulse(mod=True)
-                d.set_output(state=True)
                 d.set_frequency(self.quantum_device_cfg['readout']['freq']*1e9)
                 print ("Readout frequency = ",self.quantum_device_cfg['readout']['freq'],"GHz")
                 d.set_power(self.quantum_device_cfg['readout_drive_lo_powers'][str(ii + 1)])
-
+                d.set_ext_pulse(mod=True)
         except:print("Error in readout drive LO configuration")
 
     def initiate_attenuators(self):
@@ -353,17 +351,6 @@ class Experiment:
         except:pi_calibration = False
 
         I,Q = self.pxi.acquire_avg_data(w,pi_calibration)
-
-        m3102_Vpp_range = self.hardware_cfg['awg_info']['keysight_pxi']['m3102_Vpp_range']
-        def linmap(x):
-            m = m3102_Vpp_range / 2 ** 14
-            b = (-1 / 2) * m3102_Vpp_range
-            return m * x + b
-        #print(I)
-        I = linmap(I)
-        Q = linmap(Q)
-        #print(I)
-
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
@@ -376,27 +363,13 @@ class Experiment:
                 f.append_line('I', I)
                 f.append_line('Q', Q)
 
-
-
         return I,Q
-
-
 
     def get_ss_data_pxi(self,expt_cfg, seq_data_file):
         w = self.pxi.readout_window/self.pxi.dt_dig
 
         I,Q = self.pxi.SSdata_many(w)
-
-        m3102_Vpp_range = self.hardware_cfg['awg_info']['keysight_pxi']['m3102_Vpp_range']
-        def linmap(x):
-            m = m3102_Vpp_range / 2 ** 14
-            b = (-1 / 2) * m3102_Vpp_range
-            return m * x + b
-        #print(I)
-        I = linmap(I)
-        Q = linmap(Q)
-        #print(I)
-
+        print("DEBUG: made it past read in get_ss_data_pxi, onto making the slab file")
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
@@ -407,9 +380,6 @@ class Experiment:
             with self.slab_file as f:
                 f.append_line('I', I.flatten())
                 f.append_line('Q', Q.flatten())
-
-
-
 
         return I,Q
 
@@ -443,7 +413,7 @@ class Experiment:
 
     def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
         self.expt_cfg = self.experiment_cfg[name]
-        self.generate_datafile(path,name,seq_data_file=seq_data_file)
+        #self.generate_datafile(path,name,seq_data_file=seq_data_file)
         self.set_trigger()
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
@@ -452,30 +422,23 @@ class Experiment:
         self.initiate_tek2(name,path,sequences)
         time.sleep(0.1)
         self.awg_run(run_pxi=True,name=name)
+        print("DEBUG: made it past awg_run, now attempting to get data")
 
-        try:
-            if check_sync:self.pxi.acquireandplot(expt_num)
-            else:
-                if self.expt_cfg['singleshot']:
-                    self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
-                else:
-                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
-        except:print("Error in data acquisition from PXI")
+        self.I, self.Q = self.get_ss_data_pxi(self.expt_cfg, seq_data_file=seq_data_file)
+        print("DEBUG: got data, proceeding onto awg_stop")
+
+        # try:
+        #     if check_sync:
+        #         self.pxi.acquireandplot(expt_num)
+        #     else:
+        #         if self.expt_cfg['singleshot']:
+        #             self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+        #         else:
+        #             self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+        # except:print("Error in data acquisition from PXI")
 
         self.awg_stop(name)
-
         return self.I,self.Q
-
-    #assuming 0 bits is -vpp range.
-    # def pxi_bit_to_voltage(self):
-    #     m3102_Vpp_range = self.hardware_cfg['awg_info']['keysight_pxi']['m3102_Vpp_range']
-    #     def linmap(x):
-    #         m = m3102_Vpp_range/2**14
-    #         b = (-1/2)*m3102_Vpp_range
-    #         return m*x+b
-    #     self.I = linmap(self.I)
-    #     self.Q = linmap(self.Q)
-    #     return self.I,self.Q
 
     def post_analysis(self,experiment_name,P='Q',show = False,check_sync = False):
         if check_sync:pass

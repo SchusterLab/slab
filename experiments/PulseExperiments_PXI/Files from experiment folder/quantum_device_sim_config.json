@@ -1,0 +1,72 @@
+{"qubit": {"1": {"freq": 4.527556074037375, "anharmonicity": -0.139002}, "2": {"freq": 4.742, "anharmonicity": -0.109928}},"qubit_drive_lo_powers":{"1":16},"readout_drive_lo_powers":{"1":16},
+  "heterodyne": {
+    "1": {
+      "sideband_amp": 0.0, "sideband_detune": 0.05, "amp": 0.4, "length": 1500, "freq": -0.1537, "lo_freq": 5.9,
+      "lo_power": 16, "phase_offset": -0.05
+    },
+    "2": {
+      "sideband_amp": 0.0, "sideband_detune": 0.05, "amp": 0.38, "length": 1500, "freq": -0.2095, "lo_freq": 5.95,
+      "lo_power": 16, "phase_offset": 0.4
+    }
+  },
+  "sideband_prep": {
+    "1": {
+      "sideband_freq": 0.010, "I_amp": 1.0, "Q_amp": 0.50, "I_phase": 0, "Q_phase": -1.0
+    },
+    "2": {
+      "sideband_freq": 0.020, "I_amp": 1.0, "Q_amp": 0.9, "I_phase": 0, "Q_phase": -0.1
+    }
+  },
+  "freq_flux": {
+    "1": {"current_mA": 0.0, "freq_flux_slope": -0.3}, "2": {"current_mA": 0.0, "freq_flux_slope": 0.3}
+  },
+  "alazar_readout": {"width": 1500, "window": [500, 3000]},
+  "readout": {"amp": 1.0, "length": 5000, "freq": 8.071799999999998,"window":[800, 5000],"dig_atten":-10},
+  "pulse_info": {
+    "1": {
+      "pi_amp": 0.989, "pi_ef_amp": 0.971, "pi_len":  49, "pi_ef_len": 55, "half_pi_amp": 0.969, "half_pi_ef_amp": 0.953,
+      "half_pi_len":  25, "half_pi_ef_len": 28,"iq_freq":0.2,"Q_phase":1.57079,"pulse_type":"square","ef_pulse_type":"square"
+    },
+    "2": {
+      "pi_amp": 1.0, "pi_ef_amp": 1.0, "pi_len": 87.25, "pi_ef_len": 29.49, "half_pi_amp": 1.0, "half_pi_ef_amp": 1.0,
+      "half_pi_len": 43.62, "half_pi_ef_len": 14.745,"iq_freq":0.0,"Q_phase":1.57079,"pulse_type":"gauss","ef_pulse_type":"square"
+    }
+  },
+  "flux_pulse_info": {"1": {"ramp_sigma_len": 0.001,"f0g1_freq":3.4431,"pi_f0g1_len":830.377,"pi_f0g1_amp":2.0,"f0g1_dc_offset":0.6678e-3,"f0g1_pi_pi_offset":3.94}, "2": {"ramp_sigma_len": 0.001}},
+  "multimodes": {
+    "1": {
+      "freq": [0.988, 1.112, 1.308, 1.591, 1.85, 2.149, 2.363, 2.692, 2.979, 3.13],
+      "ef_freq": [1.2, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 3.0],
+      "pi_len": [48.9044, 58.09491, 49.89882, 52.42513, 89.15981, 116.13568, 72.65124, 85.20736, 109.96704, 100],
+      "ef_pi_len": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+      "pi_amp": [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2],
+      "ef_pi_amp": [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2],
+      "dc_offset": [0.02, -0.00902, -0.00584, -0.00688, -0.00701, -0.00499, -0.0036, -0.01093, -0.01324, 0.0],
+      "ef_dc_offset": [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
+    },
+    "2": {
+      "freq": [1.007, 1.129, 1.326, 1.606, 1.863, 2.157, 2.385, 2.7, 2.986, 3.154],
+      "ef_freq": [1.116, 1.238, 1.435, 1.715, 1.972, 2.266, 2.494, 2.809, 3.095, 3.263], "pi_len": [
+      63.3305, 75.16224, 56.79665, 70.00799, 136.97464, 161.10668, 72.18296, 75.85173, 125.91146, 203.3289, 100, 100,
+      100 ],
+      "ef_pi_len": [78.556, 70.24187, 49.73609, 55.94862, 77.69843, 65.13964, 68.251, 47.85054, 113.44407, 100, 100],
+      "pi_amp": [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.4],
+      "ef_pi_amp": [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2],
+      "dc_offset": [0.02, -0.0085, -0.0065, -0.00449, -0.0035, -0.00401, -0.0085, -0.00921, -0.01207, -0.02698],
+      "ef_dc_offset": [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
+    }
+  },
+  "sideband_cooling": {"1": {"cool": false, "mode_id": 5}, "2": {"cool": false, "mode_id": 5}},
+  "communication": {
+    "1": {
+    "freq": 3.138, "ef_pi_amp": 0.2, "ef_pi_len": 198, "pi_amp": 0.224, "pi_amp_v2": 0.427, "pi_len": 280,
+    "pi_len_v2": 208, "half_transfer_amp": 0.37428569, "half_transfer_len": 70.4068
+    },
+    "2": {
+    "freq": 3.1946, "ef_pi_amp": 0.3, "ef_pi_len": 100, "pi_amp": 0.34, "pi_amp_v2": 0.65, "pi_len": 280,
+    "pi_len_v2": 198, "half_transfer_amp": 0.56770835, "half_transfer_len": 185.0695
+    },
+    "sender_id": "1", "receiver_id": "2"
+  },
+  "fit_path": "S:\\_Data\\171206 - Communication\\fit"
+}

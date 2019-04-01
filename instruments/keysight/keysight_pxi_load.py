@@ -19,7 +19,7 @@ Module 10 is used for reacout.
 # %pylab inline
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
-from slab.experiments.PulseExperiments.sequences import PulseSequences
+from slab.experiments.PulseExperiments_PXI.sequences_pxi import PulseSequences
 from slab.experiments.HVIExperiments import HVIExpLib as exp
 import time
 import numpy as np
@@ -168,19 +168,22 @@ class KeysightSingleQubit:
 
 
         print ("Configuring digitizer")
-        self.DIG_ch_1.configure(points_per_cycle=self.DIG_sampl_record,
-                                           # Divide by 2 because bandwidth of digitizer is less than AWG
-                                           # Number of data points to acquire at one time, at 2 ns apiece.
-                                           cycles=num_expt * num_avg,
-                                           # Total number of times digitizer will be asked to take data
-                                           buffer_time_out=100000,  # Time before aborting data read, ms.
-                                           # In general want to be quite large, but not infinite
-                                           trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
-                                           # Triggered externally by linking to readout pulse
-                                           use_buffering=True,  # Unnecessary with a Data Handler subprocess
-                                           cycles_per_return=num_expt)  # Return and log 1 trial's data at a time. Can increase to bundle data together.
+        DigitizerVpp = hardware_cfg['awg_info']['keysight_pxi']['m3102_Vpp_range']
+        self.DIG_ch_1.configure(full_scale=DigitizerVpp, points_per_cycle=self.DIG_sampl_record,
+                                # Divide by 2 because bandwidth of digitizer is less than AWG
+                                # Number of data points to acquire at one time, at 2 ns apiece.
+                                cycles=num_expt * num_avg,
+                                # Total number of times digitizer will be asked to take data
+                                buffer_time_out=100000,  # Time before aborting data read, ms.
+                                # In general want to be quite large, but not infinite
+                                trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
+                                # Triggered externally by linking to readout pulse
+                                use_buffering=True,  # Unnecessary with a Data Handler subprocess
+                                cycles_per_return=num_expt)  # Return and log 1 trial's data at a time. Can increase to bundle data together.
         # time.sleep(0.001)
-        self.DIG_ch_2.configure(points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_2.configure(full_scale=DigitizerVpp, points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000,
+                                cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE,
+                                use_buffering=True, cycles_per_return=num_expt)
 
     def generatemarkers(self,waveform,resample=False,conv_width = 1,trig_delay = 0):
 

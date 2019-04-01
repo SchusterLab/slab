@@ -1,5 +1,5 @@
 try:
-    from .sequencer_pxi import Sequencer
+    from .sequencer_pxi_HVI import Sequencer
     from .pulse_classes import Gauss, Idle, Ones, Square, DRAG, ARB_freq_a,Square_two_tone
 except:
     from sequencer import Sequencer
@@ -10,9 +10,8 @@ import numpy as np
 import visdom
 import os
 import pickle
-import copy
 
-import JCHam
+import copy
 
 class PulseSequences:
     # channels and awgs
@@ -35,7 +34,6 @@ class PulseSequences:
         self.channels_delay = hardware_cfg['channels_delay']
 
         # pulse params
-
         self.qubit_freq = {"1": self.quantum_device_cfg['qubit']['1']['freq'],
                            "2": self.quantum_device_cfg['qubit']['2']['freq']}
 
@@ -385,28 +383,6 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=True)
 
-    def flux_sweep_pulse_probe_iq(self,sequencer):
-        # qubit frequency set by DC coil flux
-        self.qubit_freq = {"1": JCHam.qubitenergies(self.quantum_device_cfg['qubit']['1']['Ec'],self.quantum_device_cfg['qubit']['1']['wq_max_guess'],self.quantum_device_cfg['qubit']['1']['wq_min_guess'],self.quantum_device_cfg['qubit']['1']['f_c'],self.quantum_device_cfg['qubit']['1']['g'],self.quantum_device_cfg['qubit']['1']['flux_scale'],self.quantum_device_cfg['qubit']['1']['flux_offset'])}
-
-        for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
-            sequencer.new_sequence(self)
-            for qubit_id in self.expt_cfg['on_qubits']:
-                sequencer.append('charge%s_I' % qubit_id,
-                                 Square(max_amp=self.expt_cfg['amp'], flat_len=self.expt_cfg['pulse_length'],
-                                        ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
-                                        phase=0))
-
-                sequencer.append('charge%s_Q' % qubit_id,
-                                 Square(max_amp=self.expt_cfg['amp'], flat_len=self.expt_cfg['pulse_length'],
-                                        ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
-                                        phase=self.pulse_info[qubit_id]['Q_phase']))
-            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
-
-            sequencer.end_sequence()
-        return sequencer.complete(self, plot=True)
-
-
     def pulse_probe_iq(self, sequencer):
 
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
@@ -421,7 +397,6 @@ class PulseSequences:
                                  Square(max_amp=self.expt_cfg['amp'], flat_len=self.expt_cfg['pulse_length'],
                                         ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
                                         phase=self.pulse_info[qubit_id]['Q_phase']))
-            # self.idle_q(sequencer, time=200)
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
 
             sequencer.end_sequence()
@@ -447,20 +422,10 @@ class PulseSequences:
             self.pad_start_pxi(sequencer,on_qubits=self.expt_cfg['on_qubits'],time=500)
 
             for qubit_id in self.expt_cfg['on_qubits']:
-                # self.pi_q(sequencer,qubit_id,pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                # self.idle_q(sequencer, time=t1_len)
-                sequencer.append('charge%s_I' % qubit_id,
-                                 Square(max_amp=1, flat_len=t1_len,
-                                        ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'],
-                                        phase=0))
+                self.pi_q(sequencer,qubit_id,pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                self.idle_q(sequencer, time=t1_len)
 
-                sequencer.append('charge%s_Q' % qubit_id,
-                                 Square(max_amp=1, flat_len=t1_len,
-                                        ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'],
-                                        phase=self.pulse_info[qubit_id]['Q_phase']))
-
-            # self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
-            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
@@ -1257,6 +1222,22 @@ class PulseSequences:
         sequencer.append('readout_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
 
         return readout_time
+
+    def G_test_HVI(self, sequencer, on_qubits=None, sideband=False, overlap=False):
+        sequencer.new_sequence(self)
+        sequencer.sync_channels_time(self.channels)
+        sequencer.append('readout',
+                         Square(max_amp=self.quantum_device_cfg['readout']['amp'],
+                                flat_len=self.quantum_device_cfg['readout']['length'],
+                                ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+                                phase=0))
+        sequencer.append('charge1_I',
+                         Square(max_amp=self.quantum_device_cfg['readout']['amp'],
+                                flat_len=100,
+                                ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+                                phase=0))
+        sequencer.end_sequence()
+        return sequencer.complete(self, plot=True)
 
 
     def alazar_test(self, sequencer):
