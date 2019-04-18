@@ -1226,16 +1226,17 @@ class PulseSequences:
     def G_test_HVI(self, sequencer, on_qubits=None, sideband=False, overlap=False):
         sequencer.new_sequence(self)
         sequencer.sync_channels_time(self.channels)
-        sequencer.append('readout',
-                         Square(max_amp=self.quantum_device_cfg['readout']['amp'],
-                                flat_len=self.quantum_device_cfg['readout']['length'],
-                                ramp_sigma_len=20, cutoff_sigma=2, freq=0,
-                                phase=0))
         sequencer.append('charge1_I',
                          Square(max_amp=self.quantum_device_cfg['readout']['amp'],
                                 flat_len=100,
                                 ramp_sigma_len=20, cutoff_sigma=2, freq=0,
                                 phase=0))
+        # sequencer.sync_channels_time(self.channels)
+        # sequencer.append('readout',
+        #                  Square(max_amp=self.quantum_device_cfg['readout']['amp'],
+        #                         flat_len=self.quantum_device_cfg['readout']['length'],
+        #                         ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+        #                         phase=0))
         sequencer.end_sequence()
         return sequencer.complete(self, plot=True)
 

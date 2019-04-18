@@ -54,8 +54,9 @@ class Experiment_HVI:
         except:pass
         try:
             self.pxi.AWG_module.stopAll()
-            self.pxi.m_module.stopAll()
             self.pxi.trig_module.stopAll()
+            #self.pxi.m_module.stopAll()
+            #self.pxi.trig_module.stopAll()
         except:pass
 
         pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
@@ -413,17 +414,23 @@ class Experiment_HVI:
 
     def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
         self.expt_cfg = self.experiment_cfg[name]
-        #self.generate_datafile(path,name,seq_data_file=seq_data_file)
+        self.generate_datafile(path,name,seq_data_file=seq_data_file)
         self.set_trigger()
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
         self.initiate_attenuators()
-        self.initiate_pxi(name, sequences)
+
+        self.initiate_pxi(name, sequences) #creates a Keysight single qubit object pxi, serializes sequences, pxi.configures channels and pxi.loads them
+
         self.initiate_tek2(name,path,sequences)
         time.sleep(0.1)
-        self.awg_run(run_pxi=True,name=name)
+
+        self.awg_run(run_pxi=True,name=name) #pxi.run() and then some other stuff if run_pxi not true or doing sidebands
         print("DEBUG: made it past awg_run, now attempting to get data")
 
+        #get single shot data - calls pxi.SSdata_many(w), which calls readDataQuiet num_avgs time.
+        #each time readDataQuiet gets called, everything else is put on hold until it collects the expected number of points (which should be pts per cycle).
+        #I think experiment waits until it has collected the expected number of points, and then sends it over, but not sure
         self.I, self.Q = self.get_ss_data_pxi(self.expt_cfg, seq_data_file=seq_data_file)
         print("DEBUG: got data, proceeding onto awg_stop")
 

@@ -89,9 +89,9 @@ class KeysightSingleQubit_HVI:
         print ("Module used for generating  pulses = ",self.out_mod_no)
         self.out_mod_nums = [self.out_mod_no]
 
-        #number of times experiment is repeated
+        #number of times experiment is repeated - set HVI parameter for this as well
         self.num_avg = experiment_cfg[name]['acquisition_num']
-        
+
         #nb of different parameter sweeps for same basic "exp"
         self.num_expt = sequences['readout'].shape[0]
 
@@ -239,6 +239,12 @@ class KeysightSingleQubit_HVI:
             if error < 0:
                 raise Exception('Error occurred writing integer constant to AWG. {}'.format(keyLib.Tools.decodeError(error)))
 
+        #set num avgs
+        error = self.hvi.writeIntegerConstantWithUserName(self.AWG_hvi_name, "nSteps", self.num_avg)
+        if error < 0:
+            raise Exception(
+                'Error occurred writing integer constant to AWG. {}'.format(keyLib.Tools.decodeError(error)))
+
         for key, value in self.DIG_HVI_hardware_params.items():
             error = self.hvi.writeIntegerConstantWithUserName(self.DIG_hvi_name, key, value)
             if error < 0:
@@ -263,7 +269,9 @@ class KeysightSingleQubit_HVI:
         print ("Configuring analog channels")
 
         #sets the trigger channel on the awg to be OUT (we want this since we are using it for the BNC)
+        #initialize it to OFF
         self.AWG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_OUT)
+        self.AWG_module.triggerIOwrite(0)
 
         #kind of output already configured in setting the module type (this is how Josie's Keysight Lib is set up)
         #NOT setting trigger sources here (either external or internal) because will all be triggered through HVI
@@ -509,6 +517,7 @@ class KeysightSingleQubit_HVI:
                 self.data_1 += np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape)
                 self.data_2 += np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape)
 
+
             self.data_1 /= self.num_avg
             self.data_2 /= self.num_avg
 
@@ -566,10 +575,12 @@ class KeysightSingleQubit_HVI:
         I = []
         Q = []
         print("DEBUG: about to start looping over num_avg")
-        for ii in tqdm(range(self.num_avg)):
+        #for ii in (range(self.num_avg)):
+        for ii in (range(2)):
             print("reading data")
-            I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(timeout=100), self.data_1.shape).T[int(w[0]):int(w[1])], 0)) #timeout in ms
-            Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(timeout=100), self.data_2.shape).T[int(w[0]):int(w[1])], 0)) #timeout in ms
+            print(self.DIG_ch_1.readDataQuiet(timeout=1000).shape)
+            #I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(timeout=1000), self.data_1.shape).T[int(w[0]):int(w[1])], 0)) #timeout in ms
+            #Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(timeout=1000), self.data_2.shape).T[int(w[0]):int(w[1])], 0)) #timeout in ms
         return np.array(I).T, np.array(Q).T
 
     def acquire_avg_data(self,w = [0,-1],pi_calibration=False):
