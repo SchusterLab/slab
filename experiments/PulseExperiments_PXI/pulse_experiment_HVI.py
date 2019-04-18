@@ -19,7 +19,6 @@ from slab.dataanalysis import get_next_filename
 import json
 from slab.experiments.PulseExperiments_PXI.get_data import get_iq_data, get_singleshot_data
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
-from slab.instruments.keysight import ktqet_exceptions as key_e
 
 class Experiment_HVI:
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None):
@@ -54,7 +53,6 @@ class Experiment_HVI:
         except:pass
         try:
             self.pxi.AWG_module.stopAll()
-            self.pxi.trig_module.stopAll()
             #self.pxi.m_module.stopAll()
             #self.pxi.trig_module.stopAll()
         except:pass
@@ -351,7 +349,7 @@ class Experiment_HVI:
         try:pi_calibration = expt_cfg['pi_calibration']
         except:pi_calibration = False
 
-        I,Q = self.pxi.acquire_avg_data(w,pi_calibration)
+        I,Q = self.pxi.acquire_avg_error in qubitdata(w,pi_calibration)
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
