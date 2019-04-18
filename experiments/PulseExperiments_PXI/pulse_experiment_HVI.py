@@ -350,6 +350,7 @@ class Experiment_HVI:
         except:pi_calibration = False
 
         I,Q = self.pxi.acquire_avg_error in qubitdata(w,pi_calibration)
+        #I,Q = self.pxi.acquire_avg_data(w,pi_calibration) was the original line
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
