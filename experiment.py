@@ -23,7 +23,7 @@ class Experiment:
 
             also loads InstrumentManager, LivePlotter, and other helpers
         """
-        '''
+        
         self.__dict__.update(kwargs)
         self.path = path
         self.prefix = prefix
@@ -38,7 +38,7 @@ class Experiment:
         # self.dataserver= dataserver_client()
         self.fname = os.path.join(path, get_next_filename(path, prefix, suffix='.h5'))
 
-        self.load_config()'''
+        self.load_config()
 
     def load_config(self):
         if self.config_file is None:

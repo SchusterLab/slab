@@ -61,7 +61,7 @@ class Gauss(Pulse):
 
 
 class Square(Pulse):
-    def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, freq, phase, phase_t0 = 0, dt=None, plot=False):
+    def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, freq, phase, phase_t0 = 0, fix_phase = True,dc_offset = 0, dt=None, plot=False):
         self.max_amp = max_amp
         self.flat_len = flat_len
         self.ramp_sigma_len = ramp_sigma_len
@@ -71,6 +71,8 @@ class Square(Pulse):
         self.phase_t0 = phase_t0
         self.dt = dt
         self.plot = plot
+        self.fix_phase = fix_phase
+        self.dc_offset = dc_offset
 
         self.t0 = 0
 
@@ -93,12 +95,88 @@ class Square(Pulse):
                     2 * self.ramp_sigma_len ** 2))  # trailing edge
         )
 
-        pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
-
+        if not self.fix_phase:pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+        else:pulse_array = pulse_array * np.cos(2 * np.pi * (self.freq + self.dc_offset) * (self.t_array - self.phase_t0) + self.phase -2 * np.pi * (self.dc_offset)*(self.t_array - self.t_array[0]) )
         return pulse_array
 
     def get_length(self):
         return self.flat_len + 2 * self.cutoff_sigma * self.ramp_sigma_len
+
+
+class Double_Square(Pulse):
+    def __init__(self, max_amp1,max_amp2,flat_len1,delay,flat_len2, ramp_sigma_len, cutoff_sigma, freq1, freq2, phase1=0,phase2=0, phase_t0 = 0, fix_phase = False,dc_offset = 0, dt=None, plot=False,doubling_trick = False):
+        self.max_amp1 = max_amp1
+        self.flat_len1 = flat_len1
+        self.max_amp2 = max_amp2
+        self.flat_len2 = flat_len2
+        self.delay = delay
+        self.fix_phase = fix_phase
+        self.dc_offset = dc_offset
+        self.doubling_trick = doubling_trick
+
+        self.ramp_sigma_len = ramp_sigma_len
+        self.cutoff_sigma = cutoff_sigma
+        self.freq1 = freq1
+        self.phase1 = phase1
+        self.freq2 = freq2
+        self.phase2 = phase2
+
+        self.phase_t0 = phase_t0
+        self.dt = dt
+        self.plot = plot
+
+        self.t0 = 0
+
+    def get_pulse_array(self):
+
+        t_flat_start1 = self.t0 + self.cutoff_sigma * self.ramp_sigma_len
+        t_flat_end1 = self.t0 + self.cutoff_sigma * self.ramp_sigma_len + self.flat_len1
+        t_end1 = self.t0 + 2 * self.cutoff_sigma * self.ramp_sigma_len + self.flat_len1
+
+        t_start2 = t_end1 + self.delay
+        t_flat_start2 = t_start2 + self.cutoff_sigma * self.ramp_sigma_len
+        t_flat_end2 = t_start2 + self.cutoff_sigma * self.ramp_sigma_len + self.flat_len2
+        t_end2 = t_start2 + 2 * self.cutoff_sigma * self.ramp_sigma_len + self.flat_len2
+
+
+        pulse_array1 = self.max_amp1 * (
+            (self.t_array >= t_flat_start1) * (
+                self.t_array < t_flat_end1) +  # Normal square pulse
+            (self.t_array >= self.t0) * (self.t_array < t_flat_start1) * np.exp(
+                -1.0 * (self.t_array - (t_flat_start1)) ** 2 / (
+                    2 * self.ramp_sigma_len ** 2)) +  # leading gaussian edge
+            (self.t_array >= t_flat_end1) * (
+                self.t_array <= t_end1) * np.exp(
+                -1.0 * (self.t_array - (t_flat_end1)) ** 2 / (
+                    2 * self.ramp_sigma_len ** 2))  # trailing edge
+        )
+
+        pulse_array2 = self.max_amp2 * (
+            (self.t_array >= t_flat_start2) * (
+                self.t_array < t_flat_end2) +  # Normal square pulse
+            (self.t_array >= t_start2) * (self.t_array < t_flat_start2) * np.exp(
+                -1.0 * (self.t_array - (t_flat_start2)) ** 2 / (
+                    2 * self.ramp_sigma_len ** 2)) +  # leading gaussian edge
+            (self.t_array >= t_flat_end2) * (
+                self.t_array <= t_end2) * np.exp(
+                -1.0 * (self.t_array - (t_flat_end2)) ** 2 / (
+                    2 * self.ramp_sigma_len ** 2))  # trailing edge
+        )
+
+        if not self.doubling_trick:
+            if not self.fix_phase:
+                pulse_array = pulse_array1 * np.cos(2 * np.pi * (self.freq1) * (self.t_array - self.phase_t0) + self.phase1)+ pulse_array2 * np.cos(2 * np.pi * self.freq2 * (self.t_array - self.phase_t0) + self.phase2)
+            else:
+                pulse_array = pulse_array1 * np.cos(2 * np.pi * (self.freq1 + self.dc_offset) * (self.t_array- self.phase_t0) + self.phase1  -2 * np.pi * (self.dc_offset)*(self.t_array - self.t_array[0])) + pulse_array2 * np.cos(2 * np.pi * self.freq2 * (self.t_array - self.phase_t0) + self.phase2)
+        else:
+            pulse_array = pulse_array1 * np.cos(2 * np.pi * (self.freq1 + self.dc_offset) * (self.t_array - self.phase_t0) + self.phase1 - 2 * np.pi * (self.dc_offset) * (self.t_array - self.t_array[0])) + \
+                          pulse_array2 * np.cos(2 * np.pi * 2*(self.freq1 + self.dc_offset) * (self.t_array - self.phase_t0) + self.phase2 +
+                                                2*np.pi*(self.freq2 - 2*(self.freq1 + self.dc_offset))*(self.t_array-self.t_array[0]-self.flat_len1-self.delay -  2 * self.cutoff_sigma * self.ramp_sigma_len))
+        return pulse_array
+
+    def get_length(self):
+        return self.flat_len1 + self.flat_len2 + self.delay +  4 * self.cutoff_sigma * self.ramp_sigma_len
+
 
 class Square_two_tone(Pulse):
     def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, freq1, freq2, phase1 = 0, phase2 = 0, phase_t0 = 0, dt=None, plot=False):

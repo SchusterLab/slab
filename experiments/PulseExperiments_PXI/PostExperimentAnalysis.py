@@ -768,6 +768,29 @@ class PostExperiment:
         print("Suggested dc offset =", suggested_dc_offset * 1e3, "MHz")
         print("T2 =", p[3], "ns")
 
+    def sideband_pi_pi_offset(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.'+self.P)
+        phase = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(phase, P, 'o-', label=self.P)
+            ax.set_xlabel('Phase (rad)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitsin3(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitsin3(t, P, showfit=False)
+        offset_phase = p[2]-np.pi/2.0
+        print("pi pi offset phase =? ", offset_phase / 2, "rad")
+        ax.axvline(offset_phase,color='k',linestyle='dashed')
+
     def sideband_rabi_two_tone_freq_scan(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         sideband_freq = expt_cfg['center_freq']+expt_cfg['offset_freq']
@@ -872,9 +895,9 @@ class PostExperiment:
 
         offset = ramsey_freq - p[1]
 
-        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_e'] + offset
+        suggested_chi_shift = (2 * quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_e'] + offset) / 2.0
         print("Offset freq =", offset * 1e3, "MHz")
-        print("Suggested ge chi shift = 2 pi x",suggested_chi_shift* 1e3, "MHz")
+        print("Suggested ge chi shift = 2 pi x", suggested_chi_shift * 1e3, "MHz")
         print("T2 =", p[3], "ns")
 
     def sideband_chi_ef_calibration(self):
@@ -900,9 +923,9 @@ class PostExperiment:
 
         offset = ramsey_freq - p[1]
 
-        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_ef'] + offset
+        suggested_chi_shift = (2 * quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_ef'] + offset) / 2.0
         print("Offset freq =", offset * 1e3, "MHz")
-        print("Suggested ef chi shift = 2 pi x",suggested_chi_shift* 1e3, "MHz")
+        print("Suggested ge chi shift = 2 pi x", suggested_chi_shift * 1e3, "MHz")
         print("T2 =", p[3], "ns")
 
     def sideband_chi_gf_calibration(self):
@@ -928,11 +951,10 @@ class PostExperiment:
 
         offset = ramsey_freq - p[1]
 
-        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_f'] + offset
+        suggested_chi_shift = (2 * quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_f'] + offset) / 2.0
         print("Offset freq =", offset * 1e3, "MHz")
-        print("Suggested f chi shift = 2 pi x",suggested_chi_shift* 1e3, "MHz")
+        print("Suggested ge chi shift = 2 pi x", suggested_chi_shift * 1e3, "MHz")
         print("T2 =", p[3], "ns")
-
 
     def sideband_reset_qubit_temperature(self):
         expt_cfg = self.experiment_cfg['sideband_transmon_reset']
@@ -966,7 +988,6 @@ class PostExperiment:
         print("Qubit Temp:", 1e3 * temperature_q(nu_q * 1e9, ratio), " mK")
         print("Contrast ratio:",ratio)
         print("Qubit Excited State Occupation:", occupation_q(nu_q, 1e3 * temperature_q(nu_q, ratio)))
-
 
     def qp_pumping_t1(self):
         expt_cfg = self.experiment_cfg[self.exptname]
@@ -1031,14 +1052,142 @@ class PostExperiment:
         print("Pulse probe width = ", p[3] * 1e3, "MHz")
         print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
 
+    def cavity_drive_direct_spectroscopy(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_c = self.quantum_device_cfg['cavity'][expt_cfg['on_cavities'][0]]['freq']
 
+        self.I = self.I - mean(self.I)
+        self.Q = self.Q - mean(self.Q)
+
+        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_c
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(f, self.I, 'b.-', label='I')
+            ax.plot(f, self.Q, 'r.-', label='Q')
+            ax.set_xlabel('Freq(GHz)')
+            ax.set_ylabel('I/Q')
+            ax.legend()
+            p = fitlor(f, eval('self.'+self.P), showfit=False)
+            ax.plot(f, lorfunc(p, f), 'k--')
+            ax.axvline(p[2], color='g', linestyle='dashed')
+            plt.show()
+        else:p = fitlor(f, eval('self.'+self.P), showfit=False)
+
+        print("Cavity frequency = ", p[2], "GHz")
+        print("Pulse probe width = ", p[3] * 1e3, "MHz")
+
+    def cavity_drive_pulse_probe_iq(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        self.I = self.I - mean(self.I)
+        self.Q = self.Q - mean(self.Q)
+
+        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_q
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(f, self.I, 'b.-', label='I')
+            ax.plot(f, self.Q, 'r.-', label='Q')
+            ax.set_xlabel('Freq(GHz)')
+            ax.set_ylabel('I/Q')
+            ax.legend()
+            p = fitlor(f, eval('self.'+self.P), showfit=False)
+            ax.plot(f, lorfunc(p, f), 'k--')
+            ax.axvline(p[2], color='g', linestyle='dashed')
+            plt.show()
+        else:p = fitlor(f, eval('self.'+self.P), showfit=False)
+
+        print("Qubit frequency = ", p[2], "GHz")
+        print("Pulse probe width = ", p[3] * 1e3, "MHz")
+        print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
+
+    def sideband_pi_pi_offset(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.' + self.P)
+        phase = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        p = fitsin3(phase[:], P[:], showfit=False)
+        offset_phase = (p[2] + pi / 2)
+        print("pi pi offset phase = ", offset_phase, "rad")
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(phase, P, 'bo--', markersize=10.0, label=show)
+            ax.set_xlabel('$\Phi$ (rad)')
+            ax.set_ylabel(show)
+            ax.legend()
+            p = fitsin3(phase[:], P[:], showfit=True)
+            ax.axvline(offset_phase, color='k', linestyle='dashed')
+            plt.show()
+
+    def wigner_tomography_test_sideband_only(self):
+
+
+        expt_cfg = self.experiment_cfg['wigner_tomography_test_sideband_only']
+
+        time = expt_cfg['cavity_pulse_len']
+        print("Cavity pulse time = ", time, "ns")
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title='Wigner tomograph for state =  ' + str(expt_cfg['state']))
+
+            P = eval('self.' + self.P)
+
+
+            W = -2 / pi * (2 * P - 1)
+            r, t = meshgrid(amps, phases)
+
+            x = r * np.cos(t)
+            y = r * np.sin(t)
+            plt.pcolormesh(x, y, W, cmap='RdBu')
+
+            ax.set_xlabel('$\\propto Re(\\alpha$)')
+            ax.set_ylabel('$\\propto Im(\\alpha$)')
+            plt.colorbar()
+            plt.show()
+
+
+
+    def wigner_tomography_sideband_only_phase_sweep(self):
+
+
+        expt_cfg = self.experiment_cfg['wigner_tomography_test_sideband_only']
+        swp_cfg = self.experiment_cfg['wigner_tomography_sideband_only_phase_sweep']
+
+        time = expt_cfg['cavity_pulse_len']
+        print("Cavity pulse time = ", time, "ns")
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title='Wigner tomograph for state =  ' + str(expt_cfg['state']))
+
+            P = eval('self.' + self.P)
+            phases = arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])[:len(P)]
+            amps = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:]
+
+            W = -2 / pi * (2 * P - 1)
+            r, t = meshgrid(amps, phases)
+
+            x = r * np.cos(t)
+            y = r * np.sin(t)
+            plt.pcolormesh(x, y, W, cmap='RdBu')
+
+            ax.set_xlabel('$\\propto Re(\\alpha$)')
+            ax.set_ylabel('$\\propto Im(\\alpha$)')
+            plt.colorbar()
+            plt.show()
 
     def save_cfg_info(self, f):
             f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
             f.attrs['experiment_cfg'] = json.dumps(self.experiment_cfg)
             f.attrs['hardware_cfg'] = json.dumps(self.hardware_cfg)
             f.close()
-
 
 def temperature_q(nu, rat):
     Kb = 1.38e-23

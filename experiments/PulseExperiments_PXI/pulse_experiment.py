@@ -17,7 +17,7 @@ import visdom
 from slab.datamanagement import SlabFile
 from slab.dataanalysis import get_next_filename
 import json
-from slab.experiments.PulseExperiments.get_data import get_iq_data, get_singleshot_data
+# from slab.experiments.PulseExperiments.get_data import get_iq_data, get_singleshot_data
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
 
 class Experiment:
@@ -26,14 +26,20 @@ class Experiment:
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
         im = InstrumentManager()
-        try: self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
-        except: print("Not connected to keysight PXI")
+        self.pxi = ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg, self.quantum_device_cfg,
+                                              sequences, name)
+        # try: self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
+        # except: print("Not connected to keysight PXI")
 
         try: self.drive_los = [im[lo] for lo in self.hardware_cfg['drive_los']]
         except: print ("No drive function generator specified in hardware config")
 
         try: self.readout_los = [im[lo] for lo in self.hardware_cfg['readout_los']]
         except: print ("No readout function generator specified in hardware config")
+        
+        try: self.cavity_drive_los = [im[lo] for lo in self.hardware_cfg['cavity_drive_los']]
+        except: print ("No cavity drive function generator specified in hardware config")
+        
 
         try: self.attens = [im[atten] for atten in self.hardware_cfg['attens']]
         except: print ("No digital attenuator specified in hardware config")
@@ -185,6 +191,19 @@ class Experiment:
                 d.set_power(self.quantum_device_cfg['readout_drive_lo_powers'][str(ii + 1)])
                 d.set_ext_pulse(mod=True)
         except:print("Error in readout drive LO configuration")
+        
+    def initiate_cavity_drive_LOs(self,name):
+        if 'cavity_drive' in name:
+            try:
+                for ii, d in enumerate(self.cavity_drive_los):
+                    drive_freq = self.quantum_device_cfg['cavity'][str(ii + 1)]['freq'] - \
+                                 self.quantum_device_cfg['cavity_pulse_info'][str(ii + 1)]['iq_freq']
+                    d.set_frequency(drive_freq * 1e9)
+                    d.set_power(self.quantum_device_cfg['cavity_drive_lo_powers'][str(ii + 1)])
+                    d.set_ext_pulse(mod=True)
+                    print ("Cavity LO configured")
+            except:
+                print("Error in cavity drive LO configuration")
 
     def initiate_attenuators(self):
         try:
@@ -412,9 +431,11 @@ class Experiment:
         self.set_trigger()
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
+        self.initiate_cavity_drive_LOs(name)
         self.initiate_attenuators()
         self.initiate_pxi(name, sequences)
         self.initiate_tek2(name,path,sequences)
+
         time.sleep(0.1)
         self.awg_run(run_pxi=True,name=name)
 

@@ -571,7 +571,7 @@ class N5242A(SocketInstrument):
         if timeout is None:
             timeout = self.timeout
         self.get_operation_completion()
-        self.read(timeout=0.1)
+        self.read(timeout=100)
         self.write("CALC%d:DATA? FDATA" % channel)
         data_str = b''.join(self.read_lineb(timeout=timeout))
 

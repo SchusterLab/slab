@@ -12,9 +12,9 @@ except:print("No optimizer")
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
 
 
-from slab.experiments.PulseExperiments.get_data import get_singleshot_data_two_qubits_4_calibration_v2,\
-    get_singleshot_data_two_qubits, data_to_correlators, two_qubit_quantum_state_tomography,\
-    density_matrix_maximum_likelihood
+# from slab.experiments.PulseExperiments.get_data import get_singleshot_data_two_qubits_4_calibration_v2,\
+#     get_singleshot_data_two_qubits, data_to_correlators, two_qubit_quantum_state_tomography,\
+#     density_matrix_maximum_likelihood
 
 import pickle
 
@@ -266,6 +266,144 @@ class SequentialExperiment:
 
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
+
+
+    def sideband_rabi_freq_scan_amp_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sideband_rabi_freq_scan_amp_sweep']
+        amps = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+        length_sc = swp_cfg['length_scale']
+        amp_sc = swp_cfg['amp_scale']
+
+
+        experiment_name = 'sideband_rabi_freq_scan'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sideband_rabi_freq_scan_amp_sweep', suffix='.h5'))
+
+        for amp in amps:
+            experiment_cfg[experiment_name]['length'] = length_sc*amp_sc/amp
+            experiment_cfg[experiment_name]['amp'] = amp
+            print("Sideband amplitude set to", amp)
+            print("Sideband length set to", length_sc*amp_sc/amp,'ns')
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+
+
+    def cavity_drive_pulse_probe_iq_amp_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['cavity_drive_pulse_probe_iq_amp_sweep']
+        amps = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+
+        experiment_name = 'cavity_drive_pulse_probe_iq'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'cavity_drive_pulse_probe_iq_amp_sweep', suffix='.h5'))
+
+        for amp in amps:
+            print("Cavity drive amplitude set to ", amp)
+
+            experiment_cfg[experiment_name]['cavity_amp'] = amp
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+    def wigner_tomography_test_phase_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['wigner_tomography_test_phase_sweep']
+        phases = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+
+        experiment_name = 'wigner_tomography_test_cavity_drive_sideband'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'wigner_tomography_test_phase_sweep', suffix='.h5'))
+
+        for phase in phases:
+            print("Cavity drive phase set to", phase,"rad")
+
+            experiment_cfg[experiment_name]['phase'] = phase
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+    def wigner_tomography_sideband_only_phase_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['wigner_tomography_sideband_only_phase_sweep']
+        phases = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+
+        experiment_name = 'wigner_tomography_test_sideband_only'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'wigner_tomography_sideband_only_phase_sweep', suffix='.h5'))
+
+        for phase in phases:
+            print("Cavity drive phase set to", phase,"rad")
+
+            experiment_cfg[experiment_name]['phase'] = phase
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+    def wigner_tomography_sideband_one_pulse_phase_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['wigner_tomography_sideband_one_pulse_phase_sweep']
+        phases = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+
+        experiment_name = 'wigner_tomography_test_sideband_one_pulse'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'wigner_tomography_sideband_one_pulse_phase_sweep', suffix='.h5'))
+
+        for phase in phases:
+            print("Cavity drive phase set to", phase,"rad")
+
+            experiment_cfg[experiment_name]['phase'] = phase
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+
 
     def sequential_sideband_ramsey(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         swp_cfg = experiment_cfg['sequential_sideband_ramsey']
