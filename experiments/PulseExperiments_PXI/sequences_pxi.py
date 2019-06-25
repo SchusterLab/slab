@@ -25,9 +25,12 @@ class PulseSequences:
 
         self.pulse_info = self.quantum_device_cfg['pulse_info']
 
-        try:
-            self.cavity_pulse_info = self.quantum_device_cfg['cavity_pulse_info']
+        try:self.cavity_pulse_info = self.quantum_device_cfg['cavity_pulse_info']
         except:print("No cavity pulses")
+
+        try:self.transmon_pulse_info_tek2 = self.quantum_device_cfg['transmon_pulse_info_tek2']
+        except:print("No tek2 transmon drive pulse information")
+
         self.channels = hardware_cfg['channels']
 
         self.channels_awg = hardware_cfg['channels_awg']
@@ -285,6 +288,75 @@ class PulseSequences:
                                 cutoff_sigma=2, freq=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_freq'], phase=phase,fix_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
                                 dc_offset=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_dc_offset'],plot=False))
 
+    def sideband_gen_q(self,sequencer,qubit_id = '1',len = 10,amp = 1,add_freq = 0,phase = 0,pulse_type = 'square'):
+        if pulse_type.lower() == 'square':
+            sequencer.append('sideband', Square(max_amp=amp, flat_len=len,
+                                    ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.quantum_device_cfg['qubit'][qubit_id]['freq']+add_freq,
+                                    phase=phase))
+        elif pulse_type.lower() == 'gauss':
+            sequencer.append('sideband', Gauss(max_amp=amp, sigma_len=len,
+                                                             cutoff_sigma=2,freq=self.quantum_device_cfg['qubit'][qubit_id]['freq']+add_freq,phase=phase))
+
+    def sideband_pi_q(self, sequencer, qubit_id='1',phase=0, pulse_type='square'):
+        if pulse_type.lower() == 'square':
+            sequencer.append('sideband', Square(max_amp=self.transmon_pulse_info_tek2[qubit_id]['pi_amp'], flat_len=self.transmon_pulse_info_tek2[qubit_id]['pi_len'],
+                                                ramp_sigma_len=0.001, cutoff_sigma=2,
+                                                freq=self.quantum_device_cfg['qubit'][qubit_id]['freq'],
+                                                phase=phase))
+        elif pulse_type.lower() == 'gauss':
+            sequencer.append('sideband', Gauss(max_amp=self.transmon_pulse_info_tek2[qubit_id]['pi_amp'], sigma_len=self.transmon_pulse_info_tek2[qubit_id]['pi_len'],
+                                               cutoff_sigma=2,
+                                               freq=self.quantum_device_cfg['qubit'][qubit_id]['freq'],
+                                               phase=phase))
+
+    def sideband_pi_q_resolved(self, sequencer, qubit_id='1',phase=0, pulse_type='square',add_freq = 0):
+        if pulse_type.lower() == 'square':
+            sequencer.append('sideband', Square(max_amp=self.transmon_pulse_info_tek2[qubit_id]['pi_amp_resolved'], flat_len=self.transmon_pulse_info_tek2[qubit_id]['pi_len_resolved'],
+                                                ramp_sigma_len=0.001, cutoff_sigma=2,
+                                                freq=self.quantum_device_cfg['qubit'][qubit_id]['freq'] +add_freq,
+                                                phase=phase))
+        elif pulse_type.lower() == 'gauss':
+            sequencer.append('sideband', Gauss(max_amp=self.transmon_pulse_info_tek2[qubit_id]['pi_amp_resolved'], sigma_len=self.transmon_pulse_info_tek2[qubit_id]['pi_len_resolved'],
+                                               cutoff_sigma=2,
+                                               freq=self.quantum_device_cfg['qubit'][qubit_id]['freq'] + add_freq,
+                                               phase=phase))
+
+    def sideband_half_pi_q(self, sequencer, qubit_id='1',phase=0, pulse_type='square'):
+        if pulse_type.lower() == 'square':
+            sequencer.append('sideband', Square(max_amp=self.transmon_pulse_info_tek2[qubit_id]['half_pi_amp'], flat_len=self.transmon_pulse_info_tek2[qubit_id]['half_pi_len'],
+                                                ramp_sigma_len=0.001, cutoff_sigma=2,
+                                                freq=self.quantum_device_cfg['qubit'][qubit_id]['freq'],
+                                                phase=phase))
+        elif pulse_type.lower() == 'gauss':
+            sequencer.append('sideband', Gauss(max_amp=self.transmon_pulse_info_tek2[qubit_id]['half_pi_amp'], sigma_len=self.transmon_pulse_info_tek2[qubit_id]['half_pi_len'],
+                                               cutoff_sigma=2,
+                                               freq=self.quantum_device_cfg['qubit'][qubit_id]['freq'],
+                                               phase=phase))
+
+    def sideband_pi_q_ef(self, sequencer, qubit_id='1',phase=0, pulse_type='square'):
+        if pulse_type.lower() == 'square':
+            sequencer.append('sideband', Square(max_amp=self.transmon_pulse_info_tek2[qubit_id]['pi_ef_amp'], flat_len=self.transmon_pulse_info_tek2[qubit_id]['pi_ef_len'],
+                                                ramp_sigma_len=0.001, cutoff_sigma=2,
+                                                freq=self.quantum_device_cfg['qubit'][qubit_id]['freq']+self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'],
+                                                phase=phase))
+        elif pulse_type.lower() == 'gauss':
+            sequencer.append('sideband', Gauss(max_amp=self.transmon_pulse_info_tek2[qubit_id]['pi_ef_amp'], sigma_len=self.transmon_pulse_info_tek2[qubit_id]['pi_ef_len'],
+                                               cutoff_sigma=2,
+                                               freq=self.quantum_device_cfg['qubit'][qubit_id]['freq']+self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'],
+                                               phase=phase))
+
+    def sideband_half_pi_q_ef(self, sequencer, qubit_id='1',phase=0, pulse_type='square'):
+        if pulse_type.lower() == 'square':
+            sequencer.append('sideband', Square(max_amp=self.transmon_pulse_info_tek2[qubit_id]['half_pi_ef_amp'], flat_len=self.transmon_pulse_info_tek2[qubit_id]['half_pi_ef_len'],
+                                                ramp_sigma_len=0.001, cutoff_sigma=2,
+                                                freq=self.quantum_device_cfg['qubit'][qubit_id]['freq']+self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'],
+                                                phase=phase))
+        elif pulse_type.lower() == 'gauss':
+            sequencer.append('sideband', Gauss(max_amp=self.transmon_pulse_info_tek2[qubit_id]['half_pi_ef_amp'], sigma_len=self.transmon_pulse_info_tek2[qubit_id]['half_pi_ef_len'],
+                                               cutoff_sigma=2,
+                                               freq=self.quantum_device_cfg['qubit'][qubit_id]['freq']+self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'],
+                                               phase=phase))
+
     def idle_q(self,sequencer,qubit_id = '1',time=0):
         sequencer.append('charge%s_I' % qubit_id, Idle(time=time))
         sequencer.append('charge%s_Q' % qubit_id, Idle(time=time))
@@ -295,7 +367,7 @@ class PulseSequences:
         sequencer.append('sideband', Idle(time=time))
         sequencer.sync_channels_time(self.channels)
 
-    def idle_sb(self,sequencer,time=0):
+    def idle_sb(self,sequencer,time=0.0):
         sequencer.append('sideband', Idle(time=time))
 
     def pad_start_pxi(self,sequencer,on_qubits=None, time = 500):
@@ -382,6 +454,11 @@ class PulseSequences:
         self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'],phase=np.pi)
         sequencer.sync_channels_time(self.channels)
 
+    def parity_measurement_alltek2(self, sequencer, qubit_id='1'):
+        self.sideband_half_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+        self.idle_sb(sequencer,time= self.quantum_device_cfg['flux_pulse_info'][qubit_id]['parity_time_e'])
+        self.sideband_half_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'],phase=np.pi)
+
     def gen_c(self, sequencer, cavity_id='1', len=10, amp=1, add_freq=0, phase=0, pulse_type='square'):
         if pulse_type.lower() == 'square':
             sequencer.append('cavity%s_I' % cavity_id, Square(max_amp=amp, flat_len=len,
@@ -418,7 +495,17 @@ class PulseSequences:
                                 plot=False))
         sequencer.sync_channels_time(self.channels)
         self.idle_q_sb(sequencer, qubit_id, time=50)
-        self.parity_measurement(sequencer,qubit_id)
+        self.parity_measurement_alltek2(sequencer,qubit_id)
+
+
+    def wigner_tomography_alltek2(self, sequencer, qubit_id='1',cavity_id = '1',amp = 0, phase=0,len = 0):
+        sequencer.append('sideband',
+                         Square(max_amp=amp, flat_len=len,
+                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                    'ramp_sigma_len'], cutoff_sigma=2, freq=self.cavity_freq[cavity_id], phase=phase,
+                                plot=False))
+        self.idle_sb(sequencer, time=50)
+        self.parity_measurement_alltek2(sequencer,qubit_id)
 
     def wigner_tomography_swap_and_cavity_drive(self, sequencer, qubit_id='1',cavity_id = '1',amp2 = 0, phase1=0, phase2=0,len2 = 0,delay = 0,doubling_trick = False,fix_phase=False):
         sequencer.append('sideband',
@@ -433,10 +520,14 @@ class PulseSequences:
                        , time=50)
         self.parity_measurement(sequencer,qubit_id)
 
-
     def resonator_spectroscopy(self, sequencer):
-
         sequencer.new_sequence(self)
+        self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+
+        if self.expt_cfg['pi_qubit']:
+            for qubit_id in self.expt_cfg['on_qubits']:
+                self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+
         self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
         sequencer.end_sequence()
 
@@ -537,7 +628,12 @@ class PulseSequences:
 
             for qubit_id in self.expt_cfg['on_qubits']:
                 self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                self.gen_q(sequencer, qubit_id, len=self.expt_cfg['pulse_length'], phase=0,pulse_type=self.expt_cfg['pulse_type'],add_freq=dfreq+self.quantum_device_cfg['qubit']['1']['anharmonicity'])
+                self.gen_q(sequencer, qubit_id, amp = self.expt_cfg['amp'],len=self.expt_cfg['pulse_length'], phase=0,pulse_type=self.expt_cfg['pulse_type'],add_freq=dfreq+self.quantum_device_cfg['qubit']['1']['anharmonicity'])
+            if self.expt_cfg['pi_calibration']:
+                self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                if self.expt_cfg['ef_pi_for_cal']:
+                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
 
             sequencer.end_sequence()
@@ -553,9 +649,10 @@ class PulseSequences:
             for qubit_id in self.expt_cfg['on_qubits']:
                 if self.expt_cfg['ge_pi']:
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                self.gen_q(sequencer,qubit_id,len=rabi_len,phase=0,pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'],add_freq = self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'] )
+                self.gen_q(sequencer,qubit_id,amp = self.expt_cfg['amp'],len=rabi_len,phase=0,pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'],add_freq = self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'] )
                 if self.expt_cfg['pi_calibration']:
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                if self.expt_cfg['ef_pi_for_cal']:
                     self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
@@ -575,6 +672,11 @@ class PulseSequences:
                 self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
                 self.idle_q(sequencer, time=ef_t1_len)
+                if self.expt_cfg['pi_calibration']:
+                    self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                if self.expt_cfg['ef_pi_for_cal']:
+                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
@@ -596,6 +698,7 @@ class PulseSequences:
                                phase=2 * np.pi * ramsey_len * self.expt_cfg['ramsey_freq'])
                 if self.expt_cfg['pi_calibration']:
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                if self.expt_cfg['ef_pi_for_cal']:
                     self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
@@ -622,6 +725,9 @@ class PulseSequences:
                     self.idle_q(sequencer, time=ramsey_len / (float(2 * self.expt_cfg['echo_times'])))
                 self.half_pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'],
                                phase=2 * np.pi * ramsey_len * self.expt_cfg['ramsey_freq'])
+                if self.expt_cfg['pi_calibration']:
+                    self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
@@ -1281,7 +1387,7 @@ class PulseSequences:
         return sequencer.complete(self, plot=True)
 
     def cavity_drive_direct_spectroscopy(self, sequencer):
-
+        # Direct Cavity spectroscopy by monitoring the readout resonator
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
             for cavity_id in self.expt_cfg['on_cavities']:
@@ -1301,7 +1407,7 @@ class PulseSequences:
         return sequencer.complete(self, plot=True)
 
     def cavity_drive_pulse_probe_iq(self, sequencer):
-
+        # Cavity spectroscopy by monitoring the qubit peak
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
             for qubit_id in self.expt_cfg['on_qubits']:
@@ -1321,7 +1427,7 @@ class PulseSequences:
         return sequencer.complete(self, plot=True)
 
     def wigner_tomography_test_cavity_drive_sideband(self, sequencer):
-
+        # wigner tomography with both cavity drive from PXI  and sideband drive from tek2
         for amp in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
             for qubit_id in self.expt_cfg['on_qubits']:
@@ -1382,7 +1488,7 @@ class PulseSequences:
         return sequencer.complete(self, plot=self.plot_visdom)
 
     def wigner_tomography_test_sideband_only(self, sequencer):
-
+        # wigner tomography with both cavity and sideband drive from tek2
         for x in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
             self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
@@ -1417,7 +1523,7 @@ class PulseSequences:
         return sequencer.complete(self, plot=True)
 
     def wigner_tomography_test_sideband_one_pulse(self, sequencer):
-
+        # wigner tomography with both cavity and sideband drive from tek2, and generated using a single double square pulse
         for x in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
             self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
@@ -1454,24 +1560,590 @@ class PulseSequences:
         return sequencer.complete(self, plot=True)
 
     def sideband_transmon_ge_rabi(self, sequencer):
-        # sideband rabi time domain
-
-        for length in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+        # transmon ge rabi with tek2
+        for len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
             self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
             for qubit_id in self.expt_cfg['on_qubits']:
+                self.sideband_gen_q(sequencer, qubit_id, len=len,amp = self.expt_cfg['amp'],phase=0,pulse_type=self.expt_cfg['pulse_type'],add_freq=0)
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def sideband_transmon_ge_ramsey(self, sequencer):
+        # transmon ge rabi with tek2
+        for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                self.sideband_half_pi_q(sequencer, qubit_id,pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                self.idle_sb(sequencer, time=ramsey_len)
+                self.sideband_half_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'],phase=2 * np.pi * ramsey_len * self.expt_cfg['ramsey_freq'])
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def sideband_transmon_ef_rabi(self, sequencer):
+        # transmon ef rabi with tek2
+        for len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                if self.expt_cfg['ge_pi']:
+                    self.sideband_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    self.idle_sb(sequencer, time  = 5.0)
+                self.sideband_gen_q(sequencer, qubit_id, len=len,amp = self.expt_cfg['amp'],phase=0,pulse_type=self.expt_cfg['pulse_type'],
+                                    add_freq=self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'])
+                # self.idle_sb(sequencer,time = 10.0)
+                if self.expt_cfg['pi_calibration']:
+                    sequencer.sync_channels_time(self.channels)
+                    self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def sideband_transmon_pulse_probe_ef(self, sequencer):
+        # transmon ef rabi with tek2
+        for df in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                self.sideband_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                self.idle_sb(sequencer, time  = 5.0)
+                self.sideband_gen_q(sequencer, qubit_id, len=self.expt_cfg['pulse_length'],amp = self.expt_cfg['amp'],phase=0,pulse_type=self.expt_cfg['pulse_type'],
+                                    add_freq=self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'] + df)
+                if self.expt_cfg['pi_calibration']:
+                    sequencer.sync_channels_time(self.channels)
+                    self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def sideband_transmon_pulse_probe_ge(self, sequencer):
+        # transmon ef rabi with tek2
+        for df in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                if self.expt_cfg['add_photon']:
+                    offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset']
+                    self.sideband_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                    self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                    self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+
+                self.sideband_gen_q(sequencer, qubit_id, len=self.expt_cfg['pulse_length'],amp = self.expt_cfg['amp'],phase=0,pulse_type=self.expt_cfg['pulse_type'],
+                                    add_freq= df)
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def sideband_f0g1rabi_freq_scan(self,sequencer):
+        sideband_freq = self.expt_cfg['freq']
+        length = self.expt_cfg['length']
+        for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                self.sideband_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+                dc_offset = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_dc_offset']
+                self.idle_sb(sequencer, time=5.0)
                 sequencer.append('sideband',
                                  Square(max_amp=self.expt_cfg['amp'], flat_len=length,
                                         ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
-                                            'ramp_sigma_len'], cutoff_sigma=2, freq=self.quantum_device_cfg['qubit'][qubit_id]['freq'], phase=0,
-                                        plot=False))
+                                            'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq + dfreq, phase=0,
+                                        fix_phase=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
+                                        dc_offset=dc_offset, plot=False))
+
+
+                self.idle_sb(sequencer,time=40)
+                self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
 
         return sequencer.complete(self, plot=self.plot_visdom)
 
+    def sideband_f0g1rabi(self, sequencer):
+        # sideband rabi time domain
+        sideband_freq = self.expt_cfg['freq']
+        for length in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                self.sideband_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                self.sideband_pi_q_ef(sequencer, qubit_id,pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+                dc_offset=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_dc_offset']
+                self.idle_sb(sequencer, time=5.0)
+                sequencer.append('sideband',
+                                 Square(max_amp=self.expt_cfg['amp'], flat_len=length,
+                                        ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                            'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                        fix_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
+                                        dc_offset=dc_offset,
+                                        plot=False))
+
+                self.idle_sb(sequencer,time=5.0)
+                self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
 
 
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=self.plot_visdom)
+
+    def sideband_f0g1ramsey(self, sequencer):
+        # sideband rabi time domain
+
+        for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                if self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase']:phase_freq = self.expt_cfg['ramsey_freq']
+                else:phase_freq = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_dc_offset'] + self.expt_cfg['ramsey_freq']
+
+                offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset']
+
+                self.sideband_half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = offset_phase/2.0)
+                sequencer.sync_channels_time(self.channels)
+                self.idle_sb(sequencer,time=ramsey_len+50.0)
+                self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = 2*np.pi*ramsey_len*phase_freq-offset_phase/2.0)
+                self.idle_q_sb(sequencer, qubit_id, time=10.0)
+                self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                self.sideband_half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=self.plot_visdom)
+
+    def sideband_f0g1_pi_pi_offset(self, sequencer):
+        # sideband rabi time domain
+
+        for ph in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+
+                offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset']
+
+                self.sideband_half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = ph/2.0)
+                sequencer.sync_channels_time(self.channels)
+                self.idle_sb(sequencer,time=50.0)
+                self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = -ph/2.0)
+                self.idle_q_sb(sequencer, qubit_id, time=10.0)
+                self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                self.sideband_half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=self.plot_visdom)
+
+    def sideband_chi_ge_calibration_alltek2(self, sequencer):
+
+        for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+
+                if self.expt_cfg['test_parity']:
+                    add_phase = np.pi
+                    phase_freq = 0
+                else:
+                    add_phase = 0
+                    phase_freq = 2 * self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'] + self.expt_cfg[
+                        'ramsey_freq']
+
+                offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset']
+                if self.expt_cfg['add_photon']:
+                    self.sideband_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+                    self.idle_sb(sequencer,time=5.0)
+                    self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = offset_phase/2.0)
+                self.idle_sb(sequencer,time=15.0)
+                self.sideband_half_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                self.idle_sb(sequencer, time=ramsey_len)
+                self.sideband_half_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'],phase = add_phase+2*np.pi*ramsey_len*phase_freq)
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=self.plot_visdom)
+
+    def sideband_cavity_spectroscopy_alltek2(self, sequencer):
+        # transmon ef rabi with tek2
+        for df in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                if self.expt_cfg['excite_qubit']:
+                    self.sideband_pi_q(sequencer, qubit_id,
+                                                pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+
+                sequencer.append('sideband',
+                                 Square(max_amp=self.expt_cfg['prep_cav_amp'] / 2.0,
+                                        flat_len=self.expt_cfg['prep_cav_len'],
+                                        ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                            'ramp_sigma_len'], cutoff_sigma=2,
+                                        freq=self.cavity_freq[self.expt_cfg['on_cavities']] + df,
+                                        phase=self.expt_cfg['prep_cav_phase'],
+                                        plot=False))
+                if self.expt_cfg['excite_qubit']:
+                    self.sideband_pi_q(sequencer, qubit_id,
+                                                pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                self.sideband_pi_q_resolved(sequencer, qubit_id,
+                                        pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def sideband_number_splitting_pulse_probe_ge_tek2(self, sequencer):
+        # transmon ef rabi with tek2
+        for df in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                if self.expt_cfg['state'] == '1':
+                    self.sideband_pi_q(sequencer, qubit_id,
+                                       pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    self.sideband_pi_q_ef(sequencer, qubit_id,
+                                          pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+                    self.idle_sb(sequencer, time=5.0)
+                    self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+                    sequencer.sync_channels_time(self.channels)
+                elif self.expt_cfg['state'] == '0+1':
+                    self.sideband_half_pi_q(sequencer, qubit_id,
+                                            pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    self.sideband_pi_q_ef(sequencer, qubit_id,
+                                          pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+                    self.idle_sb(sequencer, time=5.0)
+                    self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+                elif self.expt_cfg['state'] == 'alpha':
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['prep_cav_amp'],
+                                            flat_len=self.expt_cfg['prep_cav_len'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2,
+                                            freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                            phase=self.expt_cfg['prep_cav_phase'],
+                                            plot=False))
+                elif self.expt_cfg['state'] == 'cavity_drive_res_check':
+                    self.sideband_pi_q(sequencer, qubit_id,
+                                       pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['prep_cav_amp'],
+                                            flat_len=self.expt_cfg['prep_cav_len'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2,
+                                            freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                            phase=self.expt_cfg['prep_cav_phase'],
+                                            plot=False))
+                    self.sideband_pi_q(sequencer, qubit_id,
+                                       pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                elif self.expt_cfg['state'] == '0+alpha':
+                    self.sideband_half_pi_q(sequencer, qubit_id,
+                                            pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['prep_cav_amp'],
+                                            flat_len=self.expt_cfg['prep_cav_len'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2,
+                                            freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                            phase=self.expt_cfg['prep_cav_phase'],
+                                            plot=False))
+                    self.sideband_pi_q_resolved(sequencer, qubit_id,
+                                                pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                elif self.expt_cfg['state'] == "alpha+-alpha":
+                    self.sideband_half_pi_q(sequencer, qubit_id,
+                                            pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['prep_cav_amp'],
+                                            flat_len=self.expt_cfg['prep_cav_len'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2,
+                                            freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                            phase=self.expt_cfg['prep_cav_phase'],
+                                            plot=False))
+                    self.sideband_pi_q_resolved(sequencer, qubit_id,
+                                                pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['prep_cav_amp'] / 2.0,
+                                            flat_len=self.expt_cfg['prep_cav_len'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2,
+                                            freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                            phase=self.expt_cfg['prep_cav_phase'] + np.pi,
+                                            plot=False))
+
+
+                elif self.expt_cfg['state'] == '0':
+                    pass
+
+
+                self.sideband_gen_q(sequencer, qubit_id, len=self.expt_cfg['pulse_length'],amp = self.expt_cfg['amp'],phase=0,pulse_type=self.expt_cfg['pulse_type'],
+                                    add_freq= df)
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def sideband_photon_number_distribution_tek2(self, sequencer):
+        # transmon ef rabi with tek2
+        for n in np.arange(self.expt_cfg['N_max']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                if self.expt_cfg['state'] == '1':
+                    self.sideband_pi_q(sequencer, qubit_id,
+                                       pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    self.sideband_pi_q_ef(sequencer, qubit_id,
+                                          pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+                    self.idle_sb(sequencer, time=5.0)
+                    self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+                    sequencer.sync_channels_time(self.channels)
+                elif self.expt_cfg['state'] == '0+1':
+                    self.sideband_half_pi_q(sequencer, qubit_id,
+                                            pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    self.sideband_pi_q_ef(sequencer, qubit_id,
+                                          pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+                    self.idle_sb(sequencer, time=5.0)
+                    self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+                elif self.expt_cfg['state'] == 'alpha':
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['prep_cav_amp'],
+                                            flat_len=self.expt_cfg['prep_cav_len'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2,
+                                            freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                            phase=self.expt_cfg['prep_cav_phase'],
+                                            plot=False))
+                elif self.expt_cfg['state'] == 'cavity_drive_res_check':
+                    self.sideband_pi_q(sequencer, qubit_id,
+                                       pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['prep_cav_amp'],
+                                            flat_len=self.expt_cfg['prep_cav_len'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2,
+                                            freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                            phase=self.expt_cfg['prep_cav_phase'],
+                                            plot=False))
+                    self.sideband_pi_q(sequencer, qubit_id,
+                                       pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                elif self.expt_cfg['state'] == '0+alpha':
+                    self.sideband_half_pi_q(sequencer, qubit_id,
+                                            pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['prep_cav_amp'],
+                                            flat_len=self.expt_cfg['prep_cav_len'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2,
+                                            freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                            phase=self.expt_cfg['prep_cav_phase'],
+                                            plot=False))
+                    self.sideband_pi_q_resolved(sequencer, qubit_id,
+                                                pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                elif self.expt_cfg['state'] == "alpha+-alpha":
+                    self.sideband_half_pi_q(sequencer, qubit_id,
+                                            pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['prep_cav_amp'],
+                                            flat_len=self.expt_cfg['prep_cav_len'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2,
+                                            freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                            phase=self.expt_cfg['prep_cav_phase'],
+                                            plot=False))
+                    self.sideband_pi_q_resolved(sequencer, qubit_id,
+                                                pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['prep_cav_amp'] / 2.0,
+                                            flat_len=self.expt_cfg['prep_cav_len'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2,
+                                            freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                            phase=self.expt_cfg['prep_cav_phase'] + np.pi,
+                                            plot=False))
+
+
+                elif self.expt_cfg['state'] == '0':
+                    pass
+
+                self.sideband_pi_q_resolved(sequencer, qubit_id,
+                                            pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'],add_freq = 2*self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e']*n)
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'], overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def wigner_tomography_test_sideband_alltek2(self, sequencer):
+        # wigner tomography with both cavity and sideband drive from tek2
+        for x in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset']
+
+                if self.expt_cfg['state'] == '1':
+                    self.sideband_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+                    self.idle_sb(sequencer, time=5.0)
+                    self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+                    sequencer.sync_channels_time(self.channels)
+                elif self.expt_cfg['state'] == '0+1':
+                    self.sideband_half_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+                    self.idle_sb(sequencer, time=5.0)
+                    self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+                elif self.expt_cfg['state'] == 'alpha':
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['prep_cav_amp'], flat_len=self.expt_cfg['prep_cav_len'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2, freq=self.cavity_freq[cavity_id],
+                                            phase=phase,
+                                            plot=False))
+                elif self.expt_cfg['state'] == '0':
+                    pass
+                self.idle_sb(sequencer, time=5.0)
+                if self.expt_cfg['sweep_phase']:self.wigner_tomography_alltek2(sequencer, qubit_id,cavity_id=self.expt_cfg['on_cavities'],amp = self.expt_cfg['amp'],phase=x,len = self.expt_cfg['cavity_pulse_len'])
+                else:self.wigner_tomography_alltek2(sequencer, qubit_id,cavity_id=self.expt_cfg['on_cavities'],amp = x,phase=self.expt_cfg['phase'],len = self.expt_cfg['cavity_pulse_len'])
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def wigner_tomography_2d_sideband_alltek2(self, sequencer):
+        # wigner tomography with both cavity and sideband drive from tek2
+        x0 = self.expt_cfg['offset_x']
+        y0 = self.expt_cfg['offset_y']
+        for y in (np.arange(self.expt_cfg['starty'], self.expt_cfg['stopy'], self.expt_cfg['stepy']) + y0):
+            for x in (np.arange(self.expt_cfg['startx'], self.expt_cfg['stopx'], self.expt_cfg['stepx']) + x0):
+
+                tom_amp = np.sqrt(x**2+y**2)
+                tom_phase = np.arctan2(y,x)
+                sequencer.new_sequence(self)
+                self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+                sequencer.sync_channels_time(self.channels)
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset']
+
+                    if self.expt_cfg['state'] == "1":
+                        self.sideband_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                        self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+                        self.idle_sb(sequencer, time=5.0)
+                        self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+                        sequencer.sync_channels_time(self.channels)
+                    elif self.expt_cfg['state'] == "0+1":
+                        self.sideband_half_pi_q(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                        self.sideband_pi_q_ef(sequencer, qubit_id, pulse_type=self.transmon_pulse_info_tek2[qubit_id]['ef_pulse_type'])
+                        self.idle_sb(sequencer, time=5.0)
+                        self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+                    elif self.expt_cfg['state'] == "alpha":
+                        print ("goes_here")
+                        sequencer.append('sideband',
+                                         Square(max_amp=self.expt_cfg['prep_cav_amp'], flat_len=self.expt_cfg['prep_cav_len'],
+                                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                    'ramp_sigma_len'], cutoff_sigma=2, freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                                phase=self.expt_cfg['prep_cav_phase'],
+                                                plot=False))
+                    elif self.expt_cfg['state'] == "cavity_drive_res_check":
+                        self.sideband_pi_q(sequencer, qubit_id,
+                                                pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                        sequencer.append('sideband',
+                                         Square(max_amp=self.expt_cfg['prep_cav_amp'], flat_len=self.expt_cfg['prep_cav_len'],
+                                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                    'ramp_sigma_len'], cutoff_sigma=2, freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                                phase=self.expt_cfg['prep_cav_phase'],
+                                                plot=False))
+                        self.sideband_pi_q(sequencer, qubit_id,
+                                       pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    elif self.expt_cfg['state'] == "0+alpha":
+                        self.sideband_half_pi_q(sequencer, qubit_id,
+                                                    pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                        sequencer.append('sideband',
+                                         Square(max_amp=self.expt_cfg['prep_cav_amp'], flat_len=self.expt_cfg['prep_cav_len'],
+                                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                    'ramp_sigma_len'], cutoff_sigma=2, freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                                phase=self.expt_cfg['prep_cav_phase'],
+                                                plot=False))
+                        self.sideband_pi_q_resolved(sequencer, qubit_id,
+                                       pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                    elif self.expt_cfg['state'] == "alpha+-alpha":
+                        self.sideband_half_pi_q(sequencer, qubit_id,
+                                                pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                        sequencer.append('sideband',
+                                         Square(max_amp=self.expt_cfg['prep_cav_amp'],
+                                                flat_len=self.expt_cfg['prep_cav_len'],
+                                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                    'ramp_sigma_len'], cutoff_sigma=2,
+                                                freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                                phase=self.expt_cfg['prep_cav_phase'],
+                                                plot=False))
+                        self.sideband_pi_q_resolved(sequencer, qubit_id,
+                                                    pulse_type=self.transmon_pulse_info_tek2[qubit_id]['pulse_type'])
+                        sequencer.append('sideband',
+                                         Square(max_amp=self.expt_cfg['prep_cav_amp']/2.0, flat_len=self.expt_cfg['prep_cav_len'],
+                                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                    'ramp_sigma_len'], cutoff_sigma=2, freq=self.cavity_freq[self.expt_cfg['on_cavities']],
+                                                phase=self.expt_cfg['prep_cav_phase']+np.pi,
+                                                plot=False))
+
+
+
+
+                    elif self.expt_cfg['state'] == '0':
+                        pass
+                    self.idle_sb(sequencer, time=5.0)
+                    if self.expt_cfg['sweep_phase']:self.wigner_tomography_alltek2(sequencer, qubit_id,cavity_id=self.expt_cfg['on_cavities'],amp = self.expt_cfg['amp'],phase=x,len = self.expt_cfg['cavity_pulse_len'])
+                    else:self.wigner_tomography_alltek2(sequencer, qubit_id,cavity_id=self.expt_cfg['on_cavities'],amp = tom_amp,phase=tom_phase,len = self.expt_cfg['cavity_pulse_len'])
+
+                self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+                sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
 
     def alazar_test(self, sequencer):
         # drag_rabi sequences
@@ -1535,9 +2207,6 @@ class PulseSequences:
             channel_waveforms.append(channel_waveform)
 
         np.save(filename,np.array(channel_waveforms))
-
-
-
 
     def get_awg_readout_time(self, readout_time_list):
         awg_readout_time_list = {}

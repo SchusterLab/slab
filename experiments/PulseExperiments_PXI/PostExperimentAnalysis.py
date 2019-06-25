@@ -1152,8 +1152,6 @@ class PostExperiment:
             plt.colorbar()
             plt.show()
 
-
-
     def wigner_tomography_sideband_only_phase_sweep(self):
 
 
@@ -1182,6 +1180,319 @@ class PostExperiment:
             ax.set_ylabel('$\\propto Im(\\alpha$)')
             plt.colorbar()
             plt.show()
+
+    def sideband_transmon_ge_rabi(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        amp = expt_cfg['amp']
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t[2:], P[2:], showfit=True)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+        print("Half pi length =", t_half_pi, "ns")
+        print("pi length =", t_pi, "ns")
+        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
+        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
+              amp * (t_half_pi) / float(int(t_half_pi) + 1))
+
+    def sideband_transmon_pulse_probe_ef(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        alpha = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity']
+
+        self.I = self.I - mean(self.I)
+        self.Q = self.Q - mean(self.Q)
+        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_q + alpha
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(f, self.I, 'b.-', label='I')
+            ax.plot(f, self.Q, 'r.-', label='Q')
+            ax.set_xlabel('Freq(GHz)')
+            ax.set_ylabel('I/Q')
+            ax.legend()
+            p = fitlor(f, eval('self.'+self.P), showfit=False)
+            ax.plot(f, lorfunc(p, f), 'k--')
+            ax.axvline(p[2], color='g', linestyle='dashed')
+            plt.show()
+        else:p = fitlor(f, eval('self.'+self.P), showfit=False)
+
+
+        print ("ef frequency = ",p[2],"GHz")
+        print ("Expected anharmonicity =",p[2]-nu_q,"GHz")
+        print ("ef pulse probe width = ",p[3]*1e3,"MHz")
+        print ("Estimated ef pi pulse time: ",1/(sqrt(2)*2*p[3]),'ns' )
+
+    def sideband_transmon_pulse_probe_ge(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        alpha = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity']
+
+        self.I = self.I - mean(self.I)
+        self.Q = self.Q - mean(self.Q)
+        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_q
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(f, self.I, 'b.-', label='I')
+            ax.plot(f, self.Q, 'r.-', label='Q')
+            ax.set_xlabel('Freq(GHz)')
+            ax.set_ylabel('I/Q')
+            ax.legend()
+            p = fitlor(f, eval('self.'+self.P), showfit=False)
+            ax.plot(f, lorfunc(p, f), 'k--')
+            ax.axvline(p[2], color='g', linestyle='dashed')
+            plt.show()
+        else:p = fitlor(f, eval('self.'+self.P), showfit=False)
+
+
+        print ("ge frequency = ",p[2],"GHz")
+        print ("gr pulse probe width = ",p[3]*1e3,"MHz")
+        print ("Estimated ge pi pulse time: ",1/(sqrt(2)*2*p[3]),'ns' )
+
+    def sideband_transmon_ef_rabi(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        amp = expt_cfg['amp']
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t[2:], P[2:], showfit=True)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+        print("Half pi length =", t_half_pi, "ns")
+        print("pi length =", t_pi, "ns")
+        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
+        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
+              amp * (t_half_pi) / float(int(t_half_pi) + 1))
+
+    def sideband_transmon_ge_ramsey(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+        nu_q_new = nu_q + offset
+
+        print("Original qubit frequency choice =", nu_q, "GHz")
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested qubit frequency choice =", nu_q_new, "GHz")
+        print("T2* =", p[3], "ns")
+
+    def sideband_transmon_ef_ramsey(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        alpha = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity']
+
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+        alpha_new = alpha + offset
+
+        print("Original alpha choice =", alpha, "GHz")
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested alpha = ", alpha_new, "GHz")
+        print("T2* =", p[3], "ns")
+
+    def sideband_f0g1rabi_freq_scan(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        sideband_freq = expt_cfg['freq']
+        P = eval('self.' + self.P)
+        df = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        freqs = sideband_freq + df
+        amp = expt_cfg['amp']
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(freqs, P, 'o-', label=self.P)
+            ax.set_xlabel('Sideband freq (GHz)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            plt.show()
+
+        else:
+            pass
+
+    def sideband_f0g1rabi(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        amp = expt_cfg['amp']
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t[2:], P[2:], showfit=True)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+        print("Half pi length =", t_half_pi, "ns")
+        print("pi length =", t_pi, "ns")
+        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
+        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
+              amp * (t_half_pi) / float(int(t_half_pi) + 1))
+
+    def sideband_f0g1ramsey(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+        suggested_dc_offset = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]][
+                                  'f0g1_dc_offset'] + offset
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested dc offset =", suggested_dc_offset * 1e3, "MHz")
+        print("T2 =", p[3], "ns")
+
+    def sideband_f0g1_pi_pi_offset(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.' + self.P)
+        phase = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        p = fitsin3(phase[:], P[:], showfit=False)
+        offset_phase = (p[2] + pi / 2)
+        print("pi pi offset phase = ", offset_phase, "rad")
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(phase, P, 'bo--', markersize=10.0, label=show)
+            ax.set_xlabel('$\Phi$ (rad)')
+            ax.set_ylabel(show)
+            ax.legend()
+            p = fitsin3(phase[:], P[:], showfit=True)
+            ax.axvline(offset_phase, color='k', linestyle='dashed')
+            plt.show()
+
+    def wigner_tomography_2d_sideband_alltek2(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.' + self.P)
+
+
+        W = - 1 / np.pi * (2 * P - 1)
+
+        x = arange(expt_cfg['startx'], expt_cfg['stopx'], expt_cfg['stepx'])
+        y = arange(expt_cfg['starty'], expt_cfg['stopy'], expt_cfg['stepy'])
+
+        W2d = W.reshape(len(x), len(y))
+
+        if self.show:
+            fig = plt.figure(figsize=(10, 10))
+            ax = fig.add_subplot(111, title='$\\psi =$ ' + expt_cfg['state'])
+
+            plt.pcolormesh(x, y, W2d, cmap='RdBu')
+            clim(-1/np.pi,1/np.pi)
+            ax.set_xlim(x[0], x[-1])
+            ax.set_ylim(y[0], y[-1])
+
+            ax.set_xlabel('$\\propto Re(\\alpha$)')
+            ax.set_ylabel('$\\propto Im(\\alpha$)')
+
+            plt.colorbar()
+            plt.show()
+
+
+
 
     def save_cfg_info(self, f):
             f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
