@@ -46,7 +46,7 @@ class KeysightSingleQubit:
     def __init__(self, experiment_cfg, hardware_cfg, quantum_device_cfg, sequences, name, save_path=r"C:\Users\slab\Documents\Data",
                  sleep_time_between_trials=50 * 1000):  # 1000*10000 if you want to watch sweep by eye
 
-        chassis = key.KeysightChassis(0,
+        chassis = key.KeysightChassis(1,
                                       {6: key.ModuleType.OUTPUT,
                                        7: key.ModuleType.OUTPUT,
                                        8: key.ModuleType.OUTPUT,
