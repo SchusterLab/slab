@@ -17,7 +17,7 @@ import visdom
 from slab.datamanagement import SlabFile
 from slab.dataanalysis import get_next_filename
 import json
-from slab.experiments.PulseExperiments.get_data import get_iq_data, get_singleshot_data
+from slab.experiments.PulseExperiments_PXI.get_data import get_iq_data, get_singleshot_data
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
 
 class Experiment:
@@ -38,7 +38,7 @@ class Experiment:
         try: self.attens = [im[atten] for atten in self.hardware_cfg['attens']]
         except: print ("No digital attenuator specified in hardware config")
 
-        try: self.trig = im['trig']
+        try: self.trig = im['trig2']
         except: print ("No trigger function generator specied in hardware cfg")
 
         try:self.tek2 = im['TEK2']
@@ -64,7 +64,9 @@ class Experiment:
             pxi_sequences[channel] = sequences[channel]
         try:
             self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
+            print('configureOK')
             self.pxi.loadAndQueueWaveforms(pxi_sequences)
+            print('LoadandConfigureOK')
         except:print("Error in configuring and loading sequences to PXI")
 
     def initiate_tek2(self, name,path, sequences):
@@ -119,6 +121,7 @@ class Experiment:
                 try:self.tek2.run()
                 except:print("tek2 is not runnning")
             self.pxi.run()
+            print ("Started the PXI run")
         else:
             self.m8195a.start_output()
             time.sleep(1)
@@ -172,8 +175,12 @@ class Experiment:
         try:
             for ii,d in enumerate(self.drive_los):
                 drive_freq = self.quantum_device_cfg['qubit'][str(ii+1)]['freq'] - self.quantum_device_cfg['pulse_info'][str(ii+1)]['iq_freq']
+                d.set_output(True)
                 d.set_frequency(drive_freq*1e9)
+                #d.set_reference_source(source="EXT",ref_freq=10e6)
                 d.set_power(self.quantum_device_cfg['qubit_drive_lo_powers'][str(ii+1)])
+                #d.set_power(13)
+                #print("DRIVE LO POWER: " + str(d.get_power()))
                 d.set_ext_pulse(mod=True)
         except:print ("Error in qubit drive LO configuration")
 
@@ -181,8 +188,12 @@ class Experiment:
         try:
             for ii, d in enumerate(self.readout_los):
                 d.set_frequency(self.quantum_device_cfg['readout']['freq']*1e9)
-                print ("Readout frequency = ",self.quantum_device_cfg['readout']['freq'],"GHz")
+                d.set_output(True)
+                #d.set_reference_source(source="EXT", ref_freq=10e6)
+                #print ("Readout frequency = ",self.quantum_device_cfg['readout']['freq'],"GHz")
                 d.set_power(self.quantum_device_cfg['readout_drive_lo_powers'][str(ii + 1)])
+                #d.set_power(13)
+                #print("READOUT LO POWER: " + str(d.get_power()))
                 d.set_ext_pulse(mod=True)
         except:print("Error in readout drive LO configuration")
 
@@ -414,19 +425,20 @@ class Experiment:
         self.initiate_readout_LOs()
         self.initiate_attenuators()
         self.initiate_pxi(name, sequences)
+        #self.initiate_readout_rf_m8195a(name)
         self.initiate_tek2(name,path,sequences)
         time.sleep(0.1)
         self.awg_run(run_pxi=True,name=name)
 
-        try:
-            if check_sync:self.pxi.acquireandplot(expt_num)
-            else:
-                if self.expt_cfg['singleshot']:
-                    self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
-                else:
-                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
-        except:print("Error in data acquisition from PXI")
 
+        if check_sync:self.pxi.acquireandplot(expt_num)
+        else:
+            if self.expt_cfg['singleshot']:
+                self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+            else:
+                self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+
+        #
         self.awg_stop(name)
         return self.I,self.Q
 

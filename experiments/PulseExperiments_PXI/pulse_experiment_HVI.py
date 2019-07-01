@@ -382,6 +382,24 @@ class Experiment_HVI:
                 f.append_line('Q', Q.flatten())
 
         return I,Q
+    
+    def get_data_pxi_G(self,expt_cfg, seq_data_file):
+        w = self.pxi.readout_window/self.pxi.dt_dig
+
+        I, Q = self.pxi.traj_data_many_G()
+        print("DEBUG: made it past read in get_ss_data_pxi, onto making the slab file")
+        if seq_data_file == None:
+            self.slab_file = SlabFile(self.data_file)
+            with self.slab_file as f:
+                f.add('I', I)
+                f.add('Q', Q)
+        else:
+            self.slab_file = SlabFile(seq_data_file)
+            with self.slab_file as f:
+                f.add('I', I)
+                f.add('Q', Q)
+
+        return I,Q
 
     def run_experiment(self, sequences, path, name, seq_data_file=None, update_awg=True):
 
@@ -414,14 +432,14 @@ class Experiment_HVI:
     def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
         self.expt_cfg = self.experiment_cfg[name]
         self.generate_datafile(path,name,seq_data_file=seq_data_file)
-        self.set_trigger()
-        self.initiate_drive_LOs()
-        self.initiate_readout_LOs()
-        self.initiate_attenuators()
+       # self.set_trigger()
+        #self.initiate_drive_LOs()
+        #self.initiate_readout_LOs()
+        #self.initiate_attenuators()
 
         self.initiate_pxi(name, sequences) #creates a Keysight single qubit object pxi, serializes sequences, pxi.configures channels and pxi.loads them
 
-        self.initiate_tek2(name,path,sequences)
+        #self.initiate_tek2(name,path,sequences)
         time.sleep(0.1)
 
         self.awg_run(run_pxi=True,name=name) #pxi.run() and then some other stuff if run_pxi not true or doing sidebands
@@ -430,7 +448,7 @@ class Experiment_HVI:
         #get single shot data - calls pxi.SSdata_many(w), which calls readDataQuiet num_avgs time.
         #each time readDataQuiet gets called, everything else is put on hold until it collects the expected number of points (which should be pts per cycle).
         #I think experiment waits until it has collected the expected number of points, and then sends it over, but not sure
-        self.I, self.Q = self.get_ss_data_pxi(self.expt_cfg, seq_data_file=seq_data_file)
+        self.I, self.Q = self.get_data_pxi_G(self.expt_cfg, seq_data_file=seq_data_file)
         print("DEBUG: got data, proceeding onto awg_stop")
 
         # try:

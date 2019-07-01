@@ -12,9 +12,9 @@ except:print("No optimizer")
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
 
 
-from slab.experiments.PulseExperiments.get_data import get_singleshot_data_two_qubits_4_calibration_v2,\
-    get_singleshot_data_two_qubits, data_to_correlators, two_qubit_quantum_state_tomography,\
-    density_matrix_maximum_likelihood
+# from slab.experiments.PulseExperiments.get_data import get_singleshot_data_two_qubits_4_calibration_v2,\
+#     get_singleshot_data_two_qubits, data_to_correlators, two_qubit_quantum_state_tomography,\
+#     density_matrix_maximum_likelihood
 
 import pickle
 
@@ -30,6 +30,33 @@ class SequentialExperiment:
                 self.analyze(quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name,show,self.Is,self.Qs,P = 'I')
             except: print ("No post expt analysis")
         else:pass
+
+    def t1rho_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        expt_cfg = experiment_cfg['t1rho_sweep']
+        data_path = os.path.join(path, 'data/')
+
+
+        amparray = np.arange(expt_cfg['ampstart'],expt_cfg['ampstop'],expt_cfg['ampstep'])
+        amparray = [ 0.01,        0.0129155,   0.01668101,  0.02154435,  0.02782559,  0.03593814,
+  0.04641589,  0.05994843,  0.07742637,  0.1       ]
+        print(amparray)
+
+        experiment_name = 't1rho_sweep'
+        print("Sequences generated")
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 't1rho_sweep', suffix='.h5'))
+        for ampval in amparray:
+            experiment_name = 't1rho'
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, plot_visdom=False)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            experiment_cfg['t1rho']['amp']=ampval
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
 
     def histogram_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
 
@@ -167,6 +194,9 @@ class SequentialExperiment:
         self.Qs = np.array(self.Qs)
 
 
+
+
+
     def sideband_reset_qubit_temperature(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         experiment_name = 'sideband_transmon_reset'
         expt_cfg = experiment_cfg[experiment_name]
@@ -266,6 +296,32 @@ class SequentialExperiment:
 
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
+
+    def pulse_probe_delay_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['pulse_probe_delay_sweep']
+        delays = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+
+        experiment_name = 'pulse_probe_iq'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'pulse_probe_delay_sweep', suffix='.h5'))
+
+        for delay in delays:
+
+            experiment_cfg["pulse_probe_iq"]["delay"] = delay
+            print("delay set to", delay)
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
 
     def sequential_sideband_ramsey(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         swp_cfg = experiment_cfg['sequential_sideband_ramsey']

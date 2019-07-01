@@ -59,15 +59,16 @@ class KeysightSingleQubit_HVI:
 
         #this is a dictionary, so it's ok if the slots aren't in order
         chassis = keyLib.KeysightChassis(1,
-                                      {6: keyLib.ModuleType.OUTPUT,
-                                       7: keyLib.ModuleType.OUTPUT,
-                                       8: keyLib.ModuleType.OUTPUT,
-                                       9: keyLib.ModuleType.OUTPUT,
-                                       10: keyLib.ModuleType.INPUT})
+                                         {6: keyLib.ModuleType.OUTPUT,
+                                          7: keyLib.ModuleType.OUTPUT,
+                                          8: keyLib.ModuleType.OUTPUT,
+                                          9: keyLib.ModuleType.OUTPUT,
+                                          10: keyLib.ModuleType.INPUT})
 
         self.hardware_cfg = hardware_cfg
 
         #set number for apporpriate slots - here there is only one AWG card being used, SLOT 6
+        #CHANGED THIS TO 7 CHANGE IT BACK
         self.out_mod_no = hardware_cfg['awg_info']['keysight_pxi']['out_mod_no']
 
         #setting clock rates
@@ -162,6 +163,9 @@ class KeysightSingleQubit_HVI:
 
         # Initialize digitizer card
         # self.DIG_chs = [chassis.getChannel(10, ch) for ch in self.dig_channels]
+        #CHANGED HERE
+        # self.DIG_ch_1 = chassis.getChannel(10, 1)
+        # self.DIG_ch_2 = chassis.getChannel(10, 2)
         self.DIG_ch_1 = chassis.getChannel(10, 1)
         self.DIG_ch_2 = chassis.getChannel(10, 2)
         self.DIG_module = chassis.getModule(10)
@@ -239,8 +243,13 @@ class KeysightSingleQubit_HVI:
             if error < 0:
                 raise Exception('Error occurred writing integer constant to AWG. {}'.format(keyLib.Tools.decodeError(error)))
 
-        #set num avgs
-        error = self.hvi.writeIntegerConstantWithUserName(self.AWG_hvi_name, "nSteps", self.num_avg)
+        #set num avgs and num expt
+        error = self.hvi.writeIntegerConstantWithUserName(self.AWG_hvi_name, "nLoops", self.num_avg)
+        if error < 0:
+            raise Exception(
+                'Error occurred writing integer constant to AWG. {}'.format(keyLib.Tools.decodeError(error)))
+
+        error = self.hvi.writeIntegerConstantWithUserName(self.AWG_hvi_name, "nSteps", self.num_expt)
         if error < 0:
             raise Exception(
                 'Error occurred writing integer constant to AWG. {}'.format(keyLib.Tools.decodeError(error)))
@@ -279,7 +288,7 @@ class KeysightSingleQubit_HVI:
         self.AWG_ch_1.configure(amplitude=amp_AWG[0])
         self.AWG_ch_2.configure(amplitude=amp_AWG[1])
         self.AWG_ch_3.configure(amplitude=amp_AWG[2])
-        #self.AWG_ch_4.configure(amplitude=amp_AWG[3])
+        self.AWG_ch_4.configure(amplitude=amp_AWG[3])
 
         # print("Configuring marker channels")
         #
@@ -361,7 +370,7 @@ class KeysightSingleQubit_HVI:
         #each of these should be an array of arrays
         waveforms_I = wv[0]
         waveforms_Q = wv[1]
-        readout = wv[2]
+        readout_ = wv[2]
 
         #assuming not using tek2 at all
         #if self.prep_tek2:tek2_marker = wv[4]
@@ -372,7 +381,7 @@ class KeysightSingleQubit_HVI:
 
         print ("shape of waveform I",np.shape(waveforms_I))
 
-        if len(waveforms_I) != len(waveforms_Q) or len(waveforms_I) != len(readout):
+        if len(waveforms_I) != len(waveforms_Q) or len(waveforms_I) != len(readout_):
             raise TypeError("Not all waveform lists are the same length")
 
         self.AWG_module.clearAll()
@@ -396,7 +405,7 @@ class KeysightSingleQubit_HVI:
 
             wave_I = keyLib.Waveform(np.array(waveforms_I[i]),append_zero=True)  # Have to include append_zero or the triggers get messed up!
             wave_Q = keyLib.Waveform(waveforms_Q[i], append_zero=True)
-            readout = keyLib.Waveform(readout[i], append_zero=True)
+            readout = keyLib.Waveform(readout_[i], append_zero=True)
 
             #m_readout_dsp = keyLib.Waveform(readout_marker_dsp[i], append_zero=True)
             #m_qubit_dsp = keyLib.Waveform(qubit_marker_dsp[i], append_zero=True)
@@ -412,9 +421,11 @@ class KeysightSingleQubit_HVI:
 
             # Queue the waveforms. Want to set trigger mode to SWHVITRIG to trigger from computer.
             #Delay used to be self.tek2_trigger_delay, I'm setting it to zero since hopefully going through HVI everything should be great
-            wave_I.queue(self.AWG_ch_1, trigger_mode=SD1.SD_TriggerModes.SWHVITRIG, delay = 0, cycles = 1, prescaler = 0)
-            wave_Q.queue(self.AWG_ch_2, trigger_mode=SD1.SD_TriggerModes.SWHVITRIG, delay = 0, cycles = 1, prescaler = 0)
-            readout.queue(self.AWG_ch_3, trigger_mode=SD1.SD_TriggerModes.SWHVITRIG, delay=0, cycles=1, prescaler=0)
+            # wave_I.queue(self.AWG_ch_1, trigger_mode=SD1.SD_TriggerModes.SWHVITRIG, delay = 0, cycles = 1, prescaler = 0)
+            # wave_Q.queue(self.AWG_ch_2, trigger_mode=SD1.SD_TriggerModes.SWHVITRIG, delay = 0, cycles = 1, prescaler = 0)
+            wave_I.queue(self.AWG_ch_1, trigger_mode=SD1.SD_TriggerModes.SWHVITRIG, delay=0, cycles=1, prescaler=0)
+            wave_Q.queue(self.AWG_ch_2, trigger_mode=SD1.SD_TriggerModes.SWHVITRIG, delay=0, cycles=1, prescaler=0)
+            #readout.queue(self.AWG_ch_3, trigger_mode=SD1.SD_TriggerModes.SWHVITRIG, delay=0, cycles=1, prescaler=0)
 
             # //TODO: wthk does this thing do and why does it matter
             self.AWG_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
@@ -448,12 +459,13 @@ class KeysightSingleQubit_HVI:
             # Start all the channels on the AWG and digitizer modules.
             print("Number of experiments = ", self.num_expt)
 
+            self.initiate_HVI()
+
             self.DIG_ch_1.clear()
             self.DIG_ch_1.start()
             self.DIG_ch_2.clear()
             self.DIG_ch_2.start()
             self.AWG_module.startAll()
-            self.initiate_HVI()
             error = self.hvi.start()
             if error < 0:
                 raise Exception('Error occurred starting HVI sequence. {}'.format(keyLib.Tools.decodeError(error)))
@@ -566,6 +578,31 @@ class KeysightSingleQubit_HVI:
             Q.append(ch2)
         return np.array(I),np.array(Q)
 
+    def traj_data_many_G(self,w = [0,-1]):
+        #I = np.zeros((self.num_avg, self.DIG_sampl_record * self.num_expt))
+        #Q = np.zeros((self.num_avg, self.DIG_sampl_record * self.num_expt))
+        I = []
+        Q = []
+        print("DEBUG: about to start looping over num_avg")
+        print("DEBUG: data_1.shape: " + str(self.data_1.shape))
+
+        #OK SO: data.shape() encodes number of experiments. It's of shape (num_expt, num_samples per record)
+        #I and Q are a 3D array where indexing is (num avg, num expt, num_samples_per_record)
+        for ii in tqdm(range(self.num_avg)):
+            print("reading data avg " + str(ii))
+            ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(timeout = 1000), self.data_1.shape)
+            ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(timeout = 1000), self.data_2.shape)
+
+            #I[ii] = np.reshape(self.DIG_ch_1.readDataQuiet(timeout = 1000), self.data_1.shape)
+            #Q[ii] = np.reshape(self.DIG_ch_2.readDataQuiet(timeout = 1000), self.data_2.shape)
+            #print("ch1 I: " + str(I[ii].shape))
+            I.append(ch1)
+            Q.append(ch2)
+            print("DEBUG: ch1 I: " + str(ch1.shape))
+
+
+        return np.array(I),np.array(Q)
+
     def SSdata_one(self,w =[0,-1]):
         ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])]
         ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])]
@@ -574,13 +611,10 @@ class KeysightSingleQubit_HVI:
     def SSdata_many(self,w =[0,-1]):
         I = []
         Q = []
-        print("DEBUG: about to start looping over num_avg")
-        #for ii in (range(self.num_avg)):
-        for ii in (range(2)):
-            print("reading data")
-            print(self.DIG_ch_1.readDataQuiet(timeout=1000).shape)
-            #I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(timeout=1000), self.data_1.shape).T[int(w[0]):int(w[1])], 0)) #timeout in ms
-            #Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(timeout=1000), self.data_2.shape).T[int(w[0]):int(w[1])], 0)) #timeout in ms
+
+        for ii in (range(self.num_avg)):
+            I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])], 0)) #timeout in ms
+            Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0)) #timeout in ms
         return np.array(I).T, np.array(Q).T
 
     def acquire_avg_data(self,w = [0,-1],pi_calibration=False):

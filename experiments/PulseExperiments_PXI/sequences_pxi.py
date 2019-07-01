@@ -397,6 +397,7 @@ class PulseSequences:
                                  Square(max_amp=self.expt_cfg['amp'], flat_len=self.expt_cfg['pulse_length'],
                                         ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
                                         phase=self.pulse_info[qubit_id]['Q_phase']))
+                self.idle_q(sequencer, time=self.expt_cfg['delay'])
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
 
             sequencer.end_sequence()
@@ -467,6 +468,29 @@ class PulseSequences:
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def t1rho(self,sequencer):
+
+        for t1rho_len in np.arange(self.expt_cfg['start'],self.expt_cfg['stop'],self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+
+            for qubit_id in self.expt_cfg['on_qubits']:
+                self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                #self.idle_q(sequencer, time= self.expt_cfg['ramsey_zero_cross'])
+                #self.idle_q(sequencer, time=self.pulse_info[qubit_id]['half_pi_len'])
+                self.gen_q(sequencer, qubit_id, len=t1rho_len, amp=self.expt_cfg['amp'], phase=np.pi/2,
+                           pulse_type=self.expt_cfg['pulse_type'])
+                #self.idle_q(sequencer, time=self.expt_cfg['ramsey_zero_cross'])
+                #self.idle_q(sequencer, time=self.pulse_info[qubit_id]['half_pi_len'])
+                self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'],
+                               phase=0)
+
+
+                self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+                sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
 

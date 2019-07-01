@@ -1228,16 +1228,46 @@ class PulseSequences:
         sequencer.sync_channels_time(self.channels)
         sequencer.append('charge1_I',
                          Square(max_amp=self.quantum_device_cfg['readout']['amp'],
-                                flat_len=100,
+                                flat_len=1000,
+                                ramp_sigma_len=20, cutoff_sigma=2, freq=0.1,
+                                phase=0))
+        sequencer.append('charge1_Q',
+                         Square(max_amp=self.quantum_device_cfg['readout']['amp'],
+                                flat_len=1000,
+                                ramp_sigma_len=20, cutoff_sigma=2, freq=0.1,
+                                phase=0))
+        sequencer.sync_channels_time(self.channels)
+
+        sequencer.append('readout',
+                         Square(max_amp=self.quantum_device_cfg['readout']['amp'],
+                                flat_len=self.quantum_device_cfg['readout']['length'],
                                 ramp_sigma_len=20, cutoff_sigma=2, freq=0,
                                 phase=0))
-        # sequencer.sync_channels_time(self.channels)
-        # sequencer.append('readout',
-        #                  Square(max_amp=self.quantum_device_cfg['readout']['amp'],
-        #                         flat_len=self.quantum_device_cfg['readout']['length'],
-        #                         ramp_sigma_len=20, cutoff_sigma=2, freq=0,
-        #                         phase=0))
         sequencer.end_sequence()
+        return sequencer.complete(self, plot=True)
+
+    def G_test_HVI_loop(self, sequencer, on_qubits=None, sideband=False, overlap=False):
+        for i in range(2):
+            sequencer.new_sequence(self)
+            sequencer.sync_channels_time(self.channels)
+            sequencer.append('charge1_I',
+                             Square(max_amp=self.quantum_device_cfg['readout']['amp'],
+                                    flat_len=100,
+                                    ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+                                    phase=0))
+            sequencer.append('charge1_Q',
+                             Square(max_amp=self.quantum_device_cfg['readout']['amp'],
+                                    flat_len=100,
+                                    ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+                                    phase=0))
+            sequencer.sync_channels_time(self.channels)
+
+            sequencer.append('readout',
+                             Square(max_amp=self.quantum_device_cfg['readout']['amp'],
+                                    flat_len=self.quantum_device_cfg['readout']['length'],
+                                    ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+                                    phase=0))
+            sequencer.end_sequence()
         return sequencer.complete(self, plot=True)
 
 

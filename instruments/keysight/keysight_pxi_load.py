@@ -19,7 +19,7 @@ Module 10 is used for reacout.
 # %pylab inline
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
-from slab.experiments.PulseExperiments.sequences import PulseSequences
+from slab.experiments.PulseExperiments_PXI.sequences_pxi import PulseSequences
 from slab.experiments.HVIExperiments import HVIExpLib as exp
 import time
 import numpy as np
@@ -170,11 +170,15 @@ class KeysightSingleQubit:
         print("Configuring trigger channels")
 
         self.trig_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
+
+
         self.trig_ch_1.configure(amplitude=amp_trig[0], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
         self.trig_ch_2.configure(amplitude=amp_trig[1], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
         self.trig_ch_3.configure(amplitude=amp_trig[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
         self.trig_ch_4.configure(amplitude=amp_trig[3], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
+        print ("Card trigger amplitude = ",amp_trig[3])
 
+        #TODO: WHAT IS THAT
         self.DIG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
 
         print ("Setting trigger config for all channels of all modules to External")
@@ -187,9 +191,9 @@ class KeysightSingleQubit:
 
         print ("Configuring digitizer. ADC range set to",self.adc_range, "Vpp")
 
-        self.DIG_ch_1.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
-
+        self.DIG_ch_1.configure(full_scale=self.adc_range,points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        #self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_2.configure(full_scale=self.adc_range,points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,use_buffering=True, cycles_per_return=num_expt)
     def generatemarkers(self,waveform,resample=False,conv_width = 1,trig_delay = 0):
 
         # markers = np.array([np.append(np.heaviside(np.convolve(abs(w), np.ones((int(self.lo_delay),))/self.lo_delay),0)[int(self.lo_delay/2):],np.zeros(int(self.lo_delay/2))) for w in waveform])
@@ -339,6 +343,7 @@ class KeysightSingleQubit:
     def acquireandplot(self,expt_num):
 
         for sweep_ct in tqdm(range(self.num_avg)):
+            # pass
             self.data_1 += np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape)
             self.data_2 += np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape)
 
@@ -449,6 +454,7 @@ class KeysightSingleQubit:
 
     def acquire_avg_data(self,w = [0,-1],pi_calibration=False):
         for ii in tqdm(range(self.num_avg)):
+            # time.sleep(1)
             self.I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(),self.data_1.shape).T[int(w[0]):int(w[1])],0)
             self.Q += np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(),self.data_2.shape).T[int(w[0]):int(w[1])],0)
         I = self.I/self.num_avg

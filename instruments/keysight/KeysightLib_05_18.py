@@ -1085,13 +1085,14 @@ class KeysightChannelIn(KeysightChannel):
             raise KeysightError("Error acquiring data", data)
         return data
     
-    def readDataQuiet(self, timeout = 1000):
+    def readDataQuiet(self, timeout = KeysightConstants.INFINITY):
         '''Alternative to readData() (above) that gets the expected number of data points
         and does not throw errors. The advantage is that it almost always works,
         and you don't have to worry about it raising exceptions in separate
         threads. The disadvantage is you don't have exception handling.'''
-        return self._module.DAQread(self._channel_number, self._points_per_return, 
+        return self._module.DAQread(self._channel_number, self._points_per_return,
                                     timeout)
+        print("this is right version")
                 
     def start(self):
         '''Starts the channel.'''
