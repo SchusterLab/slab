@@ -339,6 +339,13 @@ class KeysightSingleQubit:
             self.trig_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
                                                syncMode=1, length=10, delay=0)
 
+    def clear_and_start_digitizer(self):
+
+        self.DIG_ch_1.clear()
+        self.DIG_ch_1.start()
+        self.DIG_ch_2.clear()
+        self.DIG_ch_2.start()
+
     def run(self):
         print("Experiment starting. Expected time = ", self.totaltime, "mins")
         try:
@@ -471,17 +478,26 @@ class KeysightSingleQubit:
             Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
         return np.array(I).T, np.array(Q).T
 
-    def acquire_avg_data(self,w = [0,-1],pi_calibration=False):
-        for ii in tqdm(range(self.num_avg)):
-            self.I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(timeout=10000),self.data_1.shape).T[int(w[0]):int(w[1])],0)
-            self.Q += np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(timeout=10000),self.data_2.shape).T[int(w[0]):int(w[1])],0)
+    def acquire_avg_data(self,w = [0,-1],pi_calibration=False,rotate_iq = False,phi=0):
+        if rotate_iq:
+            print ("Rotating IQ digitally")
+            for ii in tqdm(range(self.num_avg)):
+                Itemp = np.reshape(self.DIG_ch_1.readDataQuiet(timeout=20000), self.data_1.shape).T[int(w[0]):int(w[1])]
+                Qtemp = np.reshape(self.DIG_ch_2.readDataQuiet(timeout=20000), self.data_2.shape).T[int(w[0]):int(w[1])]
+                Irot = Itemp*np.cos(phi) + Qtemp*np.sin(phi)
+                Qrot = -Itemp * np.sin(phi) + Qtemp * np.cos(phi)
+                self.I += np.mean(Irot, 0)
+                self.Q += np.mean(Qrot, 0)
+        else:
+            for ii in tqdm(range(self.num_avg)):
+                self.I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(timeout=10000),self.data_1.shape).T[int(w[0]):int(w[1])],0)
+                self.Q += np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(timeout=10000),self.data_2.shape).T[int(w[0]):int(w[1])],0)
         I = self.I/self.num_avg
         Q = self.Q/self.num_avg
         if pi_calibration:
             I = (I[:-2]-I[-2])/(I[-1]-I[-2])
             Q = (Q[:-2]-Q[-2])/(Q[-1]-Q[-2])
         return I,Q
-
 
     def acquire_avg_std_data(self, w=[0, -1], pi_calibration=False):
         self.I,self.Q = [],[]

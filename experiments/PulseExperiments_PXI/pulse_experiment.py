@@ -20,16 +20,16 @@ import json
 # from slab.experiments.PulseExperiments.get_data import get_iq_data, get_singleshot_data
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
 
+im = InstrumentManager()
+
 class Experiment:
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None):
         self.quantum_device_cfg = quantum_device_cfg
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
-        im = InstrumentManager()
-        self.pxi = ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg, self.quantum_device_cfg,
-                                              sequences, name)
-        # try: self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
-        # except: print("Not connected to keysight PXI")
+
+        try: self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
+        except: print("Not connected to keysight PXI")
 
         try: self.drive_los = [im[lo] for lo in self.hardware_cfg['drive_los']]
         except: print ("No drive function generator specified in hardware config")
@@ -50,6 +50,13 @@ class Experiment:
         try:self.tek2 = im['TEK2']
         except:print("No tek2")
 
+        try:
+            self.rotate_iq = self.quantum_device_cfg['readout']['rotate_iq_dig']
+            self.iq_angle = self.quantum_device_cfg['readout']['iq_angle']
+        except:
+            self.rotate_iq = False
+            self.iq_angle = 0.0
+
         self.I = None
         self.Q = None
         self.prep_tek2 = False
@@ -62,16 +69,16 @@ class Experiment:
             self.pxi.AWG_module.stopAll()
             self.pxi.m_module.stopAll()
             self.pxi.trig_module.stopAll()
+            self.pxi.DIG_module.stopAll()
         except:pass
 
         pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
         pxi_sequences = {}
         for channel in pxi_waveform_channels:
             pxi_sequences[channel] = sequences[channel]
-        try:
-            self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
-            self.pxi.loadAndQueueWaveforms(pxi_sequences)
-        except:print("Error in configuring and loading sequences to PXI")
+
+        self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
+        self.pxi.loadAndQueueWaveforms(pxi_sequences)
 
     def initiate_tek2(self, name,path, sequences):
         if 'sideband' in name:
@@ -130,17 +137,20 @@ class Experiment:
             time.sleep(1)
             self.tek.run()
 
+    def clear_and_restart_digitizer(self):
+        self.pxi.clear_and_start_digitizer()
+
     def awg_stop(self,name):
-        try:
-            self.pxi.AWG_module.stopAll()
-            self.pxi.AWG_module.clearAll()
-            self.pxi.m_module.stopAll()
-            self.pxi.m_module.clearAll()
-            self.pxi.trig_module.stopAll()
-            self.pxi.trig_module.clearAll()
-            self.pxi.DIG_module.stopAll()
-            self.pxi.chassis.close()
-        except:print('Error in stopping and closing PXI')
+        # try:
+        self.pxi.AWG_module.stopAll()
+        self.pxi.AWG_module.clearAll()
+        self.pxi.m_module.stopAll()
+        self.pxi.m_module.clearAll()
+        self.pxi.trig_module.stopAll()
+        self.pxi.trig_module.clearAll()
+        self.pxi.DIG_module.stopAll()
+        self.pxi.chassis.close()
+        # except:print('Error in stopping and closing PXI')
         if 'sideband' in name:
             try:self.tek2.stop()
             except:print('Error in stopping TEK2')
@@ -358,14 +368,14 @@ class Experiment:
                 f.append_line('expt_avg_data_ch2', data_2_list)
                 f.close()
 
-    def get_avg_data_pxi(self,expt_cfg, seq_data_file):
+    def get_avg_data_pxi(self,expt_cfg, seq_data_file,rotate_iq = False,phi=0):
         w = self.pxi.readout_window/self.pxi.dt_dig
         # expt_pts = np.arange(expt_cfg['start'],expt_cfg['stop'],expt_cfg['step'])
 
         try:pi_calibration = expt_cfg['pi_calibration']
         except:pi_calibration = False
 
-        I,Q = self.pxi.acquire_avg_data(w,pi_calibration)
+        I,Q = self.pxi.acquire_avg_data(w,pi_calibration,rotate_iq,phi)
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
@@ -435,17 +445,15 @@ class Experiment:
         self.initiate_attenuators()
         self.initiate_pxi(name, sequences)
         self.initiate_tek2(name,path,sequences)
-
         time.sleep(0.1)
         self.awg_run(run_pxi=True,name=name)
-
         try:
             if check_sync:self.pxi.acquireandplot(expt_num)
             else:
                 if self.expt_cfg['singleshot']:
                     self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
                 else:
-                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq = self.rotate_iq,phi=self.iq_angle)
         except:print("Error in data acquisition from PXI")
 
         self.awg_stop(name)
