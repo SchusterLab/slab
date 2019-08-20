@@ -198,6 +198,10 @@ class Experiment:
             for ii, d in enumerate(self.readout_los):
                 d.set_frequency(self.quantum_device_cfg['readout']['freq']*1e9)
                 print ("Readout frequency = ",self.quantum_device_cfg['readout']['freq'],"GHz")
+                # if self.quantum_device_cfg['readout']['jpa_pump'] and  self.quantum_device_cfg['readout']['iq_mix_readout']:
+                #     d.set_power(self.quantum_device_cfg['readout']['jpa_pump_power'])
+                #     print ("MXG being used to pump JPA, JPA power set to",self.quantum_device_cfg['readout']['jpa_pump_power'])
+                # else:d.set_power(self.quantum_device_cfg['readout_drive_lo_powers'][str(ii + 1)])
                 d.set_power(self.quantum_device_cfg['readout_drive_lo_powers'][str(ii + 1)])
                 d.set_ext_pulse(mod=True)
         except:print("Error in readout drive LO configuration")
@@ -214,6 +218,9 @@ class Experiment:
                     print ("Cavity LO configured")
             except:
                 print("Error in cavity drive LO configuration")
+        elif self.quantum_device_cfg['readout']['iq_mix_readout']:
+            pass
+
 
     def initiate_attenuators(self):
         try:

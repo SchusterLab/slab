@@ -106,8 +106,6 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
-
-
     def qp_pumping_t1_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
 
         expt_cfg = experiment_cfg['qp_pumping_t1_sweep']
@@ -194,7 +192,7 @@ class SequentialExperiment:
 
             experiment_cfg['ef_rabi']['ge_pi'] = ge_pi
             if ge_pi:pass
-            else:experiment_cfg['ef_rabi']['acquisition_num'] = 15000
+            else:experiment_cfg['ef_rabi']['acquisition_num'] = experiment_cfg['ef_rabi']['avgs_without_pi']
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
@@ -898,6 +896,67 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+    def test_xlnk_awg(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        experiment_name='rabi'
+        experiment_cfg['rabi']['start'] = 250.0
+        experiment_cfg['rabi']['stop'] = 251.0
+        experiment_cfg['rabi']['step'] = 1.0
+        experiment_cfg['rabi']['use_pi_calibration'] = False
+
+        hardware_cfg['channels_delay']['readout'] = -2400.0
+        hardware_cfg['channels_delay']['readout_trig'] = -2500.0
+        hardware_cfg['channels_delay']['charge1_I'] = 0.0
+        hardware_cfg['channels_delay']['charge1_Q'] = 0.0
+
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'rabi_xilinx_test', suffix='.h5'))
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences(experiment_name)
+        
+        im = InstrumentManager()
+        im['RFsoc'].generate_pulses(num_pulses=101, iqfreq=200)
+        
+        for jj in range(101):
+            im['RFsoc'].load_rabi_pulse(jj)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+    def test_xlnk_awg2(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        experiment_name = 'ramsey'
+        experiment_cfg['ramsey']['start'] = 800.0
+        experiment_cfg['ramsey']['stop'] = 801.0
+        experiment_cfg['ramsey']['step'] = 1.0
+        experiment_cfg['ramsey']['use_pi_calibration'] = False
+
+        hardware_cfg['channels_delay']['readout'] = -2400.0
+        hardware_cfg['channels_delay']['readout_trig'] = -2500.0
+        hardware_cfg['channels_delay']['charge1_I'] = 0.0
+        hardware_cfg['channels_delay']['charge1_Q'] = 0.0
+
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'ramsey_xilinx_test', suffix='.h5'))
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences(experiment_name)
+
+        im = InstrumentManager()
+        im['RFsoc'].generate_pulses(num_pulses=101, iqfreq=200)
+
+        for jj in range(101):
+            im['RFsoc'].load_ramsey_pulse(jj)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
 
     def analyze(self,quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name,show,Is,Qs,P='Q'):
         PA = PostExperiment(quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name, Is,Qs,P,show)
