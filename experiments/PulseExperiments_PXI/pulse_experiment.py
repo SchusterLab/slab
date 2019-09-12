@@ -44,11 +44,19 @@ class Experiment:
         try: self.attens = [im[atten] for atten in self.hardware_cfg['attens']]
         except: print ("No digital attenuator specified in hardware config")
 
-        try: self.trig = im['trig']
+        try: self.trig = im['trig2']
         except: print ("No trigger function generator specied in hardware cfg")
 
         try:self.tek2 = im['TEK2']
         except:print("No tek2")
+
+        try:
+            self.rotate_iq = self.quantum_device_cfg['readout']['rotate_iq_dig']
+            self.iq_angle = self.quantum_device_cfg['readout']['iq_angle']
+        except:
+            self.rotate_iq = False
+            self.iq_angle = 0.0
+
 
         self.I = None
         self.Q = None
@@ -193,14 +201,27 @@ class Experiment:
         except:print("Error in readout drive LO configuration")
         
     def initiate_cavity_drive_LOs(self,name):
-        if 'cavity_drive' in name:
+        if 'cavity_sideband' in name:
+            try:
+                for ii, d in enumerate(self.cavity_drive_los):
+                    drive_freq = self.quantum_device_cfg['cavity'][str(ii + 1)]['f0g1_freq'] - \
+                                 self.quantum_device_cfg['cavity_pulse_info'][str(ii + 1)]['iq_freq']
+                    d.set_frequency(drive_freq * 1e9)
+                    d.set_power(self.quantum_device_cfg['cavity_drive_lo_powers'][str(ii + 1)])
+                    d.set_ext_pulse(mod=True)
+                    print("Cavity LO configured")
+            except:
+                print("Error in cavity drive LO configuration")
+
+        elif 'cavity_drive' in name:
             try:
                 for ii, d in enumerate(self.cavity_drive_los):
                     drive_freq = self.quantum_device_cfg['cavity'][str(ii + 1)]['freq'] - \
                                  self.quantum_device_cfg['cavity_pulse_info'][str(ii + 1)]['iq_freq']
                     d.set_frequency(drive_freq * 1e9)
                     d.set_power(self.quantum_device_cfg['cavity_drive_lo_powers'][str(ii + 1)])
-                    d.set_ext_pulse(mod=True)
+                    #d.set_output(True)
+                    d.set_ext_pulse(mod=False)
                     print ("Cavity LO configured")
             except:
                 print("Error in cavity drive LO configuration")
@@ -358,14 +379,14 @@ class Experiment:
                 f.append_line('expt_avg_data_ch2', data_2_list)
                 f.close()
 
-    def get_avg_data_pxi(self,expt_cfg, seq_data_file):
+    def get_avg_data_pxi(self,expt_cfg, seq_data_file,rotate_iq = False,phi=0):
         w = self.pxi.readout_window/self.pxi.dt_dig
         # expt_pts = np.arange(expt_cfg['start'],expt_cfg['stop'],expt_cfg['step'])
 
         try:pi_calibration = expt_cfg['pi_calibration']
         except:pi_calibration = False
 
-        I,Q = self.pxi.acquire_avg_data(w,pi_calibration)
+        I,Q = self.pxi.acquire_avg_data(w,pi_calibration,rotate_iq,phi)
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
@@ -396,6 +417,24 @@ class Experiment:
                 f.append_line('Q', Q.flatten())
 
         return I,Q
+
+    def get_column_averaged_data(self,expt_cfg,seq_data_file):
+        w = self.pxi.readout_window / self.pxi.dt_dig
+
+        I, Q = self.pxi.column_averaged_data()
+        print(I[0])
+        if seq_data_file == None:
+            self.slab_file = SlabFile(self.data_file)
+            with self.slab_file as f:
+                f.add('I', I)
+                f.add('Q', Q)
+        else:
+            self.slab_file = SlabFile(seq_data_file)
+            with self.slab_file as f:
+                f.append_line('I', I.flatten())
+                f.append_line('Q', Q.flatten())
+
+        return I, Q
 
     def run_experiment(self, sequences, path, name, seq_data_file=None, update_awg=True):
 
@@ -444,8 +483,11 @@ class Experiment:
             else:
                 if self.expt_cfg['singleshot']:
                     self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+                elif self.expt_cfg['columnaveraged']:
+                    print("column averaging")
+                    self.I, self.Q = self.get_column_averaged_data(self.expt_cfg, seq_data_file=seq_data_file)
                 else:
-                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq = self.rotate_iq,phi=self.iq_angle)
         except:print("Error in data acquisition from PXI")
 
         self.awg_stop(name)

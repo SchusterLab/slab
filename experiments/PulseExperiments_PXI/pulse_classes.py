@@ -179,7 +179,7 @@ class Double_Square(Pulse):
 
 
 class Square_two_tone(Pulse):
-    def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, freq1, freq2, phase1 = 0, phase2 = 0, phase_t0 = 0, dt=None, plot=False):
+    def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, freq1, freq2, phase1 = 0, phase2 = 0, phase_t0 = 0, dt=None, plot=False, RelAmp=1):
         self.max_amp = max_amp
         self.flat_len = flat_len
         self.ramp_sigma_len = ramp_sigma_len
@@ -192,9 +192,11 @@ class Square_two_tone(Pulse):
         self.dt = dt
         self.plot = plot
         self.t0 = 0
+        self.RelAmp=1
+
 
     def get_pulse_array(self):
-
+        RelAmp = 1
         t_flat_start = self.t0 + self.cutoff_sigma * self.ramp_sigma_len
         t_flat_end = self.t0 + self.cutoff_sigma * self.ramp_sigma_len + self.flat_len
 
@@ -212,7 +214,7 @@ class Square_two_tone(Pulse):
                     2 * self.ramp_sigma_len ** 2))  # trailing edge
         )
 
-        pulse_array = pulse_array * (np.cos(2 * np.pi * self.freq1 * (self.t_array - self.phase_t0) + self.phase1) + np.cos(2 * np.pi * self.freq2*(self.t_array - self.phase_t0) + self.phase2))/2.0
+        pulse_array = pulse_array * (RelAmp*np.cos(2 * np.pi * self.freq1 * (self.t_array - self.phase_t0) + self.phase1) + np.cos(2 * np.pi * self.freq2*(self.t_array - self.phase_t0) + self.phase2))/2.0
 
         return pulse_array
 

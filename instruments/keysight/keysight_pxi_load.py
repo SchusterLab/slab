@@ -48,11 +48,11 @@ class KeysightSingleQubit:
 
         chassis = key.KeysightChassis(1,
                                       {6: key.ModuleType.OUTPUT,
-                                       7: key.ModuleType.OUTPUT,
                                        8: key.ModuleType.OUTPUT,
+                                       #7: key.ModuleType.OUTPUT,
                                        9: key.ModuleType.OUTPUT,
                                        10: key.ModuleType.INPUT})
-
+        print("Card 7 initialization commented out for now. Just add in back in above when ready.")
         self.hardware_cfg = hardware_cfg
         self.out_mod_no = hardware_cfg['awg_info']['keysight_pxi']['out_mod_no']
         self.marker_mod_no = hardware_cfg['awg_info']['keysight_pxi']['marker_mod_no']
@@ -95,6 +95,9 @@ class KeysightSingleQubit:
         if 'cavity_drive' in name:self.prep_cavity_drive = True
         else:self.prep_cavity_drive=False
 
+        # if 'cavity_sideband' in name:
+        #     self.prep_cavity_drive = True
+        # else:self.prep_cavity_drive=False
 
         self.chassis = chassis
         self.awg_channels = range(1,5)
@@ -366,6 +369,7 @@ class KeysightSingleQubit:
             self.data_1 += np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape)
             self.data_2 += np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape)
 
+
         self.data_1 /= self.num_avg
         self.data_2 /= self.num_avg
 
@@ -390,6 +394,21 @@ class KeysightSingleQubit:
         plt.show()
 
         print("The digitzer bins were individually averaged for testing synchronization.")
+
+    def column_averaged_data(self,w =[0,-1]):
+
+
+        for sweep_ct in tqdm(range(self.num_avg)):
+            #print(sweep_ct)
+            self.data_1 += np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape)
+            self.data_2 += np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape)
+
+
+        self.data_1 /= self.num_avg
+        self.data_2 /= self.num_avg
+
+        print ("Processed data shape",np.shape(self.data_1))
+        return np.array(self.data_1), np.array(self.data_2)
 
     def runacquireandplot(self):
 
@@ -471,17 +490,26 @@ class KeysightSingleQubit:
             Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
         return np.array(I).T, np.array(Q).T
 
-    def acquire_avg_data(self,w = [0,-1],pi_calibration=False):
-        for ii in tqdm(range(self.num_avg)):
-            self.I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(timeout=10000),self.data_1.shape).T[int(w[0]):int(w[1])],0)
-            self.Q += np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(timeout=10000),self.data_2.shape).T[int(w[0]):int(w[1])],0)
+    def acquire_avg_data(self,w = [0,-1],pi_calibration=False,rotate_iq = False,phi=0):
+        if rotate_iq:
+            print ("Rotating IQ digitally")
+            for ii in tqdm(range(self.num_avg)):
+                Itemp = np.reshape(self.DIG_ch_1.readDataQuiet(timeout=20000), self.data_1.shape).T[int(w[0]):int(w[1])]
+                Qtemp = np.reshape(self.DIG_ch_2.readDataQuiet(timeout=20000), self.data_2.shape).T[int(w[0]):int(w[1])]
+                Irot = Itemp*np.cos(phi) + Qtemp*np.sin(phi)
+                Qrot = -Itemp * np.sin(phi) + Qtemp * np.cos(phi)
+                self.I += np.mean(Irot, 0)
+                self.Q += np.mean(Qrot, 0)
+        else:
+            for ii in tqdm(range(self.num_avg)):
+                self.I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(timeout=10000),self.data_1.shape).T[int(w[0]):int(w[1])],0)
+                self.Q += np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(timeout=10000),self.data_2.shape).T[int(w[0]):int(w[1])],0)
         I = self.I/self.num_avg
         Q = self.Q/self.num_avg
         if pi_calibration:
             I = (I[:-2]-I[-2])/(I[-1]-I[-2])
             Q = (Q[:-2]-Q[-2])/(Q[-1]-Q[-2])
         return I,Q
-
 
     def acquire_avg_std_data(self, w=[0, -1], pi_calibration=False):
         self.I,self.Q = [],[]

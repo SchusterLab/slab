@@ -31,12 +31,12 @@ class SequentialExperiment:
             except: print ("No post expt analysis")
         else:pass
 
-    def histogram_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    def histogram_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
 
         expt_cfg = experiment_cfg['histogram_sweep']
         sweep_amp = expt_cfg['sweep_amp']
-        attens = np.arange(expt_cfg['atten_start'],expt_cfg['atten_stop'],expt_cfg['atten_step'])
-        freqs = np.arange(expt_cfg['freq_start'],expt_cfg['freq_stop'],expt_cfg['freq_step'])
+        attens = np.arange(expt_cfg['atten_start'], expt_cfg['atten_stop'], expt_cfg['atten_step'])
+        freqs = np.arange(expt_cfg['freq_start'], expt_cfg['freq_stop'], expt_cfg['freq_step'])
 
         experiment_name = 'histogram'
 
@@ -44,26 +44,59 @@ class SequentialExperiment:
         data_path = os.path.join(path, 'data/')
 
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram_sweep', suffix='.h5'))
-
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences(experiment_name)
+        ii = 0
         if sweep_amp:
             for att in attens:
                 quantum_device_cfg['readout']['dig_atten'] = att
-                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
-                sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-                I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
-                self.Is.append(I)
-                self.Qs.append(Q)
-        else:
-            for freq in freqs:
-                quantum_device_cfg['readout']['freq'] = freq
-                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
-                sequences = ps.get_experiment_sequences(experiment_name)
+                print("Expt num = ", ii)
                 exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
+                ii += 1
+        else:
+            for freq in freqs:
+                quantum_device_cfg['readout']['freq'] = freq
+                print("Expt num = ", ii)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.Is.append(I)
+                self.Qs.append(Q)
+                ii += 1
 
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+    def histogram_amp_and_freq_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+
+        expt_cfg = experiment_cfg['histogram_amp_and_freq_sweep']
+        attens = np.arange(expt_cfg['atten_start'], expt_cfg['atten_stop'], expt_cfg['atten_step'])
+        freqs = np.arange(expt_cfg['freq_start'], expt_cfg['freq_stop'], expt_cfg['freq_step'])
+
+        experiment_name = 'histogram'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, 'histogram_amp_and_freq_sweep', suffix='.h5'))
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences(experiment_name)
+        ii = 0
+        for freq in freqs:
+            for att in attens:
+                quantum_device_cfg['readout']['dig_atten'] = att
+                print("Attenuation = ", att, "dB")
+                quantum_device_cfg['readout']['freq'] = freq
+                print("Frequency = ", freq, "GHz")
+                print("Expt num = ", ii)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.Is.append(I)
+                self.Qs.append(Q)
+                ii += 1
 
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
@@ -372,8 +405,97 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+    def cavity_drive_rabi_freq_scan_vstime(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['cavity_drive_rabi_freq_scan_vstime']
+        freqs = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
 
 
+
+        experiment_name = 'cavity_drive_rabi'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'cavity_drive_rabi_freq_scan_vstime', suffix='.h5'))
+
+        for dfreq in freqs:
+
+            quantum_device_cfg['cavity']['1']['freq'] = dfreq
+            print("Sideband freq set to", quantum_device_cfg['cavity']['1']['freq'])
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+    def cavity_drive_twotonerabi_geramsey_sequential(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['cavity_drive_twotonerabi_geramsey_sequential']
+        times = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+
+
+
+        experiment_name = 'cavity_drive_twotonerabi_geramsey'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'cavity_drive_twotonerabi_geramsey_sequential', suffix='.h5'))
+
+        t = swp_cfg['start']
+        while t < swp_cfg['stop']:
+            expt_cfg['start'] = t
+            expt_cfg['stop'] = t + 80*swp_cfg['step']
+            expt_cfg['step'] = swp_cfg['step']
+
+            print("Sideband freq set to", quantum_device_cfg['cavity']['1']['freq'])
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+            t = expt_cfg['stop'] + swp_cfg['step']
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+    def cavity_drive_f0g1_geramsey_sequential(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['cavity_drive_f0g1_geramsey_sequential']
+        times = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+
+
+
+        experiment_name = 'cavity_drive_rabi_geramsey'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'cavity_drive_f0g1_geramsey_sequential', suffix='.h5'))
+
+        t = swp_cfg['start']
+        while t < swp_cfg['stop']:
+            expt_cfg['start'] = t
+            if t + 80*swp_cfg['step']<swp_cfg['stop']:
+                expt_cfg['stop'] = t + 80*swp_cfg['step']
+            else:
+                expt_cfg['stop'] = swp_cfg['stop']
+            expt_cfg['step'] = swp_cfg['step']
+
+            print("Sideband freq set to", quantum_device_cfg['cavity']['1']['freq'])
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+            t = expt_cfg['stop'] + swp_cfg['step']
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
 
     def cavity_drive_pulse_probe_iq_amp_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         swp_cfg = experiment_cfg['cavity_drive_pulse_probe_iq_amp_sweep']

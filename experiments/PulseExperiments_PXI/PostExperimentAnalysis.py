@@ -15,8 +15,401 @@ class PostExperiment:
         self.P = P
         self.show = show
 
-        try:eval('self.' + experiment_name)()
-        except:print("No post experiment analysis yet")
+        # try:eval('self.' + experiment_name)()
+        # except:print("No post experiment analysis yet")
+        eval('self.' + experiment_name)()
+
+    def cavity_sideband_rabi(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        amp = expt_cfg['cavity_amp']
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t[2:], P[2:], showfit=True)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+        print("Half pi length =", t_half_pi, "ns")
+        print("pi length =", t_pi, "ns")
+        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
+        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
+              amp * (t_half_pi) / float(int(t_half_pi) + 1))
+
+    def cavity_drive_lattice_pulse(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.'+self.P)
+#        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]/1e3
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(P, 'o-', label=self.P)
+            ax.set_xlabel('Time (us)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            plt.show()
+
+        else:p = fitexp(t, P, showfit=False)
+
+        #print("T1 =", p[3], "us")
+
+    def cavity_drive_rabi_freq_scan_vstime(self):
+        expt_cfg2 = self.experiment_cfg[self.exptname]
+
+        experiment_name = 'sideband_rabi_freq_scan'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        with File(filename, 'r') as a:
+
+
+            figure(figsize=(15,5))
+            ax=subplot(111, xlabel='Frequency (GHz)',ylabel='Read Power (dBm)', title='' %(a['read_power'][0]))
+
+
+            time = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])
+            data = array(a['I'])
+            power =  array(a['read_power'])
+            phase = 360/(2*3.14)*array(a['phases'])
+
+        pcolormesh(time,I, data)
+
+    def cavity_drive_rabi_geramsey(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step' ])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+        nu_q_new = nu_q + offset
+
+        print("Original qubit frequency choice =", nu_q, "GHz")
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested qubit frequency choice =", nu_q_new, "GHz")
+        print("T2* =", p[3], "ns")
+
+    def cavity_drive_twotonerabi_geramsey(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step' ])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+        nu_q_new = nu_q + offset
+
+        print("Original qubit frequency choice =", nu_q, "GHz")
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested qubit frequency choice =", nu_q_new, "GHz")
+        print("T2* =", p[3], "ns")
+
+    def cavity_drive_twotonerabi_bellstate_ramsey(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step' ])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+        nu_q_new = nu_q + offset
+
+        print("Original qubit frequency choice =", nu_q, "GHz")
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested qubit frequency choice =", nu_q_new, "GHz")
+        print("T2* =", p[3], "ns")
+
+    def cavity_drive_twotonerabi_bellstate_pulse_probe_iq(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        self.I = self.I - mean(self.I)
+        self.Q = self.Q - mean(self.Q)
+
+        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_q
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(f, self.I, 'b.-', label='I')
+            #ax.plot(f, self.Q, 'r.-', label='Q')
+            ax.set_xlabel('Freq(GHz)')
+            ax.set_ylabel('I')
+            ax.legend()
+            p = fitlor(f, eval('self.'+self.P), showfit=False)
+            ax.plot(f, lorfunc(p, f), 'k--')
+            ax.axvline(p[2], color='g', linestyle='dashed')
+            plt.show()
+        else:p = fitlor(f, eval('self.'+self.P), showfit=False)
+
+        print("Qubit frequency = ", p[2], "GHz")
+        print("Pulse probe width = ", p[3] * 1e3, "MHz")
+        print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
+
+    def cavity_drive_f0g1_pulse_probe_iq(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        self.I = self.I - mean(self.I)
+        self.Q = self.Q - mean(self.Q)
+
+        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_q
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(f, self.I, 'b.-', label='I')
+            #ax.plot(f, self.Q, 'r.-', label='Q')
+            ax.set_xlabel('Freq(GHz)')
+            ax.set_ylabel('I')
+            ax.legend()
+            p = fitlor(f, eval('self.'+self.P), showfit=False)
+            ax.plot(f, lorfunc(p, f), 'k--')
+            ax.axvline(p[2], color='g', linestyle='dashed')
+            plt.show()
+        else:p = fitlor(f, eval('self.'+self.P), showfit=False)
+
+        print("Qubit frequency = ", p[2], "GHz")
+        print("Pulse probe width = ", p[3] * 1e3, "MHz")
+        print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
+
+    def cavity_drive_twotonerabi_correlation1(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step' ])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:p = fitdecaysin(t, P, showfit=False)
+
+
+        print("Original qubit frequency choice =", nu_q, "GHz")
+
+
+
+    def cavity_drive_twotonerabi_geramsey_sequential(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+        nu_q_new = nu_q + offset
+
+        print("Original qubit frequency choice =", nu_q, "GHz")
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested qubit frequency choice =", nu_q_new, "GHz")
+        print("T2* =", p[3], "ns")
+
+    def cavity_drive_f0g1_geramsey_sequential(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+        nu_q_new = nu_q + offset
+
+        print("Original qubit frequency choice =", nu_q, "GHz")
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested qubit frequency choice =", nu_q_new, "GHz")
+        print("T2* =", p[3], "ns")
+
+    def cavity_drive_rabi(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+
+
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        amp = expt_cfg['cavity_amp']
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t[2:], P[2:], showfit=True)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+        print("Half pi length =", t_half_pi, "ns")
+        print("pi length =", t_pi, "ns")
+        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
+        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
+              amp * (t_half_pi) / float(int(t_half_pi) + 1))
+
+
+
+
+    def cavity_sideband_rabi_freq_scan(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['cavity']["1"]["f0g1_freq"]
+
+        self.I = self.I #- mean(self.I)
+        self.Q = self.Q#- mean(self.Q)
+
+        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_q
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(f, self.I, 'b.-', label='I')
+            #ax.plot(f, self.Q, 'r.-', label='Q')
+            ax.set_xlabel('Freq(GHz)')
+            ax.set_ylabel('I/Q')
+            ax.legend()
+            #p = fitlor(f, eval('self.' + self.P), showfit=False)
+            #ax.plot(f, lorfunc(p, f), 'k--')
+           #ax.axvline(p[2], color='g', linestyle='dashed')
+            plt.show()
+        else:
+            p = fitlor(f, eval('self.' + self.P), showfit=False)
+
+#        print("Qubit frequency = ", p[2], "GHz")
+ #       print("Pulse probe width = ", p[3] * 1e3, "MHz")
+ #      print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
+
+    def cavity_drive_rabi_freq_scan(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['cavity']["1"]["freq"]
+
+        self.I = self.I  # - mean(self.I)
+        self.Q = self.Q  # - mean(self.Q)
+
+        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_q
+
+        if self.show:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(f, self.I, 'b.-', label='I')
+            # ax.plot(f, self.Q, 'r.-', label='Q')
+            ax.set_xlabel('Freq(GHz)')
+            ax.set_ylabel('I/Q')
+            ax.legend()
+            # p = fitlor(f, eval('self.' + self.P), showfit=False)
+            # ax.plot(f, lorfunc(p, f), 'k--')
+            # ax.axvline(p[2], color='g', linestyle='dashed')
+            plt.show()
+        else:
+            p = fitlor(f, eval('self.' + self.P), showfit=False)
+
+    #        print("Qubit frequency = ", p[2], "GHz")
+    #       print("Pulse probe width = ", p[3] * 1e3, "MHz")
+    #      print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
 
     def resonator_spectroscopy(self):
         expt_cfg = self.experiment_cfg[self.exptname]
@@ -294,6 +687,37 @@ class PostExperiment:
         print("Suggested alpha = ", alpha_new, "GHz")
         print("T2* =", p[3], "ns")
 
+    def gf_ramsey(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        ramsey_freq = expt_cfg['ramsey_freq']
+        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        alpha = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity']
+
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t, P, showfit=True)
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+
+        offset = ramsey_freq - p[1]
+        alpha_new = alpha + offset
+
+        print("Original alpha choice =", alpha, "GHz")
+        print("Offset freq =", offset * 1e3, "MHz")
+        print("Suggested alpha = ", alpha_new, "GHz")
+        print("T2* =", p[3], "ns")
+
     def ef_echo(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
@@ -416,31 +840,48 @@ class PostExperiment:
 
     def histogram(self):
         expt_cfg = self.experiment_cfg[self.exptname]
+        ran = self.hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']
+        readout_length = self.quantum_device_cfg['readout']['length']
+        window = self.quantum_device_cfg['readout']['window']
+        atten = self.quantum_device_cfg['readout']['dig_atten']
         if expt_cfg['singleshot']:
             a_num = expt_cfg['acquisition_num']
+            sample = a_num
             ns = expt_cfg['num_seq_sets']
             numbins = expt_cfg['numbins']
+            rancut = expt_cfg['rancut']
 
             I = self.I
             Q = self.Q
+
+            I, Q = I/2**15*ran,Q/2**15*ran
 
             colors = ['r', 'b', 'g']
             labels = ['g', 'e', 'f']
             titles = ['-I', '-Q']
 
+
             IQs = mean(I[::3], 1), mean(Q[::3], 1), mean(I[1::3], 1), mean(Q[1::3], 1), mean(I[2::3], 1), mean(Q[2::3],1)
-            IQsss = I.T.flatten()[0::3], Q.T.flatten()[0::3], I.T.flatten()[1::3], Q.T.flatten()[1::3], I.T.flatten()[2::3], Q.T.flatten()[2::3]
+            IQsss = I.T.flatten()[0::3], Q.T.flatten()[0::3], I.T.flatten()[1::3], Q.T.flatten()[1::3], I.T.flatten()[
+                                                                                                        2::3], Q.T.flatten()[
+                                                                                                               2::3]
+            print ("went here")
+            fig = plt.figure(figsize=(12, 16))
 
-            fig = plt.figure(figsize=(12, 12))
-            ax = fig.add_subplot(421, title='Averaged over acquisitions')
+            ax = fig.add_subplot(421, title='length,window = ' + str(readout_length) + ',' + str(window))
+            x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
+            x0e, y0e = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
+            phi = arctan((y0e - y0g) / (x0e - x0g))
+            for ii in range(3):
+                ax.plot(IQsss[2 * ii][::int(a_num / sample)], IQsss[2 * ii + 1][::int(a_num / sample)], '.',
+                        color=colors[ii], alpha=0.2)
 
-            for j in range(ns):
-                for ii in range(3):
-                    ax.plot(IQs[2 * ii], IQs[2 * ii + 1], 'o', color=colors[ii])
-            ax.set_xlabel('I')
-            ax.set_ylabel('Q')
+            ax.set_xlabel('I (V)')
+            ax.set_ylabel('Q (V)')
+            ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
+            ax.set_ylim(y0g - ran / rancut, y0g + ran / rancut)
 
-            ax = fig.add_subplot(422, title='Mean and std all')
+            ax = fig.add_subplot(422)
 
             for ii in range(3):
                 ax.errorbar(mean(IQsss[2 * ii]), mean(IQsss[2 * ii + 1]), xerr=std(IQsss[2 * ii]),
@@ -448,21 +889,85 @@ class PostExperiment:
             ax.set_xlabel('I')
             ax.set_ylabel('Q')
 
+            ax.set_xlim(x0g - ran / rancut, x0g + ran/rancut)
+            ax.set_ylim(y0g - ran / rancut, y0g + ran/rancut)
+
+            IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
+                        -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),
+                        I.T.flatten()[1::3] * cos(phi) + Q.T.flatten()[1::3] * sin(phi),
+                        -I.T.flatten()[1::3] * sin(phi) + Q.T.flatten()[1::3] * cos(phi),
+                        I.T.flatten()[2::3] * cos(phi) + Q.T.flatten()[2::3] * sin(phi),
+                        -I.T.flatten()[2::3] * sin(phi) + Q.T.flatten()[2::3] * cos(phi))
+
+            ax = fig.add_subplot(423, title='rotated')
+            x0g, y0g = mean(IQsssrot[0][::int(a_num / sample)]), mean(IQsssrot[1][::int(a_num / sample)])
+            x0e, y0e = mean(IQsssrot[2][::int(a_num / sample)]), mean(IQsssrot[3][::int(a_num / sample)])
+
+            for ii in range(3):
+                ax.plot(IQsssrot[2 * ii][::int(a_num / sample)], IQsssrot[2 * ii + 1][::int(a_num / sample)], '.',
+                        color=colors[ii], alpha=0.2)
+
+            ax.set_xlabel('I (V)')
+            ax.set_ylabel('Q (V)')
+            ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
+            ax.set_ylim(y0g - ran / rancut, y0g + ran / rancut)
+
+            ax = fig.add_subplot(424)
+
+            for ii in range(3):
+                ax.errorbar(mean(IQsssrot[2 * ii]), mean(IQsssrot[2 * ii + 1]), xerr=std(IQsssrot[2 * ii]),
+                            yerr=std(IQsssrot[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+            ax.set_xlabel('I')
+            ax.set_ylabel('Q')
+
+            ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
+            ax.set_ylim(y0g - ran / rancut, y0g + ran / rancut)
+
             for kk in range(6):
-                ax = fig.add_subplot(4, 2, kk + 3, title=self.exptname + titles[kk % 2])
-                ax.hist(IQsss[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
-                ax.legend()
-                ax.set_xlabel('Value'+titles[kk % 2])
+
+                ax = fig.add_subplot(4, 2, kk % 2 + 5, title=self.exptname + titles[kk % 2])
+                ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
+                ax.set_xlabel(titles[kk % 2] + '(V)')
                 ax.set_ylabel('Number')
+                ax.legend()
+                if kk % 2 == 0:
+                    ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
+                else:
+                    ax.set_xlim(y0g - ran / rancut, y0g + ran / rancut)
 
-
-            for ii,i in enumerate(['I','Q']):
+            for ii, i in enumerate(['I', 'Q']):
                 sshg, ssbinsg = np.histogram(IQsss[ii], bins=numbins)
-                sshe, ssbinse = np.histogram(IQsss[ii+2], bins=numbins)
+                sshe, ssbinse = np.histogram(IQsss[ii + 2], bins=numbins)
                 fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
 
-                print("Single shot g-e readout fidility from channel ", i, " = ", fid)
+                print("Single shot readout fidility from channel ", i, " = ", fid)
+            print('---------------------------')
 
+            for ii, i in enumerate(['I', 'Q']):
+                if ii is 0:
+                    lims = [x0g - ran / rancut, x0g + ran / rancut]
+                else:
+                    lims = [y0g - ran / rancut, y0g + ran / rancut]
+                sshg, ssbinsg = np.histogram(IQsssrot[ii], bins=numbins, range=lims)
+                sshe, ssbinse = np.histogram(IQsssrot[ii + 2], bins=numbins, range=lims)
+                fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
+
+                print("Single shot readout fidility from channel ", i, " after rotation = ", fid)
+
+
+
+                ax = fig.add_subplot(4, 2, 7 + ii)
+                ax.plot(ssbinse[:-1], cumsum(sshg) / sshg.sum(), color='r')
+                ax.plot(ssbinse[:-1], cumsum(sshe) / sshg.sum(), color='b')
+                ax.plot(ssbinse[:-1], np.abs(cumsum(sshe) - cumsum(sshg)) / sshg.sum(), color='k')
+                if ii == 0:
+                    ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
+                else:
+                    ax.set_xlim(y0g - ran / rancut, y0g + ran / rancut)
+                ax.set_xlabel(titles[ii] + '(V)')
+                ax.set_ylabel('$F$')
+            print('---------------------------')
+            print ('Optimal rotation angle = ',phi)
         else:
             fig = plt.figure(figsize=(7, 7))
             ax = fig.add_subplot(111, title=self.exptname)
