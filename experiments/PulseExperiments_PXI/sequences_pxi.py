@@ -619,7 +619,8 @@ class PulseSequences:
 
             for qubit_id in self.expt_cfg['on_qubits']:
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                self.idle_q(sequencer, time=ramsey_len)
+                #self.idle_q(sequencer, time=ramsey_len)
+                self.gen_q(sequencer, qubit_id, len=ramsey_len, amp=0.0, phase=0, pulse_type='square', add_freq=0.5)
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'],phase=2 * np.pi * ramsey_len * self.expt_cfg['ramsey_freq'])
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])

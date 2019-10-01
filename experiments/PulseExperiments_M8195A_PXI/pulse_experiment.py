@@ -2,7 +2,7 @@ from slab import InstrumentManager
 from slab.instruments.awg import write_Tek5014_file
 from slab.instruments.awg.M8195A import upload_M8195A_sequence
 # import keysight_pxi_load as ks_pxi
-from slab.instruments.keysight import keysight_pxi_load as ks_pxi
+from slab.instruments.keysight import keysight_pxi_load_m8195a as ks_pxi
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
 from slab.instruments.awg.Tek70001 import write_Tek70001_sequence
@@ -18,7 +18,7 @@ from slab.datamanagement import SlabFile
 from slab.dataanalysis import get_next_filename
 import json
 # from slab.experiments.PulseExperiments.get_data import get_iq_data, get_singleshot_data
-from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
+from slab.experiments.PulseExperiments_M8195A_PXI.PostExperimentAnalysis import PostExperiment
 
 im = InstrumentManager()
 
@@ -33,19 +33,24 @@ class Experiment:
 
         try: self.drive_los = [im[lo] for lo in self.hardware_cfg['drive_los']]
         except: print ("No drive function generator specified in hardware config")
+        
+        try: self.jpa_pump_los = [im[lo] for lo in self.hardware_cfg['jpa_pump_los']]
+        except: print ("No JPA pump LO specified in hardware config")
 
         try: self.readout_los = [im[lo] for lo in self.hardware_cfg['readout_los']]
         except: print ("No readout function generator specified in hardware config")
         
         try: self.cavity_drive_los = [im[lo] for lo in self.hardware_cfg['cavity_drive_los']]
         except: print ("No cavity drive function generator specified in hardware config")
-        
 
         try: self.attens = [im[atten] for atten in self.hardware_cfg['attens']]
         except: print ("No digital attenuator specified in hardware config")
 
         try: self.trig = im['trig']
         except: print ("No trigger function generator specied in hardware cfg")
+
+        try: self.m8195a = im['M8195A_1']
+        except: print ("Unable to connect to M8195a")
 
         try:self.tek2 = im['TEK2']
         except:print("No tek2")
@@ -63,7 +68,7 @@ class Experiment:
 
 
     def initiate_pxi(self, name, sequences):
-        try:self.tek2.stop()
+        try:self.m8195a.stop_output()
         except:pass
         try:
             self.pxi.AWG_module.stopAll()
@@ -127,16 +132,11 @@ class Experiment:
         time.sleep(1)
 
     def awg_run(self,run_pxi = True,name=None):
+        self.m8195a.start_output()
+        time.sleep(1)
         if run_pxi:
-            if 'sideband' in name:
-                try:self.tek2.run()
-                except:print("tek2 is not runnning")
             self.pxi.run()
-        else:
-            self.m8195a.start_output()
-            time.sleep(1)
-            self.tek.run()
-
+    
     def clear_and_restart_digitizer(self):
         self.pxi.clear_and_start_digitizer()
 
@@ -151,9 +151,11 @@ class Experiment:
         self.pxi.DIG_module.stopAll()
         self.pxi.chassis.close()
         # except:print('Error in stopping and closing PXI')
-        if 'sideband' in name:
-            try:self.tek2.stop()
-            except:print('Error in stopping TEK2')
+    
+        try:
+            self.m8195a.stop_output()
+            time.sleep(1)
+        except:print('Error in stopping M8195a')
 
     def pxi_stop(self):
         try:
@@ -192,6 +194,20 @@ class Experiment:
                 d.set_power(self.quantum_device_cfg['qubit_drive_lo_powers'][str(ii+1)])
                 d.set_ext_pulse(mod=True)
         except:print ("Error in qubit drive LO configuration")
+        
+        
+    def initiate_jpa_pump_LOs(self):
+        if self.quantum_device_cfg['readout']['jpa_pump']:
+
+            try:
+                for ii,d in enumerate(self.jpa_pump_los):
+                    pump_freq = self.quantum_device_cfg['readout']['jpa_pump_freq']
+                    d.set_frequency(pump_freq*1e9)
+                    # d.set_power(self.quantum_device_cfg['jpa_pump_lo_powers'][str(ii+1)])
+                    d.set_ext_pulse(mod=True)
+            except:print ("Error in jpa pump LO configuration")
+        else:print("JPA pump is off")
+
 
     def initiate_readout_LOs(self):
         try:
@@ -445,12 +461,11 @@ class Experiment:
         self.expt_cfg = self.experiment_cfg[name]
         self.generate_datafile(path,name,seq_data_file=seq_data_file)
         self.set_trigger()
-        self.initiate_drive_LOs()
         self.initiate_readout_LOs()
-        self.initiate_cavity_drive_LOs(name)
+        self.initiate_jpa_pump_LOs()
         self.initiate_attenuators()
         self.initiate_pxi(name, sequences)
-        self.initiate_tek2(name,path,sequences)
+        self.initiate_m8195a(path,sequences)
         time.sleep(0.1)
         self.awg_run(run_pxi=True,name=name)
         try:
