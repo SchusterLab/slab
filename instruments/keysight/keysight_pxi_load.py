@@ -43,6 +43,15 @@ class KeysightSingleQubit:
     On Module 6, channel 1 goes to the I input to the mixer, channel 2 goes to the Q input, channel 3 is the readout pulse, and
     channel 4 is the readout marker. On module 10, channel 1 is for readout of I component and channel 2 is for readout from Q component.'''
 
+    ## Outstanding issue - if we upload waveforms that contain all 0's in time for unused space - how are "markers" used at all???
+    ## Answer - markers window the region where pulse sent out to bin output of LO!!!
+
+    ## LO             _/-\_/-\_/-\_/-\_/-\   # LO always on
+    ## Marker         _______|------|______  # marker windows LO output in time w/ AWG signals non-zero state (+ wiggle room!)
+    ## Trigger        |--|_________________  # Trigger turns on AWG/DIG cards
+    ## AWG Signal     _________/??\________  # AWG card outputs IQ signal to mixer, mixer input is windows LO+marker!
+
+
     def __init__(self, experiment_cfg, hardware_cfg, quantum_device_cfg, sequences, name, save_path=r"C:\Users\slab\Documents\Data",
                  sleep_time_between_trials=50 * 1000):  # 1000*10000 if you want to watch sweep by eye
 
@@ -54,8 +63,11 @@ class KeysightSingleQubit:
                                        10: key.ModuleType.INPUT})
 
         self.hardware_cfg = hardware_cfg
+        ## out_mod_no is AWG outupt?
         self.out_mod_no = hardware_cfg['awg_info']['keysight_pxi']['out_mod_no']
+        ## what does marker do - windows LO
         self.marker_mod_no = hardware_cfg['awg_info']['keysight_pxi']['marker_mod_no']
+        ## what does trigger do - triggers AWG / Digitizer
         self.trig_mod_no = hardware_cfg['awg_info']['keysight_pxi']['trig_mod_no']
 
         self.dt = hardware_cfg['awg_info']['keysight_pxi']['dt']
@@ -72,7 +84,7 @@ class KeysightSingleQubit:
 
         print ("Module used for generating analog pulses = ",self.out_mod_no)
         print ("Module used for generating digital markers = ",self.marker_mod_no)
-        print ("Module used for temp generation of module = ", self.trig_mod_no)
+        print ("Module used for temp generation of module = ", self.trig_mod_no) # wtf
         self.out_mod_nums = [self.out_mod_no, self.marker_mod_no, self.trig_mod_no]
 
         self.num_avg = experiment_cfg[name]['acquisition_num']
@@ -107,6 +119,7 @@ class KeysightSingleQubit:
 
         # Initialize Module 8 = Marker card. Digital markers for qubit, readout
         # self.m_chs = [chassis.getChannel(self.marker_mod_no, ch) for ch in self.awg_channels]
+
         self.m_ch_1 = chassis.getChannel(self.marker_mod_no, 1)
         self.m_ch_2 = chassis.getChannel(self.marker_mod_no, 2)
         self.m_ch_3 = chassis.getChannel(self.marker_mod_no, 3)
@@ -300,10 +313,12 @@ class KeysightSingleQubit:
 
             m_qubit_dsp.loadToModule(m_module)
             m_readout_dsp.loadToModule(m_module)
-            if self.prep_tek2:m_tek2_dsp.loadToModule(m_module)
+            if self.prep_tek2 == True:
+                    m_tek2_dsp.loadToModule(m_module)
             m_qubit_dsp.queue(self.m_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay, cycles=1, prescaler=0)
             m_readout_dsp.queue(self.m_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay, cycles=1, prescaler=0)
-            if self.prep_tek2:m_tek2_dsp.queue(self.m_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
+            if self.prep_tek2 == True:
+                m_tek2_dsp.queue(self.m_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
 
             self.m_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
                                                  syncMode=1, length=10, delay=0)

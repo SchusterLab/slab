@@ -65,3 +65,5 @@ try: from .lockin import SR844
 except: print("Could not load SR844 driver")
 try: from .PressureGauge import PressureGauge
 except: print("Could not load PressureGauge driver")
+try: from.SignalCore import SignalCore
+except: print("Could not load SignalCore")

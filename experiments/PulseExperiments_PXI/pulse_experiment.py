@@ -38,7 +38,7 @@ class Experiment:
         try: self.attens = [im[atten] for atten in self.hardware_cfg['attens']]
         except: print ("No digital attenuator specified in hardware config")
 
-        try: self.trig = im['trig2']
+        try: self.trig = im['triggrb']
         except: print ("No trigger function generator specied in hardware cfg")
 
         try:self.tek2 = im['TEK2']
@@ -171,30 +171,33 @@ class Experiment:
         self.rf1.set_ext_pulse(mod=True)
         self.rf2.set_ext_pulse(mod=True)
 
+    # now setting for SignalCore
     def initiate_drive_LOs(self):
         try:
             for ii,d in enumerate(self.drive_los):
                 drive_freq = self.quantum_device_cfg['qubit'][str(ii+1)]['freq'] - self.quantum_device_cfg['pulse_info'][str(ii+1)]['iq_freq']
-                d.set_output(True)
-                d.set_frequency(drive_freq*1e9)
-                #d.set_reference_source(source="EXT",ref_freq=10e6)
                 d.set_power(self.quantum_device_cfg['qubit_drive_lo_powers'][str(ii+1)])
-                #d.set_power(13)
-                #print("DRIVE LO POWER: " + str(d.get_power()))
-                d.set_ext_pulse(mod=True)
+                d.set_output_state(enabled=True)
+                d.set_rf_mode(val=0) # single RF tone on output 1
+                d.set_rf_standby(False)
+                d.set_rf2_standby(True) # no output on RF 2
+                d.set_frequency(drive_freq*1e9)
+                d.set_clock_reference(ext_ref=True)
+                # signal core max power +13
         except:print ("Error in qubit drive LO configuration")
 
     def initiate_readout_LOs(self):
         try:
             for ii, d in enumerate(self.readout_los):
-                d.set_frequency(self.quantum_device_cfg['readout']['freq']*1e9)
-                d.set_output(True)
-                #d.set_reference_source(source="EXT", ref_freq=10e6)
-                #print ("Readout frequency = ",self.quantum_device_cfg['readout']['freq'],"GHz")
+                readout_freq = self.quantum_device_cfg['readout']['freq']*1e9
+                d.open_device()
+                d.set_frequency(readout_freq)
                 d.set_power(self.quantum_device_cfg['readout_drive_lo_powers'][str(ii + 1)])
-                #d.set_power(13)
-                #print("READOUT LO POWER: " + str(d.get_power()))
-                d.set_ext_pulse(mod=True)
+                d.set_output_state(enable=True)
+                d.set_rf_mode(val=0) # single RF tone on output 1
+                d.set_standby(False)
+                d.set_rf2_standby(True) # no output on RF 2
+                d.set_clock_reference(ext_ref=True)
         except:print("Error in readout drive LO configuration")
 
     def initiate_attenuators(self):
