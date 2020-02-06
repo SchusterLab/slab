@@ -15,6 +15,7 @@ class PostExperiment:
         self.P = P
         self.show = show
 
+        # eval('self.' + experiment_name)()
         try:eval('self.' + experiment_name)()
         except:print("No post experiment analysis yet")
 

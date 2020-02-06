@@ -154,7 +154,7 @@ class Experiment:
     
         try:
             self.m8195a.stop_output()
-            time.sleep(1)
+            time.sleep(0.1)
         except:print('Error in stopping M8195a')
 
     def pxi_stop(self):
@@ -466,6 +466,30 @@ class Experiment:
         self.initiate_attenuators()
         self.initiate_pxi(name, sequences)
         self.initiate_m8195a(path,sequences)
+        time.sleep(0.1)
+        self.awg_run(run_pxi=True,name=name)
+        try:
+            if check_sync:self.pxi.acquireandplot(expt_num)
+            else:
+                if self.expt_cfg['singleshot']:
+                    self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+                else:
+                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq = self.rotate_iq,phi=self.iq_angle)
+        except:print("Error in data acquisition from PXI")
+
+        self.awg_stop(name)
+        return self.I,self.Q
+    
+    def run_experiment_pxi_repeated(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False, no_load = False, clear_pxi = False):
+        self.expt_cfg = self.experiment_cfg[name]
+        self.generate_datafile(path,name,seq_data_file=seq_data_file)
+        self.initiate_pxi(name, sequences)
+        if not no_load:
+            self.initiate_m8195a(path,sequences)
+            self.set_trigger()
+            self.initiate_readout_LOs()
+            self.initiate_jpa_pump_LOs()
+            self.initiate_attenuators()
         time.sleep(0.1)
         self.awg_run(run_pxi=True,name=name)
         try:
