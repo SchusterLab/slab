@@ -130,13 +130,13 @@ class SignalCore(Instrument):
         return done
 
     def set_power(self, pdBm = -10):
-        if pdBm < -40:
-            pdBm = -40
-            print('Warning: Available range: -40 to +30 dBm')
+        if pdBm < -30:
+            pdBm = -30
+            print('Warning: Available range: -30 to +13 dBm')
 
-        if pdBm > 30:
-            pdBm = 30
-            print('Warning: Available range: -40 to +30 dBm')
+        if pdBm > 13:
+            pdBm = 13
+            print('Warning: Available range: -30 to +13 dBm')
 
         done = self._dll.sc5511a_set_level(self._handle, pdBm)
         if done == 0:
@@ -263,7 +263,7 @@ class SignalCore(Instrument):
             print(self.name + self.address + ' : Failed to set RF2 standby mode, please check the device status!')
         return done
 
-    def set_list_mode(self, sss_mode=1, sweep_dir=0, tri_waveform=0, hw_trigger=0, step_on_hw_trig=0,
+    def set_list_mode(self, sss_mode=1, sweep_dir=0, tri_waveform=0, hw_tdrigger=0, step_on_hw_trig=0,
                         return_to_start=0, trig_out_enable=1, trig_out_on_cycle=0):
         """ Configures list mode
             sss_mode = 0: List mode, 1: Sweep mode

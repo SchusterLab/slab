@@ -1,104 +1,68 @@
-# -*- coding: utf-8 -*-
-"""
-AD5780 Voltage Source
-=====================================
-:Author: Larry Chen
-"""
+__author__ = 'Brendan S'
 
-from slab.instruments import SocketInstrument, Instrument
+from slab.instruments import SerialInstrument
+from math import floor
 import time
 
 
-class AD5780(SocketInstrument):
-    default_port = 23
+def numtobin(num):
+    """This converts the -10V to 10V scale to the 18bit binary scale for the AD5780 DAC"""
+    return int((num) * (2 ** 18) / (20) + (2 ** 18 / 2))
 
-    def __init__(self, name='AD5780', address='', enabled=True, timeout=1, recv_length=1024):
-        SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=timeout, recv_length=recv_length)
-        self.query_sleep=0.01
+class AD5780(SerialInstrument):
+    """This is a driver for the bespoke 8-channel AD5780 flux bias box using the serial instrument class for the
+    instrumentmanager - as of 20/02/13 this needs to be initialized twice to function well
+    """
 
-    def initialize(self, channel=None):
-        if channel is None:
-            return self.query('INIT')
-        else:
-            return self.query('INIT %d' %(int(channel)))
+    def __init__(self, name="", address='COM6', enabled=True, timeout=10):
+        """Note when initialized the attenuator board will reset to -31.5dB"""
+        SerialInstrument.__init__(self, name, address, enabled, timeout, query_sleep=0.1)
+        self.term_char = '\r\n'
 
-    def set_voltage(self, channel, voltage):
-        bitcode = int((voltage + 10.0)*13107.2)
-        print('set target', bitcode)
-        if bitcode < 0 or bitcode > 262143:
-            print('ERROR: voltage out of range')
-            return bitcode
-        return self.query('SET %d %d' % (channel, bitcode))
+    def initialize(self):
+        """initialize the flux box to all channels 0V outputs"""
+        self.ser.flushInput()
+        combinedstring = 'INIT'
+        self.write(combinedstring)
 
-    def get_voltage(self, channel):
-        return self.query('READ %d' % (channel))
+    def read(self,channel):
+        """Read the voltage on a channel.  Returns last written voltage on arduino"""
+        self.ser.flushInput()
+        combinedstring = 'READ' + ' ' + str(channel)
+        voltage = self.query(combinedstring)
+        return voltage
 
-    #Reading from DAC not working, only write instead
-    # def ramp(self, channel, voltage, speed):
-    #     """Ramp to voltage with speed in (V/S)"""
-    #     bitcode = int((voltage + 10.0)*13107.2)
-    #     print 'target', bitcode
-    #     currbit = int(self.get_voltage(channel).strip())
-    #     time.sleep(self.query_sleep)
-    #     print 'current', currbit
-    #     if bitcode == currbit:
-    #         return str(bitcode)
-    #     if bitcode < 0 or bitcode > 262143:
-    #         print('ERROR: voltage out of range')
-    #         return str(bitcode)
-    #     step_size = 10 # in bits, about 0.7mV out of +-10V
-    #     step_time = int(step_size * 0.0762939453 / speed)
-    #     if step_time == 0:
-    #         step_time = 1
-    #     endbit = self.query('RAMP %d %d %d %d' % (channel, bitcode, step_size, step_time))
-    #     time.sleep(self.query_sleep)
-    #     if not endbit == bitcode:
-    #         endbit = self.set_voltage(channel, voltage)
-    #     if not int(endbit.strip())==bitcode:
-    #         print 'DAC get_voltage error!!!'
-    #     return endbit
+    def setvoltage(self,channel,voltage):
+        """sets a channel to a specific voltage """
+        self.ser.flushInput()
+        binvolt = numtobin(voltage)
+        combinedstring = 'SET' + ' ' + str(channel) + ' ' + str(binvolt)
+        self.write(combinedstring)
 
-    #Remove checks, feedback from DAC on ramp due to readout not working
-    def ramp(self, channel, voltage, speed):
-        """Ramp to voltage with speed in (V/S)"""
-        bitcode = int((voltage + 10.0)*13107.2)
-        print('target', bitcode)
-        time.sleep(self.query_sleep)
-        if bitcode < 0 or bitcode > 262143:
-            print('ERROR: voltage out of range')
-            return str(bitcode)
-        step_size = 10 # in bits, about 0.7mV out of +-10V
-        step_time = int(step_size * 0.0762939453 / speed)
-        if step_time == 0:
-            step_time = 1
-        endbit = self.query('RAMP %d %d %d %d' % (channel, bitcode, step_size, step_time))
-        print('end of ramp -', endbit)
-        time.sleep(self.query_sleep)
-        return endbit
+    def ramp(self,dacnum,voltage,step,speed):
+        """Calls set on a loop in arduino.  step discretizes voltage, speed spends time at each step"""
+        self.ser.flushInput()
+        bvoltage = numtobin(voltage)
+        bstep = numtobin(step)
+        bspeed = numtobin(speed)
+        combinedstring = 'RAMP' + ' ' + str(dacnum) + ' ' + str(bvoltage) + ' ' + str(bstep) + ' ' + str(bspeed)
+        self.write(combinedstring)
 
+    """Same as above - step, speed in bits instead of volts"""
+    def ramp2(self, dacnum, voltage, step, speed):
+        self.ser.flushInput()
+        bvoltage = numtobin(voltage)
+        combinedstring = 'RAMP' + ' ' + str(dacnum) + ' ' + str(bvoltage) + ' ' + str(step) + ' ' + str(speed)
+        self.write(combinedstring)
 
-    def get_id(self):
-        """Get Instrument ID String"""
-        return self.query('ID')
+if __name__ == '__main__':
 
-    def sweep(self, channel):
-        time.sleep(self.query_sleep)
-        self.query('SET %d 0' % channel)
-        time.sleep(self.query_sleep)
-        self.query('RAMP %d %d %d %d' % (channel, 262143, 100, 500))
-        time.sleep(self.query_sleep)
-        self.query('RAMP %d %d %d %d' % (channel, 0, 100, 500))
-        return self.query('READ %d' % (channel))
-
-
-
-if __name__ == "__main__":
-    """Test script"""
-    dac = AD5780(address='192.168.14.253')
-    print((dac.get_id()))
-
-    dac.initialize()
+    a=AD5780(name='dacbox',address = 'COM3',enabled = True,timeout=1)
     time.sleep(1)
-    i = 1
-    print("Channel = %s"%i)
-    dac.ramp(i,0.1,0.1)
+    print(a.initialize())
+    time.sleep(1)
+    print(a.initialize())
+    time.sleep(1)
+    print(a.setvoltage(1,1))
+    time.sleep(1)
+    print(a.setvoltage(1,2))

@@ -425,6 +425,7 @@ class PulseSequences:
 
             for qubit_id in self.expt_cfg['on_qubits']:
                 self.pi_q(sequencer,qubit_id,pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                #self.gen_q(sequencer,qubit_id,len=2000,amp=1,phase=0,pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 self.idle_q(sequencer, time=t1_len)
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])

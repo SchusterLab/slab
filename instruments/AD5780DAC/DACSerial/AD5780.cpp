@@ -29,7 +29,6 @@ static long write_register(uint8_t pin, long bitcode)
     return BITCODE(b1, b2, b3);
 }
 
-
 /* Reads from a specified register 
  *
  * pin: the arduino pin that the device is connected to
@@ -59,10 +58,10 @@ static long read_register(uint8_t pin, byte register_code)
 
 void AD5780::set_gcurrval(long input)
 {
-  Serial.println("Updating gcurrval...");
+  //Serial.println("Updating gcurrval...");
   gcurrval = input;
-  Serial.print("Updated gcurrval: ");
-  Serial.println(gcurrval);
+  //Serial.print("Updated gcurrval: ");
+  //Serial.println(gcurrval);
 }
 
 AD5780::AD5780(int sync)

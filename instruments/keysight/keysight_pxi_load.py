@@ -274,36 +274,54 @@ class KeysightSingleQubit:
         self.m_module.clearAll()
         self.trig_module.clearAll()
 
+        #dsp = downsampling
+        #markers_readout -> trigger for digitizer card coming from trigger card
+        #readout_markers -> trigger for readout LO coming from marker card
+        #if marker card is 500MS/s, use dsp version
+        #if marker card is 1Gs/s, use non-dsp-ed version
+
+
         key.Waveform._waveform_number_counter = 0
+
+        # Marker array for waveform wavefroms_I
         qubit_marker = self.generatemarkers(waveforms_I)
         qubit_marker_dsp = self.generatemarkers(waveforms_I,resample=True,conv_width=self.lo_delay,trig_delay=self.trig_delay)
+
+        # marker array for waveform readout
         readout_marker = self.generatemarkers(readout, resample=False)
         readout_marker_dsp = self.generatemarkers(readout,resample=True,trig_delay=self.trig_delay)
-        card_trig_arr = self.generatemarkers(markers_readout,resample=True)
-        if self.prep_tek2:tek2_marker_dsp =  self.generatemarkers(tek2_marker,resample=True,trig_delay=0.0)
-        trig_arr_awg = self.generatemastertrigger(len(readout_marker_dsp[0]),2*self.trig_pulse_length,self.abs_trig_delay)
 
+        #marker array for waveform markers_readout, waveform for triggering digitizer card, already resampled
+        card_trig_arr = self.generatemarkers(markers_readout,resample=True)
+
+        #if self.prep_tek2:tek2_marker_dsp =  self.generatemarkers(tek2_marker,resample=True,trig_delay=0.0)
+
+        # ?? array made of readout marker (marker of readout waveform) with delays : should be used to trigger awg
+        trig_arr_awg = self.generatemastertrigger(len(readout_marker[0]), 2 * self.trig_pulse_length,self.abs_trig_delay)
+        trig_arr_awg = self.generatemastertrigger(len(readout_marker_dsp[0]), 2 * self.trig_pulse_length,self.abs_trig_delay)
 
         for i in tqdm(range(len(waveforms_I))):
 
+            ## Guess: making PXI savvy waveform objects out of the arrays to send out to the PXI
             wave_I = key.Waveform(np.array(waveforms_I[i]),append_zero=True)  # Have to include append_zero or the triggers get messed up!
             wave_Q = key.Waveform(waveforms_Q[i], append_zero=True)
             m_readout = key.Waveform(readout_marker[i], append_zero=True)
-            m_qubit = key.Waveform(qubit_marker[i], append_zero=True)  ### this qubit marker is wrong - Vatsan
+            m_qubit = key.Waveform(qubit_marker[i], append_zero=True)  ## this qubit marker is wrong - Vatsan | Brendan: In what way?
 
             m_readout_dsp = key.Waveform(readout_marker_dsp[i], append_zero=True)
             m_qubit_dsp = key.Waveform(qubit_marker_dsp[i], append_zero=True)
-            if self.prep_tek2:m_tek2_dsp = key.Waveform(tek2_marker_dsp[i], append_zero=True)
+            #if self.prep_tek2:m_tek2_dsp = key.Waveform(tek2_marker_dsp[i], append_zero=True)
+
 
             trig = key.Waveform(trig_arr_awg, append_zero=True)
             card_trig = key.Waveform(card_trig_arr[i], append_zero=True)
 
-            # Load objects to the modules
+            #Send I,Q, qubit drive waveforms to AWG drive card
             wave_I.loadToModule(AWG_module)
             wave_Q.loadToModule(AWG_module)
 
             # Queue the waveforms. Want to set trigger mode to SWHVITRIG to trigger from computer.
-
+            # Queue I,Q qubit drive waveforms on AWG card
             wave_I.queue(self.AWG_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay = self.tek2_trigger_delay, cycles = 1, prescaler = 0)
             wave_Q.queue(self.AWG_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay = self.tek2_trigger_delay, cycles = 1, prescaler = 0)
 
@@ -311,26 +329,35 @@ class KeysightSingleQubit:
             self.AWG_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
                                                  syncMode=1, length=10, delay=0)
 
+            #Send marker waveforms to Marker card
             m_qubit_dsp.loadToModule(m_module)
             m_readout_dsp.loadToModule(m_module)
-            if self.prep_tek2 == True:
-                    m_tek2_dsp.loadToModule(m_module)
+
+            # if self.prep_tek2 == True:
+            #         m_tek2_dsp.loadToModule(m_module)
+
+            # Queue marker waveforms to marker card channels
             m_qubit_dsp.queue(self.m_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay, cycles=1, prescaler=0)
             m_readout_dsp.queue(self.m_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay, cycles=1, prescaler=0)
-            if self.prep_tek2 == True:
-                m_tek2_dsp.queue(self.m_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
 
+            # if self.prep_tek2 == True:
+            #     m_tek2_dsp.queue(self.m_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
+
+            # Configure marker card settings
             self.m_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
                                                  syncMode=1, length=10, delay=0)
 
+            # Load trigger waveforms to trigger card
             trig.loadToModule(trig_module)
             card_trig.loadToModule(trig_module)
 
+            #Queue trigger waveforms to trigger channels
             trig.queue(self.trig_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
             trig.queue(self.trig_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
             trig.queue(self.trig_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
             card_trig.queue(self.trig_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=int(self.card_delay/100)+self.tek2_trigger_delay, cycles=1, prescaler=0)
 
+            #Configure trigger module settings
             self.trig_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
                                                syncMode=1, length=10, delay=0)
 
@@ -463,15 +490,23 @@ class KeysightSingleQubit:
         I = []
         Q = []
         for ii in tqdm(range(self.num_avg)):
-            I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])], 0))
-            Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
+            # Original version of this code - seems to take averaging slices in the wrong direction
+            # I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])], 0))
+            # Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
+            #             # Taking data along a different slice
+            I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])], 1))
+            Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 1))
         return np.array(I).T, np.array(Q).T
 
     def acquire_avg_data(self,w = [0,-1],pi_calibration=False):
         for ii in tqdm(range(self.num_avg)):
             # time.sleep(1)
+            # Original version of this code - seems to take averaging slices in the wrong direction
+            # I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])], 0))
+            # Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
             self.I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(),self.data_1.shape).T[int(w[0]):int(w[1])],0)
             self.Q += np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(),self.data_2.shape).T[int(w[0]):int(w[1])],0)
+
         I = self.I/self.num_avg
         Q = self.Q/self.num_avg
         if pi_calibration:
@@ -493,8 +528,6 @@ class KeysightSingleQubit:
         return I,Q,Ierr,Qerr
 
 def run_keysight(experiment_cfg, hardware_cfg, sequences, name):
-
-
 
     setup = KeysightSingleQubit(experiment_cfg, hardware_cfg, sequences, name)
 
