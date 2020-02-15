@@ -4,7 +4,7 @@ from .alphanum import alphanum_dict
 import random, subprocess, time
 from numpy import sqrt, array
 
-
+""""I am Gabrielle and testing git stuff YAYYYY"""
 class MaskError:
     """MaskError is an exception to be raised whenever invalid parameters are 
     used in one of the MaskMaker functions, value is just a string"""
