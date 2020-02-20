@@ -215,27 +215,46 @@ class Square_multitone(Pulse):
 
         t_end = self.t0 + 2 * self.cutoff_sigma * self.ramp_sigma_len + self.flat_len
 
-        pulse_array = self.max_amp * (
-            (self.t_array >= t_flat_start) * (
-                self.t_array < t_flat_end) +  # Normal square pulse
-            (self.t_array >= self.t0) * (self.t_array < t_flat_start) * np.exp(
-                -1.0 * (self.t_array - (t_flat_start)) ** 2 / (
-                    2 * self.ramp_sigma_len ** 2)) +  # leading gaussian edge
-            (self.t_array >= t_flat_end) * (
-                self.t_array <= t_end) * np.exp(
-                -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
-                    2 * self.ramp_sigma_len ** 2))  # trailing edge
-        )
-        s = np.zeros(len(self.t_array))
-        for ii,freq in enumerate(self.freqs):s+=np.cos(2 * np.pi * freq * (self.t_array - self.phase_t0) + self.phases[ii])
-        pulse_array = pulse_array * (s)
+        if isinstance(self.max_amp, (int, float)):
+            pulse_array = self.max_amp * (
+                (self.t_array >= t_flat_start) * (
+                    self.t_array < t_flat_end) +  # Normal square pulse
+                (self.t_array >= self.t0) * (self.t_array < t_flat_start) * np.exp(
+                    -1.0 * (self.t_array - (t_flat_start)) ** 2 / (
+                        2 * self.ramp_sigma_len ** 2)) +  # leading gaussian edge
+                (self.t_array >= t_flat_end) * (
+                    self.t_array <= t_end) * np.exp(
+                    -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
+                        2 * self.ramp_sigma_len ** 2))  # trailing edge
+            )
+            s = np.zeros(len(self.t_array))
+            for ii,freq in enumerate(self.freqs):
+                s += np.cos(2 * np.pi * freq * (self.t_array - self.phase_t0) + self.phases[ii])
+            pulse_array = pulse_array * (s)
+        else:
+            pulse_array = np.zeros(len(self.t_array))
+            for ii,freq in enumerate(self.freqs):
+                pulse_array_part = self.max_amp[ii] * (
+                        (self.t_array >= t_flat_start) * (
+                        self.t_array < t_flat_end) +  # Normal square pulse
+                        (self.t_array >= self.t0) * (self.t_array < t_flat_start) * np.exp(
+                    -1.0 * (self.t_array - (t_flat_start)) ** 2 / (
+                            2 * self.ramp_sigma_len ** 2)) +  # leading gaussian edge
+                        (self.t_array >= t_flat_end) * (
+                                self.t_array <= t_end) * np.exp(
+                    -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
+                            2 * self.ramp_sigma_len ** 2))  # trailing edge
+                )
+                s = np.cos(2 * np.pi * freq * (self.t_array - self.phase_t0) + self.phases[ii])
+                pulse_array += pulse_array_part * s
         return pulse_array
 
     def get_length(self):
         return self.flat_len + 2 * self.cutoff_sigma * self.ramp_sigma_len
 
 class Square_with_blockade(Pulse):
-    def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, freq, phase, phase_t0 = 0,blockade_amp=0.0, blockade_pulse_type='square', blockade_freqs = [0],dt=None, plot=False):
+    def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, freq, phase, phase_t0 = 0,
+                 blockade_amp=0.0, blockade_pulse_type='square', blockade_freqs = [0],dt=None, plot=False):
 
         self.max_amp = max_amp
         self.flat_len = flat_len
@@ -258,18 +277,35 @@ class Square_with_blockade(Pulse):
 
         t_end = self.t0 + 2 * self.cutoff_sigma * self.ramp_sigma_len + self.flat_len
 
-        pulse_array = self.max_amp * (
-                (self.t_array >= t_flat_start) * (
-                self.t_array < t_flat_end) +  # Normal square pulse
-                (self.t_array >= self.t0) * (self.t_array < t_flat_start) * np.exp(
-            -1.0 * (self.t_array - (t_flat_start)) ** 2 / (
-                    2 * self.ramp_sigma_len ** 2)) +  # leading gaussian edge
-                (self.t_array >= t_flat_end) * (
-                        self.t_array <= t_end) * np.exp(
-            -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
-                    2 * self.ramp_sigma_len ** 2))  # trailing edge
-        )
-        pulse_array = pulse_array * np.cos(2 * np.pi * self.freq*self.t_array + self.phase)
+        if isinstance(self.max_amp, (int, float)):
+            pulse_array = self.max_amp * (
+                    (self.t_array >= t_flat_start) * (
+                    self.t_array < t_flat_end) +  # Normal square pulse
+                    (self.t_array >= self.t0) * (self.t_array < t_flat_start) * np.exp(
+                -1.0 * (self.t_array - (t_flat_start)) ** 2 / (
+                        2 * self.ramp_sigma_len ** 2)) +  # leading gaussian edge
+                    (self.t_array >= t_flat_end) * (
+                            self.t_array <= t_end) * np.exp(
+                -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
+                        2 * self.ramp_sigma_len ** 2))  # trailing edge
+            )
+            pulse_array = pulse_array * np.cos(2 * np.pi * self.freq*self.t_array + self.phase)
+        else:
+            pulse_array = []
+            for ii in range(len(self.freq)):
+                pulse_array_part = self.max_amp[ii] * (
+                        (self.t_array >= t_flat_start) * (
+                        self.t_array < t_flat_end) +  # Normal square pulse
+                        (self.t_array >= self.t0) * (self.t_array < t_flat_start) * np.exp(
+                    -1.0 * (self.t_array - (t_flat_start)) ** 2 / (
+                            2 * self.ramp_sigma_len ** 2)) +  # leading gaussian edge
+                        (self.t_array >= t_flat_end) * (
+                                self.t_array <= t_end) * np.exp(
+                    -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
+                            2 * self.ramp_sigma_len ** 2))  # trailing edge
+                )
+                pulse_array_part = pulse_array_part * np.cos(2 * np.pi * self.freq[ii] * self.t_array + self.phase[ii])
+                pulse_array += pulse_array_part
 
         if self.blockade_pulse_type.lower() == "gauss":
             self.sigma_len =  (2 * self.cutoff_sigma * self.ramp_sigma_len + self.flat_len)/4.0
@@ -341,13 +377,20 @@ class Gauss_multitone(Pulse):
 
         # pulse_array = self.max_amp * np.exp(
         #     -1.0 * (self.t_array - (self.t0 + 2 * self.sigma_len)) ** 2 / (2 * self.sigma_len ** 2))
-
-        pulse_array = self.max_amp * np.exp(
-            -1.0 * (self.t_array - (self.t0 + self.cutoff_sigma * self.sigma_len)) ** 2 / (2 * self.sigma_len ** 2))
-        
-        s = np.zeros(len(self.t_array))
-        for ii,freq in enumerate(self.freqs):s+=np.cos(2 * np.pi * freq * (self.t_array - self.phase_t0) + self.phases[ii])
-        pulse_array = pulse_array * (s)
+        if isinstance(self.max_amp, (int, float)):
+            pulse_array = self.max_amp * np.exp(
+                -1.0 * (self.t_array - (self.t0 + self.cutoff_sigma * self.sigma_len)) ** 2 / (2 * self.sigma_len ** 2))
+            s = np.zeros(len(self.t_array))
+            for ii,freq in enumerate(self.freqs):
+                s += np.cos(2 * np.pi * freq * (self.t_array - self.phase_t0) + self.phases[ii])
+            pulse_array = pulse_array * (s)
+        else:
+            pulse_array = np.zeros(len(self.t_array))
+            for ii,freq in enumerate(self.freqs):
+                pulse_array_part = self.max_amp[ii] * np.exp(
+                    -1.0 * (self.t_array - (self.t0 + self.cutoff_sigma * self.sigma_len)) ** 2 / (2 * self.sigma_len ** 2))
+                s = np.cos(2 * np.pi * freq * (self.t_array - self.phase_t0) + self.phases[ii])
+                pulse_array += pulse_array_part * s
 
         return pulse_array
 
@@ -374,9 +417,17 @@ class Gauss_with_blockade(Pulse):
         self.flat_len = 2 * self.cutoff_sigma * self.sigma_len - 2 * self.cutoff_sigma * self.ramp_sigma_len
 
     def get_pulse_array(self):
-        pulse_array = self.max_amp * np.exp(
-            -1.0 * (self.t_array - (self.t0 + self.cutoff_sigma * self.sigma_len)) ** 2 / (2 * self.sigma_len ** 2))
-        pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * self.t_array + self.phase)
+        if isinstance(self.max_amp, (int, float)):
+            pulse_array = self.max_amp * np.exp(
+                -1.0 * (self.t_array - (self.t0 + self.cutoff_sigma * self.sigma_len)) ** 2 / (2 * self.sigma_len ** 2))
+            pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * self.t_array + self.phase)
+        else:
+            pulse_array = []
+            for ii in range(len(self.freq)):
+                pulse_array_part = self.max_amp[ii] * np.exp(
+                    -1.0 * (self.t_array - (self.t0 + self.cutoff_sigma * self.sigma_len)) ** 2 / (2 * self.sigma_len ** 2))
+                pulse_array_part = pulse_array_part * np.cos(2 * np.pi * self.freq[ii] * self.t_array + self.phase[ii])
+                pulse_array += pulse_array_part
 
         if self.blockade_pulse_type.lower() == "gauss":
             blockade_pulse_array = self.blockade_amp * np.exp(
