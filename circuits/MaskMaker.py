@@ -406,7 +406,6 @@ class Structure(object):
         self.layer = layer
         self.color = color
         self.defaults = defaults.copy()
-        self.structures = []
         try:
             self.pinw = chip.pinw
         except AttributeError:
@@ -1149,14 +1148,22 @@ then it just calls CPWStraight2. Othersie it does through this new renamed funct
 
 
 class CPWStraight:
-    def __init__(self, structure, length, pinw=None, gapw=None, bridges=True, pos=250, ratio=3, offset=0, insert_bridge=False, taper=False, extra_space=13, bridge_pad_length=15, bridge_width=3.5):
+    def __init__(self, structure, length, pinw=None, gapw=None, bridges=True, pos=None, ratio=3, offset=0,
+                 insert_bridge=False, taper=False, extra_space=13, bridge_pad_length=15, bridge_width=3.5,
+                 even_tile=False):
         s = structure
         if pinw is None: pinw = structure.__dict__['pinw']
         if gapw is None: gapw = structure.__dict__['gapw']
+        #if pos is None: pos = structure.defaults.bridge_pos
+        if pos is None: pos = 10000
         pinw, gapw = float(pinw), float(gapw)
         taper_length = pinw / 5
         bridge_pad_width = extra_space - 4
 
+        if even_tile:
+            div_fac = round(length/pos)
+            if div_fac:
+                pos = length/div_fac
         if insert_bridge:
             print('insert_bridge')
             '''CPWStraight2(structure, length/2 - extra_space/2 , pinw, gapw)
@@ -1972,7 +1979,7 @@ class CPWBend:
     A CPW bend
     """
 
-    def __init__(self, structure, turn_angle, pinw=None, gapw=None, radius=None, polyarc=True, segments=20):
+    def __init__(self, structure, turn_angle, pinw=None, gapw=None, radius=None, polyarc=True, segments=60):
         """creates a CPW bend with pinw/gapw/radius
             @param turn_angle: turn_angle is in degrees, positive is CCW, negative is CW
         """
