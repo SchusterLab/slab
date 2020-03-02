@@ -494,7 +494,7 @@ class PulseSequences:
             for qubit_id in self.expt_cfg['on_qubits']:
                 if self.expt_cfg['ge_pi']:
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                self.gen_q(sequencer,qubit_id,len=rabi_len,phase=0,pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'],add_freq = self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'] )
+                self.gen_q(sequencer,qubit_id,amp=self.expt_cfg['amp'],len=rabi_len,phase=0,pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'],add_freq = self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'] )
                 if self.expt_cfg['pi_calibration']:
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                     self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
@@ -674,6 +674,7 @@ class PulseSequences:
         detuning = self.expt_cfg['detuning']
         freq1, freq2 = center_freq + offset_freq - detuning / 2.0, center_freq + offset_freq + detuning / 2.0
         rabi_len = self.expt_cfg['length']
+        wait_after_reset = self.expt_cfg['wait_after_reset']
 
         for ii in range(self.expt_cfg['num_seq_sets']):
             for qubit_id in self.expt_cfg['on_qubits']:
@@ -682,14 +683,24 @@ class PulseSequences:
                 self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
                 sequencer.sync_channels_time(self.channels)
                 if self.expt_cfg['single_tone']:
-                    sequencer.append('sideband',
-                                     Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
-                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
-                                                'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
-                                            plot=False))
-                    self.gen_q(sequencer, qubit_id, len=rabi_len, phase=0,
-                               pulse_type="square",
-                               add_freq=self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'])
+                    if self.expt_cfg['simultaneous']:
+                        sequencer.append('sideband',
+                                         Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
+                                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                    'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                                plot=False))
+                        self.gen_q(sequencer, qubit_id, len=rabi_len, phase=0,
+                                   pulse_type="square",
+                                   add_freq=self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'])
+                    else:
+                        self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                        sequencer.sync_channels_time(self.channels)
+                        sequencer.append('sideband',
+                                         Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
+                                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                    'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                                plot=False))
+
                 else:
                     sequencer.append('sideband',
                                  Square_two_tone(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
@@ -698,7 +709,7 @@ class PulseSequences:
                                                  phase1=0, phase2=0, plot=False))
                 for qubit_id in self.expt_cfg['on_qubits']:
                     sequencer.sync_channels_time(self.channels)
-                    self.idle_q_sb(sequencer, qubit_id, time=40)
+                    self.idle_q_sb(sequencer, qubit_id, time=wait_after_reset)
                 self.readout_pxi(sequencer,qubit_id)
                 sequencer.end_sequence()
 
@@ -707,14 +718,23 @@ class PulseSequences:
                 self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
                 sequencer.sync_channels_time(self.channels)
                 if self.expt_cfg['single_tone']:
-                    sequencer.append('sideband',
-                                     Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
-                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
-                                                'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
-                                            plot=False))
-                    self.gen_q(sequencer, qubit_id, len=rabi_len, phase=0,
-                               pulse_type="square",
-                               add_freq=self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'])
+                    if self.expt_cfg['simultaneous']:
+                        sequencer.append('sideband',
+                                         Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
+                                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                    'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                                plot=False))
+                        self.gen_q(sequencer, qubit_id, len=rabi_len, phase=0,
+                                   pulse_type="square",
+                                   add_freq=self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'])
+                    else:
+                        self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                        sequencer.sync_channels_time(self.channels)
+                        sequencer.append('sideband',
+                                         Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
+                                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                    'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                                plot=False))
                 else:
                     sequencer.append('sideband',
                                  Square_two_tone(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
@@ -724,7 +744,7 @@ class PulseSequences:
 
                 for qubit_id in self.expt_cfg['on_qubits']:
                     sequencer.sync_channels_time(self.channels)
-                    self.idle_q_sb(sequencer, qubit_id, time=40)
+                    self.idle_q_sb(sequencer, qubit_id, time=wait_after_reset)
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 self.readout_pxi(sequencer, qubit_id)
                 sequencer.end_sequence()
@@ -734,14 +754,23 @@ class PulseSequences:
                 self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
                 sequencer.sync_channels_time(self.channels)
                 if self.expt_cfg['single_tone']:
-                    sequencer.append('sideband',
-                                     Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
-                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
-                                                'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
-                                            plot=False))
-                    self.gen_q(sequencer, qubit_id, len=rabi_len, phase=0,
-                               pulse_type="square",
-                               add_freq=self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'])
+                    if self.expt_cfg['simultaneous']:
+                        sequencer.append('sideband',
+                                         Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
+                                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                    'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                                plot=False))
+                        self.gen_q(sequencer, qubit_id, len=rabi_len, phase=0,
+                                   pulse_type="square",
+                                   add_freq=self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'])
+                    else:
+                        self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                        sequencer.sync_channels_time(self.channels)
+                        sequencer.append('sideband',
+                                         Square(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
+                                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                    'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                                plot=False))
                 else:
                     sequencer.append('sideband',
                                  Square_two_tone(max_amp=self.expt_cfg['amp'], flat_len=rabi_len,
@@ -751,7 +780,7 @@ class PulseSequences:
 
                 for qubit_id in self.expt_cfg['on_qubits']:
                     sequencer.sync_channels_time(self.channels)
-                    self.idle_q_sb(sequencer, qubit_id, time=40)
+                    self.idle_q_sb(sequencer, qubit_id, time=wait_after_reset)
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                     self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
                 self.readout_pxi(sequencer, qubit_id)
@@ -1008,6 +1037,7 @@ class PulseSequences:
                 sequencer.sync_channels_time(self.channels)
                 self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = offset_phase/2.0)
                 sequencer.sync_channels_time(self.channels)
+                # self.parity_measurement(sequencer, qubit_id)
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 self.idle_q(sequencer, qubit_id, time=ramsey_len)
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'],phase = 2*np.pi*ramsey_len*phase_freq)
@@ -1120,19 +1150,13 @@ class PulseSequences:
 
         for ii in np.arange(self.expt_cfg['num_expts']):
             sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
             for qubit_id in self.expt_cfg['on_qubits']:
 
                 offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset']
-                if self.expt_cfg['add_photon']:
-                    if ii > self.expt_cfg['num_expts'] / 2.0:
-                        self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                        self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
-                        sequencer.sync_channels_time(self.channels)
-                        self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
-                        sequencer.sync_channels_time(self.channels)
 
                 if self.expt_cfg['reset']:
-                    self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+
                     self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
                     sequencer.sync_channels_time(self.channels)
                     sequencer.append('sideband',
@@ -1143,7 +1167,53 @@ class PulseSequences:
                     sequencer.sync_channels_time(self.channels)
                     self.idle_q_sb(sequencer, qubit_id, time=wait_after_reset)
 
+                if self.expt_cfg['add_photon']:
 
+                    if ii > self.expt_cfg['num_expts'] / 2.0:
+                        self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                        self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                        sequencer.sync_channels_time(self.channels)
+                        self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+                        sequencer.sync_channels_time(self.channels)
+
+                self.idle_q_sb(sequencer, qubit_id, time=self.expt_cfg['wait_before_parity'])
+                self.parity_measurement(sequencer,qubit_id)
+
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=self.plot_visdom)
+
+    def sideband_repetitive_parity_measurement(self, sequencer):
+        # sideband parity measurement
+
+        sideband_freq = self.expt_cfg['sideband_freq']
+        sideband_pulse_length =  self.expt_cfg['sideband_pulse_length']
+        wait_after_reset = self.expt_cfg['wait_after_reset']
+
+        for ii in np.arange(self.expt_cfg['num_expts']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+            for qubit_id in self.expt_cfg['on_qubits']:
+                offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset']
+                self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('sideband',
+                                 Square(max_amp=self.expt_cfg['amp'], flat_len=sideband_pulse_length,
+                                        ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                            'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                        plot=False))
+                sequencer.sync_channels_time(self.channels)
+                self.idle_q_sb(sequencer, qubit_id, time=wait_after_reset)
+
+                if self.expt_cfg['add_photon']:
+
+                    if ii == self.expt_cfg['add_photon_location']:
+                        self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                        self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                        sequencer.sync_channels_time(self.channels)
+                        self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0)
+                        sequencer.sync_channels_time(self.channels)
 
                 self.idle_q_sb(sequencer, qubit_id, time=self.expt_cfg['wait_before_parity'])
                 self.parity_measurement(sequencer,qubit_id)

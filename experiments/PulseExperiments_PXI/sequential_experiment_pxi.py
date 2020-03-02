@@ -19,6 +19,7 @@ from slab.experiments.PulseExperiments.get_data import get_singleshot_data_two_q
 import pickle
 
 class SequentialExperiment:
+
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, path,analyze = False,show=True,P = 'Q'):
 
         self.Is = []
@@ -144,7 +145,6 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
-
     def qubit_temperature(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         experiment_name = 'ef_rabi'
         expt_cfg = experiment_cfg[experiment_name]
@@ -166,7 +166,6 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
-
     def sideband_reset_qubit_temperature(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         experiment_name = 'sideband_transmon_reset'
         expt_cfg = experiment_cfg[experiment_name]
@@ -177,7 +176,7 @@ class SequentialExperiment:
 
             experiment_cfg['sideband_transmon_reset']['ge_pi'] = ge_pi
             if ge_pi:pass
-            else:experiment_cfg['sideband_transmon_reset']['acquisition_num'] = 50000
+            else:experiment_cfg['sideband_transmon_reset']['acquisition_num'] = 7000
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
@@ -294,10 +293,8 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
-
     def sequential_qubit_calibration(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         pass
-
 
     def analyze(self,quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name,show,Is,Qs,P='Q'):
         PA = PostExperiment(quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name, Is,Qs,P,show)

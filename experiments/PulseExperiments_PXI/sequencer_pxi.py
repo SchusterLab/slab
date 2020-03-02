@@ -203,6 +203,21 @@ class Sequencer:
             sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["1"]))
             self.end_sequence()
 
+        elif sequences.expt_cfg.get('pi_calibration_with_reset', False):
+
+            self.new_sequence(sequences)
+            sequences.pad_start_pxi_tek2(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
+            sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["1"]))
+            self.end_sequence()
+
+            self.new_sequence(sequences)
+            sequences.pad_start_pxi_tek2(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
+            for qubit_id in sequences.expt_cfg.get('on_qubits',["1"]):
+                sequences.pi_q(self,qubit_id = qubit_id,phase = 0,pulse_type = sequences.pulse_info[qubit_id]['pulse_type'])
+            sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["1"]))
+            self.end_sequence()
+
+
 
         self.equalize_sequences()
         self.delay_channels(self.channels_delay)

@@ -48,7 +48,6 @@ class Experiment:
         self.Q = None
         self.prep_tek2 = False
 
-
     def initiate_pxi(self, name, sequences):
         try:self.tek2.stop()
         except:pass

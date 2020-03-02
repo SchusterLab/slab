@@ -24,8 +24,8 @@
   "readout": {"amp": 1.0, "length": 5000, "freq": 8.0721,"window":[800, 5000],"dig_atten":-10},
   "pulse_info": {
     "1": {
-      "pi_amp": 0.989, "pi_ef_amp": 0.971, "pi_len":  49, "pi_ef_len": 55, "half_pi_amp": 0.969, "half_pi_ef_amp": 0.953,
-      "half_pi_len":  25, "half_pi_ef_len": 28,"iq_freq":0.2,"Q_phase":1.57079,"pulse_type":"gauss","ef_pulse_type":"gauss"
+      "pi_amp": 0.1, "pi_ef_amp": 0.971, "pi_len":  100.32, "pi_ef_len": 55, "half_pi_amp": 0.1, "half_pi_ef_amp": 0.953,
+      "half_pi_len":  50.1669384806974, "half_pi_ef_len": 28,"iq_freq":0.2,"Q_phase":1.57079,"pulse_type":"square","ef_pulse_type":"square"
     },
     "2": {
       "pi_amp": 1.0, "pi_ef_amp": 1.0, "pi_len": 87.25, "pi_ef_len": 29.49, "half_pi_amp": 1.0, "half_pi_ef_amp": 1.0,

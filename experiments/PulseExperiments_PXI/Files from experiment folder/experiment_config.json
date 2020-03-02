@@ -2,7 +2,7 @@
   "rabi": {
     "amp": 1.0,
     "stop": 303, "step": 3.0, "pi_calibration": true,
-    "start": 0.0, "acquisition_num": 3000, "on_qubits": ["1"],"singleshot":false,"pulse_type":"gauss"
+    "start": 0.0, "acquisition_num": 3000, "on_qubits": ["1"],"singleshot":false,"pulse_type":"square"
   },
   "rabi_sideband": {
     "amp": 1.0,
@@ -20,8 +20,8 @@
   },
 
   "ramsey": {
-    "stop": 2020.0, "step": 20.0, "singleshot": false,
-    "start": 0.0, "ramsey_freq": 0.004, "acquisition_num": 2001, "on_qubits": ["1"], "pi_calibration": false
+    "stop": 2020.0, "step": 200.0, "singleshot": false,
+    "start": 0.0, "ramsey_freq": 0.000, "acquisition_num": 2001, "on_qubits": ["1"], "pi_calibration": false
   },
 
   "echo": {

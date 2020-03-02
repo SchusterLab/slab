@@ -1004,6 +1004,21 @@ class PostExperiment:
             ax.legend()
             plt.show()
 
+    def sideband_repetitive_parity_measurement(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.' + self.P)
+        t = arange(expt_cfg['num_expts'])
+
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Experiment number)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            plt.show()
+
     def sideband_cavity_photon_number(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
