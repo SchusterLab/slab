@@ -627,6 +627,7 @@ class N5242A(SocketInstrument):
         :param data_format: 'ascii' or 'binary' (optional, saves time)
         :return: fpts, mags, phases
         """
+
         _trig_source = self.get_trigger_source()
         _format = self.get_format()
         self.setup_take()

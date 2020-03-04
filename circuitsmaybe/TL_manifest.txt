@@ -1,0 +1,6 @@
+Mask:	TL	Total Chips:	5
+ID	Copies	Short Description	Chip Type	Chip Info
+A	5	None
+______________________
+A	5	None
+
