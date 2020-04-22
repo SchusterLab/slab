@@ -142,6 +142,24 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+    def rabisweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        experiment_name = 'rabisweep'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+
+        for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+            quantum_device_cfg['readout']['freq'] = freq
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
     def resonator_spectroscopy_power_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         sweep_expt_name = 'resonator_spectroscopy_power_sweep'
         swp_cfg = experiment_cfg[sweep_expt_name]
@@ -154,7 +172,7 @@ class SequentialExperiment:
 
         for atten in np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step']):
             print("Attenuation set to ", atten, 'dB')
-            quantum_device_cfg['readout']['dig_atten'] = atten
+            quantum_device_cfg['readout_drive_digital_attenuation']= atten
             Is_t = []
             Qs_t = []
             for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
@@ -322,6 +340,30 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+    def pulse_probe_atten_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['pulse_probe_atten_sweep']
+        attens = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+
+        experiment_name = 'pulse_probe_iq'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'pulse_probe_atten_sweep', suffix='.h5'))
+
+        for atten in attens:
+
+            quantum_device_cfg["qubit_drive_digital_attenuation"] = -atten
+            print("atten set to", atten)
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
 
     def sequential_sideband_ramsey(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         swp_cfg = experiment_cfg['sequential_sideband_ramsey']
