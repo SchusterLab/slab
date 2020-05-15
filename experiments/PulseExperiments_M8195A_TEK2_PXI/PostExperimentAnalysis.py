@@ -4,7 +4,7 @@ from numpy import*
 
 class PostExperiment:
 
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, I , Q, P = 'Q', show=True):
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, I , Q, P = 'Q', show = True):
         self.quantum_device_cfg = quantum_device_cfg
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
@@ -16,10 +16,8 @@ class PostExperiment:
         self.show = show
 
         # eval('self.' + experiment_name)()
-        try:
-            temp = eval('self.' + experiment_name)()
-        except:
-            print("No post experiment analysis yet")
+        try:eval('self.' + experiment_name)()
+        except:print("No post experiment analysis yet")
 
     def resonator_spectroscopy(self):
         expt_cfg = self.experiment_cfg[self.exptname]
@@ -108,42 +106,6 @@ class PostExperiment:
         dt = 0.0625
         print("suggested_pi_length = ", (int(t_pi / dt) + 1) * dt, "suggested_pi_amp = ",amp * (t_pi) / float((int(t_pi / dt) + 1) * dt))
         print("suggested_half_pi_length = ", (int(t_half_pi / dt) + 1) * dt, "suggested_piby2_amp = ",amp * (t_half_pi) / float((int(t_half_pi / dt) + 1) * dt))
-
-    def rabi_drag(self):
-        expt_cfg = self.experiment_cfg[self.exptname]
-        P = eval('self.' + self.P)
-        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
-        amp = expt_cfg['amp']
-        if self.show:
-
-            fig = plt.figure(figsize=(14, 7))
-            ax = fig.add_subplot(111, title=self.exptname)
-            ax.plot(t, P, 'o-', label=self.P)
-            ax.set_xlabel('Time (ns)')
-            ax.set_ylabel(self.P)
-            ax.legend()
-            p = fitdecaysin(t[2:], P[2:], showfit=True)
-            t_pi = 1 / (2 * p[1])
-            t_half_pi = 1 / (4 * p[1])
-
-            ax.axvline(t_pi, color='k', linestyle='dashed')
-            ax.axvline(t_half_pi, color='k', linestyle='dashed')
-
-            plt.show()
-
-        else:
-            p = fitdecaysin(t, P, showfit=False)
-            t_pi = 1 / (2 * p[1])
-            t_half_pi = 1 / (4 * p[1])
-
-        print("Half pi length =", t_half_pi, "ns")
-        print("pi length =", t_pi, "ns")
-        dt = 0.0625
-        print("suggested_pi_length = ", (int(t_pi / dt) + 1) * dt, "suggested_pi_amp = ",
-              amp * (t_pi) / float((int(t_pi / dt) + 1) * dt))
-        print("suggested_half_pi_length = ", (int(t_half_pi / dt) + 1) * dt, "suggested_piby2_amp = ",
-              amp * (t_half_pi) / float((int(t_half_pi / dt) + 1) * dt))
-
 
     def t1(self):
         expt_cfg = self.experiment_cfg[self.exptname]
@@ -1687,31 +1649,28 @@ class PostExperiment:
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
         nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
-        nu_c = self.quantum_device_cfg['flux_pulse_info']['1']['cavity_freqs'][expt_cfg['mode_index']]
 
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
 
         if self.show:
+
             fig = plt.figure(figsize=(14, 7))
             ax = fig.add_subplot(111, title=self.exptname)
             ax.plot(t, P, 'o-', label=self.P)
             ax.set_xlabel('Time (ns)')
             ax.set_ylabel(self.P)
             ax.legend()
-            p = fitdecaysin(t[1:], P[1:], showfit=False)
-            p = fitdecaysin(t[:], P[:], fitparams=p, showfit=True)
+            p = fitdecaysin(t, P, showfit=True)
             plt.show()
-        else:
-            p = fitdecaysin(t[1:], P[1:], showfit=False)
-            p = fitdecaysin(t, P, showfit=False)
+
+        else:p = fitdecaysin(t, P, showfit=False)
+
         offset = ramsey_freq - p[1]
-        suggested_dc_offset = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['f0g1_dc_offset'][expt_cfg['mode_index']] + offset
+        suggested_dc_offset = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['f0g1_dc_offset']['mode_index'] + offset
         print("Offset freq =", offset * 1e3, "MHz")
         print("Suggested dc offset =", suggested_dc_offset * 1e3, "MHz")
         print("T2 =", p[3], "ns")
-        nu_c_new = nu_c + offset
-        return nu_c_new
 
     def weak_rabi(self):
         expt_cfg = self.experiment_cfg[self.exptname]
@@ -1749,10 +1708,10 @@ class PostExperiment:
               amp * (t_half_pi) / float((int(t_half_pi / dt) + 1) * dt))
 
     def save_cfg_info(self, f):
-        f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
-        f.attrs['experiment_cfg'] = json.dumps(self.experiment_cfg)
-        f.attrs['hardware_cfg'] = json.dumps(self.hardware_cfg)
-        f.close()
+            f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
+            f.attrs['experiment_cfg'] = json.dumps(self.experiment_cfg)
+            f.attrs['hardware_cfg'] = json.dumps(self.hardware_cfg)
+            f.close()
 
     def optimal_control_test(self):
         expt_cfg = self.experiment_cfg[self.exptname]
@@ -1767,182 +1726,6 @@ class PostExperiment:
             ax.legend()
             plt.show()
         print("Final state: ", P[-1])
-
-    def cavity_spectroscopy_resolved_qubit_pulse(self):
-        expt_cfg = self.experiment_cfg[self.exptname]
-        nu_c = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_cavities']]['cavity_freqs'][expt_cfg['mode_index']]
-        amp = expt_cfg['cavity_amp']
-        length = expt_cfg['cavity_pulse_len']
-
-        P = eval('self.'+self.P)
-        df = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
-        freqs = nu_c + df
-
-        if self.show:
-            fig = plt.figure(figsize=(14, 7))
-            ax = fig.add_subplot(111, title='$\\tau$ = ' + str(length / 1e3) + ' us')
-            ax.plot(freqs, P, 'bo-', label='a = ' + str(amp), linewidth=3)
-            p = fitlor(freqs, -P, showfit=False)
-            ax.plot(freqs, -lorfunc(p, freqs), 'r-')
-            ax.set_xlabel('Cavity freq (GHz)')
-            ax.set_ylabel('$P_0$')
-            ax.axvline(p[2], color='r', linestyle='dashed', alpha=0.25)
-            ax.legend()
-            ax.set_ylim(-0.1, 1.1)
-            plt.show()
-        else:
-            p = fitlor(freqs, -P, showfit=False)
-        print("Resonance frequency = ", p[2])
-        print("Width = ", p[3] * 1e3, "MHz")
-        print("========================================")
-        return p[2]
-
-
-    def photon_number_resolved_qubit_spectroscopy(self):
-        expt_cfg = self.experiment_cfg[self.exptname]
-        nu_c = self.quantum_device_cfg['flux_pulse_info']['1']['cavity_freqs'][expt_cfg['mode_index']]
-        nu_q = self.quantum_device_cfg['qubit']['1']['freq']
-        chi = self.quantum_device_cfg['flux_pulse_info']['1']['chiby2pi_e'][expt_cfg['mode_index']]
-        if chi == 0:
-            chi = -0.3e-3
-        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:] + nu_q
-        I = self.I
-        N = 3
-
-        p = 0 * ones(3 * N + 1)
-        for ii in range(N):
-            p[3 * ii + 1] = 1
-            p[3 * ii + 2] = nu_q + 2 * chi * ii
-            p[3 * ii + 3] = 0.0001
-
-        def gaussfuncsum(p, x):
-            """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""
-            y = 0
-            for ii in range(N):
-                y = y + p[3 * ii + 1] * exp(-(x - (p[3 * ii + 2])) ** 2 / 2 / p[3 * ii + 3] ** 2)
-            return y
-
-        def fitgausssum(xdata, ydata, fitparams=None, domain=None, showfit=False, showstartfit=False, label="",
-                        debug=False):
-            """fit lorentzian:
-                returns [offset,amplitude,center,hwhm]"""
-            if domain is not None:
-                fitdatax, fitdatay = selectdomain(xdata, ydata, domain)
-            else:
-                fitdatax = xdata
-                fitdatay = ydata
-            if fitparams is None:
-                fitparams = 0 * ones(3 * N + 1)
-                fitparams[0] = (fitdatay[0] + fitdatay[-1]) / 2.
-                fitparams[1] = max(fitdatay) - min(fitdatay)
-                fitparams[2] = fitdatax[np.argmax(fitdatay)]
-                fitparams[3] = (max(fitdatax) - min(fitdatax)) / 10.
-            if debug == True: print(fitparams)
-            p1 = fitgeneral(fitdatax, fitdatay, gaussfuncsum, fitparams, domain=None, showfit=showfit,
-                            showstartfit=showstartfit,
-                            label=label)
-            p1[3] = abs(p1[3])
-            return p1
-
-        p = fitgausssum(f, I, fitparams=p, showfit=False)
-        pfit = p
-        Y = abs(pfit[2::3])
-        X = abs(pfit[1::3])
-        nus = -sort(-Y)
-        chi_n = nus[1] / 2 - nus[0] / 2
-
-        if self.show:
-            fig = plt.figure(figsize=(14,7))
-            ax = fig.add_subplot(111, title='mode = ' + str(expt_cfg['mode_index']))
-            ax.plot(f, I, 'b.--')
-            for ii in range(6):
-                ax.axvline(nu_q + 2 * ii * chi_n, color='g', linestyle='dashed', alpha=0.25)
-            ax.set_xlabel('Freq (GHz)')
-            ax.set_ylabel('$P_e$')
-            ax.set_ylim(0.0, 1.0)
-            plt.show()
-        print("chi = ", chi_n)
-        return chi_n
-
-
-    def blockade_experiments_cavity_spectroscopy(self):
-        expt_cfg = self.experiment_cfg[self.exptname]
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
-        nu_c = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['cavity_freqs'][expt_cfg['mode_index']]
-        print("use weak drive for dressing:", expt_cfg['use_weak_drive_for_dressing'])
-        print("use weak drive for probe:", expt_cfg['use_weak_drive_for_probe'])
-        print("dressing amp:", expt_cfg['dressing_amp'])
-        print("cavity drive amp:", expt_cfg['cavity_amp'])
-        print("cavity awg scales :", self.hardware_cfg['awg_info']['m8195a']['amplitudes'])
-        print("prep state before blockade = ", expt_cfg['prep_state_before_blockade'])
-        P = eval('self.'+self.P)
-        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:] * 1e3
-
-        if self.show:
-            fig = plt.figure(figsize=(14, 7))
-            ax = fig.add_subplot(111, title="$\\nu_c$ = " + str(around(nu_c, 3)) + " GHz")
-            ax.plot(f, P, 'o--', markersize=7)
-            p = fitlor(f, -P, showfit=True)
-            ax.plot(f, -lorfunc(p, f), 'k--')
-            axvline(p[2], color='r', linestyle='dashed')
-            ax.set_xlabel('$\\delta\\nu$ (MHz)')
-            ax.set_ylabel('$P_{n}$')
-            ax.set_ylim(0, 1)
-            plt.show()
-        else:
-            p = fitlor(f, -P, showfit=False)
-
-        print("offset = ", p[2])
-        print("new cavity offset freq (MHz) = ", p[2] + expt_cfg['cavity_offset_freq'] * 1e3)
-        print("new cavity freq = ", nu_c + p[2] * 1e-3)
-        return p[2] / 1e3 + expt_cfg['cavity_offset_freq']
-
-
-    def sequential_multitone_blockaded_cavity_rabi_vary_probe_level(self):
-        swp_cfg = self.experiment_cfg[self.exptname]
-        use_weak_cav = experiment_cfg['blockade_experiments_cavity_spectroscopy']['weak_cavity']
-        if use_weak_cav:
-            expt_cfg = self.experiment_cfg['multitone_blockaded_weak_cavity_rabi']
-        else:
-            expt_cfg = self.experiment_cfg['multitone_blockaded_cavity_rabi']
-        nu_c = self.quantum_device_cfg['flux_pulse_info']['1']['cavity_freqs'][expt_cfg['mode_index']]
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
-        print("=============== file num = ", f, " ==========================")
-        print("use weak drive for dressing:", expt_cfg['use_weak_drive_for_dressing'])
-        print("use weak drive for probe:", expt_cfg['use_weak_drive_for_probe'])
-        print("dressing amp:", expt_cfg['dressing_amp'])
-        print("cavity drive amp:", expt_cfg['cavity_amp'])
-        print("cavity awg scales :", hardware_cfg['awg_info']['m8195a']['amplitudes'])
-        P = eval('self.'+self.P)
-        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:] / 1e3
-        ns = arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])[:]
-        fitlist = [0,1]
-        pi_lens = []
-        if self.show:
-            fig = plt.figure(figsize=(15, 10))
-            ax = fig.add_subplot(111, title="$\\nu_c$ = " + str(around(nu_c, 3)) + " GHz")
-            for ii, pp in enumerate(P):
-                ax.plot(t, pp[:len(t)], 'o--', label='$P_{%s}$' % (int(ns[ii])), markersize=7)
-                if ii in fitlist:
-                    f = fitdecaysin(t, pp, fitparams=[0.5, 1 / (2 * 12.0), 0, 10.0, 0.5], showfit=False)
-                    ax.plot(t, decaysin(append(f, 0), t), 'r--')
-                    ax.axvline(1 / f[1] / 2, color='k', linestyle='dashed')
-                    print("pi length = ", 1 / f[1] / 2.0)
-                    pi_lens.append(1 / f[1] / 2.0)
-            ax.set_xlabel('Time ($\\mu$s)')
-            ax.set_ylabel('$P_{n}$')
-            ax.set_xlim(0, 56)
-            ax.set_ylim(0, 1)
-            ax.axhline(0.08)
-            plt.show()
-        else:
-            for ii, pp in enumerate(P):
-                if ii in fitlist:
-                    f = fitdecaysin(t, pp, fitparams=[0.5, 1 / (2 * 12.0), 0, 10.0, 0.5], showfit=False)
-                    print("pi length = ", 1 / f[1] / 2.0)
-                    pi_lens.append(1 / f[1] / 2.0)
-        return pi_lens
-
 
 def temperature_q(nu, rat):
     Kb = 1.38e-23

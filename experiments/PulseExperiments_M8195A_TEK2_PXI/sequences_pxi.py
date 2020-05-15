@@ -16,8 +16,6 @@ import copy
 
 from h5py import File
 from scipy import interpolate
-from itertools import combinations
-
 
 class PulseSequences:
     # channels and awgs
@@ -70,12 +68,11 @@ class PulseSequences:
     def gen_q_multitone(self,sequencer,qubit_id = '1',len = 10,amp = 1,add_freqs = np.array([0]),phases = np.array([0]),pulse_type = 'square'):
         if pulse_type.lower() == 'square':
             sequencer.append('charge%s' % qubit_id, Square_multitone(max_amp=amp, flat_len=len,
-                                    ramp_sigma_len=0.001, cutoff_sigma=2, freqs=self.qubit_freq[qubit_id]+np.array(add_freqs),
+                                    ramp_sigma_len=0.001, cutoff_sigma=2, freqs=self.qubit_freq[qubit_id]+add_freqs,
                                     phases=phases))
         elif pulse_type.lower() == 'gauss':
             sequencer.append('charge%s' % qubit_id, Gauss_multitone(max_amp=amp, sigma_len=len,
-                                                             cutoff_sigma=2,freqs=self.qubit_freq[qubit_id]+np.array(add_freqs)
-                                                                    ,phase=phases))
+                                                             cutoff_sigma=2,freqs=self.qubit_freq[qubit_id]+add_freqs,phase=phases))
 
     def gen_q_weak(self,sequencer,qubit_id = '1',len = 10,amp = 1,add_freq = 0,phase = 0,pulse_type = 'square'):
         if pulse_type.lower() == 'square':
@@ -89,11 +86,11 @@ class PulseSequences:
     def gen_q_weak_multitone(self,sequencer,qubit_id = '1',len = 10,amp = 1,add_freqs = np.array([0]),phases = np.array([0]),pulse_type = 'square'):
         if pulse_type.lower() == 'square':
             sequencer.append('qubitweak', Square_multitone(max_amp=amp, flat_len=len,
-                                    ramp_sigma_len=0.001, cutoff_sigma=2, freqs=self.qubit_freq[qubit_id]+np.array(add_freqs),
+                                    ramp_sigma_len=0.001, cutoff_sigma=2, freqs=self.qubit_freq[qubit_id]+add_freqs,
                                     phases=phases))
         elif pulse_type.lower() == 'gauss':
             sequencer.append('qubitweak', Gauss_multitone(max_amp=amp, sigma_len=len,
-                                                             cutoff_sigma=2,freqs=self.qubit_freq[qubit_id]+np.array(add_freqs),phases=phases))
+                                                             cutoff_sigma=2,freqs=self.qubit_freq[qubit_id]+add_freqs,phases=phases))
 
     def pi_q(self,sequencer,qubit_id = '1',phase = 0,pulse_type = 'square', add_freq=0):
         if pulse_type.lower() == 'square':
@@ -202,12 +199,6 @@ class PulseSequences:
                                 ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'],
                                 cutoff_sigma=2, freq=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['e0g2_freq'][mode_index]+add_freq, phase=phase,fix_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
                                 dc_offset=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['e0g2_dc_offset'][mode_index],plot=False))
-
-    def pi_h0e1_sb(self,sequencer,qubit_id = '1',phase = 0,pulse_type = 'square',add_freq = 0,mode_index = 0):
-        sequencer.append('sideband2',Square(max_amp=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['pi_h0e1_amp'][mode_index],flat_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['pi_h0e1_len'][mode_index],
-                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'],
-                                cutoff_sigma=2, freq=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['h0e1_freq'][mode_index]+add_freq, phase=phase,fix_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
-                                dc_offset=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['h0e1_dc_offset'][mode_index],plot=False))
 
     def pi_fnm1gn_sb(self,sequencer,qubit_id = '1',phase = 0,pulse_type = 'square',n=0, mode_index=0):
         sequencer.append('sideband',Square(max_amp=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['pi_fnm1gn_amps'][mode_index][int(n-1)],flat_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['pi_fnm1gn_lens'][mode_index][int(n - 1)],
@@ -369,8 +360,8 @@ class PulseSequences:
 
     def gen_c_multitone(self, sequencer, mode_indices = [0], len=10, amps=[1], add_freqs=[0], phases=[0], pulse_type='square'):
         freqs = []
-        for mode_index in mode_indices:
-            freqs.append(self.cavity_freq[mode_index] + add_freqs[mode_index])
+        for i in range(len(mode_indices)):
+            freqs.append(self.cavity_freq[mode_indices[i]] + add_freqs[i])
         if pulse_type.lower() == 'square':
             sequencer.append('cavity', Square_multitone(max_amp=amps, flat_len=len,
                                     ramp_sigma_len=0.001, cutoff_sigma=2, freqs=freqs,
@@ -381,8 +372,8 @@ class PulseSequences:
 
     def gen_c_weak_multitone(self, sequencer, mode_indices = [0], len=10, amps=[1], add_freqs=[0], phases=[0], pulse_type='square'):
         freqs = []
-        for mode_index in mode_indices:
-            freqs.append(self.cavity_freq[mode_index] + add_freqs[mode_index])
+        for i in range(len(mode_indices)):
+            freqs.append(self.cavity_freq[mode_indices[i]] + add_freqs[i])
         if pulse_type.lower() == 'square':
             sequencer.append('qubitweak', Square_multitone(max_amp=amps, flat_len=len,
                                     ramp_sigma_len=0.001, cutoff_sigma=2, freqs=freqs,
@@ -669,24 +660,11 @@ class PulseSequences:
             sequencer.new_sequence(self)
            
             for qubit_id in self.expt_cfg['on_qubits']:
-                add_freq = self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity'] + \
-                           self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity_fh']
-
                 self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                sequencer.sync_channels_time(self.channels)
-
                 self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
-                sequencer.sync_channels_time(self.channels)
-                self.gen_q(sequencer, qubit_id, amp=self.expt_cfg['amp'], len=self.expt_cfg['pulse_length'], phase=0,
-                           pulse_type=self.expt_cfg['pulse_type'], add_freq=add_freq +dfreq)
-                sequencer.sync_channels_time(self.channels)
-                if self.expt_cfg['pi_calibration']:
-                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
-                    sequencer.sync_channels_time(self.channels)
-                    self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                    sequencer.sync_channels_time(self.channels)
+                self.gen_q(sequencer, qubit_id, len=self.expt_cfg['pulse_length'], phase=0,pulse_type=self.expt_cfg['pulse_type'],add_freq=dfreq+ self.quantum_device_cfg['qubit']['1']['anharmonicity']+self.quantum_device_cfg['qubit']['1']['anharmonicity_fh'])
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
 
-            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
@@ -1156,61 +1134,32 @@ class PulseSequences:
 
     def sideband_pi_pi_offset(self, sequencer):
         # sideband rabi time domain
+
         for offset_phase2 in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            if self.expt_cfg['f0g1']:
-                for qubit_id in self.expt_cfg['on_qubits']:
-                    self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
-                    sequencer.sync_channels_time(self.channels)
-                    self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = offset_phase2/2.0,mode_index=self.expt_cfg['mode_index'])
-                    sequencer.sync_channels_time(self.channels)
-                    self.idle_q_sb(sequencer, qubit_id, time=50.0)
-                    self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = -offset_phase2/2.0,mode_index=self.expt_cfg['mode_index'])
-                    sequencer.sync_channels_time(self.channels)
-                    self.idle_q_sb(sequencer, qubit_id, time=50.0)
-                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
-                    self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-            elif self.expt_cfg['e0g2']:
-                for qubit_id in self.expt_cfg['on_qubits']:
-                    self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                    sequencer.sync_channels_time(self.channels)
-                    self.pi_e0g2_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase2 / 2.0,
-                                    mode_index=self.expt_cfg['mode_index'])
-                    sequencer.sync_channels_time(self.channels)
-                    self.idle_q_sb(sequencer, qubit_id, time=50.0)
-                    self.pi_e0g2_sb(sequencer, qubit_id, pulse_type='square', phase=-offset_phase2 / 2.0,
-                                    mode_index=self.expt_cfg['mode_index'])
-                    sequencer.sync_channels_time(self.channels)
-                    self.idle_q_sb(sequencer, qubit_id, time=50.0)
-                    self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-            elif self.expt_cfg['h0e1']:
-                for qubit_id in self.expt_cfg['on_qubits']:
-                    self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])  # g-e
-                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])  # g-f
-                    self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])  # e-f
-                    self.pi_q_fh(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['fh_pulse_type'])  # e-h
-                    sequencer.sync_channels_time(self.channels)
-                    self.pi_h0e1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase2 / 2.0,
-                                    mode_index=self.expt_cfg['mode_index'])
-                    sequencer.sync_channels_time(self.channels)
-                    self.idle_q_sb(sequencer, qubit_id, time=50.0)
-                    self.pi_h0e1_sb(sequencer, qubit_id, pulse_type='square', phase=-offset_phase2 / 2.0,
-                                    mode_index=self.expt_cfg['mode_index'])
-                    sequencer.sync_channels_time(self.channels)
-                    self.idle_q_sb(sequencer, qubit_id, time=50.0)
-                    self.pi_q_fh(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['fh_pulse_type'])
-                    self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
-                    self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+            for qubit_id in self.expt_cfg['on_qubits']:
+
+                self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                sequencer.sync_channels_time(self.channels)
+                self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = offset_phase2/2.0,mode_index=self.expt_cfg['mode_index'])
+                sequencer.sync_channels_time(self.channels)
+                self.idle_q_sb(sequencer, qubit_id, time=50.0)
+                self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = -offset_phase2/2.0,mode_index=self.expt_cfg['mode_index'])
+                sequencer.sync_channels_time(self.channels)
+                self.idle_q_sb(sequencer, qubit_id, time=50.0)
+                self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
+
         return sequencer.complete(self, plot=self.plot_visdom)
 
     def sideband_chi_ge_calibration(self, sequencer):
+
         for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            mode_index = self.expt_cfg['mode_index']
             for qubit_id in self.expt_cfg['on_qubits']:
 
                 if self.expt_cfg['test_parity']:
@@ -1222,28 +1171,11 @@ class PulseSequences:
                         'ramsey_freq']
 
                 offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset'][self.expt_cfg['mode_index']]
-                if self.expt_cfg['add_photon_with_sideband']:
-                    self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
-                    sequencer.sync_channels_time(self.channels)
-                    self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square', phase=offset_phase / 2.0,
-                                    mode_index=self.expt_cfg['mode_index'])
-                    sequencer.sync_channels_time(self.channels)
-                elif self.expt_cfg['add_photon_with_blockade']:
-                    blockade_pulse_info = self.quantum_device_cfg['blockade_pulse_params']
-                    self.blockade_pulse_segment(sequencer, qubit_id=qubit_id, mode_index=mode_index,
-                                                len=blockade_pulse_info['blockade_pi_length'][mode_index],
-                                                cavity_pulse_type=blockade_pulse_info['blockade_cavity_pulse_type'][
-                                                    mode_index],
-                                                use_weak_for_dressing=blockade_pulse_info['use_weak_for_blockade'][
-                                                    mode_index],
-                                                dressing_amp=blockade_pulse_info['blockade_pi_amp_qubit'][mode_index],
-                                                blockade_levels=[2], dressing_pulse_type="square",
-                                                cavity_amp=blockade_pulse_info['blockade_pi_amp_cavity'][mode_index],
-                                                phase=0,
-                                                add_freq=blockade_pulse_info['blockade_cavity_offset_freq'][mode_index],
-                                                weak_cavity=self.quantum_device_cfg['blockade_pulse_params'][
-                                                    'use_weak_for_cavity'])
+                self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                sequencer.sync_channels_time(self.channels)
+                # self.idle_q_sb(sequencer, qubit_id, time=10.0)
+                self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = offset_phase/2.0,mode_index=self.expt_cfg['mode_index'])
                 sequencer.sync_channels_time(self.channels)
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 self.idle_q(sequencer, qubit_id, time=ramsey_len)
@@ -1314,12 +1246,13 @@ class PulseSequences:
         return sequencer.complete(self, plot=self.plot_visdom)
 
     def chi_dressing_calibration(self, sequencer):
+
         for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            mode_index = self.expt_cfg['mode_index']
             for qubit_id in self.expt_cfg['on_qubits']:
+
                 add_phase = 0
-                if self.expt_cfg['add_photon_with_sideband'] or self.expt_cfg['add_photon_with_blockade']:
+                if self.expt_cfg['add_photon']:
                     phase_freq = 2 * self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'][self.expt_cfg['mode_index']] + self.expt_cfg[
                         'ramsey_freq']
                 else:
@@ -1331,29 +1264,15 @@ class PulseSequences:
                     sideband_freq = 0.0
                     print ("what transition do you want to use for dressing good sir/madam")
 
+
                 offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset'][self.expt_cfg['mode_index']]
 
-                if self.expt_cfg['add_photon_with_sideband']:
+                if self.expt_cfg['add_photon']:
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                     self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
                     sequencer.sync_channels_time(self.channels)
                     self.pi_f0g1_sb(sequencer, qubit_id, pulse_type='square',phase = offset_phase/2.0,mode_index=self.expt_cfg['mode_index'])
                     sequencer.sync_channels_time(self.channels)
-                elif self.expt_cfg['add_photon_with_blockade']:
-                    blockade_pulse_info = self.quantum_device_cfg['blockade_pulse_params']
-                    self.blockade_pulse_segment(sequencer, qubit_id=qubit_id, mode_index=mode_index,
-                                                len=blockade_pulse_info['blockade_pi_length'][mode_index],
-                                                cavity_pulse_type=blockade_pulse_info['blockade_cavity_pulse_type'][
-                                                    mode_index],
-                                                use_weak_for_dressing=blockade_pulse_info['use_weak_for_blockade'][
-                                                    mode_index],
-                                                dressing_amp=blockade_pulse_info['blockade_pi_amp_qubit'][mode_index],
-                                                blockade_levels=[2], dressing_pulse_type="square",
-                                                cavity_amp=blockade_pulse_info['blockade_pi_amp_cavity'][mode_index],
-                                                phase=0,
-                                                add_freq=blockade_pulse_info['blockade_cavity_offset_freq'][mode_index],
-                                                weak_cavity=self.quantum_device_cfg['blockade_pulse_params'][
-                                                    'use_weak_for_cavity'])
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 self.idle_all(sequencer, qubit_id, time=2)
                 dc_offset = 0
@@ -1369,217 +1288,11 @@ class PulseSequences:
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
+
         return sequencer.complete(self, plot=self.plot_visdom)
-
-
-    def chi_dressing_pnrqs(self, sequencer):
-        for df in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
-            sequencer.new_sequence(self)
-            mode_index = self.expt_cfg['mode_index']
-            for qubit_id in self.expt_cfg['on_qubits']:
-                if self.expt_cfg["h0e1"]:
-                    sideband_freq = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['h0e1_freq'][self.expt_cfg['mode_index']] + self.expt_cfg['detuning']
-                elif self.expt_cfg["f0g1"]:
-                    sideband_freq = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_freq'][
-                                        self.expt_cfg['mode_index']] + self.expt_cfg['detuning']
-                else:
-                    sideband_freq = 0.0
-                    print("what transition do you want to use for dressing good sir/madam 8)")
-                if self.expt_cfg['prep_use_weak_cavity']:
-                    self.gen_c_weak(sequencer, mode_index=self.expt_cfg['mode_index'], len=self.expt_cfg['prep_cav_len'],
-                              amp=self.expt_cfg['prep_cav_amp'], phase=0,
-                              pulse_type=self.expt_cfg['cavity_pulse_type'])
-                else:
-                    self.gen_c(sequencer, mode_index=self.expt_cfg['mode_index'], len=self.expt_cfg['prep_cav_len'],
-                               amp=self.expt_cfg['prep_cav_amp'], phase=0,
-                               pulse_type=self.expt_cfg['cavity_pulse_type'])
-                sequencer.sync_channels_time(self.channels)
-                if self.expt_cfg['use_weak_drive_for_probe']:
-                    dressing_len = self.pulse_info[qubit_id]['pi_len_resolved_weak']
-                    if self.pulse_info[qubit_id]['resolved_pulse_type_weak'] == "gauss":
-                        dressing_len *= 4
-                else:
-                    dressing_len = self.pulse_info[qubit_id]['pi_len_resolved']
-                    if self.pulse_info[qubit_id]['resolved_pulse_type'] == "gauss":
-                        dressing_len *= 4
-                dc_offset = 0
-                sequencer.append('sideband',
-                                 Square(max_amp=self.expt_cfg['dressing_amp'], flat_len=dressing_len,
-                                        ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
-                                            'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
-                                        fix_phase=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
-                                        dc_offset=dc_offset,
-                                        plot=False))
-                self.pi_q_resolved(sequencer, qubit_id,
-                                   add_freq=df, use_weak_drive=self.expt_cfg['use_weak_drive_for_probe'])
-            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
-            sequencer.end_sequence()
-        return sequencer.complete(self, plot=self.plot_visdom)
-
-
-    def chi_dressing_blockade_cavity_spectroscopy(self, sequencer):
-        for qubit_id in self.expt_cfg['on_qubits']:
-            if self.expt_cfg["h0e1"]:
-                sideband_freq = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['h0e1_freq'][
-                                    self.expt_cfg['chi_dressing_mode_index']] + self.expt_cfg['detuning']
-            elif self.expt_cfg["f0g1"]:
-                sideband_freq = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_freq'][
-                                    self.expt_cfg['chi_dressing_mode_index']] + self.expt_cfg['detuning']
-            else:
-                sideband_freq = 0.0
-                print("what transition do you want to use for dressing good sir/madam 8)")
-            for df in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
-                if self.expt_cfg['prep_state_before_blockade']:
-                    if self.expt_cfg['use_optimal_control']:
-                        self.prep_optimal_control_pulse_1step(sequencer, pulse_frac=self.expt_cfg['pulse_frac'],
-                                                              print_times=self.expt_cfg['print_times'])
-                        sequencer.sync_channels_time(self.channels)
-                    elif self.expt_cfg['prep_using_blockade']:
-                        blockade_pulse_info = self.quantum_device_cfg['blockade_pulse_params']
-                        # print (blockade_pulse_info)
-                        mode_index = self.expt_cfg['prep_mode_index']
-                        sequencer.new_sequence(self)
-                        self.blockade_pulse_segment(sequencer,qubit_id=qubit_id,mode_index=mode_index,len=blockade_pulse_info['blockade_pi_length'][mode_index],
-                                                    cavity_pulse_type=blockade_pulse_info['blockade_cavity_pulse_type'][mode_index],
-                                                    use_weak_for_dressing=blockade_pulse_info['use_weak_for_blockade'][mode_index],
-                                                    dressing_amp=blockade_pulse_info['blockade_pi_amp_qubit'][mode_index],
-                                                    blockade_levels=[2],dressing_pulse_type = "square",
-                                                    cavity_amp=blockade_pulse_info['blockade_pi_amp_cavity'][mode_index],phase=0,
-                                                    add_freq=blockade_pulse_info['blockade_cavity_offset_freq'][mode_index],
-                                                    weak_cavity=self.quantum_device_cfg['blockade_pulse_params']['use_weak_for_cavity'])
-                else:
-                    sequencer.new_sequence(self)
-                sequencer.sync_channels_time(self.channels)
-                self.blockade_pulse_segment(sequencer, qubit_id=qubit_id, mode_index=self.expt_cfg['blockade_mode_index'],
-                                            len=self.expt_cfg['cavity_pulse_len'],
-                                            cavity_pulse_type=self.expt_cfg['cavity_pulse_type'],
-                                            use_weak_for_dressing=self.expt_cfg["use_weak_drive_for_dressing"],
-                                            dressing_amp=self.expt_cfg['dressing_amp'],
-                                            blockade_levels=np.array(self.expt_cfg['blockade_levels']),
-                                            dressing_pulse_type=self.expt_cfg['dressing_pulse_type'],
-                                            cavity_amp=self.expt_cfg['cavity_amp'],
-                                            phase=0, add_freq=self.expt_cfg['cavity_offset_freq']+df,
-                                            add_dressing_drive_offset=self.expt_cfg['dressing_drive_offset_freq'],
-                                            weak_cavity=True)
-                dc_offset = 0
-                dressing_len = self.expt_cfg['cavity_pulse_len']
-                if self.expt_cfg['cavity_pulse_type'] == "gauss":
-                    dressing_len *= 4
-                sequencer.append('sideband',
-                                 Square(max_amp=self.expt_cfg['chi_dressing_amp'], flat_len=dressing_len,
-                                        ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
-                                            'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
-                                        fix_phase=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
-                                        dc_offset=dc_offset,
-                                        plot=False))
-                sequencer.sync_channels_time(self.channels)
-                if self.expt_cfg['use_weak_drive_for_probe']:
-                    dressing_len = self.pulse_info[qubit_id]['pi_len_resolved_weak']
-                    if self.pulse_info[qubit_id]['resolved_pulse_type_weak'] == "gauss":
-                        dressing_len *= 4
-                else:
-                    dressing_len = self.pulse_info[qubit_id]['pi_len_resolved']
-                    if self.pulse_info[qubit_id]['resolved_pulse_type'] == "gauss":
-                        dressing_len *= 4
-                dc_offset = 0
-                sequencer.append('sideband',
-                                 Square(max_amp=self.expt_cfg['chi_dressing_amp'], flat_len=dressing_len,
-                                        ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
-                                            'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
-                                        fix_phase=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
-                                        dc_offset=dc_offset,
-                                        plot=False))
-                self.pi_q_resolved(sequencer, qubit_id,
-                                   add_freq=2*self.expt_cfg['probe_level'] *
-                                        self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'][self.expt_cfg['probe_mode_index']],
-                                   use_weak_drive=self.expt_cfg['use_weak_drive_for_probe'])
-                self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
-                sequencer.end_sequence()
-        return sequencer.complete(self, plot=True)
-
-
-    def chi_dressing_blockade_rabi(self, sequencer):
-        for qubit_id in self.expt_cfg['on_qubits']:
-            if self.expt_cfg["h0e1"]:
-                sideband_freq = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['h0e1_freq'][
-                                    self.expt_cfg['chi_dressing_mode_index']] + self.expt_cfg['detuning']
-            elif self.expt_cfg["f0g1"]:
-                sideband_freq = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_freq'][
-                                    self.expt_cfg['chi_dressing_mode_index']] + self.expt_cfg['detuning']
-            else:
-                sideband_freq = 0.0
-                print("what transition do you want to use for dressing good sir/madam 8)")
-            for rabi_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
-                if self.expt_cfg['prep_state_before_blockade']:
-                    if self.expt_cfg['use_optimal_control']:
-                        self.prep_optimal_control_pulse_1step(sequencer, pulse_frac=self.expt_cfg['pulse_frac'],
-                                                              print_times=self.expt_cfg['print_times'])
-                        sequencer.sync_channels_time(self.channels)
-                    elif self.expt_cfg['prep_using_blockade']:
-                        blockade_pulse_info = self.quantum_device_cfg['blockade_pulse_params']
-                        # print (blockade_pulse_info)
-                        mode_index = self.expt_cfg['prep_mode_index']
-                        sequencer.new_sequence(self)
-                        self.blockade_pulse_segment(sequencer,qubit_id=qubit_id,mode_index=mode_index,len=blockade_pulse_info['blockade_pi_length'][mode_index],
-                                                    cavity_pulse_type=blockade_pulse_info['blockade_cavity_pulse_type'][mode_index],
-                                                    use_weak_for_dressing=blockade_pulse_info['use_weak_for_blockade'][mode_index],
-                                                    dressing_amp=blockade_pulse_info['blockade_pi_amp_qubit'][mode_index],
-                                                    blockade_levels=[2],dressing_pulse_type = "square",
-                                                    cavity_amp=blockade_pulse_info['blockade_pi_amp_cavity'][mode_index],phase=0,
-                                                    add_freq=blockade_pulse_info['blockade_cavity_offset_freq'][mode_index],
-                                                    weak_cavity=self.quantum_device_cfg['blockade_pulse_params']['use_weak_for_cavity'])
-                else:
-                    sequencer.new_sequence(self)
-                sequencer.sync_channels_time(self.channels)
-                self.blockade_pulse_segment(sequencer, qubit_id=qubit_id, mode_index=self.expt_cfg['blockade_mode_index'],
-                                            len=rabi_len,
-                                            cavity_pulse_type=self.expt_cfg['cavity_pulse_type'],
-                                            use_weak_for_dressing=self.expt_cfg["use_weak_drive_for_dressing"],
-                                            dressing_amp=self.expt_cfg['dressing_amp'],
-                                            blockade_levels=np.array(self.expt_cfg['blockade_levels']),
-                                            dressing_pulse_type=self.expt_cfg['dressing_pulse_type'],
-                                            cavity_amp=self.expt_cfg['cavity_amp'],
-                                            phase=0, add_freq=self.expt_cfg['cavity_offset_freq'],
-                                            add_dressing_drive_offset=self.expt_cfg['dressing_drive_offset_freq'],
-                                            weak_cavity=True)
-                dc_offset = 0
-                dressing_len = rabi_len
-                if self.expt_cfg['cavity_pulse_type'] == "gauss":
-                    dressing_len *= 4
-                sequencer.append('sideband',
-                                 Square(max_amp=self.expt_cfg['chi_dressing_amp'], flat_len=dressing_len,
-                                        ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
-                                            'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
-                                        fix_phase=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
-                                        dc_offset=dc_offset,
-                                        plot=False))
-                sequencer.sync_channels_time(self.channels)
-                if self.expt_cfg['use_weak_drive_for_probe']:
-                    dressing_len = self.pulse_info[qubit_id]['pi_len_resolved_weak']
-                    if self.pulse_info[qubit_id]['resolved_pulse_type_weak'] == "gauss":
-                        dressing_len *= 4
-                else:
-                    dressing_len = self.pulse_info[qubit_id]['pi_len_resolved']
-                    if self.pulse_info[qubit_id]['resolved_pulse_type'] == "gauss":
-                        dressing_len *= 4
-                dc_offset = 0
-                sequencer.append('sideband',
-                                 Square(max_amp=self.expt_cfg['chi_dressing_amp'], flat_len=dressing_len,
-                                        ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
-                                            'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
-                                        fix_phase=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
-                                        dc_offset=dc_offset,
-                                        plot=False))
-                self.pi_q_resolved(sequencer, qubit_id,
-                                   add_freq=2*self.expt_cfg['probe_level'] *
-                                        self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'][self.expt_cfg['probe_mode_index']],
-                                   use_weak_drive=self.expt_cfg['use_weak_drive_for_probe'])
-                self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
-                sequencer.end_sequence()
-        return sequencer.complete(self, plot=True)
-
 
     def sideband_transmon_reset(self, sequencer):
+
         sideband_freq = self.expt_cfg['sideband_freq']
         sideband_pulse_length =  self.expt_cfg['sideband_pulse_length']
         wait_after_reset = self.expt_cfg['wait_after_reset']
@@ -1726,9 +1439,9 @@ class PulseSequences:
             for qubit_id in self.expt_cfg['on_qubits']:
 
                 if self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase']:phase_freq = self.expt_cfg['ramsey_freq']
-                else:phase_freq = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['e0g2_dc_offset'][self.expt_cfg['mode_index']] + self.expt_cfg['ramsey_freq']
+                else:phase_freq = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_dc_offset'][self.expt_cfg['mode_index']] + self.expt_cfg['ramsey_freq']
 
-                offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['e0g2_pi_pi_offset'][self.expt_cfg['mode_index']]
+                offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset'][self.expt_cfg['mode_index']]
 
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 sequencer.sync_channels_time(self.channels)
@@ -1743,33 +1456,6 @@ class PulseSequences:
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
 
-        return sequencer.complete(self, plot=self.plot_visdom)
-
-    def sideband_h0e1_ramsey(self, sequencer):
-        # sideband rabi time domain
-        for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
-            sequencer.new_sequence(self)
-            for qubit_id in self.expt_cfg['on_qubits']:
-                if self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase']:phase_freq = self.expt_cfg['ramsey_freq']
-                else:phase_freq = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['h0e1_dc_offset'][self.expt_cfg['mode_index']] + self.expt_cfg['ramsey_freq']
-                offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['h0e1_pi_pi_offset'][self.expt_cfg['mode_index']]
-                self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])  # g-e
-                self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])  # g-f
-                self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])  # e-f
-                self.pi_q_fh(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['fh_pulse_type'])  # e-h
-                sequencer.sync_channels_time(self.channels)
-                self.pi_h0e1_sb(sequencer, qubit_id, pulse_type='square',phase = offset_phase/2.0,mode_index=self.expt_cfg['mode_index'])
-                sequencer.sync_channels_time(self.channels)
-                self.idle_q_sb(sequencer, qubit_id, time=ramsey_len+50.0)
-                self.pi_h0e1_sb(sequencer, qubit_id, pulse_type='square',phase = 2*np.pi*ramsey_len*phase_freq-offset_phase/2.0,mode_index=self.expt_cfg['mode_index'])
-                sequencer.sync_channels_time(self.channels)
-                self.idle_q_sb(sequencer, qubit_id, time=50.0)
-                self.pi_q_fh(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['fh_pulse_type'])  # e-f
-                self.pi_q_(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])  # g-f
-                self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])  # g-e
-                self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
-            sequencer.end_sequence()
         return sequencer.complete(self, plot=self.plot_visdom)
 
     def sideband_cavity_photon_number(self, sequencer):
@@ -1927,6 +1613,7 @@ class PulseSequences:
 
     def photon_number_resolved_qubit_spectroscopy(self, sequencer):
         for df in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+
             sequencer.new_sequence(self)
             for qubit_id in self.expt_cfg['on_qubits']:
                 offset_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_pi_pi_offset'][self.expt_cfg['mode_index']]
@@ -2030,9 +1717,10 @@ class PulseSequences:
                                             add_freq= df+self.expt_cfg['add_freq'])
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
-            sequencer.end_sequence()
-        return sequencer.complete(self, plot=True)
 
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
 
     def photon_number_distribution_measurement(self, sequencer):
         # transmon ef rabi with tek2
@@ -3259,8 +2947,8 @@ class PulseSequences:
 
 
     def blockade_pulse_segment(self,sequencer,qubit_id='1',mode_index=0,len=10000,cavity_pulse_type="square",use_weak_for_dressing=False,
-                               dressing_amp=0.024,blockade_levels=[2],dressing_pulse_type = "square",cavity_amp=0.024,phase=0,add_freq=0.0,
-                               add_dressing_drive_offset=0.0, weak_cavity=False):
+                               dressing_amp=0.024,blockade_levels=[2],dressing_pulse_type = "square",cavity_amp=0.024,phase=0,add_freq=0.0,add_dressing_drive_offset=0.0,
+                               weak_cavity=False):
         if cavity_pulse_type == "gauss" and dressing_pulse_type == "square": tau = len*4.0
         elif cavity_pulse_type == "square" and dressing_pulse_type == "gauss": tau = len*0.25
         else: tau = len
@@ -3278,7 +2966,7 @@ class PulseSequences:
 
             else:
                 freqlist = self.quantum_device_cfg['qubit'][qubit_id]['freq'] + 2 * self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'][mode_index] * np.array(
-                    blockade_levels) + add_dressing_drive_offset
+                    blockade_levels)
                 self.gen_c_and_blockade_weak(sequencer, mode_index=mode_index, len=len,
                                 amp=cavity_amp, phase=phase,
                                 pulse_type=cavity_pulse_type, add_freq=add_freq,blockade_amp = dressing_amp,blockade_freqs=freqlist)
@@ -3299,27 +2987,18 @@ class PulseSequences:
                            pulse_type=cavity_pulse_type,add_freq=add_freq)
 
 
-    def multimode_blockade_pulse_segment(self,sequencer,qubit_id='1',blockade_mode_indices=[0],cavity_drive_mode_indices = [0],length=10000,cavity_pulse_type="square",use_weak_for_dressing=False,
+    def multimode_blockade_pulse_segment(self,sequencer,qubit_id='1',mode_indices=[0],len=10000,cavity_pulse_type="square",use_weak_for_dressing=False,
                                          dressing_amps=[0.024],blockade_levels=[[2]],dressing_pulse_type = "square",cavity_amps=[0.024],
-                                         phases=[0],add_freqs=[0.0], add_dressing_drive_offsets=[0.0], weak_cavity=False):
-        if cavity_pulse_type == "gauss" and dressing_pulse_type == "square": tau = length*4.0
-        elif cavity_pulse_type == "square" and dressing_pulse_type == "gauss": tau = length*0.25
-        else: tau = length
-
+                                         phases=[0],add_freqs=[0.0], add_dressing_drive_offsets=[0.0],
+                               weak_cavity=False):
+        if cavity_pulse_type == "gauss" and dressing_pulse_type == "square": tau = len*4.0
+        elif cavity_pulse_type == "square" and dressing_pulse_type == "gauss": tau = len*0.25
+        else: tau = len
         add_freqs_q = []
-        for mode_index in blockade_mode_indices:
-            for j, level in enumerate(blockade_levels[mode_index]):
-                add_freq = 2 * level * self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'][mode_index] + \
-                           add_dressing_drive_offsets[mode_index][j]
-                if add_freq not in add_freqs_q:
-                    add_freqs_q.append(add_freq)
-
-        if self.expt_cfg['blockade_pair_sums']:
-            for indices in list(combinations(range(len(add_freqs_q)), 2)):
-                add_freq = add_freqs_q[indices[0]] + add_freqs_q[indices[1]]
-                if add_freq not in add_freqs_q:
-                    add_freqs_q.append(add_freq)
-
+        for i in range(len(self.expt_cfg['mode_indices'])):
+            for j in range(len(self.expt_cfg['blockade_levels'][i])):
+                add_freqs_q.append(2 * level * self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'][mode_index]
+                                                    +add_dressing_drive_offset[i][j])
         if use_weak_for_dressing:
             if not weak_cavity:
                 # test this case, hopefully modified correctly
@@ -3329,17 +3008,14 @@ class PulseSequences:
                                           phases=[0] * len(add_freqs_q),
                                           pulse_type=dressing_pulse_type)
 
-                self.gen_c_multitone(sequencer, mode_indices=cavity_drive_mode_indices, len=length,
+                self.gen_c_multitone(sequencer, mode_indices=mode_indices, len=len,
                            amps=cavity_amps, phases=phases,
                            pulse_type=cavity_pulse_type, add_freqs=add_freqs)
 
             else:
-                print("!!!WARNING!!!")
-                print("!!!Not handled this case yet!!!")
-                print("!!!Behavior will likely be incorrect!!!")
                 # not yet handled this case yet, still need to write proper handling of blockade frequencies
                 freqlist = self.quantum_device_cfg['qubit'][qubit_id]['freq'] + np.array(add_freqs_q)
-                self.gen_c_and_blockade_weak(sequencer, mode_index=mode_indices, len=length,
+                self.gen_c_and_blockade_weak(sequencer, mode_index=mode_indices, len=len,
                                 amp=cavity_amps, phase=phases,
                                 pulse_type=cavity_pulse_type, add_freq=add_freqs, blockade_amp=dressing_amps, blockade_freqs=freqlist)
         else:
@@ -3350,11 +3026,11 @@ class PulseSequences:
                                       phases=[0] * len(add_freqs_q),
                                       pulse_type=dressing_pulse_type)
             if weak_cavity:
-                self.gen_c_weak_multitone(sequencer, mode_indices=cavity_drive_mode_indices,len=length,
+                self.gen_c_weak_multitone(sequencer, mode_indices=mode_indices,len=len,
                        amps=cavity_amps, phases=phases,
                        pulse_type=cavity_pulse_type,add_freqs=add_freqs)
             else:
-                self.gen_c_multitone(sequencer, mode_indices=cavity_drive_mode_indices,len=length,
+                self.gen_c_multitone(sequencer, mode_indices=mode_indices,len=len,
                            amps=cavity_amps, phases=phases,
                            pulse_type=cavity_pulse_type,add_freqs=add_freqs)
 
@@ -3414,7 +3090,7 @@ class PulseSequences:
                     elif self.expt_cfg['prep_using_blockade']:
                         blockade_pulse_info = self.quantum_device_cfg['blockade_pulse_params']
                         # print (blockade_pulse_info)
-                        mode_index = self.expt_cfg['prep_mode_index']
+                        mode_index = self.expt_cfg['mode_index']
                         sequencer.new_sequence(self)
                         self.blockade_pulse_segment(sequencer,qubit_id=qubit_id,mode_index=mode_index,len=blockade_pulse_info['blockade_pi_length'][mode_index],
                                                     cavity_pulse_type=blockade_pulse_info['blockade_cavity_pulse_type'][mode_index],
@@ -3441,139 +3117,7 @@ class PulseSequences:
                 sequencer.sync_channels_time(self.channels)
                 self.pi_q_resolved(sequencer, qubit_id,
                                    add_freq=2*self.expt_cfg['probe_level'] *
-                                        self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'][self.expt_cfg['probe_mode_index']],
-                                   use_weak_drive=self.expt_cfg['use_weak_drive_for_probe'])
-
-                self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
-                sequencer.end_sequence()
-        return sequencer.complete(self, plot=True)
-    
-    def multitone_blockaded_weak_cavity_pnrqs(self, sequencer):
-        for qubit_id in self.expt_cfg['on_qubits']:
-            for df in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
-                if self.expt_cfg['prep_state_before_blockade']:
-                    if self.expt_cfg['use_optimal_control']:
-                        self.prep_optimal_control_pulse_1step(sequencer, pulse_frac=self.expt_cfg['pulse_frac'],
-                                                              print_times=self.expt_cfg['print_times'])
-                        sequencer.sync_channels_time(self.channels)
-                    elif self.expt_cfg['prep_using_blockade']:
-                        blockade_pulse_info = self.quantum_device_cfg['blockade_pulse_params']
-                        # print (blockade_pulse_info)
-                        mode_index = self.expt_cfg['mode_index']
-                        sequencer.new_sequence(self)
-                        self.blockade_pulse_segment(sequencer,qubit_id=qubit_id,mode_index=mode_index,len=blockade_pulse_info['blockade_pi_length'][mode_index],
-                                                    cavity_pulse_type=blockade_pulse_info['blockade_cavity_pulse_type'][mode_index],
-                                                    use_weak_for_dressing=blockade_pulse_info['use_weak_for_blockade'][mode_index],
-                                                    dressing_amp=blockade_pulse_info['blockade_pi_amp_qubit'][mode_index],
-                                                    blockade_levels=[2],dressing_pulse_type = "square",
-                                                    cavity_amp=blockade_pulse_info['blockade_pi_amp_cavity'][mode_index],phase=0,
-                                                    add_freq=blockade_pulse_info['blockade_cavity_offset_freq'][mode_index],
-                                                    weak_cavity=self.quantum_device_cfg['blockade_pulse_params']['use_weak_for_cavity'])
-
-                else:sequencer.new_sequence(self)
-                sequencer.sync_channels_time(self.channels)
-                self.blockade_pulse_segment(sequencer, qubit_id=qubit_id, mode_index=self.expt_cfg['mode_index'],
-                                            len=self.expt_cfg['cavity_pulse_len'],
-                                            cavity_pulse_type=self.expt_cfg['cavity_pulse_type'],
-                                            use_weak_for_dressing=self.expt_cfg["use_weak_drive_for_dressing"],
-                                            dressing_amp=self.expt_cfg['dressing_amp'],
-                                            blockade_levels=np.array(self.expt_cfg['blockade_levels']),
-                                            dressing_pulse_type=self.expt_cfg['dressing_pulse_type'],
-                                            cavity_amp=self.expt_cfg['cavity_amp'],
-                                            phase=0, add_freq=self.expt_cfg['cavity_offset_freq'],
-                                            add_dressing_drive_offset=self.expt_cfg['dressing_drive_offset_freq'],
-                                            weak_cavity=True)
-                sequencer.sync_channels_time(self.channels)
-                self.pi_q_resolved(sequencer, qubit_id,
-                                   add_freq=df,
-                                   use_weak_drive=self.expt_cfg['use_weak_drive_for_probe'])
-
-                self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
-                sequencer.end_sequence()
-        return sequencer.complete(self, plot=True)
-
-
-    def multitone_blockaded_weak_cavity_change_dressing_freq(self, sequencer):
-        for qubit_id in self.expt_cfg['on_qubits']:
-            for df in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
-                if self.expt_cfg['prep_state_before_blockade']:
-                    if self.expt_cfg['use_optimal_control']:
-                        self.prep_optimal_control_pulse_1step(sequencer, pulse_frac=self.expt_cfg['pulse_frac'],
-                                                              print_times=self.expt_cfg['print_times'])
-                        sequencer.sync_channels_time(self.channels)
-                    elif self.expt_cfg['prep_using_blockade']:
-                        blockade_pulse_info = self.quantum_device_cfg['blockade_pulse_params']
-                        # print (blockade_pulse_info)
-                        mode_index = self.expt_cfg['mode_index']
-                        sequencer.new_sequence(self)
-                        self.blockade_pulse_segment(sequencer,qubit_id=qubit_id,mode_index=mode_index,len=blockade_pulse_info['blockade_pi_length'][mode_index],
-                                                    cavity_pulse_type=blockade_pulse_info['blockade_cavity_pulse_type'][mode_index],
-                                                    use_weak_for_dressing=blockade_pulse_info['use_weak_for_blockade'][mode_index],
-                                                    dressing_amp=blockade_pulse_info['blockade_pi_amp_qubit'][mode_index],
-                                                    blockade_levels=[2],dressing_pulse_type = "square",
-                                                    cavity_amp=blockade_pulse_info['blockade_pi_amp_cavity'][mode_index],phase=0,
-                                                    add_freq=blockade_pulse_info['blockade_cavity_offset_freq'][mode_index],
-                                                    weak_cavity=self.quantum_device_cfg['blockade_pulse_params']['use_weak_for_cavity'])
-
-                else:sequencer.new_sequence(self)
-                sequencer.sync_channels_time(self.channels)
-                self.blockade_pulse_segment(sequencer, qubit_id=qubit_id, mode_index=self.expt_cfg['mode_index'],
-                                            len=self.expt_cfg['cavity_pulse_len'],
-                                            cavity_pulse_type=self.expt_cfg['cavity_pulse_type'],
-                                            use_weak_for_dressing=self.expt_cfg["use_weak_drive_for_dressing"],
-                                            dressing_amp=self.expt_cfg['dressing_amp'],
-                                            blockade_levels=np.array(self.expt_cfg['blockade_levels']),
-                                            dressing_pulse_type=self.expt_cfg['dressing_pulse_type'],
-                                            cavity_amp=self.expt_cfg['cavity_amp'],
-                                            phase=0, add_freq=self.expt_cfg['cavity_offset_freq'],
-                                            add_dressing_drive_offset=self.expt_cfg['dressing_drive_offset_freq'] + df,
-                                            weak_cavity=True)
-                sequencer.sync_channels_time(self.channels)
-                self.pi_q_resolved(sequencer, qubit_id,
-                                   add_freq=0,
-                                   use_weak_drive=self.expt_cfg['use_weak_drive_for_probe'])
-
-                self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
-                sequencer.end_sequence()
-        return sequencer.complete(self, plot=True)
-
-
-    def multimode_blockade_experiments_cavity_spectroscopy(self, sequencer):
-        for qubit_id in self.expt_cfg['on_qubits']:
-            for df in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
-                sequencer.new_sequence(self)
-                if self.expt_cfg['prep_state_before_blockade']:
-                    if self.expt_cfg['prep_using_blockade']:
-                        blockade_pulse_info = self.quantum_device_cfg['blockade_pulse_params']
-                        # print (blockade_pulse_info)
-                        mode_index = self.expt_cfg['mode_index']
-
-                        self.blockade_pulse_segment(sequencer,qubit_id=qubit_id,mode_index=mode_index,length=blockade_pulse_info['blockade_pi_length'][mode_index],
-                                                    cavity_pulse_type=blockade_pulse_info['blockade_cavity_pulse_type'][mode_index],
-                                                    use_weak_for_dressing=blockade_pulse_info['use_weak_for_blockade'][mode_index],
-                                                    dressing_amp=blockade_pulse_info['blockade_pi_amp_qubit'][mode_index],
-                                                    blockade_levels=[2],dressing_pulse_type = "square",
-                                                    cavity_amp=blockade_pulse_info['blockade_pi_amp_cavity'][mode_index],phase=0,
-                                                    add_freq=blockade_pulse_info['blockade_cavity_offset_freq'][mode_index],
-                                                    weak_cavity=self.quantum_device_cfg['blockade_pulse_params']['use_weak_for_cavity'])
-                sequencer.sync_channels_time(self.channels)
-                self.multimode_blockade_pulse_segment(sequencer, qubit_id=qubit_id, blockade_mode_indices=self.expt_cfg['blockade_mode_indices'],
-                                                      cavity_drive_mode_indices=self.expt_cfg['cavity_drive_mode_indices'],
-                                                      length=self.expt_cfg['cavity_pulse_len'],
-                                                      cavity_pulse_type=self.expt_cfg['cavity_pulse_type'],
-                                                      use_weak_for_dressing=self.expt_cfg["use_weak_drive_for_dressing"],
-                                                      dressing_amps=self.expt_cfg['dressing_amps'],
-                                                      blockade_levels=np.array(self.expt_cfg['blockade_levels']),
-                                                      dressing_pulse_type=self.expt_cfg['dressing_pulse_type'],
-                                                      cavity_amps=self.expt_cfg['cavity_amps'],
-                                                      phases=self.expt_cfg['cavity_phases'],
-                                                      add_freqs=np.array(self.expt_cfg['cavity_offset_freqs']) + df,
-                                                      add_dressing_drive_offsets=self.expt_cfg['dressing_drive_offset_freqs'],
-                                                      weak_cavity=self.expt_cfg['use_weak_cavity'])
-                sequencer.sync_channels_time(self.channels)
-                self.pi_q_resolved(sequencer, qubit_id,
-                                   add_freq=2*self.expt_cfg['probe_level'] *
-                                        self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'][self.expt_cfg['probe_mode_index']],
+                                        self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'][self.expt_cfg['mode_index']],
                                    use_weak_drive=self.expt_cfg['use_weak_drive_for_probe'])
 
                 self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
@@ -3591,44 +3135,31 @@ class PulseSequences:
                         # print (blockade_pulse_info)
                         mode_index = self.expt_cfg['mode_index']
 
-                        self.blockade_pulse_segment(sequencer, qubit_id=qubit_id, mode_index=mode_index,
-                                                    length=blockade_pulse_info['blockade_pi_length'][mode_index],
-                                                    cavity_pulse_type=blockade_pulse_info['blockade_cavity_pulse_type'][
-                                                        mode_index],
-                                                    use_weak_for_dressing=blockade_pulse_info['use_weak_for_blockade'][
-                                                        mode_index],
-                                                    dressing_amp=blockade_pulse_info['blockade_pi_amp_qubit'][
-                                                        mode_index],
-                                                    blockade_levels=[2], dressing_pulse_type="square",
-                                                    cavity_amp=blockade_pulse_info['blockade_pi_amp_cavity'][
-                                                        mode_index], phase=0,
-                                                    add_freq=blockade_pulse_info['blockade_cavity_offset_freq'][
-                                                        mode_index],
-                                                    weak_cavity=self.quantum_device_cfg['blockade_pulse_params'][
-                                                        'use_weak_for_cavity'])
+                        self.blockade_pulse_segment(sequencer,qubit_id=qubit_id,mode_index=mode_index,len=blockade_pulse_info['blockade_pi_length'][mode_index],
+                                                    cavity_pulse_type=blockade_pulse_info['blockade_cavity_pulse_type'][mode_index],
+                                                    use_weak_for_dressing=blockade_pulse_info['use_weak_for_blockade'][mode_index],
+                                                    dressing_amp=blockade_pulse_info['blockade_pi_amp_qubit'][mode_index],
+                                                    blockade_levels=[2],dressing_pulse_type = "square",
+                                                    cavity_amp=blockade_pulse_info['blockade_pi_amp_cavity'][mode_index],phase=0,
+                                                    add_freq=blockade_pulse_info['blockade_cavity_offset_freq'][mode_index],
+                                                    weak_cavity=self.quantum_device_cfg['blockade_pulse_params']['use_weak_for_cavity'])
                 sequencer.sync_channels_time(self.channels)
-                self.multimode_blockade_pulse_segment(sequencer, qubit_id=qubit_id,
-                                                      blockade_mode_indices=self.expt_cfg['blockade_mode_indices'],
-                                                      cavity_drive_mode_indices=self.expt_cfg[
-                                                          'cavity_drive_mode_indices'],
-                                                      length=rabi_len,
+                self.multimode_blockade_pulse_segment(sequencer, qubit_id=qubit_id, mode_indices=self.expt_cfg['mode_indices'],
+                                                      len=rabi_len,
                                                       cavity_pulse_type=self.expt_cfg['cavity_pulse_type'],
-                                                      use_weak_for_dressing=self.expt_cfg[
-                                                          "use_weak_drive_for_dressing"],
+                                                      use_weak_for_dressing=self.expt_cfg["use_weak_drive_for_dressing"],
                                                       dressing_amps=self.expt_cfg['dressing_amps'],
                                                       blockade_levels=np.array(self.expt_cfg['blockade_levels']),
                                                       dressing_pulse_type=self.expt_cfg['dressing_pulse_type'],
                                                       cavity_amps=self.expt_cfg['cavity_amps'],
                                                       phases=self.expt_cfg['cavity_phases'],
-                                                      add_freqs=np.array(self.expt_cfg['cavity_offset_freqs']),
-                                                      add_dressing_drive_offsets=self.expt_cfg[
-                                                          'dressing_drive_offset_freqs'],
-                                                      weak_cavity=self.expt_cfg['use_weak_cavity'])
+                                                      add_freqs=self.expt_cfg['cavity_offset_freqs'],
+                                                      add_dressing_drive_offsets=self.expt_cfg['dressing_drive_offset_freqs'],
+                                                      weak_cavity=self.expt_cfg['use_weak_drive_for_blockade'])
                 sequencer.sync_channels_time(self.channels)
                 self.pi_q_resolved(sequencer, qubit_id,
-                                   add_freq=2 * self.expt_cfg['probe_level'] *
-                                            self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'][
-                                                self.expt_cfg['probe_mode_index']],
+                                   add_freq=2*self.expt_cfg['probe_level'] *
+                                        self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e'][self.expt_cfg['probe_mode_index']],
                                    use_weak_drive=self.expt_cfg['use_weak_drive_for_probe'])
 
                 self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
@@ -3639,6 +3170,7 @@ class PulseSequences:
     def blockade_experiments_cavity_spectroscopy(self, sequencer):
         for qubit_id in self.expt_cfg['on_qubits']:
             for df in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+
                 if self.expt_cfg['prep_state_before_blockade']:
                     if self.expt_cfg['use_optimal_control']:
                         self.prep_optimal_control_pulse_1step(sequencer, pulse_frac=self.expt_cfg['pulse_frac'],
@@ -3659,6 +3191,7 @@ class PulseSequences:
                                                     blockade_levels=[2], dressing_pulse_type="square",
                                                     cavity_amp=blockade_pulse_info['blockade_pi_amp_cavity'][mode_index],
                                                     phase=0, add_freq=0.0, weak_cavity=blockade_pulse_info['use_weak_for_cavity'][mode_index])
+
                 else:
                     sequencer.new_sequence(self)
                 sequencer.sync_channels_time(self.channels)

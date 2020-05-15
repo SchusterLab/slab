@@ -2,7 +2,7 @@ from slab import InstrumentManager
 from slab.instruments.awg import write_Tek5014_file
 from slab.instruments.awg.M8195A import upload_M8195A_sequence
 # import keysight_pxi_load as ks_pxi
-from slab.instruments.keysight import keysight_pxi_load_m8195a as ks_pxi
+from slab.instruments.keysight import keysight_pxi_load_m8195a_pxi_sideband_with_iq as ks_pxi
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
 from slab.instruments.awg.Tek70001 import write_Tek70001_sequence
@@ -42,7 +42,10 @@ class Experiment:
         
         try: self.cavity_drive_los = [im[lo] for lo in self.hardware_cfg['cavity_drive_los']]
         except: print ("No cavity drive function generator specified in hardware config")
-
+        
+        try: self.sideband_drive_los = [im[lo] for lo in self.hardware_cfg['sideband_drive_los']]
+        except: print ("No sideband drive function generator specified in hardware config")
+        
         try: self.attens = [im[atten] for atten in self.hardware_cfg['attens']]
         except: print ("No digital attenuator specified in hardware config")
 
@@ -207,6 +210,37 @@ class Experiment:
                     d.set_ext_pulse(mod=True)
             except:print ("Error in jpa pump LO configuration")
         else:print("JPA pump is off")
+
+    def initiate_sideband_drive_LOs(self,name):
+        if 'sideband' in name:
+            try:
+                for ii, d in enumerate(self.sideband_drive_los):
+                    expt_cfg = self.experiment_cfg[name]
+                    if expt_cfg['use_freq_from_expt_cfg']:
+                        sideband_freq = expt_cfg['sideband_freq']
+                        power = self.quantum_device_cfg['sideband_drive_lo_powers'][str(ii + 1)]
+                    else:
+                        if expt_cfg['f0g1']:
+                            power = self.quantum_device_cfg['flux_pulse_info'][str(ii + 1)]['f0g1_lo_powers'][
+                                expt_cfg['mode_index']]
+                            sideband_freq = self.quantum_device_cfg['flux_pulse_info'][str(ii + 1)]['f0g1_freq'][
+                                expt_cfg['mode_index']]
+                        elif expt_cfg['h0e1']:
+                            power = self.quantum_device_cfg['flux_pulse_info'][str(ii + 1)]['h0e1_lo_powers'][
+                                expt_cfg['mode_index']]
+                            sideband_freq = self.quantum_device_cfg['flux_pulse_info'][str(ii + 1)]['h0e1_freq'][
+                                expt_cfg['mode_index']]
+                        else:
+                            print("what sideband do you want from us?")
+                    drive_freq = sideband_freq - \
+                                 self.quantum_device_cfg['sideband_iq_pulse_info'][str(ii + 1)]['iq_freq']
+                    d.set_frequency(drive_freq * 1e9)
+                    d.set_power(power)
+                    d.set_ext_pulse(mod=True)
+                    print ("Sideband LO configured")
+            except:
+                print("Error in sideband drive LO configuration")
+        else: print ("No sideband LO configured. No confusion whatsoever?")
 
 
     def initiate_readout_LOs(self):
@@ -462,7 +496,7 @@ class Experiment:
         self.generate_datafile(path,name,seq_data_file=seq_data_file)
         self.set_trigger()
         self.initiate_readout_LOs()
-        self.initiate_jpa_pump_LOs()
+        self.initiate_sideband_drive_LOs(name)
         self.initiate_attenuators()
         self.initiate_pxi(name, sequences)
         self.initiate_m8195a(path,sequences)

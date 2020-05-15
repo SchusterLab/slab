@@ -757,7 +757,7 @@ class PulseSequences:
 
                 else:self.idle_q(sequencer, time=ramsey_len)
                 self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
-                self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'], phase=2 * np.pi * ramsey_len * self.expt_cfg['ramsey_freq'])
+                self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'], phase= self.expt_cfg['final_phase']+ 2 * np.pi * ramsey_len * self.expt_cfg['ramsey_freq'])
 
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])

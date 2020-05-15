@@ -1,5 +1,5 @@
-from slab.experiments.PulseExperiments_M8195A_PXI.sequences_pxi import PulseSequences
-from slab.experiments.PulseExperiments_M8195A_PXI.pulse_experiment import Experiment
+from slab.experiments.PulseExperiments_M8195A_PXI_sideband_with_IQ.sequences_pxi import PulseSequences
+from slab.experiments.PulseExperiments_M8195A_PXI_sideband_with_IQ.pulse_experiment import Experiment
 from slab.instruments.keysight import keysight_pxi_load as ks_pxi
 import numpy as np
 import os
@@ -9,7 +9,7 @@ from slab.datamanagement import SlabFile
 from slab.dsfit import fitdecaysin
 try:from skopt import Optimizer
 except:print("No optimizer")
-from slab.experiments.PulseExperiments_M8195A_PXI.PostExperimentAnalysis import PostExperiment
+from slab.experiments.PulseExperiments_M8195A_PXI_sideband_with_IQ.PostExperimentAnalysis import PostExperiment
 from slab.instruments import InstrumentManager
 import time
 from h5py import File
@@ -23,11 +23,13 @@ from scipy import interpolate
 import pickle
 
 class SequentialExperiment:
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, path,analyze = False,show=True,P = 'Q', return_val=False):
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, path,analyze = False,
+                 show=True,P = 'Q', return_val=False, loop_iter=0):
 
         self.Is = []
         self.Qs = []
         self.show = show
+        self.loop_iter = loop_iter
 
         eval('self.' + experiment_name)(quantum_device_cfg, experiment_cfg, hardware_cfg,path)
         if analyze:
@@ -677,12 +679,11 @@ class SequentialExperiment:
 
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_sideband_rabi_freq_scan', suffix='.h5'))
 
-        for ii,freq in enumerate(freqlist):
+        for ii,mode in enumerate(modelist):
             if swp_cfg['take_trigger_from_t1']:
                 hardware_cfg['trigger']['period_us'] = int(
                     quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['t1s'][ii] * 5)
-
-            experiment_cfg[experiment_name]['freq'] = freq
+            experiment_cfg[experiment_name]['mode_index'] = mode
             experiment_cfg[experiment_name]['amp'] = amplist[ii]
             experiment_cfg[experiment_name]['length'] = lengthlist[ii]
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
@@ -695,11 +696,50 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+
+    def sideband_rabi_freq_scan_sweepLO(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sideband_rabi_freq_scan_sweepLO']
+
+        experiment_name = 'sideband_rabi_freq_scan'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sideband_rabi_freq_scan_sweepLO', suffix='.h5'))
+        
+        dfreqs = np.arange(swp_cfg['start'],swp_cfg['stop'],swp_cfg['step'])
+        if expt_cfg['use_freq_from_expt_cfg']:
+            freq_center = expt_cfg['sideband_freq']
+        else:
+            if expt_cfg['f0g1']:
+                freq_center = quantum_device_cfg['flux_pulse_info']['1']['f0g1_freq'][expt_cfg['mode_index']]
+            elif expt_cfg['h0e1']:
+                freq_center = quantum_device_cfg['flux_pulse_info']['1']['h0e1_freq'][expt_cfg['mode_index']]
+        
+        experiment_cfg[experiment_name]['start'] = 0.0
+        experiment_cfg[experiment_name]['stop'] = 0.001
+        experiment_cfg[experiment_name]['step'] = 0.001
+            
+        for ii,dfreq in enumerate(dfreqs):
+            expt_cfg['sideband_freq'] = freq_center + dfreq
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
     def sequential_sideband_rabis(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         swp_cfg = experiment_cfg['sequential_sideband_rabis']
-        amplist = swp_cfg['amplist']
+        # amplist = swp_cfg['amplist']
         freqlist = swp_cfg['freqlist']
+        modelist = swp_cfg['modelist']
         stoplist  = swp_cfg['stoplist']
+        lolist = swp_cfg['lolist']
 
         experiment_name = 'sideband_rabi'
 
@@ -708,22 +748,185 @@ class SequentialExperiment:
 
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_sideband_rabis', suffix='.h5'))
 
-        for ii,freq in enumerate(freqlist):
+        if expt_cfg['use_freq_from_expt_cfg']:
+            uselist = freqlist
+        else:
+            uselist = modelist
+        for ii, use in enumerate(uselist):
             if swp_cfg['take_trigger_from_t1']:
                 hardware_cfg['trigger']['period_us'] = int(
                     quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['t1s'][ii] * 5)
-            experiment_cfg[experiment_name]['freq'] = freq
-            experiment_cfg[experiment_name]['amp'] = amplist[ii]
+            if expt_cfg['use_freq_from_expt_cfg']:
+                freq = use
+                quantum_device_cfg['sideband_drive_lo_powers']['1'] = int(lolist[ii])
+                experiment_cfg[experiment_name]['sideband_freq'] = freq
+
+            else:
+                mode = use
+                experiment_cfg[experiment_name]['mode_index'] = mode
+            # experiment_cfg[experiment_name]['amp'] = amplist[ii]
             experiment_cfg[experiment_name]['stop'] = stoplist[ii]
-            experiment_cfg[experiment_name]['step'] = stoplist[ii]/100.0
+            experiment_cfg[experiment_name]['step'] = stoplist[ii] / 100.0
+            print ("lo power = ",int(lolist[ii]),"freq = ",freq,"GHz")
 
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
 
+
+    def sequential_sideband_chi_dressing_calibration_vary_power(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sequential_sideband_chi_dressing_calibration_vary_power']
+        freqlist = swp_cfg['freqlist']
+        modelist = swp_cfg['modelist']
+        lolist = swp_cfg['lolist']
+
+        experiment_name = 'sideband_chi_dressing_calibration'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_sideband_chi_dressing_calibration_vary_power', suffix='.h5'))
+
+        if expt_cfg['use_freq_from_expt_cfg']:
+            uselist = freqlist
+        else:
+            uselist = modelist
+        for ii, use in enumerate(uselist):
+            if expt_cfg['use_freq_from_expt_cfg']:
+                freq = use
+                quantum_device_cfg['sideband_drive_lo_powers']['1'] = int(lolist[ii])
+                experiment_cfg[experiment_name]['sideband_freq'] = freq
+            else:
+                mode = use
+                experiment_cfg[experiment_name]['mode_index'] = mode
+            print ("lo power = ",int(lolist[ii]),"freq = ",freq,"GHz")
+
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+    def sequential_photon_number_expt_fit_wigner_alphas(self, quantum_device_cfg, experiment_cfg, hardware_cfg,
+                                                              path):
+        swp_cfg = experiment_cfg['sequential_photon_number_expt_fit_wigner_alphas']
+        experiment_name = 'photon_number_expt_fit_wigner_alphas'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path,
+                                                                  'sequential_photon_number_expt_fit_wigner_alphas',
+                                                                  suffix='.h5'))
+        for index in np.arange(swp_cfg['wigner_pt_start_index'], swp_cfg['wigner_pt_stop_index'] + 1, 1):
+            experiment_cfg[experiment_name]['tom_index_pt'] = int(index)
+            print ("tomgraphy point index  = ",index)
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+    def sequential_pnrqs_sideband_on_vary_power(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sequential_pnrqs_sideband_on_vary_power']
+        powers = np.arange(swp_cfg['start'],swp_cfg['stop'],swp_cfg['step'])
+
+        experiment_name = 'photon_number_resolved_qubit_spectroscopy_with_sideband_on'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_pnrqs_sideband_on_vary_power', suffix='.h5'))
+
+       
+        for ii, power in enumerate(powers):
+
+            quantum_device_cfg['sideband_drive_lo_powers']['1'] = int(power)
+       
+            print ("lo power = ",int(power))
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+    def sequential_pnrqs_sideband_on_vary_length(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sequential_pnrqs_sideband_on_vary_length']
+        lengths = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+
+        experiment_name = 'photon_number_resolved_qubit_spectroscopy_with_sideband_on'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_pnrqs_sideband_on_vary_length',
+                                                                  suffix='.h5'))
+        for ii, length in enumerate(lengths):
+            if swp_cfg['use_weak_drive']:
+                expt_cfg['use_weak_drive'] = True
+                quantum_device_cfg['pulse_info']['1']['pi_len_resolved_weak'] = float(length)
+            else:
+                expt_cfg['use_weak_drive'] = False
+                quantum_device_cfg['pulse_info']['1']['pi_len_resolved'] = float(length)
+            print("resolved pulse length = ", length)
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+    def sequential_sideband_chi_dressing_t1test_vary_power(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sequential_sideband_chi_dressing_t1test_vary_power']
+        freqlist = swp_cfg['freqlist']
+        modelist = swp_cfg['modelist']
+        lolist = swp_cfg['lolist']
+
+        experiment_name = 'sideband_chi_dressing_t1test'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_sideband_chi_dressing_t1test_vary_power', suffix='.h5'))
+
+        if expt_cfg['use_freq_from_expt_cfg']:
+            uselist = freqlist
+        else:
+            uselist = modelist
+        for ii, use in enumerate(uselist):
+            if expt_cfg['use_freq_from_expt_cfg']:
+                freq = use
+                quantum_device_cfg['sideband_drive_lo_powers']['1'] = int(lolist[ii])
+                experiment_cfg[experiment_name]['sideband_freq'] = freq
+            else:
+                mode = use
+                experiment_cfg[experiment_name]['mode_index'] = mode
+            print ("lo power = ",int(lolist[ii]),"freq = ",freq,"GHz")
+
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
@@ -1505,8 +1708,29 @@ class SequentialExperiment:
 
         for amp in amps:
             experiment_cfg[experiment_name]['cavity_drive_amp'] = amp
-
             print ("Cavity drive ramsey amp = ",amp)
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+    def sequential_cavity_drive_ramsey(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sequential_cavity_drive_ramsey']
+        experiment_name = 'cavity_drive_ramsey'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_cavity_drive_ramsey', suffix='.h5'))
+
+        for ii, mode in enumerate(swp_cfg['mode_indices']):
+            experiment_cfg[experiment_name]['cavity_drive_len'] = swp_cfg['cavity_lens'][ii]
+            experiment_cfg[experiment_name]['mode_index'] = mode
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
@@ -1665,6 +1889,33 @@ class SequentialExperiment:
         self.Qs = np.array(self.Qs)
 
 
+    def sequential_multitone_multimode_blockaded_cavity_rabi_split(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sequential_multitone_multimode_blockaded_cavity_rabi_split']
+        experiment_name = 'multitone_multimode_blockaded_cavity_rabi'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_multitone_multimode_blockaded_cavity_rabi_split', suffix='.h5'))
+
+        stepnumber = swp_cfg['stepnumber']
+        stopstep = swp_cfg['stopstep']
+        step = swp_cfg['step']
+        for ii in np.arange(stepnumber):
+            experiment_cfg[experiment_name]['stop'] = float(stopstep * (ii + 1))
+            experiment_cfg[experiment_name]['start'] = float(stopstep * (ii))
+            experiment_cfg[experiment_name]['step'] = float(step)
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
     def sequential_multitone_blockaded_weak_cavity_pnrqs(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         swp_cfg = experiment_cfg['sequential_multitone_blockaded_weak_cavity_pnrqs']
         experiment_name = 'multitone_blockaded_weak_cavity_pnrqs'
@@ -1688,6 +1939,134 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+
+    def sequential_single_photon_with_blockade_pnrqs(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sequential_single_photon_with_blockade_pnrqs']
+        experiment_name = 'multitone_blockaded_weak_cavity_pnrqs'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_single_photon_with_blockade_pnrqs', suffix='.h5'))
+        blockade_pulse_info = quantum_device_cfg['blockade_pulse_params']
+        bp = blockade_pulse_info
+        modelist = swp_cfg['modelist']
+        expt_cfg['cavity_pulse_len'] = 0
+        expt_cfg['prep_state_before_blockade'] = True
+        expt_cfg['use_optimal_control'] = False
+        expt_cfg['prep_using_blockade'] = True
+        for mode in modelist:
+            # expt_cfg['dressing_amp'] = bp['blockade_pi_amp_qubit'][mode]
+            # expt_cfg['cavity_amp'] = bp['blockade_pi_amp_cavity'][mode]
+            # expt_cfg['cavity_offset_freq'] = bp['blockade_cavity_offset_freq'][mode]
+            # expt_cfg['cavity_pulse_len'] = bp['blockade_pi_length'][mode]
+            # expt_cfg['use_weak_drive_for_dressing'] = bp['use_weak_for_blockade'][mode]
+            # expt_cfg['mode_index'] = mode
+            expt_cfg['prep_mode_index'] = mode
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+    def sequential_multitone_multimode_blockaded_cavity_pnrqs(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sequential_multitone_multimode_blockaded_cavity_pnrqs']
+        experiment_name = 'multitone_multimode_blockaded_cavity_pnrqs'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_multitone_multimode_blockaded_cavity_pnrqs', suffix='.h5'))
+
+        cav_pulse_lens = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+
+        for cav_pulse_len in cav_pulse_lens:
+            experiment_cfg[experiment_name]['cavity_pulse_len'] = cav_pulse_len
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+    def sequential_multitone_multimode_blockaded_cavity_full_tomography(self, quantum_device_cfg, experiment_cfg, hardware_cfg,
+                                                              path):
+        swp_cfg = experiment_cfg['sequential_multitone_multimode_blockaded_cavity_full_tomography']
+        experiment_name = 'multitone_multimode_blockaded_cavity_full_tomography'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path,
+                                                                  'sequential_multitone_multimode_blockaded_cavity_full_tomography',
+                                                                  suffix='.h5'))
+        cav_pulse_lens = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+        for cav_pulse_len in cav_pulse_lens:
+            experiment_cfg[experiment_name]['cavity_pulse_len'] = cav_pulse_len
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+    def sequential_multimode_blockade_experiments_wt(self, quantum_device_cfg, experiment_cfg, hardware_cfg,
+                                                              path):
+        swp_cfg = experiment_cfg['sequential_multimode_blockade_experiments_wt']
+        experiment_name = 'multimode_blockade_experiments_wt'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path,
+                                                                  'sequential_multimode_blockade_experiments_wt',
+                                                                  suffix='.h5'))
+        for index in np.arange(swp_cfg['wt_pt_start_index'], swp_cfg['wt_pt_stop_index'] + 1, 1):
+            experiment_cfg[experiment_name]['tom2_index_pt'] = int(index)
+            print ("tomgraphy point 2 index  = ",index)
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+        
+        
+    def sequential_multimode_blockade_experiments_wt_with_parity_times(self, quantum_device_cfg, experiment_cfg, hardware_cfg,
+                                                              path):
+        swp_cfg = experiment_cfg['sequential_multimode_blockade_experiments_wt_with_parity_times']
+        experiment_name = 'multimode_blockade_experiments_wt'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path,
+                                                                  'sequential_multimode_blockade_experiments_wt_with_parity_times',
+                                                                  suffix='.h5'))
+        for ramsey_time in swp_cfg['ramsey_parity_times']:
+            experiment_cfg[experiment_name]['ramsey_parity_time'] = ramsey_time
+            experiment_cfg[experiment_name]['ramsey_parity'] = True
+            experiment_cfg[experiment_name]['pi_resolved_parity'] = False
+            for index in np.arange(swp_cfg['wt_pt_start_index'], swp_cfg['wt_pt_stop_index'] + 1, 1):
+                experiment_cfg[experiment_name]['tom2_index_pt'] = int(index)
+                print ("tomgraphy point 2 index  = ",index)
+                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.Is.append(I)
+                self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
     def sequential_chi_dressing_pnrqs(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         swp_cfg = experiment_cfg['sequential_chi_dressing_pnrqs']
         experiment_name = 'chi_dressing_pnrqs'
@@ -1701,6 +2080,30 @@ class SequentialExperiment:
 
         for detuning in detunings:
             experiment_cfg[experiment_name]['detuning'] = detuning
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+    def sequential_sideband_chi_dressing_pnrqs(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sequential_sideband_chi_dressing_pnrqs']
+        experiment_name = 'sideband_chi_dressing_pnrqs'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_sideband_chi_dressing_pnrqs', suffix='.h5'))
+
+        detunings = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
+        original_freq = experiment_cfg[experiment_name]['sideband_freq']
+        for detuning in detunings:
+            experiment_cfg[experiment_name]['sideband_freq'] = original_freq + detuning
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
@@ -1792,6 +2195,30 @@ class SequentialExperiment:
 
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
+
+
+    def sequential_blockade_experiments_with_optimal_control_wt(self, quantum_device_cfg, experiment_cfg, hardware_cfg,
+                                                           path):
+        experiment_name = 'blockade_experiments_with_optimal_control_generalized_wt'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, 'sequential_blockade_experiments_with_optimal_control_generalized_wt',
+                                                       suffix='.h5'))
+        swp_cfg = experiment_cfg['sequential_blockade_experiments_with_optimal_control_generalized_wt']
+        for ramsey_time in swp_cfg['wigner_ramsey_times']:
+            print("Ramsey Time = ", ramsey_time, "ns")
+            experiment_cfg[experiment_name]['wigner_ramsey_time'] = ramsey_time
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
     def sequential_blockade_experiments_cavity_spectroscopy(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         experiment_name = 'blockade_experiments_cavity_spectroscopy'
 
@@ -1803,7 +2230,7 @@ class SequentialExperiment:
                                                        suffix='.h5'))
         swp_cfg = experiment_cfg['sequential_blockade_experiments_cavity_spectroscopy']
 
-        if expt_cfg['vary_dressing_freq']:
+        if swp_cfg['vary_dressing_freq']:
             change_freqs = np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step'])
             for df in change_freqs:
                 experiment_cfg[experiment_name]['dressing_drive_offset_freq'] = df
@@ -1814,8 +2241,9 @@ class SequentialExperiment:
                 self.Is.append(I)
                 self.Qs.append(Q)
         else:
-            for mode_index in swp_cfg['mode_indices']:
+            for ii, mode_index in enumerate(swp_cfg['mode_indices']):
                 experiment_cfg[experiment_name]['mode_index'] = mode_index
+                experiment_cfg[experiment_name]['cavity_amp'] = swp_cfg['cavity_amps'][ii]
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
                 exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
@@ -1825,6 +2253,50 @@ class SequentialExperiment:
 
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
+
+
+    def sequential_cross_kerr_calibration_with_spectroscopy(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        experiment_name = 'blockade_experiments_cavity_spectroscopy'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, 'sequential_cross_kerr_calibration_with_spectroscopy',
+                                                       suffix='.h5'))
+        swp_cfg = experiment_cfg['sequential_cross_kerr_calibration_with_spectroscopy']
+        for ii, mode_index in enumerate(swp_cfg['ramsey_mode_indices']):
+            if expt_cfg['prep_state_before_blockade']:
+                experiment_cfg[experiment_name]['prep_mode_index'] = swp_cfg['prep_mode_indices'][ii]
+            experiment_cfg[experiment_name]['mode_index'] = mode_index
+            experiment_cfg[experiment_name]['cavity_amp'] = swp_cfg['cavity_amps'][ii]
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+        
+        
+    def cross_kerr_with_readout_spectroscopy(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        experiment_name = 'cross_kerr_with_readout_spectroscopy'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'cross_kerr_with_readout_spectroscopy', suffix='.h5'))
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+
+        for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+            quantum_device_cfg['readout']['freq'] = freq
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
 
     def sequential_blockade_spectroscopy_amp_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         experiment_name = 'blockade_experiments_cavity_spectroscopy'
@@ -1972,6 +2444,75 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+    def sequential_cross_kerr_calibration_with_ramsey(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        experiment_name = 'cavity_blockade_ramsey'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, 'sequential_cross_kerr_calibration_with_ramsey',
+                                                       suffix='.h5'))
+        swp_cfg = experiment_cfg['sequential_cross_kerr_calibration_with_ramsey']
+        prep_modes = swp_cfg['prep_mode_indices']
+        modes = swp_cfg['ramsey_mode_indices']
+        for ii, mode in enumerate(modes):
+            if expt_cfg['prep_photon_with_blockade']:
+                experiment_cfg[experiment_name]['prep_mode_index'] = prep_modes[ii]
+            experiment_cfg[experiment_name]['mode_index'] = mode
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+
+    def sequential_cavity_spectroscopy_resolved_qubit_pulse(self, quantum_device_cfg, experiment_cfg, hardware_cfg,
+                                                            path):
+        experiment_name = 'cavity_spectroscopy_resolved_qubit_pulse'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, 'sequential_cavity_spectroscopy_resolved_qubit_pulse',
+                                                       suffix='.h5'))
+        swp_cfg = experiment_cfg['sequential_cavity_spectroscopy_resolved_qubit_pulse']
+        for ii, mode_index in enumerate(swp_cfg['modelist']):
+            experiment_cfg[experiment_name]['mode_index'] = mode_index
+            experiment_cfg[experiment_name]['cavity_pulse_len'] = swp_cfg['lenlist'][ii]
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
+    def sequential_optimal_control_test_1step_recovery(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        expt_cfg = experiment_cfg['sequential_optimal_control_test_1step_recovery']
+        lengths = np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])
+
+        experiment_name = 'optimal_control_test_1step_recovery'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, 'sequential_optimal_control_test_1step_recovery', suffix='.h5'))
+
+        for length in lengths:
+            experiment_cfg[experiment_name]['recovery_pulse_length'] = length
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
 
     def transfer_function_blockade_inv(self, amp, experiment_cfg, channel='cavity_amp_vs_amp'):
         # pull calibration data from file
