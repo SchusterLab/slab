@@ -19,6 +19,7 @@ from slab.dataanalysis import get_next_filename
 import json
 from slab.experiments.PulseExperiments_PXI.get_data import get_iq_data, get_singleshot_data
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
+from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperimentAnalyzeAndSave
 
 class Experiment:
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None):
@@ -441,6 +442,25 @@ class Experiment:
                 f.append_line('I', I)
                 f.append_line('Q', Q)
         return I,Q
+
+    def get_traj_data_pxi_no_window(self,expt_cfg,seq_data_file):
+        w=[0, self.hardware_cfg["awg_info"]["keysight_pxi"]["samplesPerRecord"]]
+        I,Q = self.pxi.traj_data_many(w=w)
+        I = np.average(I, axis=0)
+        Q = np.average(Q, axis=0)
+        if seq_data_file == None:
+            self.slab_file = SlabFile(self.data_file)
+            with self.slab_file as f:
+                # f.add('expt_pts',expt_pts)
+                f.add('I', I)
+                f.add('Q', Q)
+        else:
+            self.slab_file = SlabFile(seq_data_file)
+            with self.slab_file as f:
+                f.append_line('I', I)
+                f.append_line('Q', Q)
+        return I,Q
+
     def run_experiment(self, sequences, path, name, seq_data_file=None, update_awg=True):
 
         self.initiate_readout_rf_m8195a()
@@ -483,7 +503,11 @@ class Experiment:
         time.sleep(0.1)
         self.awg_run(run_pxi=True,name=name)
 
-        if check_sync:self.pxi.acquireandplot(expt_num)
+        if check_sync:
+            #self.pxi.acquireandplot(expt_num)
+            self.I, self.Q = self.get_traj_data_pxi_no_window(self.expt_cfg, seq_data_file=seq_data_file)
+            #I and Q in form of (avg_num, num_expt, sample_per_record)
+
         else:
             if self.expt_cfg['singleshot']:
                 self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
@@ -497,5 +521,16 @@ class Experiment:
         return self.I,self.Q
 
     def post_analysis(self,experiment_name,P='Q',show = False,check_sync = False):
-        if check_sync:pass
-        else:PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name, self.I ,self.Q, P,show)
+        if check_sync:
+            PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, "check_sync",
+                                self.I,
+                                self.Q, P, show)
+        else:
+            PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name, self.I ,self.Q, P,show)
+
+    def post_analysisandsave(self,path, experiment_name, cont_name, P='Q', phi=0, cont_data_file=None, check_sync = False):
+        if check_sync:
+            print("nope can't currently do analyze and save on check synch")
+        else:
+            PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, path,  experiment_name, self.I ,self.Q, P, phi, cont_data_file=cont_data_file, cont_name=cont_name)
+

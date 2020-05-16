@@ -353,7 +353,7 @@ class SequentialExperiment:
 
         for atten in attens:
 
-            quantum_device_cfg["qubit_drive_digital_attenuation"] = -atten
+            quantum_device_cfg["qubit_drive_digital_attenuation"] = atten
             print("atten set to", atten)
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)

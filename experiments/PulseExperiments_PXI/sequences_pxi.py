@@ -697,10 +697,12 @@ class PulseSequences:
         for ii in range(self.expt_cfg['num_seq_sets']):
 
             for qubit_id in self.expt_cfg['on_qubits']:
+                
                 sequencer.new_sequence(self)
                 self.pad_start_pxi(sequencer, on_qubits=qubit_id, time=500)
                 self.readout_pxi(sequencer,qubit_id)
                 sequencer.end_sequence()
+                
                 # with pi pulse (e state)
                 sequencer.new_sequence(self)
                 self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
@@ -708,6 +710,7 @@ class PulseSequences:
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 self.readout_pxi(sequencer, qubit_id)
                 sequencer.end_sequence()
+                
                 # with pi pulse and ef pi pulse (f state)
                 sequencer.new_sequence(self)
                 self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
@@ -715,6 +718,7 @@ class PulseSequences:
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                     self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
                 self.readout_pxi(sequencer, qubit_id)
+
                 sequencer.end_sequence()
 
         return sequencer.complete(self, plot=False)
