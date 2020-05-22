@@ -279,6 +279,8 @@ class PulseSequences:
                                 cutoff_sigma=2, freq=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['f0g1_freq'], phase=phase,
                                 plot=False))
 
+
+
     def idle_q(self,sequencer,qubit_id = '1',time=0):
         sequencer.append('charge%s_I' % qubit_id, Idle(time=time))
         sequencer.append('charge%s_Q' % qubit_id, Idle(time=time))
@@ -359,6 +361,30 @@ class PulseSequences:
         else:
             sequencer.sync_channels_time(self.channels)
 
+        sequencer.append('readout',
+                         Square(max_amp=self.quantum_device_cfg['readout']['amp'],
+                                flat_len=self.quantum_device_cfg['readout']['length'],
+                                ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+                                phase=0, phase_t0=readout_time_5ns_multiple))
+        sequencer.append('readout_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
+
+        return readout_time
+
+## multiplexed_readout_pxi - time domain multiplexing
+
+    def readout_pxi_multiplexed(self,sequencer,on_qubits = qarray,sideband = False,overlap = False):
+        # qarray should be a list of strings of numbers corresponding to which qubits we want to measure
+        if on_qubits == None:
+            on_qubits = ["1", "2"]
+
+        sequencer.sync_channels_time(self.channels)
+        readout_time = sequencer.get_time('readout_trig') # Earlies was alazar_tri
+        readout_time_5ns_multiple = np.ceil(readout_time / 5) * 5
+        sequencer.append_idle_to_time('readout_trig', readout_time_5ns_multiple)
+        if overlap:
+            pass
+        else:
+            sequencer.sync_channels_time(self.channels)
 
         sequencer.append('readout',
                          Square(max_amp=self.quantum_device_cfg['readout']['amp'],
@@ -368,6 +394,8 @@ class PulseSequences:
         sequencer.append('readout_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
 
         return readout_time
+
+
     def excited_readout_pxi(self, sequencer, on_qubits=None, sideband = False, overlap = False):
         if on_qubits == None:
             on_qubits = ["1", "2"]
