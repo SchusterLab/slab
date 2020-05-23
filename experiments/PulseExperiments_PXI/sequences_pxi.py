@@ -372,13 +372,14 @@ class PulseSequences:
 
 ## multiplexed_readout_pxi - time domain multiplexing
 
-    def readout_pxi_multiplexed(self,sequencer,on_qubits = qarray,sideband = False,overlap = False):
+    def readout_pxi_multiplex(self,sequencer,on_qubits = ["1","2"],sideband = False,overlap = False):
         # qarray should be a list of strings of numbers corresponding to which qubits we want to measure
+        # should look like on_qubits = ["1","2"] we now plan to read out 1, 2 in time domain
         if on_qubits == None:
             on_qubits = ["1", "2"]
 
         sequencer.sync_channels_time(self.channels)
-        readout_time = sequencer.get_time('readout_trig') # Earlies was alazar_tri
+        readout_time = sequencer.get_time('readout_trig')
         readout_time_5ns_multiple = np.ceil(readout_time / 5) * 5
         sequencer.append_idle_to_time('readout_trig', readout_time_5ns_multiple)
         if overlap:
@@ -387,8 +388,17 @@ class PulseSequences:
             sequencer.sync_channels_time(self.channels)
 
         sequencer.append('readout',
-                         Square(max_amp=self.quantum_device_cfg['readout']['amp'],
-                                flat_len=self.quantum_device_cfg['readout']['length'],
+                         Square(max_amp=self.quantum_device_cfg['readout'][on_qubits[0]]['amp'],
+                                flat_len=self.quantum_device_cfg['readout'][on_qubits[0]]['length'],
+                                ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+                                phase=0, phase_t0=readout_time_5ns_multiple))
+        sequencer.append('readout_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
+        sequencer.append('readout',Idle(time=self.quantum_device_cfg['readout']['multiplexdelay'],dt=None,plot=False))
+        sequencer.append('readout_trig', Idle(time=self.quantum_device_cfg['readout']['multiplexdelay'], dt=None, plot=False))
+
+        sequencer.append('readout',
+                         Square(max_amp=self.quantum_device_cfg['readout'][on_qubits[1]]['amp'],
+                                flat_len=self.quantum_device_cfg['readout'][on_qubits[1]]['length'],
                                 ramp_sigma_len=20, cutoff_sigma=2, freq=0,
                                 phase=0, phase_t0=readout_time_5ns_multiple))
         sequencer.append('readout_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
@@ -462,6 +472,27 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=True)
 
+    ## multiplexing implicit from "on-qubits" designation, should input ["1","2"]
+    def pulse_probe_iq_multiplex_readout(self,sequencer):
+        for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                sequencer.append('charge%s_I' % qubit_id,
+                                 Square(max_amp=self.expt_cfg['amp'], flat_len=self.expt_cfg['pulse_length'],
+                                        ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
+                                        phase=0))
+
+                sequencer.append('charge%s_Q' % qubit_id,
+                                 Square(max_amp=self.expt_cfg['amp'], flat_len=self.expt_cfg['pulse_length'],
+                                        ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
+                                        phase=self.pulse_info[qubit_id]['Q_phase']))
+                self.idle_q(sequencer, time=self.expt_cfg['delay'])
+
+            self.readout_pxi_multiplex(sequencer,on_qubits = self.expt_cfg['readout_qubits'],overlap=True)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
     def rabi(self, sequencer):
 
         for rabi_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):

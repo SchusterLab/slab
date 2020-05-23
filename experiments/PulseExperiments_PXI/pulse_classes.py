@@ -100,6 +100,60 @@ class Square(Pulse):
     def get_length(self):
         return self.flat_len + 2 * self.cutoff_sigma * self.ramp_sigma_len
 
+## Trial pulse class to see if this fixes readout pulse single square issue
+class TwoSquares(Pulse):
+    def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, freq, phase, phase_t0=0,delay = 0, dt=None,
+                 plot=False):
+        self.max_amp = max_amp
+        self.flat_len = flat_len
+        self.ramp_sigma_len = ramp_sigma_len
+        self.cutoff_sigma = cutoff_sigma
+        self.freq = freq
+        self.phase = phase
+        self.phase_t0 = phase_t0
+        self.delay = delay
+        self.dt = dt
+        self.plot = plot
+
+        self.t0 = 0
+
+    def get_pulse_array(self):
+        t_flat_start1 = self.t0 + self.cutoff_sigma * self.ramp_sigma_len
+        t_flat_end1 = t_flat_start1 + self.flat_len
+
+        t_flat_start2 = self.delay + t_flat_end1 + 2*self.cutoff_sigma * self.ramp_sigma_len
+        t_flat_end2 = t_flat_start2 + self.flat_len
+        t_end = t_flat_end2 + self.cutoff_sigma * self.ramp_sigma_len
+
+        pulse_array = self.max_amp * (
+                ((self.t_array >= t_flat_start1)) * (
+                self.t_array < t_flat_end1) +  # Normal square pulse
+                (self.t_array >= self.t0) * (self.t_array < t_flat_start1) * np.exp(
+            -1.0 * (self.t_array - (t_flat_start1)) ** 2 / (
+                    2 * self.ramp_sigma_len ** 2)) +  # leading gaussian edge
+                (self.t_array >= t_flat_end1) * (
+                        self.t_array <= t_end) * np.exp(
+            -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
+                    2 * self.ramp_sigma_len ** 2))  # trailing edge
+        )*(
+                ((self.t_array >= t_flat_start2)) * (
+                self.t_array < t_flat_end2) +  # Normal square pulse
+                (self.t_array >= self.t0) * (self.t_array < t_flat_start2) * np.exp(
+            -1.0 * (self.t_array - (t_flat_start2)) ** 2 / (
+                    2 * self.ramp_sigma_len ** 2)) +  # leading gaussian edge
+                (self.t_array >= t_flat_end2) * (
+                        self.t_array <= t_end) * np.exp(
+            -1.0 * (self.t_array - (t_flat_end2)) ** 2 / (
+                    2 * self.ramp_sigma_len ** 2))  # trailing edge
+        )
+
+        pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+
+        return pulse_array
+
+    def get_length(self):
+        return 2*self.flat_len + 4 * self.cutoff_sigma * self.ramp_sigma_len+self.delay
+
 class Square_two_tone(Pulse):
     def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, freq1, freq2, phase1 = 0, phase2 = 0, phase_t0 = 0, dt=None, plot=False):
         self.max_amp = max_amp
