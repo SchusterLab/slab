@@ -28,8 +28,8 @@ class Experiment:
         self.hardware_cfg = hardware_cfg
         im = InstrumentManager()
         import time
-        self.fluxbias = im['dacbox']
-        self.fluxbias.setvoltage(1,0)
+        #self.fluxbias = im['dacbox']
+        #self.fluxbias.setvoltage(1,0)
         time.sleep(1)
 
         try: self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
