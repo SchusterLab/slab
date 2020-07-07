@@ -103,7 +103,6 @@ class KeysightSingleQubit:
 
 
         # Initialize Module 6 = Analog card.  Ch1 = AWG I, CH2 = AWG Q
-
         # self.AWG_chs = [chassis.getChannel(self.out_mod_no, ch) for ch in self.awg_channels]
         self.AWG_ch_1 = chassis.getChannel(self.out_mod_no, 1)
         self.AWG_ch_2 = chassis.getChannel(self.out_mod_no, 2)
@@ -192,14 +191,17 @@ class KeysightSingleQubit:
 
         print ("Configuring digitizer. ADC range set to",self.adc_range, "Vpp")
 
-        self.DIG_ch_1.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_1.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, cycles=num_expt * num_avg,
+                                buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
         # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000,
+                                cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
 
     def generatemarkers(self,waveform,resample=False,conv_width = 1,trig_delay = 0):
 
         # markers = np.array([np.append(np.heaviside(np.convolve(abs(w), np.ones((int(self.lo_delay),))/self.lo_delay),0)[int(self.lo_delay/2):],np.zeros(int(self.lo_delay/2))) for w in waveform])
-        markers = np.array([np.append(np.heaviside(np.convolve(abs(np.append(w[int(trig_delay):],np.zeros(int(trig_delay)))), np.ones((int(conv_width),)) / conv_width), 0)[int(conv_width / 2):], np.zeros(int(conv_width / 2))) for w in waveform])
+        markers = np.array([np.append(np.heaviside(np.convolve(abs(np.append(w[int(trig_delay):],np.zeros(int(trig_delay)))),
+                                                               np.ones((int(conv_width),)) / conv_width), 0)[int(conv_width / 2):], np.zeros(int(conv_width / 2))) for w in waveform])
         if resample: return np.array([m[::int(self.dt_dig/self.dt)] for m in markers])
         else:return markers
 
@@ -234,8 +236,6 @@ class KeysightSingleQubit:
             markers_readout: Trigger for the digitizer
             The master trigger for all the cards is generated knowing the length of the AWG waveforms using self.generate_trigger
             '''
-
-
         pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
         num_expt = sequences['readout'].shape[0]
         print('num_expt = {}'.format(num_expt))
@@ -243,7 +243,6 @@ class KeysightSingleQubit:
 
 
         # Based on Nelson's original nomenclature
-
         readout = wv[0]
         markers_readout = wv[1]
         m8195a_marker = wv[2]
@@ -271,9 +270,7 @@ class KeysightSingleQubit:
         sideband_marker_dsp = self.generatemarkers(sideband_I,resample=True,conv_width=self.lo_delay,trig_delay=self.trig_delay)
         trig_arr_awg = self.generatemastertrigger(len(readout_marker_dsp[0]),2*self.trig_pulse_length,self.abs_trig_delay)
 
-
         for i in tqdm(range(len(readout))):
-            
             wave_sideband_I = key.Waveform(np.array(sideband_I[i]),append_zero=True)
             wave_sideband_Q = key.Waveform(np.array(sideband_Q[i]), append_zero=True)
             m_readout = key.Waveform(readout_marker[i], append_zero=True)
@@ -339,12 +336,15 @@ class KeysightSingleQubit:
             self.m_module.startAll()
             self.trig_module.startAll()
 
+
         except BaseException as e:  # Quickly kill everything and risk data loss, mainly in case of keyboard interrupt
             pass
             print(e)
 
         finally:  # Clean up threads to prevent zombies. If this fails, you have to restart program.
             pass
+
+
 
     def acquireandplot(self,expt_num):
 

@@ -139,7 +139,8 @@ class Experiment:
         time.sleep(1)
         if run_pxi:
             self.pxi.run()
-    
+
+
     def clear_and_restart_digitizer(self):
         self.pxi.clear_and_start_digitizer()
 
@@ -154,11 +155,30 @@ class Experiment:
         self.pxi.DIG_module.stopAll()
         self.pxi.chassis.close()
         # except:print('Error in stopping and closing PXI')
-    
+
         try:
             self.m8195a.stop_output()
             time.sleep(0.1)
         except:print('Error in stopping M8195a')
+
+    def awg_stop_no_clear(self, name):
+        # try:
+        self.pxi.AWG_module.stopAll()
+        # self.pxi.AWG_module.clearAll()
+        self.pxi.m_module.stopAll()
+        # self.pxi.m_module.clearAll()
+        self.pxi.trig_module.stopAll()
+        # self.pxi.trig_module.clearAll()
+        self.pxi.DIG_module.stopAll()
+        # self.pxi.chassis.close()
+        # except:print('Error in stopping and closing PXI')
+
+        try:
+            self.m8195a.stop_output()
+            time.sleep(0.1)
+        except:
+            print('Error in stopping M8195a')
+
 
     def pxi_stop(self):
         try:
@@ -491,7 +511,7 @@ class Experiment:
 
         return self.data_file
 
-    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
+    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0, check_sync = False, save_errs = False):
         self.expt_cfg = self.experiment_cfg[name]
         self.generate_datafile(path,name,seq_data_file=seq_data_file)
         self.set_trigger()
@@ -537,6 +557,34 @@ class Experiment:
 
         self.awg_stop(name)
         return self.I,self.Q
+
+    # TESTING LOADING OF SEQUENCE ONLY ONCE/FIXING MEMORY ISSUE
+    def run_experiment_pxi_repeated_test(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False, no_load = False, clear_pxi = False):
+        self.expt_cfg = self.experiment_cfg[name]
+        self.generate_datafile(path,name,seq_data_file=seq_data_file)
+
+        if not no_load:
+            self.initiate_pxi(name, sequences)
+            self.initiate_m8195a(path,sequences)
+            self.set_trigger()
+            self.initiate_readout_LOs()
+            self.initiate_jpa_pump_LOs()
+            self.initiate_attenuators()
+        time.sleep(0.1)
+        self.awg_run(run_pxi=True,name=name)
+        try:
+            if check_sync:self.pxi.acquireandplot(expt_num)
+            else:
+                if self.expt_cfg['singleshot']:
+                    self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+                else:
+                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq = self.rotate_iq,phi=self.iq_angle)
+        except:print("Error in data acquisition from PXI")
+
+        self.awg_stop_no_clear(name)
+        return self.I,self.Q
+
+
 
     def post_analysis(self,experiment_name,P='Q',show = False,check_sync = False, return_val=False):
         if check_sync:pass

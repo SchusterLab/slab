@@ -220,6 +220,7 @@ class Square_multitone(Pulse):
         self.ramp_sigma_len = ramp_sigma_len
         self.cutoff_sigma = cutoff_sigma
         self.freqs = freqs
+        print (freqs)
         self.phases = phases
         self.phase_t0 = phase_t0
         self.dt = dt
@@ -793,10 +794,10 @@ class ARB_with_blockade(Pulse):
 
 
 class ARB_Sum(Pulse):
-    def __init__(self, A_list_list, B_list_list, len, freq_list, phase_list, dt=None, plot=False, scale_list=[1.0]):
+    def __init__(self, A_list_list, B_list_list, length, freq_list, phase_list, dt=None, plot=False, scale_list=[1.0,1.0,1.0,1.0]):
         self.A_list_list = [np.pad(A_list, (1, 1), 'constant', constant_values=(0, 0)) for A_list in A_list_list]
         self.B_list_list = [np.pad(B_list, (1, 1), 'constant', constant_values=(0, 0)) for B_list in B_list_list]
-        self.len = len
+        self.len = length
         self.freq_list = freq_list
         self.phase_list = phase_list
         self.dt = dt
@@ -822,6 +823,7 @@ class ARB_Sum(Pulse):
                         2 * np.pi * self.freq_list[ii] * self.t_array + self.phase_list[ii])) * \
                            self.scale_list[ii]
 
+
         return pulse_array
 
     def get_length(self):
@@ -831,11 +833,12 @@ class ARB_Sum(Pulse):
 class ARB_Sum_with_blockade(Pulse):
     def __init__(self, A_list_list, B_list_list, len, freq_list, phase_list, blockade_amp=0.0,
                  blockade_pulse_type='square',
-                 blockade_freqs=[0], dt=None, plot=False, scale_list=[1.0]):
+                 blockade_freqs=[0], dt=None, plot=False, scale_list=[1.0, 1.0, 1.0, 1.0]):
         self.A_list_list = [np.pad(A_list, (1, 1), 'constant', constant_values=(0, 0)) for A_list in A_list_list]
         self.B_list_list = [np.pad(B_list, (1, 1), 'constant', constant_values=(0, 0)) for B_list in B_list_list]
         self.len = len
         self.freq_list = freq_list
+        print (freq_list)
         self.phase_list = phase_list
         self.dt = dt
         self.plot = plot
@@ -854,9 +857,9 @@ class ARB_Sum_with_blockade(Pulse):
 
     def get_pulse_array(self):
         pulse_array = np.zeros(len(self.t_array))
+        t_array_A_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.A_list_list[0]))
+        t_array_B_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.B_list_list[0]))
         for ii in range(len(self.A_list_list)):
-            t_array_A_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.A_list_list[ii]))
-            t_array_B_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.B_list_list[ii]))
 
             tck_A = interpolate.splrep(t_array_A_list, self.A_list_list[ii])
             tck_B = interpolate.splrep(t_array_B_list, self.B_list_list[ii])
