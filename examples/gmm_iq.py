@@ -28,7 +28,7 @@ WDIR = os.environ.get("SLAB_PATH", "../")
 # DDIR = data directory, for you this might be "S:\\"
 DDIR = "/media/slab"
 # Path to directory of file of interest. For windows, replace "/" with "\\".
-DATA_PATH = "_Data/200814 - 3DMM2 cooldown 11 - sideband with LO and mixer - StimEm/data/"
+DATA_PATH = os.path.join(DDIR, "_Data/200814 - 3DMM2 cooldown 11 - sideband with LO and mixer - StimEm/data/")
 SAVE_PATH = os.path.join(WDIR, "out")
 PLOT_FILE_PATH = os.path.join(SAVE_PATH, "iqp.png")
 
