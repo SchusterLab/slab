@@ -167,28 +167,29 @@ class KeysightSingleQubit:
         print ("Configuring analog channels")
 
         self.AWG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-        self.AWG_ch_1.configure(amplitude=amp_AWG[0], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-        self.AWG_ch_2.configure(amplitude=amp_AWG[1], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-        self.AWG_ch_3.configure(amplitude=amp_AWG[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-        self.AWG_ch_4.configure(amplitude=amp_AWG[3], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
+        #self.AWG_ch_1.configure(amplitude=amp_AWG[0], trigger_source=4000)
+        self.AWG_ch_1.configure(amplitude=amp_AWG[0])
+        self.AWG_ch_2.configure(amplitude=amp_AWG[1])
+        self.AWG_ch_3.configure(amplitude=amp_AWG[2])
+        self.AWG_ch_4.configure(amplitude=amp_AWG[3])
 
         print("Configuring marker channels")
 
         self.m_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-        self.m_ch_1.configure(amplitude=amp_mark[0], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-        self.m_ch_2.configure(amplitude=amp_mark[1], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-        self.m_ch_3.configure(amplitude=amp_mark[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-        self.m_ch_4.configure(amplitude=amp_mark[3], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
+        self.m_ch_1.configure(amplitude=amp_mark[0])
+        self.m_ch_2.configure(amplitude=amp_mark[1])
+        self.m_ch_3.configure(amplitude=amp_mark[2])
+        self.m_ch_4.configure(amplitude=amp_mark[3])
 
         print("Configuring trigger channels")
 
         self.trig_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
 
 
-        self.trig_ch_1.configure(amplitude=amp_trig[0], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-        self.trig_ch_2.configure(amplitude=amp_trig[1], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-        self.trig_ch_3.configure(amplitude=amp_trig[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-        self.trig_ch_4.configure(amplitude=amp_trig[3], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
+        self.trig_ch_1.configure(amplitude=amp_trig[0])
+        self.trig_ch_2.configure(amplitude=amp_trig[1])
+        self.trig_ch_3.configure(amplitude=amp_trig[2])
+        self.trig_ch_4.configure(amplitude=amp_trig[3])
         print ("Card trigger amplitude = ",amp_trig[3])
 
         #TODO: WHAT IS THAT

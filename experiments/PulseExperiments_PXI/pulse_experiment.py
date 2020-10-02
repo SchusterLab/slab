@@ -75,12 +75,12 @@ class Experiment:
         pxi_sequences = {}
         for channel in pxi_waveform_channels:
             pxi_sequences[channel] = sequences[channel]
-        try:
-            self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
-            print('configureOK')
-            self.pxi.loadAndQueueWaveforms(pxi_sequences)
-            print('LoadandConfigureOK')
-        except:print("Error in configuring and loading sequences to PXI")
+        #try:
+        self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
+        print('configureOK')
+        self.pxi.loadAndQueueWaveforms(pxi_sequences)
+        print('LoadandConfigureOK')
+        #except:print("Error in configuring and loading sequences to PXI")
 
     def initiate_tek2(self, name,path, sequences):
         if 'sideband' in name:

@@ -1071,7 +1071,7 @@ class KeysightChannelIn(KeysightChannel):
             if err4 < 0:
                 raise KeysightError("Error configuring buffer pool", err4)
         self._points_per_return = points_per_cycle * cycles_per_return
-    
+
     def readData(self, data_points, timeout = KeysightConstants.INFINITY):
         '''Reads arbitrary length of data from the digitizer. Useful for
         testing purposes. In practice, readDataQuiet() is usually more useful
@@ -1084,15 +1084,15 @@ class KeysightChannelIn(KeysightChannel):
         if (not data) or isinstance(data, int):
             raise KeysightError("Error acquiring data", data)
         return data
-    
-    def readDataQuiet(self, timeout = 1000):
+    3
+    def readDataQuiet(self, timeout = 10000):
         '''Alternative to readData() (above) that gets the expected number of data points
         and does not throw errors. The advantage is that it almost always works,
         and you don't have to worry about it raising exceptions in separate
         threads. The disadvantage is you don't have exception handling.'''
         return self._module.DAQread(self._channel_number, self._points_per_return, 
                                     timeout)
-                
+
     def start(self):
         '''Starts the channel.'''
         err = self._module.DAQstart(self._channel_number)

@@ -1229,6 +1229,7 @@ class SD_DIO(SD_Module) :
 			return SD_Error.MODULE_NOT_OPENED;
 
 	def DAQread(self, nDAQ, nPoints, timeOut = 0) :
+		print("CALLING DAQREAD COMMAND")
 		if self._SD_Object__handle > 0 :
 			if nPoints > 0 :
 				data = (c_short * nPoints)()
@@ -1577,6 +1578,7 @@ class SD_AIN(SD_Module) :
 			return SD_Error.MODULE_NOT_OPENED;
 
 	def DAQread(self, nDAQ, nPoints, timeOut = 0) :
+		print("CALLING DAQREAD VERSION 2 IN C:_LIB PYTHON SLAB INSTRUMENTS KEYSIGHT FIND THE OTHER VERSION")
 		if self._SD_Object__handle > 0 :
 			if nPoints > 0 :
 				data = (c_short * nPoints)()
