@@ -143,7 +143,7 @@ class Sequencer:
 
         self.multiple_sequences.append(sequence)
 
-    def complete(self, sequences, plot=True):
+    def complete(self, sequences, plot=False):
         if sequences.expt_cfg.get('9_calibration', False):
             qubit_state = ['g','e','f']
 
@@ -218,6 +218,7 @@ class Sequencer:
 
         sequence_id = 0
 
+        #old visdom version
         for sequence in self.multiple_sequences[::20]:
 
             sequence_id += 1
@@ -236,9 +237,33 @@ class Sequencer:
                     X=np.arange(0, len(sequence_array)) * self.channels_awg_info[channel]['dt'] +
                       self.channels_awg_info[channel]['time_delay'],
                     Y=sequence_array + 2 * (len(self.channels) - kk),
-                    win=win, name=channel, append=False)
+                    win=win, name=channel,append=False)
+
 
                 kk += 1
+        # new visdom code
+        # for sequence in self.multiple_sequences[::20]:
+        #
+        #     sequence_id += 1
+        #
+        #     vis = visdom.Visdom()
+        #     win = vis.line(
+        #         X=np.arange(0, 1),
+        #         Y=np.arange(0, 1),
+        #         opts=dict(
+        #             legend=[self.channels[0]], title='seq %d' % sequence_id, xlabel='Time (ns)'))
+        #
+        #     kk = 0
+        #     for channel in self.channels:
+        #         sequence_array = sequence[channel]
+        #         vis.line(
+        #             X=np.arange(0, len(sequence_array)) * self.channels_awg_info[channel]['dt'] +
+        #               self.channels_awg_info[channel]['time_delay'],
+        #             Y=sequence_array + 2 * (len(self.channels) - kk),
+        #             win=win, name=channel,update=True)
+        #
+        #
+        #         kk += 1
 
 
 def testing_function():

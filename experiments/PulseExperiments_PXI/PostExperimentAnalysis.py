@@ -20,6 +20,7 @@ class PostExperiment:
         self.Q = Q
         self.P = P
         self.show = show
+        self.p=[]
 
         #try:eval('self.' + experiment_name)()
         #except:print("No post experiment analysis yet")
@@ -103,6 +104,7 @@ class PostExperiment:
         print("Qubit frequency = ", p[2], "GHz")
         print("Pulse probe width = ", p[3] * 1e3, "MHz")
         print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
+        self.p=p
 
     def rabi(self):
         expt_cfg = self.experiment_cfg[self.exptname]
@@ -154,7 +156,7 @@ class PostExperiment:
             plt.show()
 
         else:p = fitexp(t, P, showfit=False)
-
+        self.p = p
         print("T1 =", p[3], "us")
 
     def ramsey(self):
@@ -1010,6 +1012,7 @@ class PostExperimentAnalyzeAndSave:
         self.time = None
         self.raw_I_mean = None
         self.raw_Q_mean = None
+        self.p = []
 
         if cont_data_file == None:
             self.cont_data_file = os.path.join(self.data_path, get_next_filename(self.data_path, cont_name, suffix='.h5'))
@@ -1096,6 +1099,7 @@ class PostExperimentAnalyzeAndSave:
             file.append_line('pulse_probe_iq_meta', pulse_probe_meta)
             file.append_line('pulse_probe_iq_fit', p)
             print("appended line correctly")
+        self.p = p
 
     def rabi(self):
         print("Starting rabi analysis")
@@ -1116,8 +1120,8 @@ class PostExperimentAnalyzeAndSave:
             t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
             exp_nb = self.current_file_index(prefix=self.exptname)
             pulse_type = expt_params['pulse_type']
-            if pulse_type == "gauss":
-                t = t * 4
+            #if pulse_type == "gauss":
+            #   t = t * 4
             try:
                 #p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (-1. * (x - x[0]) / p[3]) + p[4]
                 p = fitdecaysin(t,self.Q,showfit=False, fitparams=None, domain=None)
@@ -1129,6 +1133,7 @@ class PostExperimentAnalyzeAndSave:
             rabi_meta = [exp_nb, time.time(), self.raw_I_mean, self.raw_Q_mean]
             file.append_line('rabi_meta', rabi_meta)
             file.append_line('rabi_fit', p)
+            self.p = p
             print("appended line correctly")
     '''        
     def rabi(self):
@@ -1178,6 +1183,7 @@ class PostExperimentAnalyzeAndSave:
             file.append_line('t1_meta', t1_meta)
             file.append_line('t1_fit', p)
             print("appended line correctly")
+        self.p=p
 
     def ramsey(self):
         print("Starting ramsey analysis")
@@ -1201,7 +1207,7 @@ class PostExperimentAnalyzeAndSave:
             file.append_line('ramsey_meta', ramsey_meta)
             file.append_line('ramsey_fit', p)
             print("appended line correctly")
-
+        self.p = p
     def echo(self):
         print("Starting echo analysis")
         expt_params = self.experiment_cfg[self.exptname]
@@ -1224,7 +1230,7 @@ class PostExperimentAnalyzeAndSave:
             file.append_line('echo_meta', echo_meta)
             file.append_line('echo_fit', p)
             print("appended line correctly")
-
+        self.p = p
     def save_cfg_info(self, f):
             f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
             f.attrs['experiment_cfg'] = json.dumps(self.experiment_cfg)

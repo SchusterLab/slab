@@ -76,7 +76,7 @@ class Experiment:
         for channel in pxi_waveform_channels:
             pxi_sequences[channel] = sequences[channel]
         #try:
-        self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
+        self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
         print('configureOK')
         self.pxi.loadAndQueueWaveforms(pxi_sequences)
         print('LoadandConfigureOK')
@@ -191,16 +191,21 @@ class Experiment:
                 drive_freq = self.quantum_device_cfg['qubit'][str(ii+1)]['freq'] - self.quantum_device_cfg['pulse_info'][str(ii+1)]['iq_freq']
                 d.set_frequency(drive_freq * 1e9)
                 d.set_clock_reference(ext_ref=True)
-                print("set drive freq " + str(drive_freq / 1e9) + " GHz")
-
-                d.set_power(self.quantum_device_cfg['qubit_drive_lo_powers'][str(ii+1)])
+                d.set_power(self.quantum_device_cfg['qubit_drive_lo_powers'])
                 d.set_output_state(True)
-                print ("drive pow enabled")
-
                 d.set_rf_mode(val=0) # single RF tone on output 1
                 d.set_standby(False)
                 d.set_rf2_standby(True) # no output on RF 2
-                # signal core max power +13
+                rfparams = d.get_rf_parameters()
+                time.sleep(0.2)
+                settingparams = d.get_device_status()
+                time.sleep(0.2)
+                print(" ==== DRIVE LO SETTINGS ==== ")
+                print("RF1 OUT ENABLED: %s"%settingparams.operate_status.rf1_out_enable)
+                print("RF1 STANDBY: %s"%settingparams.operate_status.rf1_standby)
+                print("RF1 EXT REF DETECTED: %s"%settingparams.operate_status.ext_ref_detect)
+                print("RF1 FREQ: %s"%(rfparams.rf1_freq))
+                print("RF1 LEVEL: %s"%(rfparams.rf_level))
         except:
             print ("Error in qubit drive LO configuration")
             raise
@@ -211,19 +216,21 @@ class Experiment:
                 readout_freq = self.quantum_device_cfg['readout']['freq']*1e9
                 d.set_frequency(readout_freq)
                 d.set_clock_reference(ext_ref=True)
-                print("readout freq " + str(readout_freq/1e9) + " GHz")
-
-
-                d.set_power(self.quantum_device_cfg['readout_drive_lo_powers'][str(ii + 1)])
+                d.set_power(self.quantum_device_cfg['readout_drive_lo_powers'])
                 d.set_output_state(True)
-                print('read pow enabled')
-
                 d.set_rf_mode(val=0) # single RF tone on output 1
                 d.set_standby(False)
                 d.set_rf2_standby(True) # no output on RF 2
-
+                rfparams = d.get_rf_parameters()
+                settingparams = d.get_device_status()
+                print(" ==== READOUT LO SETTINGS ==== ")
+                print("RF1 OUT ENABLED: %s"%settingparams.operate_status.rf1_out_enable)
+                print("RF1 STANDBY: %s"%settingparams.operate_status.rf1_standby)
+                print("RF1 EXT REF DETECTED: %s"%settingparams.operate_status.ext_ref_detect)
+                print("RF1 FREQ: %s"%(rfparams.rf1_freq))
+                print("RF1 LEVEL: %s"%(rfparams.rf_level))
         except:
-            print("Error in readout drive LO configuration")
+            print("Error in readout READOUT LO configuration")
             raise
 
     def initiate_readout_attenuators(self):
@@ -527,10 +534,12 @@ class Experiment:
                                 self.Q, P, show)
         else:
             PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name, self.I ,self.Q, P,show)
+            return PA.p
 
     def post_analysisandsave(self,path, experiment_name, cont_name, P='Q', phi=0, cont_data_file=None, check_sync = False):
         if check_sync:
             print("nope can't currently do analyze and save on check synch")
         else:
             PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, path,  experiment_name, self.I ,self.Q, P, phi, cont_data_file=cont_data_file, cont_name=cont_name)
+            return PA.p
 

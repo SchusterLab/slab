@@ -135,8 +135,8 @@ class SignalCore(Instrument):
             print('Warning: Available range: -30 to +13 dBm')
 
         if pdBm > 13:
-            pdBm = 13
-            print('Warning: Available range: -30 to +13 dBm')
+           pdBm = 13
+           print('Warning: Available range: -30 to +13 dBm')
 
         done = self._dll.sc5511a_set_level(self._handle, pdBm)
         if done == 0:

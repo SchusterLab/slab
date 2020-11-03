@@ -178,9 +178,10 @@ class PulseSequences:
                                             plot=False)
         }
 
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,plot_visdom=True):
+    def  __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,plot_visdom=True):
         self.set_parameters(quantum_device_cfg, experiment_cfg, hardware_cfg)
         self.plot_visdom = plot_visdom
+
 
     def gen_q(self,sequencer,qubit_id = '1',len = 10,amp = 1,add_freq = 0,phase = 0,pulse_type = 'square'):
         if pulse_type.lower() == 'square':
@@ -432,7 +433,7 @@ class PulseSequences:
 
             sequencer.end_sequence()
 
-        return sequencer.complete(self, plot=True)
+        return sequencer.complete(self, plot=True )
 
     def rabi(self, sequencer):
 
@@ -721,7 +722,7 @@ class PulseSequences:
 
                 sequencer.end_sequence()
 
-        return sequencer.complete(self, plot=False)
+        return sequencer.complete(self, plot=True)
 
     def sideband_histogram(self, sequencer):
         # vacuum rabi sequences
@@ -816,7 +817,7 @@ class PulseSequences:
                 self.readout_pxi(sequencer, qubit_id)
                 sequencer.end_sequence()
 
-        return sequencer.complete(self, plot=False)
+        return sequencer.complete(self, plot=True)
 
     def sideband_rabi(self, sequencer):
         # sideband rabi time domain

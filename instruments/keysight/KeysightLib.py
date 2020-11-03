@@ -316,152 +316,152 @@ class KeysightChassis:
         return KeysightChassis(chassis, modules)
     
 "----------------------------------------------------------------------------"
-
-class HVI(KeysightChassis, SD1.SD_HVI):
-    '''Class represents a chassis onto which an HVI is loaded. Inherits from
-    both the KeysightChassis class (since the HVI controls all modules) and
-    the native SD_HVI class for implementation purposes. There should be no
-    reason to call SD_HVI methods directly in implementation.
-    '''
-    
-    def __init__(self, HVI_filename, hardware_config_filename):
-        '''Initializes the underlying Keysight Chassis object and loads
-            the HVI.
-        Params:
-            HVI_filename: The filename (including path) where the .HVI file
-                is stored.
-            hardware_config_filename: The filename (including path) where the
-                .keycfg Keysight hardware config file is stored.
-        '''
-        SD1.SD_HVI.__init__(self)
-        chassis, modules = FileDecodingTools._readHardwareConfigFile(
-                hardware_config_filename)
-        KeysightChassis.__init__(self, chassis, modules)
-        self._is_running = HVIStatus.STOPPED
-        self._filename = HVI_filename
-        self._prepare_HVI(HVI_filename)
-        
-    def close(self):
-        '''Closes the HVI. Must call at end or you'll get weird behavior on 
-        next run.'''
-        err = SD1.SD_HVI.close(self)
-        if err < 0:
-            raise KeysightError("Error closing HVI", err)
-        KeysightChassis.close(self)
-        
-    def start(self):
-        '''Starts the HVI.'''
-        err = SD1.SD_HVI.start(self)
-        if err < 0:
-            raise KeysightError("Error starting HVI", err)
-        self._is_running = HVIStatus.RUNNING
-    
-    def pause(self):
-        '''Pauses the operation of the HVI.'''
-        err = SD1.SD_HVI.pause(self)
-        if err < 0:
-            raise KeysightError("Error pausing HVI", err)
-        self._is_running = HVIStatus.PAUSED
-    
-    def resume(self):
-        '''Resumes the operation of the HVI.'''
-        err = SD1.SD_HVI.resume(self)
-        if err < 0:
-            raise KeysightError("Error resuming HVI", err)
-        self._is_running = HVIStatus.RUNNING
-    
-    def stop(self):
-        '''Stops the operation of the HVI.'''
-        err = SD1.SD_HVI.stop(self)
-        if err < 0:
-            raise KeysightError("Error stopping HVI", err)
-        self._is_running = HVIStatus.STOPPED
-    
-    def getStatus(self):
-        '''Returns the status of the HVI using codes defined in Status class.
-        Note that status will continue to read HVIStatus.RUNNING until stop()
-        is explicitly called, even if the HVI has finished executing.'''
-        return self._is_running
-    
-    def reset(self):
-        '''Resets the HVI to beginning.'''
-        err = SD1.SD_HVI.reset(self)
-        if err < 0:
-            raise KeysightError("Error resetting HVI", err)
-    
-    def __str__(self):
-        '''Returns a string representation of the chassis functioning as an
-            HVI.'''
-        return (KeysightChassis.__str__(self) + "\n   HVI: " + self._filename)
-    
-    @staticmethod #factory method #overrides method in KeysightChassis
-    def fromFile(HVI_filename, hardware_config_filename):
-        '''Constructs an HVI object from a saved hardware configuration file
-            and the HVI file.
-        Params:
-            HVI_filename: The HVI file name and path
-            hardware_config_filename: The file name and path where the .keycfg
-                file indicating the hardware configuration is stored.
-        Returns: An HVI object.
-        '''
-        chassis, modules = FileDecodingTools._readHardwareConfigFile(
-                hardware_config_filename)
-        if chassis is None:
-            raise KeysightError("Cannot open file")
-        return HVI(HVI_filename, chassis, modules)
-    
-    #internal methods used for implementation purposes only
-            
-    def _prepare_HVI(self, HVI_filename):
-        '''Opens the HVI file, then compiles it and loads it to the modules.
-        Params:
-            HVI_filename: The name and path of the .HVI file to be loaded.'''
-            
-        err = self.open(HVI_filename)
-        if err < 0 and err != -8031 and err != -8038: #bug fix
-            raise KeysightError("Error opening HVI file", err)
-        self._assign_hardware()
-        self._compile_and_load()
-            
-    
-    def _compile_and_load(self):
-        '''Compiles the HVI file for the specific module configuration and
-        loads it onto the hardware.'''
-        num_errors = self.compile()
-        if num_errors == 0: #compilation successful
-            err1 = self.load()
-            if err1 < 0:
-                raise KeysightError("Error loading HVI to modules", err1)
-        elif num_errors < 0: #error before compilation; returns error code
-            raise KeysightError("Error before compiling HVI file", num_errors)
-        else: #errors during compilation, num_errors gives number of errors
-            msg = "Error(s) compiling HVI file:\n"
-            for i in range(num_errors):
-                msg += self.compilationErrorMessage(i)
-                msg += "\n"
-            raise KeysightError(msg)
-            
-    def _assign_hardware(self):
-        '''Assigns the modules into HVI to the correct modules in the chassis.
-        Must be called before compilation.
-        
-        Assumes: Modules are given nicknames in HVI according to the convention
-            "SLOT [slot_number]", i.e. "SLOT 6" or "SLOT 10".'''
-        num_modules_HVI = self.getNumberOfModules()
-        if num_modules_HVI < 0: #native method returned an error
-            raise KeysightError("Error getting number of modules from HVI",
-                                num_modules_HVI)
-        
-        for i in range(num_modules_HVI):
-            nickname = self.getModuleName(i).strip()
-            if not nickname.startswith("SLOT "):
-                raise KeysightError(
-                "HVI module nickname should be of form 'SLOT X'")
-            slot_number = int(nickname[4:])
-            module = self.getModule(slot_number)
-            self.assignHardwareWithUserNameAndModuleID(nickname, module)
-            module._nickname = nickname
-            
+#
+# class HVI(KeysightChassis, SD1.SD_HVI):
+#     '''Class represents a chassis onto which an HVI is loaded. Inherits from
+#     both the KeysightChassis class (since the HVI controls all modules) and
+#     the native SD_HVI class for implementation purposes. There should be no
+#     reason to call SD_HVI methods directly in implementation.
+#     '''
+#
+#     def __init__(self, HVI_filename, hardware_config_filename):
+#         '''Initializes the underlying Keysight Chassis object and loads
+#             the HVI.
+#         Params:
+#             HVI_filename: The filename (including path) where the .HVI file
+#                 is stored.
+#             hardware_config_filename: The filename (including path) where the
+#                 .keycfg Keysight hardware config file is stored.
+#         '''
+#         SD1.SD_HVI.__init__(self)
+#         chassis, modules = FileDecodingTools._readHardwareConfigFile(
+#                 hardware_config_filename)
+#         KeysightChassis.__init__(self, chassis, modules)
+#         self._is_running = HVIStatus.STOPPED
+#         self._filename = HVI_filename
+#         self._prepare_HVI(HVI_filename)
+#
+#     def close(self):
+#         '''Closes the HVI. Must call at end or you'll get weird behavior on
+#         next run.'''
+#         err = SD1.SD_HVI.close(self)
+#         if err < 0:
+#             raise KeysightError("Error closing HVI", err)
+#         KeysightChassis.close(self)
+#
+#     def start(self):
+#         '''Starts the HVI.'''
+#         err = SD1.SD_HVI.start(self)
+#         if err < 0:
+#             raise KeysightError("Error starting HVI", err)
+#         self._is_running = HVIStatus.RUNNING
+#
+#     def pause(self):
+#         '''Pauses the operation of the HVI.'''
+#         err = SD1.SD_HVI.pause(self)
+#         if err < 0:
+#             raise KeysightError("Error pausing HVI", err)
+#         self._is_running = HVIStatus.PAUSED
+#
+#     def resume(self):
+#         '''Resumes the operation of the HVI.'''
+#         err = SD1.SD_HVI.resume(self)
+#         if err < 0:
+#             raise KeysightError("Error resuming HVI", err)
+#         self._is_running = HVIStatus.RUNNING
+#
+#     def stop(self):
+#         '''Stops the operation of the HVI.'''
+#         err = SD1.SD_HVI.stop(self)
+#         if err < 0:
+#             raise KeysightError("Error stopping HVI", err)
+#         self._is_running = HVIStatus.STOPPED
+#
+#     def getStatus(self):
+#         '''Returns the status of the HVI using codes defined in Status class.
+#         Note that status will continue to read HVIStatus.RUNNING until stop()
+#         is explicitly called, even if the HVI has finished executing.'''
+#         return self._is_running
+#
+#     def reset(self):
+#         '''Resets the HVI to beginning.'''
+#         err = SD1.SD_HVI.reset(self)
+#         if err < 0:
+#             raise KeysightError("Error resetting HVI", err)
+#
+#     def __str__(self):
+#         '''Returns a string representation of the chassis functioning as an
+#             HVI.'''
+#         return (KeysightChassis.__str__(self) + "\n   HVI: " + self._filename)
+#
+#     @staticmethod #factory method #overrides method in KeysightChassis
+#     def fromFile(HVI_filename, hardware_config_filename):
+#         '''Constructs an HVI object from a saved hardware configuration file
+#             and the HVI file.
+#         Params:
+#             HVI_filename: The HVI file name and path
+#             hardware_config_filename: The file name and path where the .keycfg
+#                 file indicating the hardware configuration is stored.
+#         Returns: An HVI object.
+#         '''
+#         chassis, modules = FileDecodingTools._readHardwareConfigFile(
+#                 hardware_config_filename)
+#         if chassis is None:
+#             raise KeysightError("Cannot open file")
+#         return HVI(HVI_filename, chassis, modules)
+#
+#     #internal methods used for implementation purposes only
+#
+#     def _prepare_HVI(self, HVI_filename):
+#         '''Opens the HVI file, then compiles it and loads it to the modules.
+#         Params:
+#             HVI_filename: The name and path of the .HVI file to be loaded.'''
+#
+#         err = self.open(HVI_filename)
+#         if err < 0 and err != -8031 and err != -8038: #bug fix
+#             raise KeysightError("Error opening HVI file", err)
+#         self._assign_hardware()
+#         self._compile_and_load()
+#
+#
+#     def _compile_and_load(self):
+#         '''Compiles the HVI file for the specific module configuration and
+#         loads it onto the hardware.'''
+#         num_errors = self.compile()
+#         if num_errors == 0: #compilation successful
+#             err1 = self.load()
+#             if err1 < 0:
+#                 raise KeysightError("Error loading HVI to modules", err1)
+#         elif num_errors < 0: #error before compilation; returns error code
+#             raise KeysightError("Error before compiling HVI file", num_errors)
+#         else: #errors during compilation, num_errors gives number of errors
+#             msg = "Error(s) compiling HVI file:\n"
+#             for i in range(num_errors):
+#                 msg += self.compilationErrorMessage(i)
+#                 msg += "\n"
+#             raise KeysightError(msg)
+#
+#     def _assign_hardware(self):
+#         '''Assigns the modules into HVI to the correct modules in the chassis.
+#         Must be called before compilation.
+#
+#         Assumes: Modules are given nicknames in HVI according to the convention
+#             "SLOT [slot_number]", i.e. "SLOT 6" or "SLOT 10".'''
+#         num_modules_HVI = self.getNumberOfModules()
+#         if num_modules_HVI < 0: #native method returned an error
+#             raise KeysightError("Error getting number of modules from HVI",
+#                                 num_modules_HVI)
+#
+#         for i in range(num_modules_HVI):
+#             nickname = self.getModuleName(i).strip()
+#             if not nickname.startswith("SLOT "):
+#                 raise KeysightError(
+#                 "HVI module nickname should be of form 'SLOT X'")
+#             slot_number = int(nickname[4:])
+#             module = self.getModule(slot_number)
+#             self.assignHardwareWithUserNameAndModuleID(nickname, module)
+#             module._nickname = nickname
+#
 "----------------------------------------------------------------------------"
 
 class KeysightModule(SD1.SD_Module):

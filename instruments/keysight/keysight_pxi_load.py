@@ -74,6 +74,7 @@ class KeysightSingleQubit:
         self.dt_dig = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
         self.readout_window = np.array(quantum_device_cfg['readout']['window'])
         self.lo_delay = hardware_cfg['awg_info']['keysight_pxi']['lo_delay']
+        self.qb_lo_delay = hardware_cfg['awg_info']['keysight_pxi']['qb_lo_delay']
         self.abs_trig_delay = hardware_cfg['awg_info']['keysight_pxi']['abs_trig_delay']
         self.trig_pulse_length = hardware_cfg['trig_pulse_len']['default']
         self.trig_delay = hardware_cfg['awg_info']['keysight_pxi']['m3201a_trig_delay']
@@ -141,6 +142,7 @@ class KeysightSingleQubit:
         # self.DIG_chs = [chassis.getChannel(10, ch) for ch in self.dig_channels]
         self.DIG_ch_1 = chassis.getChannel(10, 1)
         self.DIG_ch_2 = chassis.getChannel(10, 2)
+        self.DIG_ch_3 = chassis.getChannel(10,3)
         self.DIG_module = chassis.getModule(10)
 
         self.data_1,self.data_2 = np.zeros((self.num_expt, self.DIG_sampl_record)),np.zeros((self.num_expt, self.DIG_sampl_record))
@@ -150,7 +152,7 @@ class KeysightSingleQubit:
         self.sleep_time = sleep_time_between_trials / (10 ** 9)  # stored in seconds internally
 
 
-    def configureChannels(self, hardware_cfg, experiment_cfg, name):
+    def configureChannels(self, hardware_cfg, experiment_cfg, quantum_device_cfg, name):
         '''Configures the individual channels that are used in the experiment. This section may be modified as needed
         for other experiments. See documentation in KeysightLib for the configure() methods on KeysightChannelIn and
         KeysightChannelOut. Amplitude is in volts.'''
@@ -158,6 +160,7 @@ class KeysightSingleQubit:
         amp_AWG = hardware_cfg['awg_info']['keysight_pxi']['amplitudes']
         amp_mark = hardware_cfg['awg_info']['keysight_pxi']['amp_mark']
         amp_trig = hardware_cfg['awg_info']['keysight_pxi']['amp_trig']
+        IQ_dc_offset = quantum_device_cfg['pulse_info']['1']['IQ_dc']
         # dt = hardware_cfg['awg_info']['keysight_pxi']['dt']
         # dt_dig = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
         num_avg = experiment_cfg[name]['acquisition_num']
@@ -168,10 +171,10 @@ class KeysightSingleQubit:
 
         self.AWG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
         #self.AWG_ch_1.configure(amplitude=amp_AWG[0], trigger_source=4000)
-        self.AWG_ch_1.configure(amplitude=amp_AWG[0])
-        self.AWG_ch_2.configure(amplitude=amp_AWG[1])
-        self.AWG_ch_3.configure(amplitude=amp_AWG[2])
-        self.AWG_ch_4.configure(amplitude=amp_AWG[3])
+        self.AWG_ch_1.configure(amplitude=amp_AWG[0], offset_voltage = IQ_dc_offset)
+        self.AWG_ch_2.configure(amplitude=amp_AWG[1], offset_voltage = IQ_dc_offset)
+        self.AWG_ch_3.configure(amplitude=amp_AWG[2], offset_voltage = IQ_dc_offset)
+        self.AWG_ch_4.configure(amplitude=amp_AWG[3], offset_voltage = IQ_dc_offset)
 
         print("Configuring marker channels")
 
@@ -206,8 +209,8 @@ class KeysightSingleQubit:
         print ("Configuring digitizer. ADC range set to",self.adc_range, "Vpp")
 
         self.DIG_ch_1.configure(full_scale=self.adc_range,points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
-        #self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_2.configure(full_scale=self.adc_range,points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_3.configure(full_scale=self.adc_range,points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,use_buffering=True, cycles_per_return=num_expt)
     def generatemarkers(self,waveform,resample=False,conv_width = 1,trig_delay = 0):
 
         # markers = np.array([np.append(np.heaviside(np.convolve(abs(w), np.ones((int(self.lo_delay),))/self.lo_delay),0)[int(self.lo_delay/2):],np.zeros(int(self.lo_delay/2))) for w in waveform])
@@ -354,7 +357,7 @@ class KeysightSingleQubit:
 
             #Queue trigger waveforms to trigger channels
             trig.queue(self.trig_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
-            trig.queue(self.trig_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
+            trig.queue(self.trig_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.qb_lo_delay, cycles=1, prescaler=0)
             trig.queue(self.trig_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
             card_trig.queue(self.trig_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=int(self.card_delay/100)+self.tek2_trigger_delay, cycles=1, prescaler=0)
 
@@ -370,8 +373,8 @@ class KeysightSingleQubit:
 
             self.DIG_ch_1.clear()
             self.DIG_ch_1.start()
-            self.DIG_ch_2.clear()
-            self.DIG_ch_2.start()
+            self.DIG_ch_3.clear()
+            self.DIG_ch_3.start()
             self.AWG_module.startAll()
             self.m_module.startAll()
             self.trig_module.startAll()
@@ -388,7 +391,7 @@ class KeysightSingleQubit:
         for sweep_ct in tqdm(range(self.num_avg)):
             # pass
             self.data_1 += np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape)
-            self.data_2 += np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape)
+            self.data_2 += np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_2.shape)
 
         self.data_1 /= self.num_avg
         self.data_2 /= self.num_avg
@@ -424,15 +427,15 @@ class KeysightSingleQubit:
 
             self.DIG_ch_1.clear()
             self.DIG_ch_1.start()
-            self.DIG_ch_2.clear()
-            self.DIG_ch_2.start()
+            self.DIG_ch_3.clear()
+            self.DIG_ch_3.start()
             self.AWG_module.startAll()
             self.m_module.startAll()
             self.trig_module.startAll()
 
             for sweep_ct in tqdm(range(self.num_avg)):
                 self.data_1 += np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape)
-                self.data_2 += np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape)
+                self.data_2 += np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_2.shape)
 
             self.data_1 /= self.num_avg
             self.data_2 /= self.num_avg
@@ -469,7 +472,7 @@ class KeysightSingleQubit:
 
     def traj_data_one(self,w = [0,-1]):
         ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[0])].T
-        ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[0])].T
+        ch2 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[0])].T
         return ch1,ch2
 
     def traj_data_many(self,w = [0,-1]):
@@ -477,14 +480,14 @@ class KeysightSingleQubit:
         Q = []
         for ii in tqdm(range(self.num_avg)):
             ch1= np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])].T
-            ch2= np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])].T
+            ch2= np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])].T
             I.append(ch1)
             Q.append(ch2)
         return np.array(I),np.array(Q)
 
     def SSdata_one(self,w =[0,-1]):
         ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])]
-        ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])]
+        ch2 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])]
         return np.mean(ch1,0), np.mean(ch2,0)
 
     def SSdata_many(self,w =[0,-1]):
@@ -492,14 +495,14 @@ class KeysightSingleQubit:
         Q = []
         for ii in tqdm(range(self.num_avg)):
             I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])], 0))
-            Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
+            Q.append(np.mean(np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
         return np.array(I).T, np.array(Q).T
 
     def acquire_avg_data(self,w = [0,-1],pi_calibration=False):
         for ii in tqdm(range(self.num_avg)):
 
             self.I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(),self.data_1.shape).T[int(w[0]):int(w[1])],0)
-            self.Q += np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(),self.data_2.shape).T[int(w[0]):int(w[1])],0)
+            self.Q += np.mean(np.reshape(self.DIG_ch_3.readDataQuiet(),self.data_2.shape).T[int(w[0]):int(w[1])],0)
 
 
 
@@ -515,7 +518,7 @@ class KeysightSingleQubit:
         self.I,self.Q = [],[]
         for ii in tqdm(range(self.num_avg)):
             self.I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])], 0))
-            self.Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
+            self.Q.append(np.mean(np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
         I,Q = mean(self.I),mean(self.Q)
         Ierr,Qerr = std(self.I),std(self.Q)
         if pi_calibration:
