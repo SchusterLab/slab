@@ -990,6 +990,232 @@ class PostExperiment:
             f.close()
 
 
+class PostExperimentAnalyze:
+
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg, data_path, experiment_name, I , Q, P = 'Q', phi=0):
+        self.quantum_device_cfg = quantum_device_cfg
+        self.experiment_cfg = experiment_cfg
+        self.hardware_cfg = hardware_cfg
+        self.data_path = os.path.join(data_path, 'data/')
+
+        self.exptname = experiment_name
+        self.I = I
+        self.Q = Q
+        self.P = P
+        self.mag = []
+        self.phase = []
+
+        self.phi = phi
+        self.expt_nb = None
+        self.time = None
+        self.raw_I_mean = None
+        self.raw_Q_mean = None
+        self.p = []
+
+        eval('self.' + experiment_name)()
+
+    def current_file_index(self, prefix=''):
+        """Searches directories for files of the form *_prefix* and returns current number
+            in the series"""
+
+        dirlist = glob.glob(os.path.join(self.data_path, '*_' + prefix + '*'))
+        dirlist.sort()
+        try:
+            ii = int(os.path.split(dirlist[-1])[-1].split('_')[0])
+        except:
+            ii = 0
+        return ii
+
+    def iq_rot(self):
+        """Digitially rotates IQdata by phi, calcualting phase as np.unrwap(np.arctan2(Q, I))
+        :selfparam I: I data from h5 file
+        :selfparam Q: Q data from h5 file
+        :selfparam phi: iq rotation desired (in degrees)
+        :returns: sets self.I, self.Q
+        """
+        self.phi = self.phi * np.pi / 180  # convert to radians
+        phase = np.unwrap(np.arctan2(self.Q, self.I))
+        self.Q = self.Q / np.sin(phase) * np.sin(phase + self.phi)
+        self.I = self.I / np.cos(phase) * np.cos(phase + self.phi)
+
+    def iq_process(self):
+        """Converts digitial data to voltage data, rotates iq, subtracts off mean, calculates mag and phase
+        :param raw_I: I data from h5 file
+        :param raw_Q: Q data from h5 file
+        :param ran: range of DAC. If set to -1, doesn't convert data to voltage
+        :returns: sets self: I, Q, mag, phase
+        """
+        raw_I = self.I
+        raw_Q = self.Q
+        ran = self.hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']
+
+        self.raw_I_mean = mean(array(raw_I).flatten())
+        self.raw_Q_mean = mean(array(raw_Q).flatten())
+        self.I = array(raw_I).flatten() - self.raw_I_mean
+        self.Q = array(raw_Q).flatten() - self.raw_Q_mean
+
+
+        # divide by 2**15 to convert from bits to voltage, *ran to get right voltage range
+        if ran > 0:
+            self.I = self.I / 2 ** 15 * ran
+            self.Q = self.Q / 2 ** 15 * ran
+
+        # calculate mag and phase
+        phase = np.unwrap(np.arctan2(self.Q, self.I))
+        mag = np.sqrt(np.square(self.I) + np.square(self.Q))
+        self.mag = mag
+        self.phase = phase
+
+        # IQ rotate
+        self.iq_rot()
+
+    def pulse_probe_iq(self):
+        print("Starting pulse probe analysis")
+        expt_params = self.experiment_cfg[self.exptname]
+        nu_q = self.quantum_device_cfg['qubit'][expt_params['on_qubits'][0]]['freq']
+
+        self.iq_process()
+        f = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))] + nu_q
+        exp_nb = self.current_file_index(prefix=self.exptname)
+        try:
+            p = fitlor(f, np.square(self.mag), showfit=False) #returns [offset,amplitude,center,hwhm]
+            print("pulse probe fit worked!")
+        except:
+            print("Pulse probe fit failed on exp", exp_nb)
+            p = [0, 0, 0, 0]
+
+        self.p = p
+
+    def rabi(self):
+        print("Starting rabi analysis")
+        expt_params = self.experiment_cfg[self.exptname]
+
+        self.iq_process()
+
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        exp_nb = self.current_file_index(prefix=self.exptname)
+        pulse_type = expt_params['pulse_type']
+        #if pulse_type == "gauss":
+        #   t = t * 4
+        try:
+            #p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (-1. * (x - x[0]) / p[3]) + p[4]
+            p = fitdecaysin(t,self.Q,showfit=False, fitparams=None, domain=None)
+            print("rabi fit worked!")
+        except:
+            print("rabi fit failed on exp", exp_nb)
+            p = [0, 0, 0, 0, 0]
+        self.p = p
+
+    def rabi_lmfit(self):
+        print("Starting rabi analysis")
+        expt_params = self.experiment_cfg[self.exptname]
+
+        self.iq_process()
+
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        exp_nb = self.current_file_index(prefix=self.exptname)
+        pulse_type = expt_params['pulse_type']
+        #if pulse_type == "gauss":
+        #   t = t * 4
+        try:
+            #p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (-1. * (x - x[0]) / p[3]) + p[4]
+            p = fitdecaysin(t,self.Q,showfit=False, fitparams=None, domain=None)
+
+            print("rabi fit worked!")
+        except:
+            print("rabi fit failed on exp", exp_nb)
+            p = [0, 0, 0, 0, 0]
+        self.p = p
+
+    '''        
+    def rabi(self):
+        print("Starting rabi analysis")
+        expt_params = self.experiment_cfg[self.exptname]
+
+        self.iq_process()
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        exp_nb = self.current_file_index(prefix=self.exptname)
+        fitparams = [0.03, 1/5800, 270, 40000, 0]
+        pulse_type = expt_params['pulse_type']
+        if pulse_type == "gauss":
+            t = t * 4
+        try:
+            #p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (-1. * (x - x[0]) / p[3]) + p[4]
+            p = fitdecaysin(t,self.Q,showfit=False, fitparams=fitparams, domain=None)
+            print("rabi fit worked!")
+        except:
+            print("rabi fit failed on exp", exp_nb)
+            p = [0, 0, 0, 0, 0]
+
+        rabi_meta = [exp_nb, time.time(), self.raw_I_mean, self.raw_Q_mean]
+        with self.cont_slab_file as file:
+            file.append_line('rabi_meta', rabi_meta)
+            file.append_line('rabi_fit', p)
+            print("appended line correctly")
+    '''
+
+    def t1(self):
+        print("Starting t1 analysis")
+        expt_params = self.experiment_cfg[self.exptname]
+
+        self.iq_process()
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        exp_nb = self.current_file_index(prefix=self.exptname)
+        t = t / 1000  # convert to us
+        try:
+            #exponential decay (p[0]+p[1]*exp(-(x-p[2])/p[3])
+            p = fitexp(t,self.Q,fitparams=None, domain=None, showfit=False)
+            print("t1 fit worked!")
+        except:
+            print("t1 fit failed on exp", exp_nb)
+            p = [0, 0, 0, 0]
+
+        self.p=p
+
+    def ramsey(self):
+        print("Starting ramsey analysis")
+        expt_params = self.experiment_cfg[self.exptname]
+
+        self.iq_process()
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        t = t/1000 #convert to us
+        exp_nb = self.current_file_index(prefix=self.exptname)
+
+        try:
+            #p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (-1. * (x - x[0]) / p[3]) + p[4]
+            p = fitdecaysin(t,self.Q,showfit=False, fitparams=None, domain=None)
+            print("ramsey fit worked!")
+        except:
+            print("ramsey fit failed on exp", exp_nb)
+            p = [0, 0, 0, 0, 0]
+
+        self.p = p
+    def echo(self):
+        print("Starting echo analysis")
+        expt_params = self.experiment_cfg[self.exptname]
+
+        self.iq_process()
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        t = t/1000 #convert to us
+        exp_nb = self.current_file_index(prefix=self.exptname)
+
+        try:
+            #p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (-1. * (x - x[0]) / p[3]) + p[4]
+            p = fitdecaysin(t,self.Q,showfit=False, fitparams=None, domain=None)
+            print("echo fit worked!")
+        except:
+            print("echo fit failed on exp", exp_nb)
+            p = [0, 0, 0, 0, 0]
+
+        self.p = p
+
+
+    def save_cfg_info(self, f):
+            f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
+            f.attrs['experiment_cfg'] = json.dumps(self.experiment_cfg)
+            f.attrs['hardware_cfg'] = json.dumps(self.hardware_cfg)
+            f.close()
+
 class PostExperimentAnalyzeAndSave:
 
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg, data_path, experiment_name, I , Q, P = 'Q', phi=0, cont_data_file=None, cont_name="cont_v0"):
@@ -1231,6 +1457,8 @@ class PostExperimentAnalyzeAndSave:
             file.append_line('echo_fit', p)
             print("appended line correctly")
         self.p = p
+
+
     def save_cfg_info(self, f):
             f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
             f.attrs['experiment_cfg'] = json.dumps(self.experiment_cfg)

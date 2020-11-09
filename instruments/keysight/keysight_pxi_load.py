@@ -461,8 +461,6 @@ class KeysightSingleQubit:
             plt.show()
 
 
-
-
         except BaseException as e:  # Quickly kill everything and risk data loss, mainly in case of keyboard interrupt
             pass
             print(e)
@@ -503,7 +501,6 @@ class KeysightSingleQubit:
 
             self.I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(),self.data_1.shape).T[int(w[0]):int(w[1])],0)
             self.Q += np.mean(np.reshape(self.DIG_ch_3.readDataQuiet(),self.data_2.shape).T[int(w[0]):int(w[1])],0)
-
 
 
         I = self.I/self.num_avg

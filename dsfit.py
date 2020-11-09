@@ -12,6 +12,9 @@ import scipy
 import scipy.fftpack
 import cmath
 import numpy
+import lmfit
+from lmfit import minimize, Parameters
+from lmfit import Minimizer, Parameters, report_fit
 
 from scipy import optimize
 
@@ -54,6 +57,8 @@ def fitgeneral(xdata, ydata, fitfunc, fitparams, domain=None, showfit=False, sho
     errfunc = lambda p, x, y: (fitfunc(p,x) - y) #there shouldn't be **2 # Distance to the target function
     startparams=fitparams # Initial guess for the parameters
     bestfitparams, success = optimize.leastsq(errfunc, startparams[:], args=(fitdatax,fitdatay))
+    err = math.fsum(errfunc(bestfitparams, fitdatax, fitdatay))
+    print('the best fit has an RMS of {0}'.format(err))
     if showfit:
         if showdata:
             plt.plot(fitdatax,fitdatay,mark_data,label=label+" data")
@@ -61,8 +66,6 @@ def fitgeneral(xdata, ydata, fitfunc, fitparams, domain=None, showfit=False, sho
             plt.plot(fitdatax,fitfunc(startparams,fitdatax),label=label+" startfit")
         plt.plot(fitdatax,fitfunc(bestfitparams,fitdatax),mark_fit,label=label+" fit")
         if label!='': plt.legend()
-        err=math.fsum(errfunc(bestfitparams,fitdatax,fitdatay))
-        #print 'the best fit has an RMS of {0}'.format(err)
 #    plt.t
 #    plt.figtext()    
     return bestfitparams
@@ -90,6 +93,21 @@ def fitlor(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fal
                     label=label)
     p1[3]=abs(p1[3])
     return p1
+# def fit_lor_lmfit(xdata,ydata,fitparams = None,domain=None,showfit=False,showstartfit=False,label = "",debug=False)
+#     """fit lorentzian:
+#         returns [offset,amplitude,center,hwhm]"""
+#     if domain is not None:
+#         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+#     else:
+#         fitdatax=xdata
+#         fitdatay=ydata
+#     if fitparams is None:
+#         fitparams=[0,0,0,0]
+#         fitparams[0]=(fitdatay[0]+fitdatay[-1])/2.
+#         fitparams[1]=max(fitdatay)-min(fitdatay)
+#         fitparams[2]=fitdatax[np.argmax(fitdatay)]
+#         fitparams[3]=(max(fitdatax)-min(fitdatax))/10.
+
 
 def harmfunc(p, x):
     """p[0]+p[1]/(1+(x-p[2])**2/p[3]**2)"""

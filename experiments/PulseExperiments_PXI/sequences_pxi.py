@@ -393,6 +393,31 @@ class PulseSequences:
 
         return readout_time
 
+    # def readout_pxi_pi(self, sequencer, on_qubits=None, sideband = False, overlap = False):
+    #     if on_qubits == None:
+    #         on_qubits = ["1", "2"]
+    #
+    #     sequencer.sync_channels_time(self.channels)
+    #     readout_time = sequencer.get_time('readout_trig') # Earlies was alazar_tri
+    #     readout_time_5ns_multiple = np.ceil(readout_time / 5) * 5
+    #     sequencer.append_idle_to_time('readout_trig', readout_time_5ns_multiple)
+    #     if overlap:
+    #         pass
+    #     else:
+    #         sequencer.sync_channels_time(self.channels)
+    #
+    #     qubit_id = on_qubits[0]
+    #     self.pi_q(sequencer, qubit_id, phase=0, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+    #     sequencer.append('drive',)
+    #     sequencer.append('readout',
+    #                      Square(max_amp=self.quantum_device_cfg['readout']['amp'],
+    #                             flat_len=self.quantum_device_cfg['readout']['length'],
+    #                             ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+    #                             phase=0, phase_t0=readout_time_5ns_multiple))
+    #     sequencer.append('readout_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
+    #
+    #     return readout_time
+
     def parity_measurement(self, sequencer, qubit_id='1'):
         self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
         self.idle_q(sequencer, qubit_id, time=-1/self.quantum_device_cfg['flux_pulse_info'][qubit_id]['chiby2pi_e']/4.0)
@@ -406,14 +431,37 @@ class PulseSequences:
         sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
+
+
     def excited_resonator_spectroscopy(self, sequencer):
 
         sequencer.new_sequence(self)
-
         self.excited_readout_pxi(sequencer, self.expt_cfg['on_qubits'])
         sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
+
+    def resonator_spectroscopy_pi(self, sequencer):
+
+        qubit_id = self.expt_cfg['on_qubits'][0]
+        sequencer.new_sequence(self)
+        self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+        self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+        self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+        sequencer.end_sequence()
+        return sequencer.complete(self, plot=True)
+
+    def resonator_spectroscopy_ef_pi(self, sequencer):
+
+        qubit_id = self.expt_cfg['on_qubits'][0]
+        sequencer.new_sequence(self)
+        self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+        self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+        self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+        self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+        sequencer.end_sequence()
+        return sequencer.complete(self, plot=True)
+
     def pulse_probe_iq(self, sequencer):
 
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):

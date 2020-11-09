@@ -19,6 +19,7 @@ from slab.dataanalysis import get_next_filename
 import json
 from slab.experiments.PulseExperiments_PXI.get_data import get_iq_data, get_singleshot_data
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
+from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperimentAnalyze
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperimentAnalyzeAndSave
 
 class Experiment:
@@ -527,7 +528,7 @@ class Experiment:
         self.awg_stop(name)
         return self.I,self.Q
 
-    def post_analysis(self,experiment_name,P='Q',show = False,check_sync = False):
+    def post_analysis_old(self,experiment_name,P='Q',show = False,check_sync = False):
         if check_sync:
             PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, "check_sync",
                                 self.I,
@@ -536,10 +537,11 @@ class Experiment:
             PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name, self.I ,self.Q, P,show)
             return PA.p
 
-    def post_analysisandsave(self,path, experiment_name, cont_name, P='Q', phi=0, cont_data_file=None, check_sync = False):
-        if check_sync:
-            print("nope can't currently do analyze and save on check synch")
-        else:
-            PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, path,  experiment_name, self.I ,self.Q, P, phi, cont_data_file=cont_data_file, cont_name=cont_name)
-            return PA.p
+    def post_analysis(self,path, experiment_name, cont_name, P='Q', phi=0):
+        PA = PostExperimentAnalyze(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, path,  experiment_name, self.I ,self.Q, P, phi)
+        return PA.p
+
+    def post_analysisandsave(self,path, experiment_name, cont_name, P='Q', phi=0, cont_data_file=None):
+        PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, path,  experiment_name, self.I ,self.Q, P, phi, cont_data_file=cont_data_file, cont_name=cont_name)
+        return PA.p
 
