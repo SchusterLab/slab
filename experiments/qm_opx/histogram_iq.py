@@ -33,9 +33,9 @@ qubit_freq = 4.748488058227563e9
 ge_IF = 100e6
 qubit_LO = qubit_freq - ge_IF
 
-# rr_freq = 8.0518e9
+rr_freq = 8.0516e9
 
-rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
+# rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
 
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
