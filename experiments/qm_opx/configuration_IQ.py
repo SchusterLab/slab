@@ -25,21 +25,21 @@ def IQ_imbalance(g, phi):
 long_redout_len = 3600
 readout_len = 3000
 
-qubit_freq = 4.748488058227563e9
+qubit_freq = 4.7484880581094515e9
 qubit_ef_freq = 4.608488058632734e9
 ge_IF = 100e6
 ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
 qubit_LO = qubit_freq - ge_IF
 
 # rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
-rr_freq = 8.0518e9
+rr_freq = 8.0516e9
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
 rr_amp = 1.0
 
 gauss_len = 32
 pi_len = 32
-pi_amp = 0.3962
+pi_amp = 0.4080
 pi_ef_len = 32
 pi_ef_amp = 0.2842
 

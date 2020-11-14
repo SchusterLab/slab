@@ -29,7 +29,7 @@ def doublegauss(bins, *p):
 ##################
 # histogram_prog:
 ##################
-qubit_freq = 4.748488058227563e9
+qubit_freq = 4.7484880581094515e9
 ge_IF = 100e6
 qubit_LO = qubit_freq - ge_IF
 

@@ -20,11 +20,11 @@ ge_IF = 100e6
 qubit_LO = qubit_freq - ge_IF
 
 # rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
-rr_freq = 8.0517e9
+rr_freq = 8.0518e9
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
-reset_time = 5000
-simulation = 1
+reset_time = 500000
+simulation = 0
 
 f_min = -20e6
 f_max = 20e6

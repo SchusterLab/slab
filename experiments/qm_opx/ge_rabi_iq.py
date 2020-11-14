@@ -15,11 +15,13 @@ from slab.dsfit import*
 ##################
 # power_rabi_prog:
 ##################
-qubit_freq = 4.748488058227563e9
+qubit_freq = 4.7484880581094515e9
 ge_IF = 100e6
 qubit_LO = qubit_freq - ge_IF
+rr_freq = 8.0518e9
+# rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
 rr_IF = 100e6
-rr_LO = 8.0518e9 - rr_IF
+rr_LO = rr_freq - rr_IF
 
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
