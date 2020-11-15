@@ -15,11 +15,12 @@ from slab.dsfit import*
 ##################
 # T1:
 ##################
-qubit_freq = 4.748488058227563e9
+qubit_freq = 4.7484880581094515e9
 ge_IF = 100e6
 qubit_LO = qubit_freq - ge_IF
 rr_IF = 100e6
-rr_LO = 8.0518e9 - rr_IF
+rr_freq = 8.0518e9
+rr_LO = rr_freq - rr_IF
 
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod = False)
@@ -35,7 +36,7 @@ times = np.arange(T_min, T_max + dt/2, dt)
 
 avgs = 1000
 reset_time = 500000
-simulation = 0 # 1 to simulate the pulses
+simulation = 0# 1 to simulate the pulses
 
 with program() as ge_t1:
 
@@ -58,8 +59,8 @@ with program() as ge_t1:
     ###############
     # the sequence:
     ###############
-    update_frequency("qubit", ge_IF)
-    update_frequency("rr", rr_IF)
+    # update_frequency("qubit", ge_IF)
+    # update_frequency("rr", rr_IF)
 
     with for_(n, 0, n < avgs, n + 1):
         with for_(t, T_min, t < T_max + dt/2, t + dt):

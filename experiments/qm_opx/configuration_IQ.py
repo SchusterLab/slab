@@ -32,14 +32,14 @@ ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
 qubit_LO = qubit_freq - ge_IF
 
 # rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
-rr_freq = 8.0516e9
+rr_freq = 8.0518e9
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
 rr_amp = 1.0
 
 gauss_len = 32
 pi_len = 32
-pi_amp = 0.4080
+pi_amp = 0.4114
 pi_ef_len = 32
 pi_ef_amp = 0.2842
 

@@ -10,7 +10,7 @@ from slab.dsfit import*
 
 im = InstrumentManager()
 LO_r = im['RF8']
-atten = im["atten"]
+# atten = im["atten"]
 
 rr_IF = 100e6
 rr_freq = 8.0518e9
@@ -25,7 +25,7 @@ LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 LO_r.set_output(True)
-atten.set_attenuator(0.0)
+# atten.set_attenuator(0.0)
 time.sleep(1)
 
 avgs = 1000
