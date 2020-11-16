@@ -30,11 +30,11 @@ LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 
-ramsey_freq = 1e6
+ramsey_freq = 10e3
 detune_freq = ge_IF + ramsey_freq
 
-dt = 250
-T_max = 10000
+dt = 500
+T_max = 30000
 times = np.arange(0, T_max + dt/2, dt)
 avgs = 1000
 reset_time = 500000
@@ -116,9 +116,9 @@ else:
     times = 4*times/1e3
     z = 1
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    axs[0].plot(times[z:len(I)], I[z:],'bo')
-    p = fitdecaysin(times[z:len(I)], I[z:],showfit=False)
-    print ("fits :",p)
+    axs[0].plot(times[z:len(I)], I[z:], 'bo')
+    p = fitdecaysin(times[z:len(I)], I[z:], showfit=False)
+    print ("fits :", p)
     axs[0].plot(times[z:len(I)], decaysin(np.append(p, 0), times[z:len(I)]), 'b-',
                 label=r'$T_{2}^{*}$ = %.2f $\mu$s' % p[3])
     axs[0].set_xlabel('Time ($\mu$s)')
@@ -133,8 +133,8 @@ else:
     print("T2* =", p[3], "us")
 
     z = 1
-    axs[1].plot(times[z:len(I)], Q[z:],'ro')
-    p = fitdecaysin(times[z:len(I)], Q[z:],showfit=False)
+    axs[1].plot(times[z:len(I)], Q[z:], 'ro')
+    p = fitdecaysin(times[z:len(I)], Q[z:], showfit=False)
     axs[1].plot(times[z:len(I)], decaysin(np.append(p, 0), times[z:len(I)]), 'r-',
                 label=r'$T_{2}^{*}$ = %.2f $\mu$s' % p[3])
     print ("fits :", p)
