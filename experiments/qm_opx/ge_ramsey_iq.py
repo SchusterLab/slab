@@ -33,7 +33,7 @@ LO_r.set_power(18)
 ramsey_freq = 10e3
 detune_freq = ge_IF + ramsey_freq
 
-dt = 500
+dt = 250
 T_max = 30000
 times = np.arange(0, T_max + dt/2, dt)
 avgs = 1000
