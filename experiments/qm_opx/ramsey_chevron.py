@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, qubit_LO, rr_LO, ge_IF
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -15,12 +15,6 @@ from slab.dsfit import*
 ##################
 # ramsey_prog:
 ##################
-qubit_freq = 4.748488058227563e9
-ge_IF = 100e6
-qubit_LO = qubit_freq + ge_IF
-rr_IF = 100e6
-rr_LO = 8.05157848e9 + rr_IF
-
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
@@ -28,16 +22,17 @@ LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 
-dt = 500
-T_max = 25000
-times = np.arange(0, T_max + dt/2, dt)
+dt = 250
+T_min = 0
+T_max = 30000
+times = np.arange(T_min, T_max + dt/2, dt)
 
-f_min = -10e3
-f_max = 10e3
-df = 2e3
+f_min = 5e3
+f_max = 15e3
+df = 0.2e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 reset_time = 500000
-avgs = 1000
+avgs = 500
 simulation = 0
 with program() as ramsey:
 
@@ -79,8 +74,8 @@ with program() as ramsey:
                         demod.full("long_integW2", Q1, 'out1'),
                         demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
 
-                assign(I, I1 - Q2)
-                assign(Q, I2 + Q1)
+                assign(I, I1 + Q2)
+                assign(Q, I2 - Q1)
 
                 save(I, I_st)
                 save(Q, Q_st)
@@ -110,7 +105,7 @@ else:
     I_handle.wait_for_values(1)
     Q_handle.wait_for_values(1)
     #
-    x = 4*np.arange(0, T_max + dt/2, dt)/1000
+    x = 4*times/1000
     y = (f_vec)/1e3
 
     while(res_handles.is_processing()):

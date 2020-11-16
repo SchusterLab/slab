@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, qubit_freq, rr_freq
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -15,11 +15,9 @@ from slab.dsfit import*
 ##################
 # T1:
 ##################
-qubit_freq = 4.7484880581094515e9
 ge_IF = 100e6
 qubit_LO = qubit_freq - ge_IF
 rr_IF = 100e6
-rr_freq = 8.0518e9
 rr_LO = rr_freq - rr_IF
 
 LO_q.set_frequency(qubit_LO)

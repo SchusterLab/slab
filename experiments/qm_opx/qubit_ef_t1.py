@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, qubit_LO, rr_LO
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -15,15 +15,6 @@ from slab.dsfit import*
 ##################
 # power_rabi_prog:
 ##################
-qubit_freq = 4.748488058227563e9 #g-e
-qubit_ef_freq = 4.608488058632734e9
-
-ge_IF = 100e6 #g-e IF
-ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
-qubit_LO = qubit_freq - ge_IF
-rr_IF = 100e6
-rr_LO = 8.0518e9 - rr_IF
-
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(16)
@@ -60,9 +51,6 @@ with program() as ef_t1:
     ###############
     # the sequence:
     ###############
-    # update_frequency("qubit", ge_IF)
-    update_frequency("qubit_ef", ef_IF)
-    # update_frequency("rr", rr_IF)
 
     with for_(n, 0, n < avgs, n + 1):
 
@@ -109,24 +97,26 @@ else:
     times = 4*times #actual clock time
 
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    axs[0].plot(times[:len(I)]/1e3,- I,'bo')
-    p = fitexp(times[:len(I)], -I,showfit=False)
-    print ("fits :",p)
-    print("T1: %.3f"%(p[3]/1e3))
-    axs[0].plot(times[:len(I)]/1e3, expfunc(p, times[:len(I)]),'b-', label='T1: %.3f $\mu$s'%(p[3]/1e3))
+    axs[0].plot(times[:len(I)]/1e3,- I, 'bo')
+    p = fitexp(times[:len(I)], -I, showfit=False)
+    print ("fits :", p)
+    print("T1: %.3f" % (p[3]/1e3))
+    axs[0].plot(times[:len(I)]/1e3, expfunc(p, times[:len(I)]), 'b-', label='T1: %.3f $\mu$s' % (p[3]/1e3))
     axs[0].set_xlabel('Time ($\mu$s)')
     axs[0].set_ylabel('I')
     axs[0].legend()
 
     axs[1].plot(times[:len(I)]/1e3, Q,'ro')
-    p = fitexp(times[:len(I)], Q,showfit=False)
-    axs[1].plot(times[:len(I)]/1e3,expfunc(p, times[:len(I)]),'r-', label='T1: %.3f $\mu$s'%(p[3]/1e3))
-    print ("fits :",p)
-    print("T1: %.3f"%(p[3]/1e3))
+    # p = fitexp(times[:len(I)], Q,showfit=False)
+    p = fitdoubleexp(times[:len(I)], Q, showfit=False)
+
+    axs[1].plot(times[:len(I)]/1e3, expfunc(p, times[:len(I)]), 'r-', label='T1: %.3f $\mu$s' % (p[5]/1e3))
+    print("fits :", p)
+    print("T1: %.3f" % (p[3]/1e3))
     axs[1].set_xlabel('Time ($\mu$s)')
     axs[1].set_ylabel('Q')
     axs[1].legend()
     plt.tight_layout()
     fig.show()
 
-    p = fitdoubleexp(times[:len(I)], Q,showfit=False)
+    p = fitdoubleexp(times[:len(I)], Q, showfit=False)

@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, qubit_freq, rr_LO, qubit_LO, ge_IF
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -15,21 +15,9 @@ from slab.dsfit import*
 ###############
 # qubit_spec_prog:
 ###############
-qubit_freq = 4.748488058227563e9
-ge_IF = 100e6
-qubit_LO = qubit_freq - ge_IF
-
-# rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
-rr_freq = 8.0518e9
-rr_IF = 100e6
-rr_LO = rr_freq - rr_IF
-reset_time = 500000
-simulation = 0
-
 f_min = -20e6
 f_max = 20e6
 df = 400e3
-avgs = 1000
 
 f_vec = np.arange(f_min, f_max + df/2, df)
 f_vec = f_vec + qubit_freq
@@ -41,6 +29,9 @@ LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 
+avgs = 1000
+reset_time = 500000
+simulation = 0
 with program() as qubit_spec:
 
     ##############################
@@ -67,11 +58,11 @@ with program() as qubit_spec:
         with for_(f, ge_IF + f_min, f < ge_IF + f_max + df/2, f + df):
 
             update_frequency("qubit", f)
-            wait(reset_time// 4, "qubit") # wait for the qubit to relax, several T1s
+            wait(reset_time// 4, "qubit")# wait for the qubit to relax, several T1s
             play("saturation"*amp(0.05), "qubit", duration=125000)
             align("qubit", "rr")
-            measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),demod.full("long_integW2", Q2, 'out2'))
+            measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'), demod.full("long_integW2", Q1, 'out1'),
+                demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
 
             assign(I, I1 + Q2)
             assign(Q, -Q1 + I2)

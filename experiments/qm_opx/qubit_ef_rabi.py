@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, qubit_LO, rr_LO
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -15,15 +15,6 @@ from slab.dsfit import*
 ##################
 # power_rabi_prog:
 ##################
-qubit_freq = 4.748488058227563e9 #g-e
-qubit_ef_freq = 4.608488058632734e9
-
-ge_IF = 100e6 #g-e IF
-ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
-qubit_LO = qubit_freq - ge_IF
-rr_IF = 100e6
-rr_LO = 8.0518e9 - rr_IF
-
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(16)
@@ -38,7 +29,6 @@ amps = np.arange(a_min, a_max + da/2, da)
 avgs = 1000
 reset_time = 500000
 simulation = 0
-
 with program() as ef_rabi_IQ:
 
     ##############################
@@ -60,10 +50,6 @@ with program() as ef_rabi_IQ:
     ###############
     # the sequence:
     ###############
-
-    # update_frequency("qubit", ge_IF)
-    # update_frequency("rr", rr_IF)
-    # update_frequency("qubit_ef", ef_IF)
 
     with for_(n, 0, n < avgs, n + 1):
 
@@ -124,7 +110,7 @@ else:
     axs[0].set_xlabel('Amps')
     axs[0].set_ylabel('I')
 
-    z = 1
+    z = 0
     axs[1].plot(amps[z:len(I)], Q[z:], 'ro')
     p = fitdecaysin(amps[z:len(I)], Q[z:], showfit=False)
     axs[1].plot(amps[z:len(I)], decaysin(np.append(p, 0), amps[z:len(I)]), 'r-')

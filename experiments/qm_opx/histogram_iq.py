@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, qubit_LO, rr_LO, rr_IF
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -29,16 +29,8 @@ def doublegauss(bins, *p):
 ##################
 # histogram_prog:
 ##################
-qubit_freq = 4.7484880581094515e9
-ge_IF = 100e6
-qubit_LO = qubit_freq - ge_IF
-
-rr_freq = 8.0516e9
-
-# rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
-
-rr_IF = 100e6
-rr_LO = rr_freq - rr_IF
+# rr_freq = 8.0516e9
+# rr_LO = rr_freq - rr_IF
 
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
@@ -46,9 +38,6 @@ LO_q.set_power(16)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
-
-# atten.set_attenuator(0.0)
-# time.sleep(1)
 
 reset_time = 500000
 avgs = 2000
@@ -119,6 +108,7 @@ with program() as histogram:
         save(Ie, Ie_st)
         save(Qe, Qe_st)
 
+        # align("qubit_ef", "rr")
         # """Play a ge pi pulse followed by a ef pi pulse and then readout"""
         # wait(reset_time//4, "qubit")
         # play("pi", "qubit")
