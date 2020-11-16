@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, rr_LO, rr_freq, rr_IF
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -12,8 +12,6 @@ im = InstrumentManager()
 LO_r = im['RF8']
 # atten = im["atten"]
 
-rr_IF = 100e6
-rr_freq = 8.0518e9
 rr_LO = rr_freq - rr_IF
 
 f_min = -20e6

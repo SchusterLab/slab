@@ -17,19 +17,19 @@ from slab.dsfit import*
 ##################
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
+LO_q.set_power(16)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 
-dt = 250
+dt = 15
 T_min = 0
-T_max = 30000
+T_max = 6000
 times = np.arange(T_min, T_max + dt/2, dt)
 
-f_min = 5e3
-f_max = 15e3
-df = 0.2e3
+f_min = -400e3
+f_max = 400e3
+df = 20e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 reset_time = 500000
 avgs = 500
@@ -113,7 +113,7 @@ else:
         Q = Q_handle.fetch_all()
         sig = I + 1j*Q
         power = np.abs(sig)
-        plt.pcolor(x, y, power)
+        plt.pcolor(x, y, power, cmap="RdBu")
         plt.xlabel(r'Time ($\mu$s)')
         plt.ylabel(r'$\Delta \nu$ (kHz)')
         plt.pause(5)
