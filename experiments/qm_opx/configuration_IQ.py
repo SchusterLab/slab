@@ -1,5 +1,5 @@
 import numpy as np
-
+import pandas as pd
 ######################
 # AUXILIARY FUNCTIONS:
 ######################
@@ -24,14 +24,14 @@ def IQ_imbalance(g, phi):
 long_redout_len = 3600
 readout_len = 3000
 
-qubit_freq = 4.748488058011432e9
+qubit_freq = 4.74809611713928e9
 qubit_ef_freq = 4.6078190022032635e9
 ge_IF = 100e6
 ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
 qubit_LO = qubit_freq - ge_IF
 
-# rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
-rr_freq = 8.0517e9
+rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
+# rr_freq = 8.0517e9
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
 rr_amp = 1.0
@@ -41,6 +41,11 @@ pi_len = 32
 pi_amp = 0.4114
 pi_ef_len = 32
 pi_ef_amp = 0.2843
+
+data = pd.read_csv("C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\clear_pulse_3.csv")
+amp = np.array(pd.DataFrame(data['amp']))
+clear_amp = amp[1500:-490]/np.max(amp)/1.0
+clear_len = len(clear_amp)
 
 config = {
 
@@ -155,6 +160,7 @@ config = {
                 'CW': 'CW',
                 'long_readout': 'long_readout_pulse',
                 'readout': 'readout_pulse',
+                'clear':'clear_pulse',
             },
             "outputs": {
                 'out1': ('con1', 1),
@@ -292,6 +298,19 @@ config = {
             },
             'digital_marker': 'ON'
         },
+        'clear_pulse': {
+            'operation': 'measurement',
+            'length': clear_len,
+            'waveforms': {
+                'I': 'clear_wf',
+                'Q': 'zero_wf'
+            },
+            'integration_weights': {
+                'clear_integW1': 'clear_integW1',
+                'clear_integW2': 'clear_integW2',
+            },
+            'digital_marker': 'ON'
+        },
 
     },
 
@@ -356,6 +375,10 @@ config = {
             'type': 'constant',
             'sample': 0.40
         },
+        'clear_wf': {
+            'type': 'arbitrary',
+            'samples': 0.40 * clear_amp
+        },
     },
 
     'digital_waveforms': {
@@ -374,6 +397,15 @@ config = {
         'long_integW2': {
             'cosine': [0.0] * int(long_redout_len / 4 - 250),
             'sine': [2.0] * int(long_redout_len / 4 - 250)
+        },
+        'clear_integW1': {
+            'cosine': [2.0] * int(clear_len / 4 - 250),
+            'sine': [0.0] * int(clear_len / 4 - 250)
+        },
+
+        'clear_integW2': {
+            'cosine': [0.0] * int(clear_len / 4 - 250),
+            'sine': [2.0] * int(clear_len / 4 - 250)
         },
 
         'integW1': {

@@ -10,7 +10,7 @@ from slab.dsfit import*
 
 im = InstrumentManager()
 LO_r = im['RF8']
-# atten = im["atten"]
+atten = im["atten"]
 
 rr_LO = rr_freq - rr_IF
 
@@ -23,7 +23,7 @@ LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 LO_r.set_output(True)
-# atten.set_attenuator(0.0)
+atten.set_attenuator(10.0)
 time.sleep(1)
 
 avgs = 1000
@@ -48,8 +48,8 @@ with program() as resonator_spectroscopy:
         with for_(f, f_min + rr_IF, f < f_max + rr_IF + df / 2, f + df):
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
-            measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),demod.full("long_integW2", Q2, 'out2'))
+            measure("clear", "rr", None, demod.full("clear_integW1", I1, 'out1'), demod.full("clear_integW2", Q1, 'out1'),
+                demod.full("clear_integW1", I2, 'out2'), demod.full("clear_integW2", Q2, 'out2'))
 
             assign(I, I1+Q2)
             assign(Q, I2-Q1)
@@ -89,13 +89,13 @@ else:
     ph = np.unwrap(ph, discont=3.141592653589793, axis=-1)
     m = (ph[-1]-ph[0])/(f_vec[-1] - f_vec[0])
     ph = ph - m*f_vec*0.95
-    ph = ph -np.mean(ph)
+    ph = ph - np.mean(ph)
     axs[1].plot(f_vec/1e9, amps, 'b-')
     p = fitlor(f_vec/1e9, amps, showfit=False)
     x = np.array(f_vec)/1e9
-    axs[1].plot(f_vec/1e9, lorfunc(p, f_vec/1e9), label=r'$\nu_{r}$ = %.4f GHz'% x[np.argmax(amps)])
-    print ("fits = ", p)
-    ax2  = axs[1].twinx()
+    axs[1].plot(f_vec/1e9, lorfunc(p, f_vec/1e9), label=r'$\nu_{r}$ = %.4f GHz'% p[2])
+    print("fits = ", p)
+    ax2 = axs[1].twinx()
     ax2.plot(f_vec/1e9, ph, 'r-')
     axs[1].set_xlabel('Freq (GHz)')
     axs[1].set_ylabel('amp')

@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, rr_freq
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -12,7 +12,7 @@ from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-# atten = im["atten"]
+atten = im["atten"]
 
 from slab.dsfit import*
 
@@ -61,20 +61,14 @@ def hist(p):
 ##################
 # histogram_prog:
 ##################
-qubit_freq = 4.748488058227563e9
-ge_IF = 100e6
-qubit_LO = qubit_freq - ge_IF
-rr_freq = 8.0518e9
-# rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
-rr_IF = 100e6
-rr_LO = rr_freq - rr_IF
-
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(16)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
+
+atten.set_attenuator(6.5)
 
 reset_time = 500000
 avgs = 2000
@@ -186,7 +180,7 @@ ax.plot(f_vec, fid_f, 'bo')
 ax.axvline(x=f_vec[ind], color='k', linestyle='--')
 # ax.axhline(y=amp_vec[ind[0]], color='k', linestyle='--')
 ax.axvline(x=8.051847, color='r', linestyle='--')
-ax.axvline(x=8.051487 , color='b', linestyle='--')
+ax.axvline(x=8.051487, color='b', linestyle='--')
 ax.set_title('F = %.2f at readout frequency = %.4f GHz'%(fid_f[ind], f_vec[ind]))
 #
 # print("#############################################################################################")

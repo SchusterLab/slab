@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_freq, rr_LO, ge_IF
+from configuration_IQ import config, qubit_freq, qubit_LO, rr_LO, ge_IF
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -22,13 +22,16 @@ LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 
-ramsey_freq = 10e3
+ramsey_freq = 50e3
 detune_freq = ge_IF + ramsey_freq
 
 dt = 250
 T_max = 30000
 times = np.arange(0, T_max + dt/2, dt)
-avgs = 1000
+
+wait_times = np.arange(0, 2500 + dt/2, dt)#wait between readout pulse and the ramsey experiment
+
+avgs = 10
 reset_time = 500000
 simulation = 0
 with program() as ramsey:
@@ -58,21 +61,27 @@ with program() as ramsey:
 
     with for_(n, 0, n < avgs, n + 1):
 
-        with for_(t, 0, t < T_max + dt/2, t + dt):
+        with for_(i, 0, i < 2500 + dt/2, dt):
 
-            wait(reset_time//4, "qubit")
-            play("pi2", "qubit")
-            wait(t, "qubit")
-            play("pi2", "qubit")
-            align("qubit", "rr")
-            measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),demod.full("long_integW2", Q2, 'out2'))
+                with for_(t, 0, t < T_max + dt/2, t + dt):
 
-            assign(I, I1+Q2)
-            assign(Q, I2-Q1)
+                    wait(reset_time//4, "rr")
+                    play("clear", "rr")
+                    wait(i, "rr")
+                    align("rr", "qubit")
+                    play("pi2", "qubit")
+                    wait(t, "qubit")
+                    play("pi2", "qubit")
+                    align("qubit", "rr")
+                    measure("clear", "rr", None, demod.full("clear_integW1", I1, 'out1'),
+                            demod.full("clear_integW2", Q1, 'out1'),
+                            demod.full("clear_integW1", I2, 'out2'), demod.full("clear_integW2", Q2, 'out2'))
 
-            save(I, I_st)
-            save(Q, Q_st)
+                    assign(I, I1+Q2)
+                    assign(Q, I2-Q1)
+
+                    save(I, I_st)
+                    save(Q, Q_st)
 
     with stream_processing():
         # I_st.save("I_s")
@@ -80,8 +89,8 @@ with program() as ramsey:
         # Q_st.save("Q_s")
         # Q_st.save_all("Q_s_all")
 
-        I_st.buffer(len(times)).average().save('I')
-        Q_st.buffer(len(times)).average().save('Q')
+        I_st.buffer(len(wait_times), len(times)).average().save('I')
+        Q_st.buffer(len(wait_times), len(times)).average().save('Q')
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -106,40 +115,7 @@ else:
     print("Data collection done")
 
     times = 4*times/1e3
-    z = 1
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    axs[0].plot(times[z:len(I)], I[z:], 'bo')
+    z = 2
+
     p = fitdecaysin(times[z:len(I)], I[z:], showfit=False)
-    print ("fits :", p)
-    axs[0].plot(times[z:len(I)], decaysin(np.append(p, 0), times[z:len(I)]), 'b-',
-                label=r'$T_{2}^{*}$ = %.2f $\mu$s' % p[3])
-    axs[0].set_xlabel('Time ($\mu$s)')
-    axs[0].set_ylabel('I')
-    axs[0].legend()
-    offset = ramsey_freq/1e9 - p[1]
-    nu_q_new = qubit_freq/1e9 + offset/1e9
-
-    print("Original qubit frequency choice =", qubit_freq/1e9, "GHz")
-    print("Offset freq =", offset, "Hz")
-    print("Suggested qubit frequency choice =", nu_q_new, "GHz")
-    print("T2* =", p[3], "us")
-
-    z = 1
-    axs[1].plot(times[z:len(I)], Q[z:], 'ro')
-    p = fitdecaysin(times[z:len(I)], Q[z:], showfit=False)
-    axs[1].plot(times[z:len(I)], decaysin(np.append(p, 0), times[z:len(I)]), 'r-',
-                label=r'$T_{2}^{*}$ = %.2f $\mu$s' % p[3])
-    print ("fits :", p)
-    axs[1].set_xlabel('Time ($\mu$s)')
-    axs[1].set_ylabel('Q')
-    axs[1].legend()
-    plt.tight_layout()
-    fig.show()
-
-    offset = ramsey_freq/1e9 - p[1]
-    nu_q_new = qubit_freq/1e9 + offset/1e9
-
-    print("Original qubit frequency choice =", qubit_freq/1e9, "GHz")
-    print("Offset freq =", offset, "Hz")
-    print("Suggested qubit frequency choice =", nu_q_new, "GHz")
-    print("T2* =", p[3], "us")
+    T2 = p[3]

@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_freq, rr_LO, ge_IF
+from configuration_IQ import config, qubit_freq, rr_LO, ge_IF, qubit_LO
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -12,6 +12,7 @@ from tqdm import tqdm
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
+atten = im['atten']
 ##################
 # ramsey_prog:
 ##################
@@ -21,8 +22,9 @@ LO_q.set_power(16)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
+atten.set_attenuator(12.0)
 
-ramsey_freq = 10e3
+ramsey_freq = 50e3
 detune_freq = ge_IF + ramsey_freq
 
 dt = 250
@@ -54,7 +56,6 @@ with program() as ramsey:
     # the sequence:
     ###############
     update_frequency("qubit", detune_freq)
-    # update_frequency("rr", rr_IF)
 
     with for_(n, 0, n < avgs, n + 1):
 
@@ -116,10 +117,11 @@ else:
     axs[0].set_xlabel('Time ($\mu$s)')
     axs[0].set_ylabel('I')
     axs[0].legend()
-    offset = ramsey_freq/1e9 - p[1]
-    nu_q_new = qubit_freq/1e9 + offset/1e9
+    offset = ramsey_freq/1e6 - p[1]
+    nu_q_new = qubit_freq/1e9 + offset/1e3
 
     print("Original qubit frequency choice =", qubit_freq/1e9, "GHz")
+    print("Oscillation freq = ", p[1], " MHz")
     print("Offset freq =", offset, "Hz")
     print("Suggested qubit frequency choice =", nu_q_new, "GHz")
     print("T2* =", p[3], "us")
@@ -136,10 +138,11 @@ else:
     plt.tight_layout()
     fig.show()
 
-    offset = ramsey_freq/1e9 - p[1]
-    nu_q_new = qubit_freq/1e9 + offset/1e9
+    offset = ramsey_freq / 1e6 - p[1]
+    nu_q_new = qubit_freq / 1e9 + offset / 1e3
 
     print("Original qubit frequency choice =", qubit_freq/1e9, "GHz")
+    print("Oscillation freq = ", p[1], " MHz")
     print("Offset freq =", offset, "Hz")
     print("Suggested qubit frequency choice =", nu_q_new, "GHz")
     print("T2* =", p[3], "us")

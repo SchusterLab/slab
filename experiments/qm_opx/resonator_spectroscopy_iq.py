@@ -10,7 +10,7 @@ from slab.dsfit import*
 
 im = InstrumentManager()
 LO_r = im['RF8']
-# atten = im["atten"]
+atten = im["atten"]
 
 rr_LO = rr_freq - rr_IF
 
@@ -23,7 +23,7 @@ LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 LO_r.set_output(True)
-# atten.set_attenuator(0.0)
+atten.set_attenuator(6.0)
 time.sleep(1)
 
 avgs = 1000
@@ -93,7 +93,7 @@ else:
     axs[1].plot(f_vec/1e9, amps, 'b-')
     p = fitlor(f_vec/1e9, amps, showfit=False)
     x = np.array(f_vec)/1e9
-    axs[1].plot(f_vec/1e9, lorfunc(p, f_vec/1e9), label=r'$\nu_{r}$ = %.4f GHz'% x[np.argmax(amps)])
+    axs[1].plot(f_vec/1e9, lorfunc(p, f_vec/1e9), label=r'$\nu_{r}$ = %.4f GHz'% p[2])
     print ("fits = ", p)
     ax2  = axs[1].twinx()
     ax2.plot(f_vec/1e9, ph, 'r-')

@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, rr_freq
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -62,13 +62,6 @@ def hist(p):
 ##################
 # histogram_prog:
 ##################
-qubit_freq = 4.748488058227563e9
-ge_IF = 100e6
-qubit_LO = qubit_freq - ge_IF
-rr_freq = 8.0517e9
-rr_IF = 100e6
-rr_LO = rr_freq - rr_IF
-
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(16)
@@ -83,7 +76,7 @@ avgs = 2000
 simulation = 0
 
 a_min = 0.0
-a_max = 10.0
+a_max = 15.0
 da = 0.5
 amp_vec = np.arange(a_min, a_max + da/2, da)
 
@@ -165,47 +158,49 @@ qm = qmm.open_qm(config)
 job = qm.execute(histogram, duration_limit=0, data_limit=0)
 print("Waiting for the data")
 
-for att in (amp_vec):
+for att in tqdm(amp_vec):
+    while not job.is_paused():
+        time.sleep(0.1)
     atten.set_attenuator(att)
     print(att)
-    time.sleep(0.01)
+    time.sleep(0.1)
     job.resume()
 
 job.result_handles.wait_for_all_values()
 #
-# Ig = job.result_handles.Ig.fetch_all()['value']
-# Ie = job.result_handles.Ie.fetch_all()['value']
-# Qg = job.result_handles.Qg.fetch_all()['value']
-# Qe = job.result_handles.Qe.fetch_all()['value']
-# print("Data fetched")
+Ig = job.result_handles.Ig.fetch_all()['value']
+Ie = job.result_handles.Ie.fetch_all()['value']
+Qg = job.result_handles.Qg.fetch_all()['value']
+Qe = job.result_handles.Qe.fetch_all()['value']
+print("Data fetched")
 #
 #
-# f_vec = amp_vec
-# fid_f = []
-# for jj in range(len(f_vec)):
-#     ig = Ig[jj::len(f_vec)]
-#     qg = Qg[jj::len(f_vec)]
-#     ie = Ie[jj::len(f_vec)]
-#     qe = Qe[jj::len(f_vec)]
-#     p = [ig, qg, ie, qe]
-#     f = hist(p)[0]
-#     fid_f.append(f)
+f_vec = amp_vec
+fid_f = []
+for jj in range(len(f_vec)):
+    ig = Ig[jj::len(f_vec)]
+    qg = Qg[jj::len(f_vec)]
+    ie = Ie[jj::len(f_vec)]
+    qe = Qe[jj::len(f_vec)]
+    p = [ig, qg, ie, qe]
+    f = hist(p)[0]
+    fid_f.append(f)
+
+"""Plotting the fidelity data as a function of amp and freq"""
+ind = np.argmax(fid_f) #index for maximum fidelity
 #
-# """Plotting the fidelity data as a function of amp and freq"""
-# ind = np.argmax(fid_f) #index for maximum fidelity
-# #
-# fig, ax = plt.subplots(figsize=(8, 6))
-# ax.plot(f_vec, fid_f, 'bo')
-# ax.axvline(x=f_vec[ind], color='k', linestyle='--')
-# # ax.axhline(y=amp_vec[ind[0]], color='k', linestyle='--')
-# # ax.axvline(x=8.051847, color='r', linestyle='--')
-# # ax.axvline(x=8.051487 , color='b', linestyle='--')
-# ax.set_title('F = %.2f at readout frequency = %.4f GHz'%(fid_f[ind], f_vec[ind]))
-# #
-# # print("#############################################################################################")
-# # print('Optimal fidelity of %f at readout power = %f (V) and readout frequency = %f GHz'%(fid_max, amp_vec[ind[0]],f_vec[ind[1]]))
-# # print("#############################################################################################")
-# ax.set_xlim(np.min(f_vec), np.max(f_vec))
-# ax.set_xlabel('Readout frequency (GHz)')
-# ax.set_ylabel('F ')
-# plt.show()
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.plot(f_vec, fid_f, 'bo')
+ax.axvline(x=f_vec[ind], color='k', linestyle='--')
+# ax.axhline(y=amp_vec[ind[0]], color='k', linestyle='--')
+# ax.axvline(x=8.051847, color='r', linestyle='--')
+# ax.axvline(x=8.051487 , color='b', linestyle='--')
+ax.set_title('F = %.2f at readout frequency = %.4f GHz'%(fid_f[ind], f_vec[ind]))
+#
+# print("#############################################################################################")
+# print('Optimal fidelity of %f at readout power = %f (V) and readout frequency = %f GHz'%(fid_max, amp_vec[ind[0]],f_vec[ind[1]]))
+# print("#############################################################################################")
+ax.set_xlim(np.min(f_vec), np.max(f_vec))
+ax.set_xlabel('Readout frequency (GHz)')
+ax.set_ylabel('F ')
+plt.show()

@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, rr_freq
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -62,13 +62,6 @@ def hist(p):
 ##################
 # histogram_prog:
 ##################
-qubit_freq = 4.748488058227563e9
-ge_IF = 100e6
-qubit_LO = qubit_freq - ge_IF
-rr_freq = 8.0518e9
-rr_IF = 100e6
-rr_LO = rr_freq - rr_IF
-
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(16)
@@ -79,7 +72,7 @@ LO_r.set_power(18)
 atten.set_attenuator(0.0)
 
 reset_time = 500000
-avgs = 5
+avgs = 1000
 simulation = 0
 
 a_min = 0.0
@@ -99,7 +92,7 @@ with program() as histogram:
 
     n = declare(int)      # Averaging
     f = declare(int)
-    i= declare(int)
+    i = declare(int)
 
     Ig = declare(fixed)
     Qg = declare(fixed)
@@ -120,9 +113,10 @@ with program() as histogram:
     Ie_st = declare_stream()
     Qe_st = declare_stream()
 
+
     with for_(n, 0, n < avgs, n + 1):
 
-        with for_(i, 0, i < len(amp_vec), i+1):
+        with for_(i, 0, i < len(amp_vec), i + 1):
 
             with for_(f, rr_IF + f_min, f < rr_IF + f_max + df/2, f + df):
 
@@ -167,9 +161,11 @@ qm = qmm.open_qm(config)
 job = qm.execute(histogram, duration_limit=0, data_limit=0)
 
 for att in tqdm(amp_vec):
+    while not job.is_paused():
+        time.sleep(0.01)
     atten.set_attenuator(att)
     print(att)
-    time.sleep(0.01)
+    time.sleep(0.1)
     job.resume()
 
 print("Waiting for the data")
@@ -208,7 +204,7 @@ fig.colorbar(pcm, ax=ax)
 ax.axvline(x=f_vec[ind[1]], color='k', linestyle='--')
 ax.axhline(y=amp_vec[ind[0]], color='k', linestyle='--')
 ax.axvline(x=8.0518, color='r', linestyle='--')
-ax.axvline(x=8.0515 , color='b', linestyle='--')
+ax.axvline(x=8.0515, color='b', linestyle='--')
 ax.set_title('F = %.2f at readout power = %.3f (V) and readout frequency = %.4f GHz'%(fid_max, amp_vec[ind[0]],f_vec[ind[1]]))
 
 print("#############################################################################################")
