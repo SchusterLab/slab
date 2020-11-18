@@ -9,8 +9,8 @@ class DigitalAttenuator(SerialInstrument):
 
 
     """This is a driver for the Arduino Uno based digital attenuator
-       It is based on a HITITE HMC424 digital attenuator.  It also uses a custom board to invert the
-       arduino logic.
+       It is based on a HITITE HMC424/425 digital attenuator.  It also uses a custom board to invert the
+       arduino logic. Power the HMC425A with 3.3V pin and not 5V as 5V was causing unusual insertion loss.
     """
 
     
