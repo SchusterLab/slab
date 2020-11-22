@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_freq, rr_freq
+from configuration_IQ import config, qubit_freq, rr_freq, qubit_LO, rr_LO
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -9,23 +9,20 @@ from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-
+atten = im['atten']
 from slab.dsfit import*
 
 ##################
 # power_rabi_prog:
 ##################
-ge_IF = 100e6
-qubit_LO = qubit_freq - ge_IF
-rr_IF = 100e6
-rr_LO = rr_freq - rr_IF
-
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(16)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
+atten.set_attenuator(15.5)
+time.sleep(1)
 
 a_min = 0.0
 a_max = 1.0
@@ -112,14 +109,27 @@ else:
     axs[0].set_xlabel('Amps')
     axs[0].set_ylabel('I')
 
-    z = 1
+    z = 2
     axs[1].plot(amps[z:len(I)], Q[z:],'ro')
     p = fitdecaysin(amps[z:len(I)], Q[z:], showfit=False)
     axs[1].plot(amps[z:len(I)], decaysin(np.append(p,0), amps[z:len(I)]), 'r-')
-    print ("fits :", p)
-    print ("a_pi", 1/2/p[1])
+    print("fits :", p)
+    print("a_pi", 1/2/p[1])
     axs[1].axvline(1/2/p[1])
     axs[1].set_xlabel('Amps')
     axs[1].set_ylabel('Q')
     plt.tight_layout()
     fig.show()
+
+    # sig = I + 1j*Q
+    # plt.figure(figsize=(8, 6))
+    # plt.plot(amps[0:len(sig)], np.abs(sig), 'bo')
+    # p = fitdecaysin(amps[0:len(sig)], np.abs(sig[:]), showfit=False)
+    # plt.plot(amps[0:len(sig)], decaysin(np.append(p, 0), amps[0:len(sig)]), 'r-')
+    # print("fits :", p)
+    # print("a_pi", 1/2/p[1])
+    # plt.axvline(1/2/p[1])
+    # plt.xlabel('Amps')
+    # plt.ylabel('Q')
+    # plt.tight_layout()
+    # plt.show()

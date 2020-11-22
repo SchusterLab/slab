@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, rr_LO, rr_freq, rr_IF, qubit_LO
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -9,26 +9,22 @@ from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
+atten = im['atten']
 from slab.dsfit import*
 ##################
 ##################
-qubit_freq = 4.748488058822229e9 #g-e
-ge_IF = 100e6 # g-e IF
-rr_IF = 100e6
-rr_freq = 8.0518e9
-qubit_LO = qubit_freq - ge_IF
-rr_LO = rr_freq - rr_IF
-
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(16)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
+atten.set_attenuator(0.5)
+time.sleep(1)
 
 f_min = -20e6
 f_max = 20e6
-df = 40e3
+df = 100e3
 f_vec = rr_freq + np.arange(f_min, f_max + df/2, df)
 reset_time = 500000
 avgs = 1000

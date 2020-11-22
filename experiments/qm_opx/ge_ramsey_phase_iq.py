@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_LO, rr_LO, ge_IF
+from configuration_IQ import config, qubit_LO, rr_LO, ge_IF, qubit_freq
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -12,6 +12,7 @@ from tqdm import tqdm
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
+atten = im['atten']
 ##################
 # ramsey_prog:
 ##################
@@ -21,18 +22,22 @@ LO_q.set_power(16)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
+atten.set_attenuator(0.5)
+time.sleep(1)
 
-ramsey_freq = 10e3
-
+ramsey_freq = 100e3
 omega = 2*np.pi*ramsey_freq
 
 dt = 250
-T_min = 4
+
+dphi = omega*dt
+
+T_min = 0
 T_max = 30000
 times = np.arange(T_min, T_max + dt/2, dt)
 avgs = 1000
-reset_time = 500
-simulation = 1
+reset_time = 500000
+simulation = 0
 with program() as ramsey:
 
     ##############################
@@ -42,6 +47,7 @@ with program() as ramsey:
     n = declare(int)      # Averaging
     i = declare(int)      # Amplitudes
     t = declare(int) #array of time delays
+    phi = declare(fixed)
     I = declare(fixed)
     Q = declare(fixed)
     I1 = declare(fixed)
@@ -57,20 +63,20 @@ with program() as ramsey:
     ###############
 
     with for_(n, 0, n < avgs, n + 1):
-
+        assign(phi, 0)
         with for_(t, T_min, t < T_max + dt/2, t + dt):
             wait(reset_time//4, "qubit")
-            # frame_rotation(omega*t, "qubit_phase")
             play("pi2", "qubit")
             wait(t, "qubit")
-            align("qubit", "qubit_phase")
-            play("pi2", "qubit_phase")
-            align("qubit_phase", "rr")
+            frame_rotation_2pi(phi, "qubit")
+            play("pi2", "qubit")
+            align("qubit", "rr")
             measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'), demod.full("long_integW2", Q1, 'out1'),
                 demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
 
             assign(I, I1+Q2)
             assign(Q, I2-Q1)
+            assign(phi, phi + dphi)
 
             save(I, I_st)
             save(Q, Q_st)

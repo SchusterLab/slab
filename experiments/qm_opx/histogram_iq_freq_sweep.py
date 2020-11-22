@@ -68,7 +68,8 @@ LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 
-atten.set_attenuator(6.5)
+atten.set_attenuator(13.0)
+time.sleep(1)
 
 reset_time = 500000
 avgs = 2000
@@ -88,6 +89,8 @@ with program() as histogram:
     n = declare(int)      # Averaging
     f = declare(int)
     i= declare(int)
+    
+    n_st = declare_stream()
 
     Ig = declare(fixed)
     Qg = declare(fixed)
@@ -109,7 +112,7 @@ with program() as histogram:
     Qe_st = declare_stream()
 
     with for_(n, 0, n < avgs, n + 1):
-
+        save(n, n_st)
         with for_(f, rr_IF + f_min, f < rr_IF + f_max + df/2, f + df):
 
             update_frequency("rr", f)
@@ -147,13 +150,14 @@ with program() as histogram:
         Ie_st.save_all('Ie')
         Qe_st.save_all('Qe')
 
+        n_st.save('n')
+
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 job = qm.execute(histogram, duration_limit=0, data_limit=0)
 print("Waiting for the data")
 
 job.result_handles.wait_for_all_values()
-
 Ig = job.result_handles.Ig.fetch_all()['value']
 Ie = job.result_handles.Ie.fetch_all()['value']
 Qg = job.result_handles.Qg.fetch_all()['value']
@@ -179,8 +183,8 @@ fig, ax = plt.subplots(figsize=(8, 6))
 ax.plot(f_vec, fid_f, 'bo')
 ax.axvline(x=f_vec[ind], color='k', linestyle='--')
 # ax.axhline(y=amp_vec[ind[0]], color='k', linestyle='--')
-ax.axvline(x=8.051847, color='r', linestyle='--')
-ax.axvline(x=8.051487, color='b', linestyle='--')
+ax.axvline(x=8.051744, color='r', linestyle='--')
+ax.axvline(x=8.051406, color='b', linestyle='--')
 ax.set_title('F = %.2f at readout frequency = %.4f GHz'%(fid_f[ind], f_vec[ind]))
 #
 # print("#############################################################################################")

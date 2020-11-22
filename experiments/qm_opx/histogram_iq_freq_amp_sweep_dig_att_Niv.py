@@ -1,21 +1,19 @@
 from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, rr_freq
-from qm.qua import *
+from qm.qua import*
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
-# from numpy import *
 from tqdm import tqdm
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import pandas as pd
 from slab import*
 from slab.instruments import instrumentmanager
+from slab.dsfit import*
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
 atten = im["atten"]
-
-from slab.dsfit import*
 
 def doublegauss(bins, *p):
     a1, sigma1, mu1 = p[0], p[1], p[2]
@@ -70,19 +68,10 @@ LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 
 atten.set_attenuator(0.0)
+time.sleep(1)
 
 reset_time = 500000
 avgs = 2000
-simulation = 0
-
-a_min = 0.0
-a_max = 10.0
-da = 0.5
-amp_vec = np.arange(a_min, a_max + da/2, da)
-f_min = -0.5e6
-f_max = 0.5e6
-df = 0.2e6
-f_vec = np.arange(f_min, f_max + df/2, df)
 
 with program() as histogram:
 
@@ -114,10 +103,8 @@ with program() as histogram:
     Qe_st = declare_stream()
 
 
-
     with for_(i, 0, i < len(amp_vec), i + 1):
 
-        pause()
         with for_(n, 0, n < avgs, n + 1):
 
             with for_(f, rr_IF + f_min, f < rr_IF + f_max + df/2, f + df):
@@ -160,6 +147,14 @@ with program() as histogram:
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 job = qm.execute(histogram, duration_limit=0, data_limit=0)
+
+
+
+
+
+
+
+
 
 for att in tqdm(amp_vec):
     while not job.is_paused():

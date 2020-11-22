@@ -9,15 +9,15 @@ from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-
+atten = im['atten']
 from slab.dsfit import*
 
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -20e6
-f_max = 20e6
-df = 400e3
+f_min = -10e6
+f_max = 10e6
+df = 200e3
 
 f_vec = np.arange(f_min, f_max + df/2, df)
 f_vec = f_vec + qubit_freq
@@ -28,6 +28,8 @@ LO_q.set_power(16)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
+atten.set_attenuator(15.5)
+time.sleep(1)
 
 avgs = 1000
 reset_time = 500000

@@ -21,17 +21,17 @@ LO_q.set_power(16)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
-atten.set_attenuator(12.0)
+atten.set_attenuator(15.5)
 
 dt = 15
-T_min = 0
+T_min = 4
 T_max = 6000
 times = np.arange(T_min, T_max + dt/2, dt)
 
-f_min = -400e3
-f_max = 400e3
-df = 20e3
-f_vec = np.arange(f_min, f_max + df/2, df)
+dphi_min = -0.05
+dphi_max = 0.05
+ddphi = 0.001
+dphi_vec = np.arange(dphi_min, dphi_max + ddphi/2, ddphi)
 reset_time = 500000
 avgs = 500
 simulation = 0
@@ -44,7 +44,8 @@ with program() as ramsey:
     n = declare(int)      # Averaging
     i = declare(int)      # Amplitudes
     t = declare(int) #array of time delays
-    f = declare(int)
+    dphi = declare(fixed)
+    phi = declare(fixed)
     I = declare(fixed)
     Q = declare(fixed)
     I1 = declare(fixed)
@@ -60,15 +61,13 @@ with program() as ramsey:
     ###############
 
     with for_(n, 0, n < avgs, n + 1):
-
-        with for_(f, f_min + ge_IF, f < f_max + ge_IF + df/2, f + df):
-
-            update_frequency("qubit", f)
-
+        with for_(dphi, dphi_min, dphi < dphi_max + ddphi/2, dphi + ddphi):
+            assign(phi, 0)
             with for_(t, 0, t < T_max + dt/2, t + dt):
                 wait(reset_time//4, "qubit")
                 play("pi2", "qubit")
                 wait(t, "qubit")
+                frame_rotation_2pi(phi, "qubit")
                 play("pi2", "qubit")
                 align("qubit", "rr")
                 measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),
@@ -77,13 +76,14 @@ with program() as ramsey:
 
                 assign(I, I1 + Q2)
                 assign(Q, I2 - Q1)
+                assign(phi, phi + dphi)
 
                 save(I, I_st)
                 save(Q, Q_st)
 
     with stream_processing():
-        I_st.buffer(len(f_vec), len(times)).average().save('I')
-        Q_st.buffer(len(f_vec), len(times)).average().save('Q')
+        I_st.buffer(len(dphi_vec), len(times)).average().save('I')
+        Q_st.buffer(len(dphi_vec), len(times)).average().save('Q')
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -107,7 +107,7 @@ else:
     Q_handle.wait_for_values(1)
     #
     x = 4*times/1000
-    y = (f_vec)/1e3
+    y = (dphi_vec)/1e3
 
     while(res_handles.is_processing()):
         I = I_handle.fetch_all()

@@ -9,26 +9,26 @@ from slab.instruments import instrumentmanager
 from slab.dsfit import*
 
 im = InstrumentManager()
-LO_r = im['RF8']
-atten = im["atten"]
-
-rr_LO = rr_freq - rr_IF
-
+# LO_r = im['RF8']
+# atten = im["atten"]
+#
+# rr_LO = rr_freq - rr_IF
+#
 f_min = -20e6
 f_max = 20e6
-df = 40e3
-
+df = 100e3
+#
 f_vec = rr_freq + np.arange(f_min, f_max + df/2, df)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
-LO_r.set_power(18)
-LO_r.set_output(True)
-atten.set_attenuator(6.0)
-time.sleep(1)
+# LO_r.set_frequency(rr_LO)
+# LO_r.set_ext_pulse(mod=True)
+# LO_r.set_power(18)
+# LO_r.set_output(True)
+# atten.set_attenuator(12.5)
+# time.sleep(1)
 
-avgs = 1000
-reset_time = 10000
-simulation = 0
+avgs = 1
+reset_time = 100
+simulation = 1
 with program() as resonator_spectroscopy:
 
     f = declare(int)
@@ -65,7 +65,7 @@ qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
 if simulation:
-    job = qm.simulate(resonator_spectroscopy, SimulationConfig(150000))
+    job = qm.simulate(resonator_spectroscopy, SimulationConfig(15000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 

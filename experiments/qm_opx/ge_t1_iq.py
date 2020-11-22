@@ -21,10 +21,10 @@ rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
 
 LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod = False)
+LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(16)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod = True)
+LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 
 dt = 1000

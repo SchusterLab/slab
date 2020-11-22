@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from slab import*
 from slab.instruments import instrumentmanager
+from h5py import File
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
@@ -70,18 +71,19 @@ LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 
 atten.set_attenuator(0.0)
+time.sleep(1)
 
 reset_time = 500000
-avgs = 1000
+avgs = 2000
 simulation = 0
 
-a_min = 0.0
-a_max = 10.0
+a_min = 10.0
+a_max = 20.0
 da = 0.5
 amp_vec = np.arange(a_min, a_max + da/2, da)
 f_min = -0.5e6
 f_max = 0.5e6
-df = 0.2e6
+df = 0.05e6
 f_vec = np.arange(f_min, f_max + df/2, df)
 
 with program() as histogram:
@@ -114,9 +116,11 @@ with program() as histogram:
     Qe_st = declare_stream()
 
 
-    with for_(n, 0, n < avgs, n + 1):
 
-        with for_(i, 0, i < len(amp_vec), i + 1):
+    with for_(i, 0, i < len(amp_vec), i + 1):
+
+        pause()
+        with for_(n, 0, n < avgs, n + 1):
 
             with for_(f, rr_IF + f_min, f < rr_IF + f_max + df/2, f + df):
 
@@ -147,7 +151,6 @@ with program() as histogram:
                 assign(Qe, I2 - Q1)
                 save(Ie, Ie_st)
                 save(Qe, Qe_st)
-            pause()
 
     with stream_processing():
         Ig_st.save_all('Ig')
@@ -162,10 +165,10 @@ job = qm.execute(histogram, duration_limit=0, data_limit=0)
 
 for att in tqdm(amp_vec):
     while not job.is_paused():
-        time.sleep(0.01)
+        time.sleep(0.1)
     atten.set_attenuator(att)
     print(att)
-    time.sleep(0.1)
+    time.sleep(1.0)
     job.resume()
 
 print("Waiting for the data")
@@ -178,14 +181,24 @@ Qg = job.result_handles.Qg.fetch_all()['value']
 Qe = job.result_handles.Qe.fetch_all()['value']
 print("Data fetched")
 
+# path = "C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\"
+# filename = path + "histogram_amp_freq_sweep.h5"
+# with File(filename, 'w') as f:
+#     dset = f.create_dataset("ig", data=Ig)
+#     dset = f.create_dataset("qg", data=Qg)
+#     dset = f.create_dataset("ie", data=Ie)
+#     dset = f.create_dataset("qe", data=Qe)
+#     dset = f.create_dataset("att", data=amp_vec)
+#     dset = f.create_dataset("freq", data=f_vec)
+
 fid = []
 for ii in range(len(amp_vec)):
     fid_f = []
     for jj in range(len(f_vec)):
-        ig = Ig[int(jj+ii*len(amp_vec))::int(len(amp_vec)*len(f_vec))]
-        qg = Qg[int(jj+ii*len(amp_vec))::int(len(amp_vec)*len(f_vec))]
-        ie = Ie[int(jj+ii*len(amp_vec))::int(len(amp_vec)*len(f_vec))]
-        qe = Qe[int(jj+ii*len(amp_vec))::int(len(amp_vec)*len(f_vec))]
+        ig = Ig[int(jj+ii*avgs)::int(avgs*len(f_vec))]
+        qg = Qg[int(jj+ii*avgs)::int(avgs*len(f_vec))]
+        ie = Ie[int(jj+ii*avgs)::int(avgs*len(f_vec))]
+        qe = Qe[int(jj+ii*avgs)::int(avgs*len(f_vec))]
         p = [ig, qg, ie, qe]
         f = hist(p)[0]
         fid_f.append(f)
@@ -201,14 +214,14 @@ fid_max = fid[ind[0]][ind[1]]
 fig, ax = plt.subplots(figsize=(8, 6))
 pcm = ax.pcolormesh(f_vec, amp_vec, fid, cmap='RdBu', vmin=0.5, vmax=1)
 fig.colorbar(pcm, ax=ax)
-ax.axvline(x=f_vec[ind[1]], color='k', linestyle='--')
+ax.axvline(x=f_vec[::-1][ind[1]], color='k', linestyle='--')
 ax.axhline(y=amp_vec[ind[0]], color='k', linestyle='--')
 ax.axvline(x=8.0518, color='r', linestyle='--')
 ax.axvline(x=8.0515, color='b', linestyle='--')
-ax.set_title('F = %.2f at readout power = %.3f (V) and readout frequency = %.4f GHz'%(fid_max, amp_vec[ind[0]],f_vec[ind[1]]))
+ax.set_title('F = %.2f at readout power = -%.3f (dB) and readout frequency = %.5f GHz'%(fid_max, amp_vec[ind[0]],f_vec[ind[1]]))
 
 print("#############################################################################################")
-print('Optimal fidelity of %f at readout power = %f (V) and readout frequency = %f GHz'%(fid_max, amp_vec[ind[0]],f_vec[ind[1]]))
+print('Optimal fidelity of %f at readout power = -.3%f (dB) and readout frequency = %.5f GHz'%(fid_max, amp_vec[ind[0]],f_vec[ind[1]]))
 print("#############################################################################################")
 ax.set_xlim(np.min(f_vec), np.max(f_vec))
 ax.set_xlabel('Readout frequency (GHz)')

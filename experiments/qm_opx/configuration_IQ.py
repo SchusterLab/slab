@@ -24,21 +24,21 @@ def IQ_imbalance(g, phi):
 long_redout_len = 3600
 readout_len = 3000
 
-qubit_freq = 4.74809611713928e9
+qubit_freq = 4.748111765982531e9
 qubit_ef_freq = 4.6078190022032635e9
 ge_IF = 100e6
 ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
 qubit_LO = qubit_freq - ge_IF
 
-rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
-# rr_freq = 8.0517e9
+# rr_freq = 0.5*(8.05174438 + 8.05140573)*1e9 #between g and e
+rr_freq = 8.0517e9
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
 rr_amp = 1.0
 
 gauss_len = 32
 pi_len = 32
-pi_amp = 0.4114
+pi_amp = 0.41
 pi_ef_len = 32
 pi_ef_amp = 0.2843
 
@@ -101,7 +101,7 @@ config = {
                 'I': ('con1', 5),
                 'Q': ('con1', 6),
                 'lo_frequency': qubit_LO,
-                'mixer': 'mixer_qubit_ef'
+                'mixer': 'mixer_qubit'
             },
             'intermediate_frequency': ef_IF,
             'operations': {
@@ -111,32 +111,6 @@ config = {
                 'pi': 'pi_pulse_ef',
                 'pi2': 'pi2_pulse_ef',
                 'minus_pi2': 'minus_pi2_pulse_ef',
-            },
-            'time_of_flight': 160,  # ns should be a multiple of 4
-            'smearing': 0,
-            'digitalInputs': {
-                'lo_qubit': {
-                    'port': ('con1', 2),
-                    'delay': 72,
-                    'buffer': 0
-                },
-            },
-        },
-        'qubit_phase': {
-            'mixInputs': {
-                'I': ('con1', 5),
-                'Q': ('con1', 6),
-                'lo_frequency': qubit_LO,
-                'mixer': 'mixer_qubit'
-            },
-            'intermediate_frequency': ge_IF,
-            'operations': {
-                'CW': 'CW',
-                'saturation': 'saturation_pulse',
-                'gaussian': 'gaussian_pulse',
-                'pi': 'pi_pulse',
-                'pi2': 'pi2_pulse',
-                'minus_pi2': 'minus_pi2_pulse',
             },
             'time_of_flight': 160,  # ns should be a multiple of 4
             'smearing': 0,
@@ -431,12 +405,11 @@ config = {
     'mixers': {
         'mixer_qubit': [
             {'intermediate_frequency': ge_IF, 'lo_frequency': qubit_LO,
-             'correction': IQ_imbalance(-0.015, 0.028*np.pi)}
-        ],
-        'mixer_qubit_ef': [
+             'correction': IQ_imbalance(-0.015, 0.028*np.pi)},
             {'intermediate_frequency': ef_IF, 'lo_frequency': qubit_LO,
-             'correction': IQ_imbalance(-0.015, 0.028*np.pi)}
+             'correction': IQ_imbalance(-0.015, 0.028 * np.pi)}
         ],
+
         'mixer_RR': [
             {'intermediate_frequency': rr_IF, 'lo_frequency': rr_LO,
              'correction': IQ_imbalance(-0.045, -0.0015 * np.pi)}
@@ -444,4 +417,3 @@ config = {
     }
 
 }
-
