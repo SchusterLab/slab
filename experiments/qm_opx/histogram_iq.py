@@ -36,7 +36,7 @@ LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
 
-atten.set_attenuator(11.5)
+atten.set_attenuator(10.0)
 time.sleep(1)
 
 reset_time = 500000

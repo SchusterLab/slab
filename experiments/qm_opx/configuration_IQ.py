@@ -30,8 +30,8 @@ ge_IF = 100e6
 ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
 qubit_LO = qubit_freq - ge_IF
 
-# rr_freq = 0.5*(8.05174438 + 8.05140573)*1e9 #between g and e
-rr_freq = 8.0517e9
+# rr_freq = 0.5*(8.051828 + 8.051487)*1e9 #between g and e
+rr_freq = 8.051608e9
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
 rr_amp = 1.0

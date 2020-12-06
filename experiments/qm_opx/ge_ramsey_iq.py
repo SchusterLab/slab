@@ -121,7 +121,7 @@ else:
     offset = ramsey_freq/1e6 - p[1]
     nu_q_new = qubit_freq/1e9 + offset/1e3
 
-    print("Original qubit frequency choice =", qubit_freq/1e9, "GHz")
+    print("Original qubit frequency choice =",  qubit_freq/1e9, "GHz")
     print("Oscillation freq = ", p[1], " MHz")
     print("Offset freq =", offset, "Hz")
     print("Suggested qubit frequency choice =", nu_q_new, "GHz")

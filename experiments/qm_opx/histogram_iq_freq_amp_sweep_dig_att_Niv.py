@@ -149,13 +149,6 @@ qm = qmm.open_qm(config)
 job = qm.execute(histogram, duration_limit=0, data_limit=0)
 
 
-
-
-
-
-
-
-
 for att in tqdm(amp_vec):
     while not job.is_paused():
         time.sleep(0.01)
