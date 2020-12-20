@@ -24,21 +24,26 @@ def IQ_imbalance(g, phi):
 long_redout_len = 3600
 readout_len = 3000
 
-qubit_freq = 4.748111765982531e9
+qubit_freq = 4.7470e9
 qubit_ef_freq = 4.6078190022032635e9
 ge_IF = 100e6
 ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
 qubit_LO = qubit_freq - ge_IF
 
 # rr_freq = 0.5*(8.051828 + 8.051487)*1e9 #between g and e
-rr_freq = 8.051608e9
+rr_freq = 8.05170627e9
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
 rr_amp = 1.0
 
+
+storage_freq = 7e9
+storage_IF = 100e6
+storage_LO = storage_freq + storage_IF
+
 gauss_len = 32
 pi_len = 32
-pi_amp = 0.41
+pi_amp = 0.3925022568719859
 pi_ef_len = 32
 pi_ef_amp = 0.2843
 
@@ -59,6 +64,9 @@ config = {
                 6: {'offset': -0.0365},#-0.0342},  # qubit Q
                 3: {'offset': 0.012},  # RR I
                 4: {'offset': -0.0325},  # RR Q
+                1: {'offset': 0.012},  # storage I
+                2: {'offset': -0.0325},  # storage Q
+
             },
             'digital_outputs': {},
             'analog_inputs': {
@@ -134,7 +142,7 @@ config = {
                 'CW': 'CW',
                 'long_readout': 'long_readout_pulse',
                 'readout': 'readout_pulse',
-                'clear':'clear_pulse',
+                'clear': 'clear_pulse',
             },
             "outputs": {
                 'out1': ('con1', 1),
@@ -146,6 +154,32 @@ config = {
                 'lo_readout': {
                     'port': ('con1', 1),
                     'delay': 0,
+                    'buffer': 0
+                },
+            },
+        },
+        'storage': {
+            'mixInputs': {
+                'I': ('con1', 1),
+                'Q': ('con1', 2),
+                'lo_frequency': storage_LO,
+                'mixer': 'mixer_storage'
+            },
+            'intermediate_frequency': storage_IF,
+            'operations': {
+                'CW': 'CW',
+                'saturation': 'saturation_pulse',
+                'gaussian': 'gaussian_pulse',
+                'pi': 'pi_pulse',
+                'pi2': 'pi2_pulse',
+                'minus_pi2': 'minus_pi2_pulse',
+            },
+            'time_of_flight': 160,  # ns should be a multiple of 4
+            'smearing': 0,
+            'digitalInputs': {
+                'lo_qubit': {
+                    'port': ('con1', 3),
+                    'delay': 72,
                     'buffer': 0
                 },
             },
@@ -272,6 +306,7 @@ config = {
             },
             'digital_marker': 'ON'
         },
+
         'clear_pulse': {
             'operation': 'measurement',
             'length': clear_len,
@@ -414,6 +449,12 @@ config = {
             {'intermediate_frequency': rr_IF, 'lo_frequency': rr_LO,
              'correction': IQ_imbalance(-0.045, -0.0015 * np.pi)}
         ],
+
+        'mixer_storage': [
+            {'intermediate_frequency': storage_IF, 'lo_frequency': storage_LO,
+             'correction': IQ_imbalance(-0.045, -0.0015 * np.pi)}
+        ],
+
     }
 
 }

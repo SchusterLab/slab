@@ -28,7 +28,7 @@ LO_q.set_power(16)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
-atten.set_attenuator(15.5)
+atten.set_attenuator(10.0)
 time.sleep(1)
 
 avgs = 1000

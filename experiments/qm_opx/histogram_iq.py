@@ -40,7 +40,7 @@ atten.set_attenuator(10.0)
 time.sleep(1)
 
 reset_time = 500000
-avgs = 2000
+avgs = 3000
 simulation = 0
 with program() as histogram:
 
