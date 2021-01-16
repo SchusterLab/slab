@@ -7,25 +7,20 @@ import numpy as np
 from slab import*
 from slab.instruments import instrumentmanager
 from slab.dsfit import*
-
 im = InstrumentManager()
 LO_r = im['RF8']
-atten = im["atten"]
 
 rr_LO = rr_freq - rr_IF
-f_min = -20e6
-f_max = 20e6
+f_min = -5e6
+f_max = 5e6
 df = 100e3
 f_vec = rr_freq + np.arange(f_min, f_max + df/2, df)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
-LO_r.set_power(18)
-LO_r.set_output(True)
-atten.set_attenuator(10)
-time.sleep(1)
+LO_r.set_ext_pulse(mod=False)
+LO_r.set_power(13)
 
-avgs = 1000
-reset_time = 10000
+avgs = 2000
+reset_time = 50000
 simulation = 0
 with program() as resonator_spectroscopy:
 
@@ -43,7 +38,7 @@ with program() as resonator_spectroscopy:
 
     with for_(i, 0, i < avgs, i+1):
 
-        with for_(f, f_min + rr_IF, f < f_max + rr_IF + df / 2, f + df):
+        with for_(f, f_min + rr_IF, f <= f_max + rr_IF, f + df):
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
             measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
@@ -91,7 +86,8 @@ else:
     axs[1].plot(f_vec/1e9, amps, 'b-')
     p = fitlor(f_vec/1e9, amps, showfit=False)
     x = np.array(f_vec)/1e9
-    axs[1].plot(f_vec/1e9, lorfunc(p, f_vec/1e9), label=r'$\nu_{r}$ = %.4f GHz'% p[2])
+    q = p[2]/(2*p[3])
+    axs[1].plot(f_vec/1e9, lorfunc(p, f_vec/1e9), label=r'$\nu_{r}$ = %.6f GHz, Q = %.2f'% (p[2], q))
     print ("fits = ", p)
     ax2  = axs[1].twinx()
     ax2.plot(f_vec/1e9, ph, 'r-')

@@ -9,27 +9,27 @@ from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-atten = im['atten']
+# atten = im['atten']
 from slab.dsfit import*
 
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -10e6
-f_max = 10e6
-df = 200e3
+f_min = -4e6
+f_max = 4e6
+df = 40e3
 
 f_vec = np.arange(f_min, f_max + df/2, df)
 f_vec = f_vec + qubit_freq
 
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(16)
+LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
-LO_r.set_power(18)
-atten.set_attenuator(10.0)
-time.sleep(1)
+LO_r.set_ext_pulse(mod=False)
+LO_r.set_power(13)
+# atten.set_attenuator(12.0)
+# time.sleep(1)
 
 avgs = 1000
 reset_time = 500000
@@ -57,11 +57,11 @@ with program() as qubit_spec:
     ###############
     with for_(n, 0, n < avgs, n + 1):
 
-        with for_(f, ge_IF + f_min, f < ge_IF + f_max + df/2, f + df):
+        with for_(f, ge_IF + f_min, f <= ge_IF + f_max, f + df):
 
             update_frequency("qubit", f)
             wait(reset_time// 4, "qubit")# wait for the qubit to relax, several T1s
-            play("saturation"*amp(0.05), "qubit", duration=125000)
+            play("saturation"*amp(0.1), "qubit", duration=125000)
             align("qubit", "rr")
             measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'), demod.full("long_integW2", Q1, 'out1'),
                 demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))

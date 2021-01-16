@@ -3,7 +3,6 @@ from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
-# from numpy import *
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from slab import*
@@ -31,12 +30,12 @@ def doublegauss(bins, *p):
 ##################
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(16)
+LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
+LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(18)
 
-atten.set_attenuator(10.0)
+atten.set_attenuator(18.0)
 time.sleep(1)
 
 reset_time = 500000
@@ -60,8 +59,6 @@ with program() as histogram:
 
     Ie = declare(fixed)
     Qe = declare(fixed)
-    # If = declare(fixed)
-    # Qf = declare(fixed)
 
     Ig_st = declare_stream()
     Qg_st = declare_stream()
@@ -69,16 +66,9 @@ with program() as histogram:
     Ie_st = declare_stream()
     Qe_st = declare_stream()
 
-    # If_st = declare_stream()
-    # Qf_st = declare_stream()
-
-
     ###############
     # the sequence:
     ###############
-    # update_frequency("qubit", ge_IF)
-    # update_frequency("qubit_ef", ef_IF)
-    # update_frequency("rr", rr_IF)
 
     with for_(n, 0, n < avgs, n + 1):
 
@@ -108,26 +98,12 @@ with program() as histogram:
         save(Ie, Ie_st)
         save(Qe, Qe_st)
 
-        # align("qubit_ef", "rr")
-        # """Play a ge pi pulse followed by a ef pi pulse and then readout"""
-        # wait(reset_time//4, "qubit")
-        # play("pi", "qubit")
-        # align("qubit", "qubit_ef")
-        # play("pi", "qubit_ef")
-        # align("qubit_ef", "rr")
-        # measure("long_readout", "rr", None, demod.full("long_integW1", If, 'out1'),demod.full("long_integW1", Qf, 'out2'))
-        # save(If, If_st)
-        # save(Qf, Qf_st)
-
     with stream_processing():
-        Ig_st.buffer(avgs).save_all('Ig')
-        Qg_st.buffer(avgs).save_all('Qg')
+        Ig_st.save_all('Ig')
+        Qg_st.save_all('Qg')
 
-        Ie_st.buffer(avgs).save_all('Ie')
-        Qe_st.buffer(avgs).save_all('Qe')
-
-        # If_st.buffer(avgs).save_all('If')
-        # Qf_st.buffer(avgs).save_all('Qf')
+        Ie_st.save_all('Ie')
+        Qe_st.save_all('Qe')
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -152,25 +128,19 @@ Qg_handle = res_handles.get("Qg")
 Ie_handle = res_handles.get("Ie")
 Qe_handle = res_handles.get("Qe")
 
-# If_handle = res_handles.get("If")
-# Qf_handle = res_handles.get("Qf")
-
 I_g = np.array(Ig_handle.fetch_all())
 Q_g = np.array(Qg_handle.fetch_all())
 
 I_e = np.array(Ie_handle.fetch_all())
 Q_e = np.array(Qe_handle.fetch_all())
 
-# I_f = np.array(If_handle.fetch_all())
-# Q_f = np.array(Qf_handle.fetch_all())
+ig_opt, qg_opt = I_g['value'], Q_g['value']
+ie_opt, qe_opt = I_e['value'], Q_e['value']
 
-ig_opt, qg_opt = I_g[0][0], Q_g[0][0]
-ie_opt, qe_opt = I_e[0][0], Q_e[0][0]
-
-ran = 1
+ran = 0.8
 numbins = 200
 
-fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(12,12))
+fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))
 fig.tight_layout()
 
 ax = axs[0, 0]

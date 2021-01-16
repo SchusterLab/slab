@@ -18,14 +18,14 @@ atten = im['atten']
 ##################
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(16)
+LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
+LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(18)
-atten.set_attenuator(16.0)
+atten.set_attenuator(12.0)
 time.sleep(1)
 
-ramsey_freq = 100e3
+ramsey_freq = 50e3
 omega = 2*np.pi*ramsey_freq
 
 dt = 250

@@ -15,15 +15,15 @@ from slab.dsfit import*
 ##################
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(16)
+LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
+LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(18)
-atten.set_attenuator(10.0)
+atten.set_attenuator(15.0)
 time.sleep(1)
 
-f_min = -20e6
-f_max = 20e6
+f_min = -5e6
+f_max = 5e6
 df = 100e3
 f_vec = rr_freq + np.arange(f_min, f_max + df/2, df)
 reset_time = 500000
@@ -45,7 +45,7 @@ with program() as resonator_spectroscopy:
 
     with for_(i, 0, i < avgs, i+1):
 
-        with for_(f, f_min + rr_IF, f < f_max + rr_IF + df / 2, f + df):
+        with for_(f, f_min + rr_IF, f <= f_max + rr_IF, f + df):
 
             update_frequency("rr", f)
             wait(reset_time//4, "qubit")

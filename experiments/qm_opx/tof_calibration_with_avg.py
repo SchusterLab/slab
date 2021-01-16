@@ -1,10 +1,16 @@
-from configuration_IQ import config
+from configuration_IQ import config, rr_IF, rr_LO
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 import numpy as np
-
+from slab import*
+from slab.instruments import instrumentmanager
+im = InstrumentManager()
+LO = im['RF8']
+LO.set_frequency(rr_LO)
+LO.set_ext_pulse(mod=False)
+LO.set_power(13)
 
 with program() as digital_train:
 
@@ -12,13 +18,12 @@ with program() as digital_train:
         play("CW", "rr")  # 600ns
         wait(100, "rr")   # 400ns
 
-
 with program() as tof_calibration:
     adc_st = declare_stream(adc_trace=True)
     i = declare(int)
     with for_(i, 0, i < 10, i+1):
         wait(300, "rr") # off 1.6 micro
-        measure('readout', "rr", adc_st) # 400ns
+        measure('long_readout', "rr", adc_st) # 400ns
 
     with stream_processing():
         adc_st.input1().save_all("adcI")

@@ -62,8 +62,8 @@ def hist(p):
 # histogram_prog:
 ##################
 LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(16)
+LO_q.set_ext_pulse(mod=True)
+LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
@@ -75,9 +75,9 @@ reset_time = 500000
 avgs = 2000
 simulation = 0
 
-f_min = -0.5e6
-f_max = 0.5e6
-df = 0.01e6
+f_min = -450e3
+f_max = 50e3
+df = 20e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
 with program() as histogram:
@@ -102,8 +102,6 @@ with program() as histogram:
 
     Ie = declare(fixed)
     Qe = declare(fixed)
-    # If = declare(fixed)
-    # Qf = declare(fixed)
 
     Ig_st = declare_stream()
     Qg_st = declare_stream()
@@ -183,8 +181,8 @@ fig, ax = plt.subplots(figsize=(8, 6))
 ax.plot(f_vec, fid_f, 'bo')
 ax.axvline(x=f_vec[ind], color='k', linestyle='--')
 # ax.axhline(y=amp_vec[ind[0]], color='k', linestyle='--')
-ax.axvline(x=8.051744, color='r', linestyle='--')
-ax.axvline(x=8.051406, color='b', linestyle='--')
+# ax.axvline(x=8.051744, color='r', linestyle='--')
+# ax.axvline(x=8.051406, color='b', linestyle='--')
 ax.set_title('F = %.2f at readout frequency = %.4f GHz'%(fid_f[ind], f_vec[ind]))
 #
 # print("#############################################################################################")

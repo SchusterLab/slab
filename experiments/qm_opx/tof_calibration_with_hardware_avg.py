@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, rr_IF, rr_LO
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -8,16 +8,10 @@ from slab import*
 from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO = im['RF8']
-
-# nu_q = 4.748488058822229e9
-nu_q = 8.0518e9
-
-nu_IF = 100e6
-nu_LO = nu_q - nu_IF
-LO.set_frequency(nu_LO)
-LO.set_power(18)
-LO.set_output(True)
+LO.set_frequency(rr_LO)
 LO.set_ext_pulse(mod=False)
+LO.set_power(13)
+
 simulation = 0
 with program() as digital_train:
 
@@ -54,3 +48,4 @@ else:
     Q_avg = adcQ_handle.fetch_all()
     plt.plot(I_avg)
     plt.plot(Q_avg)
+    plt.axhline(y=0)

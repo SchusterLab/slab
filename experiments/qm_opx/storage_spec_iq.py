@@ -6,39 +6,36 @@ import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
 from slab.instruments import instrumentmanager
+import time
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-LO_s = im['SC']
+# LO_s = im['SC']
 atten = im['atten']
 from slab.dsfit import*
 
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -10e6
-f_max = 10e6
-df = 200e3
+f_min = -100e3
+f_max = 100e3
+df = 2e3
 
 f_vec = np.arange(f_min, f_max + df/2, df)
-f_vec = f_vec + qubit_freq
 
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(16)
-
-
-
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=True)
 LO_r.set_power(18)
-atten.set_attenuator(10.0)
+atten.set_attenuator(12.0)
 time.sleep(1)
 
 avgs = 1000
-reset_time = 500000
+reset_time = 5000000
 simulation = 0
-with program() as qubit_spec:
+with program() as storage_spec:
 
     ##############################
     # declare real-time variables:
@@ -61,11 +58,13 @@ with program() as qubit_spec:
     ###############
     with for_(n, 0, n < avgs, n + 1):
 
-        with for_(f, ge_IF + f_min, f < ge_IF + f_max + df/2, f + df):
+        with for_(f, storage_IF + f_min, f < storage_IF + f_max + df/2, f + df):
 
-            update_frequency("qubit", f)
-            wait(reset_time// 4, "qubit")# wait for the qubit to relax, several T1s
-            play("saturation"*amp(0.05), "qubit", duration=125000)
+            update_frequency("storage", f)
+            wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
+            play("saturation"*amp(0.2), "storage", duration=25000)
+            align("storage", "qubit")
+            play("res_pi", "qubit")
             align("qubit", "rr")
             measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'), demod.full("long_integW2", Q1, 'out1'),
                 demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
@@ -86,14 +85,15 @@ qm = qmm.open_qm(config)
 
 if simulation:
     """To simulate the pulse sequence"""
-    job = qm.simulate(qubit_spec, SimulationConfig(150000))
+    job = qm.simulate(storage_spec, SimulationConfig(150000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 
 else:
     """To run the actual experiment"""
-    job = qm.execute(qubit_spec, duration_limit=0, data_limit=0)
+    job = qm.execute(storage_spec, duration_limit=0, data_limit=0)
     print("Experiment done")
+    start_time = time.time()
 
     res_handles = job.result_handles
     res_handles.wait_for_all_values()
@@ -102,6 +102,11 @@ else:
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
     print("Data collection done!")
+
+    stop_time = time.time()
+    print(f"Time taken: {stop_time-start_time}")
+
+    f_vec = f_vec + storage_freq
 
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
     axs[0].plot(f_vec/1e9, I, 'o')

@@ -18,11 +18,11 @@ atten = im['atten']
 ##################
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(16)
+LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
+LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(18)
-atten.set_attenuator(16.0)
+atten.set_attenuator(12.0)
 time.sleep(1)
 
 ramsey_freq = 50e3
@@ -77,10 +77,6 @@ with program() as ramsey:
             save(Q, Q_st)
 
     with stream_processing():
-        # I_st.save("I_s")
-        # I_st.save_all("I_s_all")
-        # Q_st.save("Q_s")
-        # Q_st.save_all("Q_s_all")
 
         I_st.buffer(len(times)).average().save('I')
         Q_st.buffer(len(times)).average().save('Q')

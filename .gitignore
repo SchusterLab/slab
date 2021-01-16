@@ -21,3 +21,6 @@ instruments/instruments.cfg
 # local
 out
 _test
+
+# h5 files
+*.h5
