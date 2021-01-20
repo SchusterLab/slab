@@ -6,12 +6,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
 from slab.instruments import instrumentmanager
+from slab.dsfit import*
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-atten = im['atten']
-from slab.dsfit import*
-
+# atten = im['atten']
 ##################
 # power_rabi_prog:
 ##################
@@ -25,10 +24,10 @@ LO_r.set_power(13)
 # time.sleep(1)
 
 a_min = 0.0
-a_max = 1.5
+a_max = 1.0
 da = 0.01
 amps = np.arange(a_min, a_max + da/2, da)
-avgs = 2000
+avgs = 1000
 reset_time = 500000
 simulation = 0
 
@@ -108,7 +107,7 @@ else:
     axs[0].set_xlabel('Amps')
     axs[0].set_ylabel('I')
 
-    z = 10
+    z = 2
     axs[1].plot(amps[z:len(I)], Q[z:],'ro')
     p = fitdecaysin(amps[z:len(I)], Q[z:], showfit=False)
     axs[1].plot(amps[z:len(I)], decaysin(np.append(p,0), amps[z:len(I)]), 'r-')

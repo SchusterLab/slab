@@ -189,7 +189,7 @@ else:
     print(f"Time taken: {stop_time - start_time}")
 
     path = "C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\"
-    filename = path + "histogram_amp_freq_sweep_100MHz_1us.h5"
+    filename = path + "histogram_amp_freq_sweep_100MHz_3us.h5"
     with File(filename, 'w') as f:
         dset = f.create_dataset("ig", data=Ig)
         dset = f.create_dataset("qg", data=Qg)

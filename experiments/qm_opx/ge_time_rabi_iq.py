@@ -32,7 +32,7 @@ t_min = 4
 t_max = 40
 dt = 1
 times = np.arange(t_min, t_max + dt/2, dt)
-avgs = 2000
+avgs = 1000
 reset_time = 500000
 simulation = 0
 with program() as ge_rabi:
@@ -110,7 +110,7 @@ else:
     axs[0].set_xlabel('Time (ns)')
     axs[0].set_ylabel('I')
 
-    z = 1
+    z = 2
     axs[1].plot(times[z:len(I)], Q[z:],'ro')
     p = fitdecaysin(times[z:len(I)], Q[z:], showfit=False)
     axs[1].plot(times[z:len(I)], decaysin(np.append(p,0), times[z:len(I)]), 'r-')

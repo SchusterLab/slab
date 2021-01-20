@@ -9,7 +9,7 @@ from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-atten = im['atten']
+# atten = im['atten']
 from slab.dsfit import*
 
 ##################
@@ -20,9 +20,9 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-atten.set_attenuator(12.0)
-time.sleep(1)
+LO_r.set_power(13)
+# atten.set_attenuator(12.0)
+# time.sleep(1)
 
 dt = 1000
 T_max = 100000

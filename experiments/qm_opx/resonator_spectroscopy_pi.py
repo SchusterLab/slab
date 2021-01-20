@@ -9,7 +9,7 @@ from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-atten = im['atten']
+# atten = im['atten']
 from slab.dsfit import*
 ##################
 ##################
@@ -18,16 +18,16 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-atten.set_attenuator(15.0)
-time.sleep(1)
+LO_r.set_power(13)
+# atten.set_attenuator(15.0)
+# time.sleep(1)
 
 f_min = -5e6
 f_max = 5e6
 df = 100e3
 f_vec = rr_freq + np.arange(f_min, f_max + df/2, df)
 reset_time = 500000
-avgs = 1000
+avgs = 2000
 simulation = 0
 with program() as resonator_spectroscopy:
 

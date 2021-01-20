@@ -12,7 +12,7 @@ from tqdm import tqdm
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-atten = im['atten']
+# atten = im['atten']
 ##################
 # ramsey_prog:
 ##################
@@ -21,9 +21,9 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-atten.set_attenuator(12.0)
-time.sleep(1)
+LO_r.set_power(13)
+# atten.set_attenuator(12.0)
+# time.sleep(1)
 
 ramsey_freq = 50e3
 detune_freq = ge_IF + ramsey_freq
