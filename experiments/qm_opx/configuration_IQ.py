@@ -37,7 +37,7 @@ rr_freq = 0.5*(rr_freq_g + rr_freq_e) #between g and e
 
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
-rr_amp = 1.0
+rr_amp = 0.5
 
 storage_freq = 6.01124448e9
 storage_LO = 5.911e9
@@ -47,10 +47,10 @@ storage_IF = storage_freq-storage_LO
 gauss_len = 32
 gauss_amp = 0.45
 pi_len = 32
-pi_amp = 0.3598586050162193
+pi_amp = 0.3580
 
 half_pi_len = 16
-half_pi_amp = 0.3598586050162193
+half_pi_amp = 0.3580
 
 pi_len_resolved = 3000
 Pi_amp_resolved = 0.00884993938365933

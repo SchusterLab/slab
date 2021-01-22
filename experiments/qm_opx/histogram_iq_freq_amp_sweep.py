@@ -15,50 +15,6 @@ im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
 
-from slab.dsfit import*
-
-def doublegauss(bins, *p):
-    a1, sigma1, mu1 = p[0], p[1], p[2]
-    a2, sigma2, mu2 = p[3], p[4], p[5]
-
-    y1 = a1 * ((1 / (np.sqrt(2 * np.pi) * sigma1)) *
-               np.exp(-0.5 * (1 / sigma1 * (bins - mu1)) ** 2))
-    y2 = a2 * ((1 / (np.sqrt(2 * np.pi) * sigma2)) *
-               np.exp(-0.5 * (1 / sigma2 * (bins - mu2)) ** 2))
-    y = y1 + y2
-
-    return y
-
-def hist(p):
-    ig_opt = np.array(p[0])
-    qg_opt = np.array(p[1])
-    ie_opt = np.array(p[2])
-    qe_opt = np.array(p[3])
-    ran = 1
-    numbins = 200
-    xg, yg = np.median(ig_opt), np.median(qg_opt)
-    xe, ye = np.median(ie_opt), np.median(qe_opt)
-    xlims = [xg-ran/5, xg+ran/5]
-    ylims = [yg-ran/5, yg+ran/5]
-    theta = -np.arctan((ye-yg)/(xe-xg))
-    ig_new, qg_new = ig_opt*cos(theta) - qg_opt*sin(theta), ig_opt*sin(theta) + qg_opt*cos(theta)
-    ie_new, qe_new = ie_opt*cos(theta) - qe_opt*sin(theta), ie_opt*sin(theta) + qe_opt*cos(theta)
-
-    xg, yg = np.median(ig_new), np.median(qg_new)
-    xe, ye = np.median(ie_new), np.median(qe_new)
-
-    xlims = [xg-ran/5, xg+ran/5]
-    ylims = [yg-ran/5, yg+ran/5]
-
-    ng, binsg = np.histogram(ig_new, bins=numbins, range=xlims)
-    ne, binse = np.histogram(ie_new, bins=numbins, range=xlims)
-    fid_i = np.abs(((np.cumsum(ng) - np.cumsum(ne)) / ng.sum())).max()
-    ng, binsg = np.histogram(qg_new, bins=numbins, range=ylims)
-    ne, binse = np.histogram(qe_new, bins=numbins, range=ylims)
-    fid_q = np.abs(((np.cumsum(ng) - np.cumsum(ne)) / ng.sum())).max()
-
-    return [fid_i, fid_q]
-
 ##################
 # histogram_prog:
 ##################
@@ -75,11 +31,11 @@ simulation = 0
 
 a_min = 0.1
 a_max = 0.5
-da = 0.1
+da = 0.01
 amp_vec = np.arange(a_min, a_max + da/2, da)
-f_min = -0.5e6
-f_max = 0.5e6
-df = 200e3
+f_min = -0.4e6
+f_max = 0.4e6
+df = 20e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
 with program() as histogram:
@@ -109,13 +65,13 @@ with program() as histogram:
     Ie_st = declare_stream()
     Qe_st = declare_stream()
 
-    with for_(n, 0, n < avgs, n + 1):
 
-        with for_(a, a_min, a < a_max + da/2, a + da):
+    with for_(a, a_min, a < a_max + da/2, a + da):
 
-            with for_(f, rr_IF + f_min, f < rr_IF + f_max + df/2, f + df):
+        with for_(f, rr_IF + f_min, f < rr_IF + f_max + df/2, f + df):
+            update_frequency("rr", f)
 
-                update_frequency("rr", f)
+            with for_(n, 0, n < avgs, n + 1):
 
                 """Just readout without playing anything"""
                 wait(reset_time//4, "rr")
@@ -144,16 +100,16 @@ with program() as histogram:
                 save(Qe, Qe_st)
 
     with stream_processing():
-        # Ig_st.save_all('Ig')
-        # Qg_st.save_all('Qg')
-        #
-        # Ie_st.save_all('Ie')
-        # Qe_st.save_all('Qe')
-        Ig_st.buffer(len(amp_vec), len(f_vec)).save_all('Ig')
-        Qg_st.buffer(len(amp_vec), len(f_vec)).save_all('Qg')
+        Ig_st.save_all('Ig')
+        Qg_st.save_all('Qg')
 
-        Ie_st.buffer(len(amp_vec), len(f_vec)).save_all('Ie')
-        Qe_st.buffer(len(amp_vec), len(f_vec)).save_all('Qe')
+        Ie_st.save_all('Ie')
+        Qe_st.save_all('Qe')
+        # Ig_st.buffer(len(amp_vec), len(f_vec)).save_all('Ig')
+        # Qg_st.buffer(len(amp_vec), len(f_vec)).save_all('Qg')
+        #
+        # Ie_st.buffer(len(amp_vec), len(f_vec)).save_all('Ie')
+        # Qe_st.buffer(len(amp_vec), len(f_vec)).save_all('Qe')
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -190,7 +146,7 @@ else:
     print(f"Time taken: {stop_time - start_time}")
 
     path = "C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\"
-    filename = path + "histogram_amp_freq_sweep_100MHz_3us_2.h5"
+    filename = path + "histogram_amp_freq_sweep_100MHz_3us_3.h5"
     with File(filename, 'w') as f:
         dset = f.create_dataset("ig", data=Ig)
         dset = f.create_dataset("qg", data=Qg)
