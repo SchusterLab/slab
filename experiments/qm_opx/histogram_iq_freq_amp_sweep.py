@@ -30,7 +30,7 @@ avgs = 3000
 simulation = 0
 
 a_min = 0.1
-a_max = 0.5
+a_max = 1.0
 da = 0.01
 amp_vec = np.arange(a_min, a_max + da/2, da)
 f_min = -0.4e6
@@ -69,6 +69,7 @@ with program() as histogram:
     with for_(a, a_min, a < a_max + da/2, a + da):
 
         with for_(f, rr_IF + f_min, f < rr_IF + f_max + df/2, f + df):
+
             update_frequency("rr", f)
 
             with for_(n, 0, n < avgs, n + 1):
@@ -146,7 +147,7 @@ else:
     print(f"Time taken: {stop_time - start_time}")
 
     path = "C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\"
-    filename = path + "histogram_amp_freq_sweep_100MHz_3us_3.h5"
+    filename = path + "histogram_amp_freq_sweep_100MHz_2.5us_1.h5"
     with File(filename, 'w') as f:
         dset = f.create_dataset("ig", data=Ig)
         dset = f.create_dataset("qg", data=Qg)

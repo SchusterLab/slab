@@ -20,25 +20,32 @@ def IQ_imbalance(g, phi):
 ################
 # CONFIGURATION:
 ################
-long_redout_len = 3000
+long_redout_len = 3600
 readout_len = 3000
 
-qubit_freq = 4.746943850707777e9
+qubit_freq = 4.746940131361867e9
 qubit_ef_freq = 4.6078190022032635e9
 ge_IF = 100e6
 ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
 qubit_LO = qubit_freq - ge_IF
 
+####---------------------####
 rr_freq_g = 8.05182319e9
 rr_freq_e = 8.05145304e9
 
 rr_freq = 0.5*(rr_freq_g + rr_freq_e) #between g and e
-# rr_freq = 8.051798e9
+# rr_freq = 8.051758e9
 
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
-rr_amp = 0.5
+rr_amp = 0.5*0.7
 
+pump_LO = rr_LO
+pump_IF = 100e6
+
+pump_amp = 1.0
+pump_len = long_redout_len
+####---------------------####
 storage_freq = 6.01124448e9
 storage_LO = 5.911e9
 storage_IF = storage_freq-storage_LO
@@ -46,11 +53,12 @@ storage_IF = storage_freq-storage_LO
 
 gauss_len = 32
 gauss_amp = 0.45
+
 pi_len = 32
-pi_amp = 0.3580
+pi_amp = 0.3595
 
 half_pi_len = 16
-half_pi_amp = 0.3580
+half_pi_amp = 0.3595
 
 pi_len_resolved = 3000
 Pi_amp_resolved = 0.00884993938365933
@@ -194,6 +202,23 @@ config = {
             },
         },
 
+        'jpa_pump': {
+            'mixInputs': {
+                'I': ('con1', 9),
+                'Q': ('con1', 10),
+                'lo_frequency': pump_LO,
+                'mixer': 'mixer_jpa'
+            },
+            'intermediate_frequency': pump_IF,
+            'operations': {
+                'CW': 'CW',
+                'saturation': 'saturation_pulse',
+                'gaussian': 'gaussian_pulse',
+                'pi': 'pi_pulse',
+                'pi2': 'pi2_pulse',
+                'minus_pi2': 'minus_pi2_pulse',
+            },
+        },
     },
 
     "pulses": {
@@ -349,6 +374,15 @@ config = {
             'digital_marker': 'ON'
         },
 
+        "pump_square": {
+            'operation': 'control',
+            'length': pump_len,  #ns,
+            'waveforms': {
+                'I': 'pump_wf',
+                'Q': 'zero_wf'
+            },
+        },
+
     },
 
     'waveforms': {
@@ -426,6 +460,10 @@ config = {
             'type': 'arbitrary',
             'samples': 0.45 * clear_amp
         },
+        'pump_wf': {
+            'type': 'constant',
+            'sample': 0.45 * pump_amp
+        },
     },
 
     'digital_waveforms': {
@@ -478,7 +516,7 @@ config = {
     'mixers': {
         'mixer_qubit': [
             {'intermediate_frequency': ge_IF, 'lo_frequency': qubit_LO,
-             'correction': IQ_imbalance(-0.010, 0.0175*np.pi)},
+             'correction': IQ_imbalance(-0.010, 0.0175 * np.pi)},
             {'intermediate_frequency': ef_IF, 'lo_frequency': qubit_LO,
              'correction': IQ_imbalance(-0.015, 0.028 * np.pi)}
         ],
@@ -493,7 +531,7 @@ config = {
              'correction': IQ_imbalance(0.001, 0.015 * np.pi)}
         ],
         'mixer_jpa': [
-            {'intermediate_frequency': rr_IF, 'lo_frequency': rr_LO,
+            {'intermediate_frequency': pump_IF, 'lo_frequency': pump_LO,
              'correction': IQ_imbalance(0.041,0.018 * np.pi)}
         ],
 
