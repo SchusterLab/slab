@@ -4,6 +4,11 @@ import numpy as np
 #    'type': 'arbitrary',
 #    'samples': gauss(0.4, 0.0, 6.0, 60)
 # },
+def IQ_imbalance(g, phi):
+    c = np.cos(phi)
+    s = np.sin(phi)
+    N = 1 / ((1-g**2)*(2*c**2-1))
+    return [float(N * x) for x in [(1-g)*c, (1+g)*s, (1-g)*s, (1+g)*c]]
 
 qubit_IF = 100e6;  # 100e6
 qubit_freq = 8.0517e9;
@@ -26,15 +31,15 @@ config = {
         'con1': {
             'type': 'opx1',
             'analog_outputs': {
-                9: {'offset': 0.027},  # Qubit I
-                10: {'offset': -0.036},  # Qubit Q
+                9: {'offset': 0.0164},#0.0259},  # Qubit I
+                10: {'offset': -0.037},#-0.0366},  # Qubit Q
                 5: {'offset': 0.0},  # Cavity I
                 6: {'offset': 0.0},  # Cavity Q
             },
             'digital_outputs': {},
             'analog_inputs': {
-                1: {'offset': 0.0},  # 0.02563476562; -0.00109863281}, #1: {'offset': 0.01220703125}
-                2: {'offset': 0.0}, # 0.04125976562 + 0.00561523437 - 0.00024414062 + 0.02
+                1: {'offset': 0.0},
+                2: {'offset': 0.0},
             }
         }
     },
@@ -187,10 +192,10 @@ config = {
 
     'mixers': {
         'mixer_qubit': [
-            {'intermediate_frequency': qubit_IF, 'lo_frequency': qubit_LO, 'correction': [1.0, 0.0, 0.0, 1.0]}
+            {'intermediate_frequency': qubit_IF, 'lo_frequency': qubit_LO, 'correction': IQ_imbalance(0.0,0.0 * np.pi)}
         ],
         'mixer_cavity': [
-            {'intermediate_frequency': cavity_IF, 'lo_frequency': cavity_LO, 'correction': [1.0, 0.0, 0.0, 1.0]}
+            {'intermediate_frequency': cavity_IF, 'lo_frequency': cavity_LO, 'correction': IQ_imbalance(0.041,0.018 * np.pi)}
         ],
     }
 }

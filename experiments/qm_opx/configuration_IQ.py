@@ -20,10 +20,10 @@ def IQ_imbalance(g, phi):
 ################
 # CONFIGURATION:
 ################
-long_redout_len = 3600
+long_redout_len = 4000
 readout_len = 3000
 
-qubit_freq = 4.746940131361867e9
+qubit_freq = 4.7469355454466875e9
 qubit_ef_freq = 4.6078190022032635e9
 ge_IF = 100e6
 ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
@@ -33,12 +33,14 @@ qubit_LO = qubit_freq - ge_IF
 rr_freq_g = 8.05182319e9
 rr_freq_e = 8.05145304e9
 
-rr_freq = 0.5*(rr_freq_g + rr_freq_e) #between g and e
-# rr_freq = 8.051758e9
+# rr_freq = 0.5*(rr_freq_g + rr_freq_e) #between g and e
+rr_freq = 8.051758e9 #for 4us
+# rr_freq = 8.051618e9 #for 3.6us
 
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
-rr_amp = 0.5*0.7
+# rr_amp = 0.5*0.7
+rr_amp = 1.0 *0.345
 
 pump_LO = rr_LO
 pump_IF = 100e6
@@ -55,10 +57,10 @@ gauss_len = 32
 gauss_amp = 0.45
 
 pi_len = 32
-pi_amp = 0.3595
+pi_amp = 0.3527
 
 half_pi_len = 16
-half_pi_amp = 0.3595
+half_pi_amp = 0.3527
 
 pi_len_resolved = 3000
 Pi_amp_resolved = 0.00884993938365933
@@ -68,7 +70,7 @@ pi_ef_amp = 0.2843
 
 data = pd.read_csv("C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\clear_pulse_3.csv")
 amp = np.array(pd.DataFrame(data['amp']))
-clear_amp = amp[1500:-490]/np.max(amp)/1.0
+clear_amp = amp[1500:-490]/np.max(amp)/1.8
 clear_len = len(clear_amp)
 
 config = {
@@ -85,14 +87,14 @@ config = {
                 2: {'offset': -0.0660},  # qubit Q
                 7: {'offset': 0.0158},  # storage I
                 8: {'offset': -0.067},  # storage Q
-                9: {'offset': 0.0},  # JPA Pump I
-                10: {'offset': 0.0},  # JPA Pump Q
+                9: {'offset': 0.0259},  # JPA Pump I
+                10: {'offset': -0.0366},  # JPA Pump Q
 
             },
             'digital_outputs': {},
             'analog_inputs': {
-                1: {'offset': -0.0052},
-                2: {'offset': 0.0095}
+                1: {'offset': -0.0052, 'gain_db': 0},
+                2: {'offset': 0.010, 'gain_db': 0}
             }
         }
     },
@@ -201,7 +203,6 @@ config = {
                 },
             },
         },
-
         'jpa_pump': {
             'mixInputs': {
                 'I': ('con1', 9),
@@ -475,7 +476,7 @@ config = {
     'integration_weights': {
 
         'long_integW1': {
-            'cosine': [2.0] * int(long_redout_len / 4),
+            'cosine': [2.0] * int(long_redout_len / 4 ),
             'sine': [0.0] * int(long_redout_len / 4 )
         },
 
@@ -493,14 +494,14 @@ config = {
             'sine': [2.0] * int(clear_len / 4 )
         },
 
-        'integW1': {
-            'cosine': [1.0] * int(readout_len / 4),
-            'sine': [0.0] * int(readout_len / 4),
+        'demod1_iw': {
+            'cosine': [1.0] * int(long_redout_len / 4),
+            'sine': [0.0] * int(long_redout_len / 4),
         },
 
-        'integW2': {
-            'cosine': [0.0] * int(readout_len / 4),
-            'sine': [1.0] * int(readout_len / 4),
+        'demod2_iw': {
+            'cosine': [0.0] * int(long_redout_len / 4),
+            'sine': [1.0] * int(long_redout_len / 4),
         },
 
         'optW1': {

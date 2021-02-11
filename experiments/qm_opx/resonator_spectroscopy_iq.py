@@ -10,7 +10,6 @@ from slab.dsfit import*
 im = InstrumentManager()
 LO_r = im['RF8']
 
-rr_LO = rr_freq - rr_IF
 f_min = -5e6
 f_max = 5e6
 df = 100e3
@@ -19,13 +18,15 @@ LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(13)
 
-avgs = 2000
-reset_time = 50000
+avgs = 500
+reset_time = 30000
 simulation = 0
+
 with program() as resonator_spectroscopy:
 
     f = declare(int)
     i = declare(int)
+
     I = declare(fixed)
     Q = declare(fixed)
     I1 = declare(fixed)
@@ -39,7 +40,9 @@ with program() as resonator_spectroscopy:
     with for_(i, 0, i < avgs, i+1):
 
         with for_(f, f_min + rr_IF, f <= f_max + rr_IF, f + df):
+
             update_frequency("rr", f)
+
             wait(reset_time//4, "rr")
             measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
                 demod.full("long_integW1", I2, 'out2'),demod.full("long_integW2", Q2, 'out2'))

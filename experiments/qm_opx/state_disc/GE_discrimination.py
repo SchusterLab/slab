@@ -1,6 +1,6 @@
 from qm import SimulationConfig, LoopbackInterface
 from state_disc.TwoStateDiscriminator import TwoStateDiscriminator
-from configuration_IQ import config
+from configuration_IQ import config, qubit_LO, rr_LO, rr_IF
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -9,25 +9,19 @@ import seaborn as sns
 from slab import*
 from slab.instruments import instrumentmanager
 im = InstrumentManager()
+
 LO_q = im['RF5']
 LO_r = im['RF8']
 
-qubit_freq = 4.748488058227563e9
-ge_IF = 100e6
-qubit_LO = qubit_freq + ge_IF
-rr_freq = 8.0516e9
-# rr_freq = 0.5*(8.05184691 + 8.05148693)*1e9 #between g and e
-rr_IF = 100e6
-rr_LO = rr_freq - rr_IF
-
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(16)
+LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
-LO_r.set_power(18)
+LO_r.set_ext_pulse(mod=False)
+LO_r.set_power(13)
 
 reset_time = 500000
+avgs = 3000
 wait_time = 100
 N = 3000
 

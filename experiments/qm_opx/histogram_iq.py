@@ -132,9 +132,12 @@ Qg = np.array(Qg_handle.fetch_all()['value'])
 Ie = np.array(Ie_handle.fetch_all()['value'])
 Qe = np.array(Qe_handle.fetch_all()['value'])
 
+with program() as stop_playing:
+    pass
+job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
 
 path = "C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\"
-filename = path + "histogram_100MHz_3us.h5"
+filename = path + "histogram_100MHz_4us.h5"
 with File(filename, 'w') as f:
     dset = f.create_dataset("ig", data=Ig)
     dset = f.create_dataset("qg", data=Qg)

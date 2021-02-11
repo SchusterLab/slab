@@ -8,12 +8,10 @@ from slab import*
 from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO = im['RF8']
-# atten = im["atten2"]
 spec = im['SA']
 LO.set_frequency(rr_LO)
 LO.set_ext_pulse(mod=False)
 LO.set_power(13)
-# atten.set_attenuator(0)
 
 with program() as mixer_calibration:
 
@@ -27,13 +25,13 @@ job = qm.execute(mixer_calibration, duration_limit=0, data_limit=0)
 # qm.set_dc_offset_by_qe("rr", "Q", 0.0)
 # qm.set_dc_offset_by_qe("rr", "I", 0.0)
 
-# delta_F = 10e6
-# spec.set_center_frequency(rr_LO + rr_IF)
-# spec.set_span(delta_F)
-# spec.set_resbw(100e3)
-# tr = spec.take_one()
-# freq, amp = tr[0], tr[1]
-# plt.plot(freq, amp)
+delta_F = 10e6
+spec.set_center_frequency(rr_LO + rr_IF)
+spec.set_span(delta_F)
+spec.set_resbw(100e3)
+tr = spec.take_one()
+freq, amp = tr[0], tr[1]
+plt.plot(freq, amp)
 # plt.axvline(x=rr_LO, linestyle='--', color='k')
 # plt.axvline(x=rr_LO - rr_IF, linestyle='--', color='k')
 # plt.axvline(x=rr_LO + rr_IF, linestyle='--', color='k')

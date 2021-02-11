@@ -22,10 +22,8 @@ LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(13)
-# atten.set_attenuator(12.0)
-# time.sleep(1)
 
-ramsey_freq = 50e3
+ramsey_freq = 100e3
 detune_freq = ge_IF + ramsey_freq
 
 dt = 250
@@ -102,9 +100,12 @@ else:
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
     print("Data collection done")
+    with program() as stop_playing:
+        pass
+    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
 
     times = 4*times/1e3
-    z = 1
+    z = 0
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
     axs[0].plot(times[z:len(I)], I[z:], 'bo')
     p = fitdecaysin(times[z:len(I)], I[z:], showfit=False)
@@ -123,7 +124,7 @@ else:
     print("Suggested qubit frequency choice =", nu_q_new, "GHz")
     print("T2* =", p[3], "us")
 
-    z = 1
+    z = 0
     axs[1].plot(times[z:len(I)], Q[z:], 'ro')
     p = fitdecaysin(times[z:len(I)], Q[z:], showfit=False)
     axs[1].plot(times[z:len(I)], decaysin(np.append(p, 0), times[z:len(I)]), 'r-',

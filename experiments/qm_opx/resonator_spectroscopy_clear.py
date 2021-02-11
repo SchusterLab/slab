@@ -7,28 +7,26 @@ import numpy as np
 from slab import*
 from slab.instruments import instrumentmanager
 from slab.dsfit import*
-
 im = InstrumentManager()
 LO_r = im['RF8']
-atten = im["atten"]
+
+data = pd.read_csv("C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\clear_pulse_3.csv")
+amp = np.array(pd.DataFrame(data['amp']))
+clear_amp = amp[1500:-490]/np.max(amp)/1.0
+clear_len = len(clear_amp)
 
 rr_LO = rr_freq - rr_IF
-
-f_min = -20e6
-f_max = 20e6
-df = 40e3
-
+f_min = -5e6
+f_max = 5e6
+df = 100e3
 f_vec = rr_freq + np.arange(f_min, f_max + df/2, df)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
-LO_r.set_power(18)
-LO_r.set_output(True)
-atten.set_attenuator(10.0)
-time.sleep(1)
+LO_r.set_ext_pulse(mod=False)
+LO_r.set_power(13)
 
-avgs = 1000
-reset_time = 10000
-simulation = 0
+avgs = 2000
+reset_time = 500
+simulation = 1
 with program() as resonator_spectroscopy:
 
     f = declare(int)
@@ -45,11 +43,11 @@ with program() as resonator_spectroscopy:
 
     with for_(i, 0, i < avgs, i+1):
 
-        with for_(f, f_min + rr_IF, f < f_max + rr_IF + df / 2, f + df):
+        with for_(f, f_min + rr_IF, f <= f_max + rr_IF, f + df):
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
-            measure("clear", "rr", None, demod.full("clear_integW1", I1, 'out1'), demod.full("clear_integW2", Q1, 'out1'),
-                demod.full("clear_integW1", I2, 'out2'), demod.full("clear_integW2", Q2, 'out2'))
+            measure("clear"*amp(clear_amp), "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
+                demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
 
             assign(I, I1+Q2)
             assign(Q, I2-Q1)
@@ -65,7 +63,7 @@ qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
 if simulation:
-    job = qm.simulate(resonator_spectroscopy, SimulationConfig(150000))
+    job = qm.simulate(resonator_spectroscopy, SimulationConfig(15000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 
@@ -89,13 +87,14 @@ else:
     ph = np.unwrap(ph, discont=3.141592653589793, axis=-1)
     m = (ph[-1]-ph[0])/(f_vec[-1] - f_vec[0])
     ph = ph - m*f_vec*0.95
-    ph = ph - np.mean(ph)
+    ph = ph -np.mean(ph)
     axs[1].plot(f_vec/1e9, amps, 'b-')
     p = fitlor(f_vec/1e9, amps, showfit=False)
     x = np.array(f_vec)/1e9
-    axs[1].plot(f_vec/1e9, lorfunc(p, f_vec/1e9), label=r'$\nu_{r}$ = %.4f GHz'% p[2])
-    print("fits = ", p)
-    ax2 = axs[1].twinx()
+    q = p[2]/(2*p[3])
+    axs[1].plot(f_vec/1e9, lorfunc(p, f_vec/1e9), label=r'$\nu_{r}$ = %.6f GHz, Q = %.2f'% (p[2], q))
+    print ("fits = ", p)
+    ax2  = axs[1].twinx()
     ax2.plot(f_vec/1e9, ph, 'r-')
     axs[1].set_xlabel('Freq (GHz)')
     axs[1].set_ylabel('amp')

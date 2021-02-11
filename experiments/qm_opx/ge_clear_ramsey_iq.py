@@ -17,10 +17,10 @@ LO_r = im['RF8']
 ##################
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(16)
+LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
-LO_r.set_power(18)
+LO_r.set_ext_pulse(mod=False)
+LO_r.set_power(13)
 
 ramsey_freq = 50e3
 detune_freq = ge_IF + ramsey_freq
@@ -29,9 +29,9 @@ dt = 250
 T_max = 30000
 times = np.arange(0, T_max + dt/2, dt)
 
-wait_times = np.arange(0, 2500 + dt/2, dt)#wait between readout pulse and the ramsey experiment
+wait_times = np.arange(0, 2500 + 50, 100) #wait between readout pulse and the ramsey experiment
 
-avgs = 10
+avgs = 500
 reset_time = 500000
 simulation = 0
 with program() as ramsey:
@@ -41,8 +41,8 @@ with program() as ramsey:
     ##############################
 
     n = declare(int)      # Averaging
-    i = declare(int)      # Amplitudes
-    t = declare(int) #array of time delays
+    i = declare(int)      # wait time
+    t = declare(int)      #ramsey time delays
     I = declare(fixed)
     Q = declare(fixed)
     I1 = declare(fixed)
@@ -61,7 +61,7 @@ with program() as ramsey:
 
     with for_(n, 0, n < avgs, n + 1):
 
-        with for_(i, 0, i < 2500 + dt/2, dt):
+        with for_(i, 0, i < 2500 + 50, 100):
 
                 with for_(t, 0, t < T_max + dt/2, t + dt):
 
@@ -73,9 +73,8 @@ with program() as ramsey:
                     wait(t, "qubit")
                     play("pi2", "qubit")
                     align("qubit", "rr")
-                    measure("clear", "rr", None, demod.full("clear_integW1", I1, 'out1'),
-                            demod.full("clear_integW2", Q1, 'out1'),
-                            demod.full("clear_integW1", I2, 'out2'), demod.full("clear_integW2", Q2, 'out2'))
+                    measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
+                            demod.full("long_integW1", I2, 'out2'),demod.full("long_integW2", Q2, 'out2'))
 
                     assign(I, I1+Q2)
                     assign(Q, I2-Q1)
@@ -84,10 +83,6 @@ with program() as ramsey:
                     save(Q, Q_st)
 
     with stream_processing():
-        # I_st.save("I_s")
-        # I_st.save_all("I_s_all")
-        # Q_st.save("Q_s")
-        # Q_st.save_all("Q_s_all")
 
         I_st.buffer(len(wait_times), len(times)).average().save('I')
         Q_st.buffer(len(wait_times), len(times)).average().save('Q')
@@ -114,8 +109,14 @@ else:
     Q = Q_handle.fetch_all()
     print("Data collection done")
 
-    times = 4*times/1e3
-    z = 2
+    with program() as stop_playing:
+        pass
+    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
 
-    p = fitdecaysin(times[z:len(I)], I[z:], showfit=False)
-    T2 = p[3]
+    path = "C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\"
+    filename = path + "qubit_ramsey_clear_wait_time.h5"
+    with File(filename, 'w') as f:
+        dset = f.create_dataset("I", data=I)
+        dset = f.create_dataset("Q", data=Q)
+        dset = f.create_dataset("ram_time", data=times)
+        dset = f.create_dataset("wait_time", data=wait_times)

@@ -1,7 +1,7 @@
-from StateDiscriminator import StateDiscriminator
+from state_disc.StateDiscriminator import StateDiscriminator
 import numpy as np
 from qm.qua import *
-
+import os
 
 class TwoStateDiscriminator(StateDiscriminator):
 
@@ -23,7 +23,14 @@ class TwoStateDiscriminator(StateDiscriminator):
         }
         self._add_iw_to_all_pulses('demod2_iw')
 
+    # def _load_file(self, path):
+    #     if os.path.isfile(path):
+    #         print(path)
+    #         self.saved_data = np.load(path)
+    #         self._update_config()
+
     def get_threshold(self):
+        # return 0
         bias = self.saved_data['bias']
         return bias[0]-bias[1]
 

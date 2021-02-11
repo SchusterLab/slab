@@ -29,14 +29,15 @@ reset_time = 500000
 avgs = 3000
 simulation = 0
 
-a_min = 0.1
-a_max = 1.0
-da = 0.01
+a_min = 0.3
+a_max = 0.4
+da = 0.005
 amp_vec = np.arange(a_min, a_max + da/2, da)
-f_min = -0.4e6
-f_max = 0.4e6
-df = 20e3
+f_min = -50e3
+f_max = 50e3
+df = 10e3
 f_vec = np.arange(f_min, f_max + df/2, df)
+start_time = time.time()
 
 with program() as histogram:
 
@@ -124,14 +125,6 @@ else:
     """To run the actual experiment"""
     job = qm.execute(histogram, duration_limit=0, data_limit=0)
     print("Done")
-    start_time = time.time()
-    # for att in tqdm(amp_vec):
-    #     while not job.is_paused():
-    #         time.sleep(2.5)
-    #     atten.set_attenuator(att)
-    #     print(att)
-    #     time.sleep(1.0)
-    #     job.resume()
 
     print("Waiting for the data")
 
@@ -146,8 +139,9 @@ else:
 
     print(f"Time taken: {stop_time - start_time}")
 
+    f_vec = f_vec + rr_freq
     path = "C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\"
-    filename = path + "histogram_amp_freq_sweep_100MHz_2.5us_1.h5"
+    filename = path + "histogram_amp_freq_sweep_100MHz_4us_finer.h5"
     with File(filename, 'w') as f:
         dset = f.create_dataset("ig", data=Ig)
         dset = f.create_dataset("qg", data=Qg)

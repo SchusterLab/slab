@@ -12,7 +12,6 @@ from tqdm import tqdm
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-atten = im['atten']
 ##################
 # ramsey_prog:
 ##################
@@ -21,11 +20,9 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-atten.set_attenuator(12.0)
-time.sleep(1)
+LO_r.set_power(13)
 
-ramsey_freq = 50e3
+ramsey_freq = 500e3
 omega = 2*np.pi*ramsey_freq
 
 dt = 250
@@ -82,11 +79,6 @@ with program() as ramsey:
             save(Q, Q_st)
 
     with stream_processing():
-        # I_st.save("I_s")
-        # I_st.save_all("I_s_all")
-        # Q_st.save("Q_s")
-        # Q_st.save_all("Q_s_all")
-
         I_st.buffer(len(times)).average().save('I')
         Q_st.buffer(len(times)).average().save('Q')
 
@@ -111,6 +103,9 @@ else:
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
     print("Data collection done")
+    with program() as stop_playing:
+        pass
+    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
 
     times = 4*times/1e3
     z = 1
