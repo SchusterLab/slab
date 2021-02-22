@@ -8,7 +8,7 @@ from slab import*
 from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO = im['RF8']
-spec = im['SA']
+# spec = im['SA']
 
 nu_q = qubit_freq
 nu_IF = qubit_IF
@@ -19,7 +19,7 @@ LO.set_ext_pulse(mod=False)
 
 with program() as mixer_calibration:
     with infinite_loop_():
-        play("my_control_op"*amp(0.1), "qubit")
+        play("my_control_op"*amp(0.2), "qubit")
         # play("my_control_op"*amp(0.02), "qubit2")
         # align('qubit', 'qubit3')
         # play("my_control_op"*amp(0.02), "qubit3")
@@ -32,8 +32,8 @@ qm = qmm.open_qm(config)
 # samples.con1.plot()
 
 job = qm.execute(mixer_calibration, duration_limit=0, data_limit=0)
-qm.set_dc_offset_by_qe("qubit", "I", 0.0259)
-qm.set_dc_offset_by_qe("qubit", "Q", -0.0366)
+# qm.set_dc_offset_by_qe("qubit", "I", 0.0259)
+# qm.set_dc_offset_by_qe("qubit", "Q", -0.0366)
 
 
 # plt.axvline(x=nu_LO, linestyle='--', color='k')
@@ -50,12 +50,12 @@ def IQ_imbalance_corr(g, phi):
     N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s,
                                    (1 - g) * s, (1 + g) * c]]
-qm.set_mixer_correction("mixer_qubit", int(qubit_IF), int(qubit_LO), IQ_imbalance_corr(0.0,0.0*np.pi))
+# qm.set_mixer_correction("mixer_qubit", int(qubit_IF), int(qubit_LO), IQ_imbalance_corr(0.0,0.0*np.pi))
 #
-delta_F = 500e6
-spec.set_center_frequency(nu_LO)
-spec.set_span(delta_F)
-spec.set_resbw(100e3)
-time.sleep(5)
-tr = spec.take_one()
-plt.plot(tr[0], tr[1])
+# delta_F = 500e6
+# spec.set_center_frequency(nu_LO)
+# spec.set_span(delta_F)
+# spec.set_resbw(100e3)
+# time.sleep(5)
+# tr = spec.take_one()
+# plt.plot(tr[0], tr[1])

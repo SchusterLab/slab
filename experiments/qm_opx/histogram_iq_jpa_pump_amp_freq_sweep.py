@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, rr_freq
+from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, rr_freq, pump_IF
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -14,6 +14,7 @@ from h5py import File
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
+yoko = im['YOKO5']
 
 ##################
 # histogram_prog:
@@ -29,14 +30,16 @@ reset_time = 500000
 avgs = 3000
 simulation = 0
 
-a_min = 0.2
-a_max = 0.3
-da = 0.005
+a_min = 0.035
+a_max = 0.045
+da = 0.0005
 amp_vec = np.arange(a_min, a_max + da/2, da)
-f_min = -140e3
-f_max = 10e3
+
+f_min = -200e3
+f_max = 200e3
 df = 10e3
 f_vec = np.arange(f_min, f_max + df/2, df)
+
 start_time = time.time()
 
 with program() as histogram:
@@ -69,17 +72,21 @@ with program() as histogram:
 
     with for_(a, a_min, a < a_max + da/2, a + da):
 
-        with for_(f, rr_IF + f_min, f < rr_IF + f_max + df/2, f + df):
+        with for_(f, pump_IF + f_min, f < pump_IF + f_max + df/2, f + df):
 
-            update_frequency("rr", f)
+            update_frequency("jpa_pump", f)
 
             with for_(n, 0, n < avgs, n + 1):
 
                 """Just readout without playing anything"""
                 wait(reset_time//4, "rr")
-                measure("long_readout"*amp(a), "rr", None, demod.full("long_integW1", I1, 'out1'),
+                align("rr", "jpa_pump")
+                play('CW'*amp(a), 'jpa_pump')
+                measure("long_readout", "rr", None,
+                        demod.full("long_integW1", I1, 'out1'),
                         demod.full("long_integW2", Q1, 'out1'),
-                        demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
+                        demod.full("long_integW1", I2, 'out2'),
+                        demod.full("long_integW2", Q2, 'out2'))
 
                 assign(Ig, I1 + Q2)
                 assign(Qg, I2 - Q1)
@@ -92,9 +99,13 @@ with program() as histogram:
                 wait(reset_time // 4, "qubit")
                 play("pi", "qubit")
                 align("qubit", "rr")
-                measure("long_readout"*amp(a), "rr", None, demod.full("long_integW1", I1, 'out1'),
+                align("rr", "jpa_pump")
+                play('CW'*amp(a), 'jpa_pump')
+                measure("long_readout", "rr", None,
+                        demod.full("long_integW1", I1, 'out1'),
                         demod.full("long_integW2", Q1, 'out1'),
-                        demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
+                        demod.full("long_integW1", I2, 'out2'),
+                        demod.full("long_integW2", Q2, 'out2'))
 
                 assign(Ie, I1 + Q2)
                 assign(Qe, I2 - Q1)
@@ -139,7 +150,7 @@ else:
 
     f_vec = f_vec + rr_freq
     path = "C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\"
-    filename = path + "histogram_amp_freq_sweep_100MHz_4us_finer_4.h5"
+    filename = path + "histogram_amp_freq_sweep_100MHz_4us_jpa_6.h5"
     with File(filename, 'w') as f:
         dset = f.create_dataset("ig", data=Ig)
         dset = f.create_dataset("qg", data=Qg)

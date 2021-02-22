@@ -1,4 +1,4 @@
-from configuration_IQ import config, rr_IF, rr_LO
+from configuration_IQ import config, rr_IF, rr_LO, pump_IF
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -9,6 +9,7 @@ from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO = im['RF8']
 spec = im['SA']
+yoko = im['YOKO5']
 LO.set_frequency(rr_LO)
 LO.set_ext_pulse(mod=False)
 LO.set_power(13)
@@ -16,7 +17,7 @@ LO.set_power(13)
 with program() as mixer_calibration:
 
     with infinite_loop_():
-        play("CW"*amp(1.05), "rr")
+        play("CW"*amp(0.052), "jpa_pump", duration=1000)
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -25,13 +26,13 @@ job = qm.execute(mixer_calibration, duration_limit=0, data_limit=0)
 # qm.set_dc_offset_by_qe("rr", "Q", 0.0)
 # qm.set_dc_offset_by_qe("rr", "I", 0.0)
 
-delta_F = 10e6
-spec.set_center_frequency(rr_LO + rr_IF)
-spec.set_span(delta_F)
-spec.set_resbw(100e3)
-tr = spec.take_one()
-freq, amp = tr[0], tr[1]
-plt.plot(freq, amp)
+# delta_F = 10e6
+# spec.set_center_frequency(rr_LO + rr_IF)
+# spec.set_span(delta_F)
+# spec.set_resbw(100e3)
+# tr = spec.take_one()
+# freq, amp = tr[0], tr[1]
+# plt.plot(freq, amp)
 # plt.axvline(x=rr_LO, linestyle='--', color='k')
 # plt.axvline(x=rr_LO - rr_IF, linestyle='--', color='k')
 # plt.axvline(x=rr_LO + rr_IF, linestyle='--', color='k')

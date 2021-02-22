@@ -9,7 +9,6 @@ from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-# atten = im['atten2']
 from slab.dsfit import*
 
 def roundint(value, base=4):
@@ -25,8 +24,6 @@ LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(13)
-# atten.set_attenuator(12.0)
-# time.sleep(1)
 
 t_min = 4
 t_max = 40
@@ -100,6 +97,10 @@ else:
 
     stop_time = time.time()
     print(f"Time taken: {stop_time-start_time}")
+
+    with program() as stop_playing:
+        pass
+    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
 
     times = 4*times
     z = 2

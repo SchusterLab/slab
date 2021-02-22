@@ -31,8 +31,8 @@ config = {
         'con1': {
             'type': 'opx1',
             'analog_outputs': {
-                9: {'offset': 0.0164},#0.0259},  # Qubit I
-                10: {'offset': -0.037},#-0.0366},  # Qubit Q
+                9: {'offset': 0.0259},  # Qubit I
+                10: {'offset': -0.0366},  # Qubit Q
                 5: {'offset': 0.0},  # Cavity I
                 6: {'offset': 0.0},  # Cavity Q
             },

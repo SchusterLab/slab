@@ -7,18 +7,23 @@ import numpy as np
 from slab import*
 from slab.instruments import instrumentmanager
 from slab.dsfit import*
+from h5py import File
+import os
+from slab.dsfit import*
+from slab.dataanalysis import get_next_filename
+
 im = InstrumentManager()
 LO_r = im['RF8']
 
 f_min = -5e6
 f_max = 5e6
-df = 100e3
+df = 50e3
 f_vec = rr_freq + np.arange(f_min, f_max + df/2, df)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(13)
 
-avgs = 500
+avgs = 2000
 reset_time = 30000
 simulation = 0
 
@@ -44,8 +49,11 @@ with program() as resonator_spectroscopy:
             update_frequency("rr", f)
 
             wait(reset_time//4, "rr")
-            measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),demod.full("long_integW2", Q2, 'out2'))
+            measure("long_readout", "rr", None,
+                    demod.full("long_integW1", I1, 'out1'),
+                    demod.full("long_integW2", Q1, 'out1'),
+                    demod.full("long_integW1", I2, 'out2'),
+                    demod.full("long_integW2", Q2, 'out2'))
 
             assign(I, I1+Q2)
             assign(Q, I2-Q1)
@@ -74,28 +82,19 @@ else:
     Q_handle = res_handles.get("Q")
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
+    print ("Data collection done")
 
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    axs[0].plot(f_vec/1e9, I)
-    axs[0].plot(f_vec/1e9, Q)
-    axs[0].set_xlabel('Freq (GHz)')
-    axs[0].set_ylabel('I/Q')
-    amps = np.sqrt(np.array(I)**2 + 1*np.array(Q)**2)
-    ph = np.arctan2(np.array(Q), np.array(I))
-    ph = np.unwrap(ph, discont=3.141592653589793, axis=-1)
-    m = (ph[-1]-ph[0])/(f_vec[-1] - f_vec[0])
-    ph = ph - m*f_vec*0.95
-    ph = ph -np.mean(ph)
-    axs[1].plot(f_vec/1e9, amps, 'b-')
-    p = fitlor(f_vec/1e9, amps, showfit=False)
-    x = np.array(f_vec)/1e9
-    q = p[2]/(2*p[3])
-    axs[1].plot(f_vec/1e9, lorfunc(p, f_vec/1e9), label=r'$\nu_{r}$ = %.6f GHz, Q = %.2f'% (p[2], q))
-    print ("fits = ", p)
-    ax2  = axs[1].twinx()
-    ax2.plot(f_vec/1e9, ph, 'r-')
-    axs[1].set_xlabel('Freq (GHz)')
-    axs[1].set_ylabel('amp')
-    ax2.set_ylabel('$\\varphi$')
-    axs[1].legend(loc='best')
-    fig.show()
+    with program() as stop_playing:
+        pass
+    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
+
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'resonator_spec', suffix='.h5'))
+    print(seq_data_file)
+
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=Q)
+        f.create_dataset("freqs", data=f_vec)

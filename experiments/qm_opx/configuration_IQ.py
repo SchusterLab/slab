@@ -23,8 +23,8 @@ def IQ_imbalance(g, phi):
 long_redout_len = 4000
 readout_len = 3000
 
-qubit_freq = 4.7469355454466875e9
-qubit_ef_freq = 4.6078190022032635e9
+qubit_freq = 4.7469409252709855  *1e9
+qubit_ef_freq = 4.6078190022032635*1e9
 ge_IF = 100e6
 ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
 qubit_LO = qubit_freq - ge_IF
@@ -34,13 +34,13 @@ rr_freq_g = 8.05182319e9
 rr_freq_e = 8.05145304e9
 
 # rr_freq = 0.5*(rr_freq_g + rr_freq_e) #between g and e
-rr_freq = 8.051758e9 #for 4us
+rr_freq = 8.051658e9 #for 4us
 # rr_freq = 8.051618e9 #for 3.6us
 
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
 # rr_amp = 0.5*0.7
-rr_amp = 1.0 *0.345
+rr_amp = 1.0*0.295
 
 pump_LO = rr_LO
 pump_IF = 100e6
@@ -57,10 +57,10 @@ gauss_len = 32
 gauss_amp = 0.45
 
 pi_len = 32
-pi_amp = 0.3527
+pi_amp = 0.35114640865853564
 
 half_pi_len = 16
-half_pi_amp = 0.3527
+half_pi_amp = pi_amp
 
 pi_len_resolved = 3000
 Pi_amp_resolved = 0.00884993938365933
@@ -93,8 +93,8 @@ config = {
             },
             'digital_outputs': {},
             'analog_inputs': {
-                1: {'offset': -0.0052, 'gain_db': 0},
-                2: {'offset': 0.010, 'gain_db': 0}
+                1: {'offset': 0.006, 'gain_db': 2},
+                2: {'offset': 0.0215, 'gain_db': 2}
             }
         }
     },
@@ -495,13 +495,13 @@ config = {
         },
 
         'demod1_iw': {
-            'cosine': [1.0] * int(long_redout_len / 4),
+            'cosine': [2.0] * int(long_redout_len / 4),
             'sine': [0.0] * int(long_redout_len / 4),
         },
 
         'demod2_iw': {
             'cosine': [0.0] * int(long_redout_len / 4),
-            'sine': [1.0] * int(long_redout_len / 4),
+            'sine': [2.0] * int(long_redout_len / 4),
         },
 
         'optW1': {
@@ -533,7 +533,7 @@ config = {
         ],
         'mixer_jpa': [
             {'intermediate_frequency': pump_IF, 'lo_frequency': pump_LO,
-             'correction': IQ_imbalance(0.041,0.018 * np.pi)}
+             'correction': IQ_imbalance(0.041, 0.018 * np.pi)}
         ],
 
     }

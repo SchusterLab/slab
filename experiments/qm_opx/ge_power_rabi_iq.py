@@ -7,10 +7,13 @@ import matplotlib.pyplot as plt
 from slab import*
 from slab.instruments import instrumentmanager
 from slab.dsfit import*
+from h5py import File
+import os
+from slab.dataanalysis import get_next_filename
+
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-# atten = im['atten']
 ##################
 # power_rabi_prog:
 ##################
@@ -20,8 +23,6 @@ LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(13)
-# atten.set_attenuator(12.0)
-# time.sleep(1)
 
 a_min = 0.0
 a_max = 1.0
@@ -60,8 +61,11 @@ with program() as ge_rabi:
             wait(reset_time//4, "qubit")
             play("gaussian"*amp(a), "qubit")
             align("qubit", "rr")
-            measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),demod.full("long_integW2", Q2, 'out2'))
+            measure("long_readout", "rr", None,
+                    demod.full("long_integW1", I1, 'out1'),
+                    demod.full("long_integW2", Q1, 'out1'),
+                    demod.full("long_integW1", I2, 'out2'),
+                    demod.full("long_integW2", Q2, 'out2'))
 
             assign(I, I1 + Q2)
             assign(Q, -Q1 + I2)
@@ -96,25 +100,16 @@ else:
     stop_time = time.time()
     print(f"Time taken: {stop_time-start_time}")
 
-    z = 2
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    axs[0].plot(amps[z:len(I)], I[z:],'bo')
-    p = fitdecaysin(amps[z:len(I)], I[z:], showfit=False)
-    print("fits :", p)
-    print("a_pi", 1/2/p[1])
-    axs[0].axvline(1/2/p[1])
-    axs[0].plot(amps[z:len(I)], decaysin(np.append(p,0), amps[z:len(I)]), 'b-')
-    axs[0].set_xlabel('Amps')
-    axs[0].set_ylabel('I')
+    with program() as stop_playing:
+        pass
+    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
 
-    z = 2
-    axs[1].plot(amps[z:len(I)], Q[z:],'ro')
-    p = fitdecaysin(amps[z:len(I)], Q[z:], showfit=False)
-    axs[1].plot(amps[z:len(I)], decaysin(np.append(p,0), amps[z:len(I)]), 'r-')
-    print("fits :", p)
-    print("a_pi", 1/2/p[1])
-    axs[1].axvline(1/2/p[1])
-    axs[1].set_xlabel('Amps')
-    axs[1].set_ylabel('Q')
-    plt.tight_layout()
-    fig.show()
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'power_rabi', suffix='.h5'))
+    print(seq_data_file)
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=Q)
+        f.create_dataset("amps", data=amps)

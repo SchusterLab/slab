@@ -36,6 +36,8 @@ with program() as training_program:
     Q2 = declare(fixed)
 
     with for_(n, 0, n < N, n + 1):
+        align("rr", "jpa_pump")
+        play('CW'*amp(0.04), 'jpa_pump')
         measure("long_readout", "rr", "adc", demod.full("long_integW1", I1, "out1"),
                 demod.full("long_integW2", Q1, "out1"),
                 demod.full("long_integW1", I2, "out2"),
@@ -47,11 +49,14 @@ with program() as training_program:
         save(Q, 'Q')
         wait(reset_time//4, "rr")
 
-    align("qubit", "rr")
+        align("qubit", "rr")
 
     with for_(n, 0, n < N, n + 1):
         play("pi", "qubit")
         align("qubit", "rr")
+        align("rr", "jpa_pump")
+        play('CW'*amp(0.04), 'jpa_pump')
+
         measure("long_readout", "rr", "adc", demod.full("long_integW1", I1, "out1"),
                 demod.full("long_integW2", Q1, "out1"),
                 demod.full("long_integW1", I2, "out2"),
@@ -77,6 +82,9 @@ with program() as ge_discrimination:
     with for_(n, 0, n < N, n + 1):
 
         seq0 = [0] * int(N)
+        align("rr", "jpa_pump")
+        play('CW'*amp(0.04), 'jpa_pump')
+
         discriminator.measure_state("long_readout", "out1", "out2", res, statistic=statistic)
 
         save(res, 'res')
@@ -88,6 +96,8 @@ with program() as ge_discrimination:
         seq0 = seq0 + [1] * int(N)
         play("pi", "qubit")
         align("qubit", "rr")
+        align("rr", "jpa_pump")
+        play('CW'*amp(0.04), 'jpa_pump')
         discriminator.measure_state("long_readout", "out1", "out2", res, statistic=statistic)
 
         save(res, 'res')

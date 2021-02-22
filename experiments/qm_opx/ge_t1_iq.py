@@ -7,13 +7,16 @@ import matplotlib.pyplot as plt
 from slab import*
 from slab.instruments import instrumentmanager
 im = InstrumentManager()
+from h5py import File
+import os
+from slab.dsfit import*
+from slab.dataanalysis import get_next_filename
+
 LO_q = im['RF5']
 LO_r = im['RF8']
-# atten = im['atten']
-from slab.dsfit import*
 
 ##################
-# power_rabi_prog:
+# t1:
 ##################
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
@@ -59,8 +62,11 @@ with program() as ge_t1:
             play("pi", "qubit")
             wait(t, "qubit")
             align("qubit", "rr")
-            measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),demod.full("long_integW2", Q2, 'out2'))
+            measure("long_readout", "rr", None,
+                    demod.full("long_integW1", I1, 'out1'),
+                    demod.full("long_integW2", Q1, 'out1'),
+                    demod.full("long_integW1", I2, 'out2'),
+                    demod.full("long_integW2", Q2, 'out2'))
 
             assign(I, I1+Q2)
             assign(Q, I2-Q1)
@@ -91,26 +97,20 @@ else:
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
     print ("Data collection done")
-    #
+
+
+    with program() as stop_playing:
+        pass
+    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
+
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 't1', suffix='.h5'))
+    print(seq_data_file)
+
     times = 4*times #actual clock time
-
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    axs[0].plot(times[:len(I)]/1e3, I,'bo')
-    p = fitexp(times[:len(I)], I, showfit=False)
-    print ("fits :", p)
-    print("T1: %.3f"%(p[3]/1e3))
-    axs[0].plot(times[:len(I)]/1e3, expfunc(p, times[:len(I)]), 'b-',
-                label='T1: %.3f $\mu$s'%(p[3]/1e3))
-    axs[0].set_xlabel('Time ($\mu$s)')
-    axs[0].set_ylabel('I')
-    axs[0].legend()
-
-    axs[1].plot(times[:len(I)]/1e3, Q,'ro')
-    p = fitexp(times[:len(I)], Q, showfit=False)
-    axs[1].plot(times[:len(I)]/1e3, expfunc(p, times[:len(I)]), 'r-')
-    print ("fits :", p)
-    print("T1: %.3f"%(p[3]/1e3))
-    axs[1].set_xlabel('Time ($\mu$s)')
-    axs[1].set_ylabel('Q')
-    plt.tight_layout()
-    fig.show()
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=Q)
+        f.create_dataset("time", data=times)

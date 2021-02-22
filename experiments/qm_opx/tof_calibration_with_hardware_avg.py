@@ -17,7 +17,7 @@ with program() as digital_train:
 
     with infinite_loop_():
         play("CW", "rr")  # 600ns
-        wait(100, "rr")   # 400ns
+        # wait(100, "rr")   # 400ns
 
 with program() as tof_calibration:
     adc_st = declare_stream(adc_trace=True)

@@ -3,19 +3,10 @@ from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from slab import*
 from slab.instruments import instrumentmanager
 from slab.dsfit import*
-from state_disc.TwoStateDiscriminator import TwoStateDiscriminator
-
-qmm = QuantumMachinesManager()
-qm = qmm.open_qm(config)
-
-path = './state_disc/qubit_ge_disc_params.npz'
-tsd = TwoStateDiscriminator(qmm, config, rr_qe='rr', path= 'qubit_ge_disc_params.npz')
-
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
@@ -33,7 +24,7 @@ a_min = 0.0
 a_max = 1.0
 da = 0.01
 amps = np.arange(a_min, a_max + da/2, da)
-avgs = 1000
+avgs = 2000
 reset_time = 500000
 simulation = 0
 
@@ -54,8 +45,6 @@ with program() as ge_rabi:
 
     I_st = declare_stream()
     Q_st = declare_stream()
-    res = declare(bool)
-    res_stream = declare_stream()
 
     ###############
     # the sequence:
@@ -69,13 +58,25 @@ with program() as ge_rabi:
             play("gaussian"*amp(a), "qubit")
             align("qubit", "rr")
             align("rr", "jpa_pump")
-            play('CW'*amp(0.038), 'jpa_pump')
-            tsd.measure_state("long_readout", 'out1', 'out2', res)
-            save(res, res_stream)
+            play('CW'*amp(0.0355), 'jpa_pump')
+            measure("long_readout", "rr", None,
+                    demod.full("long_integW1", I1, 'out1'),
+                    demod.full("long_integW2", Q1, 'out1'),
+                    demod.full("long_integW1", I2, 'out2'),
+                    demod.full("long_integW2", Q2, 'out2'))
 
+            assign(I, I1 + Q2)
+            assign(Q, -Q1 + I2)
+
+            save(I, I_st)
+            save(Q, Q_st)
 
     with stream_processing():
-        res_stream.buffer(len(amps)).save_all('res')
+        I_st.buffer(len(amps)).average().save('I')
+        Q_st.buffer(len(amps)).average().save('Q')
+
+qmm = QuantumMachinesManager()
+qm = qmm.open_qm(config)
 
 if simulation:
     job = qm.simulate(ge_rabi, SimulationConfig(15000))
@@ -88,35 +89,38 @@ else:
 
     res_handles = job.result_handles
     res_handles.wait_for_all_values()
+    I_handle = res_handles.get("I")
+    Q_handle = res_handles.get("Q")
+    I = I_handle.fetch_all()
+    Q = Q_handle.fetch_all()
     print("Data collection done")
 
     stop_time = time.time()
     print(f"Time taken: {stop_time-start_time}")
 
-    data = pd.DataFrame(res_handles.get('res').fetch_all()['value'])
+    with program() as stop_playing:
+        pass
+    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
 
+    z = 2
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    axs[0].plot(amps[z:len(I)], I[z:],'bo')
+    p = fitdecaysin(amps[z:len(I)], I[z:], showfit=False)
+    print("fits :", p)
+    print("a_pi", 1/2/p[1])
+    axs[0].axvline(1/2/p[1])
+    axs[0].plot(amps[z:len(I)], decaysin(np.append(p,0), amps[z:len(I)]), 'b-')
+    axs[0].set_xlabel('Amps')
+    axs[0].set_ylabel('I')
 
-
-
-    # z = 2
-    # fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    # axs[0].plot(amps[z:len(I)], I[z:],'bo')
-    # p = fitdecaysin(amps[z:len(I)], I[z:], showfit=False)
-    # print("fits :", p)
-    # print("a_pi", 1/2/p[1])
-    # axs[0].axvline(1/2/p[1])
-    # axs[0].plot(amps[z:len(I)], decaysin(np.append(p,0), amps[z:len(I)]), 'b-')
-    # axs[0].set_xlabel('Amps')
-    # axs[0].set_ylabel('I')
-    #
-    # z = 2
-    # axs[1].plot(amps[z:len(I)], Q[z:],'ro')
-    # p = fitdecaysin(amps[z:len(I)], Q[z:], showfit=False)
-    # axs[1].plot(amps[z:len(I)], decaysin(np.append(p,0), amps[z:len(I)]), 'r-')
-    # print("fits :", p)
-    # print("a_pi", 1/2/p[1])
-    # axs[1].axvline(1/2/p[1])
-    # axs[1].set_xlabel('Amps')
-    # axs[1].set_ylabel('Q')
-    # plt.tight_layout()
-    # fig.show()
+    z = 2
+    axs[1].plot(amps[z:len(I)], Q[z:],'ro')
+    p = fitdecaysin(amps[z:len(I)], Q[z:], showfit=False)
+    axs[1].plot(amps[z:len(I)], decaysin(np.append(p,0), amps[z:len(I)]), 'r-')
+    print("fits :", p)
+    print("a_pi", 1/2/p[1])
+    axs[1].axvline(1/2/p[1])
+    axs[1].set_xlabel('Amps')
+    axs[1].set_ylabel('Q')
+    plt.tight_layout()
+    fig.show()
