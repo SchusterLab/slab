@@ -29,6 +29,7 @@ from slab.datamanagement import SlabFile
 
 
 AWG_BANDWIDTH = 10**9 #Samples per second
+QB_W_FAST_FLUX = [0, 1, 2, 3, 4, 5, 6, 7] #qubits where we will load fast flux waveforms. Note: hardcoded that Q0-Q3 goes to module ff1, Q4-Q7 goes to module ff2
 
 class KeysightSingleQubit:
     '''Class designed to implement a simple single qubit experiment given pulse sequences from the Sequencer class. Does  not use
@@ -261,12 +262,12 @@ class KeysightSingleQubit:
         return trig
 
     def sequenceslist(self,sequences,waveform_channels):
-        wv = []
+        wv = {}
         for channel in waveform_channels:
-            if not channel == None:
-                wv.append(sequences[channel])
+            if not channel == None: #TODO: I think this should be if not sequences[channel] == None
+                wv[channel] = sequences[channel]
             else:
-                wv.append(np.zeros_like(sequences[waveform_channels[0]]))
+                wv[channel] = np.zeros_like(sequences[waveform_channels[0]])
         return wv
 
 
@@ -295,12 +296,14 @@ class KeysightSingleQubit:
         wv = self.sequenceslist(sequences,pxi_waveform_channels)
 
         # Based on Nelson's original nomenclature
-        waveforms_I = wv[0]
-        waveforms_Q = wv[1]
-        readout = wv[2] #readout LO marker
-        markers_readout = wv[3] #digitizer marker
-
-        if self.prep_tek2:tek2_marker = wv[4]
+        waveforms_I = wv["charge1_I"]
+        waveforms_Q = wv["charge1_Q"]
+        readout = wv["readout"] #readout LO marker
+        markers_readout = wv["readout_trig"] #digitizer marker
+        ff_waveforms_dict = [] #waveforms for all fast flux channels for qubits specified in QB_W_FAST_FLUX
+        for i in np.arange(QB_W_FAST_FLUX):
+            ff_ch_temp = "ff_Q" + str(i)
+            ff_waveforms_dict[ff_ch_temp] = wv[ff_ch_temp]
 
         AWG_module = self.chassis.getModule(self.out_mod_no)
         m_module = self.chassis.getModule(self.marker_mod_no)
