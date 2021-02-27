@@ -481,6 +481,9 @@ class KeysightSingleQubit:
             self.AWG_module.startAll()
             self.m_module.startAll()
             self.trig_module.startAll()
+            self.ff1_module.startAll()
+            self.ff2_module.startAll()
+
 
         except BaseException as e:  # Quickly kill everything and risk data loss, mainly in case of keyboard interrupt
             pass
