@@ -132,6 +132,8 @@
       "m3201a_trig_delay": 140,
       "prev_m3201...delay": 190,
       "abs_trig_delay": 100,
+      "ff1_card_delay": 0,
+      "ff2_card_delay": 0,
 
       "ff1_mod_no": 5,
       "ff2_mod_no": 6,

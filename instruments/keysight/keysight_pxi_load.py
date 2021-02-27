@@ -74,15 +74,17 @@ class KeysightSingleQubit:
 
         self.dt = hardware_cfg['awg_info']['keysight_pxi']['dt']
         self.dt_dig = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
+        self.adc_range =  hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']
 
         self.readout_window = np.array(quantum_device_cfg['readout']['window'])
         self.lo_delay = hardware_cfg['awg_info']['keysight_pxi']['lo_delay'] #lo_delay convolves LO marker so that marker is bigger to account for switching time delay (ie stretches marker)
-        self.qb_lo_delay = hardware_cfg['awg_info']['keysight_pxi']['qb_lo_delay']
+        self.qb_lo_delay = hardware_cfg['awg_info']['keysight_pxi']['qb_lo_delay'] #delay to trigger to QB card/module
         self.abs_trig_delay = hardware_cfg['awg_info']['keysight_pxi']['abs_trig_delay']
         self.trig_pulse_length = hardware_cfg['trig_pulse_len']['default']
-        self.trig_delay = hardware_cfg['awg_info']['keysight_pxi']['m3201a_trig_delay'] #global delay that affects all markers/triggers except digitizer trigger, moves qubit + readout around ##TODO check this I think it also moves dig
+        self.trig_delay = hardware_cfg['awg_info']['keysight_pxi']['m3201a_trig_delay'] #global delay that moves qubit + readout LO around ##TODO check this I think it also moves dig
         self.card_delay = hardware_cfg['awg_info']['keysight_pxi']['m3102a_card_delay'] #-> delay that affects digitizer marker
-        self.adc_range =  hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']
+        self.ff1_card_delay = hardware_cfg['awg_info']['keysight_pxi']['ff1_card_delay']
+        self.ff2_card_delay = hardware_cfg['awg_info']['keysight_pxi']['ff2_card_delay']
 
 
         print ("Module used for generating Q1 IQ  pulses = ",self.out_mod_no)
@@ -432,11 +434,11 @@ class KeysightSingleQubit:
             PXIwave_ff_Q3.loadToModule(ff1_module)
 
             # Queue ff1 waveforms to ff1 channels
-            PXIwave_ff_Q0.queue(self.ff1_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay, cycles=1, prescaler=0)
-            PXIwave_ff_Q1.queue(self.ff1_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay, cycles=1, prescaler=0)
-            PXIwave_ff_Q2.queue(self.ff1_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay,
+            PXIwave_ff_Q0.queue(self.ff1_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay + self.ff1_card_delay, cycles=1, prescaler=0)
+            PXIwave_ff_Q1.queue(self.ff1_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay+ self.ff1_card_delay, cycles=1, prescaler=0)
+            PXIwave_ff_Q2.queue(self.ff1_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay+ self.ff1_card_delay,
                                 cycles=1, prescaler=0)
-            PXIwave_ff_Q3.queue(self.ff1_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay,
+            PXIwave_ff_Q3.queue(self.ff1_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay+ self.ff1_card_delay,
                                 cycles=1, prescaler=0)
 
             # Configure ff1 module settings
@@ -451,13 +453,13 @@ class KeysightSingleQubit:
             PXIwave_ff_Q7.loadToModule(ff2_module)
 
             # Queue ff1 waveforms to ff1 channels
-            PXIwave_ff_Q4.queue(self.ff2_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay,
+            PXIwave_ff_Q4.queue(self.ff2_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay+ self.ff2_card_delay,
                                 cycles=1, prescaler=0)
-            PXIwave_ff_Q5.queue(self.ff2_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay,
+            PXIwave_ff_Q5.queue(self.ff2_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay+ self.ff2_card_delay,
                                 cycles=1, prescaler=0)
-            PXIwave_ff_Q6.queue(self.ff2_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay,
+            PXIwave_ff_Q6.queue(self.ff2_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay+ self.ff2_card_delay,
                                 cycles=1, prescaler=0)
-            PXIwave_ff_Q7.queue(self.ff2_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay,
+            PXIwave_ff_Q7.queue(self.ff2_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay+ self.ff2_card_delay,
                                 cycles=1, prescaler=0)
 
             # Configure ff1 module settings
