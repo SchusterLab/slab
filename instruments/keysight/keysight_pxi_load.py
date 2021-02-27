@@ -4,12 +4,9 @@ Created on Thu Sep 13 19:41:56 2018
 
 @author: slab
 
-Module 6 used as AWG/marker:
+Module 6 used as AWG:
     Channel 1 is I
     Channel 2 is Q
-    Channel 3 is marker for readout pulse
-    Channel 4 is indicator to take data. Should be connected to "Trigger" on
-        Module 10.
 
 Module 10 is used for reacout.
     Channel 1 is I
@@ -37,11 +34,14 @@ class KeysightSingleQubit:
     '''Class designed to implement a simple single qubit experiment given pulse sequences from the Sequencer class. Does  not use
     HVI technology.
 
-    Module (slot) 6 and 7 are used for AWGS. Module 8 is used as a marker. Module 9 is triggered externally and its outputs are used
-    to trigger the rest of the modules. ch4 of this trig for the digitizer. Digitizer is module 10.
+    Module (slot) 5 is an AWG, used for fast flux pulses
+    Module 6 is an AWG, used for fast flux pulses
+    Module 7 is an AWG. channel 1 goes to the I input to the mixer, channel 2 goes to the Q input
+    Module 8 is used as a marker for the LO (ie send signal to switch).
+    Module 9 is triggered externally and its outputs are used to trigger the rest of the modules.
+        ch4 of this trig for the digitizer.
 
-    On Module 6, channel 1 goes to the I input to the mixer, channel 2 goes to the Q input, channel 3 is the readout pulse, and
-    channel 4 is the readout marker. On module 10, channel 1 is for readout of I component and channel 2 is for readout from Q component.'''
+    Module 10 is the digitizer. channel 1 is for readout of I component and channel 2 is for readout from Q component.'''
 
     ## Outstanding issue - if we upload waveforms that contain all 0's in time for unused space - how are "markers" used at all???
     ## Answer - markers window the region where pulse sent out to bin output of LO!!!
@@ -56,37 +56,40 @@ class KeysightSingleQubit:
                  sleep_time_between_trials=50 * 1000):  # 1000*10000 if you want to watch sweep by eye
 
         chassis = key.KeysightChassis(1,
-                                      {6: key.ModuleType.OUTPUT,
+                                      {4: key.ModuleType.OUTPUT,
+                                       5: key.ModuleType.OUTPUT,
+                                       6: key.ModuleType.OUTPUT,
                                        7: key.ModuleType.OUTPUT,
                                        8: key.ModuleType.OUTPUT,
                                        9: key.ModuleType.OUTPUT,
                                        10: key.ModuleType.INPUT})
 
         self.hardware_cfg = hardware_cfg
-        ## out_mod_no is AWG outupt?
-        self.out_mod_no = hardware_cfg['awg_info']['keysight_pxi']['out_mod_no']
-        ## what does marker do - windows LO
-        self.marker_mod_no = hardware_cfg['awg_info']['keysight_pxi']['marker_mod_no']
-        ## what does trigger do - triggers AWG / Digitizer
-        self.trig_mod_no = hardware_cfg['awg_info']['keysight_pxi']['trig_mod_no']
+        self.out_mod_no = hardware_cfg['awg_info']['keysight_pxi']['out_mod_no'] ## out_mod_no is qubit AWG output
+        self.marker_mod_no = hardware_cfg['awg_info']['keysight_pxi']['marker_mod_no'] ## marker is a pulse that's on for length that you want LO switch on
+        self.trig_mod_no = hardware_cfg['awg_info']['keysight_pxi']['trig_mod_no'] ## triggers other AWGs / Digitizer (hack solution cuz in the past ppl saw jitter)
+        self.ff1_mod_no = hardware_cfg['awg_info']['keysight_pxi']['ff1_mod_no'] #4 channels for Q0-Q3 fast flux
+        self.ff2_mod_no = hardware_cfg['awg_info']['keysight_pxi']['ff2_mod_no']# 4 channels for Q4-Q7 fast flux
 
         self.dt = hardware_cfg['awg_info']['keysight_pxi']['dt']
         self.dt_dig = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
+
         self.readout_window = np.array(quantum_device_cfg['readout']['window'])
-        self.lo_delay = hardware_cfg['awg_info']['keysight_pxi']['lo_delay']
+        self.lo_delay = hardware_cfg['awg_info']['keysight_pxi']['lo_delay'] #lo_delay convolves LO marker so that marker is bigger to account for switching time delay (ie stretches marker)
         self.qb_lo_delay = hardware_cfg['awg_info']['keysight_pxi']['qb_lo_delay']
         self.abs_trig_delay = hardware_cfg['awg_info']['keysight_pxi']['abs_trig_delay']
         self.trig_pulse_length = hardware_cfg['trig_pulse_len']['default']
-        self.trig_delay = hardware_cfg['awg_info']['keysight_pxi']['m3201a_trig_delay']
-        self.card_delay = hardware_cfg['awg_info']['keysight_pxi']['m3102a_card_delay']
+        self.trig_delay = hardware_cfg['awg_info']['keysight_pxi']['m3201a_trig_delay'] #global delay that affects all markers/triggers except digitizer trigger, moves qubit + readout around ##TODO check this I think it also moves dig
+        self.card_delay = hardware_cfg['awg_info']['keysight_pxi']['m3102a_card_delay'] #-> delay that affects digitizer marker
         self.adc_range =  hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']
 
 
-
-        print ("Module used for generating analog pulses = ",self.out_mod_no)
-        print ("Module used for generating digital markers = ",self.marker_mod_no)
-        print ("Module used for temp generation of module = ", self.trig_mod_no) # wtf
-        self.out_mod_nums = [self.out_mod_no, self.marker_mod_no, self.trig_mod_no]
+        print ("Module used for generating Q1 IQ  pulses = ",self.out_mod_no)
+        print ("Module used for generating digital markers for LO = ",self.marker_mod_no)
+        print ("Module used to trigger other modules = ", self.trig_mod_no)
+        print("Module used for generating fast flux pluses for Q0-Q3 = ", self.ff1_mod_no)
+        print("Module used for generating fast flux pluses for Q4-Q7 = ", self.ff2_mod_no)
+        self.out_mod_nums = [self.out_mod_no, self.marker_mod_no, self.trig_mod_no, self.ff1_mod_no, self.ff2_mod_no]
 
         self.num_avg = experiment_cfg[name]['acquisition_num']
         self.num_expt = sequences['readout'].shape[0]
@@ -110,33 +113,44 @@ class KeysightSingleQubit:
         self.dig_channels = range(1,5)
 
 
-        # Initialize Module 6 = Analog card.  Ch1 = AWG I, CH2 = AWG Q
+        # Initialize AWG Cards!
 
-        # self.AWG_chs = [chassis.getChannel(self.out_mod_no, ch) for ch in self.awg_channels]
+        # initialize modules
+        self.AWG_module = chassis.getModule(self.out_mod_no)
+        self.m_module = chassis.getModule(self.marker_mod_no)
+        self.trig_module = chassis.getModule(self.trig_mod_no)
+        self.ff1_module = chassis.getModule(self.ff1_mod_no)
+        self.ff2_module = chassis.getModule(self.ff2_mod_no)
+
+        # Initialize channels on fast flux card 1
+        self.ff1_ch_1 = chassis.getChannel(self.out_mod_no, 1)
+        self.ff1_ch_2 = chassis.getChannel(self.out_mod_no, 2)
+        self.ff1_ch_3 = chassis.getChannel(self.out_mod_no, 3)
+        self.ff1_ch_4 = chassis.getChannel(self.out_mod_no, 4)
+
+        # Initialize channels on fast flux card 2
+        self.ff2_ch_1 = chassis.getChannel(self.out_mod_no, 1)
+        self.ff2_ch_2 = chassis.getChannel(self.out_mod_no, 2)
+        self.ff2_ch_3 = chassis.getChannel(self.out_mod_no, 3)
+        self.ff2_ch_4 = chassis.getChannel(self.out_mod_no, 4)
+
+        # Initialize channels on qubit IQ pulse card.  Ch1 = AWG I, CH2 = AWG Q
         self.AWG_ch_1 = chassis.getChannel(self.out_mod_no, 1)
         self.AWG_ch_2 = chassis.getChannel(self.out_mod_no, 2)
         self.AWG_ch_3 = chassis.getChannel(self.out_mod_no, 3)
         self.AWG_ch_4 = chassis.getChannel(self.out_mod_no, 4)
 
-        # Initialize Module 8 = Marker card. Digital markers for qubit, readout
-        # self.m_chs = [chassis.getChannel(self.marker_mod_no, ch) for ch in self.awg_channels]
-
+        # Initialize channels on Marker card. Digital markers for qubit, readout
         self.m_ch_1 = chassis.getChannel(self.marker_mod_no, 1)
         self.m_ch_2 = chassis.getChannel(self.marker_mod_no, 2)
         self.m_ch_3 = chassis.getChannel(self.marker_mod_no, 3)
         self.m_ch_4 = chassis.getChannel(self.marker_mod_no, 4)
 
-        # Initialize card that generates Triggers
-        # self.trig_chs = [chassis.getChannel(self.trig_mod_no, ch) for ch in self.awg_channels]
+        # Initialize channels card that generates Triggers
         self.trig_ch_1 = chassis.getChannel(self.trig_mod_no, 1)
         self.trig_ch_2 = chassis.getChannel(self.trig_mod_no, 2)
         self.trig_ch_3 = chassis.getChannel(self.trig_mod_no, 3)
         self.trig_ch_4 = chassis.getChannel(self.trig_mod_no, 4)
-
-        # self.out_modules = [chassis.getModule(num) for num in self.out_mod_nums]
-        self.AWG_module = chassis.getModule(self.out_mod_no)
-        self.m_module = chassis.getModule(self.marker_mod_no)
-        self.trig_module = chassis.getModule(self.trig_mod_no)
 
         # Initialize digitizer card
         # self.DIG_chs = [chassis.getChannel(10, ch) for ch in self.dig_channels]
@@ -161,24 +175,40 @@ class KeysightSingleQubit:
         amp_AWG = hardware_cfg['awg_info']['keysight_pxi']['amplitudes']
         amp_mark = hardware_cfg['awg_info']['keysight_pxi']['amp_mark']
         amp_trig = hardware_cfg['awg_info']['keysight_pxi']['amp_trig']
+        amp_ff1 = hardware_cfg['awg_info']['keysight_pxi']['amp_ff1']
+        amp_ff2 = hardware_cfg['awg_info']['keysight_pxi']['amp_ff2']
         IQ_dc_offset = quantum_device_cfg['pulse_info']['1']['IQ_dc']
         # dt = hardware_cfg['awg_info']['keysight_pxi']['dt']
         # dt_dig = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
+
         num_avg = experiment_cfg[name]['acquisition_num']
         num_expt = self.num_expt
         print('num_exp = %s' %num_expt)
 
-        print ("Configuring analog channels")
+        ## Output modules: Configure amplitude, dc offset, and if "trigger" channel on a module is used as a receiver or a trigger source
+        # ie triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN) means it's receiving a trigger
+        print("Configuring fast flux module1 channels")
+        self.ff1_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
+        self.ff1_ch_1.configure(amplitude=amp_ff1[0])
+        self.ff1_ch_2.configure(amplitude=amp_ff1[1])
+        self.ff1_ch_3.configure(amplitude=amp_ff1[2])
+        self.ff1_ch_4.configure(amplitude=amp_ff1[3])
 
+        print("Configuring fast flux module2 channels")
+        self.ff2_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
+        self.ff2_ch_1.configure(amplitude=amp_ff2[0])
+        self.ff2_ch_2.configure(amplitude=amp_ff2[1])
+        self.ff2_ch_3.configure(amplitude=amp_ff2[2])
+        self.ff2_ch_4.configure(amplitude=amp_ff2[3])
+
+        print ("Configuring qubit IQ channels")
         self.AWG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-        #self.AWG_ch_1.configure(amplitude=amp_AWG[0], trigger_source=4000)
         self.AWG_ch_1.configure(amplitude=amp_AWG[0], offset_voltage = IQ_dc_offset)
         self.AWG_ch_2.configure(amplitude=amp_AWG[1], offset_voltage = IQ_dc_offset)
         self.AWG_ch_3.configure(amplitude=amp_AWG[2], offset_voltage = IQ_dc_offset)
         self.AWG_ch_4.configure(amplitude=amp_AWG[3], offset_voltage = IQ_dc_offset)
 
         print("Configuring marker channels")
-
         self.m_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
         self.m_ch_1.configure(amplitude=amp_mark[0])
         self.m_ch_2.configure(amplitude=amp_mark[1])
@@ -186,29 +216,29 @@ class KeysightSingleQubit:
         self.m_ch_4.configure(amplitude=amp_mark[3])
 
         print("Configuring trigger channels")
-
         self.trig_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-
-
         self.trig_ch_1.configure(amplitude=amp_trig[0])
         self.trig_ch_2.configure(amplitude=amp_trig[1])
         self.trig_ch_3.configure(amplitude=amp_trig[2])
         self.trig_ch_4.configure(amplitude=amp_trig[3])
         print ("Card trigger amplitude = ",amp_trig[3])
 
-        #TODO: WHAT IS THAT
-        self.DIG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
 
-        print ("Setting trigger config for all channels of all modules to External")
-
+        print ("Setting trigger mode for all channels of all output modules to External")
         for n in range(1, 5):
             self.AWG_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
             self.m_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
             self.trig_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
+            self.ff1_module.AWGtriggerExternalConfig(nAWG=n,
+                                                      externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,
+                                                      triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
+            self.ff1_module.AWGtriggerExternalConfig(nAWG=n,
+                                                      externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,
+                                                      triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
 
 
         print ("Configuring digitizer. ADC range set to",self.adc_range, "Vpp")
-
+        self.DIG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
         self.DIG_ch_1.configure(full_scale=self.adc_range,points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
         self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
         self.DIG_ch_3.configure(full_scale=self.adc_range,points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,use_buffering=True, cycles_per_return=num_expt)
@@ -216,6 +246,7 @@ class KeysightSingleQubit:
                                 cycles=num_expt * num_avg, buffer_time_out=100000,
                                 trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
                                 cycles_per_return=num_expt)
+
     def generatemarkers(self,waveform,resample=False,conv_width = 1,trig_delay = 0):
 
         # markers = np.array([np.append(np.heaviside(np.convolve(abs(w), np.ones((int(self.lo_delay),))/self.lo_delay),0)[int(self.lo_delay/2):],np.zeros(int(self.lo_delay/2))) for w in waveform])
@@ -245,13 +276,15 @@ class KeysightSingleQubit:
         Note that all waveforms should consist of values from -1 to 1 (inclusive) only. Amplitude is set in the configureChannels() method.
         If you accidentally pass in an array containing larger values, the code raises a KeysightError: Invalid Waveform.
 
-        Params:
+        Pxi Waveform Channels:
             waveforms_I: List of numpy arrays representing waveforms (or a 2D array) for the "I" input AWG to the mixer,
                 1 for each unique trial/experiment. Should be the same number of waveforms as num_experiments in the __init__ method.
                 The "inner" array is a waveform, and the "outer" dimension corresponds to the experiment/trial.
+                The QB lo marker is generated using the known placement of IQ pulses.
             waveforms_Q: Same for the "Q" channel.
             readout: Readout waveform used to trigger the readout LO
             markers_readout: Trigger for the digitizer
+
             The master trigger for all the cards is generated knowing the length of the AWG waveforms using self.generate_trigger
             '''
 
@@ -262,11 +295,11 @@ class KeysightSingleQubit:
         wv = self.sequenceslist(sequences,pxi_waveform_channels)
 
         # Based on Nelson's original nomenclature
-
         waveforms_I = wv[0]
         waveforms_Q = wv[1]
-        readout = wv[2]
-        markers_readout = wv[3]
+        readout = wv[2] #readout LO marker
+        markers_readout = wv[3] #digitizer marker
+
         if self.prep_tek2:tek2_marker = wv[4]
 
         AWG_module = self.chassis.getModule(self.out_mod_no)

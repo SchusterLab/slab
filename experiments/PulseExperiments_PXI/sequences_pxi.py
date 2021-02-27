@@ -27,7 +27,7 @@ class PulseSequences:
 
         self.channels = hardware_cfg['channels']
 
-        self.channels_awg = hardware_cfg['channels_awg']
+        self.channels_awg = hardware_cfg['channels_awg'] #which awg each channel correspons to
 
         self.awg_info = hardware_cfg['awg_info']
 
