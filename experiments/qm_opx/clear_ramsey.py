@@ -8,39 +8,37 @@ from slab import*
 from slab.instruments import instrumentmanager
 from slab.dsfit import*
 from tqdm import tqdm
+from h5py import File
+import os
+from slab.dataanalysis import get_next_filename
 
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-atten = im['atten']
 ##################
 # ramsey_prog:
 ##################
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(16)
+LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
-LO_r.set_power(18)
-atten.set_attenuator(10.0)
-time.sleep(1)
+LO_r.set_ext_pulse(mod=False)
+LO_r.set_power(13)
 
-ramsey_freq = 100e3
-omega = 2*np.pi*ramsey_freq
+ramsey_freq = 1000e3
+detune_freq = ge_IF + ramsey_freq
 
-dt = 250
+dt = 25
+T_max = 750
+times = np.arange(4, T_max + dt/2, dt)
 
-dphi = omega*dt
-
-wait_tmin = 0
-wait_tmax = 10000
-wait_dt = 1000
+wait_tmin = 25
+wait_tmax = 400
+wait_dt = 10
 wait_tvec = np.arange(wait_tmin, wait_tmax + wait_dt/2, wait_dt)
+t_buffer = 250
 
-T_min = 0
-T_max = 30000
-times = np.arange(T_min, T_max + dt/2, dt)
-avgs = 10
+avgs = 2000
 reset_time = 500000
 simulation = 0
 with program() as ramsey:
@@ -51,8 +49,7 @@ with program() as ramsey:
 
     n = declare(int)      # Averaging
     i = declare(int)      # wait_times after CLEAR
-    t = declare(int) #array of time delays
-    phi = declare(fixed)
+    t = declare(int)        #array of time delays
     I = declare(fixed)
     Q = declare(fixed)
     I1 = declare(fixed)
@@ -66,25 +63,31 @@ with program() as ramsey:
     ###############
     # the sequence:
     ###############
+    update_frequency("qubit", detune_freq)
+
     with for_(n, 0, n < avgs, n + 1):
-        with for_(i, wait_tmin, i < wait_tmax + wait_dt / 2, wait_dt):
-            assign(phi, 0)
-            with for_(t, T_min, t < T_max + dt/2, t + dt):
+
+        with for_(i, wait_tmin, i < wait_tmax + wait_dt/2, i + wait_dt):
+
+            with for_(t, 4, t < T_max + dt/2, t + dt):
+
                 wait(reset_time//4, "rr")
                 play('clear', 'rr')
-                wait(i, "qubit")
                 align("rr", "qubit")
+                wait(i, "qubit")
                 play("pi2", "qubit")
                 wait(t, "qubit")
-                frame_rotation_2pi(phi, "qubit")
                 play("pi2", "qubit")
                 align("qubit", "rr")
-                measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'), demod.full("long_integW2", Q1, 'out1'),
-                    demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
+                wait(t_buffer, "rr")
+                measure("long_readout", "rr", None,
+                        demod.full("long_integW1", I1, 'out1'),
+                        demod.full("long_integW2", Q1, 'out1'),
+                        demod.full("long_integW1", I2, 'out2'),
+                        demod.full("long_integW2", Q2, 'out2'))
 
                 assign(I, I1+Q2)
                 assign(Q, I2-Q1)
-                assign(phi, phi + dphi)
 
                 save(I, I_st)
                 save(Q, Q_st)
@@ -98,10 +101,11 @@ qm = qmm.open_qm(config)
 
 if simulation:
     """To simulate the pulse sequence"""
-    job = qm.simulate(ramsey, SimulationConfig(50000))
+    job = qm.simulate(ramsey, SimulationConfig(150000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 else:
+    start_time = time.time()
     """To run the actual experiment"""
     print("Experiment execution Done")
     job = qm.execute(ramsey, duration_limit=0, data_limit=0)
@@ -115,41 +119,23 @@ else:
     Q = Q_handle.fetch_all()
     print("Data collection done")
 
-    # times = 4*times/1e3
-    # z = 1
-    # fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    # axs[0].plot(times[z:len(I)], I[z:], 'bo')
-    # p = fitdecaysin(times[z:len(I)], I[z:], showfit=False)
-    # print ("fits :", p)
-    # axs[0].plot(times[z:len(I)], decaysin(np.append(p, 0), times[z:len(I)]), 'b-',
-    #             label=r'$T_{2}^{*}$ = %.2f $\mu$s' % p[3])
-    # axs[0].set_xlabel('Time ($\mu$s)')
-    # axs[0].set_ylabel('I')
-    # axs[0].legend()
-    # offset = ramsey_freq/1e9 - p[1]
-    # nu_q_new = qubit_freq/1e9 + offset/1e9
-    #
-    # print("Original qubit frequency choice =", qubit_freq/1e9, "GHz")
-    # print("Offset freq =", offset, "Hz")
-    # print("Suggested qubit frequency choice =", nu_q_new, "GHz")
-    # print("T2* =", p[3], "us")
-    #
-    # z = 1
-    # axs[1].plot(times[z:len(I)], Q[z:], 'ro')
-    # p = fitdecaysin(times[z:len(I)], Q[z:], showfit=False)
-    # axs[1].plot(times[z:len(I)], decaysin(np.append(p, 0), times[z:len(I)]), 'r-',
-    #             label=r'$T_{2}^{*}$ = %.2f $\mu$s' % p[3])
-    # print ("fits :", p)
-    # axs[1].set_xlabel('Time ($\mu$s)')
-    # axs[1].set_ylabel('Q')
-    # axs[1].legend()
-    # plt.tight_layout()
-    # fig.show()
-    #
-    # offset = ramsey_freq/1e9 - p[1]
-    # nu_q_new = qubit_freq/1e9 + offset/1e9
-    #
-    # print("Original qubit frequency choice =", qubit_freq/1e9, "GHz")
-    # print("Offset freq =", offset, "Hz")
-    # print("Suggested qubit frequency choice =", nu_q_new, "GHz")
-    # print("T2* =", p[3], "us")
+    stop_time = time.time()
+    """Stop the output from OPX,heats up the fridge"""
+    with program() as stop_playing:
+        pass
+    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
+    print(f"Time taken: {stop_time - start_time}")
+
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'ramsey_clear', suffix='.h5'))
+    print(seq_data_file)
+
+    wait_tvec = 4*wait_tvec
+    times = 4*times
+    with File(seq_data_file, 'w') as f:
+        dset = f.create_dataset("I", data=I)
+        dset = f.create_dataset("Q", data=Q)
+        dset = f.create_dataset("wait_time", data=wait_tvec)
+        dset = f.create_dataset("ramsey_times", data=times)

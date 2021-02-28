@@ -12,51 +12,6 @@ from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
-atten = im["atten"]
-
-from slab.dsfit import*
-
-def doublegauss(bins, *p):
-    a1, sigma1, mu1 = p[0], p[1], p[2]
-    a2, sigma2, mu2 = p[3], p[4], p[5]
-
-    y1 = a1 * ((1 / (np.sqrt(2 * np.pi) * sigma1)) *
-               np.exp(-0.5 * (1 / sigma1 * (bins - mu1)) ** 2))
-    y2 = a2 * ((1 / (np.sqrt(2 * np.pi) * sigma2)) *
-               np.exp(-0.5 * (1 / sigma2 * (bins - mu2)) ** 2))
-    y = y1 + y2
-
-    return y
-
-def hist(p):
-    ig_opt = np.array(p[0])
-    qg_opt = np.array(p[1])
-    ie_opt = np.array(p[2])
-    qe_opt = np.array(p[3])
-    ran = 1
-    numbins = 200
-
-    xg, yg = np.median(ig_opt), np.median(qg_opt)
-    xe, ye = np.median(ie_opt), np.median(qe_opt)
-
-    theta = -np.arctan((ye-yg)/(xe-xg))
-    ig_new, qg_new = ig_opt*cos(theta) - qg_opt*sin(theta), ig_opt*sin(theta) + qg_opt*cos(theta)
-    ie_new, qe_new = ie_opt*cos(theta) - qe_opt*sin(theta), ie_opt*sin(theta) + qe_opt*cos(theta)
-
-    xg, yg = np.median(ig_new), np.median(qg_new)
-    xe, ye = np.median(ie_new), np.median(qe_new)
-
-    xlims = [xg-ran/5, xg+ran/5]
-    ylims = [yg-ran/5, yg+ran/5]
-
-    ng, binsg = np.histogram(ig_new, bins=numbins, range=xlims)
-    ne, binse = np.histogram(ie_new, bins=numbins, range=xlims)
-    fid_i = np.abs(((np.cumsum(ng) - np.cumsum(ne)) / ng.sum())).max()
-    ng, binsg = np.histogram(qg_new, bins=numbins, range=ylims)
-    ne, binse = np.histogram(qe_new, bins=numbins, range=ylims)
-    fid_q = np.abs(((np.cumsum(ng) - np.cumsum(ne)) / ng.sum())).max()
-
-    return [fid_i, fid_q]
 
 ##################
 # histogram_prog:

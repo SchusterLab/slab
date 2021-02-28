@@ -31,7 +31,7 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 avgs = 500
 reset_time = 500000
@@ -63,7 +63,7 @@ with program() as qubit_spec:
 
             update_frequency("qubit", f)
             wait(reset_time// 4, "qubit")# wait for the qubit to relax, several T1s
-            play("saturation"*amp(0.01), "qubit", duration=125000)
+            play("saturation"*amp(0.1), "qubit", duration=125000)
             align("qubit", "rr")
             measure("long_readout", "rr", None,
                     demod.full("long_integW1", I1, 'out1'),
@@ -104,9 +104,7 @@ else:
     Q = Q_handle.fetch_all()
     print("Data collection done!")
 
-    with program() as stop_playing:
-        pass
-    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
+    job.halt()
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

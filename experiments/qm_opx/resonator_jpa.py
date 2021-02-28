@@ -1,4 +1,4 @@
-from configuration_IQ import config, rr_LO, rr_freq, rr_IF, qubit_LO
+from configuration_IQ import config, rr_LO, rr_freq, rr_IF, qubit_LO, long_redout_len
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -12,14 +12,10 @@ import os
 from slab.dataanalysis import get_next_filename
 
 im = InstrumentManager()
-LO_q = im['RF5']
 LO_r = im['RF8']
 from slab.dsfit import*
 ##################
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(13)
@@ -28,7 +24,7 @@ f_min = -2.5e6
 f_max = 2.5e6
 df = 25e3
 f_vec = rr_freq + np.arange(f_min, f_max + df/2, df)
-reset_time = 500000
+reset_time = 50000
 avgs = 1000
 simulation = 0
 with program() as resonator_spectroscopy:
@@ -54,7 +50,6 @@ with program() as resonator_spectroscopy:
 
         with for_(f, f_min + rr_IF, f < f_max + rr_IF + df / 2, f + df):
             update_frequency("rr", f)
-            wait(reset_time//4, "rr")
             measure("long_readout"*amp(0.5), "rr", None,
                     demod.full("long_integW1", I1, 'out1'),
                     demod.full("long_integW2", Q1, 'out1'),
@@ -67,11 +62,10 @@ with program() as resonator_spectroscopy:
             save(Ig, Ig_st)
             save(Qg, Qg_st)
 
-            align("rr", 'qubit')
-
-            wait(reset_time//4, "qubit")
-            play("pi", "qubit")
-            align("qubit", "rr")
+            wait(reset_time // 4, "rr")
+            align("rr", "jpa_pump")
+            # frame_rotation_2pi(np.pi, "jpa_pump")
+            play('pump_square', 'jpa_pump', duration=long_redout_len)
             measure("long_readout"*amp(0.5), "rr", None,
                     demod.full("long_integW1", I1, 'out1'),
                     demod.full("long_integW2", Q1, 'out1'),
@@ -127,7 +121,7 @@ else:
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'resonator_chi', suffix='.h5'))
+                                 get_next_filename(data_path, 'resonator_jpa', suffix='.h5'))
     print(seq_data_file)
 
     with File(seq_data_file, 'w') as f:

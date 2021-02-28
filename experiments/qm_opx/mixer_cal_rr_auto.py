@@ -8,12 +8,11 @@ from slab import*
 from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO = im['RF8']
-atten = im["atten2"]
 spec = im['SA']
 
 LO.set_frequency(rr_LO)
 LO.set_ext_pulse(mod=False)
-LO.set_power(13)
+LO.set_power(18)
 
 nu_q = rr_freq
 nu_IF = rr_IF
@@ -23,7 +22,7 @@ nu_LO = rr_LO
 #############
 
 def get_amp():
-    time.sleep(5)
+    time.sleep(3)
     tr = spec.take_one()
     freq, amp = tr[0], tr[1]
     max_signal_power = max(amp)
@@ -32,16 +31,16 @@ def get_amp():
 with program() as mixer_cal:
 
     with infinite_loop_():
-        play("CW"*amp(1.0), "rr")
+        play("CW"*amp(0.5), "rr")
 
 def leakageMap():
-    q_min = -0.05
-    q_max = -0.04
-    dq = 0.001
+    q_min = -0.038
+    q_max = -0.034
+    dq = 0.0004
 
-    i_min = 0.0198
-    i_max = 0.0208
-    di = 0.0001
+    i_min = 0.022
+    i_max = 0.026
+    di = 0.0004
 
     offI = np.arange(i_min, i_max + di/2, di)
     offQ = np.arange(q_min, q_max + dq/2, dq)
@@ -104,12 +103,12 @@ def IQ_imbalance_corr(g, phi):
 
 def imbalancesMap():
 
-    phi_min = 0.044
-    phi_max = 0.060
-    dphi = 0.004
+    phi_min = 0.040
+    phi_max = 0.044
+    dphi = 0.001
 
-    g_max = 0.010
-    g_min = 0.005
+    g_min = 0.010
+    g_max = 0.020
     dg = 0.001
     phi = np.arange(phi_min, phi_max + dphi/2, dphi)
     g = np.arange(g_min, g_max + dg/2, dg)
@@ -217,25 +216,24 @@ qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 job = qm.execute(mixer_cal)
 
-# Configure the SA :
-delta_F = 10e6
-spec.set_center_frequency(rr_LO)
-spec.set_span(delta_F)
-# spec.set_resbw(100e3)
-time.sleep(5)
-#
+# # Configure the SA :
+# delta_F = 10e6
+# spec.set_center_frequency(rr_LO)
+# spec.set_span(delta_F)
+# # spec.set_resbw(100e3)
+# time.sleep(5)
+# #
 # # LO leakage 2D map
 # offI, offQ, amps = leakageMap()
 # # plt.figure(dpi=300)
 # offI_grid, offQ_grid = np.meshgrid(offI, offQ)
 # amps_grid = np.transpose(np.reshape(amps, [len(offI), len(offQ)]))
-# plt.pcolormesh(offI_grid, offQ_grid, amps_grid)
+# plt.pcolormesh(offI_grid, offQ_grid, amps_grid, shading='auto')
 # plt.colorbar()
 # plt.xlabel("I offset")
 # plt.ylabel("Q offset")
 # plt.tight_layout()
 # plt.show()
-# #
 # # # Gradient descent for the LO peak
 # indices = np.where(amps_grid == np.min(amps_grid))
 # offI0 = offI_grid[indices[0][0]][indices[1][0]]

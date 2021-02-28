@@ -1,25 +1,33 @@
 from qm import SimulationConfig, LoopbackInterface
-
 from TwoStateDiscriminator import TwoStateDiscriminator
-from configuration import config
+from configuration_IQ import config, qubit_LO, rr_LO
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+from slab import*
+from slab.instruments import instrumentmanager
+from slab.dsfit import*
+import os
+from slab.dataanalysis import get_next_filename
+im = InstrumentManager()
+LO_q = im['RF5']
+LO_r = im['RF8']
 
-simulation_config = SimulationConfig(
-    duration=180000,
-    simulation_interface=LoopbackInterface(
-        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.09**2
-    )
-)
+##################
+# histogram_prog:
+##################
+LO_q.set_frequency(qubit_LO)
+LO_q.set_ext_pulse(mod=False)
+LO_q.set_power(18)
+LO_r.set_frequency(rr_LO)
+LO_r.set_ext_pulse(mod=False)
+LO_r.set_power(13)
 
-Ng = 300
-Ne = 300
-g2e = 1000*0
-e2g = 1000*0
-wait_time = 10
+Ng = 3000
+Ne = 3000
+wait_time = 500000
 
 with program() as training_program:
 
@@ -31,58 +39,41 @@ with program() as training_program:
     I2 = declare(fixed)
     Q2 = declare(fixed)
 
-    with for_(n, 0, n < Ng - g2e, n + 1):
+    with for_(n, 0, n < Ng, n + 1):
 
-        measure("readout_pulse_g", "rr1a", "adc", demod.full("integW_cos", I1, "out1"),
-                                                    demod.full("integW_sin", Q1, "out1"),
-                                                    demod.full("integW_cos", I2, "out2"),
-                                                    demod.full("integW_sin", Q2, "out2"))
+        measure("long_readout", "rr", "adc",
+                demod.full("long_integW1", I1, 'out1'),
+                demod.full("long_integW2", Q1, 'out1'),
+                demod.full("long_integW1", I2, 'out2'),
+                demod.full("long_integW2", Q2, 'out2'))
         assign(I, I1 + Q2)
         assign(Q, -Q1 + I2)
         save(I, 'I')
         save(Q, 'Q')
-        wait(wait_time, "rr1a")
+        wait(wait_time//4, "rr")
 
-    with for_(n, 0, n < g2e, n + 1):
+    with for_(n, 0, n < Ne, n + 1):
 
-        measure("readout_pulse_e", "rr1a", "adc", demod.full("integW_cos", I1, "out1"),
-                                                    demod.full("integW_sin", Q1, "out1"),
-                                                    demod.full("integW_cos", I2, "out2"),
-                                                    demod.full("integW_sin", Q2, "out2"))
+        play("pi", "qubit")
+        align("qubit", "rr")
+        measure("long_readout", "rr", "adc",
+                demod.full("long_integW1", I1, 'out1'),
+                demod.full("long_integW2", Q1, 'out1'),
+                demod.full("long_integW1", I2, 'out2'),
+                demod.full("long_integW2", Q2, 'out2'))
         assign(I, I1 + Q2)
         assign(Q, -Q1 + I2)
         save(I, 'I')
         save(Q, 'Q')
-        wait(wait_time, "rr1a")
+        wait(wait_time//4, "rr")
 
-    with for_(n, 0, n < Ne - e2g, n + 1):
-
-        measure("readout_pulse_e", "rr1a", "adc", demod.full("integW_cos", I1, "out1"),
-                                                    demod.full("integW_sin", Q1, "out1"),
-                                                    demod.full("integW_cos", I2, "out2"),
-                                                    demod.full("integW_sin", Q2, "out2"))
-        assign(I, I1 + Q2)
-        assign(Q, -Q1 + I2)
-        save(I, 'I')
-        save(Q, 'Q')
-        wait(wait_time, "rr1a")
-
-    with for_(n, 0, n < e2g, n + 1):
-
-        measure("readout_pulse_g", "rr1a", "adc", demod.full("integW_cos", I1, "out1"),
-                                                    demod.full("integW_sin", Q1, "out1"),
-                                                    demod.full("integW_cos", I2, "out2"),
-                                                    demod.full("integW_sin", Q2, "out2"))
-        assign(I, I1 + Q2)
-        assign(Q, -Q1 + I2)
-        save(I, 'I')
-        save(Q, 'Q')
-        wait(wait_time, "rr1a")
 
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, 'rr1a', 'ge_disc_params.npz')
-discriminator.train(program=training_program, plot=True, dry_run=True, simulate=simulation_config)
+discriminator = TwoStateDiscriminator(qmm, config, 'rr', 'ge_disc_params.npz')
+discriminator.train(program=training_program, plot=True, correction_method='robust')
+x = np.load('ge_disc_params.npz')
+plt.figure(); plt.plot(np.real(x['weights'][0]),np.imag(x['weights'][0])); plt.plot(np.real(x['weights'][1]),np.imag(x['weights'][1]));
 
 with program() as test_program:
 
@@ -93,24 +84,26 @@ with program() as test_program:
     with for_(n, 0, n < Ng, n + 1):
 
         seq0 = [0] * int(Ng)
-        discriminator.measure_state("readout_pulse_g", "out1", "out2", res, statistic=statistic)
 
+        discriminator.measure_state("long_readout", "out1", "out2", res, statistic=statistic)
         save(res, 'res')
         save(statistic, 'statistic')
-        wait(wait_time, "rr1a")
+        wait(wait_time, "rr")
 
     with for_(n, 0, n < Ne, n + 1):
 
         seq0 = seq0 + [1] * int(Ne)
-        discriminator.measure_state("readout_pulse_e", "out1", "out2", res, statistic=statistic)
 
+        play("pi", "qubit")
+        align("qubit", "rr")
+        discriminator.measure_state("long_readout", "out1", "out2", res, statistic=statistic)
         save(res, 'res')
         save(statistic, 'statistic')
-        wait(wait_time, "rr1a")
+        wait(wait_time, "rr")
 
 
 qm = qmm.open_qm(config)
-job = qm.simulate(test_program, simulate=simulation_config)
+job = qm.execute(test_program, duration_limit=0, data_limit=0)
 
 result_handles = job.result_handles
 result_handles.wait_for_all_values()

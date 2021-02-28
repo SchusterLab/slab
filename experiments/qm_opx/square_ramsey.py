@@ -72,7 +72,7 @@ with program() as ramsey:
             with for_(t, 4, t < T_max + dt/2, t + dt):
 
                 wait(reset_time//4, "rr")
-                play('clear', 'rr')
+                play('long_readout', 'rr')
                 align("rr", "qubit")
                 wait(i, "qubit")
                 play("pi2", "qubit")
@@ -129,7 +129,7 @@ else:
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'ramsey_clear', suffix='.h5'))
+                                 get_next_filename(data_path, 'ramsey_square', suffix='.h5'))
     print(seq_data_file)
 
     wait_tvec = 4*wait_tvec

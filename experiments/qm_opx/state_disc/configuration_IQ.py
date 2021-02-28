@@ -169,7 +169,7 @@ config = {
                 'out1': ('con1', 1),
                 'out2': ('con1', 2),
             },
-            'time_of_flight': 340, # ns should be a multiple of 4
+            'time_of_flight': 360, # ns should be a multiple of 4
             'smearing': 0,
             'digitalInputs': {
                 'lo_readout': {
@@ -476,13 +476,13 @@ config = {
     'integration_weights': {
 
         'long_integW1': {
-            'cosine': [2.0] * int(long_redout_len / 4  + 60),
-            'sine': [0.0] * int(long_redout_len / 4  + 60)
+            'cosine': [2.0] * int(long_redout_len / 4 ),
+            'sine': [0.0] * int(long_redout_len / 4 )
         },
 
         'long_integW2': {
-            'cosine': [0.0] * int(long_redout_len / 4 + 60),
-            'sine': [2.0] * int(long_redout_len / 4 + 60)
+            'cosine': [0.0] * int(long_redout_len / 4 ),
+            'sine': [2.0] * int(long_redout_len / 4 )
         },
         'clear_integW1': {
             'cosine': [2.0] * int(clear_len / 4 ),
@@ -492,16 +492,6 @@ config = {
         'clear_integW2': {
             'cosine': [0.0] * int(clear_len / 4 ),
             'sine': [2.0] * int(clear_len / 4 )
-        },
-
-        'demod1_iw': {
-            'cosine': [2.0] * int(long_redout_len / 4),
-            'sine': [0.0] * int(long_redout_len / 4),
-        },
-
-        'demod2_iw': {
-            'cosine': [0.0] * int(long_redout_len / 4),
-            'sine': [2.0] * int(long_redout_len / 4),
         },
 
         'optW1': {

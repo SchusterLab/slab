@@ -34,7 +34,7 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 reset_time = 500000
 avgs = 3000
@@ -73,7 +73,7 @@ with program() as histogram:
         """Just readout without playing anything"""
         wait(reset_time // 4, "rr")
         align("rr", "jpa_pump")
-        play('CW'*amp(0.0355), 'jpa_pump')
+        play('pump_square', 'jpa_pump')
         measure("long_readout", "rr", None,
                 demod.full("long_integW1", I1, 'out1'),
                 demod.full("long_integW2", Q1, 'out1'),
@@ -92,7 +92,8 @@ with program() as histogram:
         play("pi", "qubit")
         align("qubit", "rr")
         align("rr", "jpa_pump")
-        play('CW'*amp(0.0355), 'jpa_pump')
+        # frame_rotation_2pi(np.pi/2, "jpa_pump")
+        play('pump_square', 'jpa_pump')
         measure("long_readout", "rr", None,
                 demod.full("long_integW1", I1, 'out1'),
                 demod.full("long_integW2", Q1, 'out1'),
@@ -140,15 +141,13 @@ else:
     Ie = np.array(Ie_handle.fetch_all()['value'])
     Qe = np.array(Qe_handle.fetch_all()['value'])
 
-    with program() as stop_playing:
-        pass
-    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
+    job.halt()
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
                                  get_next_filename(data_path, 'histogram_jpa', suffix='.h5'))
-
+    print(seq_data_file)
     with File(seq_data_file, 'w') as f:
         dset = f.create_dataset("ig", data=Ig)
         dset = f.create_dataset("qg", data=Qg)

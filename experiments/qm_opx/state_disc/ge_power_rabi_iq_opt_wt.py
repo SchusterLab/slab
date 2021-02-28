@@ -8,13 +8,12 @@ import matplotlib.pyplot as plt
 from slab import*
 from slab.instruments import instrumentmanager
 from slab.dsfit import*
-from state_disc.TwoStateDiscriminator import TwoStateDiscriminator
+from TwoStateDiscriminator import TwoStateDiscriminator
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
-path = './/state_disc//ge_disc_params.npz'
-tsd = TwoStateDiscriminator(qmm, config, 'rr', path= path)
+tsd = TwoStateDiscriminator(qmm, config, 'rr', 'ge_disc_params.npz')
 
 im = InstrumentManager()
 LO_q = im['RF5']
@@ -68,10 +67,9 @@ with program() as ge_rabi:
             save(res, res_stream)
             save(statistics, stat_stream)
 
-
     with stream_processing():
-        res_stream.buffer(len(amps)).save_all('res')
-        stat_stream.buffer(len(amps)).save_all('statistics')
+        res_stream.buffer(len(amps)).average().save('res')
+        stat_stream.buffer(len(amps)).average().save('statistics')
 
 if simulation:
     job = qm.simulate(ge_rabi, SimulationConfig(15000))

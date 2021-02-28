@@ -16,7 +16,7 @@ LO.set_power(18)
 with program() as mixer_calibration:
 
     with infinite_loop_():
-        play("CW"*amp(1.0), "rr")
+        play("CW"*amp(0.5), "rr")
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)

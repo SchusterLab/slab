@@ -1,4 +1,4 @@
-from configuration_test import config, qubit_IF, qubit_LO, qubit_freq
+from configuration_IQ import config, rr_LO, pump_IF, rr_freq
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -10,13 +10,13 @@ im = InstrumentManager()
 LO = im['RF8']
 spec = im['SA']
 
-nu_q = qubit_freq
-nu_IF = qubit_IF
-nu_LO = qubit_LO
-LO.set_frequency(nu_LO)
-LO.set_power(13)
+LO.set_frequency(rr_LO)
 LO.set_ext_pulse(mod=False)
+LO.set_power(18)
 
+nu_q = rr_freq
+nu_IF = pump_IF
+nu_LO = rr_LO
 #############
 # Functions #
 #############
@@ -31,16 +31,16 @@ def get_amp():
 with program() as mixer_cal:
 
     with infinite_loop_():
-        play("my_control_op"*amp(1.0), "qubit")
+        play("CW"*amp(0.5), "jpa_pump")
 
 def leakageMap():
-    i_min = 0.012
-    i_max = 0.018
-    di = 0.0001
+    q_min = -0.038
+    q_max = -0.034
+    dq = 0.0004
 
-    q_min = -0.037
-    q_max = -0.036
-    dq = 0.0002
+    i_min = 0.022
+    i_max = 0.026
+    di = 0.0004
 
     offI = np.arange(i_min, i_max + di/2, di)
     offQ = np.arange(q_min, q_max + dq/2, dq)
@@ -50,8 +50,8 @@ def leakageMap():
     x = 0
     for i in offI[x:]:
         for j in offQ[x:]:
-            qm.set_dc_offset_by_qe("qubit", "I", i)
-            qm.set_dc_offset_by_qe("qubit", "Q", j)
+            qm.set_dc_offset_by_qe("jpa_pump", "I", i)
+            qm.set_dc_offset_by_qe("jpa_pump", "Q", j)
             amp_ = get_amp()
             amps.append(amp_)
             count += 1
@@ -64,17 +64,17 @@ def leakageMap():
 def gradLeakage(offI_, offQ_):
 
     eps = 0.0002
-    qm.set_dc_offset_by_qe("storage", "I", offI_+eps)
-    qm.set_dc_offset_by_qe("storage", "Q", offQ_)
+    qm.set_dc_offset_by_qe("jpa_pump", "I", offI_+eps)
+    qm.set_dc_offset_by_qe("jpa_pump", "Q", offQ_)
     a1 = get_amp()
-    qm.set_dc_offset_by_qe("storage", "I", offI_-eps)
-    qm.set_dc_offset_by_qe("storage", "Q", offQ_)
+    qm.set_dc_offset_by_qe("jpa_pump", "I", offI_-eps)
+    qm.set_dc_offset_by_qe("jpa_pump", "Q", offQ_)
     a2 = get_amp()
-    qm.set_dc_offset_by_qe("storage", "I", offI_)
-    qm.set_dc_offset_by_qe("storage", "Q", offQ_+eps)
+    qm.set_dc_offset_by_qe("jpa_pump", "I", offI_)
+    qm.set_dc_offset_by_qe("jpa_pump", "Q", offQ_+eps)
     a3 = get_amp()
-    qm.set_dc_offset_by_qe("storage", "I", offI_)
-    qm.set_dc_offset_by_qe("storage", "Q", offQ_-eps)
+    qm.set_dc_offset_by_qe("jpa_pump", "I", offI_)
+    qm.set_dc_offset_by_qe("jpa_pump", "Q", offQ_-eps)
     a4 = get_amp()
 
     gradx = (a2 - a1) / (2 * eps)
@@ -103,28 +103,24 @@ def IQ_imbalance_corr(g, phi):
 
 def imbalancesMap():
 
-    phi_min = 0.023
-    phi_max = 0.025
-    dphi = 0.0002
+    phi_min = -0.04
+    phi_max = 0.04
+    dphi = 0.004
 
-    g_max = -0.072
-    g_min = -0.080
-    dg = 0.001
+    g_min = -0.040
+    g_max = 0.040
+    dg = 0.004
     phi = np.arange(phi_min, phi_max + dphi/2, dphi)
     g = np.arange(g_min, g_max + dg/2, dg)
     total_pts = len(phi)*len(g)
 
     amps = []
-    total_pts = len(phi)*len(g)
     count = 0
     for i in phi:
         i = np.pi*i
-
         for j in g:
 
-            # qm.set_mixer_correction("mixer_qubit_ef", int(ef_IF), int(qubit_LO), IQ_imbalance_corr(j, i))
-            qm.set_mixer_correction("mixer_qubit", int(nu_IF), int(qubit_LO), IQ_imbalance_corr(j, i))
-
+            qm.set_mixer_correction("mixer_jpa", int(pump_IF), int(rr_LO), IQ_imbalance_corr(j, i))
             amp_ = get_amp()
             amps.append(amp_)
             count += 1
@@ -136,13 +132,13 @@ def imbalancesMap():
 def gradImbalances(phase_, gain_):
 
     eps = 0.0002
-    qm.set_mixer_correction("mixer_storage", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_, phase_ + eps))
+    qm.set_mixer_correction("mixer_rr", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_, phase_ + eps))
     a1 = get_amp()
-    qm.set_mixer_correction("mixer_storage", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_, phase_ - eps))
+    qm.set_mixer_correction("mixer_rr", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_, phase_ - eps))
     a2 = get_amp()
-    qm.set_mixer_correction("mixer_storage", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_ + eps, phase_))
+    qm.set_mixer_correction("mixer_rr", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_ + eps, phase_))
     a3 = get_amp()
-    qm.set_mixer_correction("mixer_storage", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_ - eps, phase_))
+    qm.set_mixer_correction("mixer_rr", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_ - eps, phase_))
     a4 = get_amp()
 
     gradx = (a2 - a1) / (2 * eps)
@@ -220,55 +216,51 @@ qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 job = qm.execute(mixer_cal)
 
-# Configure the SA :
+# # Configure the SA :
+# delta_F = 10e6
+# spec.set_center_frequency(rr_LO)
+# spec.set_span(delta_F)
+# # spec.set_resbw(100e3)
+# time.sleep(5)
+# #
+# # LO leakage 2D map
+# offI, offQ, amps = leakageMap()
+# # plt.figure(dpi=300)
+# offI_grid, offQ_grid = np.meshgrid(offI, offQ)
+# amps_grid = np.transpose(np.reshape(amps, [len(offI), len(offQ)]))
+# plt.pcolormesh(offI_grid, offQ_grid, amps_grid, shading='auto')
+# plt.colorbar()
+# plt.xlabel("I offset")
+# plt.ylabel("Q offset")
+# plt.tight_layout()
+# plt.show()
+# # # Gradient descent for the LO peak
+# indices = np.where(amps_grid == np.min(amps_grid))
+# offI0 = offI_grid[indices[0][0]][indices[1][0]]
+# offQ0 = offQ_grid[indices[0][0]][indices[1][0]]
+# print("OffI_min = {}, offQ_min = {}".format(offI0, offQ0))
+# offIf, offQf, offI_track, offQ_track = grad_descent(offI0, offQ0, "LO")
+
+# Configure the SA:
 delta_F = 10e6
-spec.set_center_frequency(qubit_LO)
+spec.set_center_frequency(rr_LO-pump_IF)
 spec.set_span(delta_F)
 # spec.set_resbw(100e3)
-time.sleep(5)
-#
-# LO leakage 2D map
-offI, offQ, amps = leakageMap()
-plt.figure(dpi=300)
-offI_grid, offQ_grid = np.meshgrid(offI, offQ)
-amps_grid = np.transpose(np.reshape(amps, [len(offI), len(offQ)]))
-plt.pcolormesh(offI_grid, offQ_grid, amps_grid)
-plt.colorbar()
-plt.xlabel("I offset")
-plt.ylabel("Q offset")
-plt.tight_layout()
-plt.show()
-
-# Gradient descent for the LO peak
-indices = np.where(amps_grid == np.min(amps_grid))
-offI0 = offI_grid[indices[0][0]][indices[1][0]]
-offQ0 = offQ_grid[indices[0][0]][indices[1][0]]
-print("OffI_min = {}, offQ_min = {}".format(offI0, offQ0))
-# offIf, offQf, offI_track, offQ_track = grad_descent(offI0, offQ0, "LO")
-#
-# # Configure the SA:
-# delta_F = 10e6
-# spec.set_center_frequency(nu_LO-nu_IF)
-# spec.set_span(delta_F)
-# spec.set_resbw(100e3)
-# time.sleep(5)
+time.sleep(2)
 # # #
-# # IQ imbalances 2D map
-# phase, gain, amps = imbalancesMap()
-# plt.figure()
-# phase_grid, gain_grid = np.meshgrid(phase, gain)
-# amps_grid = np.transpose(np.reshape(amps, [len(phase), len(gain)]))
-# plt.pcolormesh(phase_grid, gain_grid, amps_grid)
-# plt.colorbar()
-# plt.xlabel("phase")
-# plt.ylabel("gain")
+# IQ imbalances 2D map
+phase, gain, amps = imbalancesMap()
+plt.figure()
+phase_grid, gain_grid = np.meshgrid(phase, gain)
+amps_grid = np.transpose(np.reshape(amps, [len(phase), len(gain)]))
+plt.pcolormesh(phase_grid, gain_grid, amps_grid)
+plt.colorbar()
+plt.xlabel("phase")
+plt.ylabel("gain")
 # # # #
 # # # Gradient descent for the SSB peak
-# indices = np.where(amps_grid == np.min(amps_grid))
-# phase0 = phase_grid[indices[0][0]][indices[1][0]]
-# gain0 = gain_grid[indices[0][0]][indices[1][0]]
-# print("phase_min = {}, gain_min = {}".format(phase0, gain0))
+indices = np.where(amps_grid == np.min(amps_grid))
+phase0 = phase_grid[indices[0][0]][indices[1][0]]
+gain0 = gain_grid[indices[0][0]][indices[1][0]]
+print("phase_min = {}, gain_min = {}".format(phase0, gain0))
 # # phasef, gainf, phase_track, ogain_track = grad_descent(phase0, gain0, "LSB")
-
-
-# offI = 0.015000000000000003, offQ = -0.06599999999999995

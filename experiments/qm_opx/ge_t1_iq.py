@@ -23,7 +23,7 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 dt = 1000
 T_max = 100000
@@ -98,10 +98,7 @@ else:
     Q = Q_handle.fetch_all()
     print ("Data collection done")
 
-
-    with program() as stop_playing:
-        pass
-    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
+    job.halt()
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

@@ -41,11 +41,11 @@ with program() as training_program:
 
     with for_(n, 0, n < Ng, n + 1):
 
-        measure("long_readout", "rr", "adc",
-                demod.full("long_integW1", I1, 'out1'),
-                demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),
-                demod.full("long_integW2", Q2, 'out2'))
+        measure("clear", "rr", "adc",
+                demod.full("clear_integW1", I1, 'out1'),
+                demod.full("clear_integW2", Q1, 'out1'),
+                demod.full("clear_integW1", I2, 'out2'),
+                demod.full("clear_integW2", Q2, 'out2'))
         assign(I, I1 + Q2)
         assign(Q, -Q1 + I2)
         save(I, 'I')
@@ -56,11 +56,11 @@ with program() as training_program:
 
         play("pi", "qubit")
         align("qubit", "rr")
-        measure("long_readout", "rr", "adc",
-                demod.full("long_integW1", I1, 'out1'),
-                demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),
-                demod.full("long_integW2", Q2, 'out2'))
+        measure("clear", "rr", "adc",
+                demod.full("clear_integW1", I1, 'out1'),
+                demod.full("clear_integW2", Q1, 'out1'),
+                demod.full("clear_integW1", I2, 'out2'),
+                demod.full("clear_integW2", Q2, 'out2'))
         assign(I, I1 + Q2)
         assign(Q, -Q1 + I2)
         save(I, 'I')
@@ -70,9 +70,9 @@ with program() as training_program:
 
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, 'rr', 'ge_disc_params.npz')
+discriminator = TwoStateDiscriminator(qmm, config, 'rr', 'ge_disc_params_clear.npz')
 discriminator.train(program=training_program, plot=True, correction_method='robust')
-x = np.load('ge_disc_params.npz')
+x = np.load('ge_disc_params_clear.npz')
 plt.figure(); plt.plot(np.real(x['weights'][0]),np.imag(x['weights'][0])); plt.plot(np.real(x['weights'][1]),np.imag(x['weights'][1]));
 
 with program() as test_program:
@@ -85,7 +85,7 @@ with program() as test_program:
 
         seq0 = [0] * int(Ng)
 
-        discriminator.measure_state("long_readout", "out1", "out2", res, statistic=statistic)
+        discriminator.measure_state("clear", "out1", "out2", res, statistic=statistic)
         save(res, 'res')
         save(statistic, 'statistic')
         wait(wait_time, "rr")

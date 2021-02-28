@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn import mixture
 from scipy import signal
 
-from state_disc.TimeDiffCalibrator import TimeDiffCalibrator
+from TimeDiffCalibrator import TimeDiffCalibrator
 
 
 class StateDiscriminator:
@@ -40,7 +40,6 @@ class StateDiscriminator:
 
     def _load_file(self, path):
         if os.path.isfile(path):
-            print(path)
             self.saved_data = np.load(path)
             self._update_config()
 

@@ -1,4 +1,4 @@
-from configuration_test import config, qubit_IF, qubit_LO, qubit_freq
+from configuration_IQ import config,  rr_LO, pump_IF
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -8,18 +8,14 @@ from slab import*
 from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO = im['RF8']
-# spec = im['SA']
 
-nu_q = qubit_freq
-nu_IF = qubit_IF
-nu_LO = qubit_LO
-LO.set_frequency(nu_LO)
-LO.set_power(13)
+LO.set_frequency(rr_LO)
+LO.set_power(18)
 LO.set_ext_pulse(mod=False)
 
 with program() as mixer_calibration:
     with infinite_loop_():
-        play("my_control_op"*amp(0.2), "qubit")
+        play("CW"*amp(1.0/2), "jpa_pump")
         # play("my_control_op"*amp(0.02), "qubit2")
         # align('qubit', 'qubit3')
         # play("my_control_op"*amp(0.02), "qubit3")
@@ -41,8 +37,8 @@ job = qm.execute(mixer_calibration, duration_limit=0, data_limit=0)
 # plt.axvline(x=nu_LO + ge_IF, linestyle='--', color='k')
 
 
-# qm.set_dc_offset_by_qe("qubit", "I", 0.027)
-# qm.set_dc_offset_by_qe("qubit", "Q", -0.036)
+qm.set_dc_offset_by_qe("jpa_pump", "I", 0.0095)
+qm.set_dc_offset_by_qe("jpa_pump", "Q", -0.075)
 
 def IQ_imbalance_corr(g, phi):
     c = np.cos(phi)
@@ -50,7 +46,8 @@ def IQ_imbalance_corr(g, phi):
     N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s,
                                    (1 - g) * s, (1 + g) * c]]
-# qm.set_mixer_correction("mixer_qubit", int(qubit_IF), int(qubit_LO), IQ_imbalance_corr(0.0,0.0*np.pi))
+
+qm.set_mixer_correction("mixer_jpa", int(pump_IF), int(rr_LO), IQ_imbalance_corr(0.0,0.0*np.pi))
 #
 # delta_F = 500e6
 # spec.set_center_frequency(nu_LO)

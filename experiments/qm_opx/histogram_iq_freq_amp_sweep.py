@@ -3,7 +3,6 @@ from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
-# from numpy import *
 from tqdm import tqdm
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
@@ -23,19 +22,19 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 reset_time = 500000
 avgs = 3000
 simulation = 0
 
-a_min = 0.2
-a_max = 0.3
-da = 0.005
+a_min = 0.28
+a_max = 0.32
+da = 0.002
 amp_vec = np.arange(a_min, a_max + da/2, da)
-f_min = -140e3
-f_max = 10e3
-df = 10e3
+f_min = -100e3
+f_max = 100e3
+df = 40e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 start_time = time.time()
 
@@ -77,9 +76,11 @@ with program() as histogram:
 
                 """Just readout without playing anything"""
                 wait(reset_time//4, "rr")
-                measure("long_readout"*amp(a), "rr", None, demod.full("long_integW1", I1, 'out1'),
+                measure("long_readout"*amp(a), "rr", None,
+                        demod.full("long_integW1", I1, 'out1'),
                         demod.full("long_integW2", Q1, 'out1'),
-                        demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
+                        demod.full("long_integW1", I2, 'out2'),
+                        demod.full("long_integW2", Q2, 'out2'))
 
                 assign(Ig, I1 + Q2)
                 assign(Qg, I2 - Q1)
@@ -92,9 +93,11 @@ with program() as histogram:
                 wait(reset_time // 4, "qubit")
                 play("pi", "qubit")
                 align("qubit", "rr")
-                measure("long_readout"*amp(a), "rr", None, demod.full("long_integW1", I1, 'out1'),
+                measure("long_readout"*amp(a), "rr", None,
+                        demod.full("long_integW1", I1, 'out1'),
                         demod.full("long_integW2", Q1, 'out1'),
-                        demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
+                        demod.full("long_integW1", I2, 'out2'),
+                        demod.full("long_integW2", Q2, 'out2'))
 
                 assign(Ie, I1 + Q2)
                 assign(Qe, I2 - Q1)
@@ -131,19 +134,20 @@ else:
     Qe = job.result_handles.Qe.fetch_all()['value']
     print("Data fetched")
     stop_time = time.time()
-
     print(f"Time taken: {stop_time - start_time}")
-    with program() as stop_playing:
-        pass
-    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
 
-    f_vec = f_vec + rr_freq
-    path = "C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\"
-    filename = path + "histogram_amp_freq_sweep_100MHz_4us_finer_4.h5"
-    with File(filename, 'w') as f:
+    job.halt()
+
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'histogram_freq_amp_sweep', suffix='.h5'))
+    print(seq_data_file)
+
+    with File(seq_data_file, 'w') as f:
         dset = f.create_dataset("ig", data=Ig)
         dset = f.create_dataset("qg", data=Qg)
         dset = f.create_dataset("ie", data=Ie)
         dset = f.create_dataset("qe", data=Qe)
-        dset = f.create_dataset("att", data=amp_vec)
+        dset = f.create_dataset("amp", data=amp_vec)
         dset = f.create_dataset("freq", data=f_vec)

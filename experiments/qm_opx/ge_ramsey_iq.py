@@ -24,7 +24,7 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 ramsey_freq = 100e3
 detune_freq = ge_IF + ramsey_freq
@@ -116,7 +116,7 @@ else:
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
                                  get_next_filename(data_path, 'ramsey', suffix='.h5'))
-
+    print(seq_data_file)
     with File(seq_data_file, 'w') as f:
         f.create_dataset("I", data=I)
         f.create_dataset("Q", data=Q)

@@ -13,8 +13,7 @@ from state_disc.TwoStateDiscriminator import TwoStateDiscriminator
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
-path = './state_disc/qubit_ge_disc_params.npz'
-tsd = TwoStateDiscriminator(qmm, config, rr_qe='rr', path= 'qubit_ge_disc_params.npz')
+tsd = TwoStateDiscriminator(qmm, config, 'rr', path= path)
 
 im = InstrumentManager()
 LO_q = im['RF5']
@@ -45,17 +44,11 @@ with program() as ge_rabi:
 
     n = declare(int)        # Averaging
     a = declare(fixed)      # Amplitudes
-    I = declare(fixed)
-    Q = declare(fixed)
-    I1 = declare(fixed)
-    Q1 = declare(fixed)
-    I2 = declare(fixed)
-    Q2 = declare(fixed)
 
-    I_st = declare_stream()
-    Q_st = declare_stream()
     res = declare(bool)
+    statistics = declare(fixed)
     res_stream = declare_stream()
+    stat_stream = declare_stream()
 
     ###############
     # the sequence:
@@ -70,12 +63,14 @@ with program() as ge_rabi:
             align("qubit", "rr")
             align("rr", "jpa_pump")
             play('CW'*amp(0.038), 'jpa_pump')
-            tsd.measure_state("long_readout", 'out1', 'out2', res)
+            tsd.measure_state("long_readout", 'out1', 'out2', res, statistic=statistics)
             save(res, res_stream)
+            save(statistics, stat_stream)
 
 
     with stream_processing():
         res_stream.buffer(len(amps)).save_all('res')
+        stat_stream.buffer(len(amps)).save_all('statistics')
 
 if simulation:
     job = qm.simulate(ge_rabi, SimulationConfig(15000))

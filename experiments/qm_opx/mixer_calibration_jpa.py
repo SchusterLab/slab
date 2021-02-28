@@ -1,4 +1,4 @@
-from configuration_IQ import config, rr_IF, rr_LO, pump_IF
+from configuration_IQ import config, rr_IF, rr_LO, pump_IF, pump_LO
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -16,7 +16,7 @@ LO.set_power(18)
 with program() as mixer_calibration:
 
     with infinite_loop_():
-        play("CW"*amp(1.0), "rr")
+        play("CW"*amp(0.9), "jpa_pump")
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)

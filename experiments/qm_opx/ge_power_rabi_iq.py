@@ -22,7 +22,7 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 a_min = 0.0
 a_max = 1.0
@@ -100,9 +100,7 @@ else:
     stop_time = time.time()
     print(f"Time taken: {stop_time-start_time}")
 
-    with program() as stop_playing:
-        pass
-    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
+    job.halt()
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

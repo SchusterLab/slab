@@ -11,7 +11,7 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1-g)*c, (1+g)*s, (1-g)*s, (1+g)*c]]
 
 qubit_IF = 100e6;  # 100e6
-qubit_freq = 8.0517e9;
+qubit_freq = 8.051658e9;
 qubit_LO = qubit_freq - qubit_IF;  # ;
 cavity_LO = 7.1e9;
 cavity_IF = 114.57e6;
@@ -31,8 +31,8 @@ config = {
         'con1': {
             'type': 'opx1',
             'analog_outputs': {
-                9: {'offset': 0.0259},  # Qubit I
-                10: {'offset': -0.0366},  # Qubit Q
+                9: {'offset': 0.0095},  # Qubit I
+                10: {'offset': -0.075},  # Qubit Q
                 5: {'offset': 0.0},  # Cavity I
                 6: {'offset': 0.0},  # Cavity Q
             },

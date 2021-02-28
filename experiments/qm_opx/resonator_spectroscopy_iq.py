@@ -15,16 +15,16 @@ from slab.dataanalysis import get_next_filename
 im = InstrumentManager()
 LO_r = im['RF8']
 
-f_min = -5e6
-f_max = 5e6
-df = 50e3
+f_min = -2.5e6
+f_max = 2.5e6
+df = 25e3
 f_vec = rr_freq + np.arange(f_min, f_max + df/2, df)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 avgs = 2000
-reset_time = 30000
+reset_time = 50000
 simulation = 0
 
 with program() as resonator_spectroscopy:
@@ -49,7 +49,7 @@ with program() as resonator_spectroscopy:
             update_frequency("rr", f)
 
             wait(reset_time//4, "rr")
-            measure("long_readout", "rr", None,
+            measure("long_readout"*amp(0.5), "rr", None,
                     demod.full("long_integW1", I1, 'out1'),
                     demod.full("long_integW2", Q1, 'out1'),
                     demod.full("long_integW1", I2, 'out2'),
@@ -84,9 +84,7 @@ else:
     Q = Q_handle.fetch_all()
     print ("Data collection done")
 
-    with program() as stop_playing:
-        pass
-    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
+    job.halt()
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

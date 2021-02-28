@@ -73,8 +73,11 @@ with program() as ramsey:
                     wait(t, "qubit")
                     play("pi2", "qubit")
                     align("qubit", "rr")
-                    measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
-                            demod.full("long_integW1", I2, 'out2'),demod.full("long_integW2", Q2, 'out2'))
+                    measure("long_readout", "rr", None,
+                            demod.full("long_integW1", I1, 'out1'),
+                            demod.full("long_integW2", Q1, 'out1'),
+                            demod.full("long_integW1", I2, 'out2'),
+                            demod.full("long_integW2", Q2, 'out2'))
 
                     assign(I, I1+Q2)
                     assign(Q, I2-Q1)

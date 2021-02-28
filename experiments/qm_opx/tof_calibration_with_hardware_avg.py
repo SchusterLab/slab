@@ -10,7 +10,7 @@ im = InstrumentManager()
 LO = im['RF8']
 LO.set_frequency(rr_LO)
 LO.set_ext_pulse(mod=False)
-LO.set_power(13)
+LO.set_power(18)
 
 simulation = 0
 with program() as digital_train:
