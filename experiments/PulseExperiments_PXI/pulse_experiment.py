@@ -71,6 +71,8 @@ class Experiment:
             self.pxi.AWG_module.stopAll()
             self.pxi.m_module.stopAll()
             self.pxi.trig_module.stopAll()
+            self.pxi.ff1_module.stopAll()
+            self.pxi.ff2_module.stopAll()
         except:pass
         pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
         pxi_sequences = {}
@@ -149,6 +151,10 @@ class Experiment:
             self.pxi.m_module.clearAll()
             self.pxi.trig_module.stopAll()
             self.pxi.trig_module.clearAll()
+            self.pxi.ff1_module.stopAll()
+            self.pxi.ff1_module.clearAll()
+            self.pxi.ff2_module.stopAll()
+            self.pxi.ff2_module.clearAll()
             self.pxi.DIG_module.stopAll()
             self.pxi.chassis.close()
         except:print('Error in stopping and closing PXI')
@@ -164,6 +170,10 @@ class Experiment:
             self.pxi.m_module.clearAll()
             self.pxi.trig_module.stopAll()
             self.pxi.trig_module.clearAll()
+            self.pxi.ff1_module.stopAll()
+            self.pxi.ff1_module.clearAll()
+            self.pxi.ff2_module.stopAll()
+            self.pxi.ff2_module.clearAll()
             self.pxi.DIG_module.stopAll()
             self.pxi.chassis.close()
         except:print('Error in stopping and closing PXI')
