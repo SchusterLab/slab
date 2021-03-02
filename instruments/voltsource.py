@@ -43,6 +43,7 @@ class VoltageSource:
         total_t = abs(stop - start) / sweeprate
         steps = max(total_t / step_t,2)
         #print start,stop,start_t,step_t, total_t, steps
+        steps = int(steps)
 
         for ii in linspace(start, stop, steps)[1:]:
             self.set_current(ii, channel=channel)
