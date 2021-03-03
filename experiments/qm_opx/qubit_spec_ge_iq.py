@@ -63,7 +63,7 @@ with program() as qubit_spec:
 
             update_frequency("qubit", f)
             wait(reset_time// 4, "qubit")# wait for the qubit to relax, several T1s
-            play("saturation"*amp(0.1), "qubit", duration=125000)
+            play("saturation"*amp(0.01), "qubit", duration=125000)
             align("qubit", "rr")
             measure("long_readout", "rr", None,
                     demod.full("long_integW1", I1, 'out1'),

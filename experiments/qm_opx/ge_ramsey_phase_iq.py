@@ -23,9 +23,9 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
-ramsey_freq = 500e3
+ramsey_freq = 100e3
 omega = 2*np.pi*ramsey_freq
 
 dt = 250
@@ -65,6 +65,7 @@ with program() as ramsey:
     with for_(n, 0, n < avgs, n + 1):
         assign(phi, 0)
         with for_(t, T_min, t < T_max + dt/2, t + dt):
+            reset_frame("qubit", "rr")
             wait(reset_time//4, "qubit")
             play("pi2", "qubit")
             wait(t, "qubit")
@@ -118,7 +119,7 @@ else:
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
                                  get_next_filename(data_path, 'ramsey_phase', suffix='.h5'))
-
+    print(seq_data_file)
     with File(seq_data_file, 'w') as f:
         f.create_dataset("I", data=I)
         f.create_dataset("Q", data=Q)

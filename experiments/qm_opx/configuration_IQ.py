@@ -20,7 +20,7 @@ def IQ_imbalance(g, phi):
 long_redout_len = 4000
 readout_len = 3000
 
-qubit_freq = 4.746943045723643    *1e9
+qubit_freq = 4.746943660718653*1e9
 qubit_ef_freq = 4.6078190022032635*1e9
 ge_IF = 100e6
 ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
@@ -33,12 +33,12 @@ rr_freq = 8.051658e9 #for 4us
 
 rr_IF = 100e6
 rr_LO = rr_freq - rr_IF
-rr_amp = 1.0*0.3
+rr_amp = 1.0*0.34
 
 pump_LO = rr_LO
 pump_IF = 100e6
 
-pump_amp = 1.0
+pump_amp = 1.0*0.05
 pump_len = long_redout_len
 ####---------------------####
 storage_freq = 6.01124448e9
@@ -50,7 +50,7 @@ gauss_len = 32
 gauss_amp = 0.45
 
 pi_len = 32
-pi_amp = 0.3484238142159888
+pi_amp = 0.34839545472767824
 
 half_pi_len = 16
 half_pi_amp = pi_amp
@@ -86,8 +86,8 @@ config = {
             },
             'digital_outputs': {},
             'analog_inputs': {
-                1: {'offset': -0.005, 'gain_db': 0},
-                2: {'offset': 0.016, 'gain_db': 0}
+                1: {'offset': -0.007, 'gain_db': 0},
+                2: {'offset': 0.013, 'gain_db': 0}
             }
         }
     },

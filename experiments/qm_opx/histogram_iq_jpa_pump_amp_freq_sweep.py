@@ -34,8 +34,8 @@ a_max = 1.0
 da = 0.1
 amp_vec = np.arange(a_min, a_max + da/2, da)
 
-f_min = -2000e3
-f_max = 2000e3
+f_min = -200e3
+f_max = 200e3
 df = 40e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 

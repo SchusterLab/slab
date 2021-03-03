@@ -3,24 +3,11 @@ from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
-from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from h5py import File
 from slab import*
 from slab.instruments import instrumentmanager
 from slab.dsfit import*
-
-def doublegauss(bins, *p):
-    a1, sigma1, mu1 = p[0], p[1], p[2]
-    a2, sigma2, mu2 = p[3], p[4], p[5]
-
-    y1 = a1 * ((1 / (np.sqrt(2 * np.pi) * sigma1)) *
-               np.exp(-0.5 * (1 / sigma1 * (bins - mu1)) ** 2))
-    y2 = a2 * ((1 / (np.sqrt(2 * np.pi) * sigma2)) *
-               np.exp(-0.5 * (1 / sigma2 * (bins - mu2)) ** 2))
-    y = y1 + y2
-
-    return y
 
 im = InstrumentManager()
 LO_q = im['RF5']
@@ -92,7 +79,7 @@ with program() as histogram:
         play("pi", "qubit")
         align("qubit", "rr")
         align("rr", "jpa_pump")
-        # frame_rotation_2pi(np.pi/2, "jpa_pump")
+        # frame_rotation_2pi(np.pi, "jpa_pump")
         play('pump_square', 'jpa_pump')
         measure("long_readout", "rr", None,
                 demod.full("long_integW1", I1, 'out1'),

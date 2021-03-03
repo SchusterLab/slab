@@ -57,6 +57,7 @@ with program() as ge_t1:
     ###############
 
     with for_(n, 0, n < avgs, n + 1):
+
         with for_(t, T_min, t < T_max + dt/2, t + dt):
             wait(reset_time//4, "qubit")
             play("pi", "qubit")
