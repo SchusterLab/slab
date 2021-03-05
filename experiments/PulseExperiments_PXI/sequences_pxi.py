@@ -481,7 +481,41 @@ class PulseSequences:
 
             sequencer.end_sequence()
 
-        return sequencer.complete(self, plot=True )
+        return sequencer.complete(self, plot=True)
+
+    def pulse_probe_iq_flux(self, sequencer):
+
+        for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                for target in self.expt_cfg['target_qb']:
+                    sequencer.append('ff_Q%s'% target,Square(max_amp=self.expt_cfg['ff_amp'], flat_len=self.expt_cfg['ff_pulse_length'],
+                       ramp_sigma_len=self.expt_cfg['ff_ramp_sigma_len'], cutoff_sigma=2, freq= 0, phase=0))
+
+                self.idle_q(sequencer, time=self.expt_cfg['ppiq_ff_delay'])
+
+                sequencer.append('charge%s_I' % qubit_id,
+                                 Square(max_amp=self.expt_cfg['qb_amp'], flat_len=self.expt_cfg['qb_pulse_length'],
+                                        ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
+                                        phase=0))
+
+                sequencer.append('charge%s_Q' % qubit_id,
+                                 Square(max_amp=self.expt_cfg['qb_amp'], flat_len=self.expt_cfg['qb_pulse_length'],
+                                        ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
+                                        phase=self.pulse_info[qubit_id]['Q_phase']))
+                self.idle_q(sequencer, time=self.expt_cfg['delay'])
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
+            sequencer.sync_channels_time(self.channels)
+
+            #COMPENSATION PULSE
+            for target in self.expt_cfg['target_qb']:
+                sequencer.append('ff_Q%s' % target,
+                                 Square(max_amp=-self.expt_cfg['ff_amp'], flat_len=self.expt_cfg['ff_pulse_length'],
+                                        ramp_sigma_len=self.expt_cfg['ff_ramp_sigma_len'], cutoff_sigma=2, freq=0,
+                                        phase=0))
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
 
     def rabi(self, sequencer):
 
