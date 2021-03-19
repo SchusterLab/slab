@@ -17,7 +17,7 @@ nu_LO = storage_LO
 #############
 
 def get_amp():
-    time.sleep(5)
+    time.sleep(3)
     tr = spec.take_one()
     freq, amp = tr[0], tr[1]
     max_signal_power = max(amp)
@@ -26,16 +26,16 @@ def get_amp():
 with program() as mixer_cal:
 
     with infinite_loop_():
-        play("CW"*amp(1.0), "storage")
+        play("CW"*amp(0.5), "storage")
 
 def leakageMap():
-    i_min = 0.014
-    i_max = 0.016
-    di = 0.0002
+    i_min = -0.022
+    i_max = -0.018
+    di = 0.0004
 
-    q_min = -0.068
-    q_max = -0.066
-    dq = 0.0002
+    q_min = -0.0024
+    q_max = -0.0018
+    dq = 0.0001
 
     offI = np.arange(i_min, i_max + di/2, di)
     offQ = np.arange(q_min, q_max + dq/2, dq)
@@ -98,14 +98,19 @@ def IQ_imbalance_corr(g, phi):
 
 def imbalancesMap():
 
+    phi_min = 0.033
+    phi_max = 0.04
     dphi = 0.001
+
+    g_min = 0.000
+    g_max = 0.010
     dg = 0.001
-    phi = np.arange(0.01, 0.02 + dphi/2, dphi)
-    phi = np.pi*(phi)
-    g = np.arange(-0.005, 0.005 + dg/2, dg)
+    phi = np.arange(phi_min, phi_max + dphi/2, dphi)
+    g = np.arange(g_min, g_max + dg/2, dg)
+    total_pts = len(phi)*len(g)
 
     amps = []
-
+    count = 0
     for i in phi:
 
         for j in g:
@@ -113,6 +118,8 @@ def imbalancesMap():
             qm.set_mixer_correction("mixer_storage", int(storage_IF), int(storage_LO), IQ_imbalance_corr(j, i))
             amp_ = get_amp()
             amps.append(amp_)
+            count += 1
+            print(" %.f out of %.f"%(count, total_pts))
             print("amp = {}, phase = {}, gain = {}".format(amp_, i, j))
 
     return phi, g, amps
@@ -204,54 +211,55 @@ qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 job = qm.execute(mixer_cal)
 
-# Configure the SA :
-delta_F = 10e6
-spec.set_center_frequency(storage_LO)
-spec.set_span(delta_F)
-spec.set_resbw(100e3)
-time.sleep(5)
-
-# LO leakage 2D map
-offI, offQ, amps = leakageMap()
-plt.figure(dpi=300)
-offI_grid, offQ_grid = np.meshgrid(offI, offQ)
-amps_grid = np.transpose(np.reshape(amps, [len(offI), len(offQ)]))
-plt.pcolormesh(offI_grid, offQ_grid, amps_grid)
-plt.colorbar()
-plt.xlabel("I offset")
-plt.ylabel("Q offset")
-plt.tight_layout()
-plt.show()
+# # Configure the SA :
+# delta_F = 10e6
+# spec.set_center_frequency(storage_LO)
+# spec.set_span(delta_F)
+# spec.set_resbw(100e3)
+# time.sleep(5)
+#
+# # LO leakage 2D map
+# offI, offQ, amps = leakageMap()
+# # plt.figure(dpi=300)
+# plt.figure()
+# offI_grid, offQ_grid = np.meshgrid(offI, offQ)
+# amps_grid = np.transpose(np.reshape(amps, [len(offI), len(offQ)]))
+# plt.pcolormesh(offI_grid, offQ_grid, amps_grid)
+# plt.colorbar()
+# plt.xlabel("I offset")
+# plt.ylabel("Q offset")
+# plt.tight_layout()
+# plt.show()
 #
 # # Gradient descent for the LO peak
-indices = np.where(amps_grid == np.min(amps_grid))
-offI0 = offI_grid[indices[0][0]][indices[1][0]]
-offQ0 = offQ_grid[indices[0][0]][indices[1][0]]
-print("OffI_min = {}, offQ_min = {}".format(offI0, offQ0))
+# indices = np.where(amps_grid == np.min(amps_grid))
+# offI0 = offI_grid[indices[0][0]][indices[1][0]]
+# offQ0 = offQ_grid[indices[0][0]][indices[1][0]]
+# print("OffI_min = {}, offQ_min = {}".format(offI0, offQ0))
 # offIf, offQf, offI_track, offQ_track = grad_descent(offI0, offQ0, "LO")
 #
 # Configure the SA:
-# delta_F = 500e6
-# spec.set_center_frequency(storage_LO-storage_IF)
-# spec.set_span(delta_F)
-# spec.set_resbw(100e3)
-# time.sleep(2)
+delta_F = 10e6
+spec.set_center_frequency(storage_LO+storage_IF)
+spec.set_span(delta_F)
+spec.set_resbw(100e3)
+time.sleep(2)
+# #
+# IQ imbalances 2D map
+phase, gain, amps = imbalancesMap()
+plt.figure()
+phase_grid, gain_grid = np.meshgrid(phase, gain)
+amps_grid = np.transpose(np.reshape(amps, [len(phase), len(gain)]))
+plt.pcolormesh(phase_grid, gain_grid, amps_grid)
+plt.colorbar()
+plt.xlabel("phase")
+plt.ylabel("gain")
 # # #
-# # IQ imbalances 2D map
-# phase, gain, amps = imbalancesMap()
-# plt.figure()
-# phase_grid, gain_grid = np.meshgrid(phase, gain)
-# amps_grid = np.transpose(np.reshape(amps, [len(phase), len(gain)]))
-# plt.pcolormesh(phase_grid, gain_grid, amps_grid)
-# plt.colorbar()
-# plt.xlabel("phase")
-# plt.ylabel("gain")
-# # # #
-# # # Gradient descent for the SSB peak
-# indices = np.where(amps_grid == np.min(amps_grid))
-# phase0 = phase_grid[indices[0][0]][indices[1][0]]
-# gain0 = gain_grid[indices[0][0]][indices[1][0]]
-# print("phase_min = {}, gain_min = {}".format(phase0, gain0))
+# # Gradient descent for the SSB peak
+indices = np.where(amps_grid == np.min(amps_grid))
+phase0 = phase_grid[indices[0][0]][indices[1][0]]
+gain0 = gain_grid[indices[0][0]][indices[1][0]]
+print("phase_min = {}, gain_min = {}".format(phase0, gain0))
 # phasef, gainf, phase_track, ogain_track = grad_descent(phase0, gain0, "LSB")
 
 

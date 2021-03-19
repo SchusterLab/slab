@@ -2,10 +2,11 @@ from StateDiscriminator import StateDiscriminator
 import numpy as np
 from qm.qua import *
 
+
 class TwoStateDiscriminator(StateDiscriminator):
 
-    def __init__(self, qmm, config, rr_qe, path):
-        super().__init__(qmm, config, rr_qe, path)
+    def __init__(self, qmm, config, update_tof, rr_qe, path):
+        super().__init__(qmm, config, update_tof, rr_qe, path)
         self.num_of_states = 2
 
     def _update_config(self):
@@ -21,6 +22,9 @@ class TwoStateDiscriminator(StateDiscriminator):
             'sine': np.real(b_vec).tolist()
         }
         self._add_iw_to_all_pulses('demod2_iw')
+        if self.update_tof or self.finish_train == 1:
+            self.config['elements'][self.rr_qe]['time_of_flight'] = self.config['elements'][self.rr_qe]['time_of_flight'] - \
+                                                                    self.config['elements'][self.rr_qe]['smearing']
 
     def get_threshold(self):
         bias = self.saved_data['bias']

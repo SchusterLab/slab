@@ -23,10 +23,11 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
-Ng = 3000
-Ne = 3000
+N = 3000
+Ng = N
+Ne = N
 wait_time = 500000
 
 with program() as training_program:
@@ -38,10 +39,15 @@ with program() as training_program:
     Q1 = declare(fixed)
     I2 = declare(fixed)
     Q2 = declare(fixed)
+    adc_st_g = declare_stream(adc_trace=True)
+    adc_st_e = declare_stream(adc_trace=True)
+
+
 
     with for_(n, 0, n < Ng, n + 1):
 
-        measure("long_readout", "rr", "adc",
+        reset_phase("rr")
+        measure("long_readout", "rr", adc_st_g,
                 demod.full("long_integW1", I1, 'out1'),
                 demod.full("long_integW2", Q1, 'out1'),
                 demod.full("long_integW1", I2, 'out2'),
@@ -56,7 +62,8 @@ with program() as training_program:
 
         play("pi", "qubit")
         align("qubit", "rr")
-        measure("long_readout", "rr", "adc",
+        reset_phase("rr")
+        measure("long_readout", "rr", adc_st_e,
                 demod.full("long_integW1", I1, 'out1'),
                 demod.full("long_integW2", Q1, 'out1'),
                 demod.full("long_integW1", I2, 'out2'),
@@ -67,11 +74,13 @@ with program() as training_program:
         save(Q, 'Q')
         wait(wait_time//4, "rr")
 
-
+    with stream_processing():
+        adc_st_g.save_all('adcg')
+        adc_st_e.save_all('adce')
 
 qmm = QuantumMachinesManager()
 discriminator = TwoStateDiscriminator(qmm, config, 'rr', 'ge_disc_params.npz')
-discriminator.train(program=training_program, plot=True, correction_method='robust')
+discriminator.train(program=training_program, N=N, plot=True, correction_method='robust')
 x = np.load('ge_disc_params.npz')
 plt.figure(); plt.plot(np.real(x['weights'][0]),np.imag(x['weights'][0])); plt.plot(np.real(x['weights'][1]),np.imag(x['weights'][1]));
 

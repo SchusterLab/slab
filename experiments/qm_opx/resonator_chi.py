@@ -27,7 +27,7 @@ LO_r.set_power(18)
 f_min = -2.5e6
 f_max = 2.5e6
 df = 25e3
-f_vec = rr_freq + np.arange(f_min, f_max + df/2, df)
+f_vec = rr_freq - np.arange(f_min, f_max + df/2, df)
 reset_time = 500000
 avgs = 1000
 simulation = 0
@@ -55,14 +55,14 @@ with program() as resonator_spectroscopy:
         with for_(f, f_min + rr_IF, f < f_max + rr_IF + df / 2, f + df):
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
-            measure("long_readout"*amp(0.5), "rr", None,
+            measure("long_readout", "rr", None,
                     demod.full("long_integW1", I1, 'out1'),
                     demod.full("long_integW2", Q1, 'out1'),
                     demod.full("long_integW1", I2, 'out2'),
                     demod.full("long_integW2", Q2, 'out2'))
 
-            assign(Ig, I1+Q2)
-            assign(Qg, I2-Q1)
+            assign(Ig, I1 - Q2)
+            assign(Qg, I2 + Q1)
 
             save(Ig, Ig_st)
             save(Qg, Qg_st)
@@ -72,14 +72,14 @@ with program() as resonator_spectroscopy:
             wait(reset_time//4, "qubit")
             play("pi", "qubit")
             align("qubit", "rr")
-            measure("long_readout"*amp(0.5), "rr", None,
+            measure("long_readout", "rr", None,
                     demod.full("long_integW1", I1, 'out1'),
                     demod.full("long_integW2", Q1, 'out1'),
                     demod.full("long_integW1", I2, 'out2'),
                     demod.full("long_integW2", Q2, 'out2'))
 
-            assign(Ie, I1+Q2)
-            assign(Qe, I2-Q1)
+            assign(Ie, I1 - Q2)
+            assign(Qe, I2 + Q1)
 
             save(Ie, Ie_st)
             save(Qe, Qe_st)

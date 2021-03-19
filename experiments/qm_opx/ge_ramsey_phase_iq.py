@@ -30,7 +30,7 @@ omega = 2*np.pi*ramsey_freq
 
 dt = 250
 
-dphi = omega*dt
+dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
 T_min = 0
 T_max = 30000
@@ -65,21 +65,21 @@ with program() as ramsey:
     with for_(n, 0, n < avgs, n + 1):
         assign(phi, 0)
         with for_(t, T_min, t < T_max + dt/2, t + dt):
-            reset_frame("qubit", "rr")
+            # reset_frame("qubit", "rr")
             wait(reset_time//4, "qubit")
             play("pi2", "qubit")
             wait(t, "qubit")
-            frame_rotation_2pi(phi, "qubit")
+            frame_rotation_2pi(phi, "qubit") #2pi is already multiplied to the phase
             play("pi2", "qubit")
             align("qubit", "rr")
-            measure("long_readout", "rr", None,
-                    demod.full("long_integW1", I1, 'out1'),
-                    demod.full("long_integW2", Q1, 'out1'),
-                    demod.full("long_integW1", I2, 'out2'),
-                    demod.full("long_integW2", Q2, 'out2'))
+            measure("clear", "rr", None,
+                    demod.full("clear_integW1", I1, 'out1'),
+                    demod.full("clear_integW2", Q1, 'out1'),
+                    demod.full("clear_integW1", I2, 'out2'),
+                    demod.full("clear_integW2", Q2, 'out2'))
 
-            assign(I, I1+Q2)
-            assign(Q, I2-Q1)
+            assign(I, I1-Q2)
+            assign(Q, I2+Q1)
             assign(phi, phi + dphi)
 
             save(I, I_st)

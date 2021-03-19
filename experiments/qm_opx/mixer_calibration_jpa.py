@@ -16,7 +16,7 @@ LO.set_power(18)
 with program() as mixer_calibration:
 
     with infinite_loop_():
-        play("CW"*amp(0.9), "jpa_pump")
+        play("CW"*amp(0.5), "jpa_pump")
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -37,12 +37,12 @@ def IQ_imbalance_corr(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s,
                                    (1 - g) * s, (1 + g) * c]]
 
-# qm.set_mixer_correction("mixer_RR", int(rr_IF), int(rr_LO), IQ_imbalance_corr(0.016, 0.04*np.pi))
+# qm.set_mixer_correction("mixer_jpa", int(rr_IF), int(rr_LO), IQ_imbalance_corr(0.00, 0.00*np.pi))
 
 delta_F = 300e6
 spec.set_center_frequency(rr_LO)
 spec.set_span(delta_F)
-spec.set_resbw(100e3)
+# spec.set_resbw(100e3)
 tr = spec.take_one()
 freq, amp = tr[0], tr[1]
 plt.plot(freq, amp)

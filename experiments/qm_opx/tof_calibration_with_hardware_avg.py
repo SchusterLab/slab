@@ -23,9 +23,11 @@ with program() as tof_calibration:
     adc_st = declare_stream(adc_trace=True)
     i = declare(int)
     # update_frequency("rr", 100e6)
-    with for_(i, 0, i < 1000, i+1):
-        wait(10000//4, "rr") # off 1.6 micro
-        measure('long_readout', "rr", adc_st) # 400ns
+    with for_(i, 0, i < 1, i+1):
+        reset_phase('rr')
+        wait(50000//4, "rr") # off 1.6 micro
+        # measure('long_readout', "rr", adc_st) # 400ns
+        measure('clear', "rr", adc_st) # 400ns
 
     with stream_processing():
         adc_st.input1().average().save("adcI")

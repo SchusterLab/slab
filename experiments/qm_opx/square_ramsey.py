@@ -23,7 +23,7 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 ramsey_freq = 1000e3
 detune_freq = ge_IF + ramsey_freq
@@ -33,12 +33,12 @@ T_max = 750
 times = np.arange(4, T_max + dt/2, dt)
 
 wait_tmin = 25
-wait_tmax = 400
-wait_dt = 10
+wait_tmax = 1000
+wait_dt = 25
 wait_tvec = np.arange(wait_tmin, wait_tmax + wait_dt/2, wait_dt)
 t_buffer = 250
 
-avgs = 2000
+avgs = 1000
 reset_time = 500000
 simulation = 0
 with program() as ramsey:

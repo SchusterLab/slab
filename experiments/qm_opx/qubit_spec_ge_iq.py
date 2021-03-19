@@ -65,14 +65,14 @@ with program() as qubit_spec:
             wait(reset_time// 4, "qubit")# wait for the qubit to relax, several T1s
             play("saturation"*amp(0.01), "qubit", duration=125000)
             align("qubit", "rr")
-            measure("long_readout", "rr", None,
-                    demod.full("long_integW1", I1, 'out1'),
-                    demod.full("long_integW2", Q1, 'out1'),
-                    demod.full("long_integW1", I2, 'out2'),
-                    demod.full("long_integW2", Q2, 'out2'))
+            measure("clear"*amp(0.5), "rr", None,
+                    demod.full("clear_integW1", I1, 'out1'),
+                    demod.full("clear_integW2", Q1, 'out1'),
+                    demod.full("clear_integW1", I2, 'out2'),
+                    demod.full("clear_integW2", Q2, 'out2'))
 
-            assign(I, I1 + Q2)
-            assign(Q, -Q1 + I2)
+            assign(I, I1-Q2)
+            assign(Q, I2+Q1)
 
             save(I, I_st)
             save(Q, Q_st)

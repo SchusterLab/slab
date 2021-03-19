@@ -12,18 +12,6 @@ from slab.dsfit import*
 import os
 from slab.dataanalysis import get_next_filename
 
-def doublegauss(bins, *p):
-    a1, sigma1, mu1 = p[0], p[1], p[2]
-    a2, sigma2, mu2 = p[3], p[4], p[5]
-
-    y1 = a1 * ((1 / (np.sqrt(2 * np.pi) * sigma1)) *
-               np.exp(-0.5 * (1 / sigma1 * (bins - mu1)) ** 2))
-    y2 = a2 * ((1 / (np.sqrt(2 * np.pi) * sigma2)) *
-               np.exp(-0.5 * (1 / sigma2 * (bins - mu2)) ** 2))
-    y = y1 + y2
-
-    return y
-
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
@@ -36,7 +24,7 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 reset_time = 500000
 avgs = 3000
@@ -138,10 +126,7 @@ else:
     Ie = np.array(Ie_handle.fetch_all()['value'])
     Qe = np.array(Qe_handle.fetch_all()['value'])
 
-    with program() as stop_playing:
-        pass
-    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
-
+    job.halt()
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,

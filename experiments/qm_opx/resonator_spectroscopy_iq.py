@@ -18,7 +18,7 @@ LO_r = im['RF8']
 f_min = -2.5e6
 f_max = 2.5e6
 df = 25e3
-f_vec = rr_freq + np.arange(f_min, f_max + df/2, df)
+f_vec = rr_freq - np.arange(f_min, f_max + df/2, df)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(18)
@@ -55,8 +55,8 @@ with program() as resonator_spectroscopy:
                     demod.full("long_integW1", I2, 'out2'),
                     demod.full("long_integW2", Q2, 'out2'))
 
-            assign(I, I1+Q2)
-            assign(Q, I2-Q1)
+            assign(I, I1-Q2)
+            assign(Q, I2+Q1)
 
             save(I, I_st)
             save(Q, Q_st)

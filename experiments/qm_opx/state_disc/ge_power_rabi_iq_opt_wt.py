@@ -26,7 +26,7 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 a_min = 0.0
 a_max = 1.0
@@ -62,7 +62,7 @@ with program() as ge_rabi:
             play("gaussian"*amp(a), "qubit")
             align("qubit", "rr")
             align("rr", "jpa_pump")
-            play('CW'*amp(0.038), 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             tsd.measure_state("long_readout", 'out1', 'out2', res, statistic=statistics)
             save(res, res_stream)
             save(statistics, stat_stream)

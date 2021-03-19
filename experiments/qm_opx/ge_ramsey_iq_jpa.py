@@ -8,6 +8,9 @@ from slab import*
 from slab.instruments import instrumentmanager
 from slab.dsfit import*
 from tqdm import tqdm
+from h5py import File
+import os
+from slab.dataanalysis import get_next_filename
 
 im = InstrumentManager()
 LO_q = im['RF5']
@@ -21,7 +24,7 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 ramsey_freq = 100e3
 detune_freq = ge_IF + ramsey_freq
@@ -66,7 +69,7 @@ with program() as ramsey:
             play("pi2", "qubit")
             align("qubit", "rr")
             align("rr", "jpa_pump")
-            play('CW'*amp(0.0355), 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             measure("long_readout", "rr", None,
                     demod.full("long_integW1", I1, 'out1'),
                     demod.full("long_integW2", Q1, 'out1'),
@@ -104,48 +107,18 @@ else:
 
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
-    print("Data collection done")
-    with program() as stop_playing:
-        pass
-    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
+    job.halt()
 
     times = 4*times/1e3
-    z = 0
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    axs[0].plot(times[z:len(I)], I[z:], 'bo')
-    p = fitdecaysin(times[z:len(I)], I[z:], showfit=False)
-    print ("fits :", p)
-    axs[0].plot(times[z:len(I)], decaysin(np.append(p, 0), times[z:len(I)]), 'b-',
-                label=r'$T_{2}^{*}$ = %.2f $\mu$s' % p[3])
-    axs[0].set_xlabel('Time ($\mu$s)')
-    axs[0].set_ylabel('I')
-    axs[0].legend()
-    offset = ramsey_freq/1e6 - p[1]
-    nu_q_new = qubit_freq/1e9 + offset/1e3
 
-    print("Original qubit frequency choice =",  qubit_freq/1e9, "GHz")
-    print("Oscillation freq = ", p[1], " MHz")
-    print("Offset freq =", offset, "Hz")
-    print("Suggested qubit frequency choice =", nu_q_new, "GHz")
-    print("T2* =", p[3], "us")
-
-    z = 0
-    axs[1].plot(times[z:len(I)], Q[z:], 'ro')
-    p = fitdecaysin(times[z:len(I)], Q[z:], showfit=False)
-    axs[1].plot(times[z:len(I)], decaysin(np.append(p, 0), times[z:len(I)]), 'r-',
-                label=r'$T_{2}^{*}$ = %.2f $\mu$s' % p[3])
-    print ("fits :", p)
-    axs[1].set_xlabel('Time ($\mu$s)')
-    axs[1].set_ylabel('Q')
-    axs[1].legend()
-    plt.tight_layout()
-    fig.show()
-
-    offset = ramsey_freq / 1e6 - p[1]
-    nu_q_new = qubit_freq / 1e9 + offset / 1e3
-
-    print("Original qubit frequency choice =", qubit_freq/1e9, "GHz")
-    print("Oscillation freq = ", p[1], " MHz")
-    print("Offset freq =", offset, "Hz")
-    print("Suggested qubit frequency choice =", nu_q_new, "GHz")
-    print("T2* =", p[3], "us")
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'ramsey_jpa', suffix='.h5'))
+    print(seq_data_file)
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=Q)
+        f.create_dataset("time", data=times)
+        f.create_dataset("ramsey_freq", data=ramsey_freq)
+        f.create_dataset("qubit_freq", data=qubit_freq)

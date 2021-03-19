@@ -18,7 +18,7 @@ class StateDiscriminator:
         and down-conversion of the readout pulse.
     """
 
-    def __init__(self, qmm, config, rr_qe, path):
+    def __init__(self, qmm, config, update_tof, rr_qe, path):
         """
         Constructor for the state discriminator class.
         :param qmm: A QuantumMachineManager object
@@ -36,6 +36,8 @@ class StateDiscriminator:
         self.path = path
         self.saved_data = None
         self.time_diff = None
+        self.update_tof = update_tof
+        self.finish_train = 0
         self._load_file(path)
 
     def _load_file(self, path):
@@ -94,15 +96,15 @@ class StateDiscriminator:
         job = qm.execute(program, duration_limit=0, data_limit=0, **execute_args)
         res_handles = job.result_handles
         res_handles.wait_for_all_values()
-        I_res = res_handles.get("I").fetch_all()['value']
-        Q_res = res_handles.get("Q").fetch_all()['value']
+        I_res = res_handles.get("I").fetch_all(); I_res = np.concatenate([I_res[0::2],I_res[1::2]])
+        Q_res = res_handles.get("Q").fetch_all(); Q_res = np.concatenate([Q_res[0::2],Q_res[1::2]])
 
         if I_res.shape != Q_res.shape:
             raise RuntimeError("")
 
-        ts = res_handles.adc_input1.fetch_all()['timestamp'].reshape((len(I_res), -1))
-        in1 = res_handles.adc_input1.fetch_all()['value'].reshape((len(I_res), -1))
-        in2 = res_handles.adc_input2.fetch_all()['value'].reshape((len(I_res), -1))
+        ts = res_handles.get("adc1").fetch_all()['value']['timestamp']; ts = np.concatenate([ts[0::2], ts[1::2]])
+        in1 = res_handles.get("adc1").fetch_all()['value']['value']; in1 = np.concatenate([in1[0::2], in1[1::2]])
+        in2 = res_handles.get("adc2").fetch_all()['value']; in2 = np.concatenate([in2[0::2], in2[1::2]])
         return I_res, Q_res, ts, in1 + 1j*in2
 
     def train(self, program, use_hann_filter=True, plot=False, correction_method='robust', **execute_args):
@@ -146,6 +148,7 @@ class StateDiscriminator:
 
         np.savez(self.path, weights=weights, bias=bias)
         self.saved_data = {'weights': weights, 'bias': bias}
+        self.finish_train = 1
         self._update_config()
 
         if plot:
@@ -164,6 +167,11 @@ class StateDiscriminator:
                 plt.subplot(self.num_of_states, 1, i + 1)
                 plt.plot(np.real(weights[i, :]))
                 plt.plot(np.imag(weights[i, :]))
+
+            plt.figure()
+            for i in range(self.num_of_states):
+                plt.plot(np.real(weights[i, :]), np.imag(weights[i, :]))
+                plt.axis('equal')
 
     def _add_iw_to_all_pulses(self, iw):
         for pulse in self.config['pulses'].values():
@@ -184,6 +192,9 @@ class StateDiscriminator:
                 'sine': np.real(weights[i, :]).tolist()
             }
             self._add_iw_to_all_pulses(f'state_{i}_in2')
+            if self.update_tof or self.finish_train == 1:
+                self.config['elements'][self.rr_qe]['time_of_flight'] = self.config['elements'][self.rr_qe]['time_of_flight'] -\
+                                                                        self.config['elements'][self.rr_qe]['smearing']
 
     def measure_state(self, pulse, out1, out2, res, adc=None):
         """

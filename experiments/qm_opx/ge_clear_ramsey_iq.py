@@ -22,7 +22,7 @@ LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(13)
 
-ramsey_freq = 50e3
+ramsey_freq = 1000e3
 detune_freq = ge_IF + ramsey_freq
 
 dt = 250
@@ -116,7 +116,7 @@ else:
         pass
     job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
 
-    path = "C:\\_Lib\python\\slab\\experiments\\qm_opx\\data\\"
+    path = "S:\\Morgan\\qm_opx\\morgan\\data\\"
     filename = path + "qubit_ramsey_clear_wait_time.h5"
     with File(filename, 'w') as f:
         dset = f.create_dataset("I", data=I)

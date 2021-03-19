@@ -28,9 +28,9 @@ reset_time = 500000
 avgs = 3000
 simulation = 0
 
-a_min = 0.28
-a_max = 0.32
-da = 0.002
+a_min = 0.30
+a_max = 0.38
+da = 0.005
 amp_vec = np.arange(a_min, a_max + da/2, da)
 f_min = -100e3
 f_max = 100e3
@@ -74,6 +74,7 @@ with program() as histogram:
 
             with for_(n, 0, n < avgs, n + 1):
 
+                reset_frame("rr", "qubit")
                 """Just readout without playing anything"""
                 wait(reset_time//4, "rr")
                 measure("long_readout"*amp(a), "rr", None,
