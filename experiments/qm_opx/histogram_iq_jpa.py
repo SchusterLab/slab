@@ -59,16 +59,17 @@ with program() as histogram:
 
         """Just readout without playing anything"""
         wait(reset_time // 4, "rr")
+        # reset_phase("jpa_pump")
         align("rr", "jpa_pump")
         play('pump_square', 'jpa_pump')
-        measure("long_readout", "rr", None,
-                demod.full("long_integW1", I1, 'out1'),
-                demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),
-                demod.full("long_integW2", Q2, 'out2'))
+        measure("clear", "rr", None,
+                demod.full("clear_integW1", I1, 'out1'),
+                demod.full("clear_integW2", Q1, 'out1'),
+                demod.full("clear_integW1", I2, 'out2'),
+                demod.full("clear_integW2", Q2, 'out2'))
 
-        assign(Ig, I1 + Q2)
-        assign(Qg, I2 - Q1)
+        assign(Ig, I1 - Q2)
+        assign(Qg, I2 + Q1)
         save(Ig, Ig_st)
         save(Qg, Qg_st)
 
@@ -76,19 +77,20 @@ with program() as histogram:
 
         """Play a ge pi pulse and then readout"""
         wait(reset_time // 4, "qubit")
+        # reset_phase("jpa_pump")
         play("pi", "qubit")
         align("qubit", "rr")
         align("rr", "jpa_pump")
-        # frame_rotation_2pi(np.pi, "jpa_pump")
+        # frame_rotation_2pi(-np.pi/32, "jpa_pump")
         play('pump_square', 'jpa_pump')
-        measure("long_readout", "rr", None,
-                demod.full("long_integW1", I1, 'out1'),
-                demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),
-                demod.full("long_integW2", Q2, 'out2'))
+        measure("clear", "rr", None,
+                demod.full("clear_integW1", I1, 'out1'),
+                demod.full("clear_integW2", Q1, 'out1'),
+                demod.full("clear_integW1", I2, 'out2'),
+                demod.full("clear_integW2", Q2, 'out2'))
 
-        assign(Ie, I1 + Q2)
-        assign(Qe, I2 - Q1)
+        assign(Ie, I1 - Q2)
+        assign(Qe, I2 + Q1)
         save(Ie, Ie_st)
         save(Qe, Qe_st)
 
@@ -129,6 +131,9 @@ else:
     Qe = np.array(Qe_handle.fetch_all()['value'])
 
     job.halt()
+
+    plt.plot(Ig, Qg, '*')
+    plt.plot(Ie, Qe, '*')
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

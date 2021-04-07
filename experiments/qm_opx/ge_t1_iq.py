@@ -2,6 +2,8 @@ from configuration_IQ import config, qubit_freq, rr_freq, qubit_LO, rr_LO
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from TwoStateDiscriminator_2103 import TwoStateDiscriminator
+from qm import SimulationConfig, LoopbackInterface
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
@@ -27,12 +29,47 @@ LO_r.set_power(18)
 
 dt = 1000
 T_max = 100000
-T_min = 1000
+T_min = 25
 times = np.arange(T_min, T_max + dt/2, dt)
 
 avgs = 1000
 reset_time = 500000
 simulation = 0 #1 to simulate the pulses
+
+simulation_config = SimulationConfig(
+    duration=60000,
+    simulation_interface=LoopbackInterface(
+        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.00**2
+    )
+)
+
+biased_th_g = 0.0012
+qmm = QuantumMachinesManager()
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
+
+def active_reset(biased_th, to_excited=False):
+    res_reset = declare(bool)
+    wait(5000//4, 'rr')
+    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+    wait(1000//4, 'rr')
+
+    if to_excited == False:
+        with while_(I < biased_th):
+            align('qubit', 'rr')
+            with if_(~res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
+    else:
+        with while_(I > biased_th):
+            align('qubit', 'rr')
+            with if_(res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
+
 
 with program() as ge_t1:
 
@@ -44,13 +81,11 @@ with program() as ge_t1:
     t = declare(int)        # Wait time
     I = declare(fixed)
     Q = declare(fixed)
-    I1 = declare(fixed)
-    Q1 = declare(fixed)
-    I2 = declare(fixed)
-    Q2 = declare(fixed)
+    res = declare(bool)
+    I = declare(fixed)
 
+    res_st = declare_stream()
     I_st = declare_stream()
-    Q_st = declare_stream()
 
     ###############
     # the sequence:
@@ -59,25 +94,20 @@ with program() as ge_t1:
     with for_(n, 0, n < avgs, n + 1):
 
         with for_(t, T_min, t < T_max + dt/2, t + dt):
-            wait(reset_time//4, "qubit")
+            # wait(reset_time//4, "qubit")
+            active_reset(biased_th_g)
+            align("qubit", 'rr')
             play("pi", "qubit")
             wait(t, "qubit")
             align("qubit", "rr")
-            measure("long_readout", "rr", None,
-                    demod.full("long_integW1", I1, 'out1'),
-                    demod.full("long_integW2", Q1, 'out1'),
-                    demod.full("long_integW1", I2, 'out2'),
-                    demod.full("long_integW2", Q2, 'out2'))
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
-            assign(I, I1 - Q2)
-            assign(Q, I2 + Q1)
-
+            save(res, res_st)
             save(I, I_st)
-            save(Q, Q_st)
 
     with stream_processing():
+        res_st.boolean_to_int().buffer(len(times)).average().save('res')
         I_st.buffer(len(times)).average().save('I')
-        Q_st.buffer(len(times)).average().save('Q')
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -91,12 +121,10 @@ else:
     job = qm.execute(ge_t1, duration_limit=0, data_limit=0)
     print ("Execution done")
 
-    res_handles = job.result_handles
-    res_handles.wait_for_all_values()
-    I_handle = res_handles.get("I")
-    Q_handle = res_handles.get("Q")
-    I = I_handle.fetch_all()
-    Q = Q_handle.fetch_all()
+    result_handles = job.result_handles
+    result_handles.wait_for_all_values()
+    res = result_handles.get('res').fetch_all()
+    I = result_handles.get('I').fetch_all()
     print ("Data collection done")
 
     job.halt()
@@ -110,5 +138,5 @@ else:
     times = 4*times #actual clock time
     with File(seq_data_file, 'w') as f:
         f.create_dataset("I", data=I)
-        f.create_dataset("Q", data=Q)
+        f.create_dataset("res", data=res)
         f.create_dataset("time", data=times)

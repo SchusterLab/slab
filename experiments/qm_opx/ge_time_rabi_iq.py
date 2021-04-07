@@ -23,11 +23,11 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
-t_min = 4
-t_max = 40
-dt = 1
+t_min = 0
+t_max = 100
+dt = 4
 times = np.arange(t_min, t_max + dt/2, dt)
 avgs = 1000
 reset_time = 500000
@@ -59,13 +59,16 @@ with program() as ge_rabi:
         with for_(t, t_min, t <= t_max, t + dt):
 
             wait(reset_time//4, "qubit")
-            play("gaussian_16"*amp(pi_amp) , "qubit", duration=t)
+            play("CW"*amp(0.05) , "qubit", duration=t)
             align("qubit", "rr")
-            measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'),demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),demod.full("long_integW2", Q2, 'out2'))
+            measure("clear", "rr", None,
+                    demod.full("clear_integW1", I1, 'out1'),
+                    demod.full("clear_integW2", Q1, 'out1'),
+                    demod.full("clear_integW1", I2, 'out2'),
+                    demod.full("clear_integW2", Q2, 'out2'))
 
-            assign(I, I1 + Q2)
-            assign(Q, -Q1 + I2)
+            assign(I, I1 - Q2)
+            assign(Q, Q1 + I2)
 
             save(I, I_st)
             save(Q, Q_st)
@@ -87,45 +90,50 @@ else:
     start_time = time.time()
 
     res_handles = job.result_handles
-    res_handles.wait_for_all_values()
+
+    # res_handles.wait_for_all_values()
     I_handle = res_handles.get("I")
     Q_handle = res_handles.get("Q")
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
 
-    print("Data collection done")
-
-    stop_time = time.time()
-    print(f"Time taken: {stop_time-start_time}")
-
-    with program() as stop_playing:
-        pass
-    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
-
-    times = 4*times
-    z = 2
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    axs[0].plot(times[z:len(I)], I[z:],'bo')
-    p = fitdecaysin(times[z:len(I)], I[z:], showfit=False)
-    axs[0].plot(times[z:len(I)], decaysin(np.append(p,0), times[z:len(I)]), 'b-')
-    axs[0].set_xlabel('Time (ns)')
-    axs[0].set_ylabel('I')
-
-    z = 2
-    axs[1].plot(times[z:len(I)], Q[z:],'ro')
-    p = fitdecaysin(times[z:len(I)], Q[z:], showfit=False)
-    axs[1].plot(times[z:len(I)], decaysin(np.append(p,0), times[z:len(I)]), 'r-')
-    axs[1].set_xlabel('Time (ns)')
-    axs[1].set_ylabel('Q')
-    t_pi = 1/(2*p[1])
-    t_half_pi = 1/(4*p[1])
-    axs[1].axvline(t_pi, color='k', linestyle='dashed')
-    axs[1].axvline(t_half_pi, color='k', linestyle='dashed')
-    plt.tight_layout()
-    fig.show()
-
-    print("Half pi length =", t_half_pi, "ns")
-    print("pi length =", t_pi, "ns")
-    print ("Rabi decay time = ", p[3], "ns")
-    print("suggested_pi_length = ", roundint(t_pi, 4), "suggested_pi_amp = ", pi_amp*(t_pi)/float(roundint(t_pi, 4)))
-    print("suggested_half_pi_length = ", roundint(t_half_pi, 4), "suggested_piby2_amp = ", pi_amp*(t_half_pi)/float(roundint(t_half_pi, 4)))
+    plt.plot(I, '.')
+    plt.figure()
+    plt.plot(Q, '.')
+    #
+    # print("Data collection done")
+    #
+    # stop_time = time.time()
+    # print(f"Time taken: {stop_time-start_time}")
+    #
+    # with program() as stop_playing:
+    #     pass
+    # job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
+    #
+    # times = 4*times
+    # z = 2
+    # fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    # axs[0].plot(times[z:len(I)], I[z:],'bo')
+    # p = fitdecaysin(times[z:len(I)], I[z:], showfit=False)
+    # axs[0].plot(times[z:len(I)], decaysin(np.append(p,0), times[z:len(I)]), 'b-')
+    # axs[0].set_xlabel('Time (ns)')
+    # axs[0].set_ylabel('I')
+    #
+    # z = 2
+    # axs[1].plot(times[z:len(I)], Q[z:],'ro')
+    # p = fitdecaysin(times[z:len(I)], Q[z:], showfit=False)
+    # axs[1].plot(times[z:len(I)], decaysin(np.append(p,0), times[z:len(I)]), 'r-')
+    # axs[1].set_xlabel('Time (ns)')
+    # axs[1].set_ylabel('Q')
+    # t_pi = 1/(2*p[1])
+    # t_half_pi = 1/(4*p[1])
+    # axs[1].axvline(t_pi, color='k', linestyle='dashed')
+    # axs[1].axvline(t_half_pi, color='k', linestyle='dashed')
+    # plt.tight_layout()
+    # fig.show()
+    #
+    # print("Half pi length =", t_half_pi, "ns")
+    # print("pi length =", t_pi, "ns")
+    # print ("Rabi decay time = ", p[3], "ns")
+    # print("suggested_pi_length = ", roundint(t_pi, 4), "suggested_pi_amp = ", pi_amp*(t_pi)/float(roundint(t_pi, 4)))
+    # print("suggested_half_pi_length = ", roundint(t_half_pi, 4), "suggested_piby2_amp = ", pi_amp*(t_half_pi)/float(roundint(t_half_pi, 4)))

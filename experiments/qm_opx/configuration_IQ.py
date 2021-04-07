@@ -21,25 +21,29 @@ def IQ_imbalance(g, phi):
 long_redout_len = 3500
 readout_len = 3000
 
-qubit_freq = 4.746937485422608 *1e9
+qubit_freq = 4.746925149485482*1e9
 qubit_ef_freq = 4.6078190022032635*1e9
 ge_IF = 100e6
-ef_IF = int(ge_IF - (qubit_freq-qubit_ef_freq))
+ef_IF = -39.6814108981237e6
 qubit_LO = qubit_freq - ge_IF
+two_chi = 1.13e6
 
 ####---------------------####
 rr_freq_g = 8.051843423081882e9
 rr_freq_e = 8.051472688135474e9
-rr_freq = 8.051666263034072e9 #for 4us
-
+rr_freq = 8.051671474229405e9 #for 4us
+# rr_freq = rr_freq_g
 rr_IF = 100e6
 rr_LO = rr_freq + rr_IF
 rr_amp = 1.0 *0.4
 
+biased_th_g = 0.0012
+
+
 pump_LO = rr_LO
 pump_IF = 100e6
 
-pump_amp = 1.0*0.00
+pump_amp = 1.0*0.001
 pump_len = long_redout_len
 ####---------------------####
 storage_freq = 6.01124448e9
@@ -47,25 +51,31 @@ storage_LO = 6.111e9
 storage_IF = abs(storage_freq-storage_LO)
 # storage_LO = storage_freq - storage_IF
 
+sb_freq = 3.3434e9
+sb_IF = 100e6
+sb_LO = sb_freq + sb_IF
+
 gauss_len = 32
 gauss_amp = 0.45
 
 pi_len = 32
-pi_amp = 0.3483
+pi_amp = 0.3645
 
 half_pi_len = 16
 half_pi_amp = pi_amp
 
 pi_len_resolved = 3000
-Pi_amp_resolved = 0.00884993938365933
+Pi_amp_resolved = 0.0038
 
 pi_ef_len = 32
-pi_ef_amp = 0.2843
+pi_ef_amp = 0.4222
 
-opt_readout = "C:\\_Lib\\python\\slab\\experiments\\qm_opx\\pulses\\00005_readout_optimal_pulse.h5"
+opt_readout = "C:\\_Lib\\python\\slab\\experiments\\qm_opx\\pulses\\00019_readout_optimal_pulse.h5"
 with File(opt_readout,'r') as a:
     opt_amp = np.array(a['I_wf'])
 opt_len = len(opt_amp)
+
+oct_len = 1000
 
 config = {
 
@@ -75,20 +85,22 @@ config = {
         'con1': {
             'type': 'opx1',
             'analog_outputs': {
+                1: {'offset': 0.0162},  # qubit I
+                2: {'offset':  -0.0706},  # qubit Q
                 3: {'offset': -0.0025},  # RR I
                 4: {'offset': 0.0038},  # RR Q
-                1: {'offset': 0.0118},  # qubit I
-                2: {'offset': -0.0660},  # qubit Q
-                7: {'offset': -0.020},  # storage I
-                8: {'offset': -0.0022},  # storage Q
+                5: {'offset': -0.021},  # sb I
+                6: {'offset': -0.058},  # sb Q
+                7: {'offset': -0.018},  # storage I
+                8: {'offset': -0.014},  # storage Q
                 9: {'offset': -0.002},#0.0254},  # JPA Pump I
                 10: {'offset': 0.005},#-0.0375},  # JPA Pump Q
 
             },
             'digital_outputs': {},
             'analog_inputs': {
-                1: {'offset': 0.0025, 'gain_db': 0},
-                2: {'offset': 0.001, 'gain_db': 0}
+                1: {'offset': 5.6/2**12, 'gain_db': 0},
+                2: {'offset': 2.3/2**12, 'gain_db': 0}
             }
         }
     },
@@ -112,6 +124,7 @@ config = {
                 'pi2': 'pi2_pulse',
                 'minus_pi2': 'minus_pi2_pulse',
                 'res_pi': 'res_pi_pulse',
+                'qoct': 'qoct_pulse',
             },
             'digitalInputs': {
                 'lo_qubit': {
@@ -188,6 +201,7 @@ config = {
                 'pi': 'pi_pulse',
                 'pi2': 'pi2_pulse',
                 'minus_pi2': 'minus_pi2_pulse',
+                'soct': 'soct_pulse',
             },
             'digitalInputs': {
                 'lo_storage': {
@@ -197,6 +211,31 @@ config = {
                 },
             },
         },
+        'sideband': {
+            'mixInputs': {
+                'I': ('con1', 5),
+                'Q': ('con1', 6),
+                'lo_frequency': sb_LO,
+                'mixer': 'mixer_sb'
+            },
+            'intermediate_frequency': sb_IF,
+            'operations': {
+                'CW': 'CW',
+                'saturation': 'saturation_pulse',
+                'gaussian': 'gaussian_pulse',
+                'pi': 'pi_pulse',
+                'pi2': 'pi2_pulse',
+                'minus_pi2': 'minus_pi2_pulse',
+            },
+            'digitalInputs': {
+                'lo_storage': {
+                    'port': ('con1', 6),
+                    'delay': 128,
+                    'buffer': 0
+                },
+            },
+        },
+
         'jpa_pump': {
             'mixInputs': {
                 'I': ('con1', 9),
@@ -378,7 +417,22 @@ config = {
                 'Q': 'zero_wf'
             },
         },
-
+        'qoct_pulse': {
+            'operation': 'control',
+            'length': oct_len,  #ns,
+            'waveforms': {
+                'I': 'qoct_wf_i',
+                'Q': 'qoct_wf_q'
+            },
+        },
+        'soct_pulse': {
+            'operation': 'control',
+            'length': oct_len,  #ns,
+            'waveforms': {
+                'I': 'soct_wf_i',
+                'Q': 'soct_wf_q'
+            },
+        },
     },
 
     'waveforms': {
@@ -460,6 +514,25 @@ config = {
             'type': 'constant',
             'sample': 0.45 * pump_amp
         },
+        'qoct_wf_i': {
+            'type': 'arbitrary',
+            'samples': gauss(gauss_amp, 0.0, oct_len//4, oct_len)
+        },
+
+        'qoct_wf_q': {
+            'type': 'arbitrary',
+            'samples':  gauss(gauss_amp, 0.0, oct_len//4, oct_len)
+        },
+        'soct_wf_i': {
+            'type': 'arbitrary',
+            'samples': gauss(gauss_amp, 0.0, oct_len//4, oct_len)
+        },
+
+        'soct_wf_q': {
+            'type': 'arbitrary',
+            'samples': gauss(gauss_amp, 0.0, oct_len//4, oct_len)
+        },
+
     },
 
     'digital_waveforms': {
@@ -512,9 +585,9 @@ config = {
     'mixers': {
         'mixer_qubit': [
             {'intermediate_frequency': ge_IF, 'lo_frequency': qubit_LO,
-             'correction': IQ_imbalance(-0.010, 0.0175 * np.pi)},
+             'correction': IQ_imbalance(-0.015, 0.0175 * np.pi)},
             {'intermediate_frequency': ef_IF, 'lo_frequency': qubit_LO,
-             'correction': IQ_imbalance(-0.015, 0.028 * np.pi)}
+             'correction': IQ_imbalance(-0.015, 0.012 * np.pi)}
         ],
 
         'mixer_RR': [
@@ -524,8 +597,14 @@ config = {
 
         'mixer_storage': [
             {'intermediate_frequency': storage_IF, 'lo_frequency': storage_LO,
-             'correction': IQ_imbalance(0.008, 0.037 * np.pi)}#IQ_imbalance(0.001, 0.015 * np.pi)}
+             'correction': IQ_imbalance(-0.005, 0.016 * np.pi)}#IQ_imbalance(0.001, 0.015 * np.pi)}
         ],
+
+        'mixer_sb': [
+            {'intermediate_frequency': sb_IF, 'lo_frequency': sb_LO,
+             'correction': IQ_imbalance(-0.010, 0.048 * np.pi)}#IQ_imbalance(0.001, 0.015 * np.pi)}
+        ],
+
         'mixer_jpa': [
             {'intermediate_frequency': pump_IF, 'lo_frequency': pump_LO,
              'correction': IQ_imbalance(-0.005, 0.005 * np.pi)}

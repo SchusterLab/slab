@@ -18,7 +18,7 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 a_min = 0.0
 a_max = 1.0
@@ -58,15 +58,15 @@ with program() as ge_rabi:
             play("gaussian"*amp(a), "qubit")
             align("qubit", "rr")
             align("rr", "jpa_pump")
-            play('CW'*amp(0.0355), 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             measure("long_readout", "rr", None,
                     demod.full("long_integW1", I1, 'out1'),
                     demod.full("long_integW2", Q1, 'out1'),
                     demod.full("long_integW1", I2, 'out2'),
                     demod.full("long_integW2", Q2, 'out2'))
 
-            assign(I, I1 + Q2)
-            assign(Q, -Q1 + I2)
+            assign(I, I1 - Q2)
+            assign(Q, Q1 + I2)
 
             save(I, I_st)
             save(Q, Q_st)

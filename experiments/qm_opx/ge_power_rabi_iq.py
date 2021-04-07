@@ -67,8 +67,8 @@ with program() as ge_rabi:
                     demod.full("clear_integW1", I2, 'out2'),
                     demod.full("clear_integW2", Q2, 'out2'))
 
-            assign(I, I1-Q2)
-            assign(Q, I2+Q1)
+            assign(I, I1 - Q2)
+            assign(Q, Q1 + I2)
 
             save(I, I_st)
             save(Q, Q_st)
@@ -102,12 +102,15 @@ else:
 
     job.halt()
 
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'power_rabi', suffix='.h5'))
-    print(seq_data_file)
-    with File(seq_data_file, 'w') as f:
-        f.create_dataset("I", data=I)
-        f.create_dataset("Q", data=Q)
-        f.create_dataset("amps", data=amps)
+    plt.plot(amps, I, '.-')
+    plt.plot(amps, Q, '.-')
+
+    # path = os.getcwd()
+    # data_path = os.path.join(path, "data/")
+    # seq_data_file = os.path.join(data_path,
+    #                              get_next_filename(data_path, 'power_rabi', suffix='.h5'))
+    # print(seq_data_file)
+    # with File(seq_data_file, 'w') as f:
+    #     f.create_dataset("I", data=I)
+    #     f.create_dataset("Q", data=Q)
+    #     f.create_dataset("amps", data=amps)

@@ -1,0 +1,916 @@
+{
+  "time_rabi": {
+    "amp":  0.4,
+    "t_min": 0, "dt": 1, "t_max": 100, "avgs": 1000, "pulse_type":"gauss"
+  },
+
+  "power_rabi": {
+    "length":  32,
+    "a_min": 0.0, "da": 1.0, "a_max": 0.01, "avgs": 1000, "pulse_type":"gauss"
+  },
+
+  "rabi_drag": {
+    "amp":  0.9,
+    "stop": 50, "step":0.5, "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 1500, "on_qubits": ["1"],"singleshot":false,
+    "drag_beta": -1.152240308511044
+  },
+  "sequential_rabi_amp_sweep": {
+    "start": 0.011, "stop": 0.02, "step": 0.001,"calibrate_weak_drive": false
+  },
+  "t1": {
+    "stop": 150000.0, "step": 10000.0,
+    "start": 0.0, "acquisition_num":1200, "on_qubits": ["1"], "pi_calibration": true,"singleshot":false
+  },
+  "ramsey": {
+    "stop": 60000.0, "step": 1000.0,
+    "start": 0.0, "ramsey_freq": 0.00005, "singleshot": false, "acquisition_num": 1501, "on_qubits": ["1"], "pi_calibration": true
+  },
+  "echo": {
+    "stop": 100000, "step": 4000.0,
+    "start": 0.0, "ramsey_freq": 0.000025, "cp": false, "cpmg": true, "echo_times": 2, "acquisition_num": 1500,
+    "on_qubits": ["1"], "pi_calibration": true,"singleshot":false
+  },
+  "pulse_probe_iq": {
+    "stop": 12.5e-6, "step": 0.5e-6, "pulse_length": 100, "amp": 0.5, "singleshot": false,
+    "start": -12.5e-6, "acquisition_num": 3000, "on_qubits": ["1"],"pi_calibration":false
+  },
+  "pulse_probe_ef_iq": {
+    "stop": 0.05, "step": 0.001, "pulse_length": 5000, "amp": 1.0, "singleshot": false,"ge_pi": true,
+    "start": -0.05, "acquisition_num": 2000, "on_qubits": ["1"],"pi_calibration":true,"pulse_type":"square","ef_pi_for_cal":false
+  },
+  "histogram": {
+    "acquisition_num": 3000, "on_qubits": ["1"], "singleshot": true,"num_seq_sets":1,"numbins":100,"sample": 1000,"rancut": 5,
+    "include_h": false,"show_h":false,"findfid":"ge","options": ["ge","gf","gh","ef","eh","fh"]
+  },
+  "sideband_histogram": {
+    "simultaneous":false,"acquisition_num": 5000, "on_qubits": ["1"], "singleshot": true,"num_seq_sets":33,"numbins":100,"amp": 0.69,
+     "center_freq":6.0 ,"offset_freq":-3.175, "length":15000,"wait_after_reset":3000,"detuning":3.2767772921513,"single_tone":true,"single_freq":7.277861736777683
+  },
+  "oct_histogram": {
+    "acquisition_num": 1200, "on_qubits": ["1"], "singleshot": true,"num_seq_sets":1,"numbins":100,"sample": 1000,"rancut": 5,
+      "filenames": ["oct_pulses/g1.h5", "oct_pulses/g3.h5"],
+      "carrier_freqs": {}, "calibrations": {"qubit_ge":24.268940634, "qubit_ge_weak":260.405138314,"qubit_ef": 0.0,"qubit_ef_weak": 0.0, "cavity":117.370892019, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none","cavity":[2,3],"sideband": "none"},
+    "mode_index": 2, "measurement":"photon_number_resolved_qubit_spectroscopy",
+    "pi_at_end": false,"add_freq_end": 3, "tomography_freq_end": 3,"resolved": false,
+    "start": -0.001, "stop":1e-3, "step": 0.40e-4, "sweep_phase": false, "tomography_pulse_type": "gauss",
+    "cavity_pulse_len": 275.0,"use_spec_pulse_from_pulse_info": true,
+    "pulse_length": 860.317, "amp": 0.015, "pulse_type": "gauss", "phase": 0.0, "N_max": 20,
+    "measurement_options": ["photon_number_distribution_measurement","wigner_tomography_1d_sweep","photon_number_resolved_qubit_spectroscopy", "rabi","qubit_tomography","resolved_qubit_tomography","wigner_tomography_2d","readout_cross_kerr_debug"],
+    "pi_calibration": false, "rabi_steps": 50, "pulse_frac": 1.0,"use_weak_drive":false,"use_weak_drive_for_probe": true, "try_transfer_function": true,
+    "wigner_points_file_name": "S:\\_Data\\200302 - 3DMM2 cooldown 10 - sideband with LO and mixer\\wigner_function_points\\00000_wigner_points_nmax_7_nexpt_100_kappa_1pt3_gauss.h5",
+    "use_weak_cavity_drive": false, "transfer_fn_wt": true
+  },
+  "histogram_sweep": {
+    "atten_start": -32.0, "atten_stop": 1.0,"atten_step": 1.0, "freq_start": 7.7875, "freq_stop": 7.792,"freq_step": 0.0001,
+     "time_start": 500.0, "time_stop": 10000.0,"time_step": 500.0,"sweep_amp": false,"sweep_freq": true,"sweep_time":false
+  },
+  "histogram_amp_and_freq_sweep": {
+    "atten_start": -23.0, "atten_stop": -15.0,"atten_step": 1.0, "freq_start": 7.7885, "freq_stop": 7.7910, "freq_step": 0.0001},
+  "oct_histogram_amp_and_freq_sweep": {
+    "atten_start": -23.0, "atten_stop": -17.0,"atten_step": 1.0, "freq_start": 7.7885, "freq_stop": 7.7905, "freq_step": 0.0001},
+  "sideband_rabi_freq": {
+    "pulse_len": 50.0, "amp": 1.0, "pi_calibration": true,
+    "stop": 3.20, "step": 0.005,
+    "start": 0.9, "acquisition_num": 2000, "on_qubits": ["1"], "around": "", "freq_range":0.005
+  },
+  "ef_sideband_rabi_freq": {
+    "pulse_len": 50.0, "amp": 0.2, "pi_calibration": true,
+    "stop": 3.32, "step": 0.0001,
+    "start": 3.20, "acquisition_num": 2000, "on_qubits": ["1"], "around": "comm", "freq_range":0.005
+  },
+  "ef_rabi": {
+    "amp": 0.22, "stop": 50.0, "step": 0.5, "ge_pi": true, "singleshot": false, "avgs_without_pi": 7500,
+    "start": 0.0, "acquisition_num": 1500, "on_qubits": ["1"], "pi_calibration":true,"ef_pi_for_cal":true,
+    "ef_pulse_type": "gauss", "use_weak_drive": false
+  },
+  "sequential_ef_rabi_amp_sweep": {
+    "start": 0.0, "stop": 0.5, "step": 0.05
+  },
+  "ef_t1": {
+    "stop": 150000.0, "step": 10000.0,
+    "start": 0.0, "acquisition_num": 500,  "on_qubits": ["1"], "pi_calibration":false,"singleshot":false,"ef_pi_for_cal":false
+  },
+  "ef_ramsey": {
+    "stop": 10000.0, "step": 100.0,
+    "start": 0.0, "ramsey_freq": 0.00025, "acquisition_num": 1500, "on_qubits": ["1"], "pi_calibration": true,"singleshot":false,"ef_pi_for_cal":true
+  },
+  "gf_ramsey": {
+    "stop": 50000.0, "step": 1000.0,
+    "start": 0.0, "ramsey_freq": 0.0001, "acquisition_num": 1000, "on_qubits": ["1"], "pi_calibration":true,"singleshot":false,"echo":false,"number": 1,"final_phase": 3.14159
+  },
+  "ef_echo": {
+    "stop": 20000, "step": 200.0,
+    "start": 0.0, "ramsey_freq": 0.0005, "cp": false, "cpmg": true, "echo_times": 1, "acquisition_num": 2000,
+    "on_qubits": ["1"], "pi_calibration": true,"singleshot":false
+  },"pulse_probe_fh_iq": {
+    "stop": 0.03, "step": 0.0006, "pulse_length": 2000, "amp": 0.15, "singleshot": false,
+    "start": -0.03, "acquisition_num": 1000, "on_qubits": ["1"],"pi_calibration":true,"pulse_type":"square"
+  },
+  "fh_rabi": {
+    "amp": 0.2, "stop": 200, "step": 2, "ge_pi": true,"ef_pi": true, "singleshot": false,
+    "start": 0.0, "acquisition_num":1000, "on_qubits": ["1"], "pi_calibration":true,"pulse_type": "gauss"
+  },
+  "fh_ramsey": {
+    "stop": 20000, "step": 400.0,
+    "start": 0.0, "ramsey_freq": 0.000125, "acquisition_num": 800, "on_qubits": ["1"], "pi_calibration": true,"singleshot":false
+  },
+  "sideband_rabi_phase_test": {
+    "amp":0.6, "freq" :3.0583743859472605, "length": 350,
+    "stop": 3.14, "step": 0.0628, "pi_calibration": true,
+    "start": -3.14, "acquisition_num": 500, "on_qubits": ["1"],"f0g1":false,"h0e1":true,"singleshot":false,"e0g2": false
+  },
+  "sideband_rabi_sweep": {
+    "start":3.355,"stop":3.359,"step":0.0001,"pi_calibration": true,"singleshot":false,"on_qubits": ["1"]
+  },
+  "sideband_rabi_freq_scan": {
+    "amp": 1.0, "length": 469.9866004391263, "mode_index": 5, "sideband_freq": 2.055412102483745,
+    "stop": 0.015, "step": 0.00075, "pi_calibration": true, "use_freq_from_expt_cfg": true,
+    "start": -0.015, "acquisition_num": 500, "on_qubits": ["1"],"f0g1":true,"h0e1":false,"singleshot":false,"e0g2": false
+  },
+  "sideband_rabi_freq_scan_sweepLO": {
+    "stop": 0.01, "step": 0.0001,
+    "start": -0.01
+  },
+  "sequential_sideband_rabi_freq_scan": {
+    "amplist": [1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0],
+    "modelist":[0,1,2,3,4,5],
+    "lengthlist":[500.1, 500.1, 500.1, 500.1, 1570.8123870258055, 1402.2389822754799, 2000.1,2000.0,2000.0],
+    "take_trigger_from_t1": false
+  },
+  "sideband_rabi": {
+    "amp": 1.0, "freq_offset": 0.0, "sideband_freq": 2.0559208765912436,
+    "stop": 2000.0, "step":20.0, "pi_calibration": true, "use_freq_from_expt_cfg": true,
+    "start": 0.0, "acquisition_num": 1000, "on_qubits": ["1"],"f0g1":true,"h0e1":false,"singleshot":false,"e0g2": false,
+    "drag_ge": false, "mode_index": 2
+  },
+  "sequential_sideband_rabis": {
+  "freqlist":[3.56799994, 3.56939883, 3.5701488 , 3.57053325, 3.57080571, 3.57093029],
+  "lolist": [3,0,-3,-6,-9,-12],
+  "modelist": [],
+  "stoplist": [2400.0,  3560.0,  5200.0,  7520.0, 9900.0, 9900.0],
+   "take_trigger_from_t1": false
+  },
+  "sideband_rabi_freq_scan_amp_sweep": {
+    "start": 0.15, "stop": 0.85, "step": 0.1, "length_scale": 348.0, "amp_scale": 0.75
+  },
+  "sideband_rabi_two_tone_freq_scan": {
+    "amp": 1.0, "center_freq": 6.43456,"offset_freq":-0.25, "length":5000,
+    "stop": 3.220, "step": 0.0001, "pi_calibration": false,
+    "start": 3.210, "acquisition_num": 3000, "on_qubits": ["1"],"ef":false,"singleshot":false
+  },
+  "sideband_rabi_freq_scan_length_sweep": {
+    "start":0.0,"stop":5000.0,"step":500.0
+  },
+  "sideband_rabi_two_tone": {
+    "amp":1.0,"center_freq":6.43456,"offset_freq":-0.25,"detuning":3.2143492507927625,"start":0.0,"stop":2000.0,"step":20.0,
+     "pi_calibration": false,"singleshot":false,"on_qubits": ["1"],"acquisition_num": 5000,"ef":false
+  },
+  "sideband_pulse_probe_iq": {
+    "stop": 0.001, "step": 0.00003, "pulse_length": 35000, "amp": 0.005, "singleshot": false,
+    "start": -0.002, "acquisition_num": 5000, "on_qubits": ["1"],"pi_calibration":true, "f0g1":true
+  },
+  "sideband_t1": {
+    "prep_using_blockade":false,"start":0.0,"stop":350000,"step":50000.0,"pi_calibration": true,"singleshot":false,"on_qubits": ["1"],"acquisition_num": 500,"mode_index": 2
+  },
+  "sideband_e0g2_t1": {
+    "start":0.0,"stop":300000,"step":20000.0,"pi_calibration": true,"singleshot":false,"on_qubits": ["1"],"acquisition_num": 2000,"mode_index": 0
+  },
+  "sequential_sideband_t1": {
+    "modelist":  [0,1,2,3,4,5,6,7,8,9,10,11], "take_trigger_from_t1": true
+  },
+  "sideband_ramsey": {
+    "stop": 40000.0, "step": 800.0, "singleshot": false,
+    "start":0.0, "ramsey_freq": 3.5e-6, "acquisition_num": 500, "on_qubits": ["1"], "pi_calibration": true,"mode_index":1
+  },
+  "sideband_e0g2_ramsey": {
+    "stop": 2000.0, "step":20.0, "singleshot": false,
+    "start":0.0, "ramsey_freq": 4e-3, "acquisition_num": 1501, "on_qubits": ["1"], "pi_calibration": true,"mode_index":0
+  },
+  "sideband_h0e1_ramsey": {
+    "stop": 2000.0, "step":20.0, "singleshot": false,
+    "start":0.0, "ramsey_freq": 4e-3, "acquisition_num": 500, "on_qubits": ["1"], "pi_calibration": true,"mode_index":0
+  },
+  "sequential_sideband_ramsey": {
+    "stop":128000.0,"step":32000.0,"singleshot": false,
+    "start": 0.0, "ramsey_freq": 0.00015, "acquisition_num": 2001, "on_qubits": ["1"], "pi_calibration": false,"mode_index": 0
+  },
+  "sequential_ramsey_overmodes": {
+    "modelist": [2,3], "take_trigger_from_t1": false, "f0g1": true, "e0g2": false, "h0e1": false
+  },
+  "sideband_pi_pi_offset": {
+    "stop": 6.28, "step": 0.2512, "singleshot": false,
+    "start": -6.28,  "acquisition_num": 501, "on_qubits": ["1"], "pi_calibration": true,"mode_index": 1,
+    "f0g1": true, "e0g2": false, "h0e1":false
+  },
+  "sequential_sideband_pi_pi_offset": {
+    "modelist":  [0,1,2,3,4,5,6,7,8,9,10,11], "take_trigger_from_t1": true
+  },
+  "sideband_chi_ge_calibration": {
+    "stop": 2000.0, "step": 20.0, "singleshot": false,
+    "start": 0.0, "ramsey_freq": 0.0025, "acquisition_num": 1000, "on_qubits": ["1"], "pi_calibration": true,
+    "test_parity": false,"mode_index": 6, "add_photon_with_sideband":false, "add_photon_with_blockade":true,
+    "delay_before_ramsey": false,"delay_time": 150.0
+  },
+  "sequential_sideband_chi_ge_calibration": {
+    "modelist": [0,1,2,3,4,5,6,7,8], "take_trigger_from_t1": false
+  },
+  "sideband_chi_ef_calibration": {
+    "stop": 10000.0, "step": 100.0, "singleshot": false,
+    "start": 0.0, "ramsey_freq": 0.0005, "acquisition_num": 700, "on_qubits": ["1"], "pi_calibration": true,
+    "mode_index": 0, "add_photon_with_sideband":false, "add_photon_with_blockade": true
+  },
+  "sequential_sideband_chi_ef_calibration": {
+    "modelist": [0,1,2,3,4,5,6,7,8], "take_trigger_from_t1": false
+  },
+  "sideband_chi_gf_calibration": {
+    "stop": 5000.0, "step":50.0, "singleshot": false,
+    "start": 0.0, "ramsey_freq": 0.001, "acquisition_num": 700, "on_qubits": ["1"], "pi_calibration": true,"mode_index": 0,"add_photon_with_sideband":false, "add_photon_with_blockade": true
+  },
+  "sequential_sideband_chi_gf_calibration": {
+    "modelist": [0,1,2,3,4,5,6,7,8], "take_trigger_from_t1": false
+  },
+  "sideband_chi_dressing_calibration": {
+    "stop": 2000.0, "step": 40.0, "singleshot": false, "use_freq_from_expt_cfg": true, "sideband_freq":  2.8061802521049373,
+    "start": 0.0, "ramsey_freq": 0.003, "acquisition_num": 500, "on_qubits": ["1"],
+    "pi_calibration": true,"h0e1":true,"f0g1":false,"mode_index": 5,"detuning": 0.010,"amp": 1.0,
+    "add_photon_with_sideband":false, "add_photon_with_blockade": true
+  },
+  "sequential_chi_dressing_calibration": {
+    "stop": 0.011, "step": 0.002, "start": 0.002, "sweep_detuning": true,"sweep_amp": false,"take_trigger_from_t1": false
+  },
+  "sequential_sideband_chi_dressing_calibration_vary_power": {
+  "freqlist":[2.7961802521049373, 2.7981802521049373, 2.8001802521049373, 2.8021802521049373, 2.8041802521049373, 2.8061802521049373],
+  "lolist": [12,12,12,12,12,12],
+  "modelist": []
+  },
+  "sideband_chi_dressing_t1test": {
+    "stop": 200000.0, "step": 10000.0,
+    "start": 0.0, "acquisition_num":1500,"singleshot": false, "use_freq_from_expt_cfg": true, "sideband_freq":  2.8,
+    "on_qubits": ["1"], "pi_calibration": true,"h0e1":true,"f0g1":false,"mode_index": 5,"detuning": 0.010,"amp": 1.0,
+    "add_photon_with_sideband":false, "add_photon_with_blockade": false
+  },
+  "sequential_sideband_chi_dressing_t1test_vary_power": {
+  "freqlist":[2.808, 2.808, 2.808, 2.808, 2.808, 2.808, 2.808, 2.808],
+  "lolist": [15, 12,  9,  6,  3,  0, -3, -6],
+  "modelist": []
+  },
+  "chi_dressing_pnrqs": {
+    "singleshot": false, "acquisition_num": 500, "on_qubits": ["1"], "pi_calibration": true,
+    "detuning": -0.010, "dressing_amp": 1.0, "h0e1": true, "f0g1": false, "prep_cav_len": 200,
+    "prep_cav_amp": 0.25, "prep_use_weak_cavity": false, "cavity_pulse_type": "gauss", "mode_index": 2,
+    "start": -0.0045, "stop": 5e-4, "step": 5e-5, "use_weak_drive_for_probe": true
+  },
+  "sequential_chi_dressing_pnrqs": {
+    "start": -0.011, "stop": 0.011, "step": 0.001
+  },
+  "sideband_chi_dressing_pnrqs": {
+    "singleshot": false, "acquisition_num": 500, "on_qubits": ["1"], "pi_calibration": true,
+    "detuning": -0.010, "dressing_amp": 1.0, "h0e1": true, "f0g1": false, "prep_cav_len": 105,
+    "prep_cav_amp": 0.5, "prep_use_weak_cavity": false, "cavity_pulse_type": "gauss", "mode_index": 5,
+    "start": -0.0045, "stop": 5e-4, "step": 5e-5, "use_weak_drive_for_probe": true,
+    "use_freq_from_expt_cfg": true, "sideband_freq": 2.8061802521049373
+  },
+  "sequential_sideband_chi_dressing_pnrqs": {
+    "start": -0.011, "stop": 0.011, "step": 0.001
+  },
+  "chi_dressing_blockade_cavity_spectroscopy": {
+    "singleshot": false, "acquisition_num": 500, "on_qubits": ["1"], "pi_calibration": true,
+    "detuning": 0.004, "chi_dressing_amp": 1.0, "h0e1": true, "f0g1": false,
+    "cavity_amp": 0.2, "use_weak_cavity": false, "cavity_pulse_type": "square", "chi_dressing_mode_index": 5,
+    "start": -2e-4, "stop": 2e-4, "step": 8e-6, "use_weak_drive_for_probe": true, "probe_level": 0,
+    "blockade_mode_index": 5, "blockade_levels": [2], "dressing_amp": 0.0275, "use_weak_drive_for_dressing": false,
+    "dressing_drive_offset_freq": 0.0e-3, "dressing_pulse_type": "square", "cavity_offset_freq": 0.0e-3,
+    "prep_state_before_blockade": false, "use_optimal_control": false, "prep_using_blockade": true,
+    "prep_mode_index": 6, "probe_mode_index": 5, "cavity_pulse_len": 20000
+  },
+  "chi_dressing_blockade_rabi": {
+    "singleshot": false, "acquisition_num": 500, "on_qubits": ["1"], "pi_calibration": true,
+    "detuning": -0.010, "chi_dressing_amp": 1.0, "h0e1": true, "f0g1": false,
+    "cavity_amp": 0.2, "use_weak_cavity": false, "cavity_pulse_type": "square", "chi_dressing_mode_index": 5,
+    "start": 0.0, "stop": 52000.0, "step": 2000.0, "use_weak_drive_for_probe": true, "probe_level": 0,
+    "blockade_mode_index": 5, "blockade_levels": [2], "dressing_amp": 0.0275, "use_weak_drive_for_dressing": false,
+    "dressing_drive_offset_freq": 0.0e-3, "dressing_pulse_type": "square", "cavity_offset_freq": 0.0e-3,
+    "prep_state_before_blockade": false, "use_optimal_control": false, "prep_using_blockade": true,
+    "prep_mode_index": 6,  "probe_mode_index": 5
+  },
+  "sideband_transmon_reset": {
+    "stop": 50.0, "step": 1.0, "singleshot": false,"ge_pi":true,"mode_index": 0,
+    "start": 0.0,  "acquisition_num": 1000, "on_qubits": ["1"], "pi_calibration": true,"sideband_freq":1.3446349511081329,"sideband_pulse_length":15000,"wait_after_reset":3000,"amp":1.0,"simultaneous":false
+  },
+  "sideband_parity_measurement": {
+     "singleshot": false,"add_photon":true, "acquisition_num":1, "on_qubits": ["1"], "pi_calibration": true,"sideband_freq":1.3452937005964072,"sideband_pulse_length":15000,"wait_after_reset":3000,
+      "wait_before_parity":0.0,"amp":1.0,"num_expts":100, "reset": false,"mode_index": 0
+  },
+  "sideband_repetitive_parity_measurement": {
+     "singleshot": false,"add_photon":true, "acquisition_num": 1, "on_qubits": ["1"], "pi_calibration": true,
+      "wait_before_parity":0.0,"num_expts":98,"mode_index": 0
+  },
+  "repetitive_parity_measurement": {
+     "singleshot": true,"add_photon":true, "acquisition_num": 1, "on_qubits": ["1"], "pi_calibration": true,
+      "wait_before_parity":0.0,"num_expts":98,"mode_index": 0, "alpha_amp": 0.25,
+      "alpha_len": 30
+  },
+  "sideband_reset_qubit_temperature_wait_sweep": {
+    "wait_stop": 45000, "wait_step": 5000,"wait_start": 20000.0
+  },
+  "sideband_cavity_photon_number": {
+    "stop": 0.001, "step": 0.00012, "pulse_length": 40000, "qubit_drive_amp": 0.015,"cavity_freq":6.011377089667349,"cavity_pulse_length":10000,
+    "wait_after_cavity_drive":1,"cavity_drive_amp":2.0,"singleshot": false, "start": -0.005, "acquisition_num": 1000, "on_qubits": ["1"],"pi_calibration":true,"pulse_type":"square","mode_index": 0
+  },
+  "direct_cavity_spectroscopy": {
+    "stop": 0.0025, "step": 0.0001, "pulse_length": 1000, "amp": 1.0, "singleshot": false,
+    "start": -0.0025, "acquisition_num": 500, "mode_index":0,"on_qubits": ["1"],"pi_calibration":false,"mode_index": 1
+  },
+  "cavity_spectroscopy_resolved_qubit_pulse": {
+    "stop": 0.0005, "step": 0.00001, "cavity_amp": 0.05, "cavity_pulse_len": 2500.0, "singleshot": false,
+    "start": -0.0005, "acquisition_num": 500, "on_cavities": "1","on_qubits": ["1"],"pi_calibration":true,
+    "cavity_pulse_type":"square","mode_index": 1,"excite_qubit": false
+  },
+  "sequential_cavity_spectroscopy_resolved_qubit_pulse": {
+    "modelist": [1,2,3,4,5,6,7], "lenlist": [3200.0,3200.0,4000.0,4000.0,4000.0,7000.0,7000.0]
+  },
+  "cavity_drive_pulse_probe_iq_amp_sweep": {
+    "stop": 1.0, "step": 0.1, "start": 0.0
+  },
+  "direct_cavity_sideband_spectroscopy": {
+    "stop": 0.002, "step": 0.00008, "pulse_length": 40000, "qubit_drive_amp": 0.015,"cavity_freq":6.01131624,"cavity_pulse_length":5000,
+    "wait_after_cavity_drive":1,"cavity_drive_amp":2.0,"singleshot": false, "start": -0.002, "acquisition_num": 1000, "on_qubits": ["1"],"pi_calibration":true,"pulse_type":"square","mode_index": 0
+  },
+  "sideband_fnm1gnrabi_freq_scan": {
+    "mode_index": 0,"amp": 0.6, "freq": 3.3438281236514342,"length": 150.93246250433765,
+    "stop": 0.01, "step": 0.0002, "pi_calibration": true,"n": 5,
+    "start": -0.01, "acquisition_num": 500, "on_qubits": ["1"],"singleshot":false,"numbershift_qdrive_freqs": true
+  }, "sideband_fnm1gnrabi_freq_scan_varyn": {
+    "stop": 6.0, "step": 1.0, "start": 1.0,"pulse_params_from_quantum_device_cfg": true
+  },
+  "sideband_fnm1gnrabi": {
+      "mode_index": 0,"amp": 0.6,
+    "stop": 1500.0, "step":15.0 , "pi_calibration": true,"n": 5,
+    "start": 0.0, "acquisition_num": 500, "on_qubits": ["1"],"singleshot":false,"freq":3.3399534909425084,"numbershift_qdrive_freqs": true
+  },
+  "sideband_fnm1gnrabi_varyn": {
+    "stop": 6.0, "step": 1.0, "start": 1.0,"pulse_params_from_quantum_device_cfg": true
+  },
+  "qubit_rabi_with_sideband": {
+    "amp": 0.9,
+    "stop": 100, "step": 1.0, "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 1200, "on_qubits": ["1"],"singleshot":false,"pulse_type":"gauss",
+    "sideband_amp": 1.0, "use_freq_from_expt_cfg": true, "sideband_freq": 2.8,
+    "add_qubit_freq": 0.0
+  },
+  "wigner_tomography_1d_sweep": {
+  "mode_index": 0,"stop": 1.0, "step": 0.01, "cavity_pulse_len": 150.0, "singleshot": false,"phase": 0.0,
+    "start": 0.0, "acquisition_num": 1000,"on_qubits": ["1"],"state":"SNAP_g1",
+    "pi_calibration":true,"prep_cav_amp": 0.3,"prep_cav_len": 150,"prep_cav_phase": 0.0,"sweep_phase": false,"amp":0.3,"delay": 20.0,
+   "states_list": ["0","0+1","1","2","3","4","alpha","0+alpha","alpha+-alpha","SNAP_g1"],"cavity_pulse_type":"gauss","tomography_pulse_type": "gauss","snap_cav_amps": [0.56084,0.292],
+    "snap_cav_lens": [100.0,100.0],"snap_phase": 0.0,"use_weak_drive": true
+  },
+  "wigner_tomography_2d_sweep": {
+  "startx": 0.0,"stopx": 0.5, "stepx": 0.05, "starty": 0.0,"stopy": 0.5, "stepy": 0.05,"offset_x":0.0,"offset_y":0.0,"cavity_pulse_len": 150.0, "singleshot": false,"phase": 0.0,
+  "acquisition_num": 500,"on_qubits": ["1"],"state":"SNAP_g1","pi_calibration":true,"prep_cav_amp": 0.9622,"prep_cav_len": 175.0,"prep_cav_phase": 0.0,"sweep_phase": false,"amp":0.3,
+  "delay": 20.0, "states_list": ["0","0+1","1","0+alpha","alpha","fock_n","SNAP_g1"],"n": 3,"numbershift_qdrive_freqs": true, "mode_index": 0,"cavity_pulse_type":"gauss",
+    "tomography_pulse_type": "gauss","snap_cav_amps": [0.5550066274572051,0.2895686751950635],"snap_cav_lens": [100.0,100.0],"snap_phase": 0.0,"use_weak_drive": true
+  },
+  "wigner_tomography_2d_offset_sweep": {
+  "startx": -1.0,"stopx": 1.2, "stepx": 0.5, "starty": -1.0,"stopy": 1.2, "stepy": 0.5, "states_list": ["0+alpha","0+1"]
+  },
+  "photon_number_resolved_qubit_spectroscopy": {
+      "mode_index": 2,"start":  -4.5e-03,"stop": 5e-4, "step": 5e-5,  "singleshot": false,
+     "acquisition_num": 700, "on_qubits": ["1"],"pi_calibration":true,"prep_cav_amp": 0.5,"prep_cav_len": 200.0,"prep_cav_phase": 0.0,
+    "states_list": ["0","0+1","1","alpha","0+alpha","alpha+-alpha","2","3","4","5","SNAP_g1"],"state":"alpha",
+    "use_spec_pulse_from_pulse_info": true, "pulse_type": "gauss","pulse_length":765.1538477843615,"amp": 0.075,
+     "cavity_pulse_type": "square","snap_cav_amps": [0.5550066274572051,0.2895686751950635],"snap_cav_lens": [100.0,100.0],"snap_phase": 0.0,
+    "use_weak_drive":true,"use_weak_drive_for_SNAPg1": false,"add_freq": 0.0
+  },
+  "photon_number_resolved_qubit_spectroscopy_with_sideband_on": {
+      "mode_index": 5,"start":  -45e-4,"stop": 5e-4, "step": 0.5e-4,  "singleshot": false,
+     "acquisition_num": 500, "on_qubits": ["1"],"pi_calibration":true,"prep_cav_amp": 0.2,"prep_cav_len": 0.0,"prep_cav_phase": 0.0,
+    "states_list": ["0","0+1","1","alpha","0+alpha","alpha+-alpha","2","3","4","5","SNAP_g1"],"state":"alpha",
+    "use_spec_pulse_from_pulse_info": true, "pulse_type": "gauss","pulse_length":765.1538477843615,"amp": 0.075,
+     "cavity_pulse_type": "gauss","snap_cav_amps": [0.5550066274572051,0.2895686751950635],"snap_cav_lens": [100.0,100.0],"snap_phase": 0.0,
+    "use_weak_drive":true,"use_weak_drive_for_SNAPg1": false,"add_freq": 0.0,
+      "use_freq_from_expt_cfg": true, "sideband_freq": 2.8061802521049373, "sideband_amp": 1.0
+  },
+  "sequential_pnrqs_sideband_on_vary_power": {"start": -18,"stop": 17,"step": 1.0},
+  "sequential_pnrqs_sideband_on_vary_length": {"start": 13390, "stop": 25000, "step": 3000, "use_weak_drive": true},
+  "photon_number_distribution_measurement": {
+     "mode_index": 2, "N_max":13, "singleshot": false,
+     "acquisition_num": 700, "on_qubits": ["1"],"pi_calibration":true,"prep_cav_amp": 0.025, "prep_cav_len": 225,"prep_cav_phase": 0.0,
+    "states_list": ["0","0+1","1","alpha","0+alpha","alpha+-alpha", "SNAP_g1"],"state":"alpha",
+    "cavity_pulse_type": "gauss","snap_cav_amps": [0.56084,0.292],"snap_cav_lens": [100.0,100.0],"snap_phase": 1.57,"use_weak_drive": true,
+    "weak_cavity_prep_alpha_only": false
+  },
+  "sequential_photon_number_resolved_qubit_spectroscopy": {
+    "start_amp": 0.05, "stop_amp": 0.8, "amp_step": 0.05, "sweep_phase": false,"start_phase": 0.0, "stop_phase": 6.28, "phase_step": 0.2,
+    "sweep_mode_index": true, "mode_list": [0,1,2,3,4,5], "len_list": [200.0,150.0,120.0,150.0,180.0,210.0]
+  },
+  "sequential_quadratic_dispersive_shift_calibration": {
+    "N_max": 15,"cavity_drive_cal": 2.078,"cal_cavity_pulse_len": 100,"cavity_pulse_type":"gauss","span": 0.006,"step": 6e-5,
+    "amp": 1.0,"N_step": 1,"N_min": 0
+  },
+  "sequential_photon_number_resolved_qubit_spectroscopy_over_states": {
+    "states_list": ["0","1","2","3","4","5"]
+  },
+  "sequential_photon_number_distribution_measurement": {
+    "start_amp": 0.01, "stop_amp": 0.031, "amp_step": 0.002,
+    "sweep_phase": false,"start_phase": 0.0, "stop_phase": 6.28, "phase_step": 0.2,
+    "sweep_prep_cav_len": true, "start_len": 1000, "stop_len": 9000, "len_step": 2000
+  },
+  "cavity_transfer_calibration_pnds": {
+    "start_freq": -0.01, "stop_freq": 0.01, "step_freq": 0.0001, "pulse_type": "square",
+    "prep_cav_amp": 0.5, "prep_cav_len": 200
+  },
+  "sequential_photon_number_distribution_measurement_beta_cal": {
+    "start_amp1": 0.6, "stop_amp1": 0.91, "amp_step1": 0.1,
+    "start_amp2": 0.6, "stop_amp2": 0.91, "amp_step2": 0.1
+  },
+  "wigner_tomography_alltek2_phase_sweep": {
+   "stop": 6.2830, "step": 0.31415, "start": 0.0
+  },
+  "resonator_spectroscopy": {
+    "stop": 7.7910, "step": 0.0001, "pi_calibration": false,
+    "start":7.7875, "acquisition_num": 2000, "on_qubits": ["1"],"singleshot":false,"pi_qubit":false,"pi_qubit_ef": false,"resolved_pi": false,"use_weak_drive": false
+  },
+  "cross_kerr_with_readout_spectroscopy": {
+    "stop": 7.792, "step": 0.000075, "pi_calibration": false,"excite_mode": true,"prep_mode_index": 0,
+    "start":7.7885, "acquisition_num": 1000, "on_qubits": ["1"],"singleshot":false
+  },
+  "adc_calibration": {
+    "stop": 1.1, "step": 0.1, "pi_calibration": false,
+    "start": -1.0, "acquisition_num": 10, "on_qubits": ["1"],"singleshot":false
+  },
+  "cavity_drive_ramsey": {
+    "stop": 20000, "step": 200.0, "singleshot": false,
+    "start":0.0, "ramsey_freq": 0.0004, "acquisition_num": 500, "on_qubits": ["1"], "pi_calibration": true, "mode_index": 2,
+    "cavity_drive_amp": 0.13, "cavity_drive_len": 200,"cavity_pulse_type": "square", "use_weak_probe": true
+  },
+  "sequential_cavity_drive_ramsey": {
+    "mode_indices": [4], "cavity_lens": [300]
+  },
+  "optimal_control_test": {
+    "filename": "S:/_Data/190829 - Picollo cavity cooldown 14 BF3 - M8195A/optimal control pulses/no_ef_pulses/00001_g0_to_g1.h5",
+    "carrier_freqs": {}, "acquisition_num": 500, "on_qubits": ["1"],"singleshot": false,
+    "calibrations": {"qubit_ge": 5.540166, "qubit_ef": 2.84657, "cavity": 110.380096, "sideband": 0.0},
+    "ge_on": false, "ef_on": false, "cavity_on": true, "sideband_on": false,
+    "mode_index": 0, "measurement": "photon_number_distribution_measurement",
+    "start": 0.0, "stop": 1.0, "step": 0.01, "sweep_phase": false, "tomography_pulse_type": "square", "cavity_pulse_len": 175.0,
+    "amp": 0.3, "pulse_type": "square", "phase": 1.0, "N_max": 15,
+    "measurement_options": ["photon_number_distribution_measurement","wigner_tomography_1d_sweep","photon_number_resolved_qubit_spectroscopy"],"pi_calibration": true,
+    "steps": 6,"use_weak_drive": true
+  },
+  "optimal_control_test_1step": {
+    "filename": "Z:\\2020-08-28-StimEm\\oct_pulses\\g3.h5",
+    "carrier_freqs": {}, "acquisition_num": 1000, "on_qubits": ["1"],"singleshot":false,
+    "calibrations": {"qubit_ge":24.268940634, "qubit_ge_weak":260.405138314,"qubit_ef": 0.0,"qubit_ef_weak": 0.0, "cavity":117.370892019, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none","cavity":[2,3],"sideband": "none"},
+    "mode_index": 2, "measurement":"photon_number_resolved_qubit_spectroscopy",
+    "pi_at_end": false, "add_freq_end": 3, "tomography_freq_end": 3,"resolved": false,
+    "start": -0.005, "stop":-0.001, "step": 0.40e-4, "sweep_phase": false, "tomography_pulse_type": "gauss",
+    "cavity_pulse_len": 275.0,"use_spec_pulse_from_pulse_info": true,
+    "pulse_length": 893, "amp": 0.015, "pulse_type": "gauss", "phase": 0.0, "N_max": 20,
+    "measurement_options": ["photon_number_distribution_measurement","wigner_tomography_1d_sweep","photon_number_resolved_qubit_spectroscopy", "rabi","qubit_tomography","resolved_qubit_tomography","wigner_tomography_2d","readout_cross_kerr_debug"],
+    "pi_calibration": true, "rabi_steps": 50, "pulse_frac": 0.0,"use_weak_drive":false,"use_weak_drive_for_probe": true, "try_transfer_function": true,
+    "wigner_points_file_name": "S:\\_Data\\200302 - 3DMM2 cooldown 10 - sideband with LO and mixer\\wigner_function_points\\00000_wigner_points_nmax_7_nexpt_100_kappa_1pt3_gauss.h5",
+    "use_weak_cavity_drive": false, "transfer_fn_wt": true
+  },
+  "optimal_control_test_1step_partial_2D_wt": {
+    "filename": "S:/KevinHe/Optimal Control and Blockade/output_pulses/00005_g0_to_g1_SNAP_qamp0.3_camp0.05_mode0.h5",
+    "carrier_freqs": {}, "acquisition_num": 1000, "on_qubits": ["1"],"singleshot":false,
+    "calibrations": {"qubit_ge":24.268940634, "qubit_ge_weak":260.405138314,"qubit_ef": 0.0,"qubit_ef_weak": 0.0, "cavity":117.370892019, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none","cavity":[2,3],"sideband": "none"},
+    "mode_index": 2, "measurement":"wigner_tomography_2d",
+    "pi_at_end": false,"add_freq_end": 3, "tomography_freq_end": 3,"resolved": false,
+    "start": -0.001, "stop":1e-3, "step": 0.40e-4, "sweep_phase": false, "tomography_pulse_type": "gauss",
+    "cavity_pulse_len": 175.0,"use_spec_pulse_from_pulse_info": true,
+    "pulse_length": 893, "amp": 0.015, "pulse_type": "gauss", "measurement_options": ["wigner_tomography_2d"],
+    "pi_calibration": true, "pulse_frac": 1.0,"use_weak_drive":false,"use_weak_drive_for_probe": true, "try_transfer_function": true,
+    "wigner_points_file_name": "Z:\\2020-08-28-StimEm\\wigner_function_points\\00000_wigner_points_nmax_10_nexpt_200_kappa_1pt6_gauss.h5",
+    "use_weak_cavity_drive": false, "transfer_fn_wt": true, "wt_start_index": 0, "wt_end_index": 75
+  },
+  "sequential_optimal_control_test_1step_wt": {
+    "wt_start_index": 0, "wt_index_step": 50
+  },
+  "optimal_control_test_1step_recovery": {
+    "filename": "S:\\Ankur\\Stimulated Emission\\pulses\\mode_2\\best_pulses\\00000_g0_to_g2_mode_mm_2_2.0us_qamp_7.5_camp_0.2_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5",
+    "carrier_freqs": {}, "acquisition_num": 1000, "on_qubits": ["1"],"singleshot":false,
+    "calibrations": {"qubit_ge":24.268940634, "qubit_ge_weak":260.405138314,"qubit_ef": 0.0,"qubit_ef_weak": 0.0, "cavity":117.370892019, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none","cavity":[2,3],"sideband": "none"},
+    "mode_index": 2, "measurement":"wigner_tomography_2d",
+    "pi_at_end": false,"add_freq_end": 3, "tomography_freq_end": 3,"resolved": false,
+      "recovery_at_end": true, "recovery_pulse_type": "gauss", "recovery_pulse_length":7.670531831026722, "recovery_angle": 1.73, "recovery_amp": 0.168,
+    "start": -0.001, "stop":1e-3, "step": 0.40e-4, "sweep_phase": false, "tomography_pulse_type": "gauss", "cavity_pulse_len": 275.0,"use_spec_pulse_from_pulse_info": true,
+    "pulse_length": 860.317, "amp": 0.015, "pulse_type": "gauss", "phase": 1.0, "N_max": 20,
+    "measurement_options": ["photon_number_distribution_measurement","wigner_tomography_1d_sweep","photon_number_resolved_qubit_spectroscopy", "rabi","qubit_tomography","resolved_qubit_tomography","wigner_tomography_2d"],
+    "pi_calibration": true, "rabi_steps": 50, "pulse_frac": 1.0,"use_weak_drive":false,"use_weak_drive_for_probe": true, "try_transfer_function": true,
+    "wigner_points_file_name": "S:/_Data/190829 - Picollo cavity cooldown 14 BF3 - M8195A/wigner_function_points/00003_wigner_points_nmax_7_nexpt_79_kappa_1pt6_t_275_ns_gauss_0pt5.h5",
+    "use_weak_cavity_drive": false
+  },
+  "sequential_optimal_control_test_1step_recovery": {
+    "start": 80.0,"stop": 160.0,"step": 4.0
+  },
+  "optimal_control_repeated_pi_pulses": {
+    "filename": "Z:\\2020-08-28-StimEm\\oct_pulses\\g3.h5",
+    "carrier_freqs": {}, "acquisition_num": 1, "on_qubits": ["1"],"singleshot": true,
+    "calibrations": {"qubit_ge": 24.268940634, "qubit_ge_weak": 260.405138314,"qubit_ef": 0.0,"qubit_ef_weak": 0.0,
+    "cavity": 117.370892019, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0, 1],"ef":"none", "cavity":[2, 3],"sideband": "none"},
+    "mode_index": 2, "pi_calibration": false, "pulse_frac": 1.0, "use_spec_pulse_from_pulse_info": true,
+    "use_weak_drive": false, "use_weak_cavity_drive": false, "try_transfer_function": true,
+    "use_weak_drive_for_probe": true, "readout_before_oct": 11,
+    "pi_at_n": 0, "pi_at_m": 1, "num_pi_pulses_at_n": 10, "num_pi_pulses_at_m": 30,
+    "cavity_pulse_len": 275, "cavity_amp": 0.00, "use_weak_cavity_for_n_to_m": false, "cavity_pulse_type": "gauss"
+  },
+  "optimal_control_repeated_pi_pulses_wt": {
+    "filename": "Z:\\2020-08-28-StimEm\\oct_pulses\\g3.h5",
+    "carrier_freqs": {}, "acquisition_num": 1, "on_qubits": ["1"],"singleshot": true,
+    "calibrations": {"qubit_ge": 24.268940634, "qubit_ge_weak": 260.405138314,"qubit_ef": 0.0,"qubit_ef_weak": 0.0,
+      "cavity": 117.370892019, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0, 1],"ef":"none", "cavity":[2, 3],"sideband": "none"},
+    "mode_index": 2, "pi_calibration": false, "pulse_frac": 1.0, "use_spec_pulse_from_pulse_info": true,
+    "use_weak_drive": false, "use_weak_cavity_drive": false, "try_transfer_function": true,
+    "use_weak_drive_for_probe": true, "readout_before_oct": 11, "tom_amp": 0.0, "tom_phase": 0.0,"tomography_pulse_type": "gauss",
+    "pi_at_n": 3, "pi_at_m": 4, "num_pi_pulses_at_n": 10, "num_pi_pulses_at_m": 0,
+    "cavity_pulse_len": 275, "cavity_amp": 0.00, "use_weak_cavity_for_n_to_m": false, "cavity_pulse_type": "gauss",
+    "wigner_points_file_name": "Z:\\2020-08-28-StimEm\\wigner_function_points\\00000_wigner_points_nmax_10_nexpt_200_kappa_1pt6_gauss.h5",
+    "use_weak_cavity_drive": false, "transfer_fn_wt": true, "wt_start_index": 0, "wt_end_index": 75
+  },
+
+  "optimal_control_histogram": {
+    "filename": "S:\\Ankur\\Stimulated Emission\\pulses\\mode_2\\best_pulses\\00000_g0_to_g3_mode_mm_2_2.0us_qamp_7.5_camp_0.2_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5",
+    "carrier_freqs": {}, "acquisition_num": 1, "on_qubits": ["1"],"singleshot": true,
+    "calibrations": {"qubit_ge":24.268940634, "qubit_ge_weak":260.405138314,"qubit_ef": 0.0,"qubit_ef_weak": 0.0,
+    "cavity":117.370892019, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none", "cavity":[2,3],"sideband": "none"},
+    "mode_index": 2, "pi_calibration": false, "pulse_frac": 1.0,
+    "use_weak_drive":false, "use_weak_cavity_drive": false, "try_transfer_function": true,
+    "use_weak_drive_for_probe": true, "readout_before_oct": 9,
+    "pi_at_n": 3, "num_pi_pulses_at_n": 0, "cavity_pulse_len": 300, "cavity_amp": 0.00, "use_weak_cavity_for_n_to_m": false, "cavity_pulse_type": "gauss"
+  },
+  "sequential_optimal_control_repeated_pi_pulses": {
+    "rep_number": 150
+  },
+  "sequential_optimal_control_histogram": {"rep_number": 3000},
+  "sequential_optimal_control_test": {
+    "steps": 5
+  },
+  "sequential_optimal_control_repeated_pi_pulse_wt": {
+    "avgs": 1000
+  },
+  "sequential_optimal_control_scale_sweep": {
+    "sweep_ge_scale": true,"start": 10,"stop": 30,"step": 0.5,"sweep_cavity_scale":false
+  },
+  "sequential_optimal_control_cavity_transfer_calibration": {
+     "start_freq": 0.0015, "stop_freq": 0.012, "step_freq": 1e-4
+  },
+  "sequential_optimal_control_cavity_transfer_calibration_blockade": {
+     "start_freq": -1e-4, "stop_freq": 1e-4, "step_freq": 5e-6
+  },
+  "heeres_SNAP_phase_evolution_mesaurement": {
+    "filename": "S:\\Ankur\\Stimulated Emission\\pulses\\00000_g0_to_g3_mode_mm_2_2.0us.h5",
+    "carrier_freqs": {}, "acquisition_num": 1200, "on_qubits": ["1"],"singleshot":false,
+    "calibrations": {"qubit_ge":24.268940634, "qubit_ge_weak":260.405138314,"qubit_ef": 0.0,"qubit_ef_weak": 0.0, "cavity":117.370892019, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":false, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none","cavity":[0,1],"sideband": "none"},
+    "mode_index": 2,  "pi_calibration": true, "pulse_frac": 1.0,"use_weak_drive":false,
+    "use_weak_drive_for_probe": true, "try_transfer_function": true, "use_weak_cavity_drive": false,
+    "start": 0, "stop": 11000, "step": 200, "probe_level": 0, "excite_qubit_at_beginning": false,
+    "displace_amp1": 0.5, "displace_len1": 150, "displace_phase1": 0,
+    "displace_amp2": 0.5, "displace_len2": 10, "displace_phase2": 0,
+    "use_weak_for_displace": false, "displace_pulse_type": "square"
+  },
+  "sequential_self_kerr_calibration": {
+    "start": 0.0,"stop": 1.0,"step": 0.02
+  },
+  "weak_rabi": {
+    "amp": 0.16,
+    "stop": 4000.0, "step": 40.0, "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 1000, "on_qubits": ["1"],"singleshot":false,"pulse_type":"gauss", "add_freq": 0.0
+  },
+  "blockaded_cavity_rabi": {
+    "dressing_amp": 0.024,"use_weak_drive_for_dressing": false, "cavity_amp": 0.024,"cavity_phase": 0.0,
+    "stop": 52000.0, "step": 2000.0, "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 500, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+      "use_weak_drive_for_probe": true,"dressing_pulse_type": "square","blockade_level": 5,"mode_index": 0,
+    "probe_level": 0
+  },
+  "sequential_blockaded_cavity_rabi_vary_probe_level": {"start": 0,"stop": 8,"step": 1.0
+  },
+  "blockaded_cavity_rabi_wigner_tomography_2d_sweep": {
+    "dressing_amp": 0.024,"use_weak_drive_for_dressing": false, "cavity_amp": 0.024,"cavity_phase": 0.0,
+    "rabi_len": 25000.0, "step": 2000.0, "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 500, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square","blockade_level": 4,"mode_index": 0,
+    "probe_level": 0,"startx":-0.525,"stopx": 0.6, "stepx": 0.15, "starty": -0.525,"stopy": 0.6, "stepy": 0.15,"offset_x":0.0,"offset_y":0.0,"cavity_pulse_len": 175.0,
+    "phase": 0.0, "sweep_phase": false,"amp":0.3, "tomography_pulse_type": "gauss","wigner_points_from_file": true,
+    "wigner_points_file_name": "S:/_Data/190829 - Picollo cavity cooldown 14 BF3 - M8195A/wigner_function_points/00000_wigner_points_nmax_7_nexpt_79_kappa_1pt7.h5"
+  },
+  "sequential_blockaded_cavity_rabi_wigner_tomography": {"start": 0.0,"stop": 25000.0,"step": 2000.0
+  },
+  "blockade_experiments_with_optimal_control_wt": {
+    "dressing_amp":  0.024,"use_weak_drive_for_dressing": false, "cavity_amp":  0.024,"cavity_phase": 0.0,
+    "rabi_len": 0.0, "step": 1000.0, "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 500, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square","blockade_levels": [2],"mode_index": 5,
+    "probe_level": 0,"startx":-0.525,"stopx": 0.6, "stepx": 0.15, "starty": -0.525,"stopy": 0.6, "stepy": 0.15,"offset_x":0.0,"offset_y":0.0,
+      "cavity_pulse_len": 275.0, "phase": 0.0, "sweep_phase": false,"amp":0.3, "tomography_pulse_type": "gauss",
+    "wigner_points_file_name": "S:/_Data/191018 - Picollo cavity cooldown 15 real/wigner_function_points/00001_wigner_points_nmax_7_nexpt_80_kappa_1pt6_t_275_ns_gauss.h5",
+    "prep_state_before_blockade": false, "use_optimal_control": false,"prep_using_blockade": true,
+    "filename":"S:/_Data/190829 - Picollo cavity cooldown 14 BF3 - M8195A/optimal control pulses/no_ef_pulses/00002_g0_to_g1_20.h5",
+    "pulse_frac": 1.0,"print_times": "true","use_weak_drive": true, "carrier_freqs": {},
+    "calibrations": {"qubit_ge":16.5, "qubit_ge_weak":74.0,"qubit_ef": 9.784735812133073,"qubit_ef_weak":42.02648859768282, "cavity":220.2, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none","cavity":[2,3],"sideband": "none"},
+    "try_transfer_function": true,"dressing_drive_offset_freq": 0.0e-3, "cavity_offset_freq": -26.014123664393516e-06,
+      "transfer_fn_wt": true,"weak_cavity_for_blockade_expt": false
+    },
+  "sequential_blockade_experiments_with_optimal_control_wt": {"start": 0.0,"stop": 50000.0,"step": 1000.0
+  },
+  "blockade_experiments_cavity_spectroscopy": {
+    "dressing_amp": 0.18,"use_weak_drive_for_dressing": true, "cavity_amp": 0.15,"cavity_phase": 0.0, "weak_cavity": true,
+    "stop":0.05e-3, "step": 2.6e-6, "pi_calibration": true,
+    "start": -0.08e-3, "acquisition_num": 700, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square","blockade_levels": [2],"mode_index": 1,
+    "probe_level": 0,"cavity_pulse_len": 24800, "prep_mode_index": 1,
+    "phase": 0.0, "prep_state_before_blockade": false,"use_optimal_control": false,"prep_using_blockade": true,
+    "filename":"S:/_Data/190829 - Picollo cavity cooldown 14 BF3 - M8195A/optimal control pulses/no_ef_pulses/00002_g0_to_g1_20.h5",
+    "pulse_frac": 1.0, "print_times": "true","use_weak_drive_for_probe": true, "carrier_freqs": {},
+    "calibrations": {"qubit_ge":16.5, "qubit_ge_weak":74.0,"qubit_ef": 9.784735812133073,"qubit_ef_weak":42.02648859768282, "cavity":210.243, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none","cavity":[2,3],"sideband": "none"},
+    "try_transfer_function": false,"on_qubits": ["1"],"dressing_drive_offset_freq": 0.0,
+      "cavity_offset_freq": 0.00e-3
+    },
+  "sequential_blockade_experiments_cavity_spectroscopy": {
+    "mode_indices": [0], "vary_dressing_freq": false, "start": -0.1e-3, "stop": 0.1e-3, "step": 0.02e-3,
+    "cavity_amps": [0.3]
+  },
+  "sequential_cross_kerr_calibration_with_spectroscopy": {
+    "prep_mode_indices": [1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,
+      1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8],
+    "ramsey_mode_indices": [1,2,3,4,5,6,7,8],
+    "cavity_amps": [0.15,0.13,0.175,0.23,0.145,0.28,0.51,0.29,0.15,0.15,0.15,0.15,0.15,0.15,0.15,0.15,0.13,0.13,0.13,0.13,0.13,0.13,0.13,0.13,0.175,0.175,0.175,0.175,0.175,
+                    0.175,0.175,0.175,0.23,0.23,0.23,0.23,0.23,0.23,0.23,0.23,0.145,0.145,0.145,0.145,0.145,0.145,0.145,0.145,
+                    0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.29,0.29,0.29,0.29,0.29,0.29,0.29,0.29]
+  },
+  "multitone_blockaded_cavity_rabi": {
+    "dressing_amp": 0.024,"use_weak_drive_for_dressing": false, "cavity_amp": 0.024,"cavity_phase": 0.0,
+    "stop": 50100.0, "step": 2100.0, "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 500, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square","blockade_levels": [2],"mode_index": 0,
+    "probe_level": 0, "prep_state_before_blockade": false,"use_optimal_control": false,"prep_using_blockade": true,
+    "filename":"S:/_Data/190829 - Picollo cavity cooldown 14 BF3 - M8195A/optimal control pulses/no_ef_pulses/00002_g0_to_g1_20.h5",
+    "calibrations": {"qubit_ge":16.5, "qubit_ge_weak":74.0,"qubit_ef": 9.784735812133073,"qubit_ef_weak":42.02648859768282, "cavity":210.243, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none","cavity":[2,3],"sideband": "none"},
+    "try_transfer_function": true,"print_times": false,"pulse_frac": 1.0,"use_weak_drive": true,"carrier_freqs": {},"dressing_drive_offset_freq": 0.0,
+    "cavity_offset_freq": -0.016809944038245032e-3
+  },
+  "multitone_blockaded_weak_cavity_rabi": {
+    "dressing_amp": 0.18,"use_weak_drive_for_dressing": true, "cavity_amp": 0.23, "cavity_phase": 0.0,
+    "stop": 64100.0, "step": 2000.0, "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 700, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square","blockade_levels": [2],"mode_index": 0,
+    "probe_level": 0, "prep_state_before_blockade": false,"use_optimal_control": false,"prep_using_blockade": false,
+    "filename":"S:/_Data/190829 - Picollo cavity cooldown 14 BF3 - M8195A/optimal control pulses/no_ef_pulses/00002_g0_to_g1_20.h5",
+    "calibrations": {"qubit_ge":16.5, "qubit_ge_weak":74.0,"qubit_ef": 9.784735812133073,"qubit_ef_weak":42.02648859768282, "cavity":210.243, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none","cavity":[2,3],"sideband": "none"},
+    "try_transfer_function": true,"print_times": false,"pulse_frac": 1.0,"use_weak_drive": true,"carrier_freqs": {},
+     "dressing_drive_offset_freq": 0.0, "cavity_offset_freq":  -0.0024909806574503522e-3,
+     "prep_mode_index":6, "probe_mode_index": 0
+  },
+  "multitone_blockaded_weak_cavity_pnrqs": {
+    "dressing_amp": 0.18,"use_weak_drive_for_dressing": true, "cavity_amp": 0.29,"cavity_phase": 0.0,
+    "stop": 0.6e-4, "step": 0.5e-4, "start": -3e-3,
+    "pi_calibration": true, "acquisition_num": 700, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square","blockade_levels": [2],"mode_index": 8,
+    "prep_state_before_blockade": true,"use_optimal_control": false,"prep_using_blockade": true, "prep_mode_index": 2,
+    "filename":"S:/_Data/190829 - Picollo cavity cooldown 14 BF3 - M8195A/optimal control pulses/no_ef_pulses/00002_g0_to_g1_20.h5",
+    "calibrations": {"qubit_ge":16.5, "qubit_ge_weak":74.0,"qubit_ef": 9.784735812133073,"qubit_ef_weak":42.02648859768282, "cavity":210.243, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none","cavity":[2,3],"sideband": "none"},
+    "try_transfer_function": true,"print_times": false,"pulse_frac": 1.0,"use_weak_drive": true,"carrier_freqs": {},"dressing_drive_offset_freq": 0.0,
+    "cavity_offset_freq": -0.011415471182527583e-3, "cavity_pulse_len": 24800, "blockade_during_spec": false
+  },
+  "sequential_multitone_blockaded_weak_cavity_pnrqs": {
+    "start": 0.0, "stop": 2501, "step": 100
+  },
+  "sequential_single_photon_with_blockade_pnrqs": {
+    "modelist": [0,1,2,3,4,5,6,7,8]
+  },
+  "multitone_blockaded_weak_cavity_change_dressing_freq": {
+    "dressing_amp": 0.0275,"use_weak_drive_for_dressing": false, "cavity_amp": 0.2,"cavity_phase": 0.0,
+    "stop": 2e-4, "step": 8e-6, "start": -2e-4,
+    "pi_calibration": true, "acquisition_num": 1200, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square","blockade_levels": [2],"mode_index": 5,
+    "probe_level": 0, "prep_state_before_blockade": false,"use_optimal_control": false,"prep_using_blockade": true,
+    "filename":"S:/_Data/190829 - Picollo cavity cooldown 14 BF3 - M8195A/optimal control pulses/no_ef_pulses/00002_g0_to_g1_20.h5",
+    "calibrations": {"qubit_ge":16.5, "qubit_ge_weak":74.0,"qubit_ef": 9.784735812133073,"qubit_ef_weak":42.02648859768282, "cavity":210.243, "sideband": 0.0, "cavity_weak": 4291.8455},
+    "ge_on":true, "ef_on": false, "cavity_on":true, "sideband_on": false,"pulse_number_map": {"ge": [0,1],"ef":"none","cavity":[2,3],"sideband": "none"},
+    "try_transfer_function": true,"print_times": false,"pulse_frac": 1.0,"use_weak_drive": true,"carrier_freqs": {},
+    "cavity_offset_freq": -0.009483224984057341e-3, "cavity_pulse_len": 20082, "dressing_drive_offset_freq": 0.0e-3
+  },
+  "multimode_blockade_experiments_cavity_spectroscopy": {
+    "dressing_amps": [[0.5],[0.5]],"cavity_amps": [0.15, 0.13],"cavity_phases": [0.0,0.0],
+    "stop": 0.1e-4, "step": 2e-6, "pi_calibration": true, "use_weak_drive_for_dressing": true,
+    "start": -1e-4, "acquisition_num": 500, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square",
+     "probe_level": 1, "prep_state_before_blockade": false,"prep_using_blockade": true,
+    "dressing_drive_offset_freqs": [[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3], [0.0e-3], [0.0e-3],[0.0e-3]],
+    "use_weak_cavity": true, "cavity_pulse_len": 24800,
+    "cavity_offset_freqs": [0,0,0,0,0,0,0,0,0],
+    "blockade_mode_indices": [1,2],"cavity_drive_mode_indices":[1,2],"probe_mode_index": 2, "blockade_levels": [[2],[2],[2],[2],[2],[2],[2],[2],[2]],
+    "blockade_pair_sums": true, "blockade_only_pair_sums": true, "pair_dressing_amps": [0.5]
+  },
+  "multitone_multimode_blockaded_cavity_rabi": {
+    "dressing_amps": [[0.5],[0.5]],"cavity_amps": [0.15, 0.13],"cavity_phases": [0.0,0.0],
+    "stop": 64100.0, "step": 2100.0, "pi_calibration": true, "use_weak_drive_for_dressing": true,
+    "start": 0.0, "acquisition_num": 700, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square",
+     "probe_level": 0, "prep_state_before_blockade": false,"prep_using_blockade": true, "prep_mode_index": 5,
+    "dressing_drive_offset_freqs": [[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3], [0.0e-3], [0.0e-3],[0.0e-3]],
+    "use_weak_cavity": true,
+    "cavity_offset_freqs": [0,-0.03836782728619254e-3,-0.021264252081109145e-3,-0.0379253968157422e-3,0, -0.011484750063611764e-3, -0.008586961489992877e-3,0,0],
+    "blockade_mode_indices": [1,2],"cavity_drive_mode_indices":[1,2],"probe_mode_index": 2, "blockade_levels": [[2],[2],[2],[2],[2],[2],[2],[2],[2]],
+    "blockade_pair_sums": true, "blockade_only_pair_sums": true, "pair_dressing_amps": [0.5]
+  },
+  "multitone_multimode_blockaded_cavity_pnrqs": {
+    "dressing_amps": [[0.18],[0.18]],"cavity_amps": [0.15],"cavity_phases": [0.0,0.0],
+    "stop": 5e-4, "step": 1e-4, "pi_calibration": true, "use_weak_drive_for_dressing": true,
+    "start": -6e-3, "acquisition_num": 1000, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square",
+     "probe_level": 0, "prep_state_before_blockade": false,"prep_using_blockade": true, "prep_mode_index": 3,
+    "dressing_drive_offset_freqs": [[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3], [0.0e-3], [0.0e-3],[0.0e-3]],
+    "use_weak_cavity": true,
+    "cavity_offset_freqs": [0,0.08211046282073044e-3,-0.04961922754499321e-3,-0.0379253968157422e-3,0, -0.010956070153338809e-3, -0.008586961489992877e-3,0,0],
+    "blockade_mode_indices": [3,5],"cavity_drive_mode_indices":[5], "blockade_levels": [[2],[2],[2],[2],[2],[2],[2],[2],[2]],
+    "blockade_pair_sums": false, "blockade_only_pair_sums": false, "pair_dressing_amps": [0.5],
+      "cavity_pulse_len": 2500, "blockade_during_spec": true
+  },
+  "sequential_multitone_multimode_blockaded_cavity_pnrqs": {
+    "start": 0.0, "stop": 55001, "step": 5000
+  },
+  "multitone_multimode_blockaded_cavity_tomography_rabi": {
+    "dressing_amps": [[0.5],[0.5]],"cavity_amps": [0.15, 0.13],"cavity_phases": [0.0,0.0],
+    "stop": 64100.0, "step": 2100.0, "pi_calibration": true, "use_weak_drive_for_dressing": true,
+    "start": 0.0, "acquisition_num": 700, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square",
+    "prep_state_before_blockade": false,"prep_using_blockade": true, "prep_mode_index": 5,
+    "dressing_drive_offset_freqs": [[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3], [0.0e-3], [0.0e-3],[0.0e-3]],
+    "use_weak_cavity": true,
+    "cavity_offset_freqs": [0,-0.03836782728619254e-3,-0.021264252081109145e-3,-0.0379253968157422e-3,0, -0.011484750063611764e-3, -0.008586961489992877e-3,0,0],
+    "blockade_mode_indices": [1,2],"cavity_drive_mode_indices":[1,2], "blockade_levels": [[2],[2],[2],[2],[2],[2],[2],[2],[2]],
+    "blockade_pair_sums": true, "blockade_only_pair_sums": true, "pair_dressing_amps": [0.5], "measure_correlator": "ix",
+    "tomography_mode_indices": [1,2]
+  },
+  "multitone_multimode_blockaded_cavity_full_tomography": {
+    "dressing_amps": [[0.5],[0.5]],"cavity_amps": [0.15, 0.13],"cavity_phases": [0.0,0.0],
+    "pi_calibration": true, "use_weak_drive_for_dressing": true,
+    "acquisition_num": 700, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square",
+    "prep_state_before_blockade": false,"prep_using_blockade": true, "prep_mode_index": 5,
+    "dressing_drive_offset_freqs": [[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3], [0.0e-3], [0.0e-3],[0.0e-3]],
+    "use_weak_cavity": true,
+    "cavity_offset_freqs": [0,-0.03836782728619254e-3,-0.021264252081109145e-3,-0.0379253968157422e-3,0, -0.011484750063611764e-3, -0.008586961489992877e-3,0,0],
+    "blockade_mode_indices": [1,2],"cavity_drive_mode_indices":[1,2], "blockade_levels": [[2],[2],[2],[2],[2],[2],[2],[2],[2]],
+    "blockade_pair_sums": true, "blockade_only_pair_sums": true, "pair_dressing_amps": [0.5],
+    "tomography_mode_indices": [1,2], "cavity_pulse_len": 0, "simultaneous_rotations": true,
+    "correlator_list": ["ix","iy","iz","xi","xx","xy","xz","yi","yx","yy","yz","zi","zx","zy","zz"]
+  },
+  "sequential_multitone_multimode_blockaded_cavity_full_tomography": {
+    "start": 0.0, "stop": 40001, "step": 2500
+  },
+  "sideband_chi_dressing_simultaneous_wt": {
+    "dressing_amps":  [[0.18],[0.18]],"use_weak_drive_for_dressing": true, "cavity_amps": [0.13,0.15],"cavity_phases": [0.0,0.0],
+    "pi_calibration": true, "acquisition_num": 500, "on_qubits": ["1"],"singleshot":false,"cavity_pulse_type":"square",
+    "use_weak_drive_for_probe": true,"dressing_pulse_type": "square", "cavity_pulse_len": 24500,
+    "startx":-0.525,"stopx": 0.6, "stepx": 0.15, "starty": -0.525,"stopy": 0.6, "stepy": 0.15,"offset_x":0.0,"offset_y":0.0,
+    "wigner_points_file_name": "S:/_Data/191018 - Picollo cavity cooldown 15 real/wigner_function_points/00001_wigner_points_nmax_7_nexpt_80_kappa_1pt6_t_275_ns_gauss.h5",
+    "use_wigner_points_file": true, "transfer_fn_wt": true, "tomography_pulse_len": 300, "tomography_pulse_type": "gauss",
+    "mode_index": 5,
+    "prep_state_before_blockade": false,"prep_using_blockade": true, "prep_mode_index": 5,
+    "dressing_drive_offset_freqs": [[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3],[0.0e-3], [0.0e-3], [0.0e-3],[0.0e-3]],
+    "use_weak_cavity": true,
+    "cavity_offset_freqs": [0,0,0,0,0,0,0,0,0],
+    "blockade_mode_indices": [2,5],"cavity_drive_mode_indices":[2,5],"probe_mode_indices": [2,5], "blockade_levels": [[2],[2],[2],[2],[2],[2],[2],[2],[2]], "blockade_pair_sums": false,
+    "chi_dressing_on_during_blockade": true, "chi_dressing_amp": 1.0, "use_freq_from_expt_cfg": true,
+    "sideband_freq": 2.8
+    },
+  "optimal_control_test_with_blockade_1step": {
+      "filename": "S:\\_Data\\191018 - Picollo cavity cooldown 15 real\\optimal control pulses\\blockade_pulses\\000029_g0_to_g2_blockade.h5",
+    "carrier_freqs": {}, "acquisition_num": 500, "on_qubits": ["1"],"singleshot":false,
+    "calibrations": {"cavity": 210.243, "cavity_weak": 4291.8455}, "pulse_number_map": {"cavity":[0,1]},
+    "mode_index": 0, "measurement":"photon_number_resolved_qubit_spectroscopy",
+    "start": -0.005, "stop":5e-4, "step": 0.8e-4, "sweep_phase": false, "tomography_pulse_type": "gauss", "cavity_pulse_len": 275.0,
+      "use_spec_pulse_from_pulse_info": true, "pulse_length": 860.317, "amp": 0.015, "pulse_type": "gauss", "phase": 1.0, "N_max": 25,
+    "measurement_options": ["photon_number_distribution_measurement","wigner_tomography_1d_sweep","photon_number_resolved_qubit_spectroscopy", "rabi","qubit_tomography","wigner_tomography_2d"],
+    "pi_calibration": true, "rabi_steps": 50, "pulse_frac":  1.0,
+      "use_weak_drive":true,"use_weak_drive_for_probe": true,"try_transfer_function": true,
+    "use_weak_cavity_drive": true, "use_weak_drive_for_dressing": false,
+      "blockade_params": {"amp": 0.024, "levels": [4], "pulse_type": "square"},
+      "wigner_points_file_name": "S:/_Data/191018 - Picollo cavity cooldown 15 real/wigner_function_points/00001_wigner_points_nmax_6_nexpt_60_kappa_1pt5_t_275_ns_gauss.h5",
+      "transfer_fn_wt": true,
+      "prep_state_first": false, "prep_state_filename": "S:\\_Data\\191018 - Picollo cavity cooldown 15 real\\optimal control pulses\\no_ef_pulses\\00002_g0_to_g1_20.h5",
+      "prep_use_weak_drive": false, "prep_use_weak_cavity_drive": false,
+      "prep_calibrations": {"qubit_ge":16.5, "qubit_ge_weak":162.9720894, "cavity":210.243, "cavity_weak": 4291.8455},
+       "prep_ge_on":true, "prep_cavity_on":true, "prep_pulse_number_map": {"ge": [0,1], "cavity":[2,3]}
+    },
+  "sequential_optimal_control_test_with_blockade": {
+    "steps": 6
+  },
+  "alpha_scattering_off_blockade": {
+    "mode_index": 6, "singleshot": false, "acquisition_num": 500, "on_qubits": ["1"], "pi_calibration": true,
+    "prep_cav_len": 240, "prep_cav_amp": 0.5, "prep_cav_phase": 0, "cavity_pulse_type": "gauss",
+    "use_weak_cavity_for_prep": false, "use_weak_cavity_for_evol": false,
+    "evol_cav_len": 0, "evol_cav_amp": 0.45, "evol_cav_phase": 0, "evol_cav_pulse_type": "gauss",
+    "blockade_levels": [], "dressing_amp": 0.024,"use_weak_drive_for_dressing": false, "dressing_pulse_type": "square",
+    "cavity_offset_freq": 0.00e-3,
+    "use_wigner_points_file": true,"transfer_fn_wt": true, "cavity_pulse_len": 275, "tomography_pulse_type": "gauss",
+    "wigner_points_file_name": "S:/_Data/191018 - Picollo cavity cooldown 15 real/wigner_function_points/00001_wigner_points_nmax_7_nexpt_80_kappa_1pt6_t_275_ns_gauss.h5",
+    "offset_x": 0.0, "offset_y": 0.0, "startx":-0.525, "stopx": 0.6, "stepx": 0.15, "starty": -0.525,"stopy": 0.6, "stepy": 0.15
+  },
+  "sequential_alpha_scattering_off_blockade": {
+    "start": 336.0, "stop": 409.0, "step": 24, "sweep_prep_time": true, "sweep_evol_time": false
+  },
+  "sequential_multitone_blockaded_cavity_rabi_vary_probe_level": {"start": 0,"stop": 4.0,"step": 1.0, "weak_cavity": true
+  },
+  "sequential_multitone_blockaded_cavity_rabi_split": {
+    "stopstep": 2000.0,"stepnumber": 30,"step": 50.0, "weak_cavity": true
+  },
+  "sequential_multitone_multimode_blockaded_cavity_rabi_vary_probe_level": {
+    "start": 0,"stop": 4.0,"step": 1.0
+  },
+  "sequential_multitone_multimode_blockaded_cavity_rabi_split": {
+    "stopstep": 4000.0,"stepnumber": 16,"step": 100.0
+  },
+  "sequential_multitone_blockaded_cavity_rabi_vary_dressing_freq": {"start": -0.1e-3,"stop": 0.1e-3,"step": 0.05e-3,
+    "weak_cavity": true},
+  "sequential_blockade_spectroscopy_amp_sweep": {"start": 0.2,"stop": 0.4,"step":0.01, "use_weak_drive_for_dressing": true
+  },
+  "drag_beta_calibration_qubit": {
+    "beta_start": -5.0, "beta_stop": 5.0, "beta_step": 0.1, "on_qubits": ["1"], "singleshot": false,
+    "acquisition_num": 500, "pi_calibration": true, "calibrate_ef": true
+  },
+  "parity_measurement_bandwidth_calibration": {
+    "start_amp": 0.0, "stop_amp": 1.0, "amp_step": 0.02, "prep_cav_len": 275, "cavity_pulse_type": "gauss",
+    "mode_index": 0, "singleshot": false, "acquisition_num": 1000, "pi_calibration": true,
+    "add_freq_cav": 0.0, "on_qubits": ["1"]
+  },
+  "cavity_blockade_t1":  {
+    "start": 0.0,"stop": 800001,"step":400000,"pi_calibration": true,"singleshot":false,"on_qubits": ["1"],
+    "acquisition_num": 1000,"mode_index": 2, "use_weak_resolved_pulse": true, "probe_zero": false
+  },
+  "cavity_blockade_ramsey":  {
+    "start":0,"stop":10000,"step":200.0,"pi_calibration": true,"singleshot":false,"on_qubits": ["1"],
+    "acquisition_num": 700,"mode_index": 2, "use_weak_resolved_pulse": true, "probe_zero": true,"ramsey_freq": 0.0004,
+    "prep_photon_with_blockade": true, "prep_mode_index": 1
+  },
+  "sequential_cavity_blockade_ramsey":  {
+    "stopstep": 40000.0,"stepnumber": 35,"step": 40000.0
+  },
+  "sequential_cavity_blockade_t1": {
+    "stopstep": 40000.0,"stepnumber": 35,"step": 40000.0
+  },
+  "sequential_split_sideband_t1": {
+    "stopstep": 40000.0,"stepnumber": 35,"step": 40000.0
+  },
+  "sequential_split_sideband_ramsey": {
+    "stopstep": 40000.0,"stepnumber": 35,"step": 40000.0
+  },
+  "sequential_cross_kerr_calibration_with_ramsey": {
+    "prep_mode_indices": [1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,
+      1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8],
+    "ramsey_mode_indices": [8,8,8,8,8,8,8,8,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,
+      5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7]
+  },
+  "amp_vs_freq_transfer_function_calibration_files": {
+    "qubit": "Z:/2020-08-28-StimEm/drive_calibrations/00000_2020_11_25_strong_qubit_transfer_calibration_max1.0.h5",
+    "qubitweak": "Z:/2020-08-28-StimEm/drive_calibrations/00000_weak_qubit_transfer_calibration_max1.h5",
+    "cavity": "Z:/2020-08-28-StimEm/drive_calibrations/00000_cavity_strong_transfer_calibration_max0.5square_mode2.h5",
+    "cavity_gauss": "S:/_Data/191018 - Picollo cavity cooldown 15 real/drive_calibrations/00000_cavity_transfer_calibration_cd15.h5",
+    "cavity_weak": "S:/_Data/191018 - Picollo cavity cooldown 15 real/drive_calibrations/00000_weak_cavity_transfer_calibration_max0.4.h5",
+    "cavity_list": [
+      "S:/_Data/20200813 - 3DMM2 Cooldown 11/drive_calibrations/00000_cavity_strong_transfer_calibration_max0.5square_mode0.h5",
+      "S:/_Data/20200813 - 3DMM2 Cooldown 11/drive_calibrations/00000_cavity_strong_transfer_calibration_max0.5square_mode1.h5",
+      "S:/_Data/201218 - 3DMM2 Cooldown 12/drive_calibrations/00001_cavity_strong_transfer_calibration_max0.5square_mode2.h5",
+      "S:/_Data/20200813 - 3DMM2 Cooldown 11/drive_calibrations/00000_cavity_strong_linear_transfer_calibration_max0.5square_mode3.h5",
+      "S:/_Data/20200813 - 3DMM2 Cooldown 11/drive_calibrations/00000_cavity_strong_transfer_calibration_max0.5square_mode4.h5",
+      "S:/_Data/20200813 - 3DMM2 Cooldown 11/drive_calibrations/00000_cavity_strong_transfer_calibration_max0.5square_mode5.h5",
+      "S:/_Data/20200813 - 3DMM2 Cooldown 11/drive_calibrations/00000_cavity_strong_transfer_calibration_max0.5square_mode6.h5",
+      "S:/_Data/20200813 - 3DMM2 Cooldown 11/drive_calibrations/00000_cavity_strong_transfer_calibration_max0.5square_mode7.h5",
+      "S:/_Data/20200813 - 3DMM2 Cooldown 11/drive_calibrations/00000_cavity_strong_transfer_calibration_max0.5square_mode8.h5"
+    ]
+  },
+  "transfer_function_blockade_calibration_files": {
+    "cavity_amp_vs_amp": "S:/_Data/191010 - Picollo cavity cooldown 14 blockade expts/drive_calibrations/00000_cavity_transfer_calibration_max0.5_gauss_amp_vs_amp.h5",
+    "cavity_amp_vs_freq": "S:/_Data/200214 - 3DMM2 cooldown 10/drive_calibrations/00000_cavity_transfer_calibration_max0.5gauss_mode2.h5",
+    "cavity_amp_vs_freq_list":[
+      "S:\\_Data\\200813 - 3DMM2 Cooldown 11\\drive_calibrations\\00000_cavity_strong_transfer_calibration_max0.5gauss_mode0.h5",
+      "S:\\_Data\\200813 - 3DMM2 Cooldown 11\\drive_calibrations\\00000_cavity_strong_transfer_calibration_max0.5gauss_mode1.h5",
+      "S:/_Data/201218 - 3DMM2 Cooldown 12/drive_calibrations/00001_cavity_strong_transfer_calibration_max0.5square_mode2.h5",
+      "S:\\_Data\\20200813 - 3DMM2 Cooldown 11\\drive_calibrations\\00000_cavity_strong_linear_transfer_calibration_max0.5gauss_mode3.h5",
+      "S:\\_Data\\20200813 - 3DMM2 Cooldown 11\\drive_calibrations\\00000_cavity_strong_transfer_calibration_max0.5gauss_mode4.h5",
+      "S:\\_Data\\20200813 - 3DMM2 Cooldown 11\\drive_calibrations\\00000_cavity_strong_transfer_calibration_max0.5gauss_mode5.h5",
+      "S:\\_Data\\20200813 - 3DMM2 Cooldown 11\\drive_calibrations\\00000_cavity_strong_transfer_calibration_max0.5gauss_mode6.h5",
+      "S:\\_Data\\20200813 - 3DMM2 Cooldown 11\\drive_calibrations\\00000_cavity_strong_transfer_calibration_max0.5gauss_mode7.h5",
+      "S:\\_Data\\20200813 - 3DMM2 Cooldown 11\\drive_calibrations\\00000_cavity_strong_transfer_calibration_max0.5gauss_mode8.h5",
+      ""]
+
+  }
+}

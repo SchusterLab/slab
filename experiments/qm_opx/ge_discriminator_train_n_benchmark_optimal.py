@@ -18,7 +18,7 @@ simulation_config = SimulationConfig(
     )
 )
 
-N = 3000
+N = 5000
 wait_time = 500000
 
 with program() as training_program:
@@ -92,7 +92,6 @@ with program() as test_program:
         discriminator.measure_state("clear", "out1", "out2", res, statistic=statistic)
         save(res, res_st)
         save(statistic, statistic_st)
-
 
         align("qubit", "rr")
 

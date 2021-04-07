@@ -20,14 +20,14 @@ LO.set_ext_pulse(mod=False)
 
 with program() as mixer_calibration:
     with infinite_loop_():
-        play("CW"*amp(1.0), "qubit")
+        play("CW"*amp(0.2), "qubit")
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
 job = qm.execute(mixer_calibration, duration_limit=0, data_limit=0)
 # delta_F = 1e9
-spec.set_center_frequency(nu_LO)
+# spec.set_center_frequency(nu_LO)
 # spec.set_span(delta_F)
 # spec.set_resbw(100e3)
 # time.sleep(5)
@@ -47,4 +47,4 @@ def IQ_imbalance_corr(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s,
                                    (1 - g) * s, (1 + g) * c]]
 
-# qm.set_mixer_correction("mixer_qubit", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(0.00,0.0*np.pi))
+qm.set_mixer_correction("mixer_qubit", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(0.00,0.0*np.pi))

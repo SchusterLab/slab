@@ -2,10 +2,16 @@ from configuration_IQ import config, qubit_LO, rr_LO
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from TwoStateDiscriminator_2103 import TwoStateDiscriminator
+from qm import SimulationConfig, LoopbackInterface
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
 from slab.instruments import instrumentmanager
+from h5py import File
+import os
+from slab.dataanalysis import get_next_filename
+
 im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
@@ -17,9 +23,9 @@ from slab.dsfit import*
 ##################
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(16)
+LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
+LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(18)
 
 a_min = 0.0
@@ -29,6 +35,41 @@ amps = np.arange(a_min, a_max + da/2, da)
 avgs = 1000
 reset_time = 500000
 simulation = 0
+
+simulation_config = SimulationConfig(
+    duration=60000,
+    simulation_interface=LoopbackInterface(
+        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.00**2
+    )
+)
+
+biased_th_g = 0.0013
+qmm = QuantumMachinesManager()
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
+
+def active_reset(biased_th, to_excited=False):
+    res_reset = declare(bool)
+    wait(5000//4, 'rr')
+    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+    wait(1000//4, 'rr')
+
+    if to_excited == False:
+        with while_(I < biased_th):
+            align('qubit', 'rr')
+            with if_(~res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
+    else:
+        with while_(I > biased_th):
+            align('qubit', 'rr')
+            with if_(res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
+
 with program() as ef_rabi_IQ:
 
     ##############################
@@ -55,13 +96,18 @@ with program() as ef_rabi_IQ:
 
         with for_(a, a_min, a < a_max + da/2, a + da):
 
-            wait(reset_time//4, "qubit")
+            active_reset(biased_th_g)
+            # align("qubit", 'rr')
+            # wait(reset_time//4, "qubit")
             play("pi", "qubit")
             align("qubit", "qubit_ef")
             play("gaussian"*amp(a), "qubit_ef")
             align("qubit_ef", "rr")
-            measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'), demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
+            measure("long_readout", "rr", None,
+                    demod.full("long_integW1", I1, 'out1'),
+                    demod.full("long_integW2", Q1, 'out1'),
+                    demod.full("long_integW1", I2, 'out2'),
+                    demod.full("long_integW2", Q2, 'out2'))
 
             assign(I, I1+Q2)
             assign(Q, I2-Q1)
@@ -99,25 +145,14 @@ else:
     stop_time = time.time()
     print(f"Time taken: {stop_time-start_time}")
 
-    z = 1
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    axs[0].plot(amps[z:len(I)], I[z:], 'bo')
-    p = fitdecaysin(amps[z:len(I)], I[z:], showfit=False)
-    print("fits :", p)
-    print("a_pi", 1/2/p[1])
-    axs[0].axvline(1/2/p[1])
-    axs[0].plot(amps[z:len(I)], decaysin(np.append(p, 0), amps[z:len(I)]), 'b-')
-    axs[0].set_xlabel('Amps')
-    axs[0].set_ylabel('I')
+    job.halt()
 
-    z = 0
-    axs[1].plot(amps[z:len(I)], Q[z:], 'ro')
-    p = fitdecaysin(amps[z:len(I)], Q[z:], showfit=False)
-    axs[1].plot(amps[z:len(I)], decaysin(np.append(p, 0), amps[z:len(I)]), 'r-')
-    print("fits :", p)
-    print("a_pi", 1/2/p[1])
-    axs[1].axvline(1/2/p[1])
-    axs[1].set_xlabel('Amps')
-    axs[1].set_ylabel('Q')
-    plt.tight_layout()
-    fig.show()
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'ef_power_rabi', suffix='.h5'))
+    print(seq_data_file)
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=Q)
+        f.create_dataset("amps", data=amps)

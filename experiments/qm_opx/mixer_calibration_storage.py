@@ -11,7 +11,7 @@ spec = im['SA']
 LO_s  = im['sccav']
 
 LO_s.set_frequency(storage_LO)
-LO_s.set_power(12.0)
+LO_s.set_power(13.0)
 
 with program() as mixer_calibration:
     with infinite_loop_():

@@ -29,7 +29,7 @@ avgs = 3000
 simulation = 0
 
 a_min = 0.20
-a_max = 0.40
+a_max = 0.50
 da = 0.01
 amp_vec = np.arange(a_min, a_max + da/2, da)
 
@@ -77,8 +77,8 @@ with program() as histogram:
                     demod.full("long_integW1", I2, 'out2'),
                     demod.full("long_integW2", Q2, 'out2'))
 
-            assign(Ig, I1 - Q2)
-            assign(Qg, I2 + Q1)
+            assign(Ig, I1 + Q2)
+            assign(Qg, I2 - Q1)
             save(Ig, Ig_st)
             save(Qg, Qg_st)
 
@@ -94,8 +94,8 @@ with program() as histogram:
                     demod.full("long_integW1", I2, 'out2'),
                     demod.full("long_integW2", Q2, 'out2'))
 
-            assign(Ie, I1 - Q2)
-            assign(Qe, I2 + Q1)
+            assign(Ie, I1 + Q2)
+            assign(Qe, I2 - Q1)
             save(Ie, Ie_st)
             save(Qe, Qe_st)
 

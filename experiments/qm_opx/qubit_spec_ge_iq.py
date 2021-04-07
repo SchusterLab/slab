@@ -34,7 +34,7 @@ LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(18)
 
 avgs = 500
-reset_time = 500000
+reset_time = 5000
 simulation = 0
 with program() as qubit_spec:
 
@@ -65,14 +65,14 @@ with program() as qubit_spec:
             wait(reset_time// 4, "qubit")# wait for the qubit to relax, several T1s
             play("saturation"*amp(0.01), "qubit", duration=125000)
             align("qubit", "rr")
-            measure("clear"*amp(0.5), "rr", None,
+            measure("clear", "rr", None,
                     demod.full("clear_integW1", I1, 'out1'),
                     demod.full("clear_integW2", Q1, 'out1'),
                     demod.full("clear_integW1", I2, 'out2'),
                     demod.full("clear_integW2", Q2, 'out2'))
 
-            assign(I, I1-Q2)
-            assign(Q, I2+Q1)
+            assign(I, I1 - Q2)
+            assign(Q, I2 + Q1)
 
             save(I, I_st)
             save(Q, Q_st)
@@ -105,7 +105,7 @@ else:
     print("Data collection done!")
 
     job.halt()
-
+    plt.plot(I)
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,

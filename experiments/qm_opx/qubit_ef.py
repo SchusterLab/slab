@@ -1,7 +1,9 @@
-from configuration_IQ import config, qubit_freq, rr_freq, qubit_ef_freq
+from configuration_IQ import config, qubit_LO, rr_LO, ef_IF
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from TwoStateDiscriminator_2103 import TwoStateDiscriminator
+from qm import SimulationConfig, LoopbackInterface
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
@@ -15,28 +17,58 @@ from slab.dsfit import*
 ###############
 # qubit_spec_prog:
 ###############
-ge_IF = 100e6
-qubit_LO = qubit_freq - ge_IF
-ef_IF = ge_IF - 140e6
-rr_IF = 100e6
-rr_LO = rr_freq - rr_IF
-
 LO_q.set_frequency(qubit_LO)
 LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(16)
+LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=True)
+LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(18)
 
 f_min = -20e6
 f_max = 20e6
 df = 400e3
 freqs = np.arange(f_min, f_max + df/2, df)
-freqs = freqs + qubit_freq - 140e6
+# freqs = freqs + qubit_freq - 140e6
 
-avgs = 2000
+avgs = 500
 reset_time = 500000
 simulation = 0
+
+
+simulation_config = SimulationConfig(
+    duration=60000,
+    simulation_interface=LoopbackInterface(
+        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.00**2
+    )
+)
+
+biased_th_g = 0.0014
+qmm = QuantumMachinesManager()
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
+
+def active_reset(biased_th, to_excited=False):
+    res_reset = declare(bool)
+    wait(5000//4, 'rr')
+    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+    wait(1000//4, 'rr')
+
+    if to_excited == False:
+        with while_(I < biased_th):
+            align('qubit', 'rr')
+            with if_(~res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
+    else:
+        with while_(I > biased_th):
+            align('qubit', 'rr')
+            with if_(res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
+
 with program() as qubit_ef_spec:
 
     ##############################
@@ -47,7 +79,6 @@ with program() as qubit_ef_spec:
     f = declare(int)        # Frequencies
     I = declare(fixed)
     Q = declare(fixed)
-
     I1 = declare(fixed)
     Q1 = declare(fixed)
     I2 = declare(fixed)
@@ -64,17 +95,21 @@ with program() as qubit_ef_spec:
 
         with for_(f, ef_IF + f_min, f < ef_IF + f_max + df/2, f + df):
 
-            wait(reset_time// 4, 'qubit') # wait for the qubit to relax, several T1s
             update_frequency("qubit_ef", f)
+            active_reset(biased_th_g)
+            align("qubit", 'rr')
             play("pi", "qubit")
             align("qubit", "qubit_ef")
-            play("saturation"*amp(0.05), "qubit_ef")
+            play("saturation"*amp(0.1), "qubit_ef")
             align("qubit_ef", "rr")
-            measure("long_readout", "rr", None, demod.full("long_integW1", I1, 'out1'), demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'), demod.full("long_integW2", Q2, 'out2'))
+            measure("long_readout", "rr", None,
+                    demod.full("long_integW1", I1, 'out1'),
+                    demod.full("long_integW2", Q1, 'out1'),
+                    demod.full("long_integW1", I2, 'out2'),
+                    demod.full("long_integW2", Q2, 'out2'))
 
-            assign(I, I1+Q2)
-            assign(Q, I2-Q1)
+            assign(I, I1-Q2)
+            assign(Q, I2+Q1)
 
             save(I, I_st)
             save(Q, Q_st)

@@ -3,7 +3,7 @@
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ #
 
 from qm import SimulationConfig, LoopbackInterface
-from TwoStateDiscriminator import TwoStateDiscriminator
+from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 from configuration_IQ import config
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -26,7 +26,7 @@ simulation_config = SimulationConfig(
 
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz')
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
 
 wait_time = 500000
 N = 1000
@@ -41,10 +41,10 @@ with program() as power_rabi:
     n = declare(int)
     a = declare(fixed)
     res = declare(bool)
-    statistic = declare(fixed)
+    I = declare(fixed)
 
     res_st = declare_stream()
-    statistic_st = declare_stream()
+    I_st = declare_stream()
 
     with for_(n, 0, n < N, n + 1):
 
@@ -53,15 +53,15 @@ with program() as power_rabi:
             wait(wait_time//4, 'qubit')
             play('gaussian'*amp(a), 'qubit')
             align('qubit', 'rr')
-            discriminator.measure_state("clear", "out1", "out2", res, statistic=statistic)
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
             save(res, res_st)
-            save(statistic, statistic_st)
+            save(I, I_st)
 
 
     with stream_processing():
         res_st.boolean_to_int().buffer(len(a_vec)).average().save('res')
-        statistic_st.buffer(len(a_vec)).average().save('statistic')
+        I_st.buffer(len(a_vec)).average().save('I')
 
 qm = qmm.open_qm(config)
 job = qm.execute(power_rabi, duration_limit=0, data_limit=0)
@@ -69,11 +69,11 @@ job = qm.execute(power_rabi, duration_limit=0, data_limit=0)
 result_handles = job.result_handles
 result_handles.wait_for_all_values()
 res = result_handles.get('res').fetch_all()
-statistic = result_handles.get('statistic').fetch_all()
+I = result_handles.get('I').fetch_all()
 
 plt.plot(res, 'b*')
 plt.figure()
-plt.plot(statistic, 'r*')
+plt.plot(I, 'r*')
 
 
 path = os.getcwd()
@@ -84,5 +84,5 @@ seq_data_file = os.path.join(data_path,
 print(seq_data_file)
 with File(seq_data_file, 'w') as f:
     f.create_dataset("res", data=res)
-    f.create_dataset("st", data=statistic)
+    f.create_dataset("st", data=I)
     f.create_dataset("amps", data=a_vec)

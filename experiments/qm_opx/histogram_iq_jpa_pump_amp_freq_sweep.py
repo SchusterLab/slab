@@ -29,14 +29,14 @@ reset_time = 500000
 avgs = 3000
 simulation = 0
 
-a_min = 0.0
-a_max = 1.0
-da = 0.1
+a_min = 0.01
+a_max = 0.03
+da = 0.001
 amp_vec = np.arange(a_min, a_max + da/2, da)
 
-f_min = -200e3
-f_max = 200e3
-df = 40e3
+f_min = -10e6
+f_max = 10e6
+df = 100e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
 start_time = time.time()

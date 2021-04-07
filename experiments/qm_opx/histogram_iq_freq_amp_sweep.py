@@ -28,12 +28,12 @@ reset_time = 500000
 avgs = 3000
 simulation = 0
 
-a_min = 0.30
-a_max = 0.38
-da = 0.005
+a_min = 0.20
+a_max = 0.50
+da = 0.01
 amp_vec = np.arange(a_min, a_max + da/2, da)
-f_min = -100e3
-f_max = 100e3
+f_min = -200e3
+f_max = 200e3
 df = 40e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 start_time = time.time()
@@ -83,8 +83,8 @@ with program() as histogram:
                         demod.full("long_integW1", I2, 'out2'),
                         demod.full("long_integW2", Q2, 'out2'))
 
-                assign(Ig, I1 + Q2)
-                assign(Qg, I2 - Q1)
+                assign(Ig, I1 - Q2)
+                assign(Qg, I2 + Q1)
                 save(Ig, Ig_st)
                 save(Qg, Qg_st)
 
@@ -100,8 +100,8 @@ with program() as histogram:
                         demod.full("long_integW1", I2, 'out2'),
                         demod.full("long_integW2", Q2, 'out2'))
 
-                assign(Ie, I1 + Q2)
-                assign(Qe, I2 - Q1)
+                assign(Ie, I1 - Q2)
+                assign(Qe, I2 + Q1)
                 save(Ie, Ie_st)
                 save(Qe, Qe_st)
 

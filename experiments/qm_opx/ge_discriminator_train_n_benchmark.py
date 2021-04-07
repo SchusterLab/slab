@@ -1,5 +1,5 @@
 from qm import SimulationConfig, LoopbackInterface
-from TwoStateDiscriminator import TwoStateDiscriminator
+from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 from configuration_IQ import config
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -14,18 +14,48 @@ simulation_config = SimulationConfig(
     )
 )
 
-N = 1000
+N = 5000
 wait_time = 500000
+lsb = True
+qmm = QuantumMachinesManager()
+
+discriminator = TwoStateDiscriminator(qmm=qmm,
+                                      config=config,
+                                      update_tof=False,
+                                      rr_qe='rr',
+                                      path='ge_disc_params.npz',
+                                      lsb=lsb)
+
+use_opt_weights = False
+
+def training_measurement(readout_pulse, use_opt_weights):
+
+    if use_opt_weights:
+        discriminator.measure_state(readout_pulse, "out1", "out2", res, I=I, adc=adc_st)
+    else:
+        measure(readout_pulse, "rr", adc_st,
+                demod.full("clear_integW1", I1, 'out1'),
+                demod.full("clear_integW2", Q1, 'out1'),
+                demod.full("clear_integW1", I2, 'out2'),
+                demod.full("clear_integW2", Q2, 'out2'))
+
+        if lsb == False:
+            assign(I, I1 + Q2)
+            assign(Q, -Q1 + I2)
+        else:
+            assign(I, I1 - Q2)
+            assign(Q, Q1 + I2)
 
 with program() as training_program:
 
     n = declare(int)
     I = declare(fixed)
-    Q = declare(fixed)
+    Q = declare(fixed, value=0)
     I1 = declare(fixed)
     Q1 = declare(fixed)
     I2 = declare(fixed)
     Q2 = declare(fixed)
+    res = declare(bool)
 
     I_st = declare_stream()
     Q_st = declare_stream()
@@ -34,29 +64,15 @@ with program() as training_program:
     with for_(n, 0, n < N, n + 1):
 
         wait(wait_time, "rr")
-        measure("long_readout", "rr", adc_st,
-                demod.full("long_integW1", I1, 'out1'),
-                demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),
-                demod.full("long_integW2", Q2, 'out2'))
-        assign(I, I1 - Q2)
-        assign(Q, Q1 + I2)
+        training_measurement("clear", use_opt_weights=use_opt_weights)
         save(I, I_st)
         save(Q, Q_st)
 
         align("qubit", "rr")
-
         wait(wait_time, "qubit")
         play("pi", "qubit")
         align("qubit", "rr")
-        measure("long_readout", "rr", adc_st,
-                demod.full("long_integW1", I1, 'out1'),
-                demod.full("long_integW2", Q1, 'out1'),
-                demod.full("long_integW1", I2, 'out2'),
-                demod.full("long_integW2", Q2, 'out2'))
-
-        assign(I, I1 - Q2)
-        assign(Q, Q1 + I2)
+        training_measurement("clear", use_opt_weights=use_opt_weights)
         save(I, I_st)
         save(Q, Q_st)
 
@@ -66,57 +82,61 @@ with program() as training_program:
         adc_st.input1().with_timestamps().save_all("adc1")
         adc_st.input2().save_all("adc2")
 
-
 # training + testing to get fidelity:
-qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, False, 'rr', 'ge_disc_params.npz')
 discriminator.train(program=training_program, plot=True, dry_run=False, use_hann_filter=False)
 
-with program() as test_program:
+with program() as benchmark_readout:
 
     n = declare(int)
     res = declare(bool)
-    statistic = declare(fixed)
+    I = declare(fixed)
+    Q = declare(fixed)
 
     res_st = declare_stream()
-    statistic_st = declare_stream()
+    I_st = declare_stream()
+    Q_st = declare_stream()
 
     with for_(n, 0, n < N, n + 1):
 
         wait(wait_time, "rr")
-        discriminator.measure_state("long_readout", "out1", "out2", res, statistic=statistic)
+        discriminator.measure_state("clear", "out1", "out2", res, I=I, Q=Q)
         save(res, res_st)
-        save(statistic, statistic_st)
-
+        save(I, I_st)
+        save(Q, Q_st)
 
         align("qubit", "rr")
-
         wait(wait_time, "qubit")
         play("pi", "qubit")
         align("qubit", "rr")
-        discriminator.measure_state("long_readout", "out1", "out2", res, statistic=statistic)
+        discriminator.measure_state("clear", "out1", "out2", res, I=I, Q=Q)
         save(res, res_st)
-        save(statistic, statistic_st)
+        save(I, I_st)
+        save(Q, Q_st)
 
         seq0 = [0, 1] * N
 
     with stream_processing():
         res_st.save_all('res')
-        statistic_st.save_all('statistic')
+        I_st.save_all('I')
+        Q_st.save_all('Q')
 
 qm = qmm.open_qm(config)
-job = qm.execute(test_program, duration_limit=0, data_limit=0)
+job = qm.execute(benchmark_readout, duration_limit=0, data_limit=0)
 
 result_handles = job.result_handles
 result_handles.wait_for_all_values()
 res = result_handles.get('res').fetch_all()['value']
-statistic = result_handles.get('statistic').fetch_all()['value']
+I = result_handles.get('I').fetch_all()['value']
+Q = result_handles.get('Q').fetch_all()['value']
 
 plt.figure()
-plt.hist(statistic[np.array(seq0) == 0], 50)
-plt.hist(statistic[np.array(seq0) == 1], 50)
+plt.hist(I[np.array(seq0) == 0], 50)
+plt.hist(I[np.array(seq0) == 1], 50)
 plt.plot([discriminator.get_threshold()] * 2, [0, 60], 'g')
 plt.show()
+
+plt.figure()
+plt.plot(I, Q, '.')
 
 p_s = np.zeros(shape=(2, 2))
 for i in range(2):
@@ -129,7 +149,7 @@ ax = plt.subplot()
 sns.heatmap(p_s, annot=True, ax=ax, fmt='g', cmap='Blues')
 
 ax.set_xlabel('Predicted labels')
-ax.set_ylabel('True labels')
+ax.set_ylabel('Prepared labels')
 ax.set_title('Confusion Matrix')
 ax.xaxis.set_ticklabels(labels)
 ax.yaxis.set_ticklabels(labels)

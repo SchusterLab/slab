@@ -23,7 +23,7 @@ simulation_config = SimulationConfig(
 N = 3000
 wait_time = 500000
 
-opt_for_train = True
+opt_for_train = False
 
 with program() as training_program:
 
@@ -43,12 +43,12 @@ with program() as training_program:
 
         wait(wait_time, "rr")
 
-
         measure("clear", "rr", adc_st,
                 demod.full("clear_integW1", I1, 'out1'),
                 demod.full("clear_integW2", Q1, 'out1'),
                 demod.full("clear_integW1", I2, 'out2'),
                 demod.full("clear_integW2", Q2, 'out2'))
+
         assign(I, I1 - Q2)
         assign(Q, Q1 + I2)
         save(I, I_st)
@@ -78,9 +78,10 @@ with program() as training_program:
 
 
 # training + testing to get fidelity:
-for i in [5]:
+for i in [12]:
     qmm = QuantumMachinesManager()
-    opt_readout = "C:\\_Lib\\python\\slab\\experiments\\qm_opx\\pulses\\0000{}_readout_optimal_pulse.h5".format(i)
+    opt_readout = "C:\\_Lib\\python\\slab\\experiments\\qm_opx\\pulses\\" + str(i).zfill(5) + "_readout_optimal_pulse.h5"
+
     with File(opt_readout,'r') as a:
         opt_amp = np.array(a['I_wf'])
     opt_len = len(opt_amp)

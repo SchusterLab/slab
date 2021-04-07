@@ -102,7 +102,7 @@ def imbalancesMap():
     phi_max = 0.04
     dphi = 0.001
 
-    g_min = 0.000
+    g_min = 0.005
     g_max = 0.010
     dg = 0.001
     phi = np.arange(phi_min, phi_max + dphi/2, dphi)
@@ -127,13 +127,13 @@ def imbalancesMap():
 def gradImbalances(phase_, gain_):
 
     eps = 0.0002
-    qm.set_mixer_correction("mixer_storage", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_, phase_ + eps))
+    qm.set_mixer_correction("mixer_storage", int(storage_IF), int(storage_LO), IQ_imbalance_corr(gain_, phase_ + eps))
     a1 = get_amp()
-    qm.set_mixer_correction("mixer_storage", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_, phase_ - eps))
+    qm.set_mixer_correction("mixer_storage", int(storage_IF), int(storage_LO), IQ_imbalance_corr(gain_, phase_ - eps))
     a2 = get_amp()
-    qm.set_mixer_correction("mixer_storage", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_ + eps, phase_))
+    qm.set_mixer_correction("mixer_storage", int(storage_IF), int(storage_LO), IQ_imbalance_corr(gain_ + eps, phase_))
     a3 = get_amp()
-    qm.set_mixer_correction("mixer_storage", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(gain_ - eps, phase_))
+    qm.set_mixer_correction("mixer_storage", int(storage_IF), int(storage_LO), IQ_imbalance_corr(gain_ - eps, phase_))
     a4 = get_amp()
 
     gradx = (a2 - a1) / (2 * eps)
@@ -165,7 +165,7 @@ def grad_descent(x0, y0, peak):
         raise ValueError("Unexpected peak value")
 
     g = 1e-7
-    precision = 0.0000003
+    precision = 0.00001 #0.0000003
     prev_step_size_x = precision + 1
     prev_step_size_y = precision + 1
 
@@ -260,7 +260,7 @@ indices = np.where(amps_grid == np.min(amps_grid))
 phase0 = phase_grid[indices[0][0]][indices[1][0]]
 gain0 = gain_grid[indices[0][0]][indices[1][0]]
 print("phase_min = {}, gain_min = {}".format(phase0, gain0))
-# phasef, gainf, phase_track, ogain_track = grad_descent(phase0, gain0, "LSB")
+phasef, gainf, phase_track, ogain_track = grad_descent(phase0, gain0, "LSB")
 
 
 # offI = 0.015000000000000003, offQ = -0.06599999999999995

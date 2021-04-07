@@ -74,8 +74,8 @@ with program() as ramsey:
                     demod.full("long_integW1", I2, 'out2'),
                     demod.full("long_integW2", Q2, 'out2'))
 
-            assign(I, I1+Q2)
-            assign(Q, I2-Q1)
+            assign(I, I1-Q2)
+            assign(Q, I2+Q1)
 
             save(I, I_st)
             save(Q, Q_st)
@@ -112,6 +112,7 @@ else:
 
     times = 4*times/1e3
 
+    plt.plot(I)
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
