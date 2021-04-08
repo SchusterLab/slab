@@ -1,6 +1,6 @@
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 from qm import SimulationConfig, LoopbackInterface
-from configuration_IQ import config, ge_IF, two_chi
+from configuration_IQ import config, ge_IF, two_chi, biased_th_g
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -28,7 +28,6 @@ simulation_config = SimulationConfig(
     )
 )
 
-biased_th_g = 0.0014
 qmm = QuantumMachinesManager()
 discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
 

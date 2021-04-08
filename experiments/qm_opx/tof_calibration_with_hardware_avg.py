@@ -6,11 +6,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from slab import*
 from slab.instruments import instrumentmanager
-im = InstrumentManager()
-LO = im['RF8']
-LO.set_frequency(rr_LO)
-LO.set_ext_pulse(mod=False)
-LO.set_power(18)
+# im = InstrumentManager()
+# LO = im['RF8']
+# LO.set_frequency(rr_LO)
+# LO.set_ext_pulse(mod=False)
+# LO.set_power(18)
 
 simulation = 0
 with program() as digital_train:
@@ -23,14 +23,16 @@ with program() as tof_calibration:
     adc_st = declare_stream(adc_trace=True)
     i = declare(int)
     # update_frequency("rr", 100e6)
-    with for_(i, 0, i < 10, i+1):
-        reset_phase('rr')
-        # wait(500000//4, "qubit") # off 1.6 micro
-        # play('pi', 'qubit')
-        # align('qubit','rr')
+
+    frame_rotation_2pi(-0.64, 'jpa_pump')
+    with for_(i, 0, i < 1, i+1):
+        # reset_frame('jpa_pump')
+        # reset_frame('rr')
+        # frame_rotation_2pi(0.25, 'jpa_pump')
         wait(50000//4, 'rr')
-        measure('long_readout', "rr", adc_st) # 400ns
-        # measure('clear', "rr", adc_st) # 400ns
+        align("rr", "jpa_pump")
+        play('pump_square'*amp(0.04), 'jpa_pump')
+        measure('clear', "rr", adc_st) # 400ns
 
     with stream_processing():
         adc_st.input1().average().save("adcI")
@@ -51,6 +53,8 @@ else:
     adcQ_handle = res_handles.get("adcQ")
     I_avg = adcI_handle.fetch_all()
     Q_avg = adcQ_handle.fetch_all()
+    print(np.mean(np.abs(I_avg)))
+    print(np.mean(np.abs(Q_avg)))
     plt.plot(I_avg)
     plt.plot(Q_avg)
     plt.axhline(y=0)

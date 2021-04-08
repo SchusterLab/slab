@@ -123,6 +123,7 @@ else:
     I = result_handles.get('I').fetch_all()
     job.halt()
 
+
     plt.plot(res)
 
     times = 4*times/1e3

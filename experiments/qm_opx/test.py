@@ -69,11 +69,12 @@ def time_rabi(expt_cfg, opx_config):
     dt = expt_cfg['dt']
     pulse = expt_cfg['pulse_type']
 
-    if pulse =='square':
-        amp_vec  = a*[np.ones(len(t_vec))]
-
     t_vec = np.arange(t_min, t_max + dt/2, dt)
 
+    if pulse==gauss and t_min < 16:
+        print('Error: the total length of the pulse should be > 16ns')
+    else:
+        pass
     n = declare(int)
     t = declare(int)
     res = declare(bool)
@@ -91,7 +92,7 @@ def time_rabi(expt_cfg, opx_config):
                 active_reset(biased_th_g)
                 # wait(reset_time//4, 'qubit')
                 align('qubit', 'rr')
-                play('CW'*amp(a), 'qubit', duration=t)
+                play('pulse'*amp(a), 'qubit', duration=t)
                 align('qubit', 'rr')
                 discriminator.measure_state("clear", "out1", "out2", res, I=I)
 

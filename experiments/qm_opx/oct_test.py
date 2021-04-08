@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_freq, rr_LO, qubit_LO, ge_IF, storage_IF, storage_freq, storage_LO
+from configuration_IQ import config, qubit_freq, rr_LO, qubit_LO, ge_IF,  biased_th_g
 from qm.qua import *
 from qm import SimulationConfig
 from qm import SimulationConfig, LoopbackInterface
@@ -12,21 +12,7 @@ from slab.dsfit import*
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
-
 import time
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-LO_s  = im['sccav']
-
-# LO_s.set_frequency(storage_LO)
-# LO_s.set_power(12.0)
-# LO_q.set_frequency(qubit_LO)
-# LO_q.set_ext_pulse(mod=False)
-# LO_q.set_power(18)
-# LO_r.set_frequency(rr_LO)
-# LO_r.set_ext_pulse(mod=False)
-# LO_r.set_power(18)
 
 simulation_config = SimulationConfig(
     duration=60000,
@@ -37,14 +23,13 @@ simulation_config = SimulationConfig(
 
 qmm = QuantumMachinesManager()
 discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
-biased_th = 0.0012
 
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -5e6
-f_max = 1e6
-df = 100e3
+f_min = -0.5e6
+f_max = 0.5e6
+df = 20e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
 # filename = 'oct_pulses/g1.h5'

@@ -1,4 +1,4 @@
-from configuration_IQ import config, ge_IF
+from configuration_IQ import config, ge_IF, biased_th_g
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -37,7 +37,6 @@ simulation_config = SimulationConfig(
     )
 )
 
-biased_th_g = 0.0012
 qmm = QuantumMachinesManager()
 discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params.npz', lsb=True)
 

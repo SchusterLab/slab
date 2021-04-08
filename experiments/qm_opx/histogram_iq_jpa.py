@@ -59,9 +59,8 @@ with program() as histogram:
 
         """Just readout without playing anything"""
         wait(reset_time // 4, "rr")
-        # reset_phase("jpa_pump")
         align("rr", "jpa_pump")
-        play('pump_square', 'jpa_pump')
+        play('pump_square'*amp(0.04), 'jpa_pump')
         measure("clear", "rr", None,
                 demod.full("clear_integW1", I1, 'out1'),
                 demod.full("clear_integW2", Q1, 'out1'),
@@ -77,12 +76,10 @@ with program() as histogram:
 
         """Play a ge pi pulse and then readout"""
         wait(reset_time // 4, "qubit")
-        # reset_phase("jpa_pump")
         play("pi", "qubit")
         align("qubit", "rr")
         align("rr", "jpa_pump")
-        # frame_rotation_2pi(-np.pi/32, "jpa_pump")
-        play('pump_square', 'jpa_pump')
+        play('pump_square'*amp(0.04), 'jpa_pump')
         measure("clear", "rr", None,
                 demod.full("clear_integW1", I1, 'out1'),
                 demod.full("clear_integW2", Q1, 'out1'),
@@ -135,13 +132,13 @@ else:
     plt.plot(Ig, Qg, '*')
     plt.plot(Ie, Qe, '*')
 
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'histogram_jpa', suffix='.h5'))
-    print(seq_data_file)
-    with File(seq_data_file, 'w') as f:
-        dset = f.create_dataset("ig", data=Ig)
-        dset = f.create_dataset("qg", data=Qg)
-        dset = f.create_dataset("ie", data=Ie)
-        dset = f.create_dataset("qe", data=Qe)
+    # path = os.getcwd()
+    # data_path = os.path.join(path, "data/")
+    # seq_data_file = os.path.join(data_path,
+    #                              get_next_filename(data_path, 'histogram_jpa', suffix='.h5'))
+    # print(seq_data_file)
+    # with File(seq_data_file, 'w') as f:
+    #     dset = f.create_dataset("ig", data=Ig)
+    #     dset = f.create_dataset("qg", data=Qg)
+    #     dset = f.create_dataset("ie", data=Ie)
+    #     dset = f.create_dataset("qe", data=Qe)

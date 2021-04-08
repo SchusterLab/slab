@@ -5,23 +5,16 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 import numpy as np
 from slab import*
-from slab.instruments import instrumentmanager
-from slab.dsfit import*
 from h5py import File
 import os
-from slab.dsfit import*
 from slab.dataanalysis import get_next_filename
-im = InstrumentManager()
-LO_r = im['RF8']
+
+"""readout resonator spectroscopy with an optimal readout shape, varying the IF frequency"""
 
 f_min = -2.5e6
 f_max = 2.5e6
 df = 25e3
 f_vec = rr_freq - np.arange(f_min, f_max + df/2, df)
-
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
 
 avgs = 2000
 reset_time = 50000

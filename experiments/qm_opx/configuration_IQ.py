@@ -39,12 +39,10 @@ rr_amp = 1.0 *0.4
 
 biased_th_g = 0.0012
 
-
 pump_LO = rr_LO
 pump_IF = 100e6
 
-pump_amp = 1.0*0.001
-pump_len = long_redout_len
+pump_amp = 1.0
 ####---------------------####
 storage_freq = 6.01124448e9
 storage_LO = 6.111e9
@@ -65,7 +63,7 @@ half_pi_len = 16
 half_pi_amp = pi_amp
 
 pi_len_resolved = 3000
-Pi_amp_resolved = 0.0038
+Pi_amp_resolved = 0.0037
 
 pi_ef_len = 32
 pi_ef_amp = 0.4222
@@ -74,6 +72,7 @@ opt_readout = "C:\\_Lib\\python\\slab\\experiments\\qm_opx\\pulses\\00019_readou
 with File(opt_readout,'r') as a:
     opt_amp = np.array(a['I_wf'])
 opt_len = len(opt_amp)
+pump_len = opt_len
 
 oct_len = 1000
 
@@ -235,7 +234,6 @@ config = {
                 },
             },
         },
-
         'jpa_pump': {
             'mixInputs': {
                 'I': ('con1', 9),
@@ -260,7 +258,7 @@ config = {
 
         "CW": {
             'operation': 'control',
-            'length': 60000,  #ns,
+            'length': 600000,  #ns,
             'waveforms': {
                 'I': 'const_wf',
                 'Q': 'zero_wf'
