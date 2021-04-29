@@ -4,6 +4,7 @@
 #define HANDLER_ENTRY(NAME, np) { #NAME, handle_ ## NAME, np}
 
 int handle_INIT(int argc, String argv[]);
+int handle_REINIT(int argc, String argv[]);
 int handle_SET(int argc, String argv[]);
 int handle_READ(int argc, String argv[]);
 int handle_RAMP(int argc, String argv[]);
@@ -22,6 +23,7 @@ typedef struct handler_entry
 
 handler_entry handlers[] = {
                                 HANDLER_ENTRY(INIT, 0), 
+                                HANDLER_ENTRY(REINIT,0),
                                 HANDLER_ENTRY(SET, 2), 
                                 HANDLER_ENTRY(READ, 1), 
                                 HANDLER_ENTRY(RAMP, 4), 
@@ -120,6 +122,17 @@ int handle_INIT(int argc, String argv[])
   return 0;
 }
 
+int handle_REINIT(int argc, String argv[])
+{
+  Serial.println("ReInitialization");
+  for (int i=0;i<num_dacs;i++){
+    dacs[i].reinitialize_DAC();
+    delay(20);
+  }
+  Serial.println("Reinitialization Complete");
+  return 0;
+}
+
 
 int handle_SET(int argc, String argv[])
 {
@@ -154,6 +167,16 @@ int handle_RAMP(int argc, String argv[])
   return 0;
 }
 
+int handle_PARALLELRAMP(int argc,String argv[])
+{
+  long dac_valarray = {argv[2].toInt(),argv[3].toInt(),argv[4].toInt(),argv[5].toInt(),argv[6].toInt(),argv[7].toInt(),argv[8].toInt(),argv[9].toInt()}
+  step_size = argv[10].toInt()
+  step_time = argv[11].toInt()
+  dacs[dac_num - 1].parallelramp(dav_valarray, step_size, step_time);
+  Serial.println("DAC RAMP DONE");
+  return 0;
+}
+
 
 int handle_HELP(int argc, String argv[])
 {
@@ -176,6 +199,7 @@ void print_help_message() {
   Serial.println("Ramp voltage: RAMP [DAC#] [BITCODE] [STEP_SIZE] [STEP_TIME]");
   Serial.println("Read voltage: READ [DAC#]");
   Serial.println("Initialize dacs: INIT [opt:DAC#]");
+  Serial.println("ReInitialize dacs: REINIT [opt: DAC#]");
   Serial.println("Help: HELP");
   Serial.println("1 bit = 38 microVolts");
   Serial.println("1 milliVolt = 26.2 bits");

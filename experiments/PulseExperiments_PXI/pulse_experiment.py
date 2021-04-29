@@ -33,8 +33,8 @@ class Experiment:
         #self.fluxbias.setvoltage(1,0)
         time.sleep(1)
 
-        try: self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
-        except: print("Not connected to keysight PXI")
+        self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
+        #except: print("Not connected to keysight PXI")
 
         try: self.drive_los = [im[lo] for lo in self.hardware_cfg['drive_los']]
         except: print ("No drive function generator specified in hardware config / failure to connect with im()")
@@ -246,7 +246,6 @@ class Experiment:
 
     def initiate_readout_attenuators(self):
         try:
-            for ii, d in enumerate(self.readout_attens):
                 d.set_attenuator(self.quantum_device_cfg['readout_drive_digital_attenuation'])
                 print("set readout attenuator")
         except:

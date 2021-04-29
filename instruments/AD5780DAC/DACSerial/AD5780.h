@@ -42,7 +42,7 @@ class AD5780
     public:
         AD5780(int sync);
         void initialize_DAC();
-        
+        void reinitialize_DAC();
         long set_value(long bitcode);
         void set_gcurrval(long input);
         void ramp(long bitcode, long step_size, int delta_t);

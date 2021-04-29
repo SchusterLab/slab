@@ -89,7 +89,14 @@ void AD5780::initialize_DAC() {
     write_register(_sync, init_code);
     Serial.println(read_CTRL_register()); 
     set_value(131071);
-    
+}
+
+/*
+ * Dummy initialize script that should allow handshaking between Arduino and AD5780
+ * After breaking Serial communication.  Re-writes gcurrval to AD5780.
+ */
+void AD5780::reinitialize_DAC() {
+    set_value(gcurrval);
 }
 
 

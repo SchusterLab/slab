@@ -126,16 +126,16 @@ class KeysightSingleQubit:
         self.ff2_module = chassis.getModule(self.ff2_mod_no)
 
         # Initialize channels on fast flux card 1
-        self.ff1_ch_1 = chassis.getChannel(self.out_mod_no, 1)
-        self.ff1_ch_2 = chassis.getChannel(self.out_mod_no, 2)
-        self.ff1_ch_3 = chassis.getChannel(self.out_mod_no, 3)
-        self.ff1_ch_4 = chassis.getChannel(self.out_mod_no, 4)
+        self.ff1_ch_1 = chassis.getChannel(self.ff1_mod_no, 1)
+        self.ff1_ch_2 = chassis.getChannel(self.ff1_mod_no, 2)
+        self.ff1_ch_3 = chassis.getChannel(self.ff1_mod_no, 3)
+        self.ff1_ch_4 = chassis.getChannel(self.ff1_mod_no, 4)
 
         # Initialize channels on fast flux card 2
-        self.ff2_ch_1 = chassis.getChannel(self.out_mod_no, 1)
-        self.ff2_ch_2 = chassis.getChannel(self.out_mod_no, 2)
-        self.ff2_ch_3 = chassis.getChannel(self.out_mod_no, 3)
-        self.ff2_ch_4 = chassis.getChannel(self.out_mod_no, 4)
+        self.ff2_ch_1 = chassis.getChannel(self.ff2_mod_no, 1)
+        self.ff2_ch_2 = chassis.getChannel(self.ff2_mod_no, 2)
+        self.ff2_ch_3 = chassis.getChannel(self.ff2_mod_no, 3)
+        self.ff2_ch_4 = chassis.getChannel(self.ff2_mod_no, 4)
 
         # Initialize channels on qubit IQ pulse card.  Ch1 = AWG I, CH2 = AWG Q
         self.AWG_ch_1 = chassis.getChannel(self.out_mod_no, 1)
