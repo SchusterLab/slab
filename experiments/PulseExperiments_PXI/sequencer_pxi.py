@@ -18,7 +18,14 @@ class Sequencer:
         channels_awg_info = {}
 
         for channel in channels:
-            channels_awg_info[channel] = awg_info[channels_awg[channel]]
+            #changes dt to M#201 cards to 2, but otherwise keeps all the same inputs from keysight_pxi in hardware
+            # config
+            if channels_awg[channel] == "keysight_pxi_M3201A":
+                awg_info_temp = awg_info["keysight_pxi"]
+                awg_info_temp['dt'] = 2
+                channels_awg_info[channel] = awg_info_temp
+            else:
+                channels_awg_info[channel] = awg_info[channels_awg[channel]]
 
         self.channels_awg_info = channels_awg_info
 

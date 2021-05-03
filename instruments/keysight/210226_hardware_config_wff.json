@@ -1,9 +1,14 @@
 {
   "channels": [
-    "charge1_I",
-    "charge1_Q",
-    "readout",
+    "chargeA_I",
+    "chargeA_Q",
+    "chargeB_I",
+    "chargeB_Q",
+    "readoutA",
+    "readoutB",
     "dig_trig",
+    "stab_I",
+    "stab_Q",
     "ff_Q0",
     "ff_Q1",
     "ff_Q2",
@@ -29,10 +34,15 @@
     "dacbox"
   ],
   "channels_awg": {
-    "charge1_I": "keysight_pxi",
-    "charge1_Q": "keysight_pxi",
-    "readout": "keysight_pxi",
-    "dig_trig": "keysight_pxi",
+    "chargeA_I": "keysight_pxi",
+    "chargeA_Q": "keysight_pxi",
+    "chargeB_I": "keysight_pxi",
+    "chargeB_Q": "keysight_pxi",
+    "readoutA": "keysight_pxi_M3201A",
+    "readoutB": "keysight_pxi_M3201A",
+    "stab_I": "keysight_pxi_M3201A",
+    "stab_Q": "keysight_pxi_M3201A",
+    "dig_trig": "keysight_pxi_M3201A",
     "ff_Q0": "keysight_pxi",
     "ff_Q1": "keysight_pxi",
     "ff_Q2": "keysight_pxi",
@@ -75,8 +85,8 @@
       "time_delay": 0,
 
       "waveform_channels": [
-        "charge1_I",
-        "charge1_Q",
+        "chargeA_I",
+        "chargeA_Q",
         "readout",
         "dig_trig",
         "ff_Q0",
@@ -146,6 +156,18 @@
       "m3102a_card_delay": 800,
       "m3102_vpp_range": 1.0
     },
+  },
+
+  "trig_pulse_len": {
+    "default": 100,
+    "alazar": 100,
+    "m8195a": 100
+  },
+  "trigger": {
+    "period_us": 200
+  },
+
+  "Other_awg_info": {
     "tek70001a": {
       "dt": 0.02,
       "min_increment": 16,
@@ -157,17 +179,7 @@
       "amplitude": 1.0,
       "offset": 0.0,
       "trig_delay": 0
-    }
-  },
-
-  "trig_pulse_len": {
-    "default": 100,
-    "alazar": 100,
-    "m8195a": 100
-  },
-  "trigger": {
-    "period_us": 200
-  },
+    },
 
     "alazar": {
     "clock_edge": "rising",
@@ -194,10 +206,9 @@
     "clock_source": "reference",
     "ch1_range": 2.0,
     "ch2_enabled": true,
-    "recordsPerBuffer": 62
-  },
+    "recordsPerBuffer": 62,
+    },
 
-  "Other_awg_info": {
     "m8195a": {
       "dt": 0.0625,
       "min_increment": 2560,
