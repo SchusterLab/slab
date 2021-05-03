@@ -34,7 +34,7 @@ QB_W_FAST_FLUX = [0, 1, 2, 3, 4, 5, 6, 7] #qubits where we will load fast flux w
 class KeysightSingleQubit:
     '''Class designed to implement a simple single qubit experiment given pulse sequences from the Sequencer class. Does  not use
     HVI technology.
-
+=
     Module (slot) 5 is an AWG, used for fast flux pulses
     Module 6 is an AWG, used for fast flux pulses
     Module 7 is an AWG. channel 1 goes to the I input to the mixer, channel 2 goes to the Q input
@@ -66,14 +66,17 @@ class KeysightSingleQubit:
                                        10: key.ModuleType.INPUT})
 
         self.hardware_cfg = hardware_cfg
-        self.out_mod_no = hardware_cfg['awg_info']['keysight_pxi']['out_mod_no'] ## out_mod_no is qubit AWG output
+        self.AWG_mod_no = hardware_cfg['awg_info']['keysight_pxi']['AWG_mod_no'] ## AWG_mod_no is qubit AWG output
         self.marker_mod_no = hardware_cfg['awg_info']['keysight_pxi']['marker_mod_no'] ## marker is a pulse that's on for length that you want LO switch on
-        self.trig_mod_no = hardware_cfg['awg_info']['keysight_pxi']['trig_mod_no'] ## triggers other AWGs / Digitizer (hack solution cuz in the past ppl saw jitter)
+        self.stab_mod_no = hardware_cfg['awg_info']['keysight_pxi']['stab_mod_no'] ## IQ and marker for 
+        # stabilizer, + triggers Digitizer
         self.ff1_mod_no = hardware_cfg['awg_info']['keysight_pxi']['ff1_mod_no'] #4 channels for Q0-Q3 fast flux
         self.ff2_mod_no = hardware_cfg['awg_info']['keysight_pxi']['ff2_mod_no']# 4 channels for Q4-Q7 fast flux
+        self.dig_mod_no = hardware_cfg['awg_info']['keysight_pxi']['dig_mod_no']  # digitizer card
 
         self.dt = hardware_cfg['awg_info']['keysight_pxi']['dt']
         self.dt_dig = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
+        self.dt_m = hardware_cfg['awg_info']['keysight_pxi']['dt_m']
         self.adc_range =  hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']
 
         self.readout_window = np.array(quantum_device_cfg['readout']['window'])
@@ -87,12 +90,12 @@ class KeysightSingleQubit:
         self.ff2_card_delay = hardware_cfg['awg_info']['keysight_pxi']['ff2_card_delay']
 
 
-        print ("Module used for generating Q1 IQ  pulses = ",self.out_mod_no)
+        print ("Module used for generating Q1 IQ  pulses = ",self.AWG_mod_no)
         print ("Module used for generating digital markers for LO = ",self.marker_mod_no)
-        print ("Module used to trigger other modules = ", self.trig_mod_no)
+        print ("Module used to trigger dig and for stabilizer  = ", self.stab_mod_no)
         print("Module used for generating fast flux pluses for Q0-Q3 = ", self.ff1_mod_no)
         print("Module used for generating fast flux pluses for Q4-Q7 = ", self.ff2_mod_no)
-        self.out_mod_nums = [self.out_mod_no, self.marker_mod_no, self.trig_mod_no, self.ff1_mod_no, self.ff2_mod_no]
+        self.out_mod_nums = [self.AWG_mod_no, self.marker_mod_no, self.stab_mod_no, self.ff1_mod_no, self.ff2_mod_no]
 
         self.num_avg = experiment_cfg[name]['acquisition_num']
         self.num_expt = sequences['readout'].shape[0]
@@ -102,15 +105,6 @@ class KeysightSingleQubit:
 
         self.DIG_sampl_record = hardware_cfg['awg_info']['keysight_pxi']['samplesPerRecord']
 
-
-        if 'sideband' in name:
-            self.prep_tek2 = True
-            self.tek2_trigger_delay = int(hardware_cfg['awg_info']['tek70001a']['trig_delay']/100.0)
-        else:
-            self.prep_tek2=False
-            self.tek2_trigger_delay=0
-
-
         self.chassis = chassis
         self.awg_channels = range(1,5)
         self.dig_channels = range(1,5)
@@ -119,11 +113,12 @@ class KeysightSingleQubit:
         # Initialize AWG Cards!
 
         # initialize modules
-        self.AWG_module = chassis.getModule(self.out_mod_no)
+        self.AWG_module = chassis.getModule(self.AWG_mod_no)
         self.m_module = chassis.getModule(self.marker_mod_no)
-        self.trig_module = chassis.getModule(self.trig_mod_no)
+        self.stab_module = chassis.getModule(self.stab_mod_no)
         self.ff1_module = chassis.getModule(self.ff1_mod_no)
         self.ff2_module = chassis.getModule(self.ff2_mod_no)
+        self.DIG_module = chassis.getModule(10)
 
         # Initialize channels on fast flux card 1
         self.ff1_ch_1 = chassis.getChannel(self.ff1_mod_no, 1)
@@ -138,10 +133,10 @@ class KeysightSingleQubit:
         self.ff2_ch_4 = chassis.getChannel(self.ff2_mod_no, 4)
 
         # Initialize channels on qubit IQ pulse card.  Ch1 = AWG I, CH2 = AWG Q
-        self.AWG_ch_1 = chassis.getChannel(self.out_mod_no, 1)
-        self.AWG_ch_2 = chassis.getChannel(self.out_mod_no, 2)
-        self.AWG_ch_3 = chassis.getChannel(self.out_mod_no, 3)
-        self.AWG_ch_4 = chassis.getChannel(self.out_mod_no, 4)
+        self.AWG_ch_1 = chassis.getChannel(self.AWG_mod_no, 1)
+        self.AWG_ch_2 = chassis.getChannel(self.AWG_mod_no, 2)
+        self.AWG_ch_3 = chassis.getChannel(self.AWG_mod_no, 3)
+        self.AWG_ch_4 = chassis.getChannel(self.AWG_mod_no, 4)
 
         # Initialize channels on Marker card. Digital markers for qubit, readout
         self.m_ch_1 = chassis.getChannel(self.marker_mod_no, 1)
@@ -149,11 +144,11 @@ class KeysightSingleQubit:
         self.m_ch_3 = chassis.getChannel(self.marker_mod_no, 3)
         self.m_ch_4 = chassis.getChannel(self.marker_mod_no, 4)
 
-        # Initialize channels card that generates Triggers
-        self.trig_ch_1 = chassis.getChannel(self.trig_mod_no, 1)
-        self.trig_ch_2 = chassis.getChannel(self.trig_mod_no, 2)
-        self.trig_ch_3 = chassis.getChannel(self.trig_mod_no, 3)
-        self.trig_ch_4 = chassis.getChannel(self.trig_mod_no, 4)
+        # Initialize channels card that generates stabilizer stuff, and also triggers the digitizer
+        self.stab_ch_1 = chassis.getChannel(self.stab_mod_no, 1)
+        self.stab_ch_2 = chassis.getChannel(self.stab_mod_no, 2)
+        self.stab_ch_3 = chassis.getChannel(self.stab_mod_no, 3)
+        self.dig_trig_ch = chassis.getChannel(self.stab_mod_no, 4)
 
         # Initialize digitizer card
         # self.DIG_chs = [chassis.getChannel(10, ch) for ch in self.dig_channels]
@@ -161,7 +156,7 @@ class KeysightSingleQubit:
         self.DIG_ch_2 = chassis.getChannel(10, 2)
         self.DIG_ch_3 = chassis.getChannel(10,3)
         self.DIG_ch_4 = chassis.getChannel(10, 4)
-        self.DIG_module = chassis.getModule(10)
+        
 
         self.data_1,self.data_2 = np.zeros((self.num_expt, self.DIG_sampl_record)),np.zeros((self.num_expt, self.DIG_sampl_record))
 
@@ -173,16 +168,16 @@ class KeysightSingleQubit:
     def configureChannels(self, hardware_cfg, experiment_cfg, quantum_device_cfg, name):
         '''Configures the individual channels that are used in the experiment. This section may be modified as needed
         for other experiments. See documentation in KeysightLib for the configure() methods on KeysightChannelIn and
-        KeysightChannelOut. Amplitude is in volts.'''
+        KeysightChannelOut. Amplitude is in Vpp.'''
 
         amp_AWG = hardware_cfg['awg_info']['keysight_pxi']['amplitudes']
         amp_mark = hardware_cfg['awg_info']['keysight_pxi']['amp_mark']
-        amp_trig = hardware_cfg['awg_info']['keysight_pxi']['amp_trig']
+        amp_stab = hardware_cfg['awg_info']['keysight_pxi']['amp_stab']
+        amp_dig_trig = hardware_cfg['awg_info']['keysight_pxi']['amp_dig_trig']
         amp_ff1 = hardware_cfg['awg_info']['keysight_pxi']['amp_ff1']
         amp_ff2 = hardware_cfg['awg_info']['keysight_pxi']['amp_ff2']
         IQ_dc_offset = quantum_device_cfg['pulse_info']['1']['IQ_dc']
-        # dt = hardware_cfg['awg_info']['keysight_pxi']['dt']
-        # dt_dig = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
+
 
         num_avg = experiment_cfg[name]['acquisition_num']
         num_expt = self.num_expt
@@ -219,23 +214,23 @@ class KeysightSingleQubit:
         self.m_ch_4.configure(amplitude=amp_mark[3])
 
         print("Configuring trigger channels")
-        self.trig_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-        self.trig_ch_1.configure(amplitude=amp_trig[0])
-        self.trig_ch_2.configure(amplitude=amp_trig[1])
-        self.trig_ch_3.configure(amplitude=amp_trig[2])
-        self.trig_ch_4.configure(amplitude=amp_trig[3])
-        print ("Card trigger amplitude = ",amp_trig[3])
+        self.stab_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
+        self.stab_ch_1.configure(amplitude=amp_stab[0])
+        self.stab_ch_2.configure(amplitude=amp_stab[1])
+        self.stab_ch_3.configure(amplitude=amp_stab[2])
+        self.dig_trig_ch.configure(amplitude=amp_dig_trig[0])
+        print ("Dig card trigger amplitude = ",amp_dig_trig[0])
 
 
         print ("Setting trigger mode for all channels of all output modules to External")
         for n in range(1, 5):
             self.AWG_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
             self.m_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
-            self.trig_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
+            self.stab_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
             self.ff1_module.AWGtriggerExternalConfig(nAWG=n,
                                                       externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,
                                                       triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
-            self.ff1_module.AWGtriggerExternalConfig(nAWG=n,
+            self.ff2_module.AWGtriggerExternalConfig(nAWG=n,
                                                       externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,
                                                       triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
 
@@ -250,11 +245,14 @@ class KeysightSingleQubit:
                                 trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
                                 cycles_per_return=num_expt)
 
-    def generatemarkers(self,waveform,resample=False,conv_width = 1,trig_delay = 0):
+    def generatemarkers(self,waveform,resample=False, dt_resp = 1, conv_width = 1,trig_delay = 0):
+        """if given a waveform, it will produce square pulses anywhere that waveform isn't zero. Used to generate
+        markers for LOs that get passed through AWGs.
+        resample: if the marker is coming from a card with a half the sample/second rate (ie 500MS/s vs 1GS/s,
+        it will resample the marker array so that the timing comes out right"""
 
-        # markers = np.array([np.append(np.heaviside(np.convolve(abs(w), np.ones((int(self.lo_delay),))/self.lo_delay),0)[int(self.lo_delay/2):],np.zeros(int(self.lo_delay/2))) for w in waveform])
         markers = np.array([np.append(np.heaviside(np.convolve(abs(np.append(w[int(trig_delay):],np.zeros(int(trig_delay)))), np.ones((int(conv_width),)) / conv_width), 0)[int(conv_width / 2):], np.zeros(int(conv_width / 2))) for w in waveform])
-        if resample: return np.array([m[::int(self.dt_dig/self.dt)] for m in markers]) #TODO: should be resamples with dt_marker card, not dt_dig (which happens to be equivalent but come on)
+        if resample: return np.array([m[::int(self.dt_m/self.dt)] for m in markers])
         else:return markers
 
     def generatemastertrigger(self,length,trig_width = 1,trig_delay = 0):
@@ -264,9 +262,12 @@ class KeysightSingleQubit:
         return trig
 
     def sequenceslist(self,sequences,waveform_channels):
+        """takes the sequences arrays produced in "pulse squences" class and stored in "sequences" dict and renames
+        the to  a dictionary called "wv." also makes sure that if a given sequence doesn't include a channel listed in waveform_channels, it gets listed in wv and
+        filled with zeros"""
         wv = {}
         for channel in waveform_channels:
-            if not channel == None: #TODO: I think this should be if not sequences[channel] == None
+            if not sequences[channel] == None:
                 wv[channel] = sequences[channel]
             else:
                 wv[channel] = np.zeros_like(sequences[waveform_channels[0]])
@@ -280,13 +281,13 @@ class KeysightSingleQubit:
         If you accidentally pass in an array containing larger values, the code raises a KeysightError: Invalid Waveform.
 
         Pxi Waveform Channels:
-            waveforms_I: List of numpy arrays representing waveforms (or a 2D array) for the "I" input AWG to the mixer,
+            wv["charge1_I"]: List of numpy arrays representing waveforms (or a 2D array) for the "I" input AWG to the mixer,
                 1 for each unique trial/experiment. Should be the same number of waveforms as num_experiments in the __init__ method.
                 The "inner" array is a waveform, and the "outer" dimension corresponds to the experiment/trial.
                 The QB lo marker is generated using the known placement of IQ pulses.
-            waveforms_Q: Same for the "Q" channel.
+            wv["charge1_Q"]: Same for the "Q" channel.
             readout: Readout waveform used to trigger the readout LO
-            markers_readout: Trigger for the digitizer
+            wv["readout_trig"]: Trigger for the digitizer
 
             The master trigger for all the cards is generated knowing the length of the AWG waveforms using self.generate_trigger
             '''
@@ -297,60 +298,44 @@ class KeysightSingleQubit:
         print('num_expt = {}'.format(num_expt))
         wv = self.sequenceslist(sequences,pxi_waveform_channels)
 
-        # Based on Nelson's original nomenclature
-        waveforms_I = wv["charge1_I"]
-        waveforms_Q = wv["charge1_Q"]
-        readout = wv["readout"] #readout LO marker
-        markers_readout = wv["readout_trig"] #digitizer marker
-        #waveforms for all fast flux channels for qubits specified in QB_W_FAST_FLUX
-        waveforms_ff_Q0 = wv["ff_Q0"]
-        waveforms_ff_Q1 = wv["ff_Q1"]
-        waveforms_ff_Q2 = wv["ff_Q2"]
-        waveforms_ff_Q3 = wv["ff_Q3"]
-        waveforms_ff_Q4 = wv["ff_Q4"]
-        waveforms_ff_Q5 = wv["ff_Q5"]
-        waveforms_ff_Q6 = wv["ff_Q6"]
-        waveforms_ff_Q7 = wv["ff_Q7"]
-
-        AWG_module = self.chassis.getModule(self.out_mod_no)
+        AWG_module = self.chassis.getModule(self.AWG_mod_no)
         m_module = self.chassis.getModule(self.marker_mod_no)
-        trig_module = self.chassis.getModule(self.trig_mod_no)
+        stab_module = self.chassis.getModule(self.stab_mod_no)
         ff1_module = self.chassis.getModule(self.ff1_mod_no)
         ff2_module = self.chassis.getModule(self.ff2_mod_no)
 
-        print ("shape of waveform I",np.shape(waveforms_I))
+        print ("shape of waveform I",np.shape(wv["charge1_I"]))
 
-        if len(waveforms_I) != len(waveforms_Q) or len(waveforms_I) != len(markers_readout) or len(waveforms_I) != len(
-                readout) or len(waveforms_I) != len(waveforms_ff_Q0):
+        if len(wv["charge1_I"]) != len(wv["charge1_Q"]) or len(wv["charge1_I"]) != len(wv["readout_trig"]) or len(wv["charge1_I"]) != len(
+                wv["readout"]) or len(wv["charge1_I"]) != len(wv["ff_Q0"]):
             raise TypeError("Not all waveform lists are the same length")
 
         self.AWG_module.clearAll()
         self.m_module.clearAll()
-        self.trig_module.clearAll()
+        self.stab_module.clearAll()
         self.ff1_module.clearAll()
         self.ff2_module.clearAll()
 
         #dsp = downsampling
-        #markers_readout -> trigger for digitizer card coming from trigger card
+        #wv["dig_trig"] -> trigger for digitizer card coming from trigger card
         #readout_markers -> trigger for readout LO coming from marker card
-        #if marker card is 500MS/s, use dsp version
-        #if marker card is 1Gs/s, use non-dsp-ed version
-        # if trigger card is 500MS/s, use dsp version
-        # if trigger card is 1Gs/s, use non-dsp-ed version
+        #if a card is 500MS/s, use dsp version
+        #if a card is 1Gs/s, use non-dsp-ed version
 
 
         key.Waveform._waveform_number_counter = 0
 
         # Marker array for qb LO, generated from wavefroms_I
-        qubit_marker = self.generatemarkers(waveforms_I)
-        qubit_marker_dsp = self.generatemarkers(waveforms_I,resample=True,conv_width=self.lo_delay,trig_delay=self.trig_delay)
+        qubit_marker = self.generatemarkers(wv["charge1_I"])
+        qubit_marker_dsp = self.generatemarkers(wv["charge1_I"],resample=True,dt_resp=self.dt_m,
+                                                conv_width=self.lo_delay,trig_delay=self.trig_delay)
 
         # marker array for readout LO
-        readout_marker = self.generatemarkers(readout, resample=False)
-        readout_marker_dsp = self.generatemarkers(readout,resample=True,trig_delay=self.trig_delay)
+        readout_marker = self.generatemarkers(wv["readout"], resample=False)
+        readout_marker_dsp = self.generatemarkers(wv["readout"],resample=True,trig_delay=self.trig_delay)
 
-        #marker array for waveform markers_readout, waveform for triggering digitizer card, already resampled
-        card_trig_arr = self.generatemarkers(markers_readout,resample=True)
+        #marker array for waveform wv["readout_trig"], waveform for triggering digitizer card, already resampled
+        card_trig_arr = self.generatemarkers(wv["readout_trig"],resample=True)
 
         #if self.prep_tek2:tek2_marker_dsp =  self.generatemarkers(tek2_marker,resample=True,trig_delay=0.0)
 
@@ -358,11 +343,11 @@ class KeysightSingleQubit:
         trig_arr_awg = self.generatemastertrigger(len(readout_marker[0]), 2 * self.trig_pulse_length,self.abs_trig_delay)
         trig_arr_awg = self.generatemastertrigger(len(readout_marker_dsp[0]), 2 * self.trig_pulse_length,self.abs_trig_delay)
 
-        for i in tqdm(range(len(waveforms_I))):
+        for i in tqdm(range(len(wv["charge1_I"]))):
 
             ## making PXI savvy waveform objects out of the arrays to send out to the PXI
-            wave_I = key.Waveform(np.array(waveforms_I[i]),append_zero=True)  # Have to include append_zero or the triggers get messed up!
-            wave_Q = key.Waveform(waveforms_Q[i], append_zero=True)
+            wave_I = key.Waveform(np.array(wv["charge1_I"][i]),append_zero=True)  # Have to include append_zero or the triggers get messed up!
+            wave_Q = key.Waveform(wv["charge1_Q"][i], append_zero=True)
             m_readout = key.Waveform(readout_marker[i], append_zero=True)
             m_qubit = key.Waveform(qubit_marker[i], append_zero=True)  ## this qubit marker is wrong - Vatsan | Brendan: In what way?
             m_readout_dsp = key.Waveform(readout_marker_dsp[i], append_zero=True)
@@ -370,14 +355,14 @@ class KeysightSingleQubit:
             #if self.prep_tek2:m_tek2_dsp = key.Waveform(tek2_marker_dsp[i], append_zero=True)
             trig = key.Waveform(trig_arr_awg, append_zero=True)
             card_trig = key.Waveform(card_trig_arr[i], append_zero=True)
-            PXIwave_ff_Q0 = key.Waveform(waveforms_ff_Q0[i], append_zero=True)
-            PXIwave_ff_Q1 = key.Waveform(waveforms_ff_Q1[i], append_zero=True)
-            PXIwave_ff_Q2 = key.Waveform(waveforms_ff_Q2[i], append_zero=True)
-            PXIwave_ff_Q3 = key.Waveform(waveforms_ff_Q3[i], append_zero=True)
-            PXIwave_ff_Q4 = key.Waveform(waveforms_ff_Q4[i], append_zero=True)
-            PXIwave_ff_Q5 = key.Waveform(waveforms_ff_Q5[i], append_zero=True)
-            PXIwave_ff_Q6 = key.Waveform(waveforms_ff_Q6[i], append_zero=True)
-            PXIwave_ff_Q7 = key.Waveform(waveforms_ff_Q7[i], append_zero=True)
+            PXIwave_ff_Q0 = key.Waveform(wv["ff_Q0"][i], append_zero=True)
+            PXIwave_ff_Q1 = key.Waveform(wv["ff_Q1"][i], append_zero=True)
+            PXIwave_ff_Q2 = key.Waveform(wv["ff_Q2"][i], append_zero=True)
+            PXIwave_ff_Q3 = key.Waveform(wv["ff_Q3"][i], append_zero=True)
+            PXIwave_ff_Q4 = key.Waveform(wv["ff_Q4"][i], append_zero=True)
+            PXIwave_ff_Q5 = key.Waveform(wv["ff_Q5"][i], append_zero=True)
+            PXIwave_ff_Q6 = key.Waveform(wv["ff_Q6"][i], append_zero=True)
+            PXIwave_ff_Q7 = key.Waveform(wv["ff_Q7"][i], append_zero=True)
 
             #####QB AWG#####
             #Send I,Q, qubit drive waveforms to AWG drive card
@@ -413,17 +398,17 @@ class KeysightSingleQubit:
 
             #####TRIGGER#####
             # Load trigger waveforms to trigger card
-            trig.loadToModule(trig_module)
-            card_trig.loadToModule(trig_module)
+            trig.loadToModule(stab_module)
+            card_trig.loadToModule(stab_module)
 
             #Queue trigger waveforms to trigger channels
-            trig.queue(self.trig_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
-            trig.queue(self.trig_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.qb_lo_delay, cycles=1, prescaler=0)
-            trig.queue(self.trig_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
-            card_trig.queue(self.trig_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=int(self.card_delay/100)+self.tek2_trigger_delay, cycles=1, prescaler=0)
+            trig.queue(self.stab_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
+            trig.queue(self.stab_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.qb_lo_delay, cycles=1, prescaler=0)
+            trig.queue(self.stab_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
+            card_trig.queue(self.dig_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=int(self.card_delay/100)+self.tek2_trigger_delay, cycles=1, prescaler=0)
 
             #Configure trigger module settings
-            self.trig_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
+            self.stab_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
                                                syncMode=1, length=10, delay=0)
 
             #####FAST FLUX MODULE1#####
@@ -482,7 +467,7 @@ class KeysightSingleQubit:
             self.DIG_ch_4.start()
             self.AWG_module.startAll()
             self.m_module.startAll()
-            self.trig_module.startAll()
+            self.stab_module.startAll()
             self.ff1_module.startAll()
             self.ff2_module.startAll()
 
@@ -543,7 +528,7 @@ class KeysightSingleQubit:
             self.DIG_ch_4.start()
             self.AWG_module.startAll()
             self.m_module.startAll()
-            self.trig_module.startAll()
+            self.stab_module.startAll()
 
             for sweep_ct in tqdm(range(self.num_avg)):
                 self.data_1 += np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape)
@@ -649,18 +634,18 @@ def run_keysight(experiment_cfg, hardware_cfg, sequences, name):
         setup.AWG_module.clearAll()
         setup.m_module.stopAll()
         setup.m_module.clearAll()
-        setup.trig_module.stopAll()
-        setup.trig_module.clearAll()
+        setup.stab_module.stopAll()
+        setup.stab_module.clearAll()
         setup.chassis.close()
 
 
 if __name__ == "__main__":
     setup = KeysightSingleQubit()
     try:
-        #waveforms_I, waveforms_Q, readout, qubit = generateWaveforms()
-        #print (len(waveforms_I))
-        waveforms_I = sequences['charge1']
-        setup.loadAndQueueWaveforms(self.out_mod_no, waveforms_I, waveforms_I, waveforms_I, waveforms_I)
+        #wv["charge1_I"], wv["charge1_Q"], readout, qubit = generateWaveforms()
+        #print (len(wv["charge1_I"]))
+        wv["charge1_I"] = sequences['charge1']
+        setup.loadAndQueueWaveforms(self.AWG_mod_no, wv["charge1_I"], wv["charge1_I"], wv["charge1_I"], wv["charge1_I"])
         setup.run()
         save_path = r"S:\_Data\180828 - Manipulate cavity and 3D readout - Cooldown 2\Jupyter notebooks\keysight_rabi_test"
         plt.plot(setup.data_1[40])
