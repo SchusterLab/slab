@@ -80,6 +80,8 @@
     "keysight_pxi": {
       "dt": 1,
       "dt_dig": 2,
+      "dt_m":2,
+      "dt_M3201A":2,
       "min_increment": 32,
       "min_samples": 256,
       "time_delay": 0,

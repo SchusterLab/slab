@@ -75,8 +75,8 @@ class KeysightSingleQubit:
         self.dig_mod_no = hardware_cfg['awg_info']['keysight_pxi']['dig_mod_no']  # digitizer card
 
         self.dt = hardware_cfg['awg_info']['keysight_pxi']['dt']
-        self.dt_dig = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
         self.dt_m = hardware_cfg['awg_info']['keysight_pxi']['dt_m']
+        self.dt_M3201A = hardware_cfg['awg_info']['keysight_pxi']['dt_M3201A']
         self.adc_range =  hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']
 
         self.readout_window = np.array(quantum_device_cfg['readout']['window'])
@@ -245,21 +245,20 @@ class KeysightSingleQubit:
                                 trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
                                 cycles_per_return=num_expt)
 
-    def generatemarkers(self,waveform,resample=False, dt_resp = 1, conv_width = 1,trig_delay = 0):
+    def generatemarkers(self,wvs, channel, dt_src=1, dt_mark = 1, conv_width = 1,trig_delay = 0):
         """if given a waveform, it will produce square pulses anywhere that waveform isn't zero. Used to generate
         markers for LOs that get passed through AWGs.
         resample: if the marker is coming from a card with a half the sample/second rate (ie 500MS/s vs 1GS/s,
         it will resample the marker array so that the timing comes out right"""
-
+        
+        waveform = wvs[channel]
+        
+        #dt_src is dt of the channel you are making markers from, given by the dt of its awg
+        dt_src = self.get_dt_channel(channel)
+        
         markers = np.array([np.append(np.heaviside(np.convolve(abs(np.append(w[int(trig_delay):],np.zeros(int(trig_delay)))), np.ones((int(conv_width),)) / conv_width), 0)[int(conv_width / 2):], np.zeros(int(conv_width / 2))) for w in waveform])
-        if resample: return np.array([m[::int(self.dt_m/self.dt)] for m in markers])
+        if dt_src!=dt_mark: return np.array([m[::int(dt_mark/dt_src)] for m in markers])
         else:return markers
-
-    def generatemastertrigger(self,length,trig_width = 1,trig_delay = 0):
-        trig = np.zeros(length)
-        for i in np.arange(int(trig_delay/self.dt_dig),int((trig_delay + trig_width)/self.dt_dig)):
-            trig[i] = 1
-        return trig
 
     def sequenceslist(self,sequences,waveform_channels):
         """takes the sequences arrays produced in "pulse squences" class and stored in "sequences" dict and renames
@@ -272,6 +271,15 @@ class KeysightSingleQubit:
             else:
                 wv[channel] = np.zeros_like(sequences[waveform_channels[0]])
         return wv
+    
+    def get_dt_channel(self, channel_name):
+        if self.hardware_cfg['channels_awg'][channel_name] == "keysight_pxi_M3201A":
+            dt = self.dt_M3201A
+        else:
+            dt = self.hardware_cfg['awg_info'][['channels_awg'][channel_name]]['dt']
+            
+        return dt
+        
 
 
     def loadAndQueueWaveforms(self, sequences):
@@ -287,7 +295,7 @@ class KeysightSingleQubit:
                 The QB lo marker is generated using the known placement of IQ pulses.
             wv["charge1_Q"]: Same for the "Q" channel.
             readout: Readout waveform used to trigger the readout LO
-            wv["readout_trig"]: Trigger for the digitizer
+            wv["dig_trig"]: Trigger for the digitizer
 
             The master trigger for all the cards is generated knowing the length of the AWG waveforms using self.generate_trigger
             '''
@@ -306,9 +314,14 @@ class KeysightSingleQubit:
 
         print ("shape of waveform I",np.shape(wv["charge1_I"]))
 
-        if len(wv["charge1_I"]) != len(wv["charge1_Q"]) or len(wv["charge1_I"]) != len(wv["readout_trig"]) or len(wv["charge1_I"]) != len(
-                wv["readout"]) or len(wv["charge1_I"]) != len(wv["ff_Q0"]):
-            raise TypeError("Not all waveform lists are the same length")
+        #make sure all waveforms are the same length 
+        for i in range(1,len(wv.keys())):
+            ch1 = wv[wv.keys()[i-1]]
+            dt_ch1 = self.get_dt_channel(wv.keys()[i-1])
+            ch2 = wv[wv.keys()[i]]
+            dt_ch2 = self.get_dt_channel(wv.keys()[i])
+            if len(ch1)*dt_ch1 != len(ch2)*dt_ch2:
+                raise TypeError("Not all waveform lists are the same length")
 
         self.AWG_module.clearAll()
         self.m_module.clearAll()
@@ -316,45 +329,35 @@ class KeysightSingleQubit:
         self.ff1_module.clearAll()
         self.ff2_module.clearAll()
 
-        #dsp = downsampling
-        #wv["dig_trig"] -> trigger for digitizer card coming from trigger card
+        #wv["dig_trig"] -> trigger for digitizer card coming from stab card
         #readout_markers -> trigger for readout LO coming from marker card
-        #if a card is 500MS/s, use dsp version
-        #if a card is 1Gs/s, use non-dsp-ed version
-
 
         key.Waveform._waveform_number_counter = 0
 
         # Marker array for qb LO, generated from wavefroms_I
-        qubit_marker = self.generatemarkers(wv["charge1_I"])
-        qubit_marker_dsp = self.generatemarkers(wv["charge1_I"],resample=True,dt_resp=self.dt_m,
+        qubit_marker = self.generatemarkers(wv, "charge1_I", dt_mark=self.dt_m,
                                                 conv_width=self.lo_delay,trig_delay=self.trig_delay)
 
         # marker array for readout LO
-        readout_marker = self.generatemarkers(wv["readout"], resample=False)
-        readout_marker_dsp = self.generatemarkers(wv["readout"],resample=True,trig_delay=self.trig_delay)
+        readout_marker = self.generatemarkers(wv, "readout", dt_mark = self.dt_m, trig_delay=self.trig_delay)
 
-        #marker array for waveform wv["readout_trig"], waveform for triggering digitizer card, already resampled
-        card_trig_arr = self.generatemarkers(wv["readout_trig"],resample=True)
+        # marker array for stabilizer LO
+        stabilizer_marker = self.generatemarkers(wv, "stab_I", dt_mark=self.dt_m, trig_delay=self.trig_delay)
 
-        #if self.prep_tek2:tek2_marker_dsp =  self.generatemarkers(tek2_marker,resample=True,trig_delay=0.0)
-
-        # ?? array made of readout marker (marker of readout waveform) with delays : used to trigger all outpute modules, already resampled
-        trig_arr_awg = self.generatemastertrigger(len(readout_marker[0]), 2 * self.trig_pulse_length,self.abs_trig_delay)
-        trig_arr_awg = self.generatemastertrigger(len(readout_marker_dsp[0]), 2 * self.trig_pulse_length,self.abs_trig_delay)
+        #marker array for waveform wv["dig_trig"], waveform for triggering digitizer card, already resampled
+        dig_trig = self.generatemarkers(wv, "dig_trig", dt_mark=self.dt_m)
 
         for i in tqdm(range(len(wv["charge1_I"]))):
-
             ## making PXI savvy waveform objects out of the arrays to send out to the PXI
-            wave_I = key.Waveform(np.array(wv["charge1_I"][i]),append_zero=True)  # Have to include append_zero or the triggers get messed up!
-            wave_Q = key.Waveform(wv["charge1_Q"][i], append_zero=True)
-            m_readout = key.Waveform(readout_marker[i], append_zero=True)
-            m_qubit = key.Waveform(qubit_marker[i], append_zero=True)  ## this qubit marker is wrong - Vatsan | Brendan: In what way?
-            m_readout_dsp = key.Waveform(readout_marker_dsp[i], append_zero=True)
-            m_qubit_dsp = key.Waveform(qubit_marker_dsp[i], append_zero=True)
-            #if self.prep_tek2:m_tek2_dsp = key.Waveform(tek2_marker_dsp[i], append_zero=True)
-            trig = key.Waveform(trig_arr_awg, append_zero=True)
-            card_trig = key.Waveform(card_trig_arr[i], append_zero=True)
+            PXIwave_I = key.Waveform(np.array(wv["charge1_I"][i]),append_zero=True)  # Have to include append_zero or the triggers get messed up!
+            PXIwave_Q = key.Waveform(wv["charge1_Q"][i], append_zero=True)
+            PXIwave_stab_I = key.Waveform(np.array(wv["stab_I"][i]),
+                                     append_zero=True)  # Have to include append_zero or the triggers get messed up!
+            PXIwave_stab_Q = key.Waveform(wv["stab_Q"][i], append_zero=True)
+            PXIwave_readout_marker = key.Waveform(readout_marker[i], append_zero=True)
+            PXIwave_qubit_marker = key.Waveform(qubit_marker[i], append_zero=True)  ## this qubit marker is wrong - Vatsan | Brendan: In what way?
+            PXIwave_stabilizer_marker = key.Waveform(stabilizer_marker[i], append_zero=True)
+            PXIwave_dig_trig = key.Waveform(dig_trig[i], append_zero=True)
             PXIwave_ff_Q0 = key.Waveform(wv["ff_Q0"][i], append_zero=True)
             PXIwave_ff_Q1 = key.Waveform(wv["ff_Q1"][i], append_zero=True)
             PXIwave_ff_Q2 = key.Waveform(wv["ff_Q2"][i], append_zero=True)
@@ -366,12 +369,12 @@ class KeysightSingleQubit:
 
             #####QB AWG#####
             #Send I,Q, qubit drive waveforms to AWG drive card
-            wave_I.loadToModule(AWG_module)
-            wave_Q.loadToModule(AWG_module)
+            PXIwave_I.loadToModule(AWG_module)
+            PXIwave_Q.loadToModule(AWG_module)
 
             # Queue I,Q qubit drive waveforms on AWG card. Want to set trigger mode to SWHVITRIG to trigger from computer.
-            wave_I.queue(self.AWG_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay = self.tek2_trigger_delay, cycles = 1, prescaler = 0)
-            wave_Q.queue(self.AWG_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay = self.tek2_trigger_delay, cycles = 1, prescaler = 0)
+            PXIwave_I.queue(self.AWG_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay = self.tek2_trigger_delay, cycles = 1, prescaler = 0)
+            PXIwave_Q.queue(self.AWG_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay = self.tek2_trigger_delay, cycles = 1, prescaler = 0)
 
 
             self.AWG_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
@@ -379,33 +382,34 @@ class KeysightSingleQubit:
 
             #####Marker#####
             #Send marker waveforms to Marker card
-            m_qubit_dsp.loadToModule(m_module)
-            m_readout_dsp.loadToModule(m_module)
+            PXIwave_qubit_marker.loadToModule(m_module)
+            PXIwave_readout_marker.loadToModule(m_module)
 
             # if self.prep_tek2 == True:
             #         m_tek2_dsp.loadToModule(m_module)
 
             # Queue marker waveforms to marker card channels
-            m_qubit_dsp.queue(self.m_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay, cycles=1, prescaler=0)
-            m_readout_dsp.queue(self.m_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay, cycles=1, prescaler=0)
-
-            # if self.prep_tek2 == True:
-            #     m_tek2_dsp.queue(self.m_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
+            PXIwave_qubit_marker.queue(self.m_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay, cycles=1, prescaler=0)
+            PXIwave_readout_marker.queue(self.m_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.tek2_trigger_delay, cycles=1, prescaler=0)
 
             # Configure marker card settings
             self.m_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
                                                  syncMode=1, length=10, delay=0)
 
             #####TRIGGER#####
-            # Load trigger waveforms to trigger card
-            trig.loadToModule(stab_module)
-            card_trig.loadToModule(stab_module)
+            # Load trigger waveforms to stabilizer card
+            PXIwave_stab_I.loadToModule(stab_module)
+            PXIwave_stab_Q.loadToModule(stab_module)
+            PXIwave_stabilizer_marker.loadToModule(stab_module)
+            PXIwave_dig_trig.loadToModule(stab_module)
 
             #Queue trigger waveforms to trigger channels
-            trig.queue(self.stab_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
-            trig.queue(self.stab_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.qb_lo_delay, cycles=1, prescaler=0)
-            trig.queue(self.stab_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
-            card_trig.queue(self.dig_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=int(self.card_delay/100)+self.tek2_trigger_delay, cycles=1, prescaler=0)
+            PXIwave_stab_I.queue(self.stab_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
+            PXIwave_stab_Q.queue(self.stab_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.qb_lo_delay,
+                                 cycles=1, prescaler=0)
+            PXIwave_stabilizer_marker.queue(self.stab_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1,
+                                prescaler=0)
+            PXIwave_dig_trig.queue(self.dig_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=int(self.card_delay/100)+self.tek2_trigger_delay, cycles=1, prescaler=0)
 
             #Configure trigger module settings
             self.stab_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
