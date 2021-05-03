@@ -148,7 +148,7 @@ class KeysightSingleQubit:
         self.stab_ch_1 = chassis.getChannel(self.stab_mod_no, 1)
         self.stab_ch_2 = chassis.getChannel(self.stab_mod_no, 2)
         self.stab_ch_3 = chassis.getChannel(self.stab_mod_no, 3)
-        self.dig_trig_ch = chassis.getChannel(self.stab_mod_no, 4)
+        self.digtzr_trig_ch = chassis.getChannel(self.stab_mod_no, 4)
 
         # Initialize digitizer card
         # self.DIG_chs = [chassis.getChannel(10, ch) for ch in self.dig_channels]
@@ -173,7 +173,7 @@ class KeysightSingleQubit:
         amp_AWG = hardware_cfg['awg_info']['keysight_pxi']['amplitudes']
         amp_mark = hardware_cfg['awg_info']['keysight_pxi']['amp_mark']
         amp_stab = hardware_cfg['awg_info']['keysight_pxi']['amp_stab']
-        amp_dig_trig = hardware_cfg['awg_info']['keysight_pxi']['amp_dig_trig']
+        amp_digtzr_trig = hardware_cfg['awg_info']['keysight_pxi']['amp_digtzr_trig']
         amp_ff1 = hardware_cfg['awg_info']['keysight_pxi']['amp_ff1']
         amp_ff2 = hardware_cfg['awg_info']['keysight_pxi']['amp_ff2']
         IQ_dc_offset = quantum_device_cfg['pulse_info']['1']['IQ_dc']
@@ -218,8 +218,8 @@ class KeysightSingleQubit:
         self.stab_ch_1.configure(amplitude=amp_stab[0])
         self.stab_ch_2.configure(amplitude=amp_stab[1])
         self.stab_ch_3.configure(amplitude=amp_stab[2])
-        self.dig_trig_ch.configure(amplitude=amp_dig_trig[0])
-        print ("Dig card trigger amplitude = ",amp_dig_trig[0])
+        self.digtzr_trig_ch.configure(amplitude=amp_digtzr_trig[0])
+        print ("Dig card trigger amplitude = ",amp_digtzr_trig[0])
 
 
         print ("Setting trigger mode for all channels of all output modules to External")
@@ -295,7 +295,7 @@ class KeysightSingleQubit:
                 The QB lo marker is generated using the known placement of IQ pulses.
             wv["charge1_Q"]: Same for the "Q" channel.
             readout: Readout waveform used to trigger the readout LO
-            wv["dig_trig"]: Trigger for the digitizer
+            wv["digtzr_trig"]: Trigger for the digitizer
 
             The master trigger for all the cards is generated knowing the length of the AWG waveforms using self.generate_trigger
             '''
@@ -329,7 +329,7 @@ class KeysightSingleQubit:
         self.ff1_module.clearAll()
         self.ff2_module.clearAll()
 
-        #wv["dig_trig"] -> trigger for digitizer card coming from stab card
+        #wv["digtzr_trig"] -> trigger for digitizer card coming from stab card
         #readout_markers -> trigger for readout LO coming from marker card
 
         key.Waveform._waveform_number_counter = 0
@@ -344,8 +344,8 @@ class KeysightSingleQubit:
         # marker array for stabilizer LO
         stabilizer_marker = self.generatemarkers(wv, "stab_I", dt_mark=self.dt_m, trig_delay=self.trig_delay)
 
-        #marker array for waveform wv["dig_trig"], waveform for triggering digitizer card, already resampled
-        dig_trig = self.generatemarkers(wv, "dig_trig", dt_mark=self.dt_m)
+        #marker array for waveform wv["digtzr_trig"], waveform for triggering digitizer card, already resampled
+        digtzr_trig = self.generatemarkers(wv, "digtzr_trig", dt_mark=self.dt_m)
 
         for i in tqdm(range(len(wv["charge1_I"]))):
             ## making PXI savvy waveform objects out of the arrays to send out to the PXI
@@ -357,7 +357,7 @@ class KeysightSingleQubit:
             PXIwave_readout_marker = key.Waveform(readout_marker[i], append_zero=True)
             PXIwave_qubit_marker = key.Waveform(qubit_marker[i], append_zero=True)  ## this qubit marker is wrong - Vatsan | Brendan: In what way?
             PXIwave_stabilizer_marker = key.Waveform(stabilizer_marker[i], append_zero=True)
-            PXIwave_dig_trig = key.Waveform(dig_trig[i], append_zero=True)
+            PXIwave_digtzr_trig = key.Waveform(digtzr_trig[i], append_zero=True)
             PXIwave_ff_Q0 = key.Waveform(wv["ff_Q0"][i], append_zero=True)
             PXIwave_ff_Q1 = key.Waveform(wv["ff_Q1"][i], append_zero=True)
             PXIwave_ff_Q2 = key.Waveform(wv["ff_Q2"][i], append_zero=True)
@@ -401,7 +401,7 @@ class KeysightSingleQubit:
             PXIwave_stab_I.loadToModule(stab_module)
             PXIwave_stab_Q.loadToModule(stab_module)
             PXIwave_stabilizer_marker.loadToModule(stab_module)
-            PXIwave_dig_trig.loadToModule(stab_module)
+            PXIwave_digtzr_trig.loadToModule(stab_module)
 
             #Queue trigger waveforms to trigger channels
             PXIwave_stab_I.queue(self.stab_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
@@ -409,7 +409,7 @@ class KeysightSingleQubit:
                                  cycles=1, prescaler=0)
             PXIwave_stabilizer_marker.queue(self.stab_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1,
                                 prescaler=0)
-            PXIwave_dig_trig.queue(self.dig_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=int(self.card_delay/100)+self.tek2_trigger_delay, cycles=1, prescaler=0)
+            PXIwave_digtzr_trig.queue(self.digtzr_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=int(self.card_delay/100)+self.tek2_trigger_delay, cycles=1, prescaler=0)
 
             #Configure trigger module settings
             self.stab_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,

@@ -6,7 +6,7 @@
     "chargeB_Q",
     "readoutA",
     "readoutB",
-    "dig_trig",
+    "digtzr_trig",
     "stab_I",
     "stab_Q",
     "ff_Q0",
@@ -19,16 +19,21 @@
     "ff_Q7",
   ],
   "drive_los": [
-    "scqub"
+    "scqubA",
+    "scqubB",
+    "scstab"
   ],
   "readout_los": [
-    "scred"
+    "scredA",
+    "scredB"
   ],
   "readout_attens": [
-    "readoutattengrb"
+    "readoutattengrbA",
+    "readoutattengrbB"
   ],
   "drive_attens": [
-    "driveattengrb"
+    "driveattengrbA",
+    "driveattengrbB",
   ],
   "fluxbias": [
     "dacbox"
@@ -42,7 +47,7 @@
     "readoutB": "keysight_pxi_M3201A",
     "stab_I": "keysight_pxi_M3201A",
     "stab_Q": "keysight_pxi_M3201A",
-    "dig_trig": "keysight_pxi_M3201A",
+    "digtzr_trig": "keysight_pxi_M3201A",
     "ff_Q0": "keysight_pxi",
     "ff_Q1": "keysight_pxi",
     "ff_Q2": "keysight_pxi",
@@ -52,24 +57,29 @@
     "ff_Q6": "keysight_pxi",
     "ff_Q7": "keysight_pxi",
   },
-  "channels_delay": {
-    "dig_trig": -100,
-    "readout": -10,
-    "ff_Q0": -20,
-    "ff_Q1": -20,
-    "ff_Q2": -20,
-    "ff_Q3": -20,
-    "ff_Q4": -20,
-    "ff_Q5": -20,
-    "ff_Q6": -20,
-    "ff_Q7": -20,
-    "sideband": 0,
-    "tek2_trig": -1500
+  "channels_delay_array_roll_ns": {
+    "chargeA_I": 0,
+    "chargeA_Q": 0,
+    "chargeB_I": 0,
+    "chargeB_Q": 0,
+    "readoutA": 0,
+    "readoutB": 0,
+    "stab_I": 0,
+    "stab_Q": 0,
+    "digtzr_trig": 0,
+    "ff_Q0": 0,
+    "ff_Q1": 0,
+    "ff_Q2": 0,
+    "ff_Q3": 0,
+    "ff_Q4": 0,
+    "ff_Q5": 0,
+    "ff_Q6": 0,
+    "ff_Q7": 0
   },
   "channels_delay_documentation": {
-    "dig_trig_is to digitizer": -100,
+    "digtzr_trig_is to digitizer": -100,
     "readout is to LO": 6,
-    "dig_trig_cw": -2100,
+    "digtzr_trig_cw": -2100,
     "readout_cw": -1994
   },
   "flux_bias_settings": {
@@ -89,8 +99,13 @@
       "waveform_channels": [
         "chargeA_I",
         "chargeA_Q",
-        "readout",
-        "dig_trig",
+        "chargeB_I",
+        "chargeB_Q",
+        "readoutA",
+        "readoutB",
+        "stab_I",
+        "stab_Q",
+        "digtzr_trig",
         "ff_Q0",
         "ff_Q1",
         "ff_Q2",
@@ -99,9 +114,6 @@
         "ff_Q5",
         "ff_Q6",
         "ff_Q7",
-        "tek2_trig",
-        "cavity1_I",
-        "cavity1_Q"
       ],
       "waveform_channel_index": [
         1,
@@ -109,7 +121,7 @@
         1,
         2
       ],
-      "amplitudes": [
+      "amp_awg": [
         1,
         1,
         1,
@@ -121,7 +133,7 @@
         2,
         3
       ],
-      "amp_trig": [
+      "amp_stab": [
         2,
         2,
         2,
@@ -139,24 +151,36 @@
         2,
         2
       ],
-      "lo_delay": 60,
-      "qb_lo_delay": 2,
-      "m3201a_trig_delay": 140,
-      "ff_trig_delay": 140,
-      "prev_m3201...delay": 190,
-      "abs_trig_delay": 100,
-      "ff1_card_delay": 0,
-      "ff2_card_delay": 0,
+
+      "channels_delay_hardware_ns": {
+        "chargeA_I": 0,
+        "chargeA_Q": 0,
+        "chargeB_I": 0,
+        "chargeB_Q": 0,
+        "readoutA": 0,
+        "readoutB": 0,
+        "stab_I": 0,
+        "stab_Q": 0,
+        "digtzr_trig": 0,
+        "ff_Q0": 0,
+        "ff_Q1": 0,
+        "ff_Q2": 0,
+        "ff_Q3": 0,
+        "ff_Q4": 0,
+        "ff_Q5": 0,
+        "ff_Q6": 0,
+        "ff_Q7": 0,
+      },
 
       "ff1_mod_no": 5,
       "ff2_mod_no": 6,
-      "out_mod_no": 7,
+      "awg_mod_no": 7,
       "marker_mod_no": 8,
-      "trig_mod_no": 9,
+      "stab_mod_no": 9,
 
       "samplesPerRecord": 5000,
-      "m3102a_card_delay": 800,
-      "m3102_vpp_range": 1.0
+      "digtzr_card_delay": 800,
+      "digtzr_vpp_range": 1.0
     },
   },
 
