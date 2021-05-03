@@ -76,12 +76,7 @@
     "ff_Q6": 0,
     "ff_Q7": 0
   },
-  "channels_delay_documentation": {
-    "digtzr_trig_is to digitizer": -100,
-    "readout is to LO": 6,
-    "digtzr_trig_cw": -2100,
-    "readout_cw": -1994
-  },
+
   "flux_bias_settings": {
     "ramp_speed": 100,
     "ramp_step": 100
@@ -192,94 +187,4 @@
   "trigger": {
     "period_us": 200
   },
-
-  "Other_awg_info": {
-    "tek70001a": {
-      "dt": 0.02,
-      "min_increment": 16,
-      "min_samples": 4800,
-      "time_delay": 1500,
-      "waveform_channels": [
-        "sideband"
-      ],
-      "amplitude": 1.0,
-      "offset": 0.0,
-      "trig_delay": 0
-    },
-
-    "alazar": {
-    "clock_edge": "rising",
-    "trigger_delay": 0,
-    "ch1_filter": true,
-    "ch1_enabled": true,
-    "samplesPerRecord": 8192,
-    "bufferCount": 20,
-    "trigger_edge1": "rising",
-    "trigger_edge2": "rising",
-    "ch2_range": 2.0,
-    "timeout": 100000,
-    "trigger_level2": 0.5,
-    "trigger_level1": 0.5,
-    "ch2_coupling": "DC",
-    "trigger_coupling": "DC",
-    "ch2_filter": true,
-    "trigger_operation": "or",
-    "ch1_coupling": "DC",
-    "trigger_source2": "disabled",
-    "trigger_source1": "external",
-    "recordsPerAcquisition": 6200,
-    "sample_rate": 1000000,
-    "clock_source": "reference",
-    "ch1_range": 2.0,
-    "ch2_enabled": true,
-    "recordsPerBuffer": 62,
-    },
-
-    "m8195a": {
-      "dt": 0.0625,
-      "min_increment": 2560,
-      "min_samples": 2560,
-      "time_delay": 650,
-      "waveform_channels": [
-        "charge1",
-        "flux1",
-        "charge2",
-        "flux2"
-      ],
-      "amplitudes": [
-        1,
-        1,
-        1,
-        1
-      ]
-    },
-    "tek5014a": {
-      "dt": 0.83333333333,
-      "min_increment": 16,
-      "min_samples": 256,
-      "time_delay": 0,
-      "waveform_channels": [
-        "hetero1_I",
-        "hetero1_Q",
-        "hetero2_I",
-        "hetero2_Q"
-      ],
-      "marker_channels": [
-        "alazar_trig",
-        "readout1_trig",
-        "readout2_trig",
-        "m8195a_trig",
-        null,
-        null,
-        null,
-        null
-      ],
-      "offsets": [
-        -0.007,
-        -0.003,
-        -0.015,
-        0
-      ]
-    }
-  }
 }
