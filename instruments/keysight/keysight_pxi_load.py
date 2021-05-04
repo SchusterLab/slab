@@ -3,21 +3,12 @@
 Created on Thu Sep 13 19:41:56 2018
 
 @author: slab
-
-Module 6 used as AWG:
-    Channel 1 is I
-    Channel 2 is Q
-
-Module 10 is used for reacout.
-    Channel 1 is I
-    Channel 2 is Q
 """
 
 # %pylab inline
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
 from slab.experiments.PulseExperiments_PXI.sequences_pxi import PulseSequences
-from slab.experiments.HVIExperiments import HVIExpLib as exp
 import time
 import numpy as np
 import os
@@ -42,11 +33,8 @@ class KeysightSingleQubit:
     Module 9 is for I, Q, and marker for stabilizer
         ch4 of this trig for the digitizer.
 
-    Module 10 is the digitizer. channel 1 is for readout of I component and channel 2 is for readout from Q component.'''
-
-    ## Outstanding issue - if we upload waveforms that contain all 0's in time for unused space - how are "markers" used at all???
-    ## Answer - markers window the region where pulse sent out to bin output of LO!!!
-
+    Module 10 is the digitizer. channel 1 is for readout of I component and channel 2 is for readout from Q
+    component.'''
     ## LO             _/-\_/-\_/-\_/-\_/-\   # LO always on
     ## Marker         _______|------|______  # marker windows LO output in time w/ AWG signals non-zero state (+ wiggle room!)
     ## AWG Signal     _________/??\________  # AWG card outputs IQ signal to mixer, mixer input is windows LO+marker!
@@ -116,6 +104,8 @@ class KeysightSingleQubit:
         self.ff2_module = chassis.getModule(self.ff2_mod_no)
         self.DIG_module = chassis.getModule(self.dig_mod_no)
 
+        self.out_mods = [self.AWG_module, self.m_module, self.stab_module, self.ff1_module, self.ff2_module]
+
         # Initialize channels on fast flux card 1
         self.ff1_ch_1 = chassis.getChannel(self.ff1_mod_no, 1)
         self.ff1_ch_2 = chassis.getChannel(self.ff1_mod_no, 2)
@@ -152,7 +142,7 @@ class KeysightSingleQubit:
         self.DIG_ch_2 = chassis.getChannel(self.dig_mod_no, 2)
         self.DIG_ch_3 = chassis.getChannel(self.dig_mod_no,3)
         self.DIG_ch_4 = chassis.getChannel(self.dig_mod_no, 4)
-        
+
 
         self.data_1,self.data_2 = np.zeros((self.num_expt, self.DIG_sampl_record)),np.zeros((self.num_expt, self.DIG_sampl_record))
         self.A_I,self.A_Q = np.zeros(self.num_expt), np.zeros(self.num_expt)
