@@ -18,6 +18,9 @@ instruments/awg/.ipynb_checkpoints/test M8195A-checkpoint.ipynb
 instruments/instruments.cfg
 *.dll
 
+# binary
+*.DS_Store
+
 # local
 out
 _test
