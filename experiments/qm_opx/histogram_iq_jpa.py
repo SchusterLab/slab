@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, long_redout_len
+from configuration_IQ import config
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -6,26 +6,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from h5py import File
 from slab import*
-from slab.instruments import instrumentmanager
-from slab.dsfit import*
-
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-
 ##################
 # histogram_prog:
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
 reset_time = 500000
-avgs = 3000
+avgs = 5000
 simulation = 0
+
+phi = 0
+pump_amp = 1.0
+
 with program() as histogram:
 
     ##############################
@@ -54,13 +44,16 @@ with program() as histogram:
     ###############
     # the sequence:
     ###############
+    # reset_frame('jpa_pump')
+    # reset_frame('rr')
+    # frame_rotation_2pi(phi, 'jpa_pump')
 
     with for_(n, 0, n < avgs, n + 1):
 
         """Just readout without playing anything"""
-        wait(reset_time // 4, "rr")
+        wait(reset_time // 4, "jpa_pump")
         align("rr", "jpa_pump")
-        play('pump_square'*amp(0.04), 'jpa_pump')
+        play('pump_square'*amp(pump_amp), 'jpa_pump')
         measure("clear", "rr", None,
                 demod.full("clear_integW1", I1, 'out1'),
                 demod.full("clear_integW2", Q1, 'out1'),
@@ -77,15 +70,13 @@ with program() as histogram:
         """Play a ge pi pulse and then readout"""
         wait(reset_time // 4, "qubit")
         play("pi", "qubit")
-        align("qubit", "rr")
-        align("rr", "jpa_pump")
-        play('pump_square'*amp(0.04), 'jpa_pump')
+        align("qubit", "jpa_pump", 'rr')
+        play('pump_square'*amp(pump_amp), 'jpa_pump')
         measure("clear", "rr", None,
                 demod.full("clear_integW1", I1, 'out1'),
                 demod.full("clear_integW2", Q1, 'out1'),
                 demod.full("clear_integW1", I2, 'out2'),
                 demod.full("clear_integW2", Q2, 'out2'))
-
         assign(Ie, I1 - Q2)
         assign(Qe, I2 + Q1)
         save(Ie, Ie_st)
@@ -103,7 +94,7 @@ qm = qmm.open_qm(config)
 
 if simulation:
     """To simulate the pulse sequence"""
-    job = qm.simulate(histogram, SimulationConfig(150000))
+    job = qm.simulate(histogram, SimulationConfig(15000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 
@@ -115,22 +106,17 @@ else:
     res_handles = job.result_handles
     res_handles.wait_for_all_values()
 
-    Ig_handle = res_handles.get("Ig")
-    Qg_handle = res_handles.get("Qg")
+    Ig = np.array(res_handles.get("Ig").fetch_all()['value'])
+    Qg = np.array(res_handles.get("Qg").fetch_all()['value'])
 
-    Ie_handle = res_handles.get("Ie")
-    Qe_handle = res_handles.get("Qe")
-
-    Ig = np.array(Ig_handle.fetch_all()['value'])
-    Qg = np.array(Qg_handle.fetch_all()['value'])
-
-    Ie = np.array(Ie_handle.fetch_all()['value'])
-    Qe = np.array(Qe_handle.fetch_all()['value'])
+    Ie = np.array(res_handles.get("Ie").fetch_all()['value'])
+    Qe = np.array(res_handles.get("Qe").fetch_all()['value'])
 
     job.halt()
 
-    plt.plot(Ig, Qg, '*')
-    plt.plot(Ie, Qe, '*')
+    plt.plot(Ig, Qg, '.')
+    plt.plot(Ie, Qe, '.')
+    plt.axis('equal')
 
     # path = os.getcwd()
     # data_path = os.path.join(path, "data/")

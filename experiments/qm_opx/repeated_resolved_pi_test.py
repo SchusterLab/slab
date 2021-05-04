@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_LO, rr_LO, ge_IF, qubit_freq
+from configuration_IQ import config, qubit_LO, rr_LO, ge_IF, qubit_freq, biased_th_g
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -6,36 +6,22 @@ from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from slab.instruments import instrumentmanager
-from slab.dsfit import*
 from tqdm import tqdm
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
-
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-
 ##################
 # repeated resolved pi pulse program for single photon counting:
 ##################
-# LO_q.set_frequency(qubit_LO)
-# LO_q.set_ext_pulse(mod=False)
-# LO_q.set_power(18)
-# LO_r.set_frequency(rr_LO)
-# LO_r.set_ext_pulse(mod=False)
-# LO_r.set_power(18)
-
 avgs = 10000
 reset_time = 2500000
 simulation = 0
-two_chi = 1.13e6
+two_chi = 1.118e6
 
 num_pi_pulses = 30
 
-cav_amp = 0.75
-cav_len = 10
+cav_amp = 0.1
+cav_len = 200
 
 simulation_config = SimulationConfig(
     duration=60000,
@@ -44,7 +30,6 @@ simulation_config = SimulationConfig(
     )
 )
 
-biased_th_g = 0.0014
 qmm = QuantumMachinesManager()
 discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
 
@@ -131,7 +116,7 @@ else:
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
     job.halt()
-    #
+
     # data_path = "S:\\_Data\\210326 - QM_OPX\\data\\"
     # seq_data_file = os.path.join(data_path,
     #                              get_next_filename(data_path, 'repeated_resolved_pi_pulse', suffix='.h5'))

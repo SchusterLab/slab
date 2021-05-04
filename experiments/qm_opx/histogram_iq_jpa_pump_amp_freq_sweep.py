@@ -1,42 +1,29 @@
-from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, rr_freq, pump_IF, long_redout_len
+from configuration_IQ import config, pump_IF
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
-# from numpy import *
 from tqdm import tqdm
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import pandas as pd
 from slab import*
-from slab.instruments import instrumentmanager
 from h5py import File
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-
 ##################
 # histogram_prog:
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
 reset_time = 500000
-avgs = 3000
+avgs = 5000
 simulation = 0
 
-a_min = 0.01
-a_max = 0.03
+a_min = 0.050
+a_max = 0.070
 da = 0.001
 amp_vec = np.arange(a_min, a_max + da/2, da)
 
-f_min = -10e6
-f_max = 10e6
-df = 100e3
+f_min = -15e6
+f_max = -5e6
+df = 400e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
 start_time = time.time()
@@ -68,7 +55,6 @@ with program() as histogram:
     Ie_st = declare_stream()
     Qe_st = declare_stream()
 
-
     with for_(a, a_min, a < a_max + da/2, a + da):
 
         with for_(f, pump_IF + f_min, f < pump_IF + f_max + df/2, f + df):
@@ -78,36 +64,35 @@ with program() as histogram:
             with for_(n, 0, n < avgs, n + 1):
 
                 """Just readout without playing anything"""
-                wait(reset_time//4, "rr")
+                wait(reset_time//4, "jpa_pump")
                 align("rr", "jpa_pump")
-                play('pump_square'*amp(a), 'jpa_pump', duration=long_redout_len)
-                measure("long_readout", "rr", None,
-                        demod.full("long_integW1", I1, 'out1'),
-                        demod.full("long_integW2", Q1, 'out1'),
-                        demod.full("long_integW1", I2, 'out2'),
-                        demod.full("long_integW2", Q2, 'out2'))
+                play('pump_square'*amp(a), 'jpa_pump')
+                measure("clear", "rr", None,
+                        demod.full("clear_integW1", I1, 'out1'),
+                        demod.full("clear_integW2", Q1, 'out1'),
+                        demod.full("clear_integW1", I2, 'out2'),
+                        demod.full("clear_integW2", Q2, 'out2'))
 
-                assign(Ig, I1 + Q2)
-                assign(Qg, I2 - Q1)
+                assign(Ig, I1 - Q2)
+                assign(Qg, I2 + Q1)
                 save(Ig, Ig_st)
                 save(Qg, Qg_st)
 
-                align("qubit", "rr")
+                align("qubit", "rr", "jpa_pump")
 
                 """Play a ge pi pulse and then readout"""
                 wait(reset_time // 4, "qubit")
                 play("pi", "qubit")
-                align("qubit", "rr")
-                align("rr", "jpa_pump")
-                play('pump_square'*amp(a), 'jpa_pump', duration=long_redout_len)
-                measure("long_readout", "rr", None,
-                        demod.full("long_integW1", I1, 'out1'),
-                        demod.full("long_integW2", Q1, 'out1'),
-                        demod.full("long_integW1", I2, 'out2'),
-                        demod.full("long_integW2", Q2, 'out2'))
+                align("qubit", "rr", "jpa_pump")
+                play('pump_square'*amp(a), 'jpa_pump')
+                measure("clear", "rr", None,
+                        demod.full("clear_integW1", I1, 'out1'),
+                        demod.full("clear_integW2", Q1, 'out1'),
+                        demod.full("clear_integW1", I2, 'out2'),
+                        demod.full("clear_integW2", Q2, 'out2'))
 
-                assign(Ie, I1 + Q2)
-                assign(Qe, I2 - Q1)
+                assign(Ie, I1 - Q2)
+                assign(Qe, I2 + Q1)
                 save(Ie, Ie_st)
                 save(Qe, Qe_st)
 

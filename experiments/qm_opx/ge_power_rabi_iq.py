@@ -5,25 +5,11 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from slab.instruments import instrumentmanager
-from slab.dsfit import*
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
 
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-##################
-# power_rabi_prog:
-##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
+"""Qubit power rabi"""
 a_min = 0.0
 a_max = 1.0
 da = 0.01
@@ -105,12 +91,12 @@ else:
     plt.plot(amps, I, '.-')
     plt.plot(amps, Q, '.-')
 
-    # path = os.getcwd()
-    # data_path = os.path.join(path, "data/")
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'power_rabi', suffix='.h5'))
-    # print(seq_data_file)
-    # with File(seq_data_file, 'w') as f:
-    #     f.create_dataset("I", data=I)
-    #     f.create_dataset("Q", data=Q)
-    #     f.create_dataset("amps", data=amps)
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'power_rabi', suffix='.h5'))
+    print(seq_data_file)
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=Q)
+        f.create_dataset("amps", data=amps)

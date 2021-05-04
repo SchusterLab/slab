@@ -10,7 +10,7 @@ import seaborn as sns
 simulation_config = SimulationConfig(
     duration=60000,
     simulation_interface=LoopbackInterface(
-        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.00**2
+        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.001**2
     )
 )
 
@@ -23,7 +23,7 @@ discriminator = TwoStateDiscriminator(qmm=qmm,
                                       config=config,
                                       update_tof=False,
                                       rr_qe='rr',
-                                      path='ge_disc_params.npz',
+                                      path='ge_disc_params_opt.npz',
                                       lsb=lsb)
 
 use_opt_weights = False
@@ -60,16 +60,16 @@ with program() as training_program:
     I_st = declare_stream()
     Q_st = declare_stream()
     adc_st = declare_stream(adc_trace=True)
-
+    # frame_rotation(np.pi/2, "rr")
     with for_(n, 0, n < N, n + 1):
 
-        wait(wait_time, "rr")
+        wait(wait_time//4, "rr")
         training_measurement("clear", use_opt_weights=use_opt_weights)
         save(I, I_st)
         save(Q, Q_st)
 
         align("qubit", "rr")
-        wait(wait_time, "qubit")
+        wait(wait_time//4, "qubit")
         play("pi", "qubit")
         align("qubit", "rr")
         training_measurement("clear", use_opt_weights=use_opt_weights)
@@ -83,7 +83,7 @@ with program() as training_program:
         adc_st.input2().save_all("adc2")
 
 # training + testing to get fidelity:
-discriminator.train(program=training_program, plot=True, dry_run=False, use_hann_filter=False)
+discriminator.train(program=training_program, plot=True, dry_run=False, use_hann_filter=True, correction_method="robust")
 
 with program() as benchmark_readout:
 
@@ -95,17 +95,18 @@ with program() as benchmark_readout:
     res_st = declare_stream()
     I_st = declare_stream()
     Q_st = declare_stream()
+    # frame_rotation(np.pi/2, "rr")
 
     with for_(n, 0, n < N, n + 1):
 
-        wait(wait_time, "rr")
+        wait(wait_time//4, "rr")
         discriminator.measure_state("clear", "out1", "out2", res, I=I, Q=Q)
         save(res, res_st)
         save(I, I_st)
         save(Q, Q_st)
 
         align("qubit", "rr")
-        wait(wait_time, "qubit")
+        wait(wait_time//4, "qubit")
         play("pi", "qubit")
         align("qubit", "rr")
         discriminator.measure_state("clear", "out1", "out2", res, I=I, Q=Q)

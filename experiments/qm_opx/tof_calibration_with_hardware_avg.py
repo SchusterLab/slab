@@ -22,16 +22,12 @@ with program() as digital_train:
 with program() as tof_calibration:
     adc_st = declare_stream(adc_trace=True)
     i = declare(int)
-    # update_frequency("rr", 100e6)
-
-    frame_rotation_2pi(-0.64, 'jpa_pump')
-    with for_(i, 0, i < 1, i+1):
-        # reset_frame('jpa_pump')
-        # reset_frame('rr')
-        # frame_rotation_2pi(0.25, 'jpa_pump')
-        wait(50000//4, 'rr')
-        align("rr", "jpa_pump")
-        play('pump_square'*amp(0.04), 'jpa_pump')
+    with for_(i, 0, i < 1000, i+1):
+        wait(200000//4, 'rr')
+        reset_phase('rr')
+        reset_phase('jpa_pump')
+        align('rr', 'jpa_pump')
+        play('pump_square', 'jpa_pump')
         measure('clear', "rr", adc_st) # 400ns
 
     with stream_processing():

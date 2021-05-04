@@ -1,4 +1,4 @@
-from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g
+from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -6,13 +6,10 @@ from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from slab.instruments import instrumentmanager
-from slab.dsfit import*
 from tqdm import tqdm
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
-
 """Ramsey phase"""
 
 ramsey_freq = 100e3
@@ -37,7 +34,7 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
@@ -88,7 +85,7 @@ with program() as ramsey:
 
         with for_(t, T_min, t < T_max + dt/2, t + dt):
 
-            active_reset(biased_th_g)
+            active_reset(biased_th_g_jpa)
             align('qubit', 'rr')
             play("pi2", "qubit")
             wait(t, "qubit")
@@ -122,7 +119,6 @@ else:
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
     job.halt()
-
 
     plt.plot(res)
 

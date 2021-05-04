@@ -12,7 +12,10 @@ im = InstrumentManager()
 with program() as mixer_calibration:
 
     with infinite_loop_():
-        play("CW"*amp(0.1175), "jpa_pump")
+        # wait(500000//4, 'qubit')
+        # play('pi', 'qubit')
+        # align('qubit', 'jpa_pump')
+        play("CW"*amp(0.0625), "jpa_pump")
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)

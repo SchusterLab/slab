@@ -1,11 +1,12 @@
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config
+from configuration_IQ import config, biased_th_g, rr_LO
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+############################
 
 simulation_config = SimulationConfig(
     duration=60000,
@@ -15,7 +16,7 @@ simulation_config = SimulationConfig(
 )
 
 N = 5000
-wait_time = 500000
+wait_time = 750000
 lsb = True
 qmm = QuantumMachinesManager()
 
@@ -23,12 +24,11 @@ discriminator = TwoStateDiscriminator(qmm=qmm,
                                       config=config,
                                       update_tof=False,
                                       rr_qe='rr',
-                                      path='ge_disc_params.npz',
+                                      path='ge_disc_params_opt.npz',
                                       lsb=lsb)
 
 use_opt_weights = False
-biased_th_g = 0.0012
-biased_th_e = -0.0012
+biased_th_e = -biased_th_g
 
 def training_measurement(readout_pulse, use_opt_weights):
 
@@ -108,7 +108,7 @@ with program() as training_program:
         adc_st.input2().save_all("adc2")
 
 # training + testing to get fidelity:
-discriminator.train(program=training_program, plot=True, dry_run=False, use_hann_filter=False)
+discriminator.train(program=training_program, plot=True, dry_run=False, use_hann_filter=False, correction_method='robust')
 
 with program() as benchmark_readout:
 

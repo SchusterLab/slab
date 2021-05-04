@@ -1,39 +1,23 @@
-from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, rr_freq
+from configuration_IQ import config, rr_IF, rr_freq
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
-from tqdm import tqdm
-from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import pandas as pd
 from slab import*
-from slab.instruments import instrumentmanager
 from h5py import File
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-
 ##################
 # histogram_prog:
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
 reset_time = 500000
-avgs = 3000
+avgs = 5000
 simulation = 0
 
-f_min = -200e3
-f_max = 200e3
-df = 20e3
+f_min = -100e3
+f_max = 100e3
+df = 10e3
 f_vec = np.arange(f_min, f_max + df/2, df)
-
-start_time = time.time()
 
 with program() as histogram:
 
@@ -79,8 +63,8 @@ with program() as histogram:
                     demod.full("long_integW1", I2, 'out2'),
                     demod.full("long_integW2", Q2, 'out2'))
 
-            assign(Ig, I1 + Q2)
-            assign(Qg, I2 - Q1)
+            assign(Ig, I1 - Q2)
+            assign(Qg, I2 + Q1)
             save(Ig, Ig_st)
             save(Qg, Qg_st)
 
@@ -96,8 +80,8 @@ with program() as histogram:
                     demod.full("long_integW1", I2, 'out2'),
                     demod.full("long_integW2", Q2, 'out2'))
 
-            assign(Ie, I1 + Q2)
-            assign(Qe, I2 - Q1)
+            assign(Ie, I1 - Q2)
+            assign(Qe, I2 + Q1)
             save(Ie, Ie_st)
             save(Qe, Qe_st)
 
@@ -119,7 +103,6 @@ if simulation:
 else:
     """To run the actual experiment"""
     job = qm.execute(histogram, duration_limit=0, data_limit=0)
-    print("Done")
 
     print("Waiting for the data")
 
@@ -129,9 +112,8 @@ else:
     Ie = job.result_handles.Ie.fetch_all()['value']
     Qg = job.result_handles.Qg.fetch_all()['value']
     Qe = job.result_handles.Qe.fetch_all()['value']
+
     print("Data fetched")
-    stop_time = time.time()
-    print(f"Time taken: {stop_time - start_time}")
 
     job.halt()
 

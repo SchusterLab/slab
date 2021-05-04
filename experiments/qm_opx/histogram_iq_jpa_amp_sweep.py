@@ -8,29 +8,17 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import pandas as pd
 from slab import*
-from slab.instruments import instrumentmanager
 from h5py import File
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-
 ##################
 # histogram_prog:
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
 reset_time = 500000
-avgs = 3000
+avgs = 5000
 simulation = 0
 
-a_min = 0.0
-a_max = 0.1
-da = 0.01
+a_min = 0.000
+a_max = 0.010
+da = 0.001
 amp_vec = np.arange(a_min, a_max + da/2, da)
 
 start_time = time.time()
@@ -65,20 +53,19 @@ with program() as histogram:
     with for_(a, a_min, a < a_max + da/2, a + da):
 
         with for_(n, 0, n < avgs, n + 1):
-            reset_frame("rr", "qubit", "jpa_pump")
 
             """Just readout without playing anything"""
             wait(reset_time // 4, "rr")
             align("rr", "jpa_pump")
             play('pump_square'*amp(a), 'jpa_pump')
-            measure("long_readout", "rr", None,
-                    demod.full("long_integW1", I1, 'out1'),
-                    demod.full("long_integW2", Q1, 'out1'),
-                    demod.full("long_integW1", I2, 'out2'),
-                    demod.full("long_integW2", Q2, 'out2'))
+            measure("clear", "rr", None,
+                    demod.full("clear_integW1", I1, 'out1'),
+                    demod.full("clear_integW2", Q1, 'out1'),
+                    demod.full("clear_integW1", I2, 'out2'),
+                    demod.full("clear_integW2", Q2, 'out2'))
 
-            assign(Ig, I1 + Q2)
-            assign(Qg, I2 - Q1)
+            assign(Ig, I1 - Q2)
+            assign(Qg, I2 + Q1)
             save(Ig, Ig_st)
             save(Qg, Qg_st)
 
@@ -91,14 +78,14 @@ with program() as histogram:
             align("rr", "jpa_pump")
             # frame_rotation_2pi(np.pi/2, "jpa_pump")
             play('pump_square'*amp(a), 'jpa_pump')
-            measure("long_readout", "rr", None,
-                    demod.full("long_integW1", I1, 'out1'),
-                    demod.full("long_integW2", Q1, 'out1'),
-                    demod.full("long_integW1", I2, 'out2'),
-                    demod.full("long_integW2", Q2, 'out2'))
+            measure("clear", "rr", None,
+                    demod.full("clear_integW1", I1, 'out1'),
+                    demod.full("clear_integW2", Q1, 'out1'),
+                    demod.full("clear_integW1", I2, 'out2'),
+                    demod.full("clear_integW2", Q2, 'out2'))
 
-            assign(Ie, I1 + Q2)
-            assign(Qe, I2 - Q1)
+            assign(Ie, I1 - Q2)
+            assign(Qe, I2 + Q1)
             save(Ie, Ie_st)
             save(Qe, Qe_st)
 

@@ -6,18 +6,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 from slab import*
 from slab.instruments import instrumentmanager
-im = InstrumentManager()
-LO = im['RF8']
-
-# nu_q = 4.748488058822229e9
-nu_q = 8.0518e9
-
-nu_IF = 100e6
-nu_LO = nu_q - nu_IF
-LO.set_frequency(nu_LO)
-LO.set_power(18)
-LO.set_output(True)
-LO.set_ext_pulse(mod=False)
+# im = InstrumentManager()
+# LO = im['RF8']
+#
+# # nu_q = 4.748488058822229e9
+# nu_q = 8.0518e9
+#
+# nu_IF = 100e6
+# nu_LO = nu_q - nu_IF
+# LO.set_frequency(nu_LO)
+# LO.set_power(18)
+# LO.set_output(True)
+# LO.set_ext_pulse(mod=False)
 
 with program() as digital_train:
 
@@ -28,8 +28,8 @@ with program() as digital_train:
 with program() as tof_calibration:
     adc_st = declare_stream(adc_trace=True)
     i = declare(int)
-    update_frequency("rr", 1e6)
-    with for_(i, 0, i < 1, i+1):
+    # update_frequency("rr", 1e6)
+    with for_(i, 0, i < 100, i+1):
 
         wait(10000//4, "rr") # off 1.6 micro
         measure('long_readout'*amp(0.3), "rr", adc_st) # 400ns

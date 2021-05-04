@@ -13,24 +13,12 @@ from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
 
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-##################
-# ramsey_prog:
-##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
+"""Qubit temperature"""
 
 a_min = 0.0
 a_max = 1.0
 da = 0.01
 amps = np.arange(a_min, a_max + da/2, da)
-
 
 avgs = 1000
 reset_time = 500000
@@ -113,8 +101,8 @@ with program() as qubit_temp:
                     demod.full("clear_integW1", I2, 'out2'),
                     demod.full("clear_integW2", Q2, 'out2'))
 
-            assign(I, I1+Q2)
-            assign(Q, I2-Q1)
+            assign(I, I1 - Q2)
+            assign(Q, I2 + Q1)
 
             save(I, Ig_st)
             save(Q, Qg_st)
@@ -129,8 +117,8 @@ with program() as qubit_temp:
                     demod.full("clear_integW1", I2, 'out2'),
                     demod.full("clear_integW2", Q2, 'out2'))
 
-            assign(I, I1+Q2)
-            assign(Q, I2-Q1)
+            assign(I, I1 - Q2)
+            assign(Q, I2 + Q1)
 
             save(I, Ie_st)
             save(Q, Qe_st)

@@ -7,16 +7,16 @@ import numpy as np
 from slab import*
 from slab.instruments import instrumentmanager
 im = InstrumentManager()
-LO = im['RF8']
-spec = im['SA']
-LO.set_frequency(rr_LO)
-LO.set_ext_pulse(mod=False)
-LO.set_power(18)
+# LO = im['RF8']
+# spec = im['SA']
+# LO.set_frequency(rr_LO)
+# LO.set_ext_pulse(mod=False)
+# LO.set_power(18)
 
 with program() as mixer_calibration:
 
     with infinite_loop_():
-        play("CW"*amp(0.5), "rr")
+        play("clear", "rr")
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -39,15 +39,15 @@ def IQ_imbalance_corr(g, phi):
 
 # qm.set_mixer_correction("mixer_RR", int(rr_IF), int(rr_LO), IQ_imbalance_corr(-0.01, 0.013*np.pi))
 
-delta_F = 300e6
-spec.set_center_frequency(rr_LO)
-spec.set_span(delta_F)
-# spec.set_resbw(100e3)
-tr = spec.take_one()
-freq, amp = tr[0], tr[1]
-plt.plot(freq, amp)
-a1 = amp[np.argmin(abs(freq-rr_LO+rr_IF))]
-a2 = amp[np.argmin(abs(freq-rr_LO))]
-a3 = amp[np.argmin(abs(freq-rr_LO-rr_IF))]
-
-print([a1, a2, a3])
+# delta_F = 300e6
+# spec.set_center_frequency(rr_LO)
+# spec.set_span(delta_F)
+# # spec.set_resbw(100e3)
+# tr = spec.take_one()
+# freq, amp = tr[0], tr[1]
+# plt.plot(freq, amp)
+# a1 = amp[np.argmin(abs(freq-rr_LO+rr_IF))]
+# a2 = amp[np.argmin(abs(freq-rr_LO))]
+# a3 = amp[np.argmin(abs(freq-rr_LO-rr_IF))]
+#
+# print([a1, a2, a3])

@@ -5,6 +5,8 @@ import os
 import matplotlib.pyplot as plt
 from sklearn import mixture
 from scipy import signal
+from h5py import File
+import os
 
 from TimeDiffCalibrator_2103 import TimeDiffCalibrator
 
@@ -106,12 +108,22 @@ class StateDiscriminator:
             raise RuntimeError("")
 
         ts = res_handles.get("adc1").fetch_all()['value']['timestamp']; ts = np.concatenate([ts[0::2], ts[1::2]])
-        in1 = res_handles.get("adc1").fetch_all()['value']['value']; in1 = np.concatenate([in1[0::2], in1[1::2]])
+        in1 = res_handles.get("adc1").fetch_all()['value']['value'];  in1 = np.concatenate([in1[0::2], in1[1::2]])
         in2 = res_handles.get("adc2").fetch_all()['value']; in2 = np.concatenate([in2[0::2], in2[1::2]])
+
+        # seq_data_file = './data/tof_debug.h5'
+        # print(seq_data_file)
+        # with File(seq_data_file, 'w') as f:
+        #     f.create_dataset("ts", data=ts)
+        #     f.create_dataset("in1", data=in1)
+        #     f.create_dataset("in2", data=in2)
+
         if self.lsb == False:
             x = in1 + 1j*in2
         else:
             x = in1 - 1j*in2
+
+        # print('lengths are : %.1f %.1f'%( len(in1), len(ts)))
         return I_res, Q_res, ts, x
 
     def train(self, program, use_hann_filter=True, plot=False, correction_method='robust', **execute_args):

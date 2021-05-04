@@ -39,7 +39,7 @@ with program() as resonator_spectroscopy:
         with for_(f, f_min + rr_IF, f <= f_max + rr_IF, f + df):
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
-            measure("long_readout"*amp(0.5), "rr", None,
+            measure("long_readout", "rr", None,
                     demod.full("long_integW1", I1, 'out1'),
                     demod.full("long_integW2", Q1, 'out1'),
                     demod.full("long_integW1", I2, 'out2'),
@@ -76,13 +76,13 @@ else:
 
     job.halt()
 
-    # path = os.getcwd()
-    # data_path = os.path.join(path, "data/")
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'resonator_spec', suffix='.h5'))
-    # print(seq_data_file)
-    #
-    # with File(seq_data_file, 'w') as f:
-    #     f.create_dataset("I", data=I)
-    #     f.create_dataset("Q", data=Q)
-    #     f.create_dataset("freqs", data=f_vec)
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'resonator_spec', suffix='.h5'))
+    print(seq_data_file)
+
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=Q)
+        f.create_dataset("freqs", data=f_vec)

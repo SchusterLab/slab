@@ -12,21 +12,7 @@ from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
 
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-
-from slab.dsfit import*
-
-##################
-# power_rabi_prog:
-##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
+"""ef Rabi"""
 
 a_min = 0.0
 a_max = 1.0
@@ -96,21 +82,29 @@ with program() as ef_rabi_IQ:
 
         with for_(a, a_min, a < a_max + da/2, a + da):
 
-            active_reset(biased_th_g)
+            # active_reset(biased_th_g)
             # align("qubit", 'rr')
-            # wait(reset_time//4, "qubit")
+            wait(reset_time//4, "qubit")
             play("pi", "qubit")
             align("qubit", "qubit_ef")
             play("gaussian"*amp(a), "qubit_ef")
-            align("qubit_ef", "rr")
-            measure("long_readout", "rr", None,
-                    demod.full("long_integW1", I1, 'out1'),
-                    demod.full("long_integW2", Q1, 'out1'),
-                    demod.full("long_integW1", I2, 'out2'),
-                    demod.full("long_integW2", Q2, 'out2'))
+            align('qubit', 'qubit_ef')
+            play('pi', 'qubit')
+            align("qubit", "rr")
+            # align("qubit_ef", "rr")
+            # measure("long_readout", "rr", None,
+            #         demod.full("long_integW1", I1, 'out1'),
+            #         demod.full("long_integW2", Q1, 'out1'),
+            #         demod.full("long_integW1", I2, 'out2'),
+            #         demod.full("long_integW2", Q2, 'out2'))
+            measure("clear", "rr", None,
+                    demod.full("clear_integW1", I1, 'out1'),
+                    demod.full("clear_integW2", Q1, 'out1'),
+                    demod.full("clear_integW1", I2, 'out2'),
+                    demod.full("clear_integW2", Q2, 'out2'))
 
-            assign(I, I1+Q2)
-            assign(Q, I2-Q1)
+            assign(I, I1 - Q2)
+            assign(Q, I2 + Q1)
 
             save(I, I_st)
             save(Q, Q_st)

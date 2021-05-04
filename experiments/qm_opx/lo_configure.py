@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_LO, rr_LO, ge_IF, qubit_freq, storage_LO
+from configuration_IQ import config, qubit_LO, rr_LO, storage_LO
 import numpy as np
 from slab import*
 from slab.instruments import instrumentmanager
@@ -20,3 +20,4 @@ LO_r.set_power(18)
 
 LO_s.set_frequency(storage_LO)
 LO_s.set_power(13)
+LO_s.set_output_state(True)

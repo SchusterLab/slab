@@ -12,14 +12,13 @@ import os
 from slab.dsfit import*
 from slab.dataanalysis import get_next_filename
 
-f_min = -1.5e6+1
-f_max = 0.5e6+1
-df = 100e3# 25e3
-f_vec = rr_freq - np.arange(f_min, f_max + df/2, df)
+"""Resonator phase as a function of the pump phase"""
 
-phi_min = 0
-phi_max = 0.5
-dphi = 0.5/20
+phi_min = 0.0
+phi_max = 0.1
+dphi = 0.1/10
+
+phi = 0.0
 
 phi_vec = np.arange(phi_min, phi_max + dphi/2, dphi)
 
@@ -29,7 +28,6 @@ simulation = 0
 
 with program() as resonator_spectroscopy:
 
-    f = declare(int)
     i = declare(int)
     phi = declare(fixed)
 
@@ -43,32 +41,31 @@ with program() as resonator_spectroscopy:
     I_st = declare_stream()
     Q_st = declare_stream()
 
-    with for_(phi, phi_min, phi< phi_max + dphi/2, phi + dphi):
-        with for_(i, 0, i < avgs, i+1):
+    with for_(i, 0, i < avgs, i+1):
 
-            with for_(f, f_min + rr_IF, f < f_max + rr_IF + df/2, f + df):
-                update_frequency("rr", f)
-                reset_frame('jpa_pump')
-                reset_frame('rr')
-                frame_rotation_2pi(phi, 'jpa_pump')
-                wait(reset_time//4, "rr")
-                align('rr', 'jpa_pump')
-                play('pump_square'*amp(0.02), 'jpa_pump')
-                measure("long_readout"*amp(0.4), "rr", None,
-                        demod.full("long_integW1", I1, 'out1'),
-                        demod.full("long_integW2", Q1, 'out1'),
-                        demod.full("long_integW1", I2, 'out2'),
-                        demod.full("long_integW2", Q2, 'out2'))
+        with for_(phi, phi_min, phi < phi_max +  dphi/2, phi + dphi):
+            # update_frequency("rr", f)
+            # reset_frame('jpa_pump')
+            # reset_frame('rr')
+            # frame_rotation_2pi(phi, 'jpa_pump')
+            wait(reset_time//4, "rr")
+            align('rr', 'jpa_pump')
+            play('pump_square'*amp(0.0625), 'jpa_pump')
+            measure("clear", "rr", None,
+                    demod.full("clear_integW1", I1, 'out1'),
+                    demod.full("clear_integW2", Q1, 'out1'),
+                    demod.full("clear_integW1", I2, 'out2'),
+                    demod.full("clear_integW2", Q2, 'out2'))
 
-                assign(I, I1-Q2)
-                assign(Q, I2+Q1)
+            assign(I, I1-Q2)
+            assign(Q, I2+Q1)
 
-                save(I, I_st)
-                save(Q, Q_st)
+            save(I, I_st)
+            save(Q, Q_st)
 
     with stream_processing():
-        I_st.buffer(avgs, len(f_vec)).map(FUNCTIONS.average()).save_all('I')
-        Q_st.buffer(avgs, len(f_vec)).map(FUNCTIONS.average()).save_all('Q')
+        I_st.buffer(len(phi_vec)).average().save('I')
+        Q_st.buffer(len(phi_vec)).average().save('Q')
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -82,15 +79,25 @@ else:
     job = qm.execute(resonator_spectroscopy, duration_limit=0, data_limit=0)
 
     res_handles = job.result_handles
-    # res_handles.wait_for_all_values()
+    res_handles.wait_for_all_values()
     I_handle = res_handles.get("I")
     Q_handle = res_handles.get("Q")
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
-    # print ("Data collection done")
-    #
-    # job.halt()
-    # amp = (I**2 + Q**2)
+
+    print ("Data collection done")
+    job.halt()
+
+    amps = Q**2 + I**2
+    ph = np.arctan2(np.array(Q), np.array(I))
+    ph = np.unwrap(ph, discont=3.141592653589793, axis=-1)
+    # m = (ph[-1]-ph[0])/(x[-1] - x[0])
+    # ph = ph - m*x*0.95
+    # ph = ph -np.mean(ph)
+
+    plt.figure()
+    plt.plot(phi_vec, ph, '.')
+
     # path = os.getcwd()
     # data_path = os.path.join(path, "data/")
     # seq_data_file = os.path.join(data_path,

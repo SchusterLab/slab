@@ -5,26 +5,12 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from slab.instruments import instrumentmanager
-from slab.dsfit import*
-from tqdm import tqdm
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
-
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
 ##################
 # ramsey_prog:
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
 ramsey_freq = 1000e3
 omega = 2*np.pi*ramsey_freq
 
@@ -84,14 +70,14 @@ with program() as ramsey:
                 play("pi2", "qubit")
                 align("qubit", "rr")
                 wait(t_buffer, "rr")
-                measure("long_readout", "rr", None,
-                        demod.full("long_integW1", I1, 'out1'),
-                        demod.full("long_integW2", Q1, 'out1'),
-                        demod.full("long_integW1", I2, 'out2'),
-                        demod.full("long_integW2", Q2, 'out2'))
+                measure("clear", "rr", None,
+                        demod.full("clear_integW1", I1, 'out1'),
+                        demod.full("clear_integW2", Q1, 'out1'),
+                        demod.full("clear_integW1", I2, 'out2'),
+                        demod.full("clear_integW2", Q2, 'out2'))
 
-                assign(I, I1+Q2)
-                assign(Q, I2-Q1)
+                assign(I, I1 - Q2)
+                assign(Q, I2 + Q1)
                 assign(phi, phi + dphi)
 
                 save(I, I_st)
@@ -116,30 +102,30 @@ else:
     job = qm.execute(ramsey, duration_limit=0, data_limit=0)
 
     res_handles = job.result_handles
-    res_handles.wait_for_all_values()
-    I_handle = res_handles.get("I")
-    Q_handle = res_handles.get("Q")
-
-    I = I_handle.fetch_all()
-    Q = Q_handle.fetch_all()
-    print("Data collection done")
-
-    stop_time = time.time()
-    print(f"Time taken: {stop_time - start_time}")
-
-    """Stop the output from OPX,heats up the fridge"""
-    job.halt()
-
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'ramsey_clear', suffix='.h5'))
-    print(seq_data_file)
-
-    wait_tvec = 4*wait_tvec
-    times = 4*times
-    with File(seq_data_file, 'w') as f:
-        dset = f.create_dataset("I", data=I)
-        dset = f.create_dataset("Q", data=Q)
-        dset = f.create_dataset("wait_time", data=wait_tvec)
-        dset = f.create_dataset("ramsey_times", data=times)
+    # res_handles.wait_for_all_values()
+    # I_handle = res_handles.get("I")
+    # Q_handle = res_handles.get("Q")
+    #
+    # I = I_handle.fetch_all()
+    # Q = Q_handle.fetch_all()
+    # print("Data collection done")
+    #
+    # stop_time = time.time()
+    # print(f"Time taken: {stop_time - start_time}")
+    #
+    # """Stop the output from OPX,heats up the fridge"""
+    # job.halt()
+    #
+    # path = os.getcwd()
+    # data_path = os.path.join(path, "data/")
+    # seq_data_file = os.path.join(data_path,
+    #                              get_next_filename(data_path, 'ramsey_clear', suffix='.h5'))
+    # print(seq_data_file)
+    #
+    # wait_tvec = 4*wait_tvec
+    # times = 4*times
+    # with File(seq_data_file, 'w') as f:
+    #     dset = f.create_dataset("I", data=I)
+    #     dset = f.create_dataset("Q", data=Q)
+    #     dset = f.create_dataset("wait_time", data=wait_tvec)
+    #     dset = f.create_dataset("ramsey_times", data=times)

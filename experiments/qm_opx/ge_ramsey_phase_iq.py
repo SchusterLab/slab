@@ -12,19 +12,7 @@ from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
 
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-##################
-# ramsey_prog:
-##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
+"""Qubit ge ramsey with phase advance"""
 ramsey_freq = 100e3
 omega = 2*np.pi*ramsey_freq
 
@@ -63,7 +51,9 @@ with program() as ramsey:
     ###############
 
     with for_(n, 0, n < avgs, n + 1):
+
         assign(phi, 0)
+
         with for_(t, T_min, t < T_max + dt/2, t + dt):
             wait(reset_time//4, "qubit")
             play("pi2", "qubit")
@@ -115,19 +105,19 @@ else:
     Q = Q_handle.fetch_all()
     print("Data collection done")
 
-    job.halt()
+    # job.halt()
 
     times = 4*times/1e3
 
-    plt.plot(I)
-    # path = os.getcwd()
-    # data_path = os.path.join(path, "data/")
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'ramsey_phase', suffix='.h5'))
-    # print(seq_data_file)
-    # with File(seq_data_file, 'w') as f:
-    #     f.create_dataset("I", data=I)
-    #     f.create_dataset("Q", data=Q)
-    #     f.create_dataset("time", data=times)
-    #     f.create_dataset("ramsey_freq", data=ramsey_freq)
-    #     f.create_dataset("qubit_freq", data=qubit_freq)
+    plt.plot(times, I)
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'ramsey_phase', suffix='.h5'))
+    print(seq_data_file)
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=Q)
+        f.create_dataset("time", data=times)
+        f.create_dataset("ramsey_freq", data=ramsey_freq)
+        f.create_dataset("qubit_freq", data=qubit_freq)

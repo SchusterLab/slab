@@ -12,21 +12,9 @@ from slab.dsfit import*
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
-
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-
 ##################
 # ramsey_prog:
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
 ramsey_freq = 100e3
 omega = 2*np.pi*ramsey_freq
 
@@ -85,6 +73,8 @@ with program() as ef_ramsey:
 
     n = declare(int)      # Averaging
     t = declare(int)      # Wait time
+    phi = declare(fixed)
+
     I = declare(fixed)
     Q = declare(fixed)
     I1 = declare(fixed)
@@ -100,24 +90,36 @@ with program() as ef_ramsey:
     ###############
 
     with for_(n, 0, n < avgs, n + 1):
-
+        assign(phi, 0)
         with for_(t, 0, t < T_max + dt/2, t + dt):
-            active_reset(biased_th_g)
-            align("qubit", 'rr')
+            # active_reset(biased_th_g)
+            # align("qubit", 'rr')
+            wait(reset_time//4, "qubit")
             play("pi", "qubit")
             align("qubit", "qubit_ef")
             play("pi2", "qubit_ef")
             wait(t, "qubit_ef")
+            frame_rotation_2pi(phi, "qubit_ef") #2pi is already multiplied to the phase
             play("pi2", "qubit_ef")
-            align("qubit_ef", "rr")
-            measure("long_readout", "rr", None,
-                    demod.full("long_integW1", I1, 'out1'),
-                    demod.full("long_integW2", Q1, 'out1'),
-                    demod.full("long_integW1", I2, 'out2'),
-                    demod.full("long_integW2", Q2, 'out2'))
+            align('qubit', 'qubit_ef')
+            play('pi', 'qubit')
+            align("qubit", "rr")
+            # align('qubit_ef', 'rr')
+            measure("clear", "rr", None,
+                    demod.full("clear_integW1", I1, 'out1'),
+                    demod.full("clear_integW2", Q1, 'out1'),
+                    demod.full("clear_integW1", I2, 'out2'),
+                    demod.full("clear_integW2", Q2, 'out2'))
+            # measure("long_readout", "rr", None,
+            #         demod.full("long_integW1", I1, 'out1'),
+            #         demod.full("long_integW2", Q1, 'out1'),
+            #         demod.full("long_integW1", I2, 'out2'),
+            #         demod.full("long_integW2", Q2, 'out2'))
 
-            assign(I, I1+Q2)
-            assign(Q, I2-Q1)
+            assign(I, I1 - Q2)
+            assign(Q, I2 + Q1)
+
+            assign(phi, phi + dphi)
 
             save(I, I_st)
             save(Q, Q_st)

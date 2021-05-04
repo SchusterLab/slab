@@ -35,7 +35,7 @@ f_vec = np.arange(f_min, f_max + df/2, df)
 # filename = 'oct_pulses/g1.h5'
 
 # filename = "S:\\Ankur\\Stimulated Emission\\pulses\\picollo\\2021-03-23\\00001_g0_to_g1_2.0us_qamp_7.5_camp_0.2_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5"
-filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g1_4.0us_qamp_2.5_camp_0.25_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5'
+filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g1_5.0us_qamp_24.0_camp_0.4_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5'
 
 with File(filename,'r') as a:
     Iq = np.array(a['uks'][-1][0], dtype=float)

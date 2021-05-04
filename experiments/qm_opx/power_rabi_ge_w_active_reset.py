@@ -7,8 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from slab import*
-from slab.instruments import instrumentmanager
-from slab.dsfit import*
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
@@ -29,7 +27,7 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)

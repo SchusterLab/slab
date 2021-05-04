@@ -16,6 +16,10 @@ simulation_config = SimulationConfig(
 
 N = 5000
 wait_time = 500000
+jpa_amp = 1.0
+
+phi = 0.0
+
 lsb = True
 qmm = QuantumMachinesManager()
 
@@ -63,18 +67,18 @@ with program() as training_program:
 
     with for_(n, 0, n < N, n + 1):
 
-        wait(wait_time, "rr")
+        wait(wait_time//4, "jpa_pump")
         align("rr", "jpa_pump")
         play('pump_square', 'jpa_pump')
         training_measurement("clear", use_opt_weights=use_opt_weights)
         save(I, I_st)
         save(Q, Q_st)
 
-        align("qubit", "rr")
-        wait(wait_time, "qubit")
+        align("qubit", "rr", 'jpa_pump')
+
+        wait(wait_time//4, "qubit")
         play("pi", "qubit")
-        align("qubit", "rr")
-        align("rr", "jpa_pump")
+        align("qubit", "rr", 'jpa_pump')
         play('pump_square', 'jpa_pump')
         training_measurement("clear", use_opt_weights=use_opt_weights)
         save(I, I_st)
@@ -87,7 +91,7 @@ with program() as training_program:
         adc_st.input2().save_all("adc2")
 
 # training + testing to get fidelity:
-discriminator.train(program=training_program, plot=True, dry_run=False, use_hann_filter=False)
+discriminator.train(program=training_program, plot=True, dry_run=False, use_hann_filter=False, correction_method='robust')
 
 with program() as benchmark_readout:
 
@@ -102,7 +106,7 @@ with program() as benchmark_readout:
 
     with for_(n, 0, n < N, n + 1):
 
-        wait(wait_time, "rr")
+        wait(wait_time//4, "jpa_pump")
         align("rr", "jpa_pump")
         play('pump_square', 'jpa_pump')
         discriminator.measure_state("clear", "out1", "out2", res, I=I, Q=Q)
@@ -110,11 +114,11 @@ with program() as benchmark_readout:
         save(I, I_st)
         save(Q, Q_st)
 
-        align("qubit", "rr")
-        wait(wait_time, "qubit")
+        align("qubit", "rr", "jpa_pump")
+
+        wait(wait_time//4, "qubit")
         play("pi", "qubit")
-        align("qubit", "rr")
-        align("rr", "jpa_pump")
+        align("qubit", "rr", "jpa_pump")
         play('pump_square', 'jpa_pump')
         discriminator.measure_state("clear", "out1", "out2", res, I=I, Q=Q)
         save(res, res_st)

@@ -6,23 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from h5py import File
 from slab import*
-from slab.instruments import instrumentmanager
-from slab.dsfit import*
 import os
 from slab.dataanalysis import get_next_filename
-
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-from slab.dsfit import*
-##################
-##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
 
 f_min = -2.5e6
 f_max = 2.5e6
@@ -55,12 +40,11 @@ with program() as resonator_spectroscopy:
         with for_(f, f_min + rr_IF, f < f_max + rr_IF + df / 2, f + df):
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
-            measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
-
+            measure("long_readout", "rr", None,
+                    demod.full("long_integW1", I1, 'out1'),
+                    demod.full("long_integW2", Q1, 'out1'),
+                    demod.full("long_integW1", I2, 'out2'),
+                    demod.full("long_integW2", Q2, 'out2'))
             assign(Ig, I1 - Q2)
             assign(Qg, I2 + Q1)
 
@@ -72,12 +56,11 @@ with program() as resonator_spectroscopy:
             wait(reset_time//4, "qubit")
             play("pi", "qubit")
             align("qubit", "rr")
-            measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
-
+            measure("long_readout", "rr", None,
+                    demod.full("long_integW1", I1, 'out1'),
+                    demod.full("long_integW2", Q1, 'out1'),
+                    demod.full("long_integW1", I2, 'out2'),
+                    demod.full("long_integW2", Q2, 'out2'))
             assign(Ie, I1 - Q2)
             assign(Qe, I2 + Q1)
 
@@ -120,14 +103,12 @@ else:
 
     print ("Data collection done")
 
-    with program() as stop_playing:
-        pass
-    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
+    job.halt()
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'resonator_chi', suffix='.h5'))
+                                 get_next_filename(data_path, 'resonator_chi_opt', suffix='.h5'))
     print(seq_data_file)
 
     with File(seq_data_file, 'w') as f:

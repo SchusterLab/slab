@@ -14,7 +14,7 @@ import os
 from slab.dataanalysis import get_next_filename
 
 wait_time = 500000
-N = 10000
+N = 1000
 
 a_min= 0.0
 a_max = 0.01

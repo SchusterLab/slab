@@ -39,7 +39,7 @@ with program() as resonator_spectroscopy:
 
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
-            measure("clear"*amp(0.1), "rr", None,
+            measure("clear", "rr", None,
                     demod.full("clear_integW1", I1, 'out1'),
                     demod.full("clear_integW2", Q1, 'out1'),
                     demod.full("clear_integW1", I2, 'out2'),

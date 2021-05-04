@@ -7,6 +7,10 @@ from qm import SimulationConfig, LoopbackInterface
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
+from h5py import File
+import os
+from slab.dataanalysis import get_next_filename
+
 from slab.instruments import instrumentmanager
 im = InstrumentManager()
 LO_q = im['RF5']
@@ -17,20 +21,20 @@ from slab.dsfit import*
 ###############
 # qubit_spec_prog:
 ###############
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
+# LO_q.set_frequency(qubit_LO)
+# LO_q.set_ext_pulse(mod=False)
+# LO_q.set_power(18)
+# LO_r.set_frequency(rr_LO)
+# LO_r.set_ext_pulse(mod=False)
+# LO_r.set_power(18)
 
 f_min = -20e6
 f_max = 20e6
 df = 400e3
-freqs = np.arange(f_min, f_max + df/2, df)
-# freqs = freqs + qubit_freq - 140e6
+f_vec = np.arange(f_min, f_max + df/2, df)
+f_vec = f_vec + qubit_LO + ef_IF
 
-avgs = 500
+avgs = 1000
 reset_time = 500000
 simulation = 0
 
@@ -96,18 +100,23 @@ with program() as qubit_ef_spec:
         with for_(f, ef_IF + f_min, f < ef_IF + f_max + df/2, f + df):
 
             update_frequency("qubit_ef", f)
-            active_reset(biased_th_g)
-            align("qubit", 'rr')
+            # active_reset(biased_th_g)
+            # align("qubit", 'rr')
+            wait(reset_time//4, 'qubit')
             play("pi", "qubit")
             align("qubit", "qubit_ef")
             play("saturation"*amp(0.1), "qubit_ef")
             align("qubit_ef", "rr")
-            measure("long_readout", "rr", None,
-                    demod.full("long_integW1", I1, 'out1'),
-                    demod.full("long_integW2", Q1, 'out1'),
-                    demod.full("long_integW1", I2, 'out2'),
-                    demod.full("long_integW2", Q2, 'out2'))
-
+            # measure("long_readout", "rr", None,
+            #         demod.full("long_integW1", I1, 'out1'),
+            #         demod.full("long_integW2", Q1, 'out1'),
+            #         demod.full("long_integW1", I2, 'out2'),
+            #         demod.full("long_integW2", Q2, 'out2'))
+            measure("clear", "rr", None,
+                    demod.full("clear_integW1", I1, 'out1'),
+                    demod.full("clear_integW2", Q1, 'out1'),
+                    demod.full("clear_integW1", I2, 'out2'),
+                    demod.full("clear_integW2", Q2, 'out2'))
             assign(I, I1-Q2)
             assign(Q, I2+Q1)
 
@@ -116,8 +125,8 @@ with program() as qubit_ef_spec:
 
     with stream_processing():
 
-        I_st.buffer(len(freqs)).average().save('I')
-        Q_st.buffer(len(freqs)).average().save('Q')
+        I_st.buffer(len(f_vec)).average().save('I')
+        Q_st.buffer(len(f_vec)).average().save('Q')
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -141,24 +150,15 @@ else:
     Q = Q_handle.fetch_all()
     print("Data collection done!")
 
-    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
-    # fig.tight_layout()
-    axs[0].plot(freqs/1e9, I)
-    axs[0].plot(freqs/1e9, Q)
-    axs[0].set_xlabel('Freq (GHz)')
-    axs[0].set_ylabel('I/Q')
-    amps = np.sqrt(np.array(I)**2 + np.array(Q)**2)
-    ph = np.arctan2(np.array(Q), np.array(I))
-    axs[1].plot(freqs/1e9, amps, 'b-')
-    p = fitlor(freqs/1e9, -amps, showfit = False)
-    axs[1].plot(freqs/1e9, -lorfunc(p, freqs/1e9), label=r'$\nu$ = %.3f GHz, $\Delta \nu$ = %.3f MHz'%(p[2], p[3]*1e3))
-    print("fits = ", p)
-    print("center freq", p[2], "GHz")
-    print("linewidth", p[3]*1e3, "MHz")
-    ax2 = axs[1].twinx()
-    ax2.plot(freqs/1e9, ph, 'r-')
-    axs[1].set_xlabel('Freq (GHz)')
-    axs[1].set_ylabel('amp')
-    ax2.set_ylabel('$\\varphi$')
-    axs[1].legend()
-    fig.show()
+    job.halt()
+    plt.plot(I)
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'ef_spectroscopy', suffix='.h5'))
+    print(seq_data_file)
+
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=Q)
+        f.create_dataset("freqs", data=f_vec)

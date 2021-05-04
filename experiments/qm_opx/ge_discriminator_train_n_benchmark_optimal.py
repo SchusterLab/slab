@@ -37,7 +37,7 @@ with program() as training_program:
 
     with for_(n, 0, n < N, n + 1):
 
-        wait(wait_time, "rr")
+        wait(wait_time//4, "rr")
 
         measure("clear", "rr", adc_st,
                 demod.full("clear_integW1", I1, 'out1'),
@@ -51,7 +51,7 @@ with program() as training_program:
 
         align("qubit", "rr")
 
-        wait(wait_time, "qubit")
+        wait(wait_time//4, "qubit")
         play("pi", "qubit")
         align("qubit", "rr")
         measure("clear", "rr", adc_st,
@@ -88,14 +88,14 @@ with program() as test_program:
 
     with for_(n, 0, n < N, n + 1):
 
-        wait(wait_time, "rr")
+        wait(wait_time//4, "rr")
         discriminator.measure_state("clear", "out1", "out2", res, statistic=statistic)
         save(res, res_st)
         save(statistic, statistic_st)
 
         align("qubit", "rr")
 
-        wait(wait_time, "qubit")
+        wait(wait_time//4, "qubit")
         play("pi", "qubit")
         align("qubit", "rr")
         discriminator.measure_state("clear", "out1", "out2", res, statistic=statistic)

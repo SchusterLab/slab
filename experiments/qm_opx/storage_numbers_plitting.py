@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_freq, rr_LO, qubit_LO, ge_IF, storage_IF, storage_freq, storage_LO
+from configuration_IQ import config, ge_IF, biased_th_g_jpa
 from qm.qua import *
 from qm import SimulationConfig
 from qm import SimulationConfig, LoopbackInterface
@@ -14,20 +14,6 @@ import os
 from slab.dataanalysis import get_next_filename
 
 import time
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-LO_s  = im['sccav']
-
-# LO_s.set_frequency(storage_LO)
-# LO_s.set_power(13.0)
-# LO_q.set_frequency(qubit_LO)
-# LO_q.set_ext_pulse(mod=False)
-# LO_q.set_power(18)
-# LO_r.set_frequency(rr_LO)
-# LO_r.set_ext_pulse(mod=False)
-# LO_r.set_power(18)
-
 simulation_config = SimulationConfig(
     duration=60000,
     simulation_interface=LoopbackInterface(
@@ -36,8 +22,7 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
-biased_th = 0.0012
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
 
 ###############
 # qubit_spec_prog:
@@ -55,11 +40,12 @@ f_vec = np.arange(f_min, f_max + df/2, df)
 # f_max = np.max(f_vec)
 
 avgs = 1000
-reset_time = 2500000
+reset_time = 5000000
 simulation = 0
 
-cav_len = 1000
-cav_amp = 0.15
+cav_len = 300
+cav_amp = 0.5
+
 with program() as storage_spec:
 
     ##############################
@@ -86,7 +72,8 @@ with program() as storage_spec:
             play("CW"*amp(cav_amp), "storage", duration=cav_len)
             align("storage", "qubit")
             play("res_pi", "qubit")
-            align("qubit", "rr")
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
             save(res, res_st)
@@ -113,35 +100,35 @@ else:
 
     result_handles = job.result_handles
 
-    I_handle = result_handles.get("res")
-    I_handle.wait_for_values(1)
-    plt.figure()
-    while(result_handles.is_processing()):
-        I = I_handle.fetch_all()
-        plt.plot(f_vec, I, '.-')
-        # plt.xlabel(r'Time ($\mu$s)')
-        # plt.ylabel(r'$\Delta \nu$ (kHz)')
-        plt.pause(5)
-        plt.clf()
+    # res_handle = result_handles.get("res")
+    # res_handle.wait_for_values(1)
+    # plt.figure()
+    # while(result_handles.is_processing()):
+    #     res = res_handle.fetch_all()
+    #     plt.plot(f_vec, res, '.-')
+    #     # plt.xlabel(r'Time ($\mu$s)')
+    #     # plt.ylabel(r'$\Delta \nu$ (kHz)')
+    #     plt.pause(5)
+    #     plt.clf()
 
-    # result_handles.wait_for_all_values()
-    # res = result_handles.get('res').fetch_all()
-    # I = result_handles.get('I').fetch_all()
-    #
-    # job.halt()
-    # stop_time = time.time()
-    # print(f"Time taken: {stop_time-start_time}")
-    # #
-    # # path = os.getcwd()
-    # # data_path = os.path.join(path, "data/")
-    # data_path = 'S:\\_Data\\210326 - QM_OPX\\data\\'
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'number_splitting', suffix='.h5'))
-    # print(seq_data_file)
-    #
-    # with File(seq_data_file, 'w') as f:
-    #     f.create_dataset("I", data=I)
-    #     f.create_dataset("Q", data=res)
-    #     f.create_dataset("freq", data=f_vec)
-    #     f.create_dataset("amp", data=cav_amp)
-    #     f.create_dataset("time", data=cav_len*4)
+    result_handles.wait_for_all_values()
+    res = result_handles.get('res').fetch_all()
+    I = result_handles.get('I').fetch_all()
+
+    job.halt()
+    stop_time = time.time()
+    print(f"Time taken: {stop_time-start_time}")
+
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    data_path = 'S:\\_Data\\210326 - QM_OPX\\data\\'
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'number_splitting', suffix='.h5'))
+    print(seq_data_file)
+
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=res)
+        f.create_dataset("freq", data=f_vec)
+        f.create_dataset("amp", data=cav_amp)
+        f.create_dataset("time", data=cav_len*4)

@@ -20,7 +20,7 @@ LO_q.set_ext_pulse(mod=False)
 LO_q.set_power(18)
 LO_r.set_frequency(rr_LO)
 LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(13)
+LO_r.set_power(18)
 
 ramsey_freq = 1000e3
 detune_freq = ge_IF + ramsey_freq
