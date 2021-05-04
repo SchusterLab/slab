@@ -527,7 +527,7 @@ class KeysightSingleQubit:
         finally:  # Clean up threads to prevent zombies. If this fails, you have to restart program.
             pass
 
-    def acquireandplot(self,expt_num):
+    def acquireandplot(self,expt_num=0):
         if "A" in self.on_qubits:
             I = []
             Q = []
@@ -593,60 +593,213 @@ class KeysightSingleQubit:
 
         print("The digitzer bins were individually averaged for testing synchronization.")
 
-    def traj_data_one(self,w = [0,-1]):
-        ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])].T
-        ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])].T
-        return ch1,ch2
+    def traj_data_one(self):
+        """
+        Reads off digitizer once, in shape (num_expt * dig_sample_per_record), and windows that data
+        Saves it in ch1 -> (num_expt, len(window))
+        Returns:
+        data(np.ndarray):if qb "A" OR "B" on, will return [[I, Q]], if both will return [[qbA_I, qbA_Q],[qbB_I, qbB_Q]]
+        """
+        data = []
+        if "A" in self.on_qubits:
+            qbA_I = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(self.readoutA_window[0]):int(
+                self.readoutA_window[1])].T
+            qbA_Q = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(self.readoutA_window[0]):int(
+                self.readoutA_window[1])].T
+            data.append([qbA_I, qbA_Q])
+        if "B" in self.on_qubits:
+            qbB_I = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(self.readoutB_window[0]):int(
+                self.readoutB_window[1])].T
+            qbB_Q = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(self.readoutB_window[0]):int(
+                self.readoutB_window[1])].T
+            data.append([qbB_I, qbB_Q])
+        return np.asarray(data)
 
-    def traj_data_many(self,w = [0,-1]):
-        I = []
-        Q = []
+    def traj_data_many(self):
+        """
+        Reads off digitizer num_avg_times, each shot in shape (num_expt , dig_sample_per_record) and windowed.
+        Saves it in qbA_I -> (num avg, num_expt, len(window))
+        Returns:
+        data(np.ndarray):if qb "A" OR "B" on, will return [[I, Q]], if both will return [[qbA_I, qbA_Q],[qbB_I, qbB_Q]]
+        """
+        data= []
+        qbA_I = []
+        qbA_Q = []
+        qbB_I = []
+        qbB_Q = []
         for ii in tqdm(range(self.num_avg)):
-            ch1= np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])].T
-            ch2= np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])].T
-            I.append(ch1)
-            Q.append(ch2)
-        return np.array(I),np.array(Q)
+            if "A" in self.on_qubits:
+                ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
+                ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
+                qbA_I.append(ch1)
+                qbA_Q.append(ch2)
+            if "B" in self.on_qubits:
+                ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(self.readoutB_window[0]):int(
+                    self.readoutB_window[1])].T
+                ch4 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(self.readoutB_window[0]):int(
+                    self.readoutB_window[1])].T
+                qbB_I.append(ch3)
+                qbB_Q.append(ch4)
+        if "A" in self.on_qubits:
+            data.append([qbA_I, qbA_Q])
+        if "B" in self.on_qubits:
+            data.append([qbB_I, qbB_Q])
+        return np.asarray(data)
 
-    def SSdata_one(self,w =[0,-1]):
-        ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])]
-        ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])]
-        return np.mean(ch1,0), np.mean(ch2,0)
+    def SSdata_one(self):
+        """
+        Reads off digitizer once, in shape (num_expt * dig_sample_per_record), and windows that data. averages over
+        that window to give array of shape (num_expt).
+        Saves averaged in qbA_I, final shape -> (num_expt)
+        Returns:
+        data(np.ndarray):if qb "A" OR "B" on, will return [[I, Q]], if both will return [[qbA_I, qbA_Q],[qbB_I, qbB_Q]]
+        """
+        data = []
+        if "A" in self.on_qubits:
+            qbA_I = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
+                  int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
+            qbA_Q = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
+                  int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
+            data.append([np.mean(qbA_I, 0), np.mean(qbA_Q, 0)])
+        if "B" in self.on_qubits:
+            qbB_I = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(self.readoutB_window[0]):int(
+                self.readoutB_window[1])].T
+            qbB_Q = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(self.readoutB_window[0]):int(
+                self.readoutB_window[1])].T
+            data.append([np.mean(qbB_I,0), np.mean(qbB_Q,0)])
+        return np.asarray(data)
 
     def SSdata_many(self,w =[0,-1]):
-        I = []
-        Q = []
+        """
+        Reads off digitizer num_avg_times, each shot in shape (num_expt , dig_sample_per_record). Windows it and
+        averages over that window to give array shape (num_expt). Saves that average shot in ch1.
+        Saves all average shots in qBA_I, whose final shape will be  -> (num_avg, num_expt).
+        For whatever reason you take the transpose of this, so your data shape is (num_expt, num avg)?? oh well
+        Returns:
+        data(np.ndarray):if qb "A" OR "B" on, will return [[I, Q]], if both will return [[qbA_I, qbA_Q],[qbB_I, qbB_Q]]
+        """
+        data= []
+        qbA_I = []
+        qbA_Q = []
+        qbB_I = []
+        qbB_Q = []
         for ii in tqdm(range(self.num_avg)):
-            I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])], 0))
-            Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
-        return np.array(I).T, np.array(Q).T
+            if "A" in self.on_qubits:
+                ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
+                ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
+                qbA_I.append(np.mean(ch1))
+                qbA_Q.append(np.mean(ch2))
+            if "B" in self.on_qubits:
+                ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(self.readoutB_window[0]):int(
+                    self.readoutB_window[1])].T
+                ch4 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(self.readoutB_window[0]):int(
+                    self.readoutB_window[1])].T
+                qbB_I.append(np.mean(ch3))
+                qbB_Q.append(np.mean(ch4))
+        if "A" in self.on_qubits:
+            data.append([qbA_I.T, qbA_Q.T])
+        if "B" in self.on_qubits:
+            data.append([qbB_I.T, qbB_Q.T])
+        return np.asarray(data)
 
-    def acquire_avg_data(self,w = [0,-1],pi_calibration=False):
+    def acquire_avg_data(self,pi_calibration=False):
+        """
+        Reads off digitizer num_average times, in shape (num_expt * dig_sample_per_record), and windows that data.
+        Averages over that window to get an array of shape (num_expt)
+        Adds that to qbA_I, and then at end divides qbA_I by num_avg, final shape -> (num_expt).
+        Not sure what pi calibration is doing. I think the last two experiments are readout w/out a pi pulse,
+        and readout w/pi pulse. Sets it so that "zero" is readout w/out pi pulse and normalizes whole thing to
+        amplitude of wave with pi pulse
+        Returns:
+        data(np.ndarray):if qb "A" OR "B" on, will return [[I, Q]], if both will return [[qbA_I, qbA_Q],[qbB_I, qbB_Q]]
+        """
+        data = []
+        qbA_I, qbA_Q, qbB_I, qbB_Q = np.zeros(self.num_expt), np.zeros(self.num_expt), np.zeros(self.num_expt), np.zeros(self.num_expt)
         for ii in tqdm(range(self.num_avg)):
+            if "A" in self.on_qubits:
+                qbA_I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T)
+                qbA_Q += np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T)
+            if "B" in self.on_qubits:
+                qbB_I += np.mean(np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(
+                    self.readoutB_window[0]):int(self.readoutB_window[1])].T)
+                qbB_Q += np.mean(np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(
+                    self.readoutB_window[0]):int(self.readoutB_window[1])].T)
+        if "A" in self.on_qubits:
+            qbA_I = qbA_I / self.num_avg
+            qbA_Q = qbA_Q / self.num_avg
+            if pi_calibration:
+                qbA_I = (qbA_I[:-2] - qbA_I[-2]) / (qbA_I[-1] - qbA_I[-2])
+                qbA_Q = (qbA_Q[:-2] - qbA_Q[-2]) / (qbA_Q[-1] - qbA_Q[-2])
+            data.append([qbA_I, qbA_Q])
 
-            self.I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(),self.data_1.shape).T[int(w[0]):int(w[1])],0)
-            self.Q += np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(),self.data_2.shape).T[int(w[0]):int(w[1])],0)
+        if "B" in self.on_qubits:
+            qbB_I = qbB_I / self.num_avg
+            qbB_Q = qbB_Q / self.num_avg
+            if pi_calibration:
+                qbB_I = (qbB_I[:-2] - qbB_I[-2]) / (qbB_I[-1] - qbB_I[-2])
+                qbB_Q = (qbB_Q[:-2] - qbB_Q[-2]) / (qbB_Q[-1] - qbB_Q[-2])
+            data.append([qbB_I, qbB_Q])
+
+        return np.asarray(data)
 
 
-        I = self.I/self.num_avg
-        Q = self.Q/self.num_avg
-        if pi_calibration:
-            I = (I[:-2]-I[-2])/(I[-1]-I[-2])
-            Q = (Q[:-2]-Q[-2])/(Q[-1]-Q[-2])
-        return I,Q
-
-
-    def acquire_avg_std_data(self, w=[0, -1], pi_calibration=False):
-        self.I,self.Q = [],[]
+    def acquire_avg_std_data(self, pi_calibration=False):
+        """
+        Reads off digitizer num_average times, in shape (num_expt * dig_sample_per_record), and windows that data.
+        Averages over that window to get an array of shape (num_expt)
+        Adds that to qbA_I, and then at end divides qbA_I by num_avg, final shape -> (num_expt).
+        Not sure what pi calibration is doing. I think the last two experiments are readout w/out a pi pulse,
+        and readout w/pi pulse. Sets it so that "zero" is readout w/out pi pulse and normalizes whole thing to
+        amplitude of wave with pi pulse
+        Calculates the standard deviation for each expt
+        Returns:
+        data(np.ndarray):if qb "A" OR "B" on, will return [[I, Q]], if both will return [[qbA_I, qbA_Q],[qbB_I, qbB_Q]]
+        data_std(np.ndarray):if qb "A" OR "B" on, will return [[I_std, Q_std]], if both will return [[qbA_I_std,
+        qbA_Q_std],[qbB_I_std, qbB_Q_std]]
+        """
+        data = []
+        data_std = []
+        qbA_I, qbA_Q, qbB_I, qbB_Q = [],[],[],[]
         for ii in tqdm(range(self.num_avg)):
-            self.I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])], 0))
-            self.Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])], 0))
-        I,Q = mean(self.I),mean(self.Q)
-        Ierr,Qerr = std(self.I),std(self.Q)
-        if pi_calibration:
-            I = (I[:-2] - I[-2]) / (I[-1] - I[-2])
-            Q = (Q[:-2] - Q[-2]) / (Q[-1] - Q[-2])
-        return I,Q,Ierr,Qerr
+            if "A" in self.on_qubits:
+                qbA_I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
+                                 int(self.readoutA_window[0]):int(self.readoutA_window[1])].T))
+                qbA_Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
+                                 int(self.readoutA_window[0]):int(self.readoutA_window[1])].T))
+            if "B" in self.on_qubits:
+                qbB_I.append(np.mean(np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(
+                    self.readoutB_window[0]):int(self.readoutB_window[1])].T))
+                qbB_Q.append(np.mean(np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(
+                    self.readoutB_window[0]):int(self.readoutB_window[1])].T))
+        if "A" in self.on_qubits:
+            qbA_I_std = np.std(qbA_I, 0)
+            qbA_Q_std = np.std(qbA_Q, 0)
+            qbA_I = np.mean(qbA_I)
+            qbA_Q = np.mean(qbA_Q)
+            if pi_calibration:
+                qbA_I = (qbA_I[:-2] - qbA_I[-2]) / (qbA_I[-1] - qbA_I[-2])
+                qbA_Q = (qbA_Q[:-2] - qbA_Q[-2]) / (qbA_Q[-1] - qbA_Q[-2])
+            data.append([qbA_I, qbA_Q])
+            data_std.append([qbA_I_std, qbA_Q_std])
+
+        if "B" in self.on_qubits:
+            qbB_I_std = np.std(qbB_I, 0)
+            qbB_Q_std = np.std(qbB_Q, 0)
+            qbB_I = np.mean(qbB_I)
+            qbB_Q = np.mean(qbB_Q)
+            if pi_calibration:
+                qbB_I = (qbB_I[:-2] - qbB_I[-2]) / (qbB_I[-1] - qbB_I[-2])
+                qbB_Q = (qbB_Q[:-2] - qbB_Q[-2]) / (qbB_Q[-1] - qbB_Q[-2])
+            data.append([qbB_I, qbB_Q])
+            data_std.append([qbB_I_std, qbB_Q_std])
+
+        return np.asarray(data)
 
 def run_keysight(experiment_cfg, hardware_cfg, sequences, name):
 
@@ -655,7 +808,8 @@ def run_keysight(experiment_cfg, hardware_cfg, sequences, name):
     try:
         setup.configureChannels(hardware_cfg, experiment_cfg, name)
         setup.loadAndQueueWaveforms(sequences)
-        setup.runacquireandplot()
+        setup.run()
+        setup.acquireandplot()
 
     finally:
         setup.AWG_module.stopAll()
@@ -664,25 +818,4 @@ def run_keysight(experiment_cfg, hardware_cfg, sequences, name):
         setup.m_module.clearAll()
         setup.stab_module.stopAll()
         setup.stab_module.clearAll()
-        setup.chassis.close()
-
-
-if __name__ == "__main__":
-    setup = KeysightSingleQubit()
-    try:
-        #wv["chargeA_I"], wv["chargeA_Q"], readout, qubit = generateWaveforms()
-        #print (len(wv["chargeA_I"]))
-        wv["chargeA_I"] = sequences['charge1']
-        setup.loadAndQueueWaveforms(self.AWG_mod_no, wv["chargeA_I"], wv["chargeA_I"], wv["chargeA_I"], wv["chargeA_I"])
-        setup.run()
-        save_path = r"S:\_Data\180828 - Manipulate cavity and 3D readout - Cooldown 2\Jupyter notebooks\keysight_rabi_test"
-        plt.plot(setup.data_1[40])
-        plt.show()
-        #np.save(os.path.join(save_path, "I"), np.array(setup.data_list_I))
-        #np.save(os.path.join(save_path, "Q"), np.array(setup.data_list_Q))
-    finally:
-        setup.AWG_module.stopAll()
-        setup.AWG_module.clearAll()
-        setup.m_module.stopAll()
-        setup.m_module.clearAll()
         setup.chassis.close()
