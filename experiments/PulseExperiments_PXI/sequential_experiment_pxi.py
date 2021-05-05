@@ -67,22 +67,23 @@ class SequentialExperiment:
 
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram_sweep', suffix='.h5'))
 
-        if sweep_amp:
-            for att in attens:
-                quantum_device_cfg['readout']['dig_atten'] = att
-                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
-                sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-                data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
-                self.seq_data.append(data)
-        else:
-            for freq in freqs:
-                quantum_device_cfg['readout']['freq'] = freq
-                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
-                sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-                data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
-                self.seq_data.append(data)
+        for qb in experiment_cfg[experiment_name]['on_qubits']:
+            if sweep_amp:
+                for att in attens:
+                    quantum_device_cfg['powers'][qb]['readout_drive_digital_attenuation'] = att
+                    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+                    sequences = ps.get_experiment_sequences(experiment_name)
+                    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                    data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                    self.seq_data.append(data)
+            else:
+                for freq in freqs:
+                    quantum_device_cfg['readout'][qb]['freq'] = freq
+                    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+                    sequences = ps.get_experiment_sequences(experiment_name)
+                    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                    data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                    self.seq_data.append(data)
 
         self.seq_data = np.array(self.seq_data)
 
@@ -121,12 +122,13 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
 
-        for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
-            quantum_device_cfg['readout']['freq'] = freq
-            sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-            data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
-            self.seq_data.append(data)
+        for qb in experiment_cfg[experiment_name]['on_qubits']:
+            for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+                quantum_device_cfg['readout'][qb]['freq'] = freq
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.seq_data.append(data)
 
         self.seq_data = np.array(self.seq_data)
 
@@ -138,12 +140,13 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy_pi', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
 
-        for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
-            quantum_device_cfg['readout']['freq'] = freq
-            sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-            data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
-            self.seq_data.append(data)
+        for qb in experiment_cfg[experiment_name]['on_qubits']:
+            for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+                quantum_device_cfg['readout'][qb]['freq'] = freq
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.seq_data.append(data)
 
         self.seq_data = np.array(self.seq_data)
 
@@ -155,12 +158,13 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy_ef_pi', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
 
-        for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
-            quantum_device_cfg['readout']['freq'] = freq
-            sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-            data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
-            self.seq_data.append(data)
+        for qb in experiment_cfg[experiment_name]['on_qubits']:
+            for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+                quantum_device_cfg['readout'][qb]['freq'] = freq
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.seq_data.append(data)
 
         self.seq_data = np.array(self.seq_data)
 
@@ -171,12 +175,13 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
 
-        for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
-            quantum_device_cfg['readout']['freq'] = freq
-            sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-            data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
-            self.seq_data.append(data)
+        for qb in experiment_cfg[experiment_name]['on_qubits']:
+            for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+                quantum_device_cfg['readout'][qb]['freq'] = freq
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.seq_data.append(data)
 
         self.seq_data = np.array(self.seq_data)
 
@@ -190,16 +195,17 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, sweep_expt_name, suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
 
-        for atten in np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step']):
-            print("Attenuation set to ", atten, 'dB')
-            quantum_device_cfg['readout_drive_digital_attenuation']= atten
-            data_t = []
-            for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
-                quantum_device_cfg['readout']['freq'] = freq
-                sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-                data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
-                data_t.append(data)
+        for qb in experiment_cfg[experiment_name]['on_qubits']:
+            for atten in np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step']):
+                print("Attenuation set to ", atten, 'dB')
+                quantum_device_cfg['powers'][qb]['readout_drive_digital_attenuation']= atten
+                data_t = []
+                for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+                    quantum_device_cfg['readout'][qb]['freq'] = freq
+                    sequences = ps.get_experiment_sequences(experiment_name)
+                    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                    data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                    data_t.append(data)
 
             self.seq_data.append(np.array(data_t))
 
@@ -259,15 +265,16 @@ class SequentialExperiment:
 
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'pulse_probe_atten_sweep', suffix='.h5'))
 
-        for atten in attens:
+        for qb in experiment_cfg[experiment_name]['on_qubits']:
+            for atten in attens:
 
-            quantum_device_cfg["qubit_drive_digital_attenuation"] = atten
-            print("atten set to", atten)
-            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
-            sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-            data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
-            self.seq_data.append(data)
+                quantum_device_cfg['powers'][qb]["qubit_drive_digital_attenuation"] = atten
+                print("atten set to", atten)
+                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.seq_data.append(data)
 
         self.seq_data = np.array(self.seq_data)
 

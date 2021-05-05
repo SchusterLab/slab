@@ -28,6 +28,7 @@ class Experiment:
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
         im = InstrumentManager()
+        self.qubits = ["A", "B"]
         import time
         #self.fluxbias = im['dacbox']
         #self.fluxbias.setvoltage(1,0)
@@ -37,6 +38,9 @@ class Experiment:
 
         try: self.drive_los = [im[lo] for lo in self.hardware_cfg['drive_los']]
         except: print ("No drive function generator specified in hardware config / failure to connect with im()")
+
+        try: self.stab_los = [im[lo] for lo in self.hardware_cfg['stab_los']]
+        except: print ("No stabilizer function generator specified in hardware config / failure to connect with im()")
 
         try: self.readout_los = [im[lo] for lo in self.hardware_cfg['readout_los']]
         except: print ("No readout function generator specified in hardware config / failure to connect with im()")
@@ -80,11 +84,14 @@ class Experiment:
     # now setting for SignalCore
     def initiate_drive_LOs(self):
         try:
+            #TODO this totally relieson order of drive LOs being A first, then B, etc. this should be a dictionary
+            # somehow but I am currently pretty out of it so will have to wait until later - G 5/5/21
             for ii,d in enumerate(self.drive_los):
-                drive_freq = self.quantum_device_cfg['qubit'][str(ii+1)]['freq'] - self.quantum_device_cfg['pulse_info'][str(ii+1)]['iq_freq']
+                drive_freq = self.quantum_device_cfg['qubit'][self.qubits[ii]]['freq'] - self.quantum_device_cfg[
+                'pulse_info'][self.qubits[ii]]['iq_freq']
                 d.set_frequency(drive_freq * 1e9)
                 d.set_clock_reference(ext_ref=True)
-                d.set_power(self.quantum_device_cfg['qubit_drive_lo_powers'])
+                d.set_power(self.quantum_device_cfg['powers'][self.qubits[ii]]['drive_lo_powers'])
                 d.set_output_state(True)
                 d.set_rf_mode(val=0) # single RF tone on output 1
                 d.set_standby(False)
@@ -106,10 +113,10 @@ class Experiment:
     def initiate_readout_LOs(self):
         try:
             for ii, d in enumerate(self.readout_los):
-                readout_freq = self.quantum_device_cfg['readout']['freq']*1e9
+                readout_freq = self.quantum_device_cfg['readout'][self.qubits[ii]]['freq']*1e9
                 d.set_frequency(readout_freq)
                 d.set_clock_reference(ext_ref=True)
-                d.set_power(self.quantum_device_cfg['readout_drive_lo_powers'])
+                d.set_power(self.quantum_device_cfg['powers'][self.qubits[ii]]['readout_drive_lo_powers'])
                 d.set_output_state(True)
                 d.set_rf_mode(val=0) # single RF tone on output 1
                 d.set_standby(False)
@@ -126,10 +133,34 @@ class Experiment:
             print("Error in readout READOUT LO configuration")
             raise
 
+    def initiate_stab_LOs(self):
+        try:
+            for ii, d in enumerate(self.stab_los):
+                stab_freq = self.quantum_device_cfg['stabilizer_info']['freq']*1e9
+                d.set_frequency(stab_freq)
+                d.set_clock_reference(ext_ref=True)
+                d.set_power(self.quantum_device_cfg['stabilizer_info']["stab_lo_power"])
+                d.set_output_state(True)
+                d.set_rf_mode(val=0) # single RF tone on output 1
+                d.set_standby(False)
+                d.set_rf2_standby(True) # no output on RF 2
+                rfparams = d.get_rf_parameters()
+                settingparams = d.get_device_status()
+                print(" ==== STABILIZER LO SETTINGS ==== ")
+                print("RF1 OUT ENABLED: %s"%settingparams.operate_status.rf1_out_enable)
+                print("RF1 STANDBY: %s"%settingparams.operate_status.rf1_standby)
+                print("RF1 EXT REF DETECTED: %s"%settingparams.operate_status.ext_ref_detect)
+                print("RF1 FREQ: %s"%(rfparams.rf1_freq))
+                print("RF1 LEVEL: %s"%(rfparams.rf_level))
+
+        except:
+            print("Error in readout STABILIZER LO configuration")
+            raise
+
     def initiate_readout_attenuators(self):
         try:
             for ii, d in enumerate(self.readout_attens):
-                d.set_attenuator(self.quantum_device_cfg['readout_drive_digital_attenuation'])
+                d.set_attenuator(self.quantum_device_cfg['powers'][self.qubits[ii]]['readout_drive_digital_attenuation'])
                 print("set readout attenuator")
         except:
             print("Error in readout digital attenuator configuration")
@@ -137,7 +168,7 @@ class Experiment:
     def initiate_drive_attenuators(self):
         try:
             for ii, d in enumerate(self.drive_attens):
-                d.set_attenuator(self.quantum_device_cfg['qubit_drive_digital_attenuation'])
+                d.set_attenuator(self.quantum_device_cfg['powers'][self.qubits[ii]]['qubit_drive_digital_attenuation'])
                 print("set drive attenuator")
         except:
             print("Error in readout digital attenuator configuration")
@@ -259,6 +290,7 @@ class Experiment:
         self.set_trigger()
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
+        self.initiate_stab_LOs()
         self.initiate_readout_attenuators()
         self.initiate_drive_attenuators()
         self.initiate_pxi(name, sequences)

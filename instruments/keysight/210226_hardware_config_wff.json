@@ -20,13 +20,13 @@
   ],
   "drive_los": [
     "scqubA",
-    "scqubB",
-    "scstab"
+    "scqubB"
   ],
   "readout_los": [
     "scredA",
     "scredB"
   ],
+  "stab_los":["stab_los"],
   "readout_attens": [
     "readoutattengrbA",
     "readoutattengrbB"
@@ -170,7 +170,6 @@
       },
       qb_lo_conv: 1,
       stab_lo_conv:1,
-
       "ff1_mod_no": 5,
       "ff2_mod_no": 6,
       "awg_mod_no": 7,

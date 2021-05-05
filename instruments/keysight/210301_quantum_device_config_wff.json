@@ -22,7 +22,7 @@
       "drive_digital_attenuation": 10,
       "readout_drive_lo_powers": 13,
       "readout_drive_digital_attenuation": 5
-    }
+    },
   },
 
   "readout": {
@@ -89,4 +89,11 @@
       "ramp_sigma_len": 0.001
     }
   },
+
+  "stabilizer_info":{
+    "freq": 5,
+    "stab_lo_power": 13
+  }
+
+
 }
