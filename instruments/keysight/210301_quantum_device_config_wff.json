@@ -22,7 +22,7 @@
       "drive_digital_attenuation": 10,
       "readout_drive_lo_powers": 13,
       "readout_drive_digital_attenuation": 5
-    },
+    }
   },
 
   "readout": {

@@ -31,29 +31,12 @@ class PulseSequences:
 
         self.awg_info = hardware_cfg['awg_info']
 
-        self.channels_delay = hardware_cfg['channels_delay']
+        self.channels_delay = hardware_cfg['channels_delay_array_roll_ns']
 
         # pulse params
         self.qubit_freq = {"A": self.quantum_device_cfg['qubit']['A']['freq'],
                            "B": self.quantum_device_cfg['qubit']['B']['freq']}
 
-        self.qubit_sideband_freq = {"A": self.quantum_device_cfg['sideband_prep']['A']['sideband_freq'],
-                           "B": self.quantum_device_cfg['sideband_prep']['B']['sideband_freq']}
-
-        self.qubit_ramsey_freq = {"A": self.experiment_cfg['ramsey_sideband']['ramsey_freq'],
-                                  "B": self.experiment_cfg['ramsey_sideband']['ramsey_freq']}
-
-        self.qubit_sideband_Iamp = {"A": self.quantum_device_cfg['sideband_prep']['A']['I_amp'],
-                                    "B": self.quantum_device_cfg['sideband_prep']['B']['I_amp']}
-
-        self.qubit_sideband_Qamp = {"A": self.quantum_device_cfg['sideband_prep']['A']['Q_amp'],
-                                    "B": self.quantum_device_cfg['sideband_prep']['B']['Q_amp']}
-
-        self.qubit_sideband_Iphase = {"A": self.quantum_device_cfg['sideband_prep']['A']['I_phase'],
-                                      "B": self.quantum_device_cfg['sideband_prep']['B']['I_phase']}
-
-        self.qubit_sideband_Qphase = {"A": self.quantum_device_cfg['sideband_prep']['A']['Q_phase'],
-                                      "B": self.quantum_device_cfg['sideband_prep']['B']['Q_phase']}
 
         self.qubit_ef_freq = {"A": self.quantum_device_cfg['qubit']['A']['freq']+self.quantum_device_cfg['qubit']['A']['anharmonicity'],
                               "B": self.quantum_device_cfg['qubit']['B']['freq']+self.quantum_device_cfg['qubit']['B']['anharmonicity']}
@@ -70,22 +53,6 @@ class PulseSequences:
             "B": Square(max_amp=self.pulse_info['B']['pi_amp'], flat_len=self.pulse_info['B']['pi_len'],
                         ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.pulse_info["B"]['iq_freq'], phase=self.pulse_info['B']['Q_phase'])}
 
-        self.qubit_sideband_pi_I = {
-        "A": Square(max_amp=self.qubit_sideband_Iamp['A'], flat_len=self.pulse_info['A']['pi_len'],
-                                ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.qubit_sideband_freq["A"],
-                                phase=self.qubit_sideband_Iphase["A"]),
-        "B": Square(max_amp=self.qubit_sideband_Iamp['B'], flat_len=self.pulse_info['B']['pi_len'],
-                                ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.qubit_sideband_freq["B"],
-                                phase=self.qubit_sideband_Iphase["B"])}
-
-        self.qubit_sideband_pi_Q = {
-            "A": Square(max_amp=self.qubit_sideband_Qamp['A'], flat_len=self.pulse_info['A']['pi_len'],
-                        ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.qubit_sideband_freq["A"],
-                        phase=self.qubit_sideband_Qphase["A"]),
-            "B": Square(max_amp=self.qubit_sideband_Qamp['B'], flat_len=self.pulse_info['B']['pi_len'],
-                        ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.qubit_sideband_freq["B"],
-                        phase=self.qubit_sideband_Qphase["B"])}
-
         self.qubit_half_pi_I = {
             "A": Square(max_amp=self.pulse_info['A']['half_pi_amp'], flat_len=self.pulse_info['A']['half_pi_len'],
                         ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.pulse_info["A"]['iq_freq'], phase=0),
@@ -97,22 +64,6 @@ class PulseSequences:
                         ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.pulse_info["A"]['iq_freq'], phase=self.pulse_info['A']['Q_phase']),
             "B": Square(max_amp=self.pulse_info['B']['half_pi_amp'], flat_len=self.pulse_info['B']['half_pi_len'],
                         ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.pulse_info["B"]['iq_freq'], phase=self.pulse_info['B']['Q_phase'])}
-
-        self.qubit_sideband_half_pi_I = {
-            "A": Square(max_amp=self.qubit_sideband_Iamp['A'], flat_len=self.pulse_info['A']['half_pi_len'],
-                        ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.qubit_sideband_freq['A'],
-                        phase=self.qubit_sideband_Iphase["A"]),
-            "B": Square(max_amp=self.qubit_sideband_Iamp['B'], flat_len=self.pulse_info['B']['half_pi_len'],
-                        ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.qubit_sideband_freq['A'],
-                        phase=self.qubit_sideband_Iphase["B"])}
-
-        self.qubit_sideband_half_pi_Q = {
-            "A": Square(max_amp=self.qubit_sideband_Qamp['A'], flat_len=self.pulse_info['A']['half_pi_len'],
-                        ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.qubit_sideband_freq['A'],
-                        phase=self.qubit_sideband_Qphase["A"]),
-            "B": Square(max_amp=self.qubit_sideband_Qamp['B'], flat_len=self.pulse_info['B']['half_pi_len'],
-                        ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.qubit_sideband_freq['A'],
-                        phase=self.qubit_sideband_Qphase["B"])}
 
         self.qubit_ef_pi = {
         "A": Gauss(max_amp=self.pulse_info['A']['pi_ef_amp'], sigma_len=self.pulse_info['A']['pi_ef_len'], cutoff_sigma=2,
@@ -126,57 +77,11 @@ class PulseSequences:
         "B": Gauss(max_amp=self.pulse_info['B']['half_pi_ef_amp'], sigma_len=self.pulse_info['B']['half_pi_ef_len'],
                    cutoff_sigma=2, freq=self.qubit_ef_freq["B"], phase=0, plot=False)}
 
-        self.multimodes = self.quantum_device_cfg['multimodes']
-
-        self.mm_sideband_pi = {"A":[], "B":[]}
-
-        for qubit_id in ["A","B"]:
-            for mm_id in range(len(self.multimodes[qubit_id]['freq'])):
-                self.mm_sideband_pi[qubit_id].append(
-                                     Square(max_amp=self.multimodes[qubit_id]['pi_amp'][mm_id],
-                                            flat_len=self.multimodes[qubit_id]['pi_len'][mm_id],
-                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'],
-                                            cutoff_sigma=2, freq=self.multimodes[qubit_id]['freq'][mm_id], phase=0,
-                                            plot=False))
-
-
-        self.communication = self.quantum_device_cfg['communication']
-        self.sideband_cooling = self.quantum_device_cfg['sideband_cooling']
-
-
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/1_100kHz.pkl'), 'rb') as f:
-            freq_a_p_1 = pickle.load(f)
-
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/2_100kHz.pkl'), 'rb') as f:
-            freq_a_p_2 = pickle.load(f)
-
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/1_ef_100kHz.pkl'), 'rb') as f:
-            ef_freq_a_p_1 = pickle.load(f)
-
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/2_ef_100kHz.pkl'), 'rb') as f:
-            ef_freq_a_p_2 = pickle.load(f)
-
         gauss_z = np.linspace(-2,2,20)
         gauss_envelop = np.exp(-gauss_z**2)
 
         gauss_z = np.linspace(-2,2,20)
         gauss_envelop = np.exp(-gauss_z**2)
-
-
-
-
-        self.readout_sideband = {
-            "A": Square(max_amp=self.quantum_device_cfg['heterodyne']['A']['sideband_amp'],
-                                            flat_len=self.quantum_device_cfg['heterodyne']['A']['length'],
-                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['A']['ramp_sigma_len'],
-                                            cutoff_sigma=2, freq=self.multimodes['A']['freq'][0] - self.quantum_device_cfg['heterodyne']['A']['sideband_detune'], phase=0,
-                                            plot=False),
-            "B": Square(max_amp=self.quantum_device_cfg['heterodyne']['B']['sideband_amp'],
-                                            flat_len=self.quantum_device_cfg['heterodyne']['B']['length'],
-                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['B']['ramp_sigma_len'],
-                                            cutoff_sigma=2, freq=self.multimodes['B']['freq'][0] - self.quantum_device_cfg['heterodyne']['B']['sideband_detune'], phase=0,
-                                            plot=False)
-        }
 
     def  __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,plot_visdom=True):
         self.set_parameters(quantum_device_cfg, experiment_cfg, hardware_cfg)
@@ -314,36 +219,21 @@ class PulseSequences:
 
         sequencer.sync_channels_time(self.channels)
 
-        readout_time = sequencer.get_time('readout_trig') # Earlies was alazar_trig
+        readout_time = sequencer.get_time('digtzr_trig') # Earlies was alazar_trig
 
         readout_time_5ns_multiple = np.ceil(readout_time / 5) * 5
 
-        sequencer.append_idle_to_time('readout_trig', readout_time_5ns_multiple)
+        sequencer.append_idle_to_time('digtzr_trig', readout_time_5ns_multiple)
         sequencer.sync_channels_time(self.channels)
 
-        heterodyne_cfg = self.quantum_device_cfg['heterodyne']
 
         for qubit_id in on_qubits:
-            sequencer.append('hetero%s_I' % qubit_id,
-                             Square(max_amp=heterodyne_cfg[qubit_id]['amp'],
-                                    flat_len=heterodyne_cfg[qubit_id]['length'],
-                                    ramp_sigma_len=20, cutoff_sigma=2, freq=heterodyne_cfg[qubit_id]['freq'], phase=0,
-                                    phase_t0=readout_time_5ns_multiple))
-            sequencer.append('hetero%s_Q' % qubit_id,
-                             Square(max_amp=heterodyne_cfg[qubit_id]['amp'],
-                                    flat_len=heterodyne_cfg[qubit_id]['length'],
-                                    ramp_sigma_len=20, cutoff_sigma=2, freq=heterodyne_cfg[qubit_id]['freq'],
-                                    phase=np.pi / 2 + heterodyne_cfg[qubit_id]['phase_offset'], phase_t0=readout_time_5ns_multiple))
-            if sideband:
-                sequencer.append('flux%s'%qubit_id,self.readout_sideband[qubit_id])
-            sequencer.append('readout%s_trig' % qubit_id, Ones(time=heterodyne_cfg[qubit_id]['length']))
-
-        sequencer.append('readout',
-                         Square(max_amp=self.quantum_device_cfg['readout']['amp'],
-                                flat_len=self.quantum_device_cfg['readout']['length'],
-                                ramp_sigma_len=20, cutoff_sigma=2, freq=self.quantum_device_cfg['readout']['freq'],
-                                phase=0, phase_t0=readout_time_5ns_multiple))
-        sequencer.append('readout_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
+            sequencer.append('readout%s' % qubit_id,
+                             Square(max_amp=self.quantum_device_cfg['readout'][qubit_id]['amp'],
+                                    flat_len=self.quantum_device_cfg['readout'][qubit_id]['length'],
+                                    ramp_sigma_len=20, cutoff_sigma=2, freq=self.quantum_device_cfg['readout'][qubit_id]['freq'],
+                                    phase=0, phase_t0=readout_time_5ns_multiple))
+        sequencer.append('digtzr_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
 
         return readout_time
 
@@ -352,71 +242,47 @@ class PulseSequences:
             on_qubits = ["A", "B"]
 
         sequencer.sync_channels_time(self.channels)
-        readout_time = sequencer.get_time('readout_trig') # Earlies was alazar_tri
+        readout_time = sequencer.get_time('digtzr_trig') # Earlies was alazar_tri
         readout_time_5ns_multiple = np.ceil(readout_time / 5) * 5
-        sequencer.append_idle_to_time('readout_trig', readout_time_5ns_multiple)
+        sequencer.append_idle_to_time('digtzr_trig', readout_time_5ns_multiple)
         if overlap:
             pass
         else:
             sequencer.sync_channels_time(self.channels)
 
-
-        sequencer.append('readout',
-                         Square(max_amp=self.quantum_device_cfg['readout']['amp'],
-                                flat_len=self.quantum_device_cfg['readout']['length'],
-                                ramp_sigma_len=20, cutoff_sigma=2, freq=0,
-                                phase=0, phase_t0=readout_time_5ns_multiple))
-        sequencer.append('readout_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
+        for qubit_id in on_qubits:
+            sequencer.append('readout%s' % qubit_id,
+                             Square(max_amp=self.quantum_device_cfg['readout'][qubit_id]['amp'],
+                                    flat_len=self.quantum_device_cfg['readout'][qubit_id]['length'],
+                                    ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+                                    phase=0, phase_t0=readout_time_5ns_multiple))
+        sequencer.append('digtzr_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
 
         return readout_time
+
     def excited_readout_pxi(self, sequencer, on_qubits=None, sideband = False, overlap = False):
         if on_qubits == None:
             on_qubits = ["A", "B"]
 
         sequencer.sync_channels_time(self.channels)
-        readout_time = sequencer.get_time('readout_trig') # Earlies was alazar_tri
+        readout_time = sequencer.get_time('digtzr_trig') # Earlies was alazar_tri
         readout_time_5ns_multiple = np.ceil(readout_time / 5) * 5
-        sequencer.append_idle_to_time('readout_trig', readout_time_5ns_multiple)
+        sequencer.append_idle_to_time('digtzr_trig', readout_time_5ns_multiple)
         if overlap:
             pass
         else:
             sequencer.sync_channels_time(self.channels)
 
-        self.gen_q(sequencer, qubit_id, len=2000, amp=1, phase=0, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-        sequencer.append('drive',)
-        sequencer.append('readout',
-                         Square(max_amp=self.quantum_device_cfg['readout']['amp'],
-                                flat_len=self.quantum_device_cfg['readout']['length'],
-                                ramp_sigma_len=20, cutoff_sigma=2, freq=0,
-                                phase=0, phase_t0=readout_time_5ns_multiple))
-        sequencer.append('readout_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
+        for qubit_id in on_qubits:
+            self.gen_q(sequencer, qubit_id, len=2000, amp=1, phase=0, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+            sequencer.append('readout%s' % qubit_id,
+                             Square(max_amp=self.quantum_device_cfg['readout'][qubit_id]['amp'],
+                                    flat_len=self.quantum_device_cfg['readout'][qubit_id]['length'],
+                                    ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+                                    phase=0, phase_t0=readout_time_5ns_multiple))
+        sequencer.append('digtzr_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
 
         return readout_time
-
-    # def readout_pxi_pi(self, sequencer, on_qubits=None, sideband = False, overlap = False):
-    #     if on_qubits == None:
-    #         on_qubits = ["A", "B"]
-    #
-    #     sequencer.sync_channels_time(self.channels)
-    #     readout_time = sequencer.get_time('readout_trig') # Earlies was alazar_tri
-    #     readout_time_5ns_multiple = np.ceil(readout_time / 5) * 5
-    #     sequencer.append_idle_to_time('readout_trig', readout_time_5ns_multiple)
-    #     if overlap:
-    #         pass
-    #     else:
-    #         sequencer.sync_channels_time(self.channels)
-    #
-    #     qubit_id = on_qubits[0]
-    #     self.pi_q(sequencer, qubit_id, phase=0, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
-    #     sequencer.append('drive',)
-    #     sequencer.append('readout',
-    #                      Square(max_amp=self.quantum_device_cfg['readout']['amp'],
-    #                             flat_len=self.quantum_device_cfg['readout']['length'],
-    #                             ramp_sigma_len=20, cutoff_sigma=2, freq=0,
-    #                             phase=0, phase_t0=readout_time_5ns_multiple))
-    #     sequencer.append('readout_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
-    #
-    #     return readout_time
 
     def parity_measurement(self, sequencer, qubit_id='A'):
         self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
@@ -487,7 +353,7 @@ class PulseSequences:
 
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            pre_flux_time = sequencer.get_time('readout_trig') #could just as well be any ch
+            pre_flux_time = sequencer.get_time('digtzr_trig') #could just as well be any ch
             for qubit_id in self.expt_cfg['on_qubits']:
                 sequencer.append('charge%s_I' % qubit_id,
                                  Square(max_amp=self.expt_cfg['qb_amp'], flat_len=self.expt_cfg['qb_pulse_length'],
@@ -506,9 +372,9 @@ class PulseSequences:
             sequencer.sync_channels_time(channels_excluding_fluxch)
 
             #makes sure we're in 5ns multiple of start time before we append readout pulse
-            readout_time = sequencer.get_time('readout_trig')  # Earlies was alazar_tri
+            readout_time = sequencer.get_time('digtzr_trig')  # Earlies was alazar_tri
             readout_time_5ns_multiple = np.ceil(readout_time / 5) * 5
-            sequencer.append_idle_to_time('readout_trig', readout_time_5ns_multiple)
+            sequencer.append_idle_to_time('digtzr_trig', readout_time_5ns_multiple)
             sequencer.sync_channels_time(channels_excluding_fluxch)
 
             #add readout and readout trig (ie dig) pulse
@@ -517,12 +383,12 @@ class PulseSequences:
                                     flat_len=self.quantum_device_cfg['readout']['length'],
                                     ramp_sigma_len=20, cutoff_sigma=2, freq=0,
                                     phase=0, phase_t0=readout_time_5ns_multiple))
-            sequencer.append('readout_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
+            sequencer.append('digtzr_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
 
 
             #add flux to pulse
             sequencer.sync_channels_time(channels_excluding_fluxch)
-            post_flux_time = sequencer.get_time('readout_trig') #could just as well be any ch
+            post_flux_time = sequencer.get_time('digtzr_trig') #could just as well be any ch
             for target in self.expt_cfg['target_qb']:
                 #since we haven't been synching the flux channels, this should still be back at the beginning
                 sequencer.append('ff_Q%s' % target,

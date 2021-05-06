@@ -1,5 +1,6 @@
 import numpy as np
 import visdom
+import copy
 
 try:
     from .pulse_classes import Gauss, Idle, Ones, Square
@@ -21,7 +22,7 @@ class Sequencer:
             #changes dt to M#201 cards to 2, but otherwise keeps all the same inputs from keysight_pxi in hardware
             # config
             if channels_awg[channel] == "keysight_pxi_M3201A":
-                awg_info_temp = awg_info["keysight_pxi"]
+                awg_info_temp = copy.deepcopy(awg_info["keysight_pxi"])
                 awg_info_temp['dt'] = 2
                 channels_awg_info[channel] = awg_info_temp
             else:
@@ -131,6 +132,7 @@ class Sequencer:
         return sequence
 
     def end_sequence(self):
+        #self.sync_channels_time(self.channels)
         for channel in self.channels:
             self.append(channel,Idle(time=100))
         sequence = self.get_sequence()
@@ -154,7 +156,10 @@ class Sequencer:
             self.end_sequence()
 
 
-        self.equalize_sequences()
+        #we don't need to upload sequences of the same length to keysight, since trigger period is much longer than
+        # any of the sequences anyway. If this ever changes, should use synch_channels instead of equalize sequences,
+        #  since equalize sequences doesn't take into accoutn dt.
+        #self.equalize_sequences()
         self.delay_channels(self.channels_delay)
 
         if plot:self.plot_sequences()
