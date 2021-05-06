@@ -39,20 +39,6 @@ class Sequencer:
             idle.generate_pulse_array()
             self.pulse_array_list[channel] = [idle.pulse_array]
 
-        # M8195a trig
-        try:self.append('m8195a_trig', Ones(time=sequences.hardware_cfg['trig_pulse_len']['m8195a']))
-        except:pass
-        # sideband cooling
-        for qubit_id in sequences.expt_cfg.get('on_qubits', ['A','B']):
-            if sequences.sideband_cooling[qubit_id]['cool']:
-                self.append('flux%s'%qubit_id,
-                             Square(max_amp=sequences.multimodes[qubit_id]['pi_amp'][sequences.sideband_cooling[qubit_id]['mode_id']], flat_len=sequences.multimodes[qubit_id]['pi_len'][sequences.sideband_cooling[qubit_id]['mode_id']],
-                                    ramp_sigma_len=sequences.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'], cutoff_sigma=2, freq=sequences.multimodes[qubit_id]['freq'][sequences.sideband_cooling[qubit_id]['mode_id']], phase=0,
-                                    plot=False))
-
-                self.append('flux%s'%qubit_id,
-                             Idle(time=sequences.multimodes[qubit_id]['pi_len'][sequences.sideband_cooling[qubit_id]['mode_id']]))
-
         self.sync_channels_time(sequences.channels)
 
     def append(self, channel, pulse):
@@ -110,6 +96,8 @@ class Sequencer:
         return sequence
 
     def equalize_sequences(self):
+        """I don't think this takes into account "dt" of different channels, synch channels is probs better
+        test this I guess"""
         awg_max_len = {}
         awg_list = set(self.channels_awg.values())
         for awg in awg_list:
@@ -151,52 +139,7 @@ class Sequencer:
         self.multiple_sequences.append(sequence)
 
     def complete(self, sequences, plot=False):
-        if sequences.expt_cfg.get('9_calibration', False):
-            qubit_state = ['g','e','f']
-
-            for qubit_A_state in qubit_state:
-                for qubit_B_state in qubit_state:
-                    self.new_sequence(sequences)
-                    qubit_id = "A"
-                    if qubit_A_state == 'e':
-                        self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-                    if qubit_A_state == 'f':
-                        self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-                        self.append('charge%s' %qubit_id, sequences.qubit_ef_pi[qubit_id])
-
-                    qubit_id = "B"
-                    if qubit_B_state == 'e':
-                        self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-                    if qubit_B_state == 'f':
-                        self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-                        self.append('charge%s' %qubit_id, sequences.qubit_ef_pi[qubit_id])
-
-                    sequences.readout(self, sequences.expt_cfg.get('on_qubits',["A", "B"]))
-                    self.end_sequence()
-
-        elif sequences.expt_cfg.get('4_calibration', False):
-            self.new_sequence(sequences)
-            sequences.readout(self, sequences.expt_cfg.get('on_qubits',["A", "B"]))
-            self.end_sequence()
-
-            self.new_sequence(sequences)
-            qubit_id = "B"
-            self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-            sequences.readout(self, sequences.expt_cfg.get('on_qubits',["A", "B"]))
-            self.end_sequence()
-
-            self.new_sequence(sequences)
-            qubit_id = "A"
-            self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-            sequences.readout(self, sequences.expt_cfg.get('on_qubits',["A", "B"]))
-            self.end_sequence()
-
-            self.new_sequence(sequences)
-            for qubit_id in sequences.expt_cfg.get('on_qubits',["A","B"]):
-                self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-            sequences.readout(self, sequences.expt_cfg.get('on_qubits',["A", "B"]))
-            self.end_sequence()
-        elif sequences.expt_cfg.get('pi_calibration', False):
+        if sequences.expt_cfg.get('pi_calibration', False):
 
             self.new_sequence(sequences)
             sequences.pad_start_pxi_tek2(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["A"]),time=500)
