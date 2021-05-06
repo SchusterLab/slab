@@ -24,12 +24,12 @@ import pickle
 
 class SequentialExperiment:
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, path,analyze = False,
-                 show=True,P = 'Q', return_val=False, loop_iter=0):
+                 show=True,P = 'Q', return_val=False, fock_number=-1):
 
         self.Is = []
         self.Qs = []
         self.show = show
-        self.loop_iter = loop_iter
+        self.fock_number = fock_number
 
         eval('self.' + experiment_name)(quantum_device_cfg, experiment_cfg, hardware_cfg,path)
         if analyze:
@@ -1812,15 +1812,26 @@ class SequentialExperiment:
 
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_cavity_drive_ramsey', suffix='.h5'))
 
-        for ii, mode in enumerate(swp_cfg['mode_indices']):
-            experiment_cfg[experiment_name]['cavity_drive_len'] = swp_cfg['cavity_lens'][ii]
-            experiment_cfg[experiment_name]['mode_index'] = mode
-            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
-            sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
-            self.Is.append(I)
-            self.Qs.append(Q)
+        if swp_cfg['vary_len']:
+            for ii, mode in enumerate(swp_cfg['mode_indices']):
+                experiment_cfg[experiment_name]['cavity_drive_len'] = swp_cfg['cavity_lens'][ii]
+                experiment_cfg[experiment_name]['mode_index'] = mode
+                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.Is.append(I)
+                self.Qs.append(Q)
+        else:
+            for ii, mode in enumerate(swp_cfg['mode_indices']):
+                experiment_cfg[experiment_name]['cavity_drive_amp'] = swp_cfg['cavity_amps'][ii]
+                experiment_cfg[experiment_name]['mode_index'] = mode
+                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.Is.append(I)
+                self.Qs.append(Q)
 
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
@@ -2741,8 +2752,11 @@ class SequentialExperiment:
         swp_cfg = experiment_cfg['sequential_optimal_control_repeated_pi_pulses']
         experiment_name = 'optimal_control_repeated_pi_pulses'
         expt_cfg = experiment_cfg[experiment_name]
-        data_path = os.path.join(path, 'data/g1/')
-        # data_path = os.path.join(data_path, str(fock_number))
+        fock_number = self.fock_number
+        # data_path = os.path.join(path, 'data/test')
+        data_path = os.path.join(path, "data/g" + str(fock_number) + "/")
+        expt_cfg['pi_at_n'] = fock_number
+        expt_cfg['pi_at_m'] = fock_number + 1
 
         seq_data_file = os.path.join(data_path,
                                      get_next_filename(data_path, 'sequential_optimal_control_repeated_pi_pulses', suffix='.h5'))
@@ -2757,7 +2771,42 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
         
+    #Added 0n 07/28/2020 - Ankur for stimulated emission experiment. This loads the M8195 and PXI AWG only once.
+    def sequential_optimal_control_repeated_pi_pulses_noload(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        swp_cfg = experiment_cfg['sequential_optimal_control_repeated_pi_pulses']
+        experiment_name = 'optimal_control_repeated_pi_pulses'
+        expt_cfg = experiment_cfg[experiment_name]
+        fock_number = self.fock_number
+        camp = expt_cfg['cavity_amp']
+        # data_path = os.path.join(path, 'data/g0')
+        # data_path = os.path.join(path, "data/g" + str(fock_number))
+        data_path = os.path.join(path, "data/g" + str(fock_number) + "/camp_" + str(camp))
+        expt_cfg['pi_at_n'] = fock_number
+        expt_cfg['pi_at_m'] = fock_number + 1
 
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, 'sequential_optimal_control_repeated_pi_pulses', suffix='.h5'))
+        for temp in range(swp_cfg['rep_number']):
+            if temp is 0:
+                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, plot_visdom=False)
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                load = True
+            else:
+                load = False
+                ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, plot_visdom=False)
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+
+            print("$$$$$$$$$$$$$&&&&&&&&&&&& \n Current iteration: %d, %s"%(temp, load))
+
+            I, Q = exp.run_experiment_pxi_repeated_noload(sequences, path, experiment_name, seq_data_file=seq_data_file, load=load)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+        
     def transfer_function_blockade_inv(self, amp, experiment_cfg, channel='cavity_amp_vs_amp'):
         # pull calibration data from file
         fn_file = experiment_cfg['transfer_function_blockade_calibration_files'][channel]

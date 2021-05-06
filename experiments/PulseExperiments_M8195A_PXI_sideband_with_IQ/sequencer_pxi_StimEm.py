@@ -2,9 +2,10 @@ import numpy as np
 import visdom
 
 try:
-    from .pulse_classes import Gauss, Idle, Ones, Square
+    from .pulse_classes_StimEm import Gauss, Idle, Ones, Square
 except:
     from pulse_classes import Gauss, Idle, Ones, Square
+
 
 class Sequencer:
     def __init__(self, channels, channels_awg, awg_info, channels_delay):
@@ -12,7 +13,6 @@ class Sequencer:
         self.channels_awg = channels_awg
         self.awg_info = awg_info
         self.channels_delay = channels_delay
-
 
         channels_awg_info = {}
 
@@ -216,23 +216,26 @@ class Sequencer:
         vis.close()
 
         sequence_id = 0
-        for sequence in self.multiple_sequences[::50]:
+        for sequence in self.multiple_sequences[::20]:
 
             sequence_id += 1
 
             vis = visdom.Visdom()
             win = vis.line(
-                X = np.arange(0, 1),
-                Y = np.arange(0, 1),
-                opts=dict(legend=[self.channels[0]], title='seq %d' % sequence_id, xlabel='Time (ns)'))
+                X=np.arange(0, 1),
+                Y=np.arange(0, 1),
+                opts=dict(
+                    legend=[self.channels[0]], title='seq %d' % sequence_id, xlabel='Time (ns)'))
 
             kk = 0
             for channel in self.channels:
                 sequence_array = sequence[channel]
                 vis.updateTrace(
                     X=np.arange(0, len(sequence_array)) * self.channels_awg_info[channel]['dt'] +
-                                self.channels_awg_info[channel]['time_delay'],
-                    Y=sequence_array + 2 * (len(self.channels) - kk), win=win, name=channel, append=False)
+                      self.channels_awg_info[channel]['time_delay'],
+                    Y=sequence_array + 2 * (len(self.channels) - kk),
+                    win=win, name=channel, append=False)
+
                 kk += 1
 
 

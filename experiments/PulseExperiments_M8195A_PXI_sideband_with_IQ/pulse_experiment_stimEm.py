@@ -1,12 +1,10 @@
 from slab import InstrumentManager
 from slab.instruments.awg import write_Tek5014_file
 from slab.instruments.awg.M8195A import upload_M8195A_sequence
-# import keysight_pxi_load as ks_pxi
-from slab.instruments.keysight import keysight_pxi_load_m8195a as ks_pxi
+from slab.instruments.keysight import keysight_pxi_load_m8195a_pxi_sideband_with_iq_stim_Em as ks_pxi
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
 from slab.instruments.awg.Tek70001 import write_Tek70001_sequence
-# from slab.instruments.awg.Tek70001 import write_Tek70001_file
 from slab.instruments.awg import M8195A
 from slab.instruments.Alazar import Alazar
 import numpy as np
@@ -17,13 +15,12 @@ import visdom
 from slab.datamanagement import SlabFile
 from slab.dataanalysis import get_next_filename
 import json
-# from slab.experiments.PulseExperiments.get_data import get_iq_data, get_singleshot_data
-from slab.experiments.PulseExperiments_M8195A_PXI.PostExperimentAnalysis import PostExperiment
+from slab.experiments.PulseExperiments_M8195A_PXI_sideband_with_IQ.PostExperimentAnalysis_StimEm import PostExperiment
 
 im = InstrumentManager()
 
 class Experiment:
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None):
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg, sequences=None, name=None):
         self.quantum_device_cfg = quantum_device_cfg
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
@@ -42,7 +39,10 @@ class Experiment:
         
         try: self.cavity_drive_los = [im[lo] for lo in self.hardware_cfg['cavity_drive_los']]
         except: print ("No cavity drive function generator specified in hardware config")
-
+        
+        try: self.sideband_drive_los = [im[lo] for lo in self.hardware_cfg['sideband_drive_los']]
+        except: print ("No sideband drive function generator specified in hardware config")
+        
         try: self.attens = [im[atten] for atten in self.hardware_cfg['attens']]
         except: print ("No digital attenuator specified in hardware config")
 
@@ -68,11 +68,62 @@ class Experiment:
 
 
     def initiate_pxi(self, name, sequences):
-        try:self.m8195a.stop_output()
-        except:pass
+        try:
+            self.m8195a.stop_output()
+        except:
+            pass
         try:
             self.pxi.AWG_module.stopAll()
             self.pxi.m_module.stopAll()
+            self.pxi.trig_module.stopAll()
+            self.pxi.DIG_module.stopAll()
+        except:
+            pass
+
+        pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
+        pxi_sequences = {}
+        for channel in pxi_waveform_channels:
+            pxi_sequences[channel] = sequences[channel]
+
+        self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
+        self.pxi.loadAndQueueWaveforms(pxi_sequences)
+    
+    #Modified 07/28/2020 - Ankur, not to reload the AWG every time for identical experiment
+    def initiate_pxi_no_load(self, name, sequences):
+        try:
+            self.m8195a.stop_output()
+        except:
+            pass
+        try:
+            self.pxi.AWG_module.stopAll()
+            self.pxi.m_module.stopAll()
+            self.pxi.trig_module.stopAll()
+            self.pxi.DIG_module.stopAll()
+        except:
+            pass
+
+        pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
+        pxi_sequences = {}
+        for channel in pxi_waveform_channels:
+            pxi_sequences[channel] = sequences[channel]
+
+        self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
+
+        # self.pxi.noloadAndQueueWaveforms(pxi_sequences) # disabled this line on 2021-01-07
+        # Added "loadAndQueueWaveforms" below on 2021-01-07 to debug the issue with experiment failing
+        #there was some mixing between the readout trigger and m8195 trigger
+        self.pxi.loadAndQueueWaveforms(pxi_sequences) #modified this part
+                
+    def initiate_pxi_clear(self, name, sequences):
+        try:
+            self.m8195a.stop_output()
+            # print("Memory status of AWG: %"%self.m8195a.get_memory_space_amount())
+        except:pass
+        try:
+            self.pxi.AWG_module.stopAll()
+            self.pxi.AWG_module.clearAll()
+            self.pxi.m_module.stopAll()
+            self.pxi.m_module.clearAll()
             self.pxi.trig_module.stopAll()
             self.pxi.DIG_module.stopAll()
         except:pass
@@ -84,6 +135,7 @@ class Experiment:
 
         self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, name)
         self.pxi.loadAndQueueWaveforms(pxi_sequences)
+
 
     def initiate_tek2(self, name,path, sequences):
         if 'sideband' in name:
@@ -131,12 +183,19 @@ class Experiment:
         self.m8195a.stop_output()
         time.sleep(1)
 
-    def awg_run(self,run_pxi = True,name=None):
+    def awg_run(self, run_pxi=True, name=None):
         self.m8195a.start_output()
         time.sleep(1)
         if run_pxi:
             self.pxi.run()
-    
+
+    #Modified 07/28/202 - Ankur reduced the sleep time from 1s to 0.1s (don't know if it is even required)
+    def awg_run_noload(self, run_pxi=True, name=None):
+        self.m8195a.start_output()
+        time.sleep(0.4) # 1 sec works, 0.2 doesn't 2021-01-07
+        if run_pxi:
+            self.pxi.run()
+
     def clear_and_restart_digitizer(self):
         self.pxi.clear_and_start_digitizer()
 
@@ -151,11 +210,12 @@ class Experiment:
         self.pxi.DIG_module.stopAll()
         self.pxi.chassis.close()
         # except:print('Error in stopping and closing PXI')
-    
+
         try:
             self.m8195a.stop_output()
             time.sleep(0.1)
-        except:print('Error in stopping M8195a')
+        except:
+            print('Error in stopping M8195a')
 
     def pxi_stop(self):
         try:
@@ -208,6 +268,37 @@ class Experiment:
             except:print ("Error in jpa pump LO configuration")
         else:print("JPA pump is off")
 
+    def initiate_sideband_drive_LOs(self, name):
+        if 'sideband' in name:
+            try:
+                for ii, d in enumerate(self.sideband_drive_los):
+                    expt_cfg = self.experiment_cfg[name]
+                    if expt_cfg['use_freq_from_expt_cfg']:
+                        sideband_freq = expt_cfg['sideband_freq']
+                        power = self.quantum_device_cfg['sideband_drive_lo_powers'][str(ii + 1)]
+                    else:
+                        if expt_cfg['f0g1']:
+                            power = self.quantum_device_cfg['flux_pulse_info'][str(ii + 1)]['f0g1_lo_powers'][
+                                expt_cfg['mode_index']]
+                            sideband_freq = self.quantum_device_cfg['flux_pulse_info'][str(ii + 1)]['f0g1_freq'][
+                                expt_cfg['mode_index']]
+                        elif expt_cfg['h0e1']:
+                            power = self.quantum_device_cfg['flux_pulse_info'][str(ii + 1)]['h0e1_lo_powers'][
+                                expt_cfg['mode_index']]
+                            sideband_freq = self.quantum_device_cfg['flux_pulse_info'][str(ii + 1)]['h0e1_freq'][
+                                expt_cfg['mode_index']]
+                        else:
+                            print("what sideband do you want from us?")
+                    drive_freq = sideband_freq - \
+                                 self.quantum_device_cfg['sideband_iq_pulse_info'][str(ii + 1)]['iq_freq']
+                    d.set_frequency(drive_freq * 1e9)
+                    d.set_power(power)
+                    d.set_ext_pulse(mod=True)
+                    print ("Sideband LO configured")
+            except:
+                print("Error in sideband drive LO configuration")
+        # else: print ("No sideband LO configured. No confusion whatsoever?")
+
 
     def initiate_readout_LOs(self):
         try:
@@ -241,7 +332,6 @@ class Experiment:
         try:
             for ii, d in enumerate(self.attens):
                 d.set_attenuator(self.quantum_device_cfg['readout']['dig_atten'])
-            print("Digital attenuator set to", self.quantum_device_cfg['readout']['dig_atten'])
         except:
             print("Error in digital attenuator configuration")
 
@@ -250,6 +340,21 @@ class Experiment:
             period = self.hardware_cfg['trigger']['period_us']
             self.trig.set_period(period*1e-6)
             print ("Trigger period set to ", period,"us")
+        except:
+            print("Error in trigger configuration")
+
+    def set_trig_voltage(self):
+        try:
+            # period = self.hardware_cfg['trigger']['period_us']
+            self.trig.set_amplitude(4.0)
+            print ("Trigger voltage set to 4.0 V")
+        except:
+            print("Error in trigger configuration")
+
+    def set_pulsewidth(self):
+        try:
+            self.trig.set_pulse_width(2000e-9)
+            print ("Trigger pulse width to 2000 ns")
         except:
             print("Error in trigger configuration")
 
@@ -398,7 +503,7 @@ class Experiment:
         try:pi_calibration = expt_cfg['pi_calibration']
         except:pi_calibration = False
 
-        I,Q = self.pxi.acquire_avg_data(w,pi_calibration,rotate_iq,phi)
+        I, Q = self.pxi.acquire_avg_data(w,pi_calibration,rotate_iq,phi)
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
@@ -411,12 +516,12 @@ class Experiment:
                 f.append_line('I', I)
                 f.append_line('Q', Q)
 
-        return I,Q
+        return I, Q
 
-    def get_ss_data_pxi(self,expt_cfg, seq_data_file):
+    def get_ss_data_pxi(self, expt_cfg, seq_data_file):
         w = self.pxi.readout_window/self.pxi.dt_dig
 
-        I,Q = self.pxi.SSdata_many(w)
+        I, Q = self.pxi.SSdata_many(w)
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
@@ -428,7 +533,7 @@ class Experiment:
                 f.append_line('I', I.flatten())
                 f.append_line('Q', Q.flatten())
 
-        return I,Q
+        return I, Q
 
     def run_experiment(self, sequences, path, name, seq_data_file=None, update_awg=True):
 
@@ -458,35 +563,37 @@ class Experiment:
 
         return self.data_file
 
-    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
+    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False, expt_num=0, check_sync=False, save_errs=False):
         self.expt_cfg = self.experiment_cfg[name]
         self.generate_datafile(path,name,seq_data_file=seq_data_file)
         self.set_trigger()
+        # self.set_trig_voltage()
         self.initiate_readout_LOs()
-        self.initiate_jpa_pump_LOs()
+        self.initiate_sideband_drive_LOs(name)
         self.initiate_attenuators()
         self.initiate_pxi(name, sequences)
-        self.initiate_m8195a(path,sequences)
-        time.sleep(0.1)
+        self.initiate_m8195a(path, sequences)
+        time.sleep(0.2)
         self.awg_run(run_pxi=True,name=name)
         try:
             if check_sync:self.pxi.acquireandplot(expt_num)
             else:
                 if self.expt_cfg['singleshot']:
-                    self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+                    self.I, self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
                 else:
-                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq = self.rotate_iq,phi=self.iq_angle)
+                    self.I, self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq = self.rotate_iq,phi=self.iq_angle)
         except:print("Error in data acquisition from PXI")
 
         self.awg_stop(name)
-        return self.I,self.Q
+        return self.I, self.Q
     
-    def run_experiment_pxi_repeated(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False, no_load = False, clear_pxi = False):
+    def run_experiment_pxi_repeated(self, sequences, path, name, seq_data_file=None, update_awg=False, expt_num=0, check_sync=False, save_errs=False,
+                                    no_load=False, clear_pxi=False):
         self.expt_cfg = self.experiment_cfg[name]
-        self.generate_datafile(path,name,seq_data_file=seq_data_file)
+        self.generate_datafile(path, name, seq_data_file=seq_data_file)
         self.initiate_pxi(name, sequences)
         if not no_load:
-            self.initiate_m8195a(path,sequences)
+            self.initiate_m8195a(path, sequences)
             self.set_trigger()
             self.initiate_readout_LOs()
             self.initiate_jpa_pump_LOs()
@@ -497,16 +604,50 @@ class Experiment:
             if check_sync:self.pxi.acquireandplot(expt_num)
             else:
                 if self.expt_cfg['singleshot']:
-                    self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+                    self.I, self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
                 else:
-                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq = self.rotate_iq,phi=self.iq_angle)
+                    self.I, self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq = self.rotate_iq, phi=self.iq_angle)
         except:print("Error in data acquisition from PXI")
 
         self.awg_stop(name)
-        return self.I,self.Q
+        return self.I, self.Q
 
-    def post_analysis(self,experiment_name,P='Q',show = False,check_sync = False, return_val=False):
-        if check_sync:pass
-        else:PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name, self.I ,self.Q, P,show)
+    #Added 0n 07/28/2020 - Ankur for stimulated emission experiment. This loads the M8195 and PXI AWG only once and seems to have fixed 
+    # the memory issue.
+    def run_experiment_pxi_repeated_noload(self, sequences, path, name, seq_data_file=None, update_awg=False, expt_num=0, check_sync=False,
+                                         save_errs=False, load=True):
+        self.expt_cfg = self.experiment_cfg[name]
+        self.generate_datafile(path, name, seq_data_file=seq_data_file)
+        self.set_trigger()
+        # self.set_trig_voltage()
+        # self.set_pulsewidth()
+        self.initiate_readout_LOs()
+        self.initiate_sideband_drive_LOs(name)
+        self.initiate_attenuators()
+        self.initiate_pxi(name, sequences)
+        #Flag to load the M1985 only once for identical experiment
+        if load:
+            self.initiate_m8195a(path, sequences)
+        time.sleep(0.2)
+        self.awg_run_noload(run_pxi=True, name=name)
+        try:
+            if check_sync:
+                self.pxi.acquireandplot(expt_num)
+            else:
+                if self.expt_cfg['singleshot']:
+                    self.I, self.Q =  self.get_ss_data_pxi(self.expt_cfg, seq_data_file=seq_data_file)
+                else:
+                    self.I, self.Q = self.get_avg_data_pxi(self.expt_cfg, seq_data_file=seq_data_file, rotate_iq = self.rotate_iq, phi=self.iq_angle)
+        except:print("Error in data acquisition from PXI")
+
+        self.awg_stop(name)
+        # print("Run 1 done")
+        return self.I, self.Q
+
+    def post_analysis(self, experiment_name, P='Q', show = False, check_sync = False, return_val=False):
+        if check_sync:
+            pass
+        else:
+            PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name, self.I ,self.Q, P,show)
         if return_val:
             return PA

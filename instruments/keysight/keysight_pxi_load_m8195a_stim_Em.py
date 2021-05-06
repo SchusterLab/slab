@@ -19,7 +19,7 @@ Module 10 is used for reacout.
 # %pylab inline
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
-from slab.experiments.PulseExperiments_PXI.sequences_pxi import PulseSequences
+from slab.experiments.PulseExperiments_M8195A_PXI_sideband_with_IQ.sequences_pxi_stimEm import PulseSequences
 from slab.experiments.HVIExperiments import HVIExpLib as exp
 import time
 import numpy as np
@@ -69,8 +69,6 @@ class KeysightSingleQubit:
         self.card_delay = hardware_cfg['awg_info']['keysight_pxi']['m3102a_card_delay']
         self.adc_range =  hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']
 
-
-
         print ("Module used for generating analog pulses = ",self.out_mod_no)
         print ("Module used for generating digital markers = ",self.marker_mod_no)
         print ("Module used for temp generation of module = ", self.trig_mod_no)
@@ -79,11 +77,8 @@ class KeysightSingleQubit:
         self.num_avg = experiment_cfg[name]['acquisition_num']
         self.num_expt = sequences['readout'].shape[0]
         self.trigger_period = self.hardware_cfg['trigger']['period_us']
-
         self.totaltime = self.num_avg*self.num_expt*self.trigger_period*1e-6/60.0
-
         self.DIG_sampl_record = hardware_cfg['awg_info']['keysight_pxi']['samplesPerRecord']
-
 
         if 'sideband' in name:
             self.prep_tek2 = True
@@ -92,15 +87,14 @@ class KeysightSingleQubit:
             self.prep_tek2=False
             self.tek2_trigger_delay=0
 
-
-        if 'cavity_drive' in name:self.prep_cavity_drive = True
-        else:self.prep_cavity_drive=False
-
+        if 'cavity_drive' in name:
+            self.prep_cavity_drive = True
+        else:
+            self.prep_cavity_drive=False
 
         self.chassis = chassis
         self.awg_channels = range(1,5)
         self.dig_channels = range(1,3)
-
 
         # Initialize Module 6 = Analog card.  Ch1 = AWG I, CH2 = AWG Q
         # self.AWG_chs = [chassis.getChannel(self.out_mod_no, ch) for ch in self.awg_channels]
@@ -134,9 +128,9 @@ class KeysightSingleQubit:
         self.DIG_ch_2 = chassis.getChannel(10, 2)
         self.DIG_module = chassis.getModule(10)
 
-        self.data_1,self.data_2 = np.zeros((self.num_expt, self.DIG_sampl_record)),np.zeros((self.num_expt, self.DIG_sampl_record))
+        self.data_1, self.data_2 = np.zeros((self.num_expt, self.DIG_sampl_record)), np.zeros((self.num_expt, self.DIG_sampl_record))
 
-        self.I,self.Q = np.zeros(self.num_expt), np.zeros(self.num_expt)
+        self.I, self.Q = np.zeros(self.num_expt), np.zeros(self.num_expt)
 
         self.sleep_time = sleep_time_between_trials / (10 ** 9)  # stored in seconds internally
 
@@ -153,9 +147,9 @@ class KeysightSingleQubit:
         # dt_dig = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
         num_avg = experiment_cfg[name]['acquisition_num']
         num_expt = self.num_expt
-        print('num_exp = %s' %num_expt)
-
-        print ("Configuring analog channels")
+        # print('num_exp = %s' %num_expt)
+        #
+        # print ("Configuring analog channels")
 
         self.AWG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
         self.AWG_ch_1.configure(amplitude=amp_AWG[0], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
@@ -163,7 +157,7 @@ class KeysightSingleQubit:
         self.AWG_ch_3.configure(amplitude=amp_AWG[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
         self.AWG_ch_4.configure(amplitude=amp_AWG[3], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
 
-        print("Configuring marker channels")
+        # print("Configuring marker channels")
 
         self.m_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
         self.m_ch_1.configure(amplitude=amp_mark[0], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
@@ -171,7 +165,7 @@ class KeysightSingleQubit:
         self.m_ch_3.configure(amplitude=amp_mark[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
         self.m_ch_4.configure(amplitude=amp_mark[3], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
 
-        print("Configuring trigger channels")
+        # print("Configuring trigger channels")
 
         self.trig_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
         self.trig_ch_1.configure(amplitude=amp_trig[0], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
@@ -181,7 +175,7 @@ class KeysightSingleQubit:
 
         self.DIG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
 
-        print ("Setting trigger config for all channels of all modules to External")
+        # print ("Setting trigger config for all channels of all modules to External")
 
         for n in range(1, 5):
             self.AWG_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
@@ -189,14 +183,11 @@ class KeysightSingleQubit:
             self.trig_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
 
 
-        print ("Configuring digitizer. ADC range set to",self.adc_range, "Vpp")
+        # print ("Configuring digitizer. ADC range set to",self.adc_range, "Vpp")
 
-        self.DIG_ch_1.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, cycles=num_expt * num_avg,
-                                buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
-        # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, 
-        #                         cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000,
-                                cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_1.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
 
     def generatemarkers(self,waveform,resample=False,conv_width = 1,trig_delay = 0):
 
@@ -212,7 +203,7 @@ class KeysightSingleQubit:
             trig[i] = 1
         return trig
 
-    def sequenceslist(self,sequences,waveform_channels):
+    def sequenceslist(self,sequences, waveform_channels):
         wv = []
         for channel in waveform_channels:
             if not channel == None:
@@ -240,15 +231,13 @@ class KeysightSingleQubit:
         pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
         num_expt = sequences['readout'].shape[0]
         print('num_expt = {}'.format(num_expt))
-        wv = self.sequenceslist(sequences,pxi_waveform_channels)
+        wv = self.sequenceslist(sequences, pxi_waveform_channels)
 
 
         # Based on Nelson's original nomenclature
         readout = wv[0]
         markers_readout = wv[1]
         m8195a_marker = wv[2]
-        sideband_I = wv[3]
-        sideband_Q = wv[4]
 
         AWG_module = self.chassis.getModule(self.out_mod_no)
         m_module = self.chassis.getModule(self.marker_mod_no)
@@ -268,37 +257,24 @@ class KeysightSingleQubit:
         readout_marker_dsp = self.generatemarkers(readout,resample=True,trig_delay=self.trig_delay)
         card_trig_arr = self.generatemarkers(markers_readout,resample=True)
         m8195a_marker_dsp =  self.generatemarkers(m8195a_marker,resample=True,trig_delay=0.0)
-        sideband_marker_dsp = self.generatemarkers(sideband_I,resample=True,conv_width=self.lo_delay,trig_delay=self.trig_delay)
         trig_arr_awg = self.generatemastertrigger(len(readout_marker_dsp[0]),2*self.trig_pulse_length,self.abs_trig_delay)
 
+
         for i in tqdm(range(len(readout))):
-            wave_sideband_I = key.Waveform(np.array(sideband_I[i]),append_zero=True)
-            wave_sideband_Q = key.Waveform(np.array(sideband_Q[i]), append_zero=True)
+
             m_readout = key.Waveform(readout_marker[i], append_zero=True)
             m_readout_dsp = key.Waveform(readout_marker_dsp[i], append_zero=True)
             m_m8195a_dsp = key.Waveform(m8195a_marker_dsp[i], append_zero=True)
-            m_sideband_dsp = key.Waveform(sideband_marker_dsp[i], append_zero=True)
 
             trig = key.Waveform(trig_arr_awg, append_zero=True)
             card_trig = key.Waveform(card_trig_arr[i], append_zero=True)
 
             # Load objects to the modules. AWG module not used for M8195a expts
-            wave_sideband_I.loadToModule(AWG_module)
-            wave_sideband_Q.loadToModule(AWG_module)
-
-            wave_sideband_I.queue(self.AWG_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0,
-                         cycles=1, prescaler=0)
-            wave_sideband_Q.queue(self.AWG_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0,
-                         cycles=1, prescaler=0)
-            
-            self.AWG_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
-                                                 syncMode=1, length=10, delay=0)
 
             m_readout_dsp.loadToModule(m_module)
             m_m8195a_dsp.loadToModule(m_module)
-            m_sideband_dsp.loadToModule(m_module)
 
-            m_sideband_dsp.queue(self.m_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1,prescaler=0)
+            if self.jpa_pump:m_readout_dsp.queue(self.m_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1,prescaler=0)
             m_readout_dsp.queue(self.m_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
             m_m8195a_dsp.queue(self.m_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
 
@@ -315,11 +291,9 @@ class KeysightSingleQubit:
 
             self.trig_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
                                                syncMode=1, length=10, delay=0)
-
-    #TESTING THE NOLOAD AWG - ANkur 07/28/2020 - Seems to work but don't know if it loading or not
-
-    def noloadAndQueueWaveforms(self, sequences):
-        '''Loads the provided waveforms from a pulse sequence to the appropriate modules.
+    #TESTING THE NOLOAD AWG - Ankur 01/03/2021 - Seems to work but don't know if it is loading or not
+    def noloadAndQueueWaveforms(self,sequences):
+        '''doesn't load the provided waveforms AGAIN from a pulse sequence to the appropriate modules.
 
         Note that all waveforms should consist of values from -1 to 1 (inclusive) only. Amplitude is set in the configureChannels() method.
         If you accidentally pass in an array containing larger values, the code raises a KeysightError: Invalid Waveform.
@@ -338,18 +312,18 @@ class KeysightSingleQubit:
         print('num_expt = {}'.format(num_expt))
         wv = self.sequenceslist(sequences, pxi_waveform_channels)
 
+
         # Based on Nelson's original nomenclature
         readout = wv[0]
         markers_readout = wv[1]
         m8195a_marker = wv[2]
-        sideband_I = wv[3]
-        sideband_Q = wv[4]
 
         AWG_module = self.chassis.getModule(self.out_mod_no)
         m_module = self.chassis.getModule(self.marker_mod_no)
         trig_module = self.chassis.getModule(self.trig_mod_no)
 
-        if len(readout) != len(markers_readout) or len(m8195a_marker) != len(markers_readout) or len(m8195a_marker) != len(readout):
+        if len(readout) != len(markers_readout) or len(m8195a_marker) != len(markers_readout) or len(m8195a_marker) != len(
+                readout):
             raise TypeError("Not all waveform lists are the same length")
 
         # self.AWG_module.clearAll()
@@ -359,42 +333,26 @@ class KeysightSingleQubit:
         key.Waveform._waveform_number_counter = 0
 
         readout_marker = self.generatemarkers(readout, resample=False)
-        readout_marker_dsp = self.generatemarkers(readout, resample=True, trig_delay=self.trig_delay)
-        card_trig_arr = self.generatemarkers(markers_readout, resample=True)
-        m8195a_marker_dsp = self.generatemarkers(m8195a_marker, resample=True, trig_delay=0.0)
-        sideband_marker_dsp = self.generatemarkers(sideband_I, resample=True, conv_width=self.lo_delay,
-                                                   trig_delay=self.trig_delay)
-        trig_arr_awg = self.generatemastertrigger(len(readout_marker_dsp[0]), 2 * self.trig_pulse_length,
-                                                  self.abs_trig_delay)
+        readout_marker_dsp = self.generatemarkers(readout,resample=True,trig_delay=self.trig_delay)
+        card_trig_arr = self.generatemarkers(markers_readout,resample=True)
+        m8195a_marker_dsp =  self.generatemarkers(m8195a_marker,resample=True,trig_delay=0.0)
+        trig_arr_awg = self.generatemastertrigger(len(readout_marker_dsp[0]),2*self.trig_pulse_length,self.abs_trig_delay)
 
         for i in tqdm(range(len(readout))):
-            wave_sideband_I = key.Waveform(np.array(sideband_I[i]), append_zero=True)
-            wave_sideband_Q = key.Waveform(np.array(sideband_Q[i]), append_zero=True)
+
             m_readout = key.Waveform(readout_marker[i], append_zero=True)
             m_readout_dsp = key.Waveform(readout_marker_dsp[i], append_zero=True)
             m_m8195a_dsp = key.Waveform(m8195a_marker_dsp[i], append_zero=True)
-            m_sideband_dsp = key.Waveform(sideband_marker_dsp[i], append_zero=True)
 
             trig = key.Waveform(trig_arr_awg, append_zero=True)
             card_trig = key.Waveform(card_trig_arr[i], append_zero=True)
 
             # Load objects to the modules. AWG module not used for M8195a expts
-            # wave_sideband_I.loadToModule(AWG_module)
-            # wave_sideband_Q.loadToModule(AWG_module)
-
-            wave_sideband_I.queue(self.AWG_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0,
-                                  cycles=1, prescaler=0)
-            wave_sideband_Q.queue(self.AWG_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0,
-                                  cycles=1, prescaler=0)
-
-            self.AWG_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
-                                                 syncMode=1, length=10, delay=0)
 
             # m_readout_dsp.loadToModule(m_module)
             # m_m8195a_dsp.loadToModule(m_module)
-            # m_sideband_dsp.loadToModule(m_module)
 
-            m_sideband_dsp.queue(self.m_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
+            if self.jpa_pump:m_readout_dsp.queue(self.m_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1,prescaler=0)
             m_readout_dsp.queue(self.m_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
             m_m8195a_dsp.queue(self.m_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
 
@@ -407,12 +365,12 @@ class KeysightSingleQubit:
             trig.queue(self.trig_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
             trig.queue(self.trig_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
             trig.queue(self.trig_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=0, cycles=1, prescaler=0)
-            card_trig.queue(self.trig_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
-                            delay=int(self.card_delay / 100) + self.tek2_trigger_delay, cycles=1, prescaler=0)
+            card_trig.queue(self.trig_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=int(self.card_delay/100)+self.tek2_trigger_delay, cycles=1, prescaler=0)
 
             self.trig_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
                                                   syncMode=1, length=10, delay=0)
 
+    
     def clear_and_start_digitizer(self):
 
         self.DIG_ch_1.clear()
@@ -571,7 +529,6 @@ class KeysightSingleQubit:
         if pi_calibration:
             I = (I[:-2]-I[-2])/(I[-1]-I[-2])
             Q = (Q[:-2]-Q[-2])/(Q[-1]-Q[-2])
-
         return I,Q
 
     def acquire_avg_std_data(self, w=[0, -1], pi_calibration=False):

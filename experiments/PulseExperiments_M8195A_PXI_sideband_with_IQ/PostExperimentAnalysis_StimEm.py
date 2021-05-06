@@ -109,42 +109,6 @@ class PostExperiment:
         print("suggested_pi_length = ", (int(t_pi / dt) + 1) * dt, "suggested_pi_amp = ",amp * (t_pi) / float((int(t_pi / dt) + 1) * dt))
         print("suggested_half_pi_length = ", (int(t_half_pi / dt) + 1) * dt, "suggested_piby2_amp = ",amp * (t_half_pi) / float((int(t_half_pi / dt) + 1) * dt))
 
-    def rabi_drag(self):
-        expt_cfg = self.experiment_cfg[self.exptname]
-        P = eval('self.' + self.P)
-        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
-        amp = expt_cfg['amp']
-        if self.show:
-
-            fig = plt.figure(figsize=(14, 7))
-            ax = fig.add_subplot(111, title=self.exptname)
-            ax.plot(t, P, 'o-', label=self.P)
-            ax.set_xlabel('Time (ns)')
-            ax.set_ylabel(self.P)
-            ax.legend()
-            p = fitdecaysin(t[2:], P[2:], showfit=True)
-            t_pi = 1 / (2 * p[1])
-            t_half_pi = 1 / (4 * p[1])
-
-            ax.axvline(t_pi, color='k', linestyle='dashed')
-            ax.axvline(t_half_pi, color='k', linestyle='dashed')
-
-            plt.show()
-
-        else:
-            p = fitdecaysin(t, P, showfit=False)
-            t_pi = 1 / (2 * p[1])
-            t_half_pi = 1 / (4 * p[1])
-
-        print("Half pi length =", t_half_pi, "ns")
-        print("pi length =", t_pi, "ns")
-        dt = 0.0625
-        print("suggested_pi_length = ", (int(t_pi / dt) + 1) * dt, "suggested_pi_amp = ",
-              amp * (t_pi) / float((int(t_pi / dt) + 1) * dt))
-        print("suggested_half_pi_length = ", (int(t_half_pi / dt) + 1) * dt, "suggested_piby2_amp = ",
-              amp * (t_half_pi) / float((int(t_half_pi / dt) + 1) * dt))
-
-
     def t1(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         P = eval('self.'+self.P)
@@ -193,7 +157,8 @@ class PostExperiment:
         print("Offset freq =", offset * 1e3, "MHz")
         print("Suggested qubit frequency choice =", nu_q_new, "GHz")
         print("T2* =", p[3], "ns")
-
+        return nu_q_new
+    
     def echo(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
@@ -465,6 +430,7 @@ class PostExperiment:
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
 
         if self.show:
+
             fig = plt.figure(figsize=(14, 7))
             ax = fig.add_subplot(111, title=self.exptname)
             ax.plot(t, P, 'o-', label=self.P)
@@ -506,8 +472,10 @@ class PostExperiment:
         else:
             ff0, ff1, title = 0, 1, 'g/e'
 
-        if expt_cfg['include_h'] and expt_cfg['show_h']:seq = 4
-        else:seq=3
+        if expt_cfg['include_h'] and expt_cfg['show_h']:
+            seq = 4
+        else:
+            seq=3
 
 
         if expt_cfg['singleshot']:
@@ -520,7 +488,7 @@ class PostExperiment:
             I = self.I
             Q = self.Q
 
-            I, Q = I/2**15*ran,Q/2**15*ran
+            I, Q = I/2**15*ran, Q/2**15*ran
 
             colors = ['r', 'b', 'g','orange']
             labels = ['g', 'e', 'f','h']
