@@ -96,28 +96,6 @@ class Sequencer:
 
         return sequence
 
-    def equalize_sequences(self):
-        """I don't think this takes into account "dt" of different channels, synch channels is probs better
-        test this I guess"""
-        awg_max_len = {}
-        awg_list = set(self.channels_awg.values())
-        for awg in awg_list:
-            awg_max_len[awg] = 0
-
-        for sequence in self.multiple_sequences:
-            for channel in self.channels:
-                channel_len = len(sequence[channel])
-                if channel_len > awg_max_len[self.channels_awg[channel]]:
-                    awg_max_len[self.channels_awg[channel]] = channel_len
-
-        for sequence in self.multiple_sequences:
-            for channel in self.channels:
-                channel_len = len(sequence[channel])
-                if channel_len < awg_max_len[self.channels_awg[channel]]:
-                    sequence[channel] = np.pad(sequence[channel],
-                                               (0, awg_max_len[self.channels_awg[channel]] - channel_len), 'constant',
-                                               constant_values=(0, 0))
-
     def delay_channels(self, channels_delay):
         for sequence in self.multiple_sequences:
             for channel, delay in channels_delay.items():
