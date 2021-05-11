@@ -8,8 +8,7 @@ from slab.instruments import DigitalAttenuator
 
 
 
-a = DigitalAttenuator(name='readoutattengrb', address='COM7')
+a = DigitalAttenuator(name='readoutattengrb', address='COM4')
 print("hi")
-print(a.query('G'))
-
+a.set_attenuator(1)
 

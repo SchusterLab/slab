@@ -246,6 +246,7 @@ class Experiment:
 
     def initiate_readout_attenuators(self):
         try:
+            for ii, d in enumerate(self.readout_attens):
                 d.set_attenuator(self.quantum_device_cfg['readout_drive_digital_attenuation'])
                 print("set readout attenuator")
         except:
@@ -257,7 +258,7 @@ class Experiment:
                 d.set_attenuator(self.quantum_device_cfg['qubit_drive_digital_attenuation'])
                 print("set drive attenuator")
         except:
-            print("Error in readout digital attenuator configuration")
+            print("Error in drive digital attenuator configuration")
 
 
     def set_trigger(self):
