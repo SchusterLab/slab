@@ -159,10 +159,10 @@ class KeysightSingleQubit:
         for other experiments. See documentation in KeysightLib for the configure() methods on KeysightChannelIn and
         KeysightChannelOut. Amplitude is in Vpp.'''
 
-        amp_AWG = hardware_cfg['awg_info']['keysight_pxi']['amplitudes']
+        amp_AWG = hardware_cfg['awg_info']['keysight_pxi']['amp_awg']
         amp_mark = hardware_cfg['awg_info']['keysight_pxi']['amp_mark']
         amp_stab = hardware_cfg['awg_info']['keysight_pxi']['amp_stab']
-        amp_digtzr_trig = hardware_cfg['awg_info']['keysight_pxi']['amp_digtzr_trig']
+        amp_digtzr_trig = hardware_cfg['awg_info']['keysight_pxi']['amp_stab'][3] ##THIS IS ON PURPOSE
         amp_ff1 = hardware_cfg['awg_info']['keysight_pxi']['amp_ff1']
         amp_ff2 = hardware_cfg['awg_info']['keysight_pxi']['amp_ff2']
         IQ_dc_offsetA = quantum_device_cfg['pulse_info']['A']['IQ_dc']
@@ -208,8 +208,8 @@ class KeysightSingleQubit:
         self.stab_ch_1.configure(amplitude=amp_stab[0])
         self.stab_ch_2.configure(amplitude=amp_stab[1])
         self.stab_ch_3.configure(amplitude=amp_stab[2])
-        self.digtzr_trig_ch.configure(amplitude=amp_digtzr_trig[0])
-        print ("Dig card trigger amplitude = ",amp_digtzr_trig[0])
+        self.digtzr_trig_ch.configure(amplitude=amp_digtzr_trig)
+        print ("Dig card trigger amplitude = ",amp_digtzr_trig)
 
 
         print ("Setting trigger mode for all channels of all output modules to External")
@@ -281,7 +281,7 @@ class KeysightSingleQubit:
         filled with zeros"""
         wv = {}
         for channel in waveform_channels:
-            if not sequences[channel] == None:
+            if channel == None: ##TODO fix this mess
                 wv[channel] = sequences[channel]
             else:
                 wv[channel] = np.zeros_like(sequences[waveform_channels[0]])
@@ -291,7 +291,7 @@ class KeysightSingleQubit:
         if self.hardware_cfg['channels_awg'][channel_name] == "keysight_pxi_M3201A":
             dt = self.dt_M3201A
         else:
-            dt = self.hardware_cfg['awg_info'][['channels_awg'][channel_name]]['dt']
+            dt = self.hardware_cfg['awg_info'][self.hardware_cfg['channels_awg'][channel_name]]['dt']
             
         return dt
         
@@ -317,7 +317,7 @@ class KeysightSingleQubit:
 
 
         pxi_waveform_channels = self.hardware_cfg['awg_info']['keysight_pxi']['waveform_channels']
-        num_expt = sequences['readout'].shape[0]
+        num_expt = sequences['digtzr_trig'].shape[0]
         print('num_expt = {}'.format(num_expt))
         wv = self.sequenceslist(sequences,pxi_waveform_channels)
 
@@ -331,10 +331,10 @@ class KeysightSingleQubit:
 
         #make sure all waveforms are the same length 
         for i in range(1,len(wv.keys())):
-            ch1 = wv[wv.keys()[i-1]]
-            dt_ch1 = self.get_dt_channel(wv.keys()[i-1])
-            ch2 = wv[wv.keys()[i]]
-            dt_ch2 = self.get_dt_channel(wv.keys()[i])
+            ch1 = wv[list(wv.keys())[i-1]]
+            dt_ch1 = self.get_dt_channel(list(wv.keys())[i-1])
+            ch2 = wv[list(wv.keys())[i]]
+            dt_ch2 = self.get_dt_channel(list(wv.keys())[i])
             if len(ch1)*dt_ch1 != len(ch2)*dt_ch2:
                 raise TypeError("Not all waveform lists are the same length")
 
@@ -358,7 +358,7 @@ class KeysightSingleQubit:
         # marker array for stabilizer LO
         stabilizer_marker = self.generatemarkers(wv, "stab_I", dt_mark=self.dt_m, conv_width=self.stab_lo_conv)
 
-        for i in tqdm(range(len(wv[wv.keys()[0]]))):
+        for i in tqdm(range(len(wv[list(wv.keys())[0]]))):
             ## making PXI savvy waveform objects out of the arrays to send out to the PXI
             # Have to include append_zero or the triggers get messed up! idk why
             PXIwave_chargeA_I = key.Waveform(np.array(wv["chargeA_I"][i]),append_zero=True)
@@ -371,7 +371,7 @@ class KeysightSingleQubit:
             PXIwave_qubitB_marker = key.Waveform(qubitB_marker[i], append_zero=True)
             PXIwave_readoutB = key.Waveform(wv["readoutB"][i], append_zero=True)
 
-            PXIwave_stab_I = key.Waveform(np.array(wv["stab_I"][i]),append_zero=True)
+            PXIwave_stab_I = key.Waveform(np.array(wv["readoutA"][i]),append_zero=True)
             PXIwave_stab_Q = key.Waveform(wv["stab_Q"][i], append_zero=True)
             PXIwave_stabilizer_marker = key.Waveform(wv["stab_I"][i], append_zero=True)
 
@@ -414,7 +414,7 @@ class KeysightSingleQubit:
             PXIwave_readoutA.loadToModule(m_module)
             # Queue marker waveforms to marker card channels
             PXIwave_qubitA_marker.queue(self.m_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['qubitA_marker'], cycles=1, prescaler=0)
-            PXIwave_readoutA.queue(self.m_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['readoutA"'], cycles=1, prescaler=0)
+            PXIwave_readoutA.queue(self.m_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['readoutA'], cycles=1, prescaler=0)
             # Send marker waveforms to Marker card
             PXIwave_qubitB_marker.loadToModule(m_module)
             PXIwave_readoutB.loadToModule(m_module)
@@ -422,7 +422,7 @@ class KeysightSingleQubit:
             PXIwave_qubitB_marker.queue(self.m_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
                                         delay=self.hardware_delays['qubitB_marker'], cycles=1, prescaler=0)
             PXIwave_readoutB.queue(self.m_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
-                                   delay=self.hardware_delays['readoutB"'], cycles=1, prescaler=0)
+                                   delay=self.hardware_delays['readoutB'], cycles=1, prescaler=0)
 
             # Configure marker card settings
             self.m_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,

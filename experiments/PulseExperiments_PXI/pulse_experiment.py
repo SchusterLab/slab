@@ -290,7 +290,7 @@ class Experiment:
         self.set_trigger()
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
-        self.initiate_stab_LOs()
+        #self.initiate_stab_LOs()
         self.initiate_readout_attenuators()
         self.initiate_drive_attenuators()
         self.initiate_pxi(name, sequences)
