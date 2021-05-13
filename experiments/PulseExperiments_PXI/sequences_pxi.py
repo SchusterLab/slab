@@ -375,7 +375,7 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=True)
 
-    def pulse_probe_iq_flux(self, sequencer):
+    def flux_pulse_probe_iq(self, sequencer):
 
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
