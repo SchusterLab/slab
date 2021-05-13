@@ -1,5 +1,6 @@
 import numpy as np
 import visdom
+import copy
 
 try:
     from .pulse_classes import Gauss, Idle, Ones, Square
@@ -21,7 +22,7 @@ class Sequencer:
             #changes dt to M#201 cards to 2, but otherwise keeps all the same inputs from keysight_pxi in hardware
             # config
             if channels_awg[channel] == "keysight_pxi_M3201A":
-                awg_info_temp = awg_info["keysight_pxi"]
+                awg_info_temp = copy.deepcopy(awg_info["keysight_pxi"])
                 awg_info_temp['dt'] = 2
                 channels_awg_info[channel] = awg_info_temp
             else:
@@ -154,7 +155,8 @@ class Sequencer:
             self.end_sequence()
 
 
-        self.equalize_sequences()
+        #doesn't do anything since doesn't take into account dt
+        #self.equalize_sequences()
         self.delay_channels(self.channels_delay)
 
         if plot:self.plot_sequences()

@@ -72,7 +72,7 @@ class KeysightSingleQubit:
         
         self.qb_lo_conv = hardware_cfg['awg_info']['keysight_pxi']['qb_lo_conv'] #lo_delay convolves LO marker
         self.stab_lo_conv = hardware_cfg['awg_info']['keysight_pxi']['stab_lo_conv']  # lo_delay convolves LO marker
-        self.hardware_delays = hardware_cfg['awg_info']['keysight_pxi']['channels_delay_hardware_ns']
+        self.hardware_delays = hardware_cfg['awg_info']['keysight_pxi']['channels_delay_hardware_10ns']
         self.trig_pulse_length = hardware_cfg['trig_pulse_len']['default']
 
         print ("Module used for generating Q1 IQ  pulses = ",self.AWG_mod_no)
@@ -167,6 +167,7 @@ class KeysightSingleQubit:
         amp_ff2 = hardware_cfg['awg_info']['keysight_pxi']['amp_ff2']
         IQ_dc_offsetA = quantum_device_cfg['pulse_info']['A']['IQ_dc']
         IQ_dc_offsetB = quantum_device_cfg['pulse_info']['B']['IQ_dc']
+        DIG_ch_delays = hardware_cfg["awg_info"]['keysight_pxi']["DIG_channels_delay_samples"]
 
 
         num_avg = experiment_cfg[name]['acquisition_num']
@@ -227,10 +228,10 @@ class KeysightSingleQubit:
 
         print ("Configuring digitizer. ADC range set to",self.adc_range, "Vpp")
         self.DIG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-        self.DIG_ch_1.configure(full_scale=self.adc_range,points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_3.configure(full_scale=self.adc_range,points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_4.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+        self.DIG_ch_1.configure(full_scale=self.adc_range, delay=DIG_ch_delays[0], points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_2.configure(full_scale = self.adc_range,delay=DIG_ch_delays[1], points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_3.configure(full_scale=self.adc_range, delay=DIG_ch_delays[2], points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_4.configure(full_scale=self.adc_range, delay=DIG_ch_delays[3], points_per_cycle=self.DIG_sampl_record,
                                 cycles=num_expt * num_avg, buffer_time_out=100000,
                                 trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
                                 cycles_per_return=num_expt)
@@ -261,14 +262,15 @@ class KeysightSingleQubit:
         # dt_src is dt of the channel you are making markers from, given by the dt of its awg
         dt_src = self.get_dt_channel(channel)
 
-        markers = np.array([np.heaviside(
-                                np.convolve(
-                                    abs(np.append(
-                                        w[int(trig_delay):],
-                                        np.zeros(int(trig_delay))
-                                    )),
-                                    np.ones((int(conv_width),)) / conv_width
-                                ),0)[int(conv_width / 2):-int(conv_width / 2)+1] for w in waveform])
+        markers = np.array([np.append(
+                                np.heaviside(
+                                    np.convolve(
+                                        abs(np.append(
+                                            w[int(trig_delay):],
+                                            np.zeros(int(trig_delay))
+                                        )),
+                                        np.ones((int(conv_width),)) / conv_width
+                                    ), 0)[int(conv_width / 2):], np.zeros(int(conv_width / 2))) for w in waveform])
 
         if dt_src != dt_mark:
             return np.array([m[::int(dt_mark / dt_src)] for m in markers])
@@ -281,7 +283,7 @@ class KeysightSingleQubit:
         filled with zeros"""
         wv = {}
         for channel in waveform_channels:
-            if channel == None: ##TODO fix this mess
+            if channel != None: ##TODO fix this mess
                 wv[channel] = sequences[channel]
             else:
                 wv[channel] = np.zeros_like(sequences[waveform_channels[0]])
@@ -329,14 +331,14 @@ class KeysightSingleQubit:
 
         print ("shape of waveform I",np.shape(wv["chargeA_I"]))
 
-        #make sure all waveforms are the same length 
-        for i in range(1,len(wv.keys())):
-            ch1 = wv[list(wv.keys())[i-1]]
-            dt_ch1 = self.get_dt_channel(list(wv.keys())[i-1])
-            ch2 = wv[list(wv.keys())[i]]
-            dt_ch2 = self.get_dt_channel(list(wv.keys())[i])
-            if len(ch1)*dt_ch1 != len(ch2)*dt_ch2:
-                raise TypeError("Not all waveform lists are the same length")
+        #make sure all waveforms are the same length
+        # for i in range(1,len(wv.keys())):
+        #     ch1 = wv[list(wv.keys())[i-1]]
+        #     dt_ch1 = self.get_dt_channel(list(wv.keys())[i-1])
+        #     ch2 = wv[list(wv.keys())[i]]
+        #     dt_ch2 = self.get_dt_channel(list(wv.keys())[i])
+        #     if len(ch1)*dt_ch1 != len(ch2)*dt_ch2:
+        #         raise TypeError("Not all waveform lists are the same length")
 
         self.AWG_module.clearAll()
         self.m_module.clearAll()
@@ -371,7 +373,7 @@ class KeysightSingleQubit:
             PXIwave_qubitB_marker = key.Waveform(qubitB_marker[i], append_zero=True)
             PXIwave_readoutB = key.Waveform(wv["readoutB"][i], append_zero=True)
 
-            PXIwave_stab_I = key.Waveform(np.array(wv["readoutA"][i]),append_zero=True)
+            PXIwave_stab_I = key.Waveform(np.array(wv["stab_I"][i]),append_zero=True)
             PXIwave_stab_Q = key.Waveform(wv["stab_Q"][i], append_zero=True)
             PXIwave_stabilizer_marker = key.Waveform(wv["stab_I"][i], append_zero=True)
 
@@ -605,7 +607,7 @@ class KeysightSingleQubit:
             data.append([qbB_I, qbB_Q])
         return np.asarray(data)
 
-    def traj_data_many(self):
+    def traj_data_many(self,w):
         """
         Reads off digitizer num_avg_times, each shot in shape (num_expt , dig_sample_per_record) and windowed.
         Saves it in qbA_I -> (num avg, num_expt, len(window))
@@ -620,9 +622,42 @@ class KeysightSingleQubit:
         for ii in tqdm(range(self.num_avg)):
             if "A" in self.on_qubits:
                 ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
-                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
+                      int(w[0]):int(w[1])].T
                 ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
-                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
+                      int(w[0]):int(w[1])].T
+                qbA_I.append(ch1)
+                qbA_Q.append(ch2)
+            if "B" in self.on_qubits:
+                ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(self.readoutB_window[0]):int(
+                    self.readoutB_window[1])].T
+                ch4 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(self.readoutB_window[0]):int(
+                    self.readoutB_window[1])].T
+                qbB_I.append(ch3)
+                qbB_Q.append(ch4)
+        if "A" in self.on_qubits:
+            data.append([qbA_I, qbA_Q])
+        if "B" in self.on_qubits:
+            data.append([qbB_I, qbB_Q])
+        return np.asarray(data)
+
+    def traj_data_many_no_window(self):
+        """
+        Reads off digitizer num_avg_times, each shot in shape (num_expt , dig_sample_per_record) and windowed.
+        Saves it in qbA_I -> (num avg, num_expt, len(window))
+        Returns:
+        data(np.ndarray):if qb "A" OR "B" on, will return [[I, Q]], if both will return [[qbA_I, qbA_Q],[qbB_I, qbB_Q]]
+        """
+        data= []
+        qbA_I = []
+        qbA_Q = []
+        qbB_I = []
+        qbB_Q = []
+        for ii in tqdm(range(self.num_avg)):
+            if "A" in self.on_qubits:
+                ch1 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_1.shape).T[
+                      int(w[0]):int(w[1])].T
+                ch2 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_2.shape).T[
+                      int(w[0]):int(w[1])].T
                 qbA_I.append(ch1)
                 qbA_Q.append(ch2)
             if "B" in self.on_qubits:
