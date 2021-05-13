@@ -10,7 +10,7 @@ from slab import*
 # histogram_prog:
 ##################
 reset_time = 500000
-avgs = 5000
+avgs = 30000
 simulation = 0
 
 phi = 0
@@ -109,13 +109,13 @@ else:
     Ig = np.array(res_handles.get("Ig").fetch_all()['value'])
     Qg = np.array(res_handles.get("Qg").fetch_all()['value'])
 
-    Ie = np.array(res_handles.get("Ie").fetch_all()['value'])
-    Qe = np.array(res_handles.get("Qe").fetch_all()['value'])
+    # Ie = np.array(res_handles.get("Ie").fetch_all()['value'])
+    # Qe = np.array(res_handles.get("Qe").fetch_all()['value'])
 
     job.halt()
 
     plt.plot(Ig, Qg, '.')
-    plt.plot(Ie, Qe, '.')
+    # plt.plot(Ie, Qe, '.')
     plt.axis('equal')
 
     # path = os.getcwd()
@@ -128,3 +128,10 @@ else:
     #     dset = f.create_dataset("qg", data=Qg)
     #     dset = f.create_dataset("ie", data=Ie)
     #     dset = f.create_dataset("qe", data=Qe)
+
+# """Extracting the qubit thermal population from Gaussian fitting of the histograms"""
+# def gaus(x, a0, x0, sigma, a1, x1):
+#     return a0*np.exp(-(x-x0)**2/(2*sigma**2)) + a1*np.exp(-(x-x1)**2/(2*sigma**2))
+# from scipy.optimize import curve_fit
+# y, x = np.histogram(Qg, 50)
+# popt, pcov = curve_fit(gaus, x[:-1], y, p0=[1, 0.02, 0.001, 0, -0.002])

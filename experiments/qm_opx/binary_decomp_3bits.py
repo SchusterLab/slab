@@ -13,10 +13,10 @@ from slab.dataanalysis import get_next_filename
 """Binary decomposition"""
 
 t_chi = int(0.5*1e9/1.118e6) #qubit rotates by pi in this time
-cav_len = 1000
+cav_len = 800
 cav_amp = 0.5 # 0.08
 
-avgs = 2000
+avgs = 1000
 reset_time = int(5e6)
 simulation = 0
 
@@ -123,7 +123,7 @@ with program() as binary_decomposition:
         align("qubit", "rr", 'jpa_pump')
 
         play("pi2", "qubit") # unconditional
-        wait(t_chi//4//2, "qubit")
+        wait(t_chi//4//2-3, "qubit")
         with if_(bit1==0):
             frame_rotation(np.pi, 'qubit')
             play("pi2", "qubit")
@@ -142,7 +142,7 @@ with program() as binary_decomposition:
         """Need to think the following part thoroughly"""
 
         play("pi2", "qubit") # unconditional
-        wait(t_chi//4//4, "qubit")
+        wait(t_chi//4//4-3, "qubit")
 
         """How to incorporate higher order chi correction?"""
 

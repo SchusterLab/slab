@@ -16,53 +16,58 @@ from slab.dataanalysis import get_next_filename
 
 """Storage cavity t1 experiment"""
 
-dt = 20000
-T_max = 2000000
-T_min = 25
+dt = 2000
+T_max = int(5e5)
+T_min = 250
 t_vec = np.arange(T_min, T_max + dt/2, dt)
 
-qubit_storage_chi = -1.118361e6
+two_chi = -1.118e6
 
 cav_len = 1000
 cav_amp = 0.20
 
 avgs = 1000
-reset_time = 7500000
+reset_time = int(3.5e6)
 simulation = 0 #1 to simulate the pulses
 
 simulation_config = SimulationConfig(
     duration=60000,
     simulation_interface=LoopbackInterface(
-        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.00**2
+        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.5**2
     )
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
-    wait(5000//4, 'rr')
+
+    wait(5000//4, "jpa_pump")
+    align("rr", "jpa_pump")
+    play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
     wait(1000//4, 'rr')
+    # save(I, "check")
 
     if to_excited == False:
         with while_(I < biased_th):
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
             with if_(~res_reset):
                 play('pi', 'qubit')
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
     else:
         with while_(I > biased_th):
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
             with if_(res_reset):
                 play('pi', 'qubit')
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
-
 
 with program() as storage_t1:
 
@@ -83,15 +88,20 @@ with program() as storage_t1:
     ###############
     # the sequence:
     ###############
-    update_frequency("qubit", ge_IF + qubit_storage_chi)
 
     with for_(n, 0, n < avgs, n + 1):
 
         with for_(t, T_min, t < T_max + dt/2, t + dt):
 
             wait(reset_time//4, "storage")
-            play("CW"*amp(cav_amp), "storage", duration=cav_len)
+            update_frequency("qubit", ge_IF)
+            play("CW"*amp(0.5), "storage", duration=479)
             align("storage", "qubit")
+            play("res_pi", "qubit")
+            align("storage", "qubit")
+            play("CW"*amp(-0.5), "storage", duration=243)
+            align("storage", "qubit")
+            update_frequency("qubit", ge_IF+two_chi)
             wait(t, "qubit")
             play("res_pi", "qubit")
             align("qubit", "rr")

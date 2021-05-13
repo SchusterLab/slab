@@ -7,38 +7,49 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from slab.instruments import instrumentmanager
-from slab.dsfit import*
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
 import time
 
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-LO_s  = im['sccav']
-
-# LO_s.set_frequency(storage_LO)
-# LO_s.set_power(13.0)
-# LO_q.set_frequency(qubit_LO)
-# LO_q.set_ext_pulse(mod=False)
-# LO_q.set_power(18)
-# LO_r.set_frequency(rr_LO)
-# LO_r.set_ext_pulse(mod=False)
-# LO_r.set_power(18)
-
 simulation_config = SimulationConfig(
     duration=60000,
     simulation_interface=LoopbackInterface(
-        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.00**2
+        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.5**2
     )
 )
 
-
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
-biased_th = 0.0014
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+
+def active_reset(biased_th, to_excited=False):
+    res_reset = declare(bool)
+
+    wait(5000//4, "jpa_pump")
+    align("rr", "jpa_pump")
+    play('pump_square', 'jpa_pump')
+    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+    wait(1000//4, 'rr')
+    # save(I, "check")
+
+    if to_excited == False:
+        with while_(I < biased_th):
+            align('qubit', 'rr', 'jpa_pump')
+            with if_(~res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
+    else:
+        with while_(I > biased_th):
+            align('qubit', 'rr', 'jpa_pump')
+            with if_(res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
 
 ###############
 # qubit_spec_prog:

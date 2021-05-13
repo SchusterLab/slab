@@ -1,54 +1,79 @@
-from configuration_IQ import config, qubit_freq, rr_freq, qubit_LO, rr_LO, pi_amp
+from configuration_IQ import config, ge_IF, biased_th_g_jpa, pi_amp
 from qm.qua import *
-from qm import SimulationConfig
+from qm import SimulationConfig, LoopbackInterface
+from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
 from slab.instruments import instrumentmanager
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
 from slab.dsfit import*
-
-def roundint(value, base=4):
-    return int(value) - int(value) % int(base)
-
+from h5py import File
+import os
+from slab.dataanalysis import get_next_filename
 
 ##################
 # time_rabi_prog:
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
+simulation_config = SimulationConfig(
+    duration=60000,
+    simulation_interface=LoopbackInterface(
+        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.5**2
+    )
+)
 
-t_min = 0
-t_max = 100
-dt = 4
-times = np.arange(t_min, t_max + dt/2, dt)
+qmm = QuantumMachinesManager()
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+
+def active_reset(biased_th, to_excited=False):
+    res_reset = declare(bool)
+
+    wait(5000//4, "jpa_pump")
+    align("rr", "jpa_pump")
+    play('pump_square', 'jpa_pump')
+    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+    wait(1000//4, 'rr')
+    # save(I, "check")
+
+    if to_excited == False:
+        with while_(I < biased_th):
+            align('qubit', 'rr', 'jpa_pump')
+            with if_(~res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
+    else:
+        with while_(I > biased_th):
+            align('qubit', 'rr', 'jpa_pump')
+            with if_(res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
+
+t_min = 5
+t_max = 80
+dt = 2
+t_vec = np.arange(t_min, t_max + dt/2, dt)
 avgs = 1000
-reset_time = 500000
+reset_time = int(5e5)
 simulation = 0
-with program() as ge_rabi:
+with program() as time_rabi:
 
     ##############################
     # declare real-time variables:
     ##############################
 
-    n = declare(int)        # Averaging
     t = declare(int)        # times
+    n = declare(int)        # Averaging
+    res = declare(bool)
     I = declare(fixed)
-    Q = declare(fixed)
-    I1 = declare(fixed)
-    Q1 = declare(fixed)
-    I2 = declare(fixed)
-    Q2 = declare(fixed)
 
+    res_st = declare_stream()
     I_st = declare_stream()
-    Q_st = declare_stream()
 
     ###############
     # the sequence:
@@ -58,82 +83,38 @@ with program() as ge_rabi:
 
         with for_(t, t_min, t <= t_max, t + dt):
 
-            wait(reset_time//4, "qubit")
-            play("CW"*amp(0.05) , "qubit", duration=t)
-            align("qubit", "rr")
-            measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
+            active_reset(biased_th_g_jpa)
+            align('qubit', 'rr', 'jpa_pump')
+            # wait(reset_time//4, 'qubit')
+            play('CW'*amp(0.45), 'qubit', duration=t)
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
-            assign(I, I1 - Q2)
-            assign(Q, Q1 + I2)
-
+            save(res, res_st)
             save(I, I_st)
-            save(Q, Q_st)
 
     with stream_processing():
-        I_st.buffer(len(times)).average().save('I')
-        Q_st.buffer(len(times)).average().save('Q')
+        res_st.boolean_to_int().buffer(len(t_vec)).average().save('res')
+        I_st.buffer(len(t_vec)).average().save('I')
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
 if simulation:
-    job = qm.simulate(ge_rabi, SimulationConfig(5000))
+    job = qm.simulate(time_rabi, SimulationConfig(5000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 else:
-    job = qm.execute(ge_rabi, duration_limit=0, data_limit=0)
+    job = qm.execute(time_rabi, duration_limit=0, data_limit=0)
     print("Waiting for the data")
-    start_time = time.time()
 
-    res_handles = job.result_handles
+    result_handles = job.result_handles
+    result_handles.wait_for_all_values()
+    res = result_handles.get('res').fetch_all()
+    I = result_handles.get('I').fetch_all()
 
-    # res_handles.wait_for_all_values()
-    I_handle = res_handles.get("I")
-    Q_handle = res_handles.get("Q")
-    I = I_handle.fetch_all()
-    Q = Q_handle.fetch_all()
-
-    plt.plot(I, '.')
     plt.figure()
-    plt.plot(Q, '.')
-    #
-    # print("Data collection done")
-    #
-    # stop_time = time.time()
-    # print(f"Time taken: {stop_time-start_time}")
-    #
-    # with program() as stop_playing:
-    #     pass
-    # job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
-    #
-    # times = 4*times
-    # z = 2
-    # fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-    # axs[0].plot(times[z:len(I)], I[z:],'bo')
-    # p = fitdecaysin(times[z:len(I)], I[z:], showfit=False)
-    # axs[0].plot(times[z:len(I)], decaysin(np.append(p,0), times[z:len(I)]), 'b-')
-    # axs[0].set_xlabel('Time (ns)')
-    # axs[0].set_ylabel('I')
-    #
-    # z = 2
-    # axs[1].plot(times[z:len(I)], Q[z:],'ro')
-    # p = fitdecaysin(times[z:len(I)], Q[z:], showfit=False)
-    # axs[1].plot(times[z:len(I)], decaysin(np.append(p,0), times[z:len(I)]), 'r-')
-    # axs[1].set_xlabel('Time (ns)')
-    # axs[1].set_ylabel('Q')
-    # t_pi = 1/(2*p[1])
-    # t_half_pi = 1/(4*p[1])
-    # axs[1].axvline(t_pi, color='k', linestyle='dashed')
-    # axs[1].axvline(t_half_pi, color='k', linestyle='dashed')
-    # plt.tight_layout()
-    # fig.show()
-    #
-    # print("Half pi length =", t_half_pi, "ns")
-    # print("pi length =", t_pi, "ns")
-    # print ("Rabi decay time = ", p[3], "ns")
-    # print("suggested_pi_length = ", roundint(t_pi, 4), "suggested_pi_amp = ", pi_amp*(t_pi)/float(roundint(t_pi, 4)))
-    # print("suggested_half_pi_length = ", roundint(t_half_pi, 4), "suggested_piby2_amp = ", pi_amp*(t_half_pi)/float(roundint(t_half_pi, 4)))
+    plt.plot(4*t_vec, res, '.-')
+
+    job.halt()

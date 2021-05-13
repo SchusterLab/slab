@@ -11,33 +11,18 @@ from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
 
-from slab.instruments import instrumentmanager
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-
-from slab.dsfit import*
-
 ###############
 # qubit_spec_prog:
 ###############
-# LO_q.set_frequency(qubit_LO)
-# LO_q.set_ext_pulse(mod=False)
-# LO_q.set_power(18)
-# LO_r.set_frequency(rr_LO)
-# LO_r.set_ext_pulse(mod=False)
-# LO_r.set_power(18)
-
 f_min = -20e6
 f_max = 20e6
-df = 400e3
+df = 200e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 f_vec = f_vec + qubit_LO + ef_IF
 
 avgs = 1000
 reset_time = 500000
 simulation = 0
-
 
 simulation_config = SimulationConfig(
     duration=60000,

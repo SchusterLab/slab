@@ -6,6 +6,9 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+from h5py import File
+import os
+from slab.dataanalysis import get_next_filename
 
 simulation_config = SimulationConfig(
     duration=60000,
@@ -167,3 +170,22 @@ ax.xaxis.set_ticklabels(labels)
 ax.yaxis.set_ticklabels(labels)
 
 plt.show()
+
+path = os.getcwd()
+data_path = os.path.join(path, "data/")
+seq_data_file = os.path.join(data_path,
+                             get_next_filename(data_path, 'histogram_disc', suffix='.h5'))
+print(seq_data_file)
+
+with File(seq_data_file, 'w') as f:
+    f.create_dataset("I", data=I)
+    f.create_dataset("Q", data=Q)
+    f.create_dataset("seq0", data=seq0)
+    f.create_dataset("avgs", data=N)
+
+# """Extracting the qubit thermal population from Gaussian fitting of the histograms"""
+# def gaus(x, a0, x0, sigma, a1, x1):
+#     return a0*np.exp(-(x-x0)**2/(2*sigma**2)) + a1*np.exp(-(x-x1)**2/(2*sigma**2))
+# from scipy.optimize import curve_fit
+# y, x = np.histogram(I[np.array(seq0) == 0], 50)
+# popt, pcov = curve_fit(gaus, x[:-1], y, p0=[1, 0.003, 0.001, 0, -0.002])

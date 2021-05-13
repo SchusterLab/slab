@@ -13,12 +13,12 @@ from slab.dataanalysis import get_next_filename
 """Binary decomposition"""
 
 t_chi = int(0.5*1e9/1.118e6) #qubit rotates by pi in this time
-cav_len = 300
-cav_amp = 0.5 # 0.08
+cav_len = 500
+cav_amp = 0.25 # 0.08
 
-avgs = 500
-reset_time = int(5e6)
-simulation = 0
+avgs = 5
+reset_time = int(5e2)
+simulation = 1
 
 simulation_config = SimulationConfig(
     duration=60000,
@@ -123,7 +123,7 @@ with program() as binary_decomposition:
         align("qubit", "rr", 'jpa_pump')
 
         play("pi2", "qubit") # unconditional
-        wait(t_chi//4//2, "qubit")
+        wait(t_chi//4//2-3, "qubit") # subtracted 3 to make the simulated waveforms accurate
         with if_(res==0):
             frame_rotation(np.pi, 'qubit')
             play("pi2", "qubit")
@@ -164,12 +164,12 @@ else:
     print("n=0 => {}, n=1 => {}, n=2 => {},n=3 => {}".format(p_cav[0], p_cav[1], p_cav[2], p_cav[3]))
     job.halt()
 
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'binary_decomp', suffix='.h5'))
-    print(seq_data_file)
-    with File(seq_data_file, 'w') as f:
-        f.create_dataset("p_cav", data=p_cav)
-        f.create_dataset("amp", data=cav_amp)
-        f.create_dataset("time", data=cav_len*4)
+    # path = os.getcwd()
+    # data_path = os.path.join(path, "data/")
+    # seq_data_file = os.path.join(data_path,
+    #                              get_next_filename(data_path, 'binary_decomp', suffix='.h5'))
+    # print(seq_data_file)
+    # with File(seq_data_file, 'w') as f:
+    #     f.create_dataset("p_cav", data=p_cav)
+    #     f.create_dataset("amp", data=cav_amp)
+    #     f.create_dataset("time", data=cav_len*4)

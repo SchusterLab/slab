@@ -107,7 +107,7 @@ with program() as binary_decomposition:
         align("qubit", "rr", 'jpa_pump')
 
         play("pi2", "qubit") # unconditional
-        wait(t_chi//4//2, "qubit")
+        wait(t_chi//4//2-3, "qubit")# subtracted 3 to make the simulated waveforms accurate
         with if_(bit1==0):
             frame_rotation(np.pi, 'qubit')
             play("pi2", "qubit")
@@ -124,7 +124,7 @@ with program() as binary_decomposition:
         align("qubit", "rr", 'jpa_pump')
 
         play("pi2", "qubit") # unconditional
-        wait(t_chi//4//4, "qubit")
+        wait(t_chi//4//4-3, "qubit")# subtracted 3 to make the simulated waveforms accurate
 
         """How to incorporate higher order chi correction?"""
 
@@ -138,7 +138,7 @@ with program() as binary_decomposition:
             frame_rotation(np.pi + np.pi/2 + np.pi/4, 'qubit')
             play("pi2", "qubit")
         with if_(bit1==1 and bit2==1):
-            frame_rotation(np.pi*2 + np.pi/4, 'qubit')
+            frame_rotation(np.pi/4, 'qubit')
             play("pi2", "qubit")
         align('qubit', 'rr', 'jpa_pump')
         play('pump_square', 'jpa_pump')

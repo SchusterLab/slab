@@ -9,16 +9,10 @@ import matplotlib.pyplot as plt
 from slab import*
 from slab.instruments import instrumentmanager
 from slab.dsfit import*
-
 import time
-# im = InstrumentManager()
-# LO_q = im['RF5']
-# LO_r = im['RF8']
-# LO_s  = im['sccav']
-# LO_sb = im['scsb']
+from h5py import File
 
-# LO_s.set_frequency(storage_LO)
-# LO_s.set_power(12.0)
+
 simulation_config = SimulationConfig(
     duration=60000,
     simulation_interface=LoopbackInterface(
@@ -32,21 +26,14 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_o
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -50e3
-f_max = 50e3
-df = 5e3
+f_min = -1000e3
+f_max = 1000e3
+df = 50e3
 
 f_vec = np.arange(f_min, f_max + df/2, df)
 
-# LO_q.set_frequency(qubit_LO)
-# LO_q.set_ext_pulse(mod=False)
-# LO_q.set_power(18)
-# LO_r.set_frequency(rr_LO)
-# LO_r.set_ext_pulse(mod=False)
-# LO_r.set_power(18)
-
 avgs = 1000
-reset_time = 5000000
+reset_time = int(3.5e6)
 simulation = 0
 with program() as storage_spec:
 
@@ -76,7 +63,7 @@ with program() as storage_spec:
 
             update_frequency("storage", f)
             wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
-            play("saturation"*amp(0.005), "storage", duration=50000)
+            play("saturation"*amp(0.25), "storage", duration=2500)
             align("storage", "qubit")
             play("res_pi", "qubit")
             align("qubit", "rr")
@@ -108,28 +95,24 @@ else:
     """To run the actual experiment"""
     job = qm.execute(storage_spec, duration_limit=0, data_limit=0)
     print("Experiment done")
-    start_time = time.time()
+
     res_handles = job.result_handles
-    # res_handles.wait_for_all_values()
-    I_handle = res_handles.get("I")
-    Q_handle = res_handles.get("Q")
-    I = I_handle.fetch_all()
-    Q = Q_handle.fetch_all()
-    # print("Data collection done")
-    #
-    # stop_time = time.time()
-    # print(f"Time taken: {stop_time-start_time}")
-    #
-    # job.halt()
-    #
-    # plt.plot(amps, I, '.-')
-    # plt.plot(amps, Q, '.-')
+    res_handles.wait_for_all_values()
+    I = res_handles.get("I").fetch_all()
+    Q = res_handles.get("Q").fetch_all()
 
-    # plt.figure()
-    # while(result_handles.is_processing()):
-    #     I = statistic_handle.fetch_all()
-    #     plt.plot(np.array(I)**2)
-    #     plt.pause(5)
-    #     plt.clf()
+    plt.plot( I, '.-')
+    plt.plot(Q, '.-')
 
+    job.halt()
 
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'storage_spec', suffix='.h5'))
+    print(seq_data_file)
+
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=Q)
+        f.create_dataset("freqs", data=f_vec)

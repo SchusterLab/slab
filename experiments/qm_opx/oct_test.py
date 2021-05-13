@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_freq, rr_LO, qubit_LO, ge_IF,  biased_th_g
+from configuration_IQ import config, qubit_freq, rr_LO, qubit_LO, ge_IF,  biased_th_g_jpa
 from qm.qua import *
 from qm import SimulationConfig
 from qm import SimulationConfig, LoopbackInterface
@@ -17,25 +17,54 @@ import time
 simulation_config = SimulationConfig(
     duration=60000,
     simulation_interface=LoopbackInterface(
-        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.00**2
+        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.5**2
     )
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+
+def active_reset(biased_th, to_excited=False):
+    res_reset = declare(bool)
+
+    wait(5000//4, "jpa_pump")
+    align("rr", "jpa_pump")
+    play('pump_square', 'jpa_pump')
+    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+    wait(1000//4, 'rr')
+    # save(I, "check")
+
+    if to_excited == False:
+        with while_(I < biased_th):
+            align('qubit', 'rr', 'jpa_pump')
+            with if_(~res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
+    else:
+        with while_(I > biased_th):
+            align('qubit', 'rr', 'jpa_pump')
+            with if_(res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
 
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -0.5e6
-f_max = 0.5e6
+f_min = -1.5e6
+f_max = -0.5e6
 df = 20e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
 # filename = 'oct_pulses/g1.h5'
 
 # filename = "S:\\Ankur\\Stimulated Emission\\pulses\\picollo\\2021-03-23\\00001_g0_to_g1_2.0us_qamp_7.5_camp_0.2_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5"
-filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g1_5.0us_qamp_24.0_camp_0.4_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5'
+filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g1_2.0us_qamp_24.0_camp_0.25_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5'
 
 with File(filename,'r') as a:
     Iq = np.array(a['uks'][-1][0], dtype=float)
@@ -78,6 +107,7 @@ def transfer_function(omegas_in, cavity=False, qubit=True, pulse_length=2000):
         # if frequency greater than calibrated range, assume a proportional relationship (high amp)
         if np.abs(omegas_in[i]) > omegas[max_interp_index]:
             output_amps.append(omegas_in[i] * amps[max_interp_index] / omegas[max_interp_index])
+            # output_amps.append(amps[max_interp_index])
         else:  # otherwise just use the interpolated transfer function
             output_amps.append(transfer_fn((omegas_in[i])))
     return np.array(output_amps)
@@ -102,11 +132,11 @@ config['waveforms']['qoct_wf_q']['samples'] = Qq
 config['waveforms']['soct_wf_i']['samples'] = Ic
 config['waveforms']['soct_wf_q']['samples'] = Qc
 
-pulse_len = 1000
+pulse_len = 500
 
-avgs = 1000
-reset_time = 5000000
-simulation = 0
+avgs = 10
+reset_time = int(3.5e2)
+simulation = 1
 with program() as oct_test:
 
     ##############################
@@ -127,13 +157,13 @@ with program() as oct_test:
     with for_(n, 0, n < avgs, n + 1):
 
         with for_(f, ge_IF + f_min, f < ge_IF + f_max + df/2, f + df):
-
-            update_frequency("qubit", f)
+            update_frequency("qubit", ge_IF)
             wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
             align('storage', 'qubit')
             play("soct", "storage", duration=pulse_len)
             play("qoct", "qubit", duration=pulse_len)
             align("storage", "qubit")
+            update_frequency("qubit", f)
             play("res_pi", "qubit")
             align("qubit", "rr")
             discriminator.measure_state("clear", "out1", "out2", res, I=I)

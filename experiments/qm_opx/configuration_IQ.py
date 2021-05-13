@@ -22,7 +22,7 @@ long_redout_len = 3500
 readout_len = 3000
 
 qubit_LO = 4.6470*1e9
-qubit_freq = 4.746893620501848 *1e9
+qubit_freq = 4.746892010604675  *1e9
 ge_IF = int(qubit_freq - qubit_LO)
 
 qubit_ef_freq = 4.6072838821511315 * 1e9
@@ -62,7 +62,7 @@ gauss_len = 40
 gauss_amp = 0.45 * 0.95 #the mixer goes crazy above 0.95
 
 pi_len = 40
-pi_amp = 0.5294
+pi_amp = 0.5244
 
 half_pi_len = int(pi_len/2)
 half_pi_amp = pi_amp
