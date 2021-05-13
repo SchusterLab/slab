@@ -237,18 +237,20 @@ class PulseSequences:
 
         return readout_time
 
-    def readout_pxi(self, sequencer, on_qubits=None, sideband = False, overlap = False):
+    def readout_pxi(self, sequencer, on_qubits=None, sideband = False, overlap = False, synch_channels=None):
         if on_qubits == None:
             on_qubits = ["A", "B"]
 
-        sequencer.sync_channels_time(self.channels)
+        if synch_channels==None:
+            synch_channels = self.channels
+        sequencer.sync_channels_time(synch_channels)
         readout_time = sequencer.get_time('digtzr_trig') # Earlies was alazar_tri
         readout_time_5ns_multiple = np.ceil(readout_time / 5) * 5
         sequencer.append_idle_to_time('digtzr_trig', readout_time_5ns_multiple)
         if overlap:
             pass
         else:
-            sequencer.sync_channels_time(self.channels)
+            sequencer.sync_channels_time(synch_channels)
 
         for qubit_id in on_qubits:
             sequencer.append('readout%s' % qubit_id,
@@ -380,53 +382,36 @@ class PulseSequences:
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
             pre_flux_time = sequencer.get_time('digtzr_trig') #could just as well be any ch
-            for qubit_id in self.expt_cfg['on_qubits']:
-                sequencer.append('charge%s_I' % qubit_id,
-                                 Square(max_amp=self.expt_cfg['qb_amp'], flat_len=self.expt_cfg['qb_pulse_length'],
-                                        ramp_sigma_len=0.001, cutoff_sigma=2,
-                                        freq=self.pulse_info[qubit_id]['iq_freq'] + dfreq,
-                                        phase=0))
 
-                sequencer.append('charge%s_Q' % qubit_id,
-                                 Square(max_amp=self.expt_cfg['qb_amp'], flat_len=self.expt_cfg['qb_pulse_length'],
-                                        ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
-                                        phase=self.pulse_info[qubit_id]['Q_phase']))
-                self.idle_q(sequencer, time=self.expt_cfg['delay'])
+            #add IQ pulse
+            for qubit_id in self.expt_cfg['on_qubits']:
+                self.gen_q(self, sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg[
+                    'qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+            self.idle_q(sequencer, time=self.expt_cfg['delay'])
 
             #synch all channels except flux before adding readout
             channels_excluding_fluxch = [ch for ch in self.channels if 'ff' not in ch]
-            sequencer.sync_channels_time(channels_excluding_fluxch)
 
-            #makes sure we're in 5ns multiple of start time before we append readout pulse
-            readout_time = sequencer.get_time('digtzr_trig')  # Earlies was alazar_tri
-            readout_time_5ns_multiple = np.ceil(readout_time / 5) * 5
-            sequencer.append_idle_to_time('digtzr_trig', readout_time_5ns_multiple)
-            sequencer.sync_channels_time(channels_excluding_fluxch)
-
-            #add readout and readout trig (ie dig) pulse
-            sequencer.append('readout',
-                             Square(max_amp=self.quantum_device_cfg['readout']['amp'],
-                                    flat_len=self.quantum_device_cfg['readout']['length'],
-                                    ramp_sigma_len=20, cutoff_sigma=2, freq=0,
-                                    phase=0, phase_t0=readout_time_5ns_multiple))
-            sequencer.append('digtzr_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
-
+            #add readout
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'], overlap=False, synch_channels=channels_excluding_fluxch)
 
             #add flux to pulse
             sequencer.sync_channels_time(channels_excluding_fluxch)
             post_flux_time = sequencer.get_time('digtzr_trig') #could just as well be any ch
-            for target in self.expt_cfg['target_qb']:
+
+            for qb, flux in enumerate(self.expt_cfg['flux_vec']):
                 #since we haven't been synching the flux channels, this should still be back at the beginning
-                sequencer.append('ff_Q%s' % target,
-                                 Square(max_amp=self.expt_cfg['ff_amp'], flat_len=post_flux_time - pre_flux_time + self.expt_cfg['ff_pulse_padding'],
+                sequencer.append('ff_Q%s' % qb,
+                                 Square(max_amp=flux, flat_len=post_flux_time - pre_flux_time + self.expt_cfg[
+                                     'ff_pulse_padding'],
                                         ramp_sigma_len=self.expt_cfg['ff_ramp_sigma_len'], cutoff_sigma=2, freq=0,
                                         phase=0))
             sequencer.sync_channels_time(self.channels)
 
             #COMPENSATION PULSE
-            for target in self.expt_cfg['target_qb']:
-                sequencer.append('ff_Q%s' % target,
-                                 Square(max_amp=-self.expt_cfg['ff_amp'],
+            for qb, flux in enumerate(self.expt_cfg['flux_vec']):
+                sequencer.append('ff_Q%s' % qb,
+                                 Square(max_amp= -flux,
                                         flat_len=post_flux_time - pre_flux_time + self.expt_cfg['ff_pulse_padding'],
                                         ramp_sigma_len=self.expt_cfg['ff_ramp_sigma_len'], cutoff_sigma=2, freq=0,
                                         phase=0))
