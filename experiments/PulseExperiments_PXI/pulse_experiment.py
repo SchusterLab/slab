@@ -168,10 +168,10 @@ class Experiment:
     def initiate_drive_attenuators(self):
         try:
             for ii, d in enumerate(self.drive_attens):
-                d.set_attenuator(self.quantum_device_cfg['powers'][self.qubits[ii]]['qubit_drive_digital_attenuation'])
+                d.set_attenuator(self.quantum_device_cfg['powers'][self.qubits[ii]]['drive_digital_attenuation'])
                 print("set drive attenuator")
         except:
-            print("Error in readout digital attenuator configuration")
+            print("Error in qubit drive attenuator configuration")
 
 
     def set_trigger(self):
@@ -284,13 +284,33 @@ class Experiment:
                     f.append_line('Q', data[0][1])
         return data
 
+    def get_traj_data_pxi_no_window(self,expt_cfg,seq_data_file):
+        w=[0, self.hardware_cfg["awg_info"]["keysight_pxi"]["samplesPerRecord"]]
+        data = self.pxi.traj_data_many_no_window(w=w)
+        I= data[0][0]
+        Q=data[0][1]
+        I = np.average(I, axis=0)
+        Q = np.average(Q, axis=0)
+        if seq_data_file == None:
+            self.slab_file = SlabFile(self.data_file)
+            with self.slab_file as f:
+                # f.add('expt_pts',expt_pts)
+                f.add('I', I)
+                f.add('Q', Q)
+        else:
+            self.slab_file = SlabFile(seq_data_file)
+            with self.slab_file as f:
+                f.append_line('I', I)
+                f.append_line('Q', Q)
+        return data
+
     def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
         self.expt_cfg = self.experiment_cfg[name]
         self.generate_datafile(path,name,seq_data_file=seq_data_file)
         self.set_trigger()
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
-        self.initiate_stab_LOs()
+        #self.initiate_stab_LOs()
         self.initiate_readout_attenuators()
         self.initiate_drive_attenuators()
         self.initiate_pxi(name, sequences)
@@ -300,8 +320,7 @@ class Experiment:
 
         #TODO: not yet updated check_sync
         if check_sync:
-            #self.pxi.acquireandplot(expt_num)
-            self.I, self.Q = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+            self.data = self.get_traj_data_pxi_no_window(self.expt_cfg, seq_data_file=seq_data_file)
             #I and Q in form of (avg_num, num_expt, sample_per_record)
 
         else:

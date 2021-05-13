@@ -155,7 +155,6 @@ class Sequencer:
             sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["A"]))
             self.end_sequence()
 
-
         #we don't need to upload sequences of the same length to keysight, since trigger period is much longer than
         # any of the sequences anyway. If this ever changes, should use synch_channels instead of equalize sequences,
         #  since equalize sequences doesn't take into accoutn dt.

@@ -37,7 +37,6 @@ class PulseSequences:
         self.qubit_freq = {"A": self.quantum_device_cfg['qubit']['A']['freq'],
                            "B": self.quantum_device_cfg['qubit']['B']['freq']}
 
-
         self.qubit_ef_freq = {"A": self.quantum_device_cfg['qubit']['A']['freq']+self.quantum_device_cfg['qubit']['A']['anharmonicity'],
                               "B": self.quantum_device_cfg['qubit']['B']['freq']+self.quantum_device_cfg['qubit']['B']['anharmonicity']}
 
@@ -82,6 +81,7 @@ class PulseSequences:
 
         gauss_z = np.linspace(-2,2,20)
         gauss_envelop = np.exp(-gauss_z**2)
+
 
     def  __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,plot_visdom=True):
         self.set_parameters(quantum_device_cfg, experiment_cfg, hardware_cfg)
@@ -280,9 +280,35 @@ class PulseSequences:
                                     flat_len=self.quantum_device_cfg['readout'][qubit_id]['length'],
                                     ramp_sigma_len=20, cutoff_sigma=2, freq=0,
                                     phase=0, phase_t0=readout_time_5ns_multiple))
+
         sequencer.append('digtzr_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
 
         return readout_time
+
+    # def readout_pxi_pi(self, sequencer, on_qubits=None, sideband = False, overlap = False):
+    #     if on_qubits == None:
+    #         on_qubits = ["A", "B"]
+    #
+    #     sequencer.sync_channels_time(self.channels)
+    #     readout_time = sequencer.get_time('digtzr_trig') # Earlies was alazar_tri
+    #     readout_time_5ns_multiple = np.ceil(readout_time / 5) * 5
+    #     sequencer.append_idle_to_time('digtzr_trig', readout_time_5ns_multiple)
+    #     if overlap:
+    #         pass
+    #     else:
+    #         sequencer.sync_channels_time(self.channels)
+    #
+    #     qubit_id = on_qubits[0]
+    #     self.pi_q(sequencer, qubit_id, phase=0, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+    #     sequencer.append('drive',)
+    #     sequencer.append('readout',
+    #                      Square(max_amp=self.quantum_device_cfg['readout']['amp'],
+    #                             flat_len=self.quantum_device_cfg['readout']['length'],
+    #                             ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+    #                             phase=0, phase_t0=readout_time_5ns_multiple))
+    #     sequencer.append('digtzr_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
+    #
+    #     return readout_time
 
     def parity_measurement(self, sequencer, qubit_id='A'):
         self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
