@@ -286,7 +286,7 @@ class Experiment:
 
     def get_traj_data_pxi_no_window(self,expt_cfg,seq_data_file):
         w=[0, self.hardware_cfg["awg_info"]["keysight_pxi"]["samplesPerRecord"]]
-        data = self.pxi.traj_data_many(w=w)
+        data = self.pxi.traj_data_many_no_window(w=w)
         I= data[0][0]
         Q=data[0][1]
         I = np.average(I, axis=0)

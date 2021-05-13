@@ -607,7 +607,7 @@ class KeysightSingleQubit:
             data.append([qbB_I, qbB_Q])
         return np.asarray(data)
 
-    def traj_data_many(self,w):
+    def traj_data_many(self):
         """
         Reads off digitizer num_avg_times, each shot in shape (num_expt , dig_sample_per_record) and windowed.
         Saves it in qbA_I -> (num avg, num_expt, len(window))
@@ -622,9 +622,9 @@ class KeysightSingleQubit:
         for ii in tqdm(range(self.num_avg)):
             if "A" in self.on_qubits:
                 ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
-                      int(w[0]):int(w[1])].T
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
                 ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
-                      int(w[0]):int(w[1])].T
+                      nt(self.readoutA_window[0]):int(self.readoutA_window[1])].T
                 qbA_I.append(ch1)
                 qbA_Q.append(ch2)
             if "B" in self.on_qubits:
@@ -640,7 +640,7 @@ class KeysightSingleQubit:
             data.append([qbB_I, qbB_Q])
         return np.asarray(data)
 
-    def traj_data_many_no_window(self):
+    def traj_data_many_no_window(self,w):
         """
         Reads off digitizer num_avg_times, each shot in shape (num_expt , dig_sample_per_record) and windowed.
         Saves it in qbA_I -> (num avg, num_expt, len(window))
@@ -687,13 +687,13 @@ class KeysightSingleQubit:
                   int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
             qbA_Q = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
                   int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
-            data.append([np.mean(qbA_I, 0), np.mean(qbA_Q, 0)])
+            data.append([np.mean(qbA_I, 1), np.mean(qbA_Q, 1)])
         if "B" in self.on_qubits:
             qbB_I = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(self.readoutB_window[0]):int(
                 self.readoutB_window[1])].T
             qbB_Q = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(self.readoutB_window[0]):int(
                 self.readoutB_window[1])].T
-            data.append([np.mean(qbB_I,0), np.mean(qbB_Q,0)])
+            data.append([np.mean(qbB_I,1), np.mean(qbB_Q,1)])
         return np.asarray(data)
 
     def SSdata_many(self,w =[0,-1]):
@@ -716,15 +716,15 @@ class KeysightSingleQubit:
                       int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
                 ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
                       int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
-                qbA_I.append(np.mean(ch1))
-                qbA_Q.append(np.mean(ch2))
+                qbA_I.append(np.mean(ch1,1))
+                qbA_Q.append(np.mean(ch2),1)
             if "B" in self.on_qubits:
                 ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(self.readoutB_window[0]):int(
                     self.readoutB_window[1])].T
                 ch4 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(self.readoutB_window[0]):int(
                     self.readoutB_window[1])].T
-                qbB_I.append(np.mean(ch3))
-                qbB_Q.append(np.mean(ch4))
+                qbB_I.append(np.mean(ch3,1))
+                qbB_Q.append(np.mean(ch4,1))
         if "A" in self.on_qubits:
             data.append([qbA_I.T, qbA_Q.T])
         if "B" in self.on_qubits:
@@ -746,15 +746,17 @@ class KeysightSingleQubit:
         qbA_I, qbA_Q, qbB_I, qbB_Q = np.zeros(self.num_expt), np.zeros(self.num_expt), np.zeros(self.num_expt), np.zeros(self.num_expt)
         for ii in tqdm(range(self.num_avg)):
             if "A" in self.on_qubits:
+
                 qbA_I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
-                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T)
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T, 1)
+
                 qbA_Q += np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
-                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T)
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T, 1)
             if "B" in self.on_qubits:
                 qbB_I += np.mean(np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(
-                    self.readoutB_window[0]):int(self.readoutB_window[1])].T)
+                    self.readoutB_window[0]):int(self.readoutB_window[1])].T, 1)
                 qbB_Q += np.mean(np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(
-                    self.readoutB_window[0]):int(self.readoutB_window[1])].T)
+                    self.readoutB_window[0]):int(self.readoutB_window[1])].T, 1)
         if "A" in self.on_qubits:
             qbA_I = qbA_I / self.num_avg
             qbA_Q = qbA_Q / self.num_avg
@@ -794,14 +796,14 @@ class KeysightSingleQubit:
         for ii in tqdm(range(self.num_avg)):
             if "A" in self.on_qubits:
                 qbA_I.append(np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
-                                 int(self.readoutA_window[0]):int(self.readoutA_window[1])].T))
+                                 int(self.readoutA_window[0]):int(self.readoutA_window[1])].T,1))
                 qbA_Q.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
-                                 int(self.readoutA_window[0]):int(self.readoutA_window[1])].T))
+                                 int(self.readoutA_window[0]):int(self.readoutA_window[1])].T,1))
             if "B" in self.on_qubits:
                 qbB_I.append(np.mean(np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(
-                    self.readoutB_window[0]):int(self.readoutB_window[1])].T))
+                    self.readoutB_window[0]):int(self.readoutB_window[1])].T),1)
                 qbB_Q.append(np.mean(np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(
-                    self.readoutB_window[0]):int(self.readoutB_window[1])].T))
+                    self.readoutB_window[0]):int(self.readoutB_window[1])].T),1)
         if "A" in self.on_qubits:
             qbA_I_std = np.std(qbA_I, 0)
             qbA_Q_std = np.std(qbA_Q, 0)
