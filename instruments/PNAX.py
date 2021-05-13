@@ -667,5 +667,6 @@ class N5242A(SocketInstrument):
 
 
 if __name__ == '__main__':
-    na = N5242A("N5242A", address="192.168.14.242")
+    na = N5242A("N5242A", address="192.168.14.181")
     print(na.get_id())
+    na.set_output('OFF')

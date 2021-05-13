@@ -159,10 +159,11 @@ class E5071(SocketInstrument):
     default_port = 5025
 
     def __init__(self, name="E5071", address=None, enabled=True):
-        SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=10, recv_length=2 ** 20)
+        SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=100, recv_length=2 ** 20)
         self.query_sleep = 0.05
 
     def get_id(self):
+        #return "FLAG"
         return self.query('*IDN?')
 
     def get_query_sleep(self):
@@ -255,12 +256,40 @@ class E5071(SocketInstrument):
 
     #### Trigger
 
+    def set_trigger_mode(self, mode="RUN"):
+        """
+        NOT WORKING -TANAY
+        HOLD: Trigger is on hold until the conditions are meet, the trigger event starts.
+        SINGle: Trigger event is run once.
+        RUN: Trigger event is running continuous.
+        :param source: string
+        :return: None
+        """
+        self.write(':TRIG:MODE ' + mode)
+
+    def get_trigger_mode(self):
+        """
+        NOT WORKING -TANAY
+        Returns the trigger mode.
+        :return: string
+        """
+        answer = self.query(':TRIG:MODE?')
+        return answer.strip()
+
     def trigger_single(self):
         """
         Send a single trigger.
+        Takes a full sweep.
         :return: None
         """
         self.write(':TRIG:SING')
+
+    def trigger_bus(self):
+        """
+        Send a single bus trigger.
+        :return: None
+        """
+        self.write("*TRG")
 
     def set_trigger_average_mode(self, state=True):
         """
@@ -465,6 +494,27 @@ class E5071(SocketInstrument):
         """
         return float(self.query(":SENSe%d:SWEep:POINts?" % (channel)))
 
+    def set_sweep_type(self, sweep_type, channel=1):
+        """
+        http://ena.support.keysight.com/e5071c/manuals/webhelp/eng/programming/command_reference/sense/scpi_sense_ch_sweep_type.htm
+        :param sweep_type: one of the following: ["LIN", "LOG", "SEGM", "POW"]. Default: "LIN"
+        :param channel: channel number
+        :return: None
+        """
+        if sweep_type.upper() in ["LIN", "LOG", "SEGM", "POW"]:
+            self.write("SENS%d:SWE:TYPE %s" % (channel, sweep_type.upper()))
+        else:
+            print("sweep_type must be one of LIN (linear frequency), LOG (logarithmic frequency), SEGM (segmented sweep) or POW (power sweep)")
+
+    def get_sweep_type(self, channel=1):
+        """
+        http://ena.support.keysight.com/e5071c/manuals/webhelp/eng/programming/command_reference/sense/scpi_sense_ch_sweep_type.htm
+        :param channel: channel number
+        :return: sweep type
+        """
+        answer = self.query("SENS%d:SWE:TYPE?" % (channel))
+        return answer.strip()
+
     #### Scale
     def get_phase_offset(self, channel=1):
         """
@@ -529,24 +579,42 @@ class E5071(SocketInstrument):
         """
         return self.query(":CALC:FORMAT?")
 
-    def read_data(self, channel=1, timeout=None):
+    def get_fpoints(self, channel=1):
+        """
+        http://ena.support.keysight.com/e5071c/manuals/webhelp/eng/programming/command_reference/calculate/scpi_calculate(ch)_selected_data_xaxis.htm
+        This command reads the data of measurement points of X axis, for the active trace of selected channel (Ch).
+        :param channel: channel number
+        :return: array of points on the xaxis
+        """
+        answer = self.query(":CALC%d:DATA:XAX?" % (channel)).strip()
+        return np.fromstring(answer, dtype=np.float64, sep=',')
+
+    def read_data(self, channel=1, timeout=None, sweep_type=None):
         """
         Read current NWA Data, output depends on format, for mag phase, use set_format('SLOG')
         :param channel: channel number
         :param timeout: optional, query timeout in ms.
         :return: np.vstack((fpts, data))
         """
-        #self.get_operation_completion()
+        self.get_operation_completion()
         self.write(":FORM:DATA ASC")
         self.write(":CALC%d:DATA:FDAT?"%channel)
+        time.sleep(self.query_sleep)
 
         if timeout is None:
             timeout = self.timeout
 
-        data_str = ''.join(self.read_lineb(timeout=timeout))
+        data_temp = self.read_lineb(timeout=timeout)
+        data_str = ''.join([ss.decode() for ss in data_temp])
         data = np.fromstring(data_str, dtype=float, sep=',')
         sweep_points = int(self.get_sweep_points())
-        fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), sweep_points)
+        sweep_type = self.get_sweep_type(channel=channel) if sweep_type is None else sweep_type
+
+        if sweep_type != "LIN":
+            fpts = self.get_fpoints(channel=channel)
+        else:
+            fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), sweep_points)
+
         if len(data) == 2 * sweep_points:
             data = data.reshape((-1, 2))
             data = data.transpose()
@@ -564,7 +632,7 @@ class E5071(SocketInstrument):
         self.set_trigger_source('BUS')
         time.sleep(self.query_sleep * 2)
         old_timeout = self.get_timeout()
-        self.set_timeout(100.)
+        # self.set_timeout(100.)
         self.set_format()
         time.sleep(self.query_sleep)
         old_avg_mode = self.get_trigger_average_mode()
@@ -878,8 +946,9 @@ def convert_nwa_files_to_hdf(nwa_file_dir, h5file, sweep_min, sweep_max, sweep_l
 
 if __name__ == '__main__':
     #    condense_nwa_files(r'C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data','C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data\\test')
-    na = E5071("E0571", address="192.168.14.130")
+    na = E5071("E5071", address="192.168.14.218")
     print(na.get_id())
+    na.set_power(-10.0)
 
 
 # print "Setting window"

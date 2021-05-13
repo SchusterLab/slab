@@ -4,10 +4,12 @@ from slab.experiments.Nitrogen.ExpLib.SequentialExperiment import *
 from slab import *
 import os
 import json
+from numpy import*
 
 
 datapath = os.getcwd() + '\data'
 config_file = os.path.join(datapath, "..\\config" + ".json")
+
 with open(config_file, 'r') as fid:
         cfg_str = fid.read()
 
@@ -15,7 +17,6 @@ cfg = AttrDict(json.loads(cfg_str))
 
 def get_data_filename(prefix):
     return  os.path.join(datapath, get_next_filename(datapath, prefix, suffix='.h5'))
-
 
 def frequency_stabilization(seq_exp):
     seq_exp.run('Ramsey',{})
@@ -66,7 +67,6 @@ def ef_pulse_calibration(seq_exp):
     seq_exp.run('ef_Rabi',{'update_config':True})
     print("ef pi and pi/2 pulses recalibrated")
 
-
 def ef_frequency_calibration(seq_exp):
     # seq_exp.run('ef_Rabi',{'update_config':True})
     # print "ef pi and pi/2 pulses recalibrated"
@@ -89,9 +89,7 @@ def ef_frequency_calibration(seq_exp):
             print("Something wierd about previous ef Ramsey: new anharmonicity saved to config")
             print("Alpha changed by +  %s kHz"%(seq_exp.expt.offset_freq/1e3))
 
-
-
-def run_seq_experiment(expt_name,lp_enable=True):
+def run_seq_experiment(expt_name,lp_enable=True,phase_exp=False):
     seq_exp = SequentialExperiment(lp_enable)
     prefix = expt_name.lower()
     data_file = get_data_filename(prefix)
@@ -103,7 +101,7 @@ def run_seq_experiment(expt_name,lp_enable=True):
         ef_frequency_calibration(seq_exp)
 
     if expt_name.lower() == 'pulse_calibration':
-        pulse_calibration(seq_exp,phase_exp = False)
+        pulse_calibration(seq_exp,phase_exp = phase_exp)
 
     if expt_name.lower() == 'ef_pulse_calibration':
         # ef_frequency_calibration(seq_exp)
@@ -139,29 +137,30 @@ def run_seq_experiment(expt_name,lp_enable=True):
             #seq_exp.run('T1')
 
     if expt_name.lower() == 'echo_spectroscopy':
-        number_list = array([20,26,36,45,55,65,75])
+        number_list = arange(1,11)
         for ii,number in enumerate(number_list):
-            if ii%5 is 0:
-                frequency_stabilization(seq_exp)
-                pulse_calibration(seq_exp)
-            seq_exp.run('spin_echo',{'number':number, "data_file":data_file})
+            # if ii%5 is 0:
+            #     frequency_stabilization(seq_exp)
+            #     pulse_calibration(seq_exp)
+            seq_exp.run('spin_echo', vary_dict={},expt_kwargs={'number':number, "data_file":data_file})
 
     if expt_name.lower() == 'pulse_probe_amp_sweep':
-        alist = logspace(-3,0,10)
+        # alist = logspace(-2,0,10)
+        alist =append(linspace(1,0.1,5),linspace(0.1,0.01,10))
         for a in alist:
-            # seq_exp.run('pulse_probe_iq', {'amp':a,"data_file":data_file})
-            seq_exp.run('pulse_probe_iq', {'amp':a})
+            seq_exp.run('pulse_probe_iq', vary_dict = {},expt_kwargs={'amp':a,"data_file":data_file})
+            # seq_exp.run('pulse_probe_iq', {'amp':a})
 
 
     if expt_name.lower() == 'qubit_temperature_measurement':
 
-        seq_exp.run('ef_rabi', {'ge_pi':True,'data_file':data_file})
-        seq_exp.run('ef_rabi',{'ge_pi':False,'data_file':data_file})
+        seq_exp.run('ef_rabi', expt_kwargs={'ge_pi':True,'data_file':data_file})
+        seq_exp.run('ef_rabi',expt_kwargs={'ge_pi':False,'data_file':data_file})
 
 
     if expt_name.lower() == 'resonator_temperature_measurement':
         print("NOTE: Make sure that the drive attenuation is small enough to resolve number split peak")
-        seq_exp.run('pulse_probe_iq', {'data_file': data_file})
+        seq_exp.run('pulse_probe_iq', expt_kwargs= {'data_file': data_file})
 
 
     if expt_name.lower() == 'sequential_t1':

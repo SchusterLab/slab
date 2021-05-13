@@ -440,9 +440,11 @@ class PulseSequenceBuilder():
                                                     ii] - self.tek2_trigger_delay,
                                                 self.card_trig_width)
 
-        # np.save("q_c_mm_ef_ramsey3",self.waveforms_qubit_flux[0])
-        # print np.shape(self.ftpts)
-        # np.save("time3",self.ftpts)
+        np.save("waveform_I_test",self.waveforms_qubit_I)
+        np.save("waveform_Q_test",self.waveforms_qubit_Q)
+        np.save("waveform_R",self.markers_readout)
+        np.save("time",self.mtpts)
+
 
         return (self.markers_readout,
                 self.markers_card,

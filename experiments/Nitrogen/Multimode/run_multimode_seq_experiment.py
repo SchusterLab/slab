@@ -1385,17 +1385,12 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
     if expt_name.lower() == 'multimode_rabi_line_cut_scan':
 
 
-        freqspan = arange(-100,150,50.0)
-        freqlist = array([ 5.668])*1e9
-        modelist = array([1])
-        modeindexlist = [0]#kwargs['modeindexlist']
-        amplist = array([1.0])
-
-        for i in modeindexlist:
-            print("running charge Rabi sweep around mode %s"%(modelist[i]))
-            for freq in freqspan:
-                flux_freq = freqlist[i] + freq*1e6
-                seq_exp.run('multimode_rabi_line_cut_sweep',expt_kwargs={'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
+        freqlist = kwargs['freqlist']
+        amp = 1.0
+        vary_dict = {"buffer": {"tek2_trigger_delay":1305.0 },"multimode_rabi_line_cut_sweep":{"e0g1":kwargs['e0g1'],"f0g1":kwargs['f0g1'],"e1g0":kwargs['e1g0'],"start":-2.5e6,"stop":2.5e6,"step":0.05e6 }}
+        for freq in freqlist:
+            flux_freq = freq*1e9
+            seq_exp.run('multimode_rabi_line_cut_sweep',expt_kwargs={'flux_freq':flux_freq,'amp':amp,"data_file":data_file})
 
 
 
@@ -1405,6 +1400,7 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
         modelist = array([1])
         amplist = 1*ones(len(freqlist))
 
+        vary_dict = {"buffer": {"tek2_trigger_delay":1305.0 },"multimode_rabi_line_cut_sweep":{"e0g1":kwargs['e0g1'],"f0g1":kwargs['f0g1'],"e1g0":kwargs['e1g0'] }}
         for i,flux_freq in enumerate(freqlist):
             print("running ef Rabi sweep around mode %s"%(i))
             seq_exp.run('multimode_rabi_line_cut_sweep',expt_kwargs={'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
@@ -1412,19 +1408,59 @@ def run_multimode_seq_experiment(expt_name,lp_enable=True,**kwargs):
 
     if expt_name.lower() == 'multimode_charge_sideband_rabi':
 
-        freqlist = array([0.802427224096])*1e9
-        modelist = array([0])
+        freqlist=kwargs['freqlist']*1e9
         amplist = 1*ones(len(freqlist))
+        vary_dict = {"buffer": {"tek2_trigger_delay":1305.0 },"multimode_charge_sideband_rabi_sweep":{"e0g1":kwargs['e0g1'],"f0g1":kwargs['f0g1'],"e1g0":kwargs['e1g0'] }}
 
         for i,flux_freq in enumerate(freqlist):
             print("running charge sideband Rabi sweep at nu = %s GHz"%(flux_freq/1e9))
-            seq_exp.run('multimode_charge_sideband_rabi_sweep',expt_kwargs={'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
+            seq_exp.run('multimode_charge_sideband_rabi_sweep',vary_dict=vary_dict,expt_kwargs={'flux_freq':flux_freq,'amp':amplist[i],"data_file":data_file})
+
+
 
 
     if expt_name.lower() == 'multimode_pulse_probe_iq_amp_sweep':
 
 
-        amplist = arange(0,0.7,0.1)
+        amplist = arange(0,1.0,0.1)
+        flux_pulse_length = 10.0
+        tek2_trigger_delay = 1305.0
+        vary_dict = {"buffer": {"tek2_trigger_delay":tek2_trigger_delay },"multimode_pulse_probe_iq":{"flux_pulse_length":flux_pulse_length}}
 
         for i,amp in enumerate(amplist):
-            seq_exp.run('multimode_pulse_probe_iq',expt_kwargs={'amp':amp,"data_file":data_file})
+            seq_exp.run('multimode_pulse_probe_iq',vary_dict=vary_dict,expt_kwargs={'amp':amp,"data_file":data_file})
+
+    if expt_name.lower() == 'multimode_pulse_probe_iq_length_sweep':
+
+
+        lengthlist = arange(30,60,10.0)
+        tek2_trigger_delay = 1305.0
+        vary_dict = {"buffer": {"tek2_trigger_delay":tek2_trigger_delay }}
+
+        for i,flux_pulse_length in enumerate(lengthlist):
+            seq_exp.run('multimode_pulse_probe_iq',vary_dict=vary_dict,expt_kwargs={'flux_pulse_length':flux_pulse_length,"data_file":data_file})
+
+    if expt_name.lower() == 'multimode_pulse_probe_iq_delay_sweep':
+
+
+        delaylist = arange(300e3,700e3,100e3)
+        tek2_trigger_delay = 1305.0
+        vary_dict = {"buffer": {"tek2_trigger_delay":tek2_trigger_delay }}
+
+        for i,delay in enumerate(delaylist):
+            seq_exp.run('multimode_pulse_probe_iq',vary_dict=vary_dict,expt_kwargs={'delay':delay,"data_file":data_file})
+
+    if expt_name.lower() == 'multimode_parity_amp_sweep':
+
+
+        amplist = arange(0,1.0,0.2)
+
+        cavity_rise_buff = 200.0
+        Tmax = 1000.0
+        flux_length = 200.0
+        overlap = 0
+        tek2_trigger_delay = 1305.0-overlap
+
+        for i,amp in enumerate(amplist):
+            vary_dict = {"buffer": {"tek2_trigger_delay":tek2_trigger_delay },"multimode_parity":{"mode_amp":amp,"stop":Tmax,"step": Tmax/200.0,"flux_length":flux_length }}
+            seq_exp.run('multimode_parity',vary_dict=vary_dict,expt_kwargs={"data_file":data_file})

@@ -36,7 +36,7 @@ def zipsort(xdata,ydata):
 
 
 def fitgeneral(xdata, ydata, fitfunc, fitparams, domain=None, showfit=False, showstartfit=False, showdata=True,
-               label="", mark_data='bo', mark_fit='r-'):
+               label="", mark_data='bo', mark_fit='r-',showlabel = False):
     """Uses optimize.leastsq to fit xdata ,ydata using fitfunc and adjusting fit params"""
 
     # sort data
@@ -56,10 +56,13 @@ def fitgeneral(xdata, ydata, fitfunc, fitparams, domain=None, showfit=False, sho
     bestfitparams, success = optimize.leastsq(errfunc, startparams[:], args=(fitdatax,fitdatay))
     if showfit:
         if showdata:
-            plt.plot(fitdatax,fitdatay,mark_data,label=label+" data")
+            if showlabel:plt.plot(fitdatax,fitdatay,mark_data,label=label+" data")
+            else:plt.plot(fitdatax,fitdatay,mark_data)
         if showstartfit:
             plt.plot(fitdatax,fitfunc(startparams,fitdatax),label=label+" startfit")
-        plt.plot(fitdatax,fitfunc(bestfitparams,fitdatax),mark_fit,label=label+" fit")
+        if showlabel:
+            plt.plot(fitdatax,fitfunc(bestfitparams,fitdatax),mark_fit,label=label+" fit")
+        else: plt.plot(fitdatax,fitfunc(bestfitparams,fitdatax),mark_fit)
         if label!='': plt.legend()
         err=math.fsum(errfunc(bestfitparams,fitdatax,fitdatay))
         #print 'the best fit has an RMS of {0}'.format(err)
@@ -211,7 +214,7 @@ def decaysin(p,x):
     """p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
     return p[0]*np.sin(2.*np.pi*p[1]*x+p[2]*np.pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]
 
-def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,mark_data='bo', mark_fit='r-',label=""):
     """Fits decaying sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
     if domain is not None:
         fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
@@ -238,9 +241,38 @@ def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfi
     # decaysin3 = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * x + p[2] - np.pi / 2.) * np.e ** (
     # -1. * (x - fitdatax[0]) / p[3]) + p[4]
     #print "fitparams: ",fitparams
-    p1 = fitgeneral(fitdatax, fitdatay, decaysin3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
-                    label=label)
+    p1 = fitgeneral(fitdatax, fitdatay, decaysin3, fitparams, domain=None, showfit=showfit, \
+                    mark_data=mark_data, mark_fit=mark_fit, showstartfit=showstartfit, label=label)
     return p1  
+
+def fitdecayrabi(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
+    """Fits decaying sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:
+        FFT=scipy.fft(fitdatay)
+        fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
+        max_ind=np.argmax(abs(FFT[4:int(len(fitdatay)/2)]))+4
+        fft_val=FFT[max_ind]
+
+        fitparams=[0,0,0,0,0]
+        fitparams[4]=np.min(fitdatay)
+        fitparams[0]=(max(fitdatay)-min(fitdatay))
+        fitparams[1]=fft_freqs[max_ind]/2
+        fitparams[2]=0
+        fitparams[3]=(max(fitdatax)-min(fitdatax))
+
+        #fitparams[5]=fitdatax[0]
+
+    decayrabi = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * (x -p[2]))**2 * np.e ** (
+    -1. * (x - fitdatax[0]) / p[3]) + p[4]
+
+    p1 = fitgeneral(fitdatax, fitdatay, decayrabi, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
+                    label=label)
+    return p1
 
 def fitdecaydoublesin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label=""):
     """Fits decaying sin wave of form: p[0]*np.sin(2.*pi*p[1]*x+p[2]*pi/180.)*np.e**(-1.*(x-p[5])/p[3])+p[4]"""
@@ -356,7 +388,6 @@ def hangerfunc_new(p,x):
     
 def hangerfunc_new_withQc(p,x):
     """p=[f0,Qi,Qc,df,scale]"""
-    #print p    
     f0,Qi,Qc,df,scale = p
     a=(x-(f0+df))/(f0+df)
     b=2*df/f0
@@ -886,7 +917,7 @@ def fitrabisatfunc(xdata,ydata,fitparams=None,domain=None,showfit=False,showstar
     return p1
 
 def rabiwidth(p, x):
-    return sqrt(p[1]**2*(x**2) + p[0]**2)
+    return np.sqrt(p[1]**2*(x**2) + p[0]**2)
 
 def fitrabiwidth(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",debug=False):
     """fit lorentzian:
@@ -919,6 +950,59 @@ def fitpoly(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=Fa
         fitparams=[ydata[0],(ydata[-1]-ydata[0])/(xdata[-1]-xdata[0]),0,xdata[0]]
     if debug==True: print(fitparams)
     p1 = fitgeneral(fitdatax, fitdatay, poly, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
+                    label=label)
+
+    return p1
+
+def fitpoly1d(xdata, ydata, order=2, showexpr=False, showfit=False, showdata=True, label="", mark_data='bo', mark_fit='r-'):
+    """ Fits a polynomial and returns coeficients in descending order """
+
+    pcoeff = np.polyfit(xdata, ydata, order) # fit data to get coefficients
+    pfunc = np.poly1d(pcoeff) # create polynomial function
+
+    if showexpr: print(pfunc)
+    if showfit:
+        if showdata:
+            plt.plot(xdata, ydata, mark_data, label=label+" data")
+        plt.plot(xdata, pfunc(xdata), mark_fit, label=label+" fit")
+        if label!='': plt.legend()
+
+    return pcoeff, pfunc
+
+def poly3(p, x):
+    return p[1]*(x-p[0])+p[2]*(x-p[0])**2+p[3]*(x-p[0])**3
+
+def fitpoly3(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",debug=False):
+    """fit lorentzian:
+        returns [center,coeff1,coeff2,coeff3]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:
+        fitparams=[ydata[0],(ydata[-1]-ydata[0])/(xdata[-1]-xdata[0]),0,xdata[0]] # change guess
+    if debug==True: print(fitparams)
+    p1 = fitgeneral(fitdatax, fitdatay, poly3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
+                    label=label)
+
+    return p1
+
+def poly4(p, x):
+    return p[1]*(x-p[0])+p[2]*(x-p[0])**2+p[3]*(x-p[0])**3+p[4]*(x-p[0])**4
+
+def fitpoly4(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfit=False,label="",debug=False):
+    """fit lorentzian:
+        returns [center,coeff1,coeff2,coeff3,coeff4]"""
+    if domain is not None:
+        fitdatax,fitdatay = selectdomain(xdata,ydata,domain)
+    else:
+        fitdatax=xdata
+        fitdatay=ydata
+    if fitparams is None:
+        fitparams=[ydata[0],(ydata[-1]-ydata[0])/(xdata[-1]-xdata[0]),0,xdata[0],0] # change guess
+    if debug==True: print(fitparams)
+    p1 = fitgeneral(fitdatax, fitdatay, poly4, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
 
     return p1

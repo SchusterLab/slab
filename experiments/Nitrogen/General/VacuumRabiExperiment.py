@@ -47,7 +47,9 @@ class VacuumRabiExperiment(Experiment):
         # self.drive.set_ext_pulse(mod=False)
         self.trigger_period = self.cfg['expt_trigger']['period']
         self.trigger.set_period(self.trigger_period)
-        self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
+
+        try:self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
+        except: print ("No digital attenuator found")
 
         self.awg.set_amps_offsets(self.cfg['cal']['iq_amps'], self.cfg['cal']['iq_offsets'])
 
