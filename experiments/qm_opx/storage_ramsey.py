@@ -1,4 +1,4 @@
-from configuration_IQ import config, ge_IF, biased_th_g_jpa
+from configuration_IQ import config, ge_IF, biased_th_g_jpa, storage_freq
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -15,12 +15,12 @@ from slab.dsfit import*
 from slab.dataanalysis import get_next_filename
 
 """Storage cavity ramsey experiment"""
-ramsey_freq = 100e3
+ramsey_freq = 10e3
 omega = 2*np.pi*ramsey_freq
 
-dt = 250
+dt = 2500
 T_min = 0
-T_max = 30000
+T_max = 300000
 t_vec = np.arange(T_min, T_max + dt/2, dt)
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
@@ -101,7 +101,7 @@ with program() as storage_t1:
             align('storage', 'rr', 'jpa_pump', 'qubit')
             active_reset(biased_th_g_jpa)
             align('storage', 'rr', 'jpa_pump', 'qubit')
-            update_frequency("qubit", ge_IF+two_chi)
+            # update_frequency("qubit", ge_IF+two_chi)
             play("CW"*amp(0.4), "storage", duration=300)
             wait(t, 'storage')
             frame_rotation_2pi(phi, 'storage')
@@ -147,19 +147,20 @@ else:
 
 
     # result_handles.wait_for_all_values()
-    # res = result_handles.get('res').fetch_all()
-    # I = result_handles.get('I').fetch_all()
-    # print ("Data collection done")
-    #
-    # job.halt()
-    #
-    # path = os.getcwd()
-    # data_path = os.path.join(path, "data/")
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'storage_t1', suffix='.h5'))
-    # print(seq_data_file)
-    #
-    # with File(seq_data_file, 'w') as f:
-    #     f.create_dataset("I", data=I)
-    #     f.create_dataset("res", data=res)
-    #     f.create_dataset("time", data=4*t_vec)
+    res = result_handles.get('res').fetch_all()
+    I = result_handles.get('I').fetch_all()
+    print ("Data collection done")
+
+    job.halt()
+
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'storage_ramsey', suffix='.h5'))
+    print(seq_data_file)
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("Q", data=res)
+        f.create_dataset("I", data=I)
+        f.create_dataset("time", data=4*t_vec/1e3)
+        f.create_dataset("ramsey_freq", data=ramsey_freq)
+        f.create_dataset("cavity_freq", data=storage_freq)

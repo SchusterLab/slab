@@ -1,3 +1,9 @@
+"""
+Created on May 2021
+
+@author: Ankur Agrawal
+"""
+
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 from configuration_IQ import config, qubit_freq, rr_LO, qubit_LO, ge_IF, storage_IF, storage_freq, storage_LO

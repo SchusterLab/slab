@@ -6,7 +6,6 @@ from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from tqdm import tqdm
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
@@ -19,7 +18,7 @@ dt = 250
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
-T_min = 0
+T_min = 4
 T_max = 30000
 times = np.arange(T_min, T_max + dt/2, dt)
 avgs = 1000
