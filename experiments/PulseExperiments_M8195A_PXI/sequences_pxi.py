@@ -575,7 +575,8 @@ class PulseSequences:
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 self.idle_q(sequencer, time=ramsey_len)
                 #self.gen_q(sequencer, qubit_id, len=ramsey_len, amp=0.0, phase=0,pulse_type='square',add_freq=0.5)
-                self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'],phase=2 * np.pi * ramsey_len * self.expt_cfg['ramsey_freq'])
+                self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'],
+                               phase=2 * np.pi * ramsey_len * self.expt_cfg['ramsey_freq'])
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
@@ -2611,7 +2612,17 @@ class PulseSequences:
                 self.idle_all(sequencer, qubit_id, time=2)
                 dc_offset = 0
                 # print(sideband_freq)
-                sequencer.append('sideband',
+                if self.expt_cfg['use_qubit_drive_channel_for_dressing']:
+                    qubit_id = '1'
+                    sequencer.append('charge%s' % qubit_id,
+                                     Square(max_amp=self.expt_cfg['amp'], flat_len=ramsey_len,
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                            fix_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
+                                            dc_offset=dc_offset,
+                                            plot=False))
+                else:
+                    sequencer.append('sideband',
                                  Square(max_amp=self.expt_cfg['amp'], flat_len=ramsey_len,
                                         ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
                                             'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
@@ -2880,7 +2891,16 @@ class PulseSequences:
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 sequencer.sync_channels_time(self.channels)
                 dc_offset = 0
-                sequencer.append('sideband',
+                if self.expt_cfg['use_qubit_drive_channel_for_dressing']:
+                    sequencer.append('charge1',
+                                     Square(max_amp=self.expt_cfg['amp'], flat_len=ramsey_len,
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                            fix_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
+                                            dc_offset=dc_offset,
+                                            plot=False))
+                else:
+                    sequencer.append('sideband',
                                  Square(max_amp=self.expt_cfg['amp'], flat_len=ramsey_len,
                                         ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
                                             'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
