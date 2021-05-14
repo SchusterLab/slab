@@ -204,27 +204,23 @@ class PulseSequences:
             # since we haven't been synching the flux channels, this should still be back at the beginning
             sequencer.append('ff_Q%s' % qb,
                              Square(max_amp=flux, flat_len=ff_len[qb],
-                                    ramp_sigma_len=self.lattice_cfg['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
+                                    ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
                                     phase=0))
 
         # COMPENSATION PULSE
         for qb, flux in enumerate(self.expt_cfg['ff_vec']):
             sequencer.append('ff_Q%s' % qb,
                              Square(max_amp=-flux,
-                                    flat_len= len,
-                                    ramp_sigma_len=self.lattice_cfg['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
+                                    flat_len= ff_len[qb],
+                                    ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
                                     phase=0))
 
     def pad_start_pxi(self,sequencer,on_qubits=None, time = 500):
         # Need 500 ns of padding for the sequences to work reliably. Not sure exactly why.
-        for qubit_id in on_qubits:
-            sequencer.append('charge%s_I' % qubit_id,
+        for channel in self.channels:
+            sequencer.append(channel,
                              Square(max_amp=0.0, flat_len= time, ramp_sigma_len=0.001, cutoff_sigma=2, freq=0.0,
                                     phase=0))
-
-            sequencer.append('charge%s_Q' % qubit_id,
-                         Square(max_amp=0.0, flat_len= time, ramp_sigma_len=0.001, cutoff_sigma=2, freq=0.0,
-                                phase=0))
 
     def pad_start_pxi_tek2(self,sequencer,on_qubits=None, time = 500):
         self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=time)
@@ -399,10 +395,10 @@ class PulseSequences:
         post_flux_time = sequencer.get_time('digtzr_trig')  # could just as well be any ch
 
         if self.expt_cfg["ff_len"] == "auto":
-            ff_len = [post_flux_time - pre_flux_time + self.lattice_cfg['ff_pulse_padding']] * 8
+            ff_len = [post_flux_time - pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']] * 8
         else:
-            ff_len = np.asarray(self.lattice_cfg["ff_len"] + self.lattice_cfg['ff_pulse_padding'])
-        self.square_flux_comp(self, sequencer, ff_len=ff_len)
+            ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"] + self.lattice_cfg['ff_info']['ff_pulse_padding'])
+        self.square_flux_comp(sequencer, ff_len=ff_len)
 
         sequencer.end_sequence()
 
@@ -425,10 +421,10 @@ class PulseSequences:
         post_flux_time = sequencer.get_time('digtzr_trig')  # could just as well be any ch
 
         if self.expt_cfg["ff_len"] == "auto":
-            ff_len = [post_flux_time - pre_flux_time + self.lattice_cfg['ff_pulse_padding']] * 8
+            ff_len = [post_flux_time - pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']] * 8
         else:
-            ff_len = np.asarray(self.lattice_cfg["ff_len"] + self.lattice_cfg['ff_pulse_padding'])
-        self.square_flux_comp(self, sequencer, ff_len=ff_len)
+            ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"] + self.lattice_cfg['ff_info']['ff_pulse_padding'])
+        self.square_flux_comp(sequencer, ff_len=ff_len)
 
         sequencer.end_sequence()
         return sequencer.complete(self, plot=True)
@@ -441,10 +437,9 @@ class PulseSequences:
             pre_flux_time = sequencer.get_time('digtzr_trig') #could just as well be any ch
 
             #add IQ pulse
-            self.idle_q(sequencer, time=self.lattice_cfg['ff_pulse_padding'])
+            self.idle_q(sequencer, time=self.lattice_cfg['ff_info']['ff_pulse_padding'])
             for qubit_id in self.expt_cfg['on_qubits']:
-                self.gen_q(self, sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg[
-                    'qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+                self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
             self.idle_q(sequencer, time=self.expt_cfg['delay'])
 
             #synch all channels except flux before adding readout, then do readout
@@ -456,10 +451,10 @@ class PulseSequences:
             post_flux_time = sequencer.get_time('digtzr_trig') #could just as well be any ch
 
             if self.expt_cfg["ff_len"] == "auto":
-                ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_pulse_padding']]*8
+                ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']]*8
             else:
-                ff_len = np.asarray(self.lattice_cfg["ff_len"]+ self.lattice_cfg['ff_pulse_padding'])
-            self.square_flux_comp(self, sequencer, ff_len=ff_len)
+                ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"]) + self.lattice_cfg['ff_info']['ff_pulse_padding']
+            self.square_flux_comp(sequencer, ff_len=ff_len)
             sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
@@ -471,7 +466,7 @@ class PulseSequences:
             sequencer.new_sequence(self)
             self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
             pre_flux_time = sequencer.get_time('digtzr_trig') #could just as well be any ch
-            self.idle_q(sequencer, time=self.lattice_cfg['ff_pulse_padding'])
+            self.idle_q(sequencer, time=self.lattice_cfg['ff_info']['ff_pulse_padding'])
 
             #add rabi pulse
             for qubit_id in self.expt_cfg['on_qubits']:
@@ -487,10 +482,10 @@ class PulseSequences:
             post_flux_time = sequencer.get_time('digtzr_trig') #could just as well be any ch
 
             if self.expt_cfg["ff_len"] == "auto":
-                ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_pulse_padding']]*8
+                ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']]*8
             else:
-                ff_len = np.asarray(self.lattice_cfg["ff_len"]+ self.lattice_cfg['ff_pulse_padding'])
-            self.square_flux_comp(self, sequencer, ff_len=ff_len)
+                ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"]+ self.lattice_cfg['ff_info']['ff_pulse_padding'])
+            self.square_flux_comp(sequencer, ff_len=ff_len)
 
             #end sequence
             sequencer.end_sequence()
@@ -503,7 +498,7 @@ class PulseSequences:
             sequencer.new_sequence(self)
             self.pad_start_pxi(sequencer,on_qubits=self.expt_cfg['on_qubits'],time=500)
             pre_flux_time = sequencer.get_time('digtzr_trig')  # could just as well be any ch
-            self.idle_q(sequencer, time=self.lattice_cfg['ff_pulse_padding'])
+            self.idle_q(sequencer, time=self.lattice_cfg['ff_info']['ff_pulse_padding'])
 
             for qubit_id in self.expt_cfg['on_qubits']:
                 self.pi_q(sequencer,qubit_id,pulse_type=self.pulse_info[qubit_id]['pulse_type'])
@@ -520,10 +515,10 @@ class PulseSequences:
             post_flux_time = sequencer.get_time('digtzr_trig') #could just as well be any ch
 
             if self.expt_cfg["ff_len"] == "auto":
-                ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_pulse_padding']]*8
+                ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']]*8
             else:
-                ff_len = np.asarray(self.lattice_cfg["ff_len"]+ self.lattice_cfg['ff_pulse_padding'])
-            self.square_flux_comp(self, sequencer, ff_len=ff_len)
+                ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"]+ self.lattice_cfg['ff_info']['ff_pulse_padding'])
+            self.square_flux_comp(sequencer, ff_len=ff_len)
 
             sequencer.end_sequence()
 
@@ -535,7 +530,7 @@ class PulseSequences:
             sequencer.new_sequence(self)
             self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
             pre_flux_time = sequencer.get_time('digtzr_trig')  # could just as well be any ch
-            self.idle_q(sequencer, time=self.lattice_cfg['ff_pulse_padding'])
+            self.idle_q(sequencer, time=self.lattice_cfg['ff_info']['ff_pulse_padding'])
 
             for qubit_id in self.expt_cfg['on_qubits']:
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
@@ -552,10 +547,10 @@ class PulseSequences:
             post_flux_time = sequencer.get_time('digtzr_trig')  # could just as well be any ch
 
             if self.expt_cfg["ff_len"] == "auto":
-                ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_pulse_padding']]*8
+                ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']]*8
             else:
-                ff_len = np.asarray(self.lattice_cfg["ff_len"]+ self.lattice_cfg['ff_pulse_padding'])
-            self.square_flux_comp(self, sequencer, ff_len=ff_len)
+                ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"]+ self.lattice_cfg['ff_info']['ff_pulse_padding'])
+            self.square_flux_comp(sequencer, ff_len=ff_len)
 
             sequencer.end_sequence()
 
