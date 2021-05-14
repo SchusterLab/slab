@@ -1,5 +1,6 @@
 import numpy as np
 import visdom
+import copy
 
 try:
     from .pulse_classes import Gauss, Idle, Ones, Square
@@ -18,7 +19,14 @@ class Sequencer:
         channels_awg_info = {}
 
         for channel in channels:
-            channels_awg_info[channel] = awg_info[channels_awg[channel]]
+            #changes dt to M#201 cards to 2, but otherwise keeps all the same inputs from keysight_pxi in hardware
+            # config
+            if channels_awg[channel] == "keysight_pxi_M3201A":
+                awg_info_temp = copy.deepcopy(awg_info["keysight_pxi"])
+                awg_info_temp['dt'] = 2
+                channels_awg_info[channel] = awg_info_temp
+            else:
+                channels_awg_info[channel] = awg_info[channels_awg[channel]]
 
         self.channels_awg_info = channels_awg_info
 
@@ -31,16 +39,6 @@ class Sequencer:
             idle = Idle(time=100, dt=self.channels_awg_info[channel]['dt'])
             idle.generate_pulse_array()
             self.pulse_array_list[channel] = [idle.pulse_array]
-
-        # M8195a trig
-        try:self.append('m8195a_trig', Ones(time=sequences.hardware_cfg['trig_pulse_len']['m8195a']))
-        except:pass
-        # # sideband coolingdfoling[qubit_id]['mode_id']], flat_len=sequences.multimodes[qubit_id]['pi_len'][sequences.sideband_cooling[qubit_id]['mode_id']],
-        #                             ramp_sigma_len=sequences.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'], cutoff_sigma=2, freq=sequences.multimodes[qubit_id]['freq'][sequences.sideband_cooling[qubit_id]['mode_id']], phase=0,
-        #                             plot=False))
-        #
-        #         self.append('flux%s'%qubit_id,
-        #                      Idle(time=sequences.multimodes[qubit_id]['pi_len'][sequences.sideband_cooling[qubit_id]['mode_id']]))
 
         self.sync_channels_time(sequences.channels)
 
@@ -98,26 +96,6 @@ class Sequencer:
 
         return sequence
 
-    def equalize_sequences(self):
-        awg_max_len = {}
-        awg_list = set(self.channels_awg.values())
-        for awg in awg_list:
-            awg_max_len[awg] = 0
-
-        for sequence in self.multiple_sequences:
-            for channel in self.channels:
-                channel_len = len(sequence[channel])
-                if channel_len > awg_max_len[self.channels_awg[channel]]:
-                    awg_max_len[self.channels_awg[channel]] = channel_len
-
-        for sequence in self.multiple_sequences:
-            for channel in self.channels:
-                channel_len = len(sequence[channel])
-                if channel_len < awg_max_len[self.channels_awg[channel]]:
-                    sequence[channel] = np.pad(sequence[channel],
-                                               (0, awg_max_len[self.channels_awg[channel]] - channel_len), 'constant',
-                                               constant_values=(0, 0))
-
     def delay_channels(self, channels_delay):
         for sequence in self.multiple_sequences:
             for channel, delay in channels_delay.items():
@@ -132,6 +110,7 @@ class Sequencer:
         return sequence
 
     def end_sequence(self):
+        #self.sync_channels_time(self.channels)
         for channel in self.channels:
             self.append(channel,Idle(time=100))
         sequence = self.get_sequence()
@@ -139,69 +118,26 @@ class Sequencer:
 
         self.multiple_sequences.append(sequence)
 
-    def complete(self, sequences, plot=True):
-        if sequences.expt_cfg.get('9_calibration', False):
-            qubit_state = ['g','e','f']
+    def complete(self, sequences, plot=False):
+        if sequences.expt_cfg.get('pi_calibration', False):
 
-            for qubit_1_state in qubit_state:
-                for qubit_2_state in qubit_state:
-                    self.new_sequence(sequences)
-                    qubit_id = "1"
-                    if qubit_1_state == 'e':
-                        self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-                    if qubit_1_state == 'f':
-                        self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-                        self.append('charge%s' %qubit_id, sequences.qubit_ef_pi[qubit_id])
-
-                    qubit_id = "2"
-                    if qubit_2_state == 'e':
-                        self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-                    if qubit_2_state == 'f':
-                        self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-                        self.append('charge%s' %qubit_id, sequences.qubit_ef_pi[qubit_id])
-
-                    sequences.readout(self, sequences.expt_cfg.get('on_qubits',["1", "2"]))
-                    self.end_sequence()
-
-        elif sequences.expt_cfg.get('4_calibration', False):
             self.new_sequence(sequences)
-            sequences.readout(self, sequences.expt_cfg.get('on_qubits',["1", "2"]))
+            sequences.pad_start_pxi_tek2(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["A"]),time=500)
+            sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["A"]))
             self.end_sequence()
 
             self.new_sequence(sequences)
-            qubit_id = "2"
-            self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-            sequences.readout(self, sequences.expt_cfg.get('on_qubits',["1", "2"]))
-            self.end_sequence()
-
-            self.new_sequence(sequences)
-            qubit_id = "1"
-            self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-            sequences.readout(self, sequences.expt_cfg.get('on_qubits',["1", "2"]))
-            self.end_sequence()
-
-            self.new_sequence(sequences)
-            for qubit_id in sequences.expt_cfg.get('on_qubits',["1","2"]):
-                self.append('charge%s' %qubit_id, sequences.qubit_pi[qubit_id])
-            sequences.readout(self, sequences.expt_cfg.get('on_qubits',["1", "2"]))
-            self.end_sequence()
-        elif sequences.expt_cfg.get('pi_calibration', False):
-            # print(sequences.expt_cfg)
-            # print(sequences.expt_cfg.get('pi_calibration', False))
-            # print(sequences.expt_cfg.get('singleshot', False))
-            self.new_sequence(sequences)
-            sequences.pad_start_pxi_tek2(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
-            sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["1"]))
-            self.end_sequence()
-
-            self.new_sequence(sequences)
-            sequences.pad_start_pxi_tek2(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["1"]),time=500)
-            for qubit_id in sequences.expt_cfg.get('on_qubits',["1"]):
+            sequences.pad_start_pxi_tek2(self,on_qubits=sequences.expt_cfg.get('on_qubits', ["A"]),time=500)
+            for qubit_id in sequences.expt_cfg.get('on_qubits',["A"]):
                 sequences.pi_q(self,qubit_id = qubit_id,phase = 0,pulse_type = sequences.pulse_info[qubit_id]['pulse_type'])
-            sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["1"]))
+            sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["A"]))
             self.end_sequence()
 
-        self.equalize_sequences()
+
+        #we don't need to upload sequences of the same length to keysight, since trigger period is much longer than
+        # any of the sequences anyway. If this ever changes, should use synch_channels instead of equalize sequences,
+        #  since equalize sequences doesn't take into accoutn dt.
+        #self.equalize_sequences()
         self.delay_channels(self.channels_delay)
 
         if plot:self.plot_sequences()
@@ -215,6 +151,7 @@ class Sequencer:
 
         sequence_id = 0
 
+        #old visdom version
         for sequence in self.multiple_sequences[::20]:
 
             sequence_id += 1
@@ -233,9 +170,33 @@ class Sequencer:
                     X=np.arange(0, len(sequence_array)) * self.channels_awg_info[channel]['dt'] +
                       self.channels_awg_info[channel]['time_delay'],
                     Y=sequence_array + 2 * (len(self.channels) - kk),
-                    win=win, name=channel, append=False)
+                    win=win, name=channel,append=False)
+
 
                 kk += 1
+        # new visdom code
+        # for sequence in self.multiple_sequences[::20]:
+        #
+        #     sequence_id += 1
+        #
+        #     vis = visdom.Visdom()
+        #     win = vis.line(
+        #         X=np.arange(0, 1),
+        #         Y=np.arange(0, 1),
+        #         opts=dict(
+        #             legend=[self.channels[0]], title='seq %d' % sequence_id, xlabel='Time (ns)'))
+        #
+        #     kk = 0
+        #     for channel in self.channels:
+        #         sequence_array = sequence[channel]
+        #         vis.line(
+        #             X=np.arange(0, len(sequence_array)) * self.channels_awg_info[channel]['dt'] +
+        #               self.channels_awg_info[channel]['time_delay'],
+        #             Y=sequence_array + 2 * (len(self.channels) - kk),
+        #             win=win, name=channel,update=True)
+        #
+        #
+        #         kk += 1
 
 
 def testing_function():

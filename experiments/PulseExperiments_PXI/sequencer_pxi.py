@@ -132,6 +132,7 @@ class Sequencer:
         return sequence
 
     def end_sequence(self):
+        #self.sync_channels_time(self.channels)
         for channel in self.channels:
             self.append(channel,Idle(time=100))
         sequence = self.get_sequence()
@@ -154,8 +155,9 @@ class Sequencer:
             sequences.readout_pxi(self, sequences.expt_cfg.get('on_qubits',["A"]))
             self.end_sequence()
 
-
-        #doesn't do anything since doesn't take into account dt
+        #we don't need to upload sequences of the same length to keysight, since trigger period is much longer than
+        # any of the sequences anyway. If this ever changes, should use synch_channels instead of equalize sequences,
+        #  since equalize sequences doesn't take into accoutn dt.
         #self.equalize_sequences()
         self.delay_channels(self.channels_delay)
 

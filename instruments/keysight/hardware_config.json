@@ -16,7 +16,7 @@
     "ff_Q4",
     "ff_Q5",
     "ff_Q6",
-    "ff_Q7",
+    "ff_Q7"
   ],
   "drive_los": [
     "scqubA",
@@ -33,7 +33,7 @@
   ],
   "drive_attens": [
     "driveattengrbA",
-    "driveattengrbB",
+    "driveattengrbB"
   ],
   "fluxbias": [
     "dacbox"
@@ -55,7 +55,7 @@
     "ff_Q4": "keysight_pxi",
     "ff_Q5": "keysight_pxi",
     "ff_Q6": "keysight_pxi",
-    "ff_Q7": "keysight_pxi",
+    "ff_Q7": "keysight_pxi"
   },
   "channels_delay_array_roll_ns": {
     "chargeA_I": 0,
@@ -107,7 +107,7 @@
         "ff_Q4",
         "ff_Q5",
         "ff_Q6",
-        "ff_Q7",
+        "ff_Q7"
       ],
       "waveform_channel_index": [
         1,
@@ -166,10 +166,10 @@
         "ff_Q4": 0,
         "ff_Q5": 0,
         "ff_Q6": 0,
-        "ff_Q7": 0,
+        "ff_Q7": 0
       },
-      qb_lo_conv: 1,
-      stab_lo_conv:1,
+      "qb_lo_conv": 1,
+      "stab_lo_conv":1,
       "ff1_mod_no": 5,
       "ff2_mod_no": 6,
       "awg_mod_no": 7,
@@ -180,7 +180,7 @@
       "samplesPerRecord": 5000,
       "digtzr_card_delay": 800,
       "digtzr_vpp_range": 1.0
-    },
+    }
   },
 
   "trig_pulse_len": {
@@ -190,5 +190,5 @@
   },
   "trigger": {
     "period_us": 200
-  },
+  }
 }

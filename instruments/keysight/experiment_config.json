@@ -216,7 +216,7 @@
   },
   "rabi": {
     "amp": 1.0,
-    "stop": 600,
+    "stop": 10,
     "step": 5,
     "pi_calibration": false,
     "trajectory": false,
@@ -290,5 +290,5 @@
     "pi_calibration": false,
     "singleshot": false,
     "trajectory": false
-  },
+  }
 }
