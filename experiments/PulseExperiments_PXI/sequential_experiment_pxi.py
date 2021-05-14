@@ -123,7 +123,8 @@ class SequentialExperiment:
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
 
         for qb in experiment_cfg[experiment_name]['on_qubits']:
-            for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+            read_freq = quantum_device_cfg['readout'][qb]['freq']
+            for freq in np.arange(expt_cfg['start']+read_freq, expt_cfg['stop']+read_freq, expt_cfg['step']):
                 quantum_device_cfg['readout'][qb]['freq'] = freq
                 sequences = ps.get_experiment_sequences(experiment_name)
                 exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
