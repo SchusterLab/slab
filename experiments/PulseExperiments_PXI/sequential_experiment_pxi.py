@@ -1,3 +1,5 @@
+import copy
+
 from slab.experiments.PulseExperiments_PXI.sequences_pxi import PulseSequences
 from slab.experiments.PulseExperiments_PXI.pulse_experiment import Experiment
 from slab.instruments.keysight import keysight_pxi_load as ks_pxi
@@ -19,11 +21,11 @@ from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExp
 import pickle
 
 class SequentialExperiment:
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, path,analyze = False,show=True,P = 'Q'):
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,lattice_cfg,experiment_name, path,analyze = False,show=True,P = 'Q'):
 
         self.seq_data = []
         
-        eval('self.' + experiment_name)(quantum_device_cfg, experiment_cfg, hardware_cfg,path)
+        eval('self.' + experiment_name)(quantum_device_cfg, experiment_cfg, hardware_cfg,lattice_cfg,path)
         if analyze:
             try:
                 #haven't fixed post-experiment analysis
@@ -115,15 +117,15 @@ class SequentialExperiment:
 
         self.seq_data = np.array(self.seq_data)
 
-    def resonator_spectroscopy(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    def resonator_spectroscopy(self,quantum_device_cfg, experiment_cfg, hardware_cfg,lattice_cfg, path):
         experiment_name = 'resonator_spectroscopy'
         expt_cfg = experiment_cfg[experiment_name]
         data_path = os.path.join(path, 'data/')
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
-        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg,lattice_cfg)
 
         for qb in experiment_cfg[experiment_name]['on_qubits']:
-            read_freq = quantum_device_cfg['readout'][qb]['freq']
+            read_freq = copy.deepcopy(quantum_device_cfg['readout'][qb]['freq'])
             for freq in np.arange(expt_cfg['start']+read_freq, expt_cfg['stop']+read_freq, expt_cfg['step']):
                 quantum_device_cfg['readout'][qb]['freq'] = freq
                 sequences = ps.get_experiment_sequences(experiment_name)
