@@ -236,6 +236,28 @@ class KeysightSingleQubit:
                                 trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
                                 cycles_per_return=num_expt)
 
+    def configureDigChannels(self, hardware_cfg, experiment_cfg, quantum_device_cfg, name):
+        '''Configures the DIG channels that are used in the experiment. This section may be modified as needed
+        for other experiments. See documentation in KeysightLib for the configure() methods on KeysightChannelIn and
+        KeysightChannelOut. Amplitude is in Vpp.'''
+
+        DIG_ch_delays = hardware_cfg["awg_info"]['keysight_pxi']["DIG_channels_delay_samples"]
+
+
+        num_avg = experiment_cfg[name]['acquisition_num']
+        num_expt = self.num_expt
+        print('num_exp = %s' %num_expt)
+
+        print ("Configuring digitizer. ADC range set to",self.adc_range, "Vpp")
+        self.DIG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
+        self.DIG_ch_1.configure(full_scale=self.adc_range, delay=DIG_ch_delays[0], points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_2.configure(full_scale = self.adc_range,delay=DIG_ch_delays[1], points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_3.configure(full_scale=self.adc_range, delay=DIG_ch_delays[2], points_per_cycle=self.DIG_sampl_record,cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,use_buffering=True, cycles_per_return=num_expt)
+        self.DIG_ch_4.configure(full_scale=self.adc_range, delay=DIG_ch_delays[3], points_per_cycle=self.DIG_sampl_record,
+                                cycles=num_expt * num_avg, buffer_time_out=100000,
+                                trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                cycles_per_return=num_expt)
+
     def generatemarkers_old(self,wvs, channel, dt_src=1, dt_mark = 1, conv_width = 1,trig_delay = 0):
         """if given a waveform, it will produce square pulses anywhere that waveform isn't zero. Used to generate
         markers for LOs that get passed through AWGs.

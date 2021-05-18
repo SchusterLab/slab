@@ -470,7 +470,7 @@ class PulseSequences:
 
     def ff_ramp_cal_ppiq(self, sequencer):
 
-        for del_t in np.arange(self.expt_cfg['t_start'], self.expt_cfg['t_stop'], self.expt_cfg['t_step']):
+        for del_t in np.arange(self.expt_cfg['dt_start'], self.expt_cfg['dt_stop'], self.expt_cfg['dt_step']):
             for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
                 sequencer.new_sequence(self)
                 self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)

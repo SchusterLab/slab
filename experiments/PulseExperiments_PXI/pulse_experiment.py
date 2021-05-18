@@ -21,6 +21,7 @@ from slab.experiments.PulseExperiments_PXI.get_data import get_iq_data, get_sing
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperimentAnalyze
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperimentAnalyzeAndSave
+import copy
 
 class Experiment:
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None):
@@ -334,6 +335,55 @@ class Experiment:
         #
         self.pxi_stop()
         return self.data
+
+    def run_experiment_pxi_resspec(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
+
+        self.expt_cfg = self.experiment_cfg[name]
+        self.generate_datafile(path,name,seq_data_file=seq_data_file)
+        self.set_trigger()
+        self.initiate_drive_LOs()
+        #self.initiate_stab_LOs()
+        self.initiate_readout_attenuators()
+        self.initiate_drive_attenuators()
+        self.initiate_pxi(name, sequences)
+        self.initiate_readout_LOs()
+        self.pxi.run()
+
+
+        time.sleep(0.1)
+        for qb in self.expt_cfg['on_qubits']:
+            read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
+            for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq, self.expt_cfg['step']):
+                self.quantum_device_cfg['readout'][qb]['freq'] = freq
+                if self.expt_cfg['singleshot']:
+                    self.data =  self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+                elif self.expt_cfg['trajectory']:
+                    self.data = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+                else:
+                    self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+
+
+                self.pxi.DIG_module.stopAll()
+
+                self.initiate_readout_LOs()
+
+                self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
+                self.pxi.DIG_ch_1.clear()
+                self.pxi.DIG_ch_1.start()
+                self.pxi.DIG_ch_2.clear()
+                self.pxi.DIG_ch_2.start()
+                self.pxi.DIG_ch_3.clear()
+                self.pxi.DIG_ch_3.start()
+                self.pxi.DIG_ch_4.clear()
+                self.pxi.DIG_ch_4.start()
+                time.sleep(0.1)
+
+        #
+        self.pxi_stop()
+        return self.data
+
 
     ##TODO: not yet updated post_analysis
     def post_analysis(self,path, experiment_name, cont_name, P='Q', phi=0):
