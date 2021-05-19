@@ -390,6 +390,27 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=True)
 
+    def pulse_probe_iq_gauss(self, sequencer):
+
+        for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                sequencer.append('charge%s_I' % qubit_id,
+                                 Gauss(max_amp=self.expt_cfg['amp'], sigma_len=self.expt_cfg['pulse_length'],
+                                        cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
+                                        phase=0))
+                sequencer.append('charge%s_Q' % qubit_id,
+                                 Gauss(max_amp=self.expt_cfg['amp'], sigma_len=self.expt_cfg['pulse_length'],
+                                       cutoff_sigma=2, freq=self.pulse_info[qubit_id]['iq_freq'] + dfreq,
+                                        phase=self.pulse_info[qubit_id]['Q_phase']))
+                self.idle_q(sequencer, time=self.expt_cfg['delay'])
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
     def ff_resonator_spectroscopy(self, sequencer):
         sequencer.new_sequence(self)
         self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)

@@ -75,7 +75,7 @@ class SequentialExperiment:
             data = exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,seq_data_file=seq_data_file)
             self.seq_data.append(data)
 
-        self.seq_data = np.array(self.data)
+        self.seq_data = np.array(self.seq_data)
 
     def histogram_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
 

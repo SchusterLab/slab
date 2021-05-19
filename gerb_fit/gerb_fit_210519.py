@@ -207,6 +207,80 @@ def resonator_spectroscopy(filenb, phi=0, sub_mean=True, mag_phase_plot=False, p
                        expected_f=readout_f, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
 
 
+def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=False, debug=False, marker=None,
+                     slices=False):
+    """Fits pulse_probe_iq data, then plots data and prints result
+    :param filelist -- the data runs you want to analyze and plot
+    :paramphi -- in degrees, angle by which you want to rotate IQ
+    :paramsub_mean -- if True, subtracts out the average background of IQ measurements
+    :parammag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
+    :paramplar -- adds a plot of I and Q in polar coordinates
+    :paramdebug -- print out experiment attributes
+    """
+    # the 'with' statement automatically opens and closes File a, even if code in the with block fails
+    expt_name = "ff_ramp_cal_ppiq"
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        # get data in from json file
+        print(a.keys())
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+        readout_params = quantum_device_cfg['readout']
+
+        read_lo_pwr = quantum_device_cfg['powers']['A']['readout_drive_lo_powers']
+        qb_lo_pwr = quantum_device_cfg['powers']['A']['drive_lo_powers']
+        dig_atten_rd = quantum_device_cfg['powers']['A']['readout_drive_digital_attenuation']
+        dig_atten_dr = quantum_device_cfg['powers']['A']['drive_digital_attenuation']
+        flux_vec = expt_params['ff_vec']
+        print("flux vec {}".format(flux_vec))
+
+        ran = 1
+
+        nu_q = quantum_device_cfg['qubit'][expt_params['on_qubits'][0]]['freq']  # expected qubit freq
+        ppiqstart = experiment_cfg[expt_name]['start'] + nu_q
+        ppiqstop = experiment_cfg[expt_name]['stop'] + nu_q
+        ppiqstep = experiment_cfg[expt_name]['step']
+        freqvals = np.arange(ppiqstart, ppiqstop, ppiqstep)
+
+        dtstart = experiment_cfg[expt_name]['dt_start']
+        dtstop = experiment_cfg[expt_name]['dt_stop']
+        dtstep = experiment_cfg[expt_name]['dt_step']
+        t_vals = np.arange(dtstart, dtstop, dtstep)
+
+        I_raw = a['I']
+        Q_raw = a['Q']
+
+        if debug:
+            print("DEBUG")
+            print("averages =", expt_params['acquisition_num'])
+            print("Rd LO pwr= ", read_lo_pwr, "dBm")
+            print("Qb LO pwr= ", qb_lo_pwr, "dBm")
+            print("Rd atten= ", dig_atten_rd, "dB")
+            print("Qb atten= ", dig_atten_dr, "dB")
+            print("Readout params", readout_params)
+            print("experiment params", expt_params)
+
+        x, y = np.meshgrid(freqvals, t_vals[:len(I_raw)])
+        figure(figsize=(12, 4))
+        plt.pcolormesh(x, y, I_raw, shading='nearest', cmap='RdBu')
+        plt.show()
+        figure(figsize=(12, 4))
+        plt.pcolormesh(x, y, Q_raw, shading='nearest', cmap='RdBu')
+        plt.show()
+
+        if slices:
+            for i in range(I_raw.shape[0]):
+                # process I, Q data
+                (I, Q, mag, phase) = iq_process(f=freqvals, raw_I=I_raw[i], raw_Q=Q_raw[i], ran=ran, phi=phi,
+                                                sub_mean=sub_mean)
+
+                # plot and fit data
+                title = expt_name
+                plot_freq_data(f=freqvals, I=I, Q=Q, mag=mag, phase=phase,
+                               expected_f=nu_q, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
+
 def pulse_probe_iq(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=False, debug=False, marker=None):
     """Fits pulse_probe_iq data, then plots data and prints result
     :param filelist -- the data runs you want to analyze and plot
@@ -286,7 +360,9 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
         pulse_type = expt_params['pulse_type']
         nu_q = quantum_device_cfg['qubit'][expt_params['on_qubits'][0]]['freq']  # expected qubit freq
         amp = expt_params['amp']
-        ran = hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']  # range of DAC card for processing
+        ran = 1
+            #hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']  # range of DAC card for processing
+
 
         ####GET IQ #####
         I_raw = array(a["I"])
@@ -440,7 +516,8 @@ def ramsey(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None
         readout_params = quantum_device_cfg['readout']
 
         ramsey_freq = expt_params['ramsey_freq'] * 1e3
-        ran = hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']  # range of DAC card for processing
+        # ran = hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']  # range of DAC card for processing
+        ran=1
         nu_q = quantum_device_cfg['qubit'][expt_params['on_qubits'][0]]['freq']  # expected qubit freq
 
         I_raw = array(a["I"])
