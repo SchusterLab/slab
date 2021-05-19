@@ -469,58 +469,58 @@ class PulseSequences:
 
 
     def ff_ramp_cal_ppiq(self, sequencer):
+        delt = self.expt_cfg['delt']
+        for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
 
-        for del_t in np.arange(self.expt_cfg['dt_start'], self.expt_cfg['dt_stop'], self.expt_cfg['dt_step']):
-            for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
-                sequencer.new_sequence(self)
-                self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+            if delt<0:
+                #ppiq first if dt less than zero
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'],
+                               amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
 
-                if del_t<0:
-                    #ppiq first if dt less than zero
-                    for qubit_id in self.expt_cfg['on_qubits']:
-                        self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'],
-                                   amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+                # wait time dt, the apply flux pulse
+                for qb in range(8):
+                    sequencer.append('ff_Q%s' % qb, Idle(time=-delt))
 
-                    # wait time dt, the apply flux pulse
-                    for qb in range(8):
-                        sequencer.append('ff_Q%s' % qb, Idle(time=-del_t))
-
-                    if self.expt_cfg["ff_len"] == "auto":
-                        ff_len = 8 * [
-                            self.expt_cfg['qb_pulse_length'] + del_t + self.quantum_device_cfg['readout'][qubit_id[0]][
-                                'length']]
-                    else:
-                        ff_len = self.lattice_cfg['ff_info']["ff_len"]
-
-                    # add flux pulse
-                    self.square_flux(sequencer, ff_len=ff_len)
-
-
-                else:
-                    #flux pulse first if dt greater than zero
-                    if self.expt_cfg["ff_len"] == "auto":
-                        ff_len = 8*[self.expt_cfg['qb_pulse_length']+del_t+self.quantum_device_cfg['readout'][qubit_id[0]][
+                if self.expt_cfg["ff_len"] == "auto":
+                    ff_len = 8 * [
+                        self.expt_cfg['qb_pulse_length'] + delt + self.quantum_device_cfg['readout'][qubit_id[0]][
                             'length']]
-                    else:
-                        ff_len = self.lattice_cfg['ff_info']["ff_len"]
+                else:
+                    ff_len = self.lattice_cfg['ff_info']["ff_len"]
 
-                    #add flux pulse
-                    self.square_flux(sequencer, ff_len=ff_len)
+                # add flux pulse
+                self.square_flux(sequencer, ff_len=ff_len)
 
-                    #wait time dt, the apply ppiq
-                    self.idle_q(sequencer, time=del_t)
-                    for qubit_id in self.expt_cfg['on_qubits']:
-                        self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
 
-                #synch all channels except flux before adding readout, then do readout
-                channels_excluding_fluxch = [ch for ch in self.channels if 'ff' not in ch]
-                self.readout_pxi(sequencer, self.expt_cfg['on_qubits'], overlap=False, synch_channels=channels_excluding_fluxch)
+            else:
+                #flux pulse first if dt greater than zero
+                if self.expt_cfg["ff_len"] == "auto":
+                    ff_len = 8*[self.expt_cfg['qb_pulse_length']+delt+self.quantum_device_cfg['readout'][qubit_id[0]][
+                        'length']]
+                else:
+                    ff_len = self.lattice_cfg['ff_info']["ff_len"]
 
-                #add compensation flux pulse
-                sequencer.sync_channels_time()
-                self.square_flux(sequencer, ff_len=ff_len, flip_amp=True)
+                #add flux pulse
+                self.square_flux(sequencer, ff_len=ff_len)
 
-                sequencer.end_sequence()
+                #wait time dt, the apply ppiq
+                self.idle_q(sequencer, time=delt)
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+
+            #synch all channels except flux before adding readout, then do readout
+            channels_excluding_fluxch = [ch for ch in self.channels if 'ff' not in ch]
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'], overlap=False, synch_channels=channels_excluding_fluxch)
+
+            #add compensation flux pulse
+            fluxch = [ch for ch in self.channels if 'ff' in ch]
+            sequencer.sync_channels_time(fluxch + ['readoutA'])
+            self.square_flux(sequencer, ff_len=ff_len, flip_amp=True)
+
+            sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
 

@@ -1,6 +1,7 @@
 import visdom
 import numpy as np
 from scipy import interpolate
+from scipy import integrate
 
 
 class Pulse:
@@ -35,7 +36,8 @@ class Pulse:
         return np.arange(0, total_length, self.dt) + self.t0
 
     def get_area(self):
-        pass
+        area = np.trapz(self.pulse_array, self.t_array)
+        return area
 
 
 class Gauss(Pulse):

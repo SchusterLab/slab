@@ -55,6 +55,28 @@ class SequentialExperiment:
 
         self.seq_data = np.array(self.data)
 
+    def ff_ramp_cal_ppiq(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
+        expt_cfg = experiment_cfg['ff_ramp_cal_ppiq']
+        data_path = os.path.join(path, 'data/')
+
+
+        dt_array = np.arange(expt_cfg['dt_start'],expt_cfg['dt_stop'],expt_cfg['dt_step'])
+        experiment_name = 'ff_ramp_cal_ppiq'
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'ff_ramp_cal_ppiq', suffix='.h5'))
+
+        for delt in dt_array:
+            experiment_cfg[experiment_name]['delt'] = float(delt)
+            # print(experiment_cfg[experiment_name])
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            print("Sequences generated")
+
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            data = exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,seq_data_file=seq_data_file)
+            self.seq_data.append(data)
+
+        self.seq_data = np.array(self.data)
+
     def histogram_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
 
         expt_cfg = experiment_cfg['histogram_sweep']
