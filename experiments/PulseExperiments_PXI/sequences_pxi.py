@@ -199,7 +199,7 @@ class PulseSequences:
     def idle_sb(self,sequencer,time=0):
         sequencer.append('sideband', Idle(time=time))
 
-    def square_flux(self, sequencer, ff_len, flip_amp=False):
+    def ff_square(self, sequencer, ff_len, flip_amp=False):
         for qb, flux in enumerate(self.expt_cfg['ff_vec']):
             if flip_amp:
                 flux = -flux
@@ -208,7 +208,15 @@ class PulseSequences:
                                     ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
                                     phase=0))
 
-    def square_flux_comp(self, sequencer, ff_len):
+    def ff_comp(self, sequencer, area_vec):
+        for qb in range(len(self.expt_cfg['ff_vec'])):
+            ff_len = area_vec[qb]/self.lattice_cfg['ff_info']['comp_pulse_amp'][qb]
+            sequencer.append('ff_Q%s' % qb,
+                             Square(max_amp=self.lattice_cfg['ff_info']['comp_pulse_amp'][qb], flat_len=ff_len[qb],
+                                    ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
+                                    phase=0))
+
+    def ff_square_and_comp(self, sequencer, ff_len):
         for qb, flux in enumerate(self.expt_cfg['ff_vec']):
             sequencer.append('ff_Q%s' % qb,
                              Square(max_amp=flux, flat_len=ff_len[qb],
@@ -427,7 +435,7 @@ class PulseSequences:
             ff_len = [post_flux_time - pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']] * 8
         else:
             ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"] + self.lattice_cfg['ff_info']['ff_pulse_padding'])
-        self.square_flux_comp(sequencer, ff_len=ff_len)
+        self.ff_square_and_comp(sequencer, ff_len=ff_len)
 
         sequencer.end_sequence()
 
@@ -453,7 +461,7 @@ class PulseSequences:
             ff_len = [post_flux_time - pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']] * 8
         else:
             ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"] + self.lattice_cfg['ff_info']['ff_pulse_padding'])
-        self.square_flux_comp(sequencer, ff_len=ff_len)
+        self.ff_square_and_comp(sequencer, ff_len=ff_len)
 
         sequencer.end_sequence()
         return sequencer.complete(self, plot=True)
@@ -483,7 +491,7 @@ class PulseSequences:
                 ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']]*8
             else:
                 ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"]) + self.lattice_cfg['ff_info']['ff_pulse_padding']
-            self.square_flux_comp(sequencer, ff_len=ff_len)
+            self.ff_square_and_comp(sequencer, ff_len=ff_len)
             sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
@@ -513,7 +521,7 @@ class PulseSequences:
                     ff_len = self.lattice_cfg['ff_info']["ff_len"]
 
                 # add flux pulse
-                self.square_flux(sequencer, ff_len=ff_len)
+                self.ff_square(sequencer, ff_len=ff_len)
 
 
             else:
@@ -525,7 +533,7 @@ class PulseSequences:
                     ff_len = self.lattice_cfg['ff_info']["ff_len"]
 
                 #add flux pulse
-                self.square_flux(sequencer, ff_len=ff_len)
+                self.ff_square(sequencer, ff_len=ff_len)
 
                 #wait time dt, the apply ppiq
                 self.idle_q(sequencer, time=delt)
@@ -539,7 +547,7 @@ class PulseSequences:
             #add compensation flux pulse
             fluxch = [ch for ch in self.channels if 'ff' in ch]
             sequencer.sync_channels_time(fluxch + ['readoutA'])
-            self.square_flux(sequencer, ff_len=ff_len, flip_amp=True)
+            self.ff_square(sequencer, ff_len=ff_len, flip_amp=True)
 
             sequencer.end_sequence()
 
@@ -570,7 +578,7 @@ class PulseSequences:
                 ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']]*8
             else:
                 ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"]+ self.lattice_cfg['ff_info']['ff_pulse_padding'])
-            self.square_flux_comp(sequencer, ff_len=ff_len)
+            self.ff_square_and_comp(sequencer, ff_len=ff_len)
 
             #end sequence
             sequencer.end_sequence()
@@ -603,7 +611,7 @@ class PulseSequences:
                 ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']]*8
             else:
                 ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"]+ self.lattice_cfg['ff_info']['ff_pulse_padding'])
-            self.square_flux_comp(sequencer, ff_len=ff_len)
+            self.ff_square_and_comp(sequencer, ff_len=ff_len)
 
             sequencer.end_sequence()
 
@@ -635,7 +643,7 @@ class PulseSequences:
                 ff_len = [post_flux_time-pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']]*8
             else:
                 ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"]+ self.lattice_cfg['ff_info']['ff_pulse_padding'])
-            self.square_flux_comp(sequencer, ff_len=ff_len)
+            self.ff_square_and_comp(sequencer, ff_len=ff_len)
 
             sequencer.end_sequence()
 

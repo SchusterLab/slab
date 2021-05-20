@@ -86,6 +86,7 @@ def plot_freq_data(f, I, Q, mag, phase, expected_f, mag_phase_plot=False, polar=
     :param mag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
     :param polar -- adds a plot of I and Q in polar coordinates
     :param title -- title of plot
+    :param marker -- plots a vertical line at marker
     :returns: dsfit result
     """
     fig = plt.figure(figsize=(14, 5))
@@ -102,8 +103,7 @@ def plot_freq_data(f, I, Q, mag, phase, expected_f, mag_phase_plot=False, polar=
 
     if mag_phase_plot:
         fig = plt.figure(figsize=(14, 5))
-        ax3 = fig.add_subplot(111, title=expt_name
-                                         + ' Mag and phase')
+        ax3 = fig.add_subplot(111, title=' Mag and phase')
         ax3.plot(f, mag, 'g.-', label='Magnitude')
         ax3.set_xlabel('Freq(GHz)')
         ax3.set_ylabel('Magnitude (V)')
@@ -153,6 +153,18 @@ def plot_freq_data(f, I, Q, mag, phase, expected_f, mag_phase_plot=False, polar=
 
     return p
 
+def get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb):
+
+    params = {}
+    params['ran'] = hardware_cfg['awg_info']['keysight_pxi']['digtzr_vpp_range']
+    params['readout_params'] = quantum_device_cfg['readout'][on_qb]
+    params['readout_freq'] = readout_params["freq"]
+    params['dig_atten_qb'] = quantum_device_cfg['powers'][on_qb]['drive_digital_attenuation']
+    params['dig_atten_rd'] = quantum_device_cfg['powers'][on_qb]['readout_drive_digital_attenuation']
+    params['read_lo_pwr'] = quantum_device_cfg['powers'][on_qb]['readout_drive_lo_powers']
+    params['qb_lo_pwr'] = quantum_device_cfg['powers'][on_qb]['drive_lo_powers']
+    params['qb_freq'] = quantum_device_cfg['qubit'][on_qb]['freq']
+    return params
 
 def resonator_spectroscopy(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=False, debug=False, marker=False):
     """Fits resonator_spectroscopoy data, then plots data and prints result
@@ -164,6 +176,7 @@ def resonator_spectroscopy(filenb, phi=0, sub_mean=True, mag_phase_plot=False, p
     mag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
     plar -- adds a plot of I and Q in polar coordinates
     debug -- print out experiment attributes
+    marker -- plot vertical line where you expect
     """
     # the 'with' statement automatically opens and closes File a, even if code in the with block fails
     expt_name = "resonator_spectroscopy"
@@ -174,20 +187,20 @@ def resonator_spectroscopy(filenb, phi=0, sub_mean=True, mag_phase_plot=False, p
         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
-        readout_params = quantum_device_cfg['readout']["A"]
 
-        ran = hardware_cfg['awg_info']['keysight_pxi']['digtzr_vpp_range']  # range of DAC card for processing
-        # readout_f = readout_params["freq"] - expt_params['stop']  # expected readout freq
-        readout_f = readout_params["freq"]
-        #         dig_atten_qb = quantum_device_cfg['qubit_drive_digital_attenuation']
-        #         dig_atten_rd = quantum_device_cfg['readout_drive_digital_attenuation']
-        #         read_lo_pwr = quantum_device_cfg['readout_drive_lo_powers']
-        #         qb_lo_pwr = quantum_device_cfg['qubit_drive_lo_powers']
+        on_qb = expt_params['on_qubits']
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran'] # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
 
         I_raw = a['I']
         Q_raw = a['Q']
         f = arange(expt_params['start'] + readout_f, expt_params['stop'] + readout_f, expt_params['step'])[:len(I_raw)]
-        # f = arange(expt_params['start'],expt_params['stop'],expt_params['step'])[:(len(I_raw))] + readout_f
 
         if debug:
             print("DEBUG")
@@ -227,18 +240,21 @@ def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=F
         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
-        readout_params = quantum_device_cfg['readout']
 
-        read_lo_pwr = quantum_device_cfg['powers']['A']['readout_drive_lo_powers']
-        qb_lo_pwr = quantum_device_cfg['powers']['A']['drive_lo_powers']
-        dig_atten_rd = quantum_device_cfg['powers']['A']['readout_drive_digital_attenuation']
-        dig_atten_dr = quantum_device_cfg['powers']['A']['drive_digital_attenuation']
+        on_qb = expt_params['on_qubits']
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran'] # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+
         flux_vec = expt_params['ff_vec']
         print("flux vec {}".format(flux_vec))
 
-        ran = 1
-
-        nu_q = quantum_device_cfg['qubit'][expt_params['on_qubits'][0]]['freq']  # expected qubit freq
+        nu_q = params['qb_freq']  # expected qubit freq
         ppiqstart = experiment_cfg[expt_name]['start'] + nu_q
         ppiqstop = experiment_cfg[expt_name]['stop'] + nu_q
         ppiqstep = experiment_cfg[expt_name]['step']
@@ -299,15 +315,18 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=Fal
         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
-        readout_params = quantum_device_cfg['readout']
 
-        read_lo_pwr = quantum_device_cfg['powers']['A']['readout_drive_lo_powers']
-        qb_lo_pwr = quantum_device_cfg['powers']['A']['drive_lo_powers']
-        dig_atten_rd = quantum_device_cfg['powers']['A']['readout_drive_digital_attenuation']
-        dig_atten_dr = quantum_device_cfg['powers']['A']['drive_digital_attenuation']
+        on_qb = expt_params['on_qubits']
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran'] # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
 
-        ran = 1
-        nu_q = quantum_device_cfg['qubit'][expt_params['on_qubits'][0]]['freq']  # expected qubit freq
+        nu_q = params['qb_freq']  # expected qubit freq
 
         I_raw = a['I']
         Q_raw = a['Q']
@@ -355,13 +374,20 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
-        readout_params = quantum_device_cfg['readout']
 
         pulse_type = expt_params['pulse_type']
-        nu_q = quantum_device_cfg['qubit'][expt_params['on_qubits'][0]]['freq']  # expected qubit freq
         amp = expt_params['amp']
-        ran = 1
-            #hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']  # range of DAC card for processing
+
+        on_qb = expt_params['on_qubits']
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran'] # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
 
 
         ####GET IQ #####
@@ -373,10 +399,6 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
             t = t * 4
 
         if debug:
-            dig_atten_dr = quantum_device_cfg['qubit_drive_digital_attenuation']
-            dig_atten_rd = quantum_device_cfg['readout_drive_digital_attenuation']
-            read_lo_pwr = quantum_device_cfg['readout_drive_lo_powers']
-            qb_lo_pwr = quantum_device_cfg['qubit_drive_lo_powers']
             print("DEBUG")
             print("averages =", expt_params['acquisition_num'])
             print("Rd LO pwr= ", read_lo_pwr, "dBm")
@@ -445,10 +467,17 @@ def t1(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, de
         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
-        readout_params = quantum_device_cfg['readout']
 
-        ran = hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']  # range of DAC card for processing
-        nu_q = quantum_device_cfg['qubit'][expt_params['on_qubits'][0]]['freq']  # expected qubit freq
+        on_qb = expt_params['on_qubits']
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
 
         I_raw = array(a["I"])
         Q_raw = array(a["Q"])
@@ -456,10 +485,6 @@ def t1(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, de
         t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))]
 
         if debug:
-            dig_atten_dr = quantum_device_cfg['qubit_drive_digital_attenuation']
-            dig_atten_rd = quantum_device_cfg['readout_drive_digital_attenuation']
-            read_lo_pwr = quantum_device_cfg['readout_drive_lo_powers']
-            qb_lo_pwr = quantum_device_cfg['qubit_drive_lo_powers']
             print("DEBUG")
             print("averages =", expt_params['acquisition_num'])
             print("Rd LO pwr= ", read_lo_pwr, "dBm")
@@ -513,12 +538,19 @@ def ramsey(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None
         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
-        readout_params = quantum_device_cfg['readout']
 
         ramsey_freq = expt_params['ramsey_freq'] * 1e3
-        # ran = hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']  # range of DAC card for processing
-        ran=1
-        nu_q = quantum_device_cfg['qubit'][expt_params['on_qubits'][0]]['freq']  # expected qubit freq
+
+        on_qb = expt_params['on_qubits']
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
 
         I_raw = array(a["I"])
         Q_raw = array(a["Q"])
@@ -526,10 +558,6 @@ def ramsey(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None
         t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))]
 
         if debug:
-            dig_atten_dr = quantum_device_cfg['qubit_drive_digital_attenuation']
-            dig_atten_rd = quantum_device_cfg['readout_drive_digital_attenuation']
-            read_lo_pwr = quantum_device_cfg['readout_drive_lo_powers']
-            qb_lo_pwr = quantum_device_cfg['qubit_drive_lo_powers']
             print("DEBUG")
             print("averages =", expt_params['acquisition_num'])
             print("Rd LO pwr= ", read_lo_pwr, "dBm")
@@ -589,11 +617,19 @@ def echo(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
-        readout_params = quantum_device_cfg['readout']
 
         ramsey_freq = expt_params['ramsey_freq'] * 1e3
-        ran = hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']  # range of DAC card for processing
-        nu_q = quantum_device_cfg['qubit'][expt_params['on_qubits'][0]]['freq']  # expected qubit freq
+
+        on_qb = expt_params['on_qubits']
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
 
         I_raw = array(a["I"])
         Q_raw = array(a["Q"])
@@ -601,10 +637,6 @@ def echo(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
         t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))]
 
         if debug:
-            dig_atten_dr = quantum_device_cfg['qubit_drive_digital_attenuation']
-            dig_atten_rd = quantum_device_cfg['readout_drive_digital_attenuation']
-            read_lo_pwr = quantum_device_cfg['readout_drive_lo_powers']
-            qb_lo_pwr = quantum_device_cfg['qubit_drive_lo_powers']
             print("DEBUG")
             print("averages =", expt_params['acquisition_num'])
             print("Rd LO pwr= ", read_lo_pwr, "dBm")
