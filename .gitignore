@@ -2,11 +2,12 @@
 *.idea
 *.vscode
 *~
-*#
+*\#*
 
 # python
 *.pyc
 __pycache__
+*.egg-info
 
 # julia
 Manifest.toml
@@ -20,6 +21,9 @@ instruments/instruments.cfg
 
 # binary
 *.DS_Store
+*.dat
+*.png
+*.pdf
 
 # local
 out

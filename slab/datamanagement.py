@@ -29,14 +29,17 @@ Notice several features of this interaction.
 .. _h5py: https://code.google.com/p/h5py/
 """
 
-import numpy as np
 import h5py
-import inspect
-import Pyro4
-import threading
-# import PyQt4.Qt as qt
 import datetime
+import inspect
 import json
+import os
+import numpy as np
+import threading
+
+import Pyro4
+# import PyQt4.Qt as qt
+
 
 
 # def get_SlabFile(fname, local=False):
@@ -528,6 +531,41 @@ class AttrDict(dict):
 
     __setattr__ = __setitem__
     __getattr__ = __getitem__
+
+
+def generate_file_path(path, name, extension):
+    """
+    Create a file like "path/XXXXX_name.extension"
+    where XXXXX is a unique numeric identifier starting
+    from 00000 and monotonically increasing.
+    The directories in `path` will be created
+    if they do not already exist.
+
+    Args:
+    path :: str - path to the file, e.g., "/path/to/bar"
+    name :: str - name of the file, e.g., "foo"
+    extension :: str - extension of the file, e.g., ".png" or ".h5"
+
+    Returns:
+    file_path :: str
+    """
+    # Ensure the path exists.
+    os.makedirs(path, exist_ok=True)
+    
+    # Create a file name based on the one given; ensure it will
+    # not conflict with others in the directory. 
+    max_numeric_prefix = -1
+    for file_name in os.listdir(path):
+        if ("_{}.{}".format(name, extension)) in file_name:
+            max_numeric_prefix = max(int(file_name.split("_")[0]),
+                                     max_numeric_prefix)
+    #ENDFOR
+    name_augmented = ("{:05d}_{}.{}"
+                                "".format(max_numeric_prefix + 1,
+                                          name, extension))
+    
+    return os.path.join(path, name_augmented)
+#ENDDEF
 
 
 # if __name__ == "__main__":

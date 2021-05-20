@@ -17,7 +17,7 @@ AUTHOR_EMAIL = "david.schuster@uchicago.edu"
 setup(author=AUTHOR,
       author_email=AUTHOR_EMAIL,
       description=DESCRIPTION,
-      install_requires=DEPENDENCIES,
+      requires=DEPENDENCIES,
       name=NAME,
       version=VERSION,
 )

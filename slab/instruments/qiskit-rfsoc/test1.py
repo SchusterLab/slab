@@ -9,6 +9,7 @@ import sys
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
+from slab import generate_file_path
 from qiskit import assemble, pulse
 from qiskit.tools.monitor import job_monitor
 from qiskit.providers import ProviderV1 as ProviderInterface
@@ -20,16 +21,18 @@ from qiskit.providers.models import (
 from qiskit.providers.options import Options
 from qiskit.qobj.utils import MeasLevel, MeasReturnType
 
-sys.path.append("/Users/thomaspropson/repos/qsystem0/pynq")
+sys.path.append("/home/xilinx") # for pynq
+sys.path.append("/home/xilinx/repos/qsystem0/pynq")
+from qsystem0 import PfbSoc
 from qsystem0_asm2 import ASM_Program
 
 DPI = 300
 
 # unit conversion factors -> all backend properties returned in SI (Hz, sec, etc)
-GHz = 1.0e9 # Gigahertz
-MHz = 1.0e6 # Megahertz
-us = 1.0e-6 # Microseconds
-ns = 1.0e-9 # Nanoseconds
+GHz = 1.0e9 #Hz
+MHz = 1.0e6 #Hz
+us = 1.0e-6 #s
+ns = 1.0e-9 #s
 
 # TODO: unclear that configuration and defaults should
 # be passed to __init__. I think some pointer to where to fetch
@@ -84,6 +87,8 @@ class SLabProviderInterface(ProviderInterface):
         # TODO: raw_config and raw_defaults should be fetched in BackendInterface
         # this function should search network for backends, then pass that info
         # to BackendInterface-s which are instantiated by this function
+        # https://github.com/Qiskit/qiskit-terra/blob/main/qiskit
+        # /providers/models/backendconfiguration.py#L493
         raw_config = {
             "backend_name": "bf3-rfsoc",
             "backend_version": "0.1",
@@ -95,20 +100,25 @@ class SLabProviderInterface(ProviderInterface):
             "conditional": False,
             "open_pulse": True,
             "memory": True,
-            "max_shots": 1024, #TODO
+            "max_shots": np.iinfo(np.int64).max,
             "coupling_map": [[1], [0]],
             "n_uchannels": 0,
             "u_channel_lo": [],
             "meas_levels": [1],
             "qubit_lo_range": [[0,10],[0,10]], #TODO
             "meas_lo_range": [[0,10]], #TODO
-            "dt": 1e-2, # TODO
-            "dtm": 1e-2, #TODO
-            "rep_times": [], #TODO
+            "dt": 1 / 6.144,
+            "dtm": 1 / 6.144,
+            "rep_times": [],
             "meas_kernels": [], #TODO
             "discriminators": [], #TODO
+            "rep_delay_range": [0., np.finfo(np.float64).max],
+            "dynamic_reprate_enabled": True,
+            "default_rep_delay": 0.,
         }
         config = PulseBackendConfiguration.from_dict(raw_config)
+        # https://github.com/Qiskit/qiskit-terra/blob/main/qiskit/
+        # providers/models/pulsedefaults.py#L164
         raw_defaults = {
             "qubit_freq_est": [5., 5.], #TODO
             "meas_freq_est": [5.], #TODO
@@ -187,7 +197,7 @@ class Instruction(object):
 
     def samples(self, backend):
         samples_ = None
-        if self._samples is not None:
+        if self._samples is None:
             samples_ = backend.parametric_samples(self.name, self.parameters)
         else:
             samples_ = self._samples
@@ -219,13 +229,21 @@ class MyBackend(Backend):
     ADC_TRIG_OFFSET = 256
     DAC_MAX_MEMORY = 16 * (2 ** 12)
     CH_NAME_IDX = {
-        "d0": 0,
-        "m0": 1,
-        "a0": 2
+        "d0": 4, # qubit
+        "d1": 2, # cavity
+        "m0": 3, # readout
+        "a0": 1, # acquire readout
     }
     
     def __init__(self):
         super().__init__()
+        self.soc = PfbSoc("/home/xilinx/repos/qsystem0/pynq/qsystem_0.bit")
+        self.gens = {
+            1: soc.gen0,
+            2: soc.gen1,
+            3: soc.gen2,
+            4: soc.gen3,
+        }
     #ENDDEF
 
     def run(self, qobj_dict):
@@ -233,6 +251,7 @@ class MyBackend(Backend):
         for expt_dict in qobj_dict["experiments"]:
             program = QiskitPulseProgram(qobj_dict, expt_dict, self)
             programs.append(program)
+            program.run()
         #ENDFOR
         # TOOD: run each program, send output back to user
     #ENDDEF
@@ -249,8 +268,8 @@ class QiskitPulseProgram(object):
     #ENDDEF
 
     def _get_insts_from_qinst(self, qinst):
-        name = instruction["name"]
-        t0 = instruction["t0"]
+        name = qinst["name"]
+        t0 = qinst["t0"]
         insts = []
         # check for acquire pulse
         if name == "acquire":
@@ -344,18 +363,38 @@ class QiskitPulseProgram(object):
         Build a tproc ASM program from the insts.
         """
         p = ASM_Program()
+        # sync to begin
         p.synci(self.backend.TPROC_INITIAL_TIME_OFFSET)
-        # set freq based on specification for all DAC channels
-        for (i, freq) in enumerate(self.qobj_dict["config"]["qubit_lo_freq"]):
+        # loop `shots` number of times
+        # TODO: remove hardcoding register and register page
+        ri = 13
+        rip = 0
+        p.regwi(rip, ri, self.qobj_dict["config"]["shots"] - 1)
+        p.label("LOOP_I")
+        # get default freq for all DAC channels
+        meas_freqs = self.qobj_dict["config"]["meas_lo_freq"]
+        qubit_freqs = self.qobj_dict["config"]["qubit_lo_freq"]
+        # get program specific freq for all DAC channels if set
+        if "config" in self.expt_dict:
+            expt_config_dict = self.expt_dict["config"]
+            if "meas_lo_freq" in expt_config_dict:
+                meas_freqs = expt_config_dict["meas_lo_freq"]
+            #ENDIF
+            if "qubit_lo_freq" in expt_config_dict:
+                qubit_freqs = expt_config_dict["qubit_lo_freq"]
+            #ENDIF
+        #ENDIF
+        # set freq for all DAC channels
+        for (i, freq) in enumerate(qubit_freqs):
             ch_name = "d{}".format(i)
-            ch_idx = self.backend.CH_NAME_INDEX[ch_name]
+            ch_idx = self.backend.CH_NAME_IDX[ch_name]
             rp = p.ch_page(ch_idx)
-            r_freq = p.sreg(ch, "freq")
+            r_freq = p.sreg(ch_idx, "freq")
             p.regwi(rp, r_freq, freq, "freq")
         #ENDFOR
-        for (i, freq) in enumerate(self.qobj_dict["config"]["meas_lo_freq"]):
+        for (i, freq) in enumerate(meas_freqs):
             ch_name = "m{}".format(i)
-            ch_idx = self.backend.CH_NAME_INDEX[ch_name]
+            ch_idx = self.backend.CH_NAME_IDX[ch_name]
             rp = p.ch_page(ch_idx)
             r_freq = p.sreg(ch_idx, "freq")
             p.regwi(rp, r_freq, freq, "freq")
@@ -369,7 +408,7 @@ class QiskitPulseProgram(object):
                 r_phase = p.sreg(ch_idx, "phase")
                 r_gain = p.sreg(ch_idx, "gain")
                 p.regwi(rp, r_phase, 0, "phase")
-                p.regwi(rp, r_phase, self.backend.TPROC_UNITY_GAIN, "gain")
+                p.regwi(rp, r_gain, self.backend.TPROC_UNITY_GAIN, "gain")
             #ENDIF
         #ENDFOR
         # execute instructions
@@ -384,10 +423,7 @@ class QiskitPulseProgram(object):
                                stdysel=1, mode=0, outsel=0, play=True)
                 # listen to acquire
                 elif inst.inst_type == InstructionType.ACQUIRE:
-                    # TODO: support multiple triggers?
-                    # TODO: not sure if this is the most general/correct way to do this
-                    # https://github.com/openquantumhardware/qsystem0/blob/main/
-                    # pynq/qsystem0_asm2.py#L167
+                    # TODO: support acquiring on different ADCs
                     t0 = inst.t0 + self.backend.ADC_TRIG_OFFSET
                     tf = t0 + inst.duration
                     p.seti_trigger(t0, t1=0, t14=1, t15=0)
@@ -396,22 +432,28 @@ class QiskitPulseProgram(object):
                 #ENDIF
             #ENDFOR
         #ENDFOR
+        # sync all channels and wait until next experiment
+        p.delay(p.us2cycles(self.qobj_dict["config"]["rep_delay"]))
+        # end loop
+        p.loopnz(rip, ri, "LOOP_I")
+        # end program
         p.end()
         return p
     #ENDDEF
 
-    def initialize(self):
+    def run(self):
         """
-        Do initialization before executing the program on the RFSOC.
+        Execute the program.
+        References:
+        [0] https://github.com/openquantumhardware/qsystem0/blob/main/pynq/averager_program.py#L72
         """
         # load sample and parametric pulses
-        for i, ch_name in enumerate(self.insts.keys()):
-            ch_idx = self.backend.CH_NAME_IDX[ch_name]
-            gen = 0 # TODO: something like backend.soc.gen[ch_idx]
-            for inst in self.insts[ch_name]:
+        for i, ch_idx in enumerate(self.insts.keys()):
+            for inst in self.insts[ch_idx]:
                 if (inst.inst_type == InstructionType.SAMPLE
                     or inst.inst_type == InstructionType.PARAMETRIC):
                     samples = inst.samples(self.backend)
+                    gen = self.backend.gens[ch_idx]
                     gen.load(samples, addr=inst.addr)
                 #ENDIF
             #ENDFOR
@@ -433,20 +475,7 @@ class QiskitPulseProgram(object):
         #ENDFOR
         # load ASM program
         self.backend.soc.tproc.load_asm_program(self.asm_program)
-    #ENDDEF
-
-    def run(self, initialize=True):
-        """
-        This runs a single shot of the experiment.
-        References:
-        [0] https://github.com/openquantumhardware/qsystem0/blob/main/pynq/averager_program.py#L72
-        """
-        # initialize soc
-        if initialize:
-            self.initialize()
-        #ENDIF
-        # run program
-        # TODO: maybe move stop and single write to initialize and end of program
+        # run ASM program
         self.backend.soc.tproc.stop()
         self.backend.soc.tproc.single_write(addr=1, data=0)
         self.backend.soc.tproc.start()
@@ -454,7 +483,7 @@ class QiskitPulseProgram(object):
         while True:
             addr = soc.tproc.single_read(addr=1)
             if addr == 1:
-                di, dq = soc.get_accumulated(addr=addr, length=1)
+                di, dq = soc.getAccumulated(addr=addr, length=1)
             #ENDIF
         #ENDWHILE
         return di, dq
@@ -463,6 +492,59 @@ class QiskitPulseProgram(object):
 
 def get_closest_multiple_of_16(num):
     return int(num + 8 ) - (int(num + 8 ) % 16)
+#ENDDEF
+
+def rs():
+    provider = SLabProviderInterface()
+    backend = provider.get_backend("bf3-rfsoc")
+    backend_config = backend.configuration()
+    backend_defaults = backend.defaults()
+    dt = backend_config.dt #s
+
+    qubit_idx = 0
+    cavity_chan = pulse.DriveChannel(1)
+    meas_chan = pulse.MeasureChannel(qubit_idx)
+    acq_chan = pulse.AcquireChannel(qubit_idx)
+    
+    meas_amp = 0.125
+    meas_duration = get_closest_multiple_of_16(2000 * 16) #dts
+    meas_pulse = pulse.library.Constant(meas_duration, meas_amp)
+    
+    meas_freq_count = 1
+    meas_freq_start = 90 * MHz #Hz
+    meas_freq_stop = 110 * MHz #Hz
+    meas_freqs = np.linspace(meas_freq_start, meas_freq_stop, meas_freq_count)
+    
+    schedule = pulse.Schedule(name="Frequency sweep")
+    schedule += pulse.Play(meas_pulse, meas_chan)
+    schedule += pulse.Acquire(meas_duration, acq_chan, pulse.MemorySlot(0))
+    
+    # fig = schedule.draw()
+    # plot_file_path = generate_file_path(".", "rs_sched", "png")
+    # plt.savefig(plot_file_path)
+    # print(f"plotted schedule to {plot_file_path}")
+
+    num_shots = 1000
+    rep_delay = 200 * us #s
+    schedule_los = list()
+    for meas_freq in meas_freqs:
+        schedule_los.append({
+            meas_chan: meas_freq,
+        })
+    #ENDFOR    
+    program = assemble(
+        schedule, backend=backend, meas_level=1,
+        meas_return="avg", shots=num_shots,
+        schedule_los=schedule_los,
+        rep_delay=rep_delay,
+    )
+    job = backend.run(program)
+
+    # TODO: this should happen server side
+    backend_ = MyBackend()
+    ret = backend_.run(job)
+    
+    return
 #ENDDEF
 
 def rabi():
