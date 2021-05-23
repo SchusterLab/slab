@@ -646,7 +646,7 @@ class KeysightSingleQubit:
                 ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
                       int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
                 ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
-                      nt(self.readoutA_window[0]):int(self.readoutA_window[1])].T
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
                 qbA_I.append(ch1)
                 qbA_Q.append(ch2)
             if "B" in self.on_qubits:

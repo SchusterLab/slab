@@ -105,6 +105,8 @@ class Square(Pulse):
     def get_length(self):
         return self.flat_len + 2 * self.cutoff_sigma * self.ramp_sigma_len
 
+
+
 class adb_ramp(Pulse):
     def __init__(self, max_amp, flat_len, adb_ramp1_sig, ramp2_sigma_len, cutoff_sigma, freq, phase, phase_t0 = 0,
                  dt=None,
@@ -178,18 +180,18 @@ class linear_ramp(Pulse):
 
         t_end = self.t0 + self.ramp1_len  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
 
-        pulse_array = self.max_amp * (
+        pulse_array = (self.max_amp * (
             (self.t_array >= t_flat_start) * (
-                self.t_array < t_flat_end) +  # Normal square pulse
+                self.t_array < t_flat_end)) +  # Normal square pulse
 
             (self.t_array >= self.t0) * (self.t_array < t_flat_start) * (
                     self.max_amp/self.ramp1_len * (self.t_array-self.t0)) +  # leading linear edge
 
-            (self.t_array >= t_flat_end) * (
+            (self.t_array >= t_flat_end) *self.max_amp* (
                 self.t_array <= t_end) * np.exp(
                 -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
-                    2 * self.ramp_sigma_len ** 2))  # trailing gaussian edge
-        )
+                    2 * self.ramp2_sigma_len ** 2)))  # trailing gaussian edge
+
 
         pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
 

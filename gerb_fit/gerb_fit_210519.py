@@ -21,6 +21,7 @@ from scipy.signal import savgol_filter
 from scipy.signal import find_peaks
 print(os.getcwd())
 from scipy.signal import argrelextrema
+import copy
 
 font = {'family' : 'normal',
         'weight' : 'normal',
@@ -150,7 +151,7 @@ def plot_freq_data(f, I, Q, mag, phase, expected_f, mag_phase_plot=False, polar=
         plt.xlabel("I")
         plt.ylabel("Q")
         plt.grid()
-        plt.scatter(I, Q, c=np.arange(0, len(Q)))
+        plt.plot(I, Q)
         print("Qmin = " + str(np.min(Q)))
         print("Qmax = " + str(np.max(Q)))
         print("Imin = " + str(np.min(I)))
@@ -274,11 +275,16 @@ def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, mag_phase_plot
         Q_raw = a['Q']
 
         magarray = []
+        parray = []
         for i in range(I_raw.shape[0]):
             # process I, Q data
             (I, Q, mag, phase) = iq_process(f=freqvals, raw_I=I_raw[i], raw_Q=Q_raw[i], ran=ran, phi=phi,
                                             sub_mean=sub_mean)
             magarray.append(mag)
+            p = fitlor(freqvals, np.square(mag), showfit=False)
+            parray.append(p)
+            #magarray.append(np.append(mag, 0))
+        #magarray.append(np.zeros(len(magarray[0])))
 
         if debug:
             print("DEBUG")
@@ -291,9 +297,23 @@ def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, mag_phase_plot
             print("experiment params", expt_params)
 
         x, y = np.meshgrid(freqvals, t_vals[:len(I_raw)])
-        figure(figsize=(12, 4))
-        plt.pcolormesh(x, y, magarray, shading='nearest', cmap='RdBu')
+        fig, ax = plt.subplots(1,1)
+        fig.set_figheight(4)
+        fig.set_figwidth(8)
+        #freq_new = np.append(freqvals, 0)
+        #tvals_new = np.append(t_vals[:len(I_raw)], 0)
+        # print(freq_new.shape)
+        # print(tvals_new.shape)
+        #ax.pcolormesh(x, y, magarray, shading='flat', cmap='RdBu')
+        ax.pcolormesh(x , y, magarray, shading='nearest', cmap='RdBu')
+        ax.set_ylabel('dt (ns)')
+        ax.set_xlabel('freq (GHz)')
+        ax.set_title('PPIQ Sweep Across Flux Pulse')
+        fig.tight_layout()
         plt.show()
+        # figure(figsize=(12, 4))
+        # plt.pcolormesh(x, y, magarray, shading='nearest', cmap='RdBu')
+        # plt.show()
 
         if iq_plot:
             x, y = np.meshgrid(freqvals, t_vals[:len(I_raw)])
@@ -314,6 +334,7 @@ def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, mag_phase_plot
                 title = expt_name
                 plot_freq_data(f=freqvals, I=I, Q=Q, mag=mag, phase=phase,
                                expected_f=nu_q, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
+        return t_vals[:len(I_raw)], parray
 
 def pulse_probe_iq(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=False, debug=False, marker=None):
     """Fits pulse_probe_iq data, then plots data and prints result
@@ -369,6 +390,61 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=Fal
                        expected_f=nu_q, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
         return p
 
+def ff_pulse_probe_iq(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=False, debug=False, marker=None):
+    """Fits pulse_probe_iq data, then plots data and prints result
+    :param filelist -- the data runs you want to analyze and plot
+    :paramphi -- in degrees, angle by which you want to rotate IQ
+    :paramsub_mean -- if True, subtracts out the average background of IQ measurements
+    :parammag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
+    :paramplar -- adds a plot of I and Q in polar coordinates
+    :paramdebug -- print out experiment attributes
+    """
+    # the 'with' statement automatically opens and closes File a, even if code in the with block fails
+    expt_name = "ff_pulse_probe_iq"
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        # get data in from json file
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qb = expt_params['on_qubits'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran'] # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+
+        nu_q = params['qb_freq']  # expected qubit freq
+        ff_vec = expt_params['ff_vec']
+        print("fast flux vec is {}".format(ff_vec))
+
+        I_raw = a['I']
+        Q_raw = a['Q']
+        f = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I_raw))] + nu_q
+
+        if debug:
+            print("DEBUG")
+            print("averages =", expt_params['acquisition_num'])
+            print("Rd LO pwr= ", read_lo_pwr, "dBm")
+            print("Qb LO pwr= ", qb_lo_pwr, "dBm")
+            print("Rd atten= ", dig_atten_rd, "dB")
+            print("Qb atten= ", dig_atten_qb, "dB")
+            print("Readout params", readout_params)
+            print("experiment params", expt_params)
+
+        # process I, Q data
+        (I, Q, mag, phase) = iq_process(f=f, raw_I=I_raw, raw_Q=Q_raw, ran=ran, phi=phi, sub_mean=sub_mean)
+
+        # plot and fit data
+        title = expt_name
+        p = plot_freq_data(f=f, I=I, Q=Q, mag=mag, phase=phase,
+                       expected_f=nu_q, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
+        return p
 
 def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False):
     """

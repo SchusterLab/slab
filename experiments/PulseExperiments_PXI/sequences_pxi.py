@@ -1,6 +1,6 @@
 try:
     from .sequencer_pxi import Sequencer
-    from .pulse_classes import Gauss, Idle, Ones, Square, DRAG, ARB_freq_a,Square_two_tone
+    from .pulse_classes import Gauss, Idle, Ones, Square, DRAG, ARB_freq_a,Square_two_tone, linear_ramp, adb_ramp
 except:
     from sequencer import Sequencer
     from pulse_classes import Gauss, Idle, Ones, Square, DRAG, ARB_freq_a
@@ -207,6 +207,16 @@ class PulseSequences:
                              Square(max_amp=flux, flat_len=ff_len[qb],
                                     ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
                                     phase=0))
+
+    def ff_ramp(self,sequencer,ff_len,flip_amp = False):
+        for qb,flux in enumerate(self.expt_cfg['ff_vec']):
+            if flip_amp:
+                flux = -flux
+            sequencer.append('ff_Q%s' % qb,
+                             linear_ramp(max_amp=flux, flat_len=ff_len[qb],
+                                    ramp1_len=self.lattice_cfg['ff_info']['ff_linear_ramp_len'],
+                                         ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
+                                         cutoff_sigma=2, freq=0, phase=0))
 
     def ff_comp(self, sequencer, area_vec):
         for qb in range(len(self.expt_cfg['ff_vec'])):
@@ -499,6 +509,7 @@ class PulseSequences:
 
     def ff_ramp_cal_ppiq(self, sequencer):
         delt = self.expt_cfg['delt']
+        pulse_type = self.expt_cfg['pulse_type']
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
             self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
@@ -521,7 +532,10 @@ class PulseSequences:
                     ff_len = self.lattice_cfg['ff_info']["ff_len"]
 
                 # add flux pulse
-                self.ff_square(sequencer, ff_len=ff_len)
+                if pulse_type=='square':
+                    self.ff_square(sequencer, ff_len=ff_len)
+                elif pulse_type=="linear_ramp":
+                    self.ff_ramp(sequencer, ff_len=ff_len)
 
 
             else:
@@ -533,7 +547,10 @@ class PulseSequences:
                     ff_len = self.lattice_cfg['ff_info']["ff_len"]
 
                 #add flux pulse
-                self.ff_square(sequencer, ff_len=ff_len)
+                if pulse_type == 'square':
+                    self.ff_square(sequencer, ff_len=ff_len)
+                elif pulse_type == "linear_ramp":
+                    self.ff_ramp(sequencer, ff_len=ff_len)
 
                 #wait time dt, the apply ppiq
                 self.idle_q(sequencer, time=delt)
@@ -547,11 +564,70 @@ class PulseSequences:
             #add compensation flux pulse
             fluxch = [ch for ch in self.channels if 'ff' in ch]
             sequencer.sync_channels_time(fluxch + ['readoutA'])
-            self.ff_square(sequencer, ff_len=ff_len, flip_amp=True)
+            if pulse_type == 'square':
+                self.ff_square(sequencer, ff_len=ff_len, flip_amp=True)
+            elif pulse_type == "linear_ramp":
+                self.ff_ramp(sequencer, ff_len=ff_len, flip_amp=True)
 
             sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
+
+    # def ff_ramp_cal_ppiq_ramp(self, sequencer):
+    #     delt = self.expt_cfg['delt']
+    #     for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+    #         sequencer.new_sequence(self)
+    #         self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+    #
+    #         if delt<0:
+    #             #ppiq first if dt less than zero
+    #             for qubit_id in self.expt_cfg['on_qubits']:
+    #                 self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'],
+    #                            amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+    #
+    #             # wait time dt, the apply flux pulse
+    #             for qb in range(8):
+    #                 sequencer.append('ff_Q%s' % qb, Idle(time=-delt))
+    #
+    #             if self.expt_cfg["ff_len"] == "auto":
+    #                 ff_len = 8 * [
+    #                     self.expt_cfg['qb_pulse_length'] + delt + self.quantum_device_cfg['readout'][qubit_id[0]][
+    #                         'length']]
+    #             else:
+    #                 ff_len = self.lattice_cfg['ff_info']["ff_len"]
+    #
+    #             # add flux pulse
+    #             self.ff_square(sequencer, ff_len=ff_len)
+    #
+    #
+    #         else:
+    #             #flux pulse first if dt greater than zero
+    #             if self.expt_cfg["ff_len"] == "auto":
+    #                 ff_len = 8*[self.expt_cfg['qb_pulse_length']+delt+self.quantum_device_cfg['readout'][qubit_id[0]][
+    #                     'length']]
+    #             else:
+    #                 ff_len = self.lattice_cfg['ff_info']["ff_len"]
+    #
+    #             #add flux pulse
+    #             self.ff_square(sequencer, ff_len=ff_len)
+    #
+    #             #wait time dt, the apply ppiq
+    #             self.idle_q(sequencer, time=delt)
+    #             for qubit_id in self.expt_cfg['on_qubits']:
+    #                 self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+    #
+    #         #synch all channels except flux before adding readout, then do readout
+    #         channels_excluding_fluxch = [ch for ch in self.channels if 'ff' not in ch]
+    #         self.readout_pxi(sequencer, self.expt_cfg['on_qubits'], overlap=False, synch_channels=channels_excluding_fluxch)
+    #
+    #         #add compensation flux pulse
+    #         fluxch = [ch for ch in self.channels if 'ff' in ch]
+    #         sequencer.sync_channels_time(fluxch + ['readoutA'])
+    #         self.ff_square(sequencer, ff_len=ff_len, flip_amp=True)
+    #
+    #         sequencer.end_sequence()
+    #
+    #     return sequencer.complete(self, plot=True)
 
     def ff_rabi(self, sequencer):
 

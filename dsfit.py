@@ -58,7 +58,7 @@ def fitgeneral(xdata, ydata, fitfunc, fitparams, domain=None, showfit=False, sho
     startparams=fitparams # Initial guess for the parameters
     bestfitparams, success = optimize.leastsq(errfunc, startparams[:], args=(fitdatax,fitdatay))
     err = math.fsum(errfunc(bestfitparams, fitdatax, fitdatay))
-    print('the best fit has an RMS of {0}'.format(err))
+    #print('the best fit has an RMS of {0}'.format(err))
     if showfit:
         if showdata:
             plt.plot(fitdatax,fitdatay,mark_data,label=label+" data")
