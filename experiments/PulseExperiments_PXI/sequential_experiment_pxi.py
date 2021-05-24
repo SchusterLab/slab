@@ -77,6 +77,24 @@ class SequentialExperiment:
 
         self.seq_data = np.array(self.seq_data)
 
+    def ac_Xmat_ff_ramp_cal_ppiq(self,quantum_device_cfg, experiment_cfg, hardware_cfg,lattice_cfg, path):
+        experiment_name = 'resonator_spectroscopy'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg,lattice_cfg)
+
+        for qb in experiment_cfg[experiment_name]['on_qubits']:
+            read_freq = copy.deepcopy(quantum_device_cfg['readout'][qb]['freq'])
+            for freq in np.arange(expt_cfg['start']+read_freq, expt_cfg['stop']+read_freq, expt_cfg['step']):
+                quantum_device_cfg['readout'][qb]['freq'] = freq
+                sequences = ps.get_experiment_sequences(experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.seq_data.append(data)
+
+        self.seq_data = np.array(self.seq_data)
+
     def histogram_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
 
         expt_cfg = experiment_cfg['histogram_sweep']
