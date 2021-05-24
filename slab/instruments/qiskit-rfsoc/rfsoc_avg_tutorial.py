@@ -1,26 +1,25 @@
+"""
+rfsoc_avg_tutorial.py
+connect DAC229_T1_CH3 to ADC224_T0_CH0
+"""
 import os
-from pynq import Overlay
+import sys
+import time
+
+import matplotlib as mpl
+mpl.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy as sp
 import scipy.signal
-import matplotlib.pyplot as plt
-import time
 import scipy.io as sio
-import re
-from pynq import allocate
 
+sys.path.append("/home/xilinx/repos/qsystem0/pynq")
 from qsystem0 import *
 from qsystem0_asm import *
 
-# Connect DAC229_T1_CH3 to ADC224_T0_CH0
-
-# Load bitstream with custom overlay
-soc = PfbSoc('qsystem_0.bit',force_init_clks=False)
-
-print("soc.fs_dac",soc.fs_dac)
-print("soc.fs_adc",soc.fs_adc)
-
-with ASM_Program() as p:
+def main():
+    p = ASM_Program()
     p.memri(0,1,0,"freq")
     p.regwi(0,2,30000,"gain")
     p.memri(0,3,2,"nsamp")
@@ -59,4 +58,54 @@ with ASM_Program() as p:
     # see above, what does it mean to set the output of this channel to 0?
     p.seti(0,1,0,0)
     p.end("all done")
-soc.tproc.load_asm_program(p)
+
+    soc = PfbSoc("/home/xilinx/repos/qsystem0/pynq/qsystem_0.bit")
+    soc.tproc.load_asm_program(p)
+    f_out = 5*30.72
+    tempDac = freq2reg(soc.fs_dac,f_out)
+    soc.tproc.single_write(addr=0,data=tempDac)
+    # Set Readout frequency (same as output).
+    tempAdc = freq2reg(soc.fs_adc,f_out)
+    soc.tproc.single_write(addr=1,data=tempAdc) # Sets the DDS frequency
+
+    # Duration of the output pulse on DAC domain.
+    T_out = 60/f_out
+    NS_out = T_out*soc.fs_dac
+    NS_out_gen = int(NS_out/soc.gen0.NDDS)
+    soc.tproc.single_write(addr=2,data=NS_out_gen)
+
+    # Duration of the output pulse on ADC domain.
+    NS_out_adc = NS_out*soc.fs_adc/soc.fs_dac
+    NS_out_adc_dec = int(NS_out_adc/soc.readout.NDDS)
+    Nsync = int(NS_out_adc_dec*1.3)
+    soc.tproc.single_write(addr=3,data=Nsync)
+
+    # Readout configuration to route input without frequency translation.
+    soc.readout.set_out(sel="product")
+
+    # Configure average+buffer window length.
+    AVG_N = int(NS_out_adc_dec)
+    soc.avg_buf.config(address=0,length=AVG_N)
+
+    # Enable averager and buffer (will wait for trigger)
+    soc.avg_buf.enable()
+
+    # Number of repetitions.
+    N = 10
+    soc.tproc.single_write(addr=4,data=N-1)
+
+    soc.setSelection("product") # "product", "dds", or "input"
+    # Start tProc.
+    soc.tproc.stop()
+    soc.tproc.start()
+    
+    iacc,qacc =  soc.getAccumulated(length=N)
+    fig,ax = plt.subplots(2,1,sharex=True)
+    ax[0].plot(iacc, "*-")
+    ax[0].set_ylabel("I")
+    ax[1].plot(qacc, "*-")
+    ax[1].set_ylabel("Q")
+    ax[1].set_xlabel("sample number")
+    ax[0].set_title("from getAccumulated")
+    return
+#ENDDEF

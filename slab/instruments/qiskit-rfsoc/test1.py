@@ -25,7 +25,6 @@ from qiskit.providers.models import (
 from qiskit.providers.options import Options
 from qiskit.qobj.utils import MeasLevel, MeasReturnType
 
-sys.path.append("/home/xilinx") # for pynq
 sys.path.append("/home/xilinx/repos/qsystem0/pynq")
 from qsystem0 import PfbSoc
 from qsystem0_asm2 import ASM_Program
