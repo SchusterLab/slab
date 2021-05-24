@@ -4,14 +4,13 @@ from numpy import*
 
 class PostExperiment:
 
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, I , Q, P = 'Q', show = True):
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, data, P = 'Q', show = True):
         self.quantum_device_cfg = quantum_device_cfg
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
 
         self.exptname = experiment_name
-        self.I = I
-        self.Q = Q
+        self.data = data
         self.P = P
         self.show = show
 

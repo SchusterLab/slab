@@ -18,8 +18,6 @@ from slab.datamanagement import SlabFile
 from slab.dataanalysis import get_next_filename
 import json
 from slab.experiments.PulseExperiments_PXI.get_data import get_iq_data, get_singleshot_data
-from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
-from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperimentAnalyze
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperimentAnalyzeAndSave
 import copy
 
@@ -384,16 +382,15 @@ class Experiment:
         self.pxi_stop()
         return self.data
 
-
-    ##TODO: not yet updated post_analysis
-    def post_analysis(self,path, experiment_name, cont_name, P='Q', phi=0):
-        PA = PostExperimentAnalyze(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, path,
-                                   experiment_name, self.data, P, phi)
+    def post_analysis(self, path, experiment_name, cont_name=None, P='Q', phi=0, cont_data_file=None):
+        PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, path,
+                                          experiment_name, self.data, P, phi, cont_data_file=cont_data_file,
+                                          cont_name=cont_name, save=False)
         return PA.p
 
     def post_analysisandsave(self, path, experiment_name, cont_name, P='Q', phi=0, cont_data_file=None):
         PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, path,
                                           experiment_name, self.data, P, phi, cont_data_file=cont_data_file,
-                                          cont_name=cont_name)
+                                          cont_name=cont_name, save=True)
         return PA.p
 
