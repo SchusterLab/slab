@@ -91,7 +91,7 @@ def rs():
     save_file_path = generate_file_path(".", "res_spec", "png")
     plt.savefig(save_file_path, dpi=DPI)
     print("plotted to {}".format(save_file_path))
-    return
+    return None
 #ENDDEF
 
 class QubitSpectroscopyProgram(AveragerProgram):

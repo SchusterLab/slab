@@ -1,13 +1,17 @@
 """
-test1.py - run a rabi
+test1.py - qiskit-rfsoc sample programs
 """
 
 from enum import Enum
+import logging
 import os
 import sys
+import time
 
 import h5py
 import numpy as np
+import matplotlib as mpl
+mpl.use("Agg")
 import matplotlib.pyplot as plt
 from slab import generate_file_path
 from qiskit import assemble, pulse
@@ -165,11 +169,11 @@ class Instruction(object):
     Fields:
     addr :: int - the memory address where the pulse is stored
     ch_idx :: int - channel that the pulse should be played on
-    duration :: int - sample length
+    duration :: int - sample length in DAC units
     name :: str - the name of the pulse
     inst_type :: InstructionType - the type of the pulse
-    t0 :: int - the start time of the pulse in the schedule
-    tf :: int - the final time of the pulse in the schedule
+    t0 :: int - the start time of the pulse in the schedule in DAC units
+    tf :: int - the final time of the pulse in the schedule in DAC units
     parameters :: dict - parameters for a parametric pulse
     _samples :: array - samples for the pulse, lazily constructed
     """
@@ -184,6 +188,9 @@ class Instruction(object):
         self.tf = t0 + duration
         self.inst_type = inst_type
         self.parameters = parameters
+        if samples is not None:
+            samples = samples.real.astype(np.int16)
+        #ENDIF
         self._samples = samples
     #ENDDEF
 
@@ -223,41 +230,107 @@ class Backend(object):
 #ENDCLASS
 
 class MyBackend(Backend):
-    # TODO: these constants probably go in a config file that is read in
     TPROC_UNITY_GAIN = 32767
-    TPROC_INITIAL_TIME_OFFSET = 1000
+    TPROC_INITIAL_CYCLE_OFFSET = 1000
     ADC_TRIG_OFFSET = 256
+    ACQUIRE_PAD = 10
     DAC_MAX_MEMORY = 16 * (2 ** 12)
     CH_NAME_IDX = {
-        "d0": 4, # qubit
-        "d1": 2, # cavity
-        "m0": 3, # readout
-        "a0": 1, # acquire readout
+        "d0": 3, # qubit
+        "d1": 1, # cavity
+        "m0": 2, # readout
+        "a0": 0, # acquire readout
     }
-    
+    CH_IDX_NAME = {
+        3: "d0", # qubit
+        1: "d1", # cavity
+        2: "m0", # readout
+        0: "a0", # acquire readout
+    }
+    # TODO: this will be deprecated in a new firmware version
+    CH_IDX_RDDS = {
+        2: 5,
+    }
+    # time conversion factors
+    PROC_TO_DAC = 16
+    ADC_TO_DAC = 2
+    # full speed to average buffer decimation factor
+    DECIMATOR = 8
+    # tproc registers 16-31 on pages 0-2 are reserved
+    CH_IDX_PAGE = {
+        0: 0,
+        1: 0,
+        2: 1,
+        3: 1,
+        4: 2,
+        5: 2
+    }
+    CH_IDX_REGISTER = [
+        # ch0 - page0
+        {"out1": 16, "out2": 17},
+        # ch1 - page0
+        {"freq": 24, "phase": 25, "addr": 26, "gain": 27, "mode": 28, "t": 29, "adc_freq": 30},
+        # ch2 - page1
+        {"freq": 16, "phase": 17, "addr": 18, "gain": 19, "mode": 20, "t": 21, "adc_freq": 22},
+        # ch3 - page1
+        {"freq": 24, "phase": 25, "addr": 26, "gain": 27, "mode": 28, "t": 29, "adc_freq": 30},
+        # ch4 - page2
+        {"freq": 16, "phase": 17, "addr": 18, "gain": 19, "mode": 20, "t": 21, "adc_freq": 22},
+        # ch5 - page2
+        {"freq": 24},
+    ]
+    # miscellaneous tproc registers, access these lists with the same index
+    MISC_PAGE = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    MISC_REGISTER = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    # mode constants
+    # generator outputs last sample after pulse terminates
+    STDYSEL_LAST = 0
+    # generator outputs zeros after pulse terminates
+    STDYSEL_ZERO = 1
+    # generator stops playing after pulse terminates
+    MODE_ONESHOT = 0
+    # generator plays pulse on loop
+    MODE_PERIODIC = 1
+    # output is product of table and dds
+    OUTSEL_TDDS = 0
+    # output is dds
+    OUTSEL_DDS = 1
+    # output is table only
+    OUTSEL_T = 2
+    # output is zero
+    OUTSEL_ZERO = 3
+
     def __init__(self):
         super().__init__()
         self.soc = PfbSoc("/home/xilinx/repos/qsystem0/pynq/qsystem_0.bit")
         self.gens = {
-            1: soc.gen0,
-            2: soc.gen1,
-            3: soc.gen2,
-            4: soc.gen3,
+            1: self.soc.gen0,
+            2: self.soc.gen1,
+            3: self.soc.gen2,
+            4: self.soc.gen3,
+        }
+        self.avg_bufs = {
+            0: self.soc.avg_buf,
+        }
+        self.readouts = {
+            0: self.soc.readout,
         }
     #ENDDEF
 
     def run(self, qobj_dict):
-        programs = list()
+        results = list()
         for expt_dict in qobj_dict["experiments"]:
             program = QiskitPulseProgram(qobj_dict, expt_dict, self)
-            programs.append(program)
-            program.run()
+            res = program.run()
+            results.append(res)
         #ENDFOR
-        # TOOD: run each program, send output back to user
+        return results
     #ENDDEF
 #ENDCLASS
 
 class QiskitPulseProgram(object):
+
+
     def __init__(self, qobj_dict, expt_dict, backend):
         super().__init__()
         self.qobj_dict = qobj_dict
@@ -282,6 +355,10 @@ class QiskitPulseProgram(object):
                 t0 = qinst["t0"]
                 inst = Instruction(ch_idx, duration, name, InstructionType.ACQUIRE, t0, addr=addr)
                 insts.append(inst)
+                # logging.log(11, f"parsed InstructionType.ACQUIRE ch: {ch_idx}, "
+                #            "d: {duration}, t0: {t0}")
+                print("parsed InstructionType.ACQUIRE ch: {}, "
+                      "d: {}, t0: {}".format(ch_idx, duration, t0))
             #ENDFOR
         #ENDIF
         # check for sample pulse
@@ -297,6 +374,10 @@ class QiskitPulseProgram(object):
                     inst = Instruction(ch_idx, duration, name, InstructionType.SAMPLE, t0,
                                        samples=samples)
                     insts.append(inst)
+                    # logging.log(11, f"parsed InstructionType.SAMPLE ch: {ch_idx}, "
+                    #            "d: {duration}, t0: {t0}, n: {name}")
+                    print("parsed InstructionType.SAMPLE ch: {}, "
+                          "d: {}, t0: {}, n: {}".format(ch_idx, duration, t0, name))
                 #ENDIF
             #ENDFOR
         #ENDIF
@@ -311,6 +392,10 @@ class QiskitPulseProgram(object):
                                        InstructionType.PARAMETRIC, t0,
                                   parameters=qinst["parameters"])
                     insts.append(inst)
+                    # logging.log(11, f"parsed InstructionType.PARAMETRIC ch: {ch_idx}, "
+                    #            "d: {duration}, t0: {t0}, n: {name}")
+                    print("parsed InstructionType.PARAMETRIC ch: {}, "
+                          "d: {}, t0: {}, n: {}".format(ch_idx, duration, t0, name))
                 #ENDIF
             #ENDFOR
         #ENDIF
@@ -334,7 +419,7 @@ class QiskitPulseProgram(object):
             for inst in insts_:
                 # if this is an acquire pulse it has already been assigned a memory address
                 if inst.inst_type == InstructionType.ACQUIRE:
-                    continue
+                    pass
                 # if there is already a pulse in this channel, grab the next
                 # available memory address
                 elif len(insts[inst.ch_idx]) > 0:
@@ -363,13 +448,13 @@ class QiskitPulseProgram(object):
         Build a tproc ASM program from the insts.
         """
         p = ASM_Program()
+        # declare constants
+        p_i = self.backend.MISC_PAGE[0]
+        r_i = self.backend.MISC_REGISTER[0]
         # sync to begin
-        p.synci(self.backend.TPROC_INITIAL_TIME_OFFSET)
+        p.synci(self.backend.TPROC_INITIAL_CYCLE_OFFSET)
         # loop `shots` number of times
-        # TODO: remove hardcoding register and register page
-        ri = 13
-        rip = 0
-        p.regwi(rip, ri, self.qobj_dict["config"]["shots"] - 1)
+        p.regwi(p_i, r_i, self.qobj_dict["config"]["shots"] - 1)
         p.label("LOOP_I")
         # get default freq for all DAC channels
         meas_freqs = self.qobj_dict["config"]["meas_lo_freq"]
@@ -385,30 +470,38 @@ class QiskitPulseProgram(object):
             #ENDIF
         #ENDIF
         # set freq for all DAC channels
+        # p.freq2reg accepts MHz and all frequencies from QObj are in GHz
         for (i, freq) in enumerate(qubit_freqs):
             ch_name = "d{}".format(i)
             ch_idx = self.backend.CH_NAME_IDX[ch_name]
-            rp = p.ch_page(ch_idx)
-            r_freq = p.sreg(ch_idx, "freq")
-            p.regwi(rp, r_freq, freq, "freq")
+            p_ch = self._ch_page(ch_idx)
+            r_freq = self._ch_reg(ch_idx, "freq")
+            p.regwi(p_ch, r_freq, p.freq2reg(1e3 * freq), "freq")
         #ENDFOR
         for (i, freq) in enumerate(meas_freqs):
             ch_name = "m{}".format(i)
             ch_idx = self.backend.CH_NAME_IDX[ch_name]
-            rp = p.ch_page(ch_idx)
-            r_freq = p.sreg(ch_idx, "freq")
-            p.regwi(rp, r_freq, freq, "freq")
+            p_ch = self._ch_page(ch_idx)
+            r_freq = self._ch_reg(ch_idx, "freq")
+            p.regwi(p_ch, r_freq, p.freq2reg(1e3 * freq), "freq")
+            # set readout DDS frequency
+            # TODO: this will be deprecated in a new firmware version
+            rdds_ch_idx = self.backend.CH_IDX_RDDS[ch_idx]
+            p_rdds_ch = self._ch_page(rdds_ch_idx)
+            r_rdds_freq = self._ch_reg(rdds_ch_idx, "freq")
+            p.regwi(p_rdds_ch, r_rdds_freq, p.freq2reg(1e3 * freq), "rdds freq")
+            p.seti(rdds_ch_idx, p_rdds_ch, r_rdds_freq, 0)
         #ENDFOR
         # set phase to 0 and gain to 1 for all DAC channels
         for ch_name in self.backend.CH_NAME_IDX.keys():
             ch_char = ch_name[0]
             if ch_char == 'm' or ch_char == 'd':
                 ch_idx = self.backend.CH_NAME_IDX[ch_name]
-                rp = p.ch_page(ch_idx)
-                r_phase = p.sreg(ch_idx, "phase")
-                r_gain = p.sreg(ch_idx, "gain")
-                p.regwi(rp, r_phase, 0, "phase")
-                p.regwi(rp, r_gain, self.backend.TPROC_UNITY_GAIN, "gain")
+                p_ch = self._ch_page(ch_idx)
+                r_phase = self._ch_reg(ch_idx, "phase")
+                r_gain = self._ch_reg(ch_idx, "gain")
+                p.regwi(p_ch, r_phase, 0, "phase")
+                p.regwi(p_ch, r_gain, self.backend.TPROC_UNITY_GAIN, "gain")
             #ENDIF
         #ENDFOR
         # execute instructions
@@ -419,26 +512,81 @@ class QiskitPulseProgram(object):
                 # play sample and parametric pulses
                 if (inst.inst_type == InstructionType.SAMPLE
                     or inst.inst_type == InstructionType.PARAMETRIC):
-                    p.set_wave(ch=ch_idx, addr=inst.addr, length=inst.duration, t=inst.t0,
-                               stdysel=1, mode=0, outsel=0, play=True)
+                    # determine registers
+                    p_ch = self._ch_page(ch_idx)
+                    r_freq = self._ch_reg(ch_idx, "freq")
+                    r_phase = self._ch_reg(ch_idx, "phase")
+                    r_addr = self._ch_reg(ch_idx, "addr")
+                    r_gain = self._ch_reg(ch_idx, "gain")
+                    r_mode = self._ch_reg(ch_idx, "mode")
+                    r_t = self._ch_reg(ch_idx, "t")
+                    # write address
+                    p.regwi(p_ch, r_addr, inst.addr, "addr")
+                    # determine and write mode code
+                    mode_code = self._mode_code(
+                        self.backend.STDYSEL_ZERO, self.backend.MODE_ONESHOT,
+                        self.backend.OUTSEL_TDDS, inst.duration // self.backend.PROC_TO_DAC
+                    )
+                    p.regwi(p_ch, r_mode, mode_code, "mode")
+                    # write time
+                    p.regwi(p_ch, r_t, inst.t0 // self.backend.PROC_TO_DAC, "t")
+                    # schedule pulse
+                    p.set(ch_idx, p_ch, r_freq, r_phase, r_addr, r_gain, r_mode, r_t, "play")
                 # listen to acquire
                 elif inst.inst_type == InstructionType.ACQUIRE:
-                    # TODO: support acquiring on different ADCs
-                    t0 = inst.t0 + self.backend.ADC_TRIG_OFFSET
-                    tf = t0 + inst.duration
-                    p.seti_trigger(t0, t1=0, t14=1, t15=0)
-                    p.seti_trigger(tf, t1=0, t14=0, t15=0)
+                    # determine registers
+                    p_ch = self._ch_page(ch_idx)
+                    p_out1 = self._ch_reg(ch_idx, "out1")
+                    p_out2 = self._ch_reg(ch_idx, "out2")
+                    # determine start and stop times
+                    t_start = inst.t0 + self.backend.ADC_TRIG_OFFSET
+                    t_stop = (t_start + inst.duration // self.backend.PROC_TO_DAC
+                              + self.backend.ACQUIRE_PAD)
+                    # determine and write bit codes
+                    # triggers avg buffer
+                    bits_start = self._trigger_bits(0, 1, 0, 0, 0, 0)
+                    bits_stop = self._trigger_bits(0, 0, 0, 0, 0, 0)
+                    p.regwi(p_ch, p_out1, bits_start, "start average buffer bits")
+                    p.regwi(p_ch, p_out2, bits_stop, "stop average buffer bits")
+                    # start average buffer capture
+                    p.seti(ch_idx, p_ch, p_out1, t_start, "start average buffer")
+                    # stop average buffer capture
+                    p.seti(ch_idx, p_ch, p_out2, t_stop, "stop average buffer")
                 # TODO: handle other inst types
                 #ENDIF
             #ENDFOR
         #ENDFOR
-        # sync all channels and wait until next experiment
-        p.delay(p.us2cycles(self.qobj_dict["config"]["rep_delay"]))
+        # wait until next experiment
+        p.synci(p.us2cycles(self.qobj_dict["config"]["rep_delay"]))
         # end loop
-        p.loopnz(rip, ri, "LOOP_I")
+        p.loopnz(p_i, r_i, "LOOP_I")
         # end program
         p.end()
         return p
+    #ENDDEF
+
+    def _ch_page(self, ch_idx):
+        return self.backend.CH_IDX_PAGE[ch_idx]
+    #ENDDEF
+
+    def _ch_reg(self, ch_idx, name):
+        return self.backend.CH_IDX_REGISTER[ch_idx][name]
+    #ENDDEF
+
+    def _mode_code(self, stdysel, mode, outsel, length):
+        return (stdysel << 15) | (mode << 14) | (outsel << 12) | (length <<0)
+    #ENDDEF
+
+    def _trigger_bits(self, b15, b14, b3, b2, b1, b0):
+        """
+        b15 - full speed buffer
+        b14 - average buffer
+        b3 - PMOD4
+        b2 - PMOD3
+        b1 - PMOD2
+        b0 - PMOD1
+        """
+        return (b15 << 15) | (b14 << 14) | (b3 << 3) | (b2 << 2) | (b1 << 1) | (b0 << 0) 
     #ENDDEF
 
     def run(self):
@@ -447,46 +595,64 @@ class QiskitPulseProgram(object):
         References:
         [0] https://github.com/openquantumhardware/qsystem0/blob/main/pynq/averager_program.py#L72
         """
-        # load sample and parametric pulses
+        # load pulses and configure buffers
         for i, ch_idx in enumerate(self.insts.keys()):
             for inst in self.insts[ch_idx]:
+                # load pulse
                 if (inst.inst_type == InstructionType.SAMPLE
                     or inst.inst_type == InstructionType.PARAMETRIC):
                     samples = inst.samples(self.backend)
                     gen = self.backend.gens[ch_idx]
                     gen.load(samples, addr=inst.addr)
                 #ENDIF
-            #ENDFOR
-        #ENDFOR
-        # readout configuration to route input without frequency translation
-        self.backend.soc.readout.set_out(sel="product")
-        # configure a buffer for every acquire statement
-        for i, ch_idx in enumerate(self.insts.keys()):
-            for inst in insts[ch_idx]:
-                # TODO: currently assumes there is only one acquire statement
-                if inst.inst_type == InstructionType.ACQUIRE:
-                    avg_buf = self.backend.soc.avg_bufs[ch_idx]
-                    avg_buf.config_buf(address=inst.addr, length=inst.duration)
-                    avg_buf.config_avg(address=inst.addr, length=inst.duration)
-                    avg_buf.enable_buf()
-                    avg_buf.enable_avg()
+                # configure average buffer
+                elif inst.inst_type == InstructionType.ACQUIRE:
+                    readout = self.backend.readouts[ch_idx]
+                    # readout configuration to route input without frequency translation
+                    readout.set_out(sel="product")
+                    avg_buf = self.backend.avg_bufs[ch_idx]
+                    duration_dac = (inst.duration
+                                    + self.backend.ACQUIRE_PAD * self.backend.PROC_TO_DAC)
+                    # readout.NDDS is the decimation factor
+                    duration_adc_dec = duration_dac // (self.backend.ADC_TO_DAC
+                                                        * readout.NDDS)
+                    avg_buf.config(address=inst.addr, length=duration_adc_dec)
+                    avg_buf.enable()
                 #ENDIF
+                # TODO: handle other instruction types
             #ENDFOR
         #ENDFOR
         # load ASM program
         self.backend.soc.tproc.load_asm_program(self.asm_program)
         # run ASM program
         self.backend.soc.tproc.stop()
-        self.backend.soc.tproc.single_write(addr=1, data=0)
         self.backend.soc.tproc.start()
-        # wait for completion
-        while True:
-            addr = soc.tproc.single_read(addr=1)
-            if addr == 1:
-                di, dq = soc.getAccumulated(addr=addr, length=1)
+        # get results for each acquire statement
+        results = dict()
+        for i, ch_idx in enumerate(self.insts.keys()):
+            for inst in self.insts[ch_idx]:
+                if inst.inst_type == InstructionType.ACQUIRE:
+                    # get raw data for each shot
+                    ch_name = self.backend.CH_IDX_NAME[ch_idx]
+                    i_data, q_data = self.backend.soc.getAccumulated(
+                        address=inst.addr,
+                        length=self.qobj_dict["config"]["shots"]
+                    )
+                    data = i_data + 1j * q_data
+                    # average over shots if necessary
+                    if qobj_dict["config"]["meas_return"] == "avg":
+                        data = np.sum(data) / data.shape[0]
+                    #ENDIF
+                    # create result list if one does not exist
+                    if not ch_name in results:
+                        results[ch_name] = list()
+                    #ENDIF
+                    # append result
+                    results[ch_name].append(data)
+                #ENDIF
             #ENDIF
-        #ENDWHILE
-        return di, dq
+        #ENDIF
+        return results
     #ENDDEF
 #ENDCLASS
 
@@ -507,7 +673,7 @@ def rs():
     acq_chan = pulse.AcquireChannel(qubit_idx)
     
     meas_amp = 0.125
-    meas_duration = get_closest_multiple_of_16(2000 * 16) #dts
+    meas_duration = get_closest_multiple_of_16(2000) #dts
     meas_pulse = pulse.library.Constant(meas_duration, meas_amp)
     
     meas_freq_count = 1
@@ -524,8 +690,8 @@ def rs():
     # plt.savefig(plot_file_path)
     # print(f"plotted schedule to {plot_file_path}")
 
-    num_shots = 1000
-    rep_delay = 200 * us #s
+    num_shots = 1
+    rep_delay = 10 * us #s
     schedule_los = list()
     for meas_freq in meas_freqs:
         schedule_los.append({
@@ -544,7 +710,7 @@ def rs():
     backend_ = MyBackend()
     ret = backend_.run(job)
     
-    return
+    return ret
 #ENDDEF
 
 def rabi():
@@ -617,6 +783,6 @@ def rabi():
 #ENDDEF
 
 if __name__ == "__main__":
-    rabi()
+    rs()
 #ENDIF
 

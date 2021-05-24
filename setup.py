@@ -8,7 +8,10 @@ NAME = "slab"
 VERSION = "0.1"
 DEPENDENCIES = [
     "numpy",
-    "scipy"
+    "pyro4",
+    "scipy",
+    "tabulate",
+    "visa"
 ]
 DESCRIPTION = "This package is used for Schuster Lab experiments"
 AUTHOR = "David Schuster"
