@@ -164,14 +164,63 @@ def get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb):
 
     params = {}
     params['ran'] = hardware_cfg['awg_info']['keysight_pxi']['digtzr_vpp_range']
+    params['dt_dig'] = self.hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
     params['readout_params'] = quantum_device_cfg['readout'][on_qb]
-    params['readout_freq'] = params['readout_params'] ["freq"]
+    params['readout_freq'] = params['readout_params']["freq"]
+    params['readout_window'] = params['readout_params']["window"]* params['dt_dig']
+
     params['dig_atten_qb'] = quantum_device_cfg['powers'][on_qb]['drive_digital_attenuation']
     params['dig_atten_rd'] = quantum_device_cfg['powers'][on_qb]['readout_drive_digital_attenuation']
     params['read_lo_pwr'] = quantum_device_cfg['powers'][on_qb]['readout_drive_lo_powers']
     params['qb_lo_pwr'] = quantum_device_cfg['powers'][on_qb]['drive_lo_powers']
+
     params['qb_freq'] = quantum_device_cfg['qubit'][on_qb]['freq']
+
+
     return params
+
+def check_sync(filenb, expt_name, expt_num=0):
+    """Takes in any experiemnt, and plots averaged dig sample per record + window for each expt
+
+    Keyword arguments:
+    filenb -- the data runs you want to analyze and plot
+    expt_name -- the name of the experiment you are doing this with
+    expt--num -- the number of the expeirment that you want plotted out fully
+    """
+    # the 'with' statement automatically opens and closes File a, even if code in the with block fails
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        # get data in from json file
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qb = expt_params['on_qubits'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+
+        readout_window = params["readout_window"]
+        dt_dig = params["dt_dig"]
+        data_1 = a['I']
+        data_2 = a['Q']
+
+        fig = plt.figure(figsize=(12, 4))
+        ax = fig.add_subplot(131, title='I')
+        plt.imshow(data_1, aspect='auto')
+        ax.set_xlabel('Digitizer bins')
+        ax.set_ylabel('Experiment number')
+        ax2 = fig.add_subplot(132, title='Q')
+        plt.imshow(data_2, aspect='auto')
+        ax2.set_xlabel('Digitizer bins')
+        ax2.set_ylabel('Experiment number')
+        ax3 = fig.add_subplot(133, title='Expt num = ' + str(expt_num))
+        ax3.plot(np.arange(data_1[0].size*dt_dig, step=dt_dig), data_1[expt_num])
+        ax3.plot(np.arange(data_1[0].size*dt_dig, step=dt_dig), data_2[expt_num])
+        ax3.axvspan(readout_window[0], readout_window[1], alpha=0.2, color='b')
+        ax3.set_xlabel('Time (ns)')
+        ax3.set_ylabel('Signal')
+        fig.tight_layout()
+        plt.show()
 
 def resonator_spectroscopy(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=False, debug=False, marker=False):
     """Fits resonator_spectroscopoy data, then plots data and prints result
