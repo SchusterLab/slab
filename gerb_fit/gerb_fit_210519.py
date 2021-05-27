@@ -164,7 +164,7 @@ def get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb):
 
     params = {}
     params['ran'] = hardware_cfg['awg_info']['keysight_pxi']['digtzr_vpp_range']
-    params['dt_dig'] = self.hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
+    params['dt_dig'] = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
     params['readout_params'] = quantum_device_cfg['readout'][on_qb]
     params['readout_freq'] = params['readout_params']["freq"]
     params['readout_window'] = params['readout_params']["window"]* params['dt_dig']

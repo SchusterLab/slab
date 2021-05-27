@@ -245,7 +245,7 @@ class PostExperimentAnalyzeAndSave:
             if self.P=='Q':
                 p = fitdecaysin(t,self.Q,showfit=False, fitparams=None, domain=None)
             else:
-                p = fitdecaysin(t, self.Q, showfit=False, fitparams=None, domain=None
+                p = fitdecaysin(t, self.Q, showfit=False, fitparams=None, domain=None)
             print("echo fit worked!")
         except:
             print("echo fit failed on exp", exp_nb)

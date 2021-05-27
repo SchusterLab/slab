@@ -11,7 +11,7 @@ from slab.datamanagement import SlabFile
 from slab.dsfit import fitdecaysin
 try:from skopt import Optimizer
 except:print("No optimizer")
-from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
+from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperimentAnalyzeAndSave
 
 
 # from slab.experiments.PulseExperiments.get_data import get_singleshot_data_two_qubits_4_calibration_v2,\
