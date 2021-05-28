@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from slab import generate_file_path
 
-sys.path.append("/home/xilinx") # for pynq
 sys.path.append("/home/xilinx/repos/qsystem0/pynq")
 from qsystem0 import *
 from qsystem0_asm2 import *
@@ -63,12 +62,14 @@ def rs():
     
     config = {
         "res_ch":3,
-        "start":90, "step":.1, "expts":200, "reps": 1000,"rounds":1,
-        "readout_length":2000, "res_gain":4000,"res_phase":0,
+        "start": 90, "step":.1, "expts": 1, "reps": 1000, "rounds": 1,
+        "readout_length": 2000, "res_gain": 4000,"res_phase":0,
         "relax_delay":10
     }
 
     rspec = ResonatorSpectroscopyProgram(cfg=config)
+    print(rspec)
+    return
     x_pts, avgi, avgq, avgamp = rspec.acquire(soc)
 
     plt.subplot(111, xlabel='DDS Frequency (MHz)', ylabel='Amplitude',
@@ -88,10 +89,11 @@ def rs():
     # data_convolved_q = np.convolve(rspec.dq_buf, kernel, mode='same')
     # plt.plot(sqrt(data_convolved_i**2+data_convolved_q**2))
 
-    save_file_path = generate_file_path(".", "res_spec", "png")
+    save_file_path = generate_file_path(".", "tut_rs", "png")
     plt.savefig(save_file_path, dpi=DPI)
+    plt.close()
     print("plotted to {}".format(save_file_path))
-    return None
+    return
 #ENDDEF
 
 class QubitSpectroscopyProgram(AveragerProgram):
