@@ -2,7 +2,7 @@
 rfsoc_backend.py
 """
 
-from .backend import SLabBackend
+from ..backend import SLabBackend
 from .rfsoc_experiment import RFSoCExperiment
 from .qsystem0 import PfbSoc
 
@@ -13,16 +13,17 @@ RFSOC_BACKEND_KEYS_REQUIRED = [
 ]
 
 class RFSoCBackend(SLabBackend):
-    # TODO document args
-    def __init__(self, config_file_path, log_path, experiment_class, result_timeout,
-                 result_timeout_sleep, default_shots_per_set, ch_name_idx, ch_idx_rdds,
-                 ch_idx_page, ch_idx_reg, misc_page, misc_reg, tproc_initial_cycle_offset,
-                 adc_trig_offset, acquire_pad, rfsoc_binary_file_path, **kwargs):
+    # !TODO document args
+    def __init__(self, config_file_path, experiment_class, default_shots_per_set,
+                 log_level, log_path, result_timeout, result_timeout_sleep,
+                 ch_name_idx, ch_idx_rdds, ch_idx_page, ch_idx_reg, misc_page, misc_reg,
+                 tproc_initial_cycle_offset, adc_trig_offset, acquire_pad,
+                 rfsoc_binary_file_path, **kwargs):
         """
         See SLabBackend class for all args and kwargs not listed here.
 
         args:
-        ch_name_idx
+        ch_name_idx :: dict - a dictionary which 
         ch_idx_rdds
         ch_idx_page
         ch_idx_reg
@@ -33,11 +34,17 @@ class RFSoCBackend(SLabBackend):
         acquire_pad
         """
         # initialize fields
-        super().__init__(config_file_path, log_path, experiment_class, result_timeout,
-                         result_timeout_sleep, default_shots_per_set, **kwargs)
+        super().__init__(config_file_path, experiment_class, default_shots_per_set,
+                         log_level, log_path, result_timeout, result_timeout_sleep, **kwargs)
         self.ch_name_idx = ch_name_idx
+        ch_idx_name = dict()
+        for (k, v) in self.ch_name_idx.items():
+            ch_idx_name[v] = k
+        #ENDFOR
+        self.ch_idx_name = ch_idx_name
         self.ch_idx_rdds = ch_idx_rdds
-        self.ch_name_idx = ch_idx_page
+        self.ch_idx_page = ch_idx_page
+        self.ch_idx_reg = ch_idx_reg
         self.misc_page = misc_page
         self.misc_reg = misc_reg
         self.tproc_initial_cycle_offset = tproc_initial_cycle_offset
@@ -85,8 +92,8 @@ class RFSoCBackend(SLabBackend):
     #ENDDEF
 
     @classmethod
-    def from_file(cls, config_file_path, log_path):
-        return super(RFSoCBackend, cls).from_file(config_file_path, log_path, RFSoCExperiment)
+    def from_file(cls, config_file_path):
+        return super(RFSoCBackend, cls).from_file(config_file_path, RFSoCExperiment)
     #ENDDEF
 
     @classmethod

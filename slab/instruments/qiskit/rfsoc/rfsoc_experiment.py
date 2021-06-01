@@ -6,8 +6,15 @@ References:
 """
 
 from enum import Enum
+import logging
 
-from .experiment import PulseExperiment
+import numpy as np
+from qiskit.result.models import ExperimentResult, ExperimentResultData
+from qiskit.qobj.utils import MeasLevel, MeasReturnType
+
+from ..experiment import PulseExperiment
+from .qsystem0_asm2 import ASM_Program
+from .qsystem0 import freq2reg
 
 class InstructionType(Enum):
     SAMPLE = 1
@@ -32,7 +39,7 @@ class Instruction(object):
     inst_type :: InstructionType - the type of the pulse
     t0 :: int - the start time of the pulse in the schedule in DAC units
     tf :: int - the final time of the pulse in the schedule in DAC units
-    parameters :: dict - parameters for a parametric pulse
+    parameters :: dict - the params for a parametric pulse
     phase :: float - the phase for a set phase instruction
     rdds :: bool - flag if this operation is for a readout DDS
     samples :: array - samples for the pulse, lazily constructed
@@ -67,15 +74,16 @@ class Instruction(object):
 #ENDCLASS
 
 class RFSoCExperiment(PulseExperiment):
-    def __init__(self, qobj_dict, expt_dict, backend):
+    def __init__(self, qobj, qexpt, backend, log_extra):
         # initialize
-        super().__init__(qobj_dict, expt_dict, backend)
+        super().__init__(qobj, qexpt, backend, log_extra)
         # parse
-        self.insts = self._insts()
+        self.insts = self._insts(log_extra)
         self.asm_program = self._asm_program()
+        self.backend.logger.log(logging.DEBUG, "asm\n{}".format(self.asm_program), extra=log_extra)
     #ENDDEF
 
-    def _inst_freq(self, ch_idx, frequency, t0, insts, stats, prefix="parsed"):
+    def _inst_freq(self, ch_idx, frequency, t0, insts, stats, log_extra, prefix="parsed"):
         """
         This is a helper function for building an InstructionType.SET_FREQUENCY function
         """
@@ -86,10 +94,33 @@ class RFSoCExperiment(PulseExperiment):
         insts[ch_idx].append(inst)
         stats[ch_idx]["frequency"] = frequency
         self.backend.logger.log(logging.DEBUG, "{} InstructionType.SET_FREQUENCY ch: {}, "
-              "t0: {}, f: {}".format(prefix, ch_idx, t0, frequency))
+                                "t0: {}, f: {}".format(prefix, ch_idx, t0, frequency),
+                                extra=log_extra)
     #ENDDEF
 
-    def _insts(self):
+    def _inst_pulse(self, constant, duration, inst_type, name, parameters,
+                    samples, t0, qinst, insts, stats, log_extra):
+        ch_name = qinst.ch
+        ch_idx = self.backend.ch_name_idx[ch_name]
+        addr = stats[ch_idx]["addr"]
+        if addr + duration > self.backend.dac_max_memory:
+            raise Error("maximum memory exceeded on channel {} DAC"
+                        "".format(ch_idx))
+        #ENDIF
+        inst = Instruction(ch_idx, duration, name, inst_type, t0,
+                           addr=addr, constant=constant, parameters=parameters,
+                           samples=samples)
+        #ENDIF
+        insts[ch_idx].append(inst)
+        stats[ch_idx]["t"] = t0 + duration
+        stats[ch_idx]["addr"] = stats[ch_idx]["addr"] + duration
+        self.backend.logger.log(logging.DEBUG, "parsed {} ch: {}, t0: {}, d: {}, n: {}"
+                                "".format(inst_type, ch_idx, t0, duration, name),
+                                extra=log_extra)
+        #ENDIF
+    #ENDDEF
+
+    def _insts(self, log_extra):
         """
         This function takes an experiment in a qiskit pulse representation
         and parses it into an `Instruction` representation.
@@ -117,24 +148,24 @@ class RFSoCExperiment(PulseExperiment):
             ch_name = "d{}".format(i)
             ch_idx = self.backend.ch_name_idx[ch_name]
             t0 = 0
-            self._inst_freq(ch_idx, frequency, t0, insts, stats, prefix="init")
+            self._inst_freq(ch_idx, frequency, t0, insts, stats, log_extra, prefix="init")
         #ENDFOR
         for (i, frequency) in enumerate(meas_freqs):
             ch_name = "m{}".format(i)
             ch_idx = self.backend.ch_name_idx[ch_name]
             t0 = 0
-            self._inst_freq(ch_idx, frequency, t0, insts, stats, prefix="init")
+            self._inst_freq(ch_idx, frequency, t0, insts, stats, log_extra, prefix="init")
             # TODO: this will change in a new RFSoC firmware version
             # a more general approach for handling something
             # like this could be implemented by a method in self.backend
             # set the corresponding readout dds
             rdds_ch_idx = self.backend.ch_idx_rdds[ch_idx]
-            self._inst_freq(rdds_ch_idx, frequency, t0, insts, stats, prefix="init rdds")
+            self._inst_freq(rdds_ch_idx, frequency, t0, insts, stats, log_extra, prefix="init rdds")
         #ENDFOR
         # parse experiment instructions
-        for qinst in self.expt_dict["instructions"]:
-            name = qinst["name"]
-            t0 = qinst["t0"]
+        for qinst in self.qexp.instructions:
+            name = qinst.name
+            t0 = qinst.t0
             # check for delay
             if name == "delay":
                 # we don't need to account for delays,
@@ -142,12 +173,12 @@ class RFSoCExperiment(PulseExperiment):
                 continue
             # check for acquire
             elif name == "acquire":
-                for i in range(len(qinst["qubits"])):
-                    qubit_idx = qinst["qubits"][i]
-                    memory = qinst["memory_slot"][i]
+                for i in range(len(qinst.qubits)):
+                    qubit_idx = qinst.qubits[i]
+                    memory = qinst.memory_slot[i]
                     ch_name = "a{}".format(qubit_idx)
                     ch_idx = self.backend.ch_name_idx[ch_name]
-                    duration = qinst["duration"]
+                    duration = qinst.duration
                     # TODO the case where there is more than one acquire statement on
                     # each channel is not handled in the current RFSoC firmware or
                     # this parser
@@ -157,89 +188,72 @@ class RFSoCExperiment(PulseExperiment):
                     stats[ch_idx]["t"] = t0 + duration
                     self.memory_count += 1
                     self.backend.logger.log(logging.DEBUG, "parsed InstructionType.ACQUIRE ch: {} "
-                                            "d: {}, t0: {}".format(ch_idx, duration, t0))
+                                            "d: {}, t0: {}".format(ch_idx, duration, t0),
+                                            extra=log_extra)
                 #ENDFOR
             # check for set/shift frequency
             elif name == "setf" or name == "shiftf":
-                ch_name = qinst["ch"]
+                ch_name = qinst.ch
                 ch_idx = self.backend.ch_name_idx[ch_name]
                 if name == "setf":
-                    frequency = qinst["frequency"]
+                    frequency = qinst.frequency
                 else:
-                    frequency = stats[ch_idx]["frequency"] + qinst["frequency"]
+                    frequency = stats[ch_idx]["frequency"] + qinst.frequency
                 #ENDIF
-                self._inst_freq(ch_idx, frequency, t0, insts, stats)
+                self._inst_freq(ch_idx, frequency, t0, insts, stats, log_extra)
                 # if this is a measurement channel, change the readout dds frequency
                 if ch_name[0] == 'm':
                     rdds_ch_idx = self.backend.ch_idx_rdds[ch_idx]
-                    self._inst_freq(rdds_ch_idx, frequency, t0, insts, stats, prefix="parsed rdds")
+                    self._inst_freq(rdds_ch_idx, frequency, t0, insts, stats, log_extra,
+                                    prefix="parsed rdds")
                 #ENDIF
-                self.backend.logger.log(logging.DEBUG, "parsed InstructionType.SET_FREQUENCY "
-                                        "ch: {}, t0: {}, f: {}".format(ch_idx, t0, frequency))
             # check for set/shift phase
             elif name == "setp" or name == "shiftp":
-                ch_name = qinst["ch"]
+                ch_name = qinst.ch
                 ch_idx = self.backend.ch_name_idx[ch_name]
                 if name == "setp":
-                    phase = qinst["phase"]
+                    phase = qinst.phase
                 elif name == "shiftp":
-                    phase = stats[ch_idx]["phase"] + qinst["phase"]
+                    phase = stats[ch_idx]["phase"] + qinst.phase
                 #ENDIF
                 inst = Instruction(ch_idx, 0, name, InstructionType.SET_PHASE, t0,
                                    phase=phase)
                 insts[ch_idx].append(inst)
                 stats[ch_idx]["phase"] = phase
                 self.backend.logger.log(logging.DEBUG, "parsed InstructionType.SET_PHASE ch: {}, "
-                                        "t0: {}, p: {}".format(ch_idx, t0, phase))
-            # check for sample/parametric pulse
+                                        "t0: {}, p: {}".format(ch_idx, t0, phase),
+                                        extra=log_extra)
+            # check for parametric pulse
+            elif name == "parametric_pulse":
+                pulse_shape = qinst.pulse_shape
+                constant = True if pulse_shape == "constant" else False
+                duration = qinst.parameters["duration"]
+                inst_type = InstructionType.PARAMETRIC
+                parameters = qinst.parameters
+                # !TODO generate samples here
+                samples = None
+                self._inst_pulse(constant, duration, inst_type, pulse_shape, parameters,
+                                 samples, t0, qinst, insts, stats, log_extra)
+            # check for sample pulse, otherwise instruction unrecognized, raise exception
             else:
-                sample_pulse_lib = self.config["pulse_library"]
-                parametric_pulse_lib = self.config["parametric_pulses"]
-                constant = False
-                duration = 0
-                inst_type = None
-                parameters = samples = None
                 # check for sample pulse
-                for i in range(len(sample_pulse_lib)):
-                    pulse_spec = sample_pulse_lib[i]
+                inst_type = None
+                for i in range(len(self.config["pulse_library"])):
+                    pulse_spec = self.config["pulse_library"][i]
                     if pulse_spec["name"] == name:
+                        constant = False
                         samples = pulse_spec["samples"]
                         duration = len(samples)
                         inst_type = InstructionType.SAMPLE
+                        parameters = None
+                        self._inst_pulse(constant, duration, inst_type, name,
+                                         parameters, samples, t0, qinst, insts,
+                                         stats, log_extra)
                     #ENDIF
                 #ENDFOR
-                # check for parametric pulse
-                if name in parametric_pulse_lib:
-                    if name == "constant":
-                        constant = True
-                    #ENDIF
-                    duration = qinst["parameters"]["duration"]
-                    inst_type = InstructionType.PARAMETRIC
-                    parameters = qinst["parameters"]
-                    # !TODO generate samples here
-                    samples = None
-                #ENDFOR
-                # parse the pulse if one was found
-                if inst_type is not None:
-                    ch_name = qinst.get("ch")
-                    ch_idx = self.backend.ch_name_idx[ch_name]
-                    addr = stats[ch_idx]["addr"]
-                    if addr + duration > self.backend.dac_max_memory:
-                        raise Error("maximum memory exceeded on channel {} DAC"
-                                    "".format(ch_idx))
-                    #ENDIF
-                    inst = Instruction(ch_idx, duration, name, inst_type, t0,
-                                       addr=addr, constant=constant,
-                                       parameters=parameters, samples=samples)
-                    #ENDIF
-                    insts[ch_idx].append(inst)
-                    stats[ch_idx]["t"] = t0 + duration
-                    stats[ch_idx]["addr"] = stats[ch_idx]["addr"] + duration
-                    self.backend.logger.log(logging.DEBUG, "parsed {} ch: {}, "
-                          "t0: {}, d: {}, n: {}".format(inst_type, ch_idx, t0, duration, name))
-                    #ENDIF
-                else:
-                    raise(Exception("Unrecognized instruction: {}".format(qinst["name"])))        
+                # instruction unrecognized, raise exception
+                if inst_type is None:
+                    raise(Exception("Unrecognized instruction: {}".format(qinst.name)))        
                 #ENDIF
             #ENDIF
         #ENDFOR
@@ -254,7 +268,7 @@ class RFSoCExperiment(PulseExperiment):
         p = ASM_Program()
         # declare constants
         p_i = self.backend.misc_page[0]
-        r_i = self.backend.misc_register[0]
+        r_i = self.backend.misc_reg[0]
         # sync to begin
         p.synci(self.backend.tproc_initial_cycle_offset, "init delay")
         # loop `shots` number of times
@@ -292,11 +306,12 @@ class RFSoCExperiment(PulseExperiment):
                     p.regwi(p_ch, r_addr, inst.addr, "ch {} addr".format(ch_idx))
                     # determine mode code
                     # write gain for special case of a constant pulse to minimize memory impact
-                    # TODO: the np.isreal check will be deprecated in future firmware versions.
-                    # currently, the DDS can't have a complex value
-                    constant = inst.constant and np.isreal(inst.parameters["amp"])
+                    # TODO: `inst.parameters["amp"][1] == 0.` is checking that the complex part of
+                    # the amplitude is zero. this check will be deprecated in future
+                    # firmware versions; currently, however, the DDS can't have a complex value
+                    constant = inst.constant and inst.parameters["amp"][1] == 0.
                     if constant:
-                        gain_val = int(inst.parameters["amp"] * self.backend.tproc_max_gain)
+                        gain_val = int(inst.parameters["amp"][0] * self.backend.tproc_max_gain)
                         p.regwi(p_ch, r_gain, gain_val, "ch {} gain".format(ch_idx))
                         mode_code = self._mode_code(
                             self.backend.stdysel_zero, self.backend.mode_oneshot,
@@ -423,7 +438,8 @@ class RFSoCExperiment(PulseExperiment):
                     readout.set_out(sel="product")
                     avg_buf = self.backend.avg_bufs[ch_idx]
                     duration_dac = inst.duration
-                    duration_adc_dec = duration_dac // (ADC_TO_DAC * DECIMATION)
+                    duration_adc_dec = duration_dac // (self.backend.adc_to_dac
+                                                        * self.backend.decimation)
                     avg_buf.config(address=inst.addr, length=duration_adc_dec)
                     avg_buf.enable()
                 #ENDIF
@@ -438,7 +454,7 @@ class RFSoCExperiment(PulseExperiment):
         self.backend.soc.tproc.start()
         # get memory for each acquire statement
         # TODO assumes ["meas_return"] == "avg"
-        data = np.zeros(self.memory_count)
+        data = np.zeros(self.memory_count, dtype=np.complex128)
         for i, ch_idx in enumerate(self.insts.keys()):
             for inst in self.insts[ch_idx]:
                 if inst.inst_type == InstructionType.ACQUIRE:
@@ -450,28 +466,24 @@ class RFSoCExperiment(PulseExperiment):
                     )
                     data_ = i_data + 1j * q_data
                     # average over shots if necessary
-                    if self.config["meas_return"] == "avg":
+                    if self.config.meas_return == MeasReturnType.AVERAGE:
                         data_ = np.sum(data_) / data.shape[0]
                     #ENDIF
                     data[inst.memory] = data_
-                    # create result list if one does not exist
-                    if not inst.addr in results:
-                        results[inst.addr] = data
-                    #ENDIF
                 #ENDIF
             #ENDIF
         #ENDIF
-        
+
         # format result, see [0]
-        result = {
-            "shots": (self.shots - shots, self.shots),
-            "success": self.shots == self.shots_completed,
-            "data": {
-                "memory": data,
-            },
-            "meas_level": self.config["meas_level"],
-            "meas_return": self.config["meas_return"]
-        }
+        result = ExperimentResult(
+            shots=(self.shots - shots, self.shots),
+            success=self.shots == self.shots_completed,
+            data=ExperimentResultData(
+                memory=data,
+            ),
+            meas_level=self.config.meas_level,
+            meas_return=self.config.meas_return,
+        )
         
         return result
     #ENDDEF

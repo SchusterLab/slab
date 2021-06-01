@@ -1,6 +1,5 @@
 """
-models
+slab.instruments.qiskit.rfsoc
 """
 
-from .backend import SLabBackend
 from .rfsoc_backend import RFSoCBackend

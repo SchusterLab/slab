@@ -1,5 +1,5 @@
 """
-test2.py
+user.py
 """
 
 import h5py
@@ -8,8 +8,21 @@ import matplotlib as mpl
 mpl.use("Agg")
 import matplotlib.pyplot as plt
 from slab import generate_file_path
+from slab.instruments.qiskit import SLabProviderInterface
 from qiskit import pulse
 from qiskit.qobj.utils import MeasLevel, MeasReturnType
+
+DPI = 300
+
+# unit conversion factors -> all backend properties returned in SI (Hz, sec, etc)
+GHz = 1.0e9 #Hz
+MHz = 1.0e6 #Hz
+us = 1.0e-6 #s
+ns = 1.0e-9 #s
+
+def get_closest_multiple_of_16(num):
+    return int(num + 8 ) - (int(num + 8 ) % 16)
+#ENDDEF
 
 def rs(plot=False):
     provider = SLabProviderInterface()
@@ -48,7 +61,7 @@ def rs(plot=False):
         schedule_los.append({
             meas_chan: meas_freq,
         })
-    #ENDFOR    
+    #ENDFOR 
     job = backend.run(
         schedule, meas_level=MeasLevel.KERNELED,
         meas_return=MeasReturnType.AVERAGE, shots=num_shots,
@@ -96,5 +109,3 @@ def main():
 if __name__ == "__main__":
     main()
 #ENDIF
-
-    

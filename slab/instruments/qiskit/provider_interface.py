@@ -6,6 +6,8 @@ import requests
 
 from qiskit.providers import ProviderV1 as ProviderInterface
 
+from .backend_interface import SLabBackendInterface
+
 class SLabProviderInterface(ProviderInterface):
     """
     Fetch a backend interface through this class.
@@ -15,7 +17,7 @@ class SLabProviderInterface(ProviderInterface):
         qiskit/providers/ibmq/accountprovider.py#L43
     """
     backends_url_dict = {
-        "RFSoC2": "192.168.14.184:8555",
+        "RFSoC2": "http://192.168.14.184:8555",
     }
     
     def __init__(self, timeout=20):

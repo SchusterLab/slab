@@ -24,9 +24,12 @@ instruments/instruments.cfg
 *.dat
 *.png
 *.pdf
+*.bit
+*.hwh
 
 # local
 out
 _test
 *.yaml
 *.log
+*.json
