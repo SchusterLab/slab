@@ -2,6 +2,8 @@
 provider_interface.py
 """
 
+import requests
+
 from qiskit.providers import ProviderV1 as ProviderInterface
 
 class SLabProviderInterface(ProviderInterface):
@@ -12,8 +14,8 @@ class SLabProviderInterface(ProviderInterface):
     [0] https://github.com/Qiskit/qiskit-ibmq-provider/blob/master/
         qiskit/providers/ibmq/accountprovider.py#L43
     """
-    backends_ip_dict = {
-        "RFSoC2": "192.168.14.184",
+    backends_url_dict = {
+        "RFSoC2": "192.168.14.184:8555",
     }
     
     def __init__(self, timeout=20):
@@ -23,19 +25,31 @@ class SLabProviderInterface(ProviderInterface):
                          contact with a potential backend
         """
         super().__init__()
-        self._backends = self._backends(timeout)
+        self._backends = self._discover_backends(timeout)
     #ENDDEF
 
-    def _backends(self, timeout):
+    def _discover_backends(self, timeout):
         """
         Discover remote backends.
         """
         backends = {}
-        for key in self.backends_ip_dict.keys():
-            ip = self.backends_ip_dict[key]
-            
-            backend = SLabBackendInterface(configuration, defaults, self, ip)
-            backends[backend.name()] = backend
+        for key in self.backends_url_dict.keys():
+            url = self.backends_url_dict[key]
+            # attempt HEAD request to backend
+            res = requests.head(url)
+            try:
+                res.raise_for_status()
+                success = True
+            except Exception as e:
+                print("Could not establish contact with backend {} at {}.\n{}"
+                      "".format(key, url, e))
+                success = False
+            #ENDTRY
+            # if HEAD succeeded, expose the backend
+            if success:
+                backend = SLabBackendInterface(self, url)
+                backends[backend.name()] = backend
+            #ENDIF
         #ENDFOR
         return backends
     #ENDDEF
