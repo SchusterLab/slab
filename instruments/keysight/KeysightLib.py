@@ -1278,6 +1278,14 @@ class KeysightChannelOut(KeysightChannel):
                     self._channel_number, amplitude)
             if err < 0:
                 raise KeysightError("Error setting amplitude", err)
+
+    def setFreq(self, freq):
+        '''Sets the frequency of the channel if in CW mode.'''
+        if not self._muted:
+            err = self._module.channelFrequency(
+                    self._channel_number, frequency)
+            if err < 0:
+                raise KeysightError("Error setting frequency", err)
                 
     def mute(self):
         '''Mutes the channel by setting amplitude to 0 and storing

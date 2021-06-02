@@ -29,7 +29,7 @@ class KeysightSingleQubit:
     Module (slot) 5 is an AWG, used for fast flux pulses
     Module 6 is an AWG, used for fast flux pulses
     Module 7 is an AWG. channel 1 goes to the I input to the mixer, channel 2 goes to the Q input
-    Module 8 is used as a marker for the LO (ie send signal to switch).
+    Module 4 is used as a marker for the LO (ie send signal to switch).
     Module 9 is for I, Q, and marker for stabilizer
         ch4 of this trig for the digitizer.
 
