@@ -48,9 +48,6 @@ T_max = int(5e5)
 T_min = 250
 t_vec = np.arange(T_min, T_max + dt/2, dt)
 
-cav_len = 1000
-cav_amp = 0.20
-
 avgs = 1000
 reset_time = int(3.5e6)
 simulation = 0 #1 to simulate the pulses
@@ -67,8 +64,9 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_j
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
+    I = declare(fixed)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -93,89 +91,126 @@ def active_reset(biased_th, to_excited=False):
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
 
-with program() as storage_t1:
+def snap_seq(fock_state=0):
 
-    ##############################
-    # declare real-time variables:
-    ##############################
+    if fock_state==1:
+        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.143))
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58))
 
-    n = declare(int)        # Averaging
-    t = declare(int)        # Wait time
-    I = declare(fixed)
-    Q = declare(fixed)
-    res = declare(bool)
-    I = declare(fixed)
+    elif fock_state==2:
+        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.497))
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(1.133))
+        update_frequency("qubit", ge_IF + two_chi)
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.432))
+        update_frequency("qubit", ge_IF)
 
-    res_st = declare_stream()
-    I_st = declare_stream()
+    elif fock_state==3:
+        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.531))
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(0.559))
+        update_frequency("qubit", ge_IF + two_chi)
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.946))
+        update_frequency("qubit", ge_IF + 2*two_chi)
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(0.358))
+        update_frequency("qubit", ge_IF)
 
-    ###############
-    # the sequence:
-    ###############
+def fock_prep_t1(f_target=1):
 
-    with for_(n, 0, n < avgs, n + 1):
+    with program() as exp:
 
-        with for_(t, T_min, t < T_max + dt/2, t + dt):
+        ##############################
+        # declare real-time variables:
+        ##############################
 
-            update_frequency("qubit", ge_IF)
-            wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
-            align('storage', 'rr', 'jpa_pump', 'qubit')
-            active_reset(biased_th_g_jpa)
-            align('storage', 'rr', 'jpa_pump', 'qubit')
-            ########################
-            # play("soct", "storage", duration=pulse_len)
-            # play("qoct", "qubit", duration=pulse_len)
-            play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.143))
-            align("storage", "qubit")
-            play("res_pi"*amp(2.0), "qubit")
-            align("storage", "qubit")
-            play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58))
-            ########################
-            align("storage", "qubit")
-            update_frequency("qubit", ge_IF+two_chi)
-            wait(t, "qubit")
-            play("res_pi", "qubit")
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
+        n = declare(int)        # Averaging
+        t = declare(int)        # Wait time
+        I = declare(fixed)
+        Q = declare(fixed)
+        res = declare(bool)
+        I = declare(fixed)
 
-            save(res, res_st)
-            save(I, I_st)
+        res_st = declare_stream()
+        I_st = declare_stream()
 
-    with stream_processing():
-        res_st.boolean_to_int().buffer(len(t_vec)).average().save('res')
-        I_st.buffer(len(t_vec)).average().save('I')
+        ###############
+        # the sequence:
+        ###############
 
-qmm = QuantumMachinesManager()
-qm = qmm.open_qm(config)
+        with for_(n, 0, n < avgs, n + 1):
 
-if simulation:
-    job = qm.simulate(storage_t1, SimulationConfig(15000))
-    samples = job.get_simulated_samples()
-    samples.con1.plot()
+            with for_(t, T_min, t < T_max + dt/2, t + dt):
 
-else:
-    job = qm.execute(storage_t1, duration_limit=0, data_limit=0)
-    print ("Execution done")
+                update_frequency("qubit", ge_IF)
+                wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
+                align('storage', 'rr', 'jpa_pump', 'qubit')
+                active_reset(biased_th_g_jpa)
+                align('storage', 'rr', 'jpa_pump', 'qubit')
+                ########################
+                snap_seq(fock_state=f_target)
+                ########################
+                align("storage", "qubit")
+                update_frequency("qubit", ge_IF+f_target*two_chi)
+                wait(t, "qubit")
+                play("res_pi", "qubit")
+                align('qubit', 'rr', 'jpa_pump')
+                play('pump_square', 'jpa_pump')
+                discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
-    result_handles = job.result_handles
+                save(res, res_st)
+                save(I, I_st)
 
-    result_handles.wait_for_all_values()
-    res = result_handles.get('res').fetch_all()
-    I = result_handles.get('I').fetch_all()
-    print ("Data collection done")
+        with stream_processing():
+            res_st.boolean_to_int().buffer(len(t_vec)).average().save('res')
+            I_st.buffer(len(t_vec)).average().save('I')
 
-    job.halt()
+    qmm = QuantumMachinesManager()
+    qm = qmm.open_qm(config)
 
-    plt.plot(4*t_vec/1e3, res, '.-')
+    if simulation:
+        job = qm.simulate(exp, SimulationConfig(15000))
+        samples = job.get_simulated_samples()
+        samples.con1.plot()
 
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'storage_t1', suffix='.h5'))
-    print(seq_data_file)
+    else:
+        job = qm.execute(exp, duration_limit=0, data_limit=0)
+        print ("Execution done")
 
-    with File(seq_data_file, 'w') as f:
-        f.create_dataset("I", data=I)
-        f.create_dataset("res", data=res)
-        f.create_dataset("time", data=4*t_vec)
+        result_handles = job.result_handles
+        result_handles.wait_for_all_values()
+        res = result_handles.get('res').fetch_all()
+        I = result_handles.get('I').fetch_all()
+
+    return res, I
+
+res, I = fock_prep_t1(f_target=3)
+plt.figure()
+plt.plot(4*t_vec/1e3, res, '.-')
+plt.show()
+
+path = os.getcwd()
+data_path = os.path.join(path, "data/")
+seq_data_file = os.path.join(data_path,
+                             get_next_filename(data_path, 'storage_t1', suffix='.h5'))
+print(seq_data_file)
+
+with File(seq_data_file, 'w') as f:
+    f.create_dataset("I", data=I)
+    f.create_dataset("res", data=res)
+    f.create_dataset("time", data=4*t_vec)

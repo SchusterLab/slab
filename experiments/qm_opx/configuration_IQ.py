@@ -22,7 +22,7 @@ long_redout_len = 2000
 readout_len = 3000
 
 qubit_LO = 4.6470*1e9
-qubit_freq = 4.746947661357474*1e9
+qubit_freq = 4.7469477841520105*1e9
 ge_IF = int(qubit_freq - qubit_LO)
 
 qubit_ef_freq = 4.607396975213376 * 1e9
@@ -80,7 +80,7 @@ with File(opt_readout,'r') as a:
 opt_len = len(opt_amp)
 pump_len = opt_len
 
-oct_len = 1000
+oct_len = 2000
 
 config = {
 

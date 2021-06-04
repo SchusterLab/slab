@@ -1,4 +1,4 @@
-from configuration_IQ import config, ge_IF, biased_th_g_jpa, two_chi
+from configuration_IQ import config, ge_IF, biased_th_g_jpa, two_chi, disc_file
 from qm.qua import *
 from qm import SimulationConfig
 from qm import SimulationConfig, LoopbackInterface
@@ -22,7 +22,7 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
@@ -64,7 +64,7 @@ f_vec = np.arange(f_min, f_max + df/2, df)
 filename = 'oct_pulses/g1.h5'
 
 # filename = "S:\\Ankur\\Stimulated Emission\\pulses\\picollo\\2021-03-23\\00001_g0_to_g1_2.0us_qamp_7.5_camp_0.2_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5"
-# filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g2_2.0us_qamp_7.5_camp_0.8_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5'
+filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g3_2.0us_qamp_75_camp_8_gamp_0.02_dwdt_1.0_dw2dt2_0.1.h5'
 
 with File(filename,'r') as a:
     Iq = np.array(a['uks'][-1][0], dtype=float)
@@ -200,6 +200,7 @@ else:
     #
     # plt.figure()
     # plt.plot(f_vec, res, '.-')
+    #
     # job.halt()
     #
     # path = os.getcwd()

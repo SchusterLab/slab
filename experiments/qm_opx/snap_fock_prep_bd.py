@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, two_chi
+from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, two_chi, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -44,7 +44,6 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     """Returns time in units of 4ns for FPGA"""
     return abs(pulse_length)//4
 
-t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
 
 # Fock0 + Fock1: D(-1.31268847) S(0, pi) * D(1.88543008) |0>
 # Fock1: D(-0.580) * S(0,pi) * D(1.143) * |0>
@@ -52,9 +51,6 @@ t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
 # Fock3: D(0.344) * S(2,pi) * D(-1.072) * S(1,pi) * D(-1.125) * S(0,pi) * D(1.878) * |0>
 # Fock4: D(-0.284) * S(3,pi) * D(0.775) * S(2,pi) * D(-0.632) * S(1,pi) * D(-0.831) * S(0,pi) * D(1.555) * |0>
 
-avgs = 150
-reset_time = int(3.5e6)
-simulation = 0
 
 simulation_config = SimulationConfig(
     duration=60000,
@@ -64,17 +60,22 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
+
+avgs = 500
+reset_time = int(3.5e6)
+simulation = 0
+t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
+    I  = declare(fixed)
 
     wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
     wait(1000//4, 'rr')
-    # save(I, "check")
 
     if to_excited == False:
         with while_(I < biased_th):
@@ -95,167 +96,16 @@ def active_reset(biased_th, to_excited=False):
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
 
-with program() as snap_0:
+def snap_seq(fock_state=0):
 
-    ##############################
-    # declare real-time variables:
-    ##############################
-
-    n = declare(int)        # Averaging
-    f = declare(int)        # Frequencies
-    num = declare(int)
-    bit1 = declare(bool)
-    bit2 = declare(bool)
-    I = declare(fixed)
-
-    num_st = declare_stream()
-    ###############
-    # the sequence:
-    ###############
-    with for_(n, 0, n < avgs, n + 1):
-
-        wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
-        align('storage', 'rr', 'jpa_pump', 'qubit')
-        active_reset(biased_th_g_jpa)
-        align('storage', 'rr', 'jpa_pump', 'qubit')
-        ##########################
-        play("CW"*amp(0.0), "storage", duration=alpha_awg_cal(1.143))
-        align("storage", "qubit")
-        play("res_pi"*amp(2.0), "qubit")
-        align("storage", "qubit")
-        play("CW"*amp(-0.0), "storage", duration=alpha_awg_cal(-0.58)) #249
-        ##########################
-        align('storage', 'qubit')
-
-        # wait(int(25e3), 'qubit')
-
-        play("pi2", "qubit") # unconditional
-        wait(t_chi//4, "qubit")
-        frame_rotation(np.pi, 'qubit') #
-        play("pi2", "qubit")
-        align('qubit', 'rr', 'jpa_pump')
-        play('pump_square', 'jpa_pump')
-        discriminator.measure_state("clear", "out1", "out2", bit1, I=I)
-
-        reset_frame("qubit")
-        wait(1000//4, "rr")
-        align("qubit", "rr", 'jpa_pump')
-
-        play("pi2", "qubit") # unconditional
-        wait(t_chi//4//2-3, "qubit") # subtracted 3 to make the simulated waveforms accurate
-        with if_(bit1==0):
-            frame_rotation(np.pi, 'qubit')
-            play("pi2", "qubit")
-        with else_():
-            frame_rotation(3/2*np.pi, 'qubit')
-            play("pi2", "qubit")
-        align('qubit', 'rr', 'jpa_pump')
-        play('pump_square', 'jpa_pump')
-        discriminator.measure_state("clear", "out1", "out2", bit2, I=I)
-
-        assign(num, Cast.to_int(bit1) + 2*Cast.to_int(bit2))
-        save(num, num_st)
-
-    with stream_processing():
-
-        num_st.save_all('num')
-
-with program() as snap_1:
-
-    ##############################
-    # declare real-time variables:
-    ##############################
-
-    n = declare(int)        # Averaging
-    num = declare(int)
-    bit1 = declare(bool)
-    bit2 = declare(bool)
-    I = declare(fixed)
-
-    num_st = declare_stream()
-    ###############
-    # the sequence:
-    ###############
-    with for_(n, 0, n < avgs, n + 1):
-
-        wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
-        align('storage', 'rr', 'jpa_pump', 'qubit')
-        active_reset(biased_th_g_jpa)
-        align('storage', 'rr', 'jpa_pump', 'qubit')
-        ##########################
+    if fock_state==1:
         play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.143))
         align("storage", "qubit")
         play("res_pi"*amp(2.0), "qubit")
         align("storage", "qubit")
-        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58)) #249
-        ##########################
-        align('storage', 'qubit')
+        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58))
 
-        # wait(int(25e3), 'qubit')
-        # align('storage', 'rr', 'jpa_pump')
-        # play('pump_square', 'jpa_pump')
-        # discriminator.measure_state("clear", "out1", "out2", res, I=I)
-
-        # with if_(~res):
-        # align('qubit', 'rr', 'jpa_pump')
-        # wait(1000//4, 'qubit')
-
-        play("pi2", "qubit") # unconditional
-        wait(t_chi//4, "qubit")
-        frame_rotation(np.pi, 'qubit') #
-        play("pi2", "qubit")
-        align('qubit', 'rr', 'jpa_pump')
-        play('pump_square', 'jpa_pump')
-        discriminator.measure_state("clear", "out1", "out2", bit1, I=I)
-
-        reset_frame("qubit")
-        wait(1000//4, "rr")
-        align("qubit", "rr", 'jpa_pump')
-
-        play("pi2", "qubit") # unconditional
-        wait(t_chi//4//2-3, "qubit") # subtracted 3 to make the simulated waveforms accurate
-        with if_(bit1==0):
-            frame_rotation(np.pi, 'qubit')
-            play("pi2", "qubit")
-        with else_():
-            frame_rotation(3/2*np.pi, 'qubit')
-            play("pi2", "qubit")
-        align('qubit', 'rr', 'jpa_pump')
-        play('pump_square', 'jpa_pump')
-        discriminator.measure_state("clear", "out1", "out2", bit2, I=I)
-
-        assign(num, Cast.to_int(bit1) + 2*Cast.to_int(bit2))
-        save(num, num_st)
-
-    with stream_processing():
-
-        num_st.save_all('num')
-
-with program() as snap_2:
-
-    ##############################
-    # declare real-time variables:
-    ##############################
-
-    n = declare(int)        # Averaging
-    num = declare(int)
-    bit1 = declare(bool)
-    bit2 = declare(bool)
-    I = declare(fixed)
-
-    num_st = declare_stream()
-
-    ###############
-    # the sequence:
-    ###############
-    with for_(n, 0, n < avgs, n + 1):
-
-        update_frequency("qubit", ge_IF)
-        wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
-        align('storage', 'rr', 'jpa_pump', 'qubit')
-        active_reset(biased_th_g_jpa)
-        align('storage', 'rr', 'jpa_pump', 'qubit')
-        ######################
+    elif fock_state==2:
         play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.497))
         align("storage", "qubit")
         play("res_pi"*amp(2.0), "qubit")
@@ -266,68 +116,9 @@ with program() as snap_2:
         play("res_pi"*amp(2.0), "qubit")
         align("storage", "qubit")
         play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.432))
-        #######################
-        update_frequency('qubit', ge_IF)
-        align('storage', 'qubit')
-
-        # wait(int(25e3), 'qubit')
-
-        play("pi2", "qubit") # unconditional
-        wait(t_chi//4, "qubit")
-        frame_rotation(np.pi, 'qubit') #
-        play("pi2", "qubit")
-        align('qubit', 'rr', 'jpa_pump')
-        play('pump_square', 'jpa_pump')
-        discriminator.measure_state("clear", "out1", "out2", bit1, I=I)
-
-        reset_frame("qubit")
-        wait(1000//4, "rr")
-        align("qubit", "rr", 'jpa_pump')
-
-        play("pi2", "qubit") # unconditional
-        wait(t_chi//4//2-3, "qubit") # subtracted 3 to make the simulated waveforms accurate
-        with if_(bit1==0):
-            frame_rotation(np.pi, 'qubit')
-            play("pi2", "qubit")
-        with else_():
-            frame_rotation(3/2*np.pi, 'qubit')
-            play("pi2", "qubit")
-        align('qubit', 'rr', 'jpa_pump')
-        play('pump_square', 'jpa_pump')
-        discriminator.measure_state("clear", "out1", "out2", bit2, I=I)
-
-        assign(num, Cast.to_int(bit1) + 2*Cast.to_int(bit2))
-        save(num, num_st)
-
-    with stream_processing():
-
-        num_st.save_all('num')
-
-with program() as snap_3:
-
-    ##############################
-    # declare real-time variables:
-    ##############################
-
-    n = declare(int)        # Averaging
-    num = declare(int)
-    bit1 = declare(bool)
-    bit2 = declare(bool)
-    I = declare(fixed)
-
-    num_st = declare_stream()
-
-    ###############
-    # the sequence:
-    ###############
-    with for_(n, 0, n < avgs, n + 1):
-
         update_frequency("qubit", ge_IF)
-        wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
-        align('storage', 'rr', 'jpa_pump', 'qubit')
-        active_reset(biased_th_g_jpa)
-        align('storage', 'rr', 'jpa_pump', 'qubit')
-        #######################
+
+    elif fock_state==3:
         play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.531))
         align("storage", "qubit")
         play("res_pi"*amp(2.0), "qubit")
@@ -343,76 +134,104 @@ with program() as snap_3:
         play("res_pi"*amp(2.0), "qubit")
         align("storage", "qubit")
         play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(0.358))
-        #######################
-        update_frequency('qubit', ge_IF)
-        align('storage', 'qubit')
+        update_frequency("qubit", ge_IF)
 
-        # wait(int(25e3), 'qubit')
+def fock_prep(f_target=1):
 
-        play("pi2", "qubit") # unconditional
-        wait(t_chi//4, "qubit")
-        frame_rotation(np.pi, 'qubit') #
-        play("pi2", "qubit")
-        align('qubit', 'rr', 'jpa_pump')
-        play('pump_square', 'jpa_pump')
-        discriminator.measure_state("clear", "out1", "out2", bit1, I=I)
+    with program() as exp:
 
-        reset_frame("qubit")
-        wait(1000//4, "rr")
-        align("qubit", "rr", 'jpa_pump')
+        ##############################
+        # declare real-time variables:
+        ##############################
 
-        play("pi2", "qubit") # unconditional
-        wait(t_chi//4//2-3, "qubit") # subtracted 3 to make the simulated waveforms accurate
-        with if_(bit1==0):
-            frame_rotation(np.pi, 'qubit')
+        n = declare(int)        # Averaging
+        num = declare(int)
+        bit1 = declare(bool)
+        bit2 = declare(bool)
+        I = declare(fixed)
+
+        num_st = declare_stream()
+        ###############
+        # the sequence:
+        ###############
+        with for_(n, 0, n < avgs, n + 1):
+
+            wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
+            align('storage', 'rr', 'jpa_pump', 'qubit')
+            active_reset(biased_th_g_jpa)
+            align('storage', 'rr', 'jpa_pump', 'qubit')
+            ##########################
+            snap_seq(fock_state=f_target)
+            ##########################
+            align('storage', 'qubit')
+
+            # wait(int(25e3), 'qubit')
+            """BD starts here"""
+
+            play("pi2", "qubit") # unconditional
+            wait(t_chi//4, "qubit")
+            frame_rotation(np.pi, 'qubit') #
             play("pi2", "qubit")
-        with else_():
-            frame_rotation(3/2*np.pi, 'qubit')
-            play("pi2", "qubit")
-        align('qubit', 'rr', 'jpa_pump')
-        play('pump_square', 'jpa_pump')
-        discriminator.measure_state("clear", "out1", "out2", bit2, I=I)
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", bit1, I=I)
 
-        assign(num, Cast.to_int(bit1) + 2*Cast.to_int(bit2))
-        save(num, num_st)
+            reset_frame("qubit")
+            wait(1000//4, "rr")
+            align("qubit", "rr", 'jpa_pump')
 
-    with stream_processing():
+            play("pi2", "qubit") # unconditional
+            wait(t_chi//4//2-3, "qubit") # subtracted 3 to make the simulated waveforms accurate
+            with if_(bit1==0):
+                frame_rotation(np.pi, 'qubit')
+                play("pi2", "qubit")
+            with else_():
+                frame_rotation(3/2*np.pi, 'qubit')
+                play("pi2", "qubit")
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", bit2, I=I)
 
-        num_st.save_all('num')
+            assign(num, Cast.to_int(bit1) + 2*Cast.to_int(bit2))
+            save(num, num_st)
 
-qm = qmm.open_qm(config)
-if simulation:
-    """To simulate the pulse sequence"""
-    job = qm.simulate(snap_1, simulation_config)
-    samples = job.get_simulated_samples()
-    samples.con1.plot()
-    result_handles = job.result_handles
+        with stream_processing():
 
-else:
-    """To run the actual experiment"""
-    print("Experiment execution Done")
-    job = qm.execute(snap_1, duration_limit=0, data_limit=0)
+            num_st.save_all('num')
 
-    result_handles = job.result_handles
+    qm = qmm.open_qm(config)
+    if simulation:
+        """To simulate the pulse sequence"""
+        job = qm.simulate(exp, simulation_config)
+        samples = job.get_simulated_samples()
+        samples.con1.plot()
+        result_handles = job.result_handles
 
-    result_handles.wait_for_all_values()
-    num = result_handles.get('num').fetch_all()['value']
+    else:
+        """To run the actual experiment"""
+        print("Experiment execution Done")
+        job = qm.execute(exp, duration_limit=0, data_limit=0)
 
-    job.halt()
+        result_handles = job.result_handles
 
-    p_cav = [np.sum(num==0)*100/avgs, np.sum(num==1)*100/avgs, np.sum(num==2)*100/avgs, np.sum(num==3)*100/avgs]
+        result_handles.wait_for_all_values()
+        num = result_handles.get('num').fetch_all()['value']
 
-    print("n=0 => {}, n=1 => {}, n=2 => {}, n=3 => {}".format(p_cav[0], p_cav[1], p_cav[2], p_cav[3]))
+    return num
 
-    # 
-    # path = os.getcwd()
-    # data_path = os.path.join(path, "data/")
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'snap_fock_prep', suffix='.h5'))
-    # print(seq_data_file)
-    # 
-    # with File(seq_data_file, 'w') as f:
-    #     f.create_dataset("I", data=I)
-    #     f.create_dataset("Q", data=res)
-    #     f.create_dataset("freq", data=f_vec)
-    #     f.create_dataset("two_chi", data=two_chi)
+num = fock_prep(f_target=2)
+
+p_cav = [np.sum(num==0)*100/avgs, np.sum(num==1)*100/avgs, np.sum(num==2)*100/avgs, np.sum(num==3)*100/avgs]
+
+print("n=0 => {}, n=1 => {}, n=2 => {}, n=3 => {}".format(p_cav[0], p_cav[1], p_cav[2], p_cav[3]))
+
+path = os.getcwd()
+data_path = os.path.join(path, "data/")
+seq_data_file = os.path.join(data_path,
+                             get_next_filename(data_path, 'snap_fock_prep', suffix='.h5'))
+print(seq_data_file)
+
+with File(seq_data_file, 'w') as f:
+    f.create_dataset("num", data=num)
+    f.create_dataset("freq", data=f_vec)
+    f.create_dataset("two_chi", data=two_chi)

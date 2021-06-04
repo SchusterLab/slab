@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, two_chi
+from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, two_chi, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -66,12 +66,12 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 ##################
 filename = 'oct_pulses/g1.h5'
 
 # filename = "S:\\Ankur\\Stimulated Emission\\pulses\\picollo\\2021-03-23\\00001_g0_to_g1_2.0us_qamp_7.5_camp_0.2_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5"
-# filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g1_2.0us_qamp_24.0_camp_0.25_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5'
+# filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g3_2.0us_qamp_18.75_camp_2.0_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5'
 
 with File(filename,'r') as a:
     Iq = np.array(a['uks'][-1][0], dtype=float)
@@ -144,7 +144,7 @@ avgs = 15000
 reset_time = int(3.5e6)
 simulation = 0
 
-num_pi_pulses_m = 8 #need even number to bring the qubit back to 'g' before coherent drive
+num_pi_pulses_m = 10 #need even number to bring the qubit back to 'g' before coherent drive
 num_pi_pulses_n = 0
 
 def active_reset(biased_th, to_excited=False):
@@ -175,6 +175,46 @@ def active_reset(biased_th, to_excited=False):
             play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
+
+def snap_seq(fock_state=0):
+
+    if fock_state==1:
+        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.143))
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58))
+
+    elif fock_state==2:
+        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.497))
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(1.133))
+        update_frequency("qubit", ge_IF + two_chi)
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.432))
+        update_frequency("qubit", ge_IF)
+
+    elif fock_state==3:
+        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.531))
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(0.559))
+        update_frequency("qubit", ge_IF + two_chi)
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.946))
+        update_frequency("qubit", ge_IF + 2*two_chi)
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(0.358))
+        update_frequency("qubit", ge_IF)
 
 with program() as binary_decomposition:
 
@@ -210,13 +250,12 @@ with program() as binary_decomposition:
         ########################
         # play("soct", "storage", duration=pulse_len)
         # play("qoct", "qubit", duration=pulse_len)
-        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.143))
-        align("storage", "qubit")
-        play("res_pi"*amp(2.0), "qubit")
-        align("storage", "qubit")
-        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58)) #249
+        snap_seq(fock_state=1)
         ########################
         align('storage', 'qubit')
+
+        """First Bd starts here"""
+
         play("pi2", "qubit") # unconditional
         wait(t_chi//4, "qubit")
         frame_rotation(np.pi, 'qubit') #

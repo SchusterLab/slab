@@ -15,7 +15,7 @@ f_max = 5e6
 df = 50e3
 f_vec = rr_freq - np.arange(f_min, f_max + df/2, df)
 
-avgs = 2000
+avgs = 500
 reset_time = 50000
 simulation = 0
 
@@ -42,11 +42,11 @@ with program() as resonator_spectroscopy:
         with for_(f, f_min + rr_IF, f <= f_max + rr_IF, f + df):
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
-            measure("long_readout", "rr", None,
-                    demod.full("long_integW1", I1, 'out1'),
-                    demod.full("long_integW2", Q1, 'out1'),
-                    demod.full("long_integW1", I2, 'out2'),
-                    demod.full("long_integW2", Q2, 'out2'))
+            measure("clear", "rr", None,
+                    demod.full("clear_integW1", I1, 'out1'),
+                    demod.full("clear_integW2", Q1, 'out1'),
+                    demod.full("clear_integW1", I2, 'out2'),
+                    demod.full("clear_integW2", Q2, 'out2'))
 
             assign(I, I1-Q2)
             assign(Q, I2+Q1)
@@ -58,11 +58,11 @@ with program() as resonator_spectroscopy:
 
             align('rr', 'jpa_pump')
             play('pump_square', 'jpa_pump')
-            measure("long_readout", "rr", None,
-                    demod.full("long_integW1", I1, 'out1'),
-                    demod.full("long_integW2", Q1, 'out1'),
-                    demod.full("long_integW1", I2, 'out2'),
-                    demod.full("long_integW2", Q2, 'out2'))
+            measure("clear", "rr", None,
+                    demod.full("clear_integW1", I1, 'out1'),
+                    demod.full("clear_integW2", Q1, 'out1'),
+                    demod.full("clear_integW1", I2, 'out2'),
+                    demod.full("clear_integW2", Q2, 'out2'))
 
             assign(I, I1-Q2)
             assign(Q, I2+Q1)
@@ -101,9 +101,12 @@ else:
 
     x = f_vec
 
-    plt.figure(dpi=300)
+    plt.figure()
     pow_1 = 10*np.log10(I1**2 + Q1**2)
     pow_2 = 10*np.log10(I2**2 + Q2**2)
+
+    print(np.max(pow_2)-np.max(pow_1))
+
     plt.plot(x/1e9, pow_1, 'b.', label='JPA Off')
     plt.plot(x/1e9, pow_2, 'r.', label='JPA On')
     plt.xlabel(r' Frequency (GHz)')
