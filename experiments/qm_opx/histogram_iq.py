@@ -9,16 +9,10 @@ from slab import*
 import os
 from slab.dataanalysis import get_next_filename
 from slab import*
-from slab.instruments import instrumentmanager
 
 ##################
 # histogram_prog:
 ##################
-# im = InstrumentManager()
-# LO_r = im['RF8']
-# LO_r.set_frequency(rr_LO)
-# LO_r.set_ext_pulse(mod=False)
-# LO_r.set_power(18)
 
 reset_time = 500000
 avgs = 5000

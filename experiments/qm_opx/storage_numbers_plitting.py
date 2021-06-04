@@ -1,4 +1,9 @@
-from configuration_IQ import config, ge_IF, biased_th_g_jpa
+"""
+Created on May 2021
+
+@author: Ankur Agrawal, Schuster Lab
+"""
+from configuration_IQ import config, ge_IF, biased_th_g_jpa, two_chi, disc_file
 from qm.qua import *
 from qm import SimulationConfig
 from qm import SimulationConfig, LoopbackInterface
@@ -13,7 +18,6 @@ from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
 
-import time
 simulation_config = SimulationConfig(
     duration=60000,
     simulation_interface=LoopbackInterface(
@@ -22,12 +26,12 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -57,23 +61,17 @@ def active_reset(biased_th, to_excited=False):
 # qubit_spec_prog:
 ###############
 
-f_min = -5e6
-f_max = 0.5e6
-df = 100e3
+f_min = -14.0e6
+f_max = 1.0e6
+df = 60e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
-# n_max = 10
-# df = -1.118361e6
-# f_vec = df*np.arange(n_max)
-# f_min = np.min(f_vec)
-# f_max = np.max(f_vec)
-
-avgs = 1000
+avgs = 2000
 reset_time = int(3.5e6)
 simulation = 0
 
 cav_len = 100
-cav_amp = 0.75
+cav_amp = 0.4
 
 with program() as storage_spec:
 
@@ -140,11 +138,14 @@ else:
     #     # plt.ylabel(r'$\Delta \nu$ (kHz)')
     #     plt.pause(5)
     #     plt.clf()
-
-    # result_handles.wait_for_all_values()
-    # res = result_handles.get('res').fetch_all()
-    # I = result_handles.get('I').fetch_all()
     #
+    # result_handles.wait_for_all_values()
+    res = result_handles.get('res').fetch_all()
+    I = result_handles.get('I').fetch_all()
+
+    plt.figure()
+    plt.plot(f_vec, res, '.-')
+
     # job.halt()
     #
     # path = os.getcwd()
@@ -160,3 +161,4 @@ else:
     #     f.create_dataset("freq", data=f_vec)
     #     f.create_dataset("amp", data=cav_amp)
     #     f.create_dataset("time", data=cav_len*4)
+    #     f.create_dataset("two_chi", data=two_chi)

@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_LO, rr_LO, ef_IF
+from configuration_IQ import config, qubit_LO, ef_IF, biased_th_g_jpa
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -14,9 +14,9 @@ from slab.dataanalysis import get_next_filename
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -20e6
-f_max = 20e6
-df = 200e3
+f_min = -5e6
+f_max = 5e6
+df = 50e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 f_vec = f_vec + qubit_LO + ef_IF
 
@@ -31,9 +31,8 @@ simulation_config = SimulationConfig(
     )
 )
 
-biased_th_g = 0.0014
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
@@ -85,12 +84,12 @@ with program() as qubit_ef_spec:
         with for_(f, ef_IF + f_min, f < ef_IF + f_max + df/2, f + df):
 
             update_frequency("qubit_ef", f)
-            # active_reset(biased_th_g)
+            # active_reset(biased_th_g_jpa)
             # align("qubit", 'rr')
             wait(reset_time//4, 'qubit')
             play("pi", "qubit")
             align("qubit", "qubit_ef")
-            play("saturation"*amp(0.1), "qubit_ef")
+            play("saturation"*amp(0.2), "qubit_ef")
             align("qubit_ef", "rr")
             # measure("long_readout", "rr", None,
             #         demod.full("long_integW1", I1, 'out1'),
@@ -136,7 +135,8 @@ else:
     print("Data collection done!")
 
     job.halt()
-    plt.plot(I)
+    plt.plot(Q, '.-')
+    plt.plot(I, '.-')
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,

@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_LO, rr_LO
+from configuration_IQ import config, qubit_LO, biased_th_g_jpa
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -29,9 +29,8 @@ simulation_config = SimulationConfig(
     )
 )
 
-biased_th_g = 0.0013
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
@@ -91,12 +90,6 @@ with program() as ef_rabi_IQ:
             align('qubit', 'qubit_ef')
             play('pi', 'qubit')
             align("qubit", "rr")
-            # align("qubit_ef", "rr")
-            # measure("long_readout", "rr", None,
-            #         demod.full("long_integW1", I1, 'out1'),
-            #         demod.full("long_integW2", Q1, 'out1'),
-            #         demod.full("long_integW1", I2, 'out2'),
-            #         demod.full("long_integW2", Q2, 'out2'))
             measure("clear", "rr", None,
                     demod.full("clear_integW1", I1, 'out1'),
                     demod.full("clear_integW2", Q1, 'out1'),
@@ -140,6 +133,10 @@ else:
     print(f"Time taken: {stop_time-start_time}")
 
     job.halt()
+
+    plt.plot(amps, I, '.-')
+    plt.plot(amps, Q, '.-')
+
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

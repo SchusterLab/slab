@@ -6,9 +6,8 @@ from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from tqdm import tqdm
 from h5py import File
-import os
+import os, scipy
 from slab.dataanalysis import get_next_filename
 
 """Wigner tomography of the cavity state with binary decomposition"""
@@ -21,21 +20,47 @@ avgs = 500
 reset_time = int(5e6)
 simulation = 0
 
-x_min = -1.8/10
-x_max = 1.8/10
-dx = 0.4/10
-x_vec = np.arange(x_min, x_max+dx/2, dx)
+def wigner_alpha_awg_amp(wigner_pt_file = None, cavity_cal_file = None, cav_len=2000):
+    cal_path = 'C:\\_Lib\\python\\slab\\experiments\\qm_opx'
+    wigner_pt_file = cal_path + '\\wigner_function_points\\'+ wigner_pt_file
 
-y_min = -1.8/10
-y_max = 1.8/10
-dy = 0.4/10
-y_vec = np.arange(y_min, y_max+dy/2, dy)
+    with File(wigner_pt_file, 'r') as f:
+        xs = np.array(f['alphax'])
+        ys = np.array(f['alphay'])
+
+    tom_amp = np.sqrt(xs ** 2 + ys ** 2)
+    tom_phase = np.arctan2(ys, xs)
+
+    omega_desired = tom_amp/cav_len #keeping the cavity length fixed
+    cavity_cal_file = cal_path + '\\drive_calibration\\'+ cavity_cal_file
+    with File(cavity_cal_file, 'r') as f:
+        omegas = np.array(f['omegas'])
+        amps = np.array(f['amps'])
+    # assume zero frequency at zero amplitude, used for interpolation function
+    omegas = np.append(omegas, -omegas)
+    amps = np.append(amps, -amps)
+    omegas = np.append(omegas, 0.0)
+    amps = np.append(amps, 0.0)
+    o_s = omegas
+    a_s = amps
+
+    # interpolate data, transfer_fn is a function that for each omega returns the corresponding amp
+    transfer_fn = scipy.interpolate.interp1d(o_s, a_s)
+
+    awg_amp = transfer_fn(omega_desired)
+
+    """Returns time in units of 4ns for FPGA"""
+
+    x_awg = awg_amp * np.cos(tom_phase)
+    y_awg = awg_amp * np.sin(tom_phase)
+
+    return x_awg, y_awg, cav_len
 
 
+cav_file = '00000_2021_05_10_cavity_square.h5'
+wigner_file = '00000_wigner_points_nmax_3_nexpt_25_kappa_1pt0_gauss.h5'
 
-
-
-
+ax, ay, cav_len = wigner_alpha_awg_amp(wigner_pt_file=wigner_file, cavity_cal_file=cav_file)
 
 simulation_config = SimulationConfig(
     duration=60000,
@@ -47,28 +72,6 @@ simulation_config = SimulationConfig(
 qmm = QuantumMachinesManager()
 discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
 
-# def active_reset(biased_th, to_excited=False):
-#     res_reset = declare(bool)
-#     wait(5000//4, 'rr')
-#     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-#     wait(1000//4, 'rr')
-#
-#     if to_excited == False:
-#         with while_(I < biased_th):
-#             align('qubit', 'rr')
-#             with if_(~res_reset):
-#                 play('pi', 'qubit')
-#             align('qubit', 'rr')
-#             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-#             wait(1000//4, 'rr')
-#     else:
-#         with while_(I > biased_th):
-#             align('qubit', 'rr')
-#             with if_(res_reset):
-#                 play('pi', 'qubit')
-#             align('qubit', 'rr')
-#             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-#             wait(1000//4, 'rr')
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 

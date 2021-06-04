@@ -28,7 +28,7 @@ wait_dt = 25
 wait_tvec = np.arange(wait_tmin, wait_tmax + wait_dt/2, wait_dt)
 t_buffer = 250
 
-avgs = 100
+avgs = 1000
 reset_time = 500000
 simulation = 0
 with program() as ramsey:
@@ -56,9 +56,11 @@ with program() as ramsey:
     ###############
     with for_(n, 0, n < avgs, n + 1):
 
-        with for_(i, wait_tmin, i < wait_tmax + wait_dt/2, i + wait_dt):
+        with for_(i, wait_tmin, i <= wait_tmax , i + wait_dt):
+
             assign(phi, 0)
-            with for_(t, T_min, t < T_max + dt/2, t + dt):
+
+            with for_(t, T_min, t <= T_max , t + dt):
                 reset_frame("qubit", "rr")
                 wait(reset_time//4, "rr")
                 play('clear', 'rr')
@@ -102,30 +104,26 @@ else:
     job = qm.execute(ramsey, duration_limit=0, data_limit=0)
 
     res_handles = job.result_handles
-    # res_handles.wait_for_all_values()
-    # I_handle = res_handles.get("I")
-    # Q_handle = res_handles.get("Q")
-    #
-    # I = I_handle.fetch_all()
-    # Q = Q_handle.fetch_all()
-    # print("Data collection done")
-    #
-    # stop_time = time.time()
-    # print(f"Time taken: {stop_time - start_time}")
-    #
-    # """Stop the output from OPX,heats up the fridge"""
-    # job.halt()
-    #
-    # path = os.getcwd()
-    # data_path = os.path.join(path, "data/")
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'ramsey_clear', suffix='.h5'))
-    # print(seq_data_file)
-    #
-    # wait_tvec = 4*wait_tvec
-    # times = 4*times
-    # with File(seq_data_file, 'w') as f:
-    #     dset = f.create_dataset("I", data=I)
-    #     dset = f.create_dataset("Q", data=Q)
-    #     dset = f.create_dataset("wait_time", data=wait_tvec)
-    #     dset = f.create_dataset("ramsey_times", data=times)
+    res_handles.wait_for_all_values()
+
+    I = res_handles.get('I').fetch_all()
+    Q = res_handles.get('Q').fetch_all()
+
+    print("Data collection done")
+
+    """Stop the output from OPX,heats up the fridge"""
+    job.halt()
+
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'ramsey_clear', suffix='.h5'))
+    print(seq_data_file)
+
+    wait_tvec = 4*wait_tvec
+    times = 4*times
+    with File(seq_data_file, 'w') as f:
+        dset = f.create_dataset("I", data=I)
+        dset = f.create_dataset("Q", data=Q)
+        dset = f.create_dataset("wait_time", data=wait_tvec)
+        dset = f.create_dataset("ramsey_times", data=times)

@@ -6,7 +6,6 @@ from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from tqdm import tqdm
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
@@ -39,7 +38,7 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_j
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -91,7 +90,7 @@ with program() as ramsey:
         with for_(t, T_min, t < T_max + dt/2, t + dt):
 
             active_reset(biased_th_g_jpa)
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
             play("pi2", "qubit")
             wait(t, "qubit")
             frame_rotation_2pi(phi, "qubit") #2pi is already multiplied to the phase
@@ -126,9 +125,10 @@ else:
     I = result_handles.get('I').fetch_all()
     job.halt()
 
-    plt.plot(res)
-
     times = 4*times/1e3
+
+    plt.plot(times, res, '.-')
+
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,

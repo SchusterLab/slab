@@ -53,8 +53,6 @@ with program() as histogram:
 
         with for_(n, 0, n < avgs, n + 1):
 
-            reset_frame("rr", "qubit")
-
             """Just readout without playing anything"""
             wait(reset_time//4, "rr")
             measure("long_readout", "rr", None,

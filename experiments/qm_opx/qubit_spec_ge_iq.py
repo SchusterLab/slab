@@ -90,7 +90,10 @@ else:
     print("Data collection done!")
 
     job.halt()
-    plt.plot(I)
+
+    plt.plot(I, '.-')
+    plt.plot(Q, '.-')
+
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,

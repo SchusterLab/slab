@@ -3,37 +3,22 @@ from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
-from tqdm import tqdm
-from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import pandas as pd
 from slab import*
-from slab.instruments import instrumentmanager
 from h5py import File
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
 
 ##################
 # histogram_prog:
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
 reset_time = 500000
 avgs = 5000
 simulation = 0
 
-a_min = 0.050
-a_max = 0.150
+a_min = 0.00
+a_max = 0.05
 da = 0.005
 amp_vec = np.arange(a_min, a_max + da/2, da)
-
-start_time = time.time()
 
 with program() as histogram:
 
@@ -67,7 +52,7 @@ with program() as histogram:
 
         with for_(n, 0, n < avgs, n + 1):
 
-            reset_frame("rr", "qubit")
+            # reset_frame("rr", "qubit")
 
             """Just readout without playing anything"""
             wait(reset_time//4, "rr")
@@ -128,8 +113,6 @@ else:
     Qg = job.result_handles.Qg.fetch_all()['value']
     Qe = job.result_handles.Qe.fetch_all()['value']
     print("Data fetched")
-    stop_time = time.time()
-    print(f"Time taken: {stop_time - start_time}")
 
     job.halt()
 

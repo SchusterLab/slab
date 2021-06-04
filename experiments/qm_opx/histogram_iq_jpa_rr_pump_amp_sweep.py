@@ -1,46 +1,30 @@
 """Sweeping the rr amp and pump amp"""
-from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, rr_freq, pump_IF, long_redout_len
+from configuration_IQ import config, long_redout_len
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
-# from numpy import *
-from tqdm import tqdm
-from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import pandas as pd
 from slab import*
-from slab.instruments import instrumentmanager
 from h5py import File
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
-
 ##################
 # histogram_prog:
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
 reset_time = 500000
-avgs = 3000
+avgs = 5000
 simulation = 0
 
-a_min = 0.01
-a_max = 0.03
+a_min = 0.040
+a_max = 0.050
 da = 0.001
 amp_vec = np.arange(a_min, a_max + da/2, da)
 
-p_min = 0.0
-p_max = 0.2
-dp = 0.01
+p_min = 0.050
+p_max = 0.070
+dp = 0.005
 p_vec = np.arange(p_min, p_max + dp/2, dp)
 
-start_time = time.time()
 
 with program() as histogram:
 
@@ -79,34 +63,33 @@ with program() as histogram:
                 """Just readout without playing anything"""
                 wait(reset_time//4, "rr")
                 align("rr", "jpa_pump")
-                play('pump_square'*amp(p), 'jpa_pump', duration=long_redout_len)
+                play('pump_square'*amp(p), 'jpa_pump', duration=long_redout_len//4)
                 measure("long_readout"*amp(a), "rr", None,
                         demod.full("long_integW1", I1, 'out1'),
                         demod.full("long_integW2", Q1, 'out1'),
                         demod.full("long_integW1", I2, 'out2'),
                         demod.full("long_integW2", Q2, 'out2'))
 
-                assign(Ig, I1 + Q2)
-                assign(Qg, I2 - Q1)
+                assign(Ig, I1 - Q2)
+                assign(Qg, I2 + Q1)
                 save(Ig, Ig_st)
                 save(Qg, Qg_st)
 
-                align("qubit", "rr")
+                align("qubit", "rr", 'jpa_pump')
 
                 """Play a ge pi pulse and then readout"""
                 wait(reset_time // 4, "qubit")
                 play("pi", "qubit")
-                align("qubit", "rr")
-                align("rr", "jpa_pump")
-                play('pump_square'*amp(p), 'jpa_pump', duration=long_redout_len)
+                align('qubit', "rr", "jpa_pump")
+                play('pump_square'*amp(p), 'jpa_pump', duration=long_redout_len//4)
                 measure("long_readout"*amp(a), "rr", None,
                         demod.full("long_integW1", I1, 'out1'),
                         demod.full("long_integW2", Q1, 'out1'),
                         demod.full("long_integW1", I2, 'out2'),
                         demod.full("long_integW2", Q2, 'out2'))
 
-                assign(Ie, I1 + Q2)
-                assign(Qe, I2 - Q1)
+                assign(Ie, I1 - Q2)
+                assign(Qe, I2 + Q1)
                 save(Ie, Ie_st)
                 save(Qe, Qe_st)
 
@@ -139,8 +122,6 @@ else:
     Qg = job.result_handles.Qg.fetch_all()['value']
     Qe = job.result_handles.Qe.fetch_all()['value']
     print("Data fetched")
-    stop_time = time.time()
-    print(f"Time taken: {stop_time - start_time}")
 
     job.halt()
 

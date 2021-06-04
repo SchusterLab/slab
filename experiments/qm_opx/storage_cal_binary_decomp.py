@@ -1,12 +1,11 @@
 """
 Created on May 2021
 
-@author: Ankur Agrawal
+@author: Ankur Agrawal, Schuster Lab
 """
-
+from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, two_chi
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config, qubit_freq, rr_LO, qubit_LO, ge_IF, storage_IF, storage_freq, storage_LO
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -61,13 +60,14 @@ def active_reset(biased_th, to_excited=False):
 # qubit_spec_prog:
 ###############
 
-t_min = 50
-t_max = 400
-dt = 70
+t_min = 14000
+t_max = 24000
+dt = 2000
 t_vec = np.arange(t_min, t_max + dt/2, dt)
+print(len(t_vec))
 
-cav_amp = 0.75
-t_chi = int(0.5*1e9/1.118e6) #qubit rotates by pi in this time
+cav_amp = 0.0008
+t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
 
 avgs = 2000
 reset_time = int(3.5e6)
@@ -96,9 +96,9 @@ with program() as storage_spec:
         with for_(t, t_min, t < t_max + dt/2, t + dt):
 
             wait(reset_time//4, 'storage')
-            # align('storage', 'rr', 'jpa_pump', 'qubit')
-            # active_reset(biased_th_g_jpa)
-            # align('storage', 'rr', 'jpa_pump', 'qubit')
+            align('storage', 'rr', 'jpa_pump', 'qubit')
+            active_reset(biased_th_g_jpa)
+            align('storage', 'rr', 'jpa_pump', 'qubit')
             play('CW'*amp(cav_amp), 'storage', duration=t)
             align('storage', 'qubit')
             play("pi2", "qubit") # unconditional
@@ -148,7 +148,7 @@ else:
     bit1 = result_handles.get('bit1').fetch_all()['value']
     bit2 = result_handles.get('bit2').fetch_all()['value']
 
-    num = bit1 + 2*bit2
+    # num = bit1 + 2*bit2
 
     # p_cav = [np.sum(num==0)*100/avgs, np.sum(num==1)*100/avgs, np.sum(num==2)*100/avgs, np.sum(num==3)*100/avgs]
     # print("n=0 => {}, n=1 => {}, n=2 => {},n=3 => {}".format(p_cav[0], p_cav[1], p_cav[2], p_cav[3]))

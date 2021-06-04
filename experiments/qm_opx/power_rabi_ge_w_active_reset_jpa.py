@@ -5,7 +5,6 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 from slab import*
 from h5py import File
 import os
@@ -32,7 +31,7 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_j
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -102,10 +101,9 @@ res = result_handles.get('res').fetch_all()
 I = result_handles.get('I').fetch_all()
 counter1 = result_handles.get('counter1').fetch_all()
 counter2 = result_handles.get('counter2').fetch_all()
-# plt.plot(I, '.')
 
 plt.figure()
-plt.plot(res, '.')
+plt.plot(a_vec, res, '.-')
 
 job.halt()
 

@@ -1,4 +1,9 @@
-from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa
+"""
+Created on May 2021
+
+@author: Ankur Agrawal, Schuster Lab
+"""
+from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, two_chi
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -6,7 +11,6 @@ from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from tqdm import tqdm
 from h5py import File
 import scipy
 import os
@@ -19,7 +23,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # pull calibration data from file, handling properly in case of multimode cavity
     cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_05_10_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -40,14 +44,13 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     """Returns time in units of 4ns for FPGA"""
     return abs(pulse_length)//4+1
 
-two_chi = -1.118e6
-t_chi = int(0.5*1e9/1.118e6) #qubit rotates by pi in this time
+t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
 
-f_min = -4.0e6
+f_min = -5.5e6
 f_max = 0.5e6
-df = 50e3
+df = 60e3
 f_vec = np.arange(f_min, f_max + df/2, df)
-
+#Fock0 + Fock1: D(-1.31268847) S(0, pi) * D(1.88543008) |0>
 # Fock1: D(-0.580) * S(0,pi) * D(1.143) * |0>
 # Fock2: D(0.432) * S(1,pi) * D(-1.133) * S(0,pi) * D(0.497) * |0>
 # Fock3: D(0.344) * S(2,pi) * D(-1.072) * S(1,pi) * D(-1.125) * S(0,pi) * D(1.878) * |0>
@@ -70,7 +73,7 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_j
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -125,7 +128,6 @@ with program() as snap_1:
                 play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.143))
                 align("storage", "qubit")
                 play("res_pi"*amp(2.0), "qubit")
-                # play("res_pi"*amp(1.0), "qubit")
                 align("storage", "qubit")
                 play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58)) #249
                 update_frequency("qubit", f)
@@ -254,7 +256,7 @@ with program() as snap_3:
 qm = qmm.open_qm(config)
 if simulation:
     """To simulate the pulse sequence"""
-    job = qm.simulate(snap, simulation_config)
+    job = qm.simulate(snap_1, simulation_config)
     samples = job.get_simulated_samples()
     samples.con1.plot()
     result_handles = job.result_handles
@@ -266,22 +268,13 @@ else:
 
     result_handles = job.result_handles
 
-    # res_handle = result_handles.get('res')
-    # res_handle.wait_for_values(1)
-    #
-    # while(res_handle.is_processing()):
-    #     res = res_handle.fetch_all()
-    #     plt.plot(f_vec, res)
-    #     plt.xlabel(r'Time ($\mu$s)')
-    #     plt.ylabel(r'AWG amp. (a.u.)')
-    #     plt.pause(5)
-    #     plt.clf()
-    #
     result_handles.wait_for_all_values()
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
 
     job.halt()
+
+    plt.plot(f_vec, res, '.-')
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
@@ -293,3 +286,4 @@ else:
         f.create_dataset("I", data=I)
         f.create_dataset("Q", data=res)
         f.create_dataset("freq", data=f_vec)
+        f.create_dataset("two_chi", data=two_chi)

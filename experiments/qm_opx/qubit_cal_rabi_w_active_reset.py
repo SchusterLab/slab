@@ -13,8 +13,6 @@ from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
 
-wait_time = 500000
-N = 1000
 
 simulation_config = SimulationConfig(
     duration=60000,
@@ -55,18 +53,21 @@ def active_reset(biased_th, to_excited=False):
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
 
-a_min = 0.05
-a_max = 0.20
-da = 0.01
-a_vec = np.arange(a_min, a_max + da/2, da)
+a_min = 0.0008
+a_max = 0.003
+da = 0.0002
+a_vec = np.arange(a_min, a_max +da/2, da)
+print(len(a_vec))
 
-t_min = 5
-t_max = 100
-dt = 2
+t_min = 0
+t_max = 5000
+dt = 250
 
 t_vec = np.arange(t_min, t_max + dt/2, dt)
-dshift = 0
 simulation = 0
+wait_time = 500000
+N = 1000
+
 with program() as power_rabi:
 
     n = declare(int)
@@ -81,16 +82,13 @@ with program() as power_rabi:
 
     with for_(n, 0, n < N, n + 1):
 
-        with for_(a, a_min, a< a_max + da/2, a + da):
+        with for_(a, a_min, a < a_max + da/2, a + da):
 
-            with for_(t, t_min, t <= t_max , t + dt):
-
-                # align('storage', 'rr', 'jpa_pump', 'qubit')
-                # active_reset(biased_th_g_jpa)
-                # align('storage', 'rr', 'jpa_pump', 'qubit')
+            with for_(t, t_min, t < t_max + dt/2, t + dt):
 
                 active_reset(biased_th_g_jpa)
                 align('qubit', 'rr', 'jpa_pump')
+                # wait(wait_time//4, 'qubit')
                 play('CW'*amp(a), 'qubit', duration=t)
                 align('qubit', 'rr', 'jpa_pump')
                 play('pump_square', 'jpa_pump')

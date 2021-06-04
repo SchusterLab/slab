@@ -1,4 +1,4 @@
-from configuration_IQ import config
+from configuration_IQ import config, long_redout_len
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -10,7 +10,7 @@ from slab import*
 # histogram_prog:
 ##################
 reset_time = 500000
-avgs = 30000
+avgs = 5000
 simulation = 0
 
 phi = 0
@@ -53,12 +53,12 @@ with program() as histogram:
         """Just readout without playing anything"""
         wait(reset_time // 4, "jpa_pump")
         align("rr", "jpa_pump")
-        play('pump_square'*amp(pump_amp), 'jpa_pump')
-        measure("clear", "rr", None,
-                demod.full("clear_integW1", I1, 'out1'),
-                demod.full("clear_integW2", Q1, 'out1'),
-                demod.full("clear_integW1", I2, 'out2'),
-                demod.full("clear_integW2", Q2, 'out2'))
+        play('pump_square'*amp(pump_amp), 'jpa_pump', duration=long_redout_len//4)
+        measure("long_readout", "rr", None,
+                demod.full("long_integW1", I1, 'out1'),
+                demod.full("long_integW2", Q1, 'out1'),
+                demod.full("long_integW1", I2, 'out2'),
+                demod.full("long_integW2", Q2, 'out2'))
 
         assign(Ig, I1 - Q2)
         assign(Qg, I2 + Q1)
@@ -71,12 +71,13 @@ with program() as histogram:
         wait(reset_time // 4, "qubit")
         play("pi", "qubit")
         align("qubit", "jpa_pump", 'rr')
-        play('pump_square'*amp(pump_amp), 'jpa_pump')
-        measure("clear", "rr", None,
-                demod.full("clear_integW1", I1, 'out1'),
-                demod.full("clear_integW2", Q1, 'out1'),
-                demod.full("clear_integW1", I2, 'out2'),
-                demod.full("clear_integW2", Q2, 'out2'))
+        play('pump_square'*amp(pump_amp), 'jpa_pump', duration=long_redout_len//4)
+        measure("long_readout", "rr", None,
+                demod.full("long_integW1", I1, 'out1'),
+                demod.full("long_integW2", Q1, 'out1'),
+                demod.full("long_integW1", I2, 'out2'),
+                demod.full("long_integW2", Q2, 'out2'))
+
         assign(Ie, I1 - Q2)
         assign(Qe, I2 + Q1)
         save(Ie, Ie_st)
@@ -109,14 +110,16 @@ else:
     Ig = np.array(res_handles.get("Ig").fetch_all()['value'])
     Qg = np.array(res_handles.get("Qg").fetch_all()['value'])
 
-    # Ie = np.array(res_handles.get("Ie").fetch_all()['value'])
-    # Qe = np.array(res_handles.get("Qe").fetch_all()['value'])
+    Ie = np.array(res_handles.get("Ie").fetch_all()['value'])
+    Qe = np.array(res_handles.get("Qe").fetch_all()['value'])
 
     job.halt()
 
+    plt.figure()
     plt.plot(Ig, Qg, '.')
-    # plt.plot(Ie, Qe, '.')
+    plt.plot(Ie, Qe, '.')
     plt.axis('equal')
+    plt.show()
 
     # path = os.getcwd()
     # data_path = os.path.join(path, "data/")

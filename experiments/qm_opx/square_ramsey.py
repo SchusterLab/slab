@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_LO, rr_LO, ge_IF, qubit_freq
+from configuration_IQ import config
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -7,30 +7,22 @@ import matplotlib.pyplot as plt
 from slab import*
 from slab.instruments import instrumentmanager
 from slab.dsfit import*
-from tqdm import tqdm
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
-
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
 ##################
 # ramsey_prog:
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
 ramsey_freq = 1000e3
-detune_freq = ge_IF + ramsey_freq
+omega = 2*np.pi*ramsey_freq
 
 dt = 25
+
+dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
+
+T_min = 0
 T_max = 750
-times = np.arange(4, T_max + dt/2, dt)
+times = np.arange(T_min, T_max + dt/2, dt)
 
 wait_tmin = 25
 wait_tmax = 1000
@@ -41,6 +33,7 @@ t_buffer = 250
 avgs = 1000
 reset_time = 500000
 simulation = 0
+
 with program() as ramsey:
 
     ##############################
@@ -56,6 +49,7 @@ with program() as ramsey:
     Q1 = declare(fixed)
     I2 = declare(fixed)
     Q2 = declare(fixed)
+    phi = declare(fixed)
 
     I_st = declare_stream()
     Q_st = declare_stream()
@@ -63,20 +57,23 @@ with program() as ramsey:
     ###############
     # the sequence:
     ###############
-    update_frequency("qubit", detune_freq)
 
     with for_(n, 0, n < avgs, n + 1):
 
-        with for_(i, wait_tmin, i < wait_tmax + wait_dt/2, i + wait_dt):
+        with for_(i, wait_tmin, i <= wait_tmax , i + wait_dt):
 
-            with for_(t, 4, t < T_max + dt/2, t + dt):
+            assign(phi, 0)
 
+            with for_(t, T_min, t <= T_max, t + dt):
+
+                reset_frame("qubit", "rr")
                 wait(reset_time//4, "rr")
                 play('long_readout', 'rr')
                 align("rr", "qubit")
                 wait(i, "qubit")
                 play("pi2", "qubit")
                 wait(t, "qubit")
+                frame_rotation_2pi(phi, "qubit") #2pi is already multiplied to the phase
                 play("pi2", "qubit")
                 align("qubit", "rr")
                 wait(t_buffer, "rr")
@@ -86,8 +83,9 @@ with program() as ramsey:
                         demod.full("long_integW1", I2, 'out2'),
                         demod.full("long_integW2", Q2, 'out2'))
 
-                assign(I, I1+Q2)
-                assign(Q, I2-Q1)
+                assign(I, I1-Q2)
+                assign(Q, I2+Q1)
+                assign(phi, phi + dphi)
 
                 save(I, I_st)
                 save(Q, Q_st)
@@ -105,26 +103,20 @@ if simulation:
     samples = job.get_simulated_samples()
     samples.con1.plot()
 else:
-    start_time = time.time()
     """To run the actual experiment"""
     print("Experiment execution Done")
     job = qm.execute(ramsey, duration_limit=0, data_limit=0)
 
     res_handles = job.result_handles
     res_handles.wait_for_all_values()
-    I_handle = res_handles.get("I")
-    Q_handle = res_handles.get("Q")
 
-    I = I_handle.fetch_all()
-    Q = Q_handle.fetch_all()
+    I = res_handles.get('I').fetch_all()
+    Q = res_handles.get('Q').fetch_all()
+
     print("Data collection done")
 
-    stop_time = time.time()
     """Stop the output from OPX,heats up the fridge"""
-    with program() as stop_playing:
-        pass
-    job = qm.execute(stop_playing, duration_limit=0, data_limit=0)
-    print(f"Time taken: {stop_time - start_time}")
+    job.halt()
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

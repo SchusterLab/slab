@@ -92,8 +92,9 @@ def time_rabi(expt_cfg, opx_config):
                 active_reset(biased_th_g)
                 # wait(reset_time//4, 'qubit')
                 align('qubit', 'rr')
-                play('pulse'*amp(a), 'qubit', duration=t)
-                align('qubit', 'rr')
+                play(pulse*amp(a), 'qubit', duration=t)
+                align('qubit', 'rr', 'jpa_pump')
+                play('pump_square', 'jpa_pump')
                 discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
                 save(res, res_st)

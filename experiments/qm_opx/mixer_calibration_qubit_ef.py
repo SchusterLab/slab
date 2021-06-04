@@ -5,22 +5,10 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 import numpy as np
 from slab import*
-from slab.instruments import instrumentmanager
-im = InstrumentManager()
-LO = im['RF5']
-spec = im['SA']
-
-nu_q = qubit_freq
-nu_IF = ge_IF
-nu_LO = qubit_LO
-LO.set_frequency(nu_LO)
-LO.set_power(18)
-LO.set_output(True)
-LO.set_ext_pulse(mod=False)
 
 with program() as mixer_calibration:
     with infinite_loop_():
-        play("CW"*amp(0.2), "qubit_ef")
+        play("CW"*amp(1.0), "qubit_ef")
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -47,4 +35,4 @@ def IQ_imbalance_corr(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s,
                                    (1 - g) * s, (1 + g) * c]]
 
-qm.set_mixer_correction("mixer_qubit", int(ef_IF), int(qubit_LO), IQ_imbalance_corr(0.00,0.0*np.pi))
+# qm.set_mixer_correction("mixer_qubit", int(ef_IF), int(qubit_LO), IQ_imbalance_corr(0.00,0.0*np.pi))

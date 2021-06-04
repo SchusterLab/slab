@@ -1,4 +1,9 @@
-from configuration_IQ import config, ge_IF, biased_th_g_jpa
+"""
+Created on May 2021
+
+@author: Ankur Agrawal, Schuster Lab
+"""
+from configuration_IQ import config, ge_IF, biased_th_g_jpa, two_chi
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -7,21 +12,41 @@ from qm import SimulationConfig, LoopbackInterface
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from slab.instruments import instrumentmanager
-im = InstrumentManager()
 from h5py import File
-import os
-from slab.dsfit import*
+import os, scipy
 from slab.dataanalysis import get_next_filename
-
 """Storage cavity t1 experiment"""
+def alpha_awg_cal(alpha, cav_amp=0.4):
+    # takes input array of omegas and converts them to output array of amplitudes,
+    # using a calibration h5 file defined in the experiment config
+    # pull calibration data from file, handling properly in case of multimode cavity
+    cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
+
+    fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
+
+    with File(fn_file, 'r') as f:
+        omegas = np.array(f['omegas'])
+        amps = np.array(f['amps'])
+    # assume zero frequency at zero amplitude, used for interpolation function
+    omegas = np.append(omegas, 0.0)
+    amps = np.append(amps, 0.0)
+
+    o_s = omegas
+    a_s = amps
+
+    # interpolate data, transfer_fn is a function that for each omega returns the corresponding amp
+    transfer_fn = scipy.interpolate.interp1d(a_s, o_s)
+
+    omega_desired = transfer_fn(cav_amp)
+
+    pulse_length = (alpha/omega_desired)
+    """Returns time in units of 4ns for FPGA"""
+    return abs(pulse_length)//4+1
 
 dt = int(5e3)
 T_max = int(5e5)
 T_min = 250
 t_vec = np.arange(T_min, T_max + dt/2, dt)
-
-two_chi = -1.118e6
 
 cav_len = 1000
 cav_amp = 0.20
@@ -97,11 +122,15 @@ with program() as storage_t1:
             align('storage', 'rr', 'jpa_pump', 'qubit')
             active_reset(biased_th_g_jpa)
             align('storage', 'rr', 'jpa_pump', 'qubit')
-            play("CW"*amp(0.4), "storage", duration=592)
+            ########################
+            # play("soct", "storage", duration=pulse_len)
+            # play("qoct", "qubit", duration=pulse_len)
+            play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.143))
             align("storage", "qubit")
             play("res_pi"*amp(2.0), "qubit")
             align("storage", "qubit")
-            play("CW"*amp(-0.4), "storage", duration=300) #249
+            play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58))
+            ########################
             align("storage", "qubit")
             update_frequency("qubit", ge_IF+two_chi)
             wait(t, "qubit")
@@ -131,24 +160,14 @@ else:
 
     result_handles = job.result_handles
 
-    res_handle = result_handles.get("res")
-    # res_handle.wait_for_values(1)
-    # plt.figure()
-    # while(result_handles.is_processing()):
-    #     res = res_handle.fetch_all()
-    #     plt.plot(4*t_vec, res, '.-')
-    #     # plt.xlabel(r'Time ($\mu$s)')
-    #     # plt.ylabel(r'$\Delta \nu$ (kHz)')
-    #     plt.pause(5)
-    #     plt.clf()
-
-
-    # result_handles.wait_for_all_values()
+    result_handles.wait_for_all_values()
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
     print ("Data collection done")
 
     job.halt()
+
+    plt.plot(4*t_vec/1e3, res, '.-')
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

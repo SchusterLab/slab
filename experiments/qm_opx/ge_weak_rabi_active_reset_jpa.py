@@ -1,6 +1,6 @@
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 from qm import SimulationConfig, LoopbackInterface
-from configuration_IQ import config, ge_IF, two_chi, biased_th_g_jpa
+from configuration_IQ import config, ge_IF, two_chi, biased_th_g_jpa, pi_len_resolved
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -17,7 +17,7 @@ reset_time = 500000
 N = 1000
 
 a_min= 0.0
-a_max = 0.01
+a_max = 0.02
 da = 0.0001
 a_vec = np.arange(a_min, a_max + da/2, da)
 
@@ -76,7 +76,7 @@ with program() as power_rabi:
 
             active_reset(biased_th_g_jpa)
             align('qubit', 'rr')
-            play('gaussian'*amp(a), 'qubit')
+            play('gaussian'*amp(a), 'qubit', duration=pi_len_resolved//4)
             align('qubit', 'rr', 'jpa_pump')
             play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res, I=I)
@@ -96,6 +96,9 @@ result_handles.wait_for_all_values()
 res = result_handles.get('res').fetch_all()
 I = result_handles.get('I').fetch_all()
 job.halt()
+
+plt.figure()
+plt.plot(a_vec, res, '.-')
 
 path = os.getcwd()
 data_path = os.path.join(path, "data/")

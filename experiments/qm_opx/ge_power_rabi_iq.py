@@ -73,7 +73,6 @@ if simulation:
 else:
     job = qm.execute(ge_rabi, duration_limit=0, data_limit=0)
     print("Waiting for the data")
-    start_time = time.time()
 
     res_handles = job.result_handles
     res_handles.wait_for_all_values()
@@ -82,9 +81,6 @@ else:
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
     print("Data collection done")
-
-    stop_time = time.time()
-    print(f"Time taken: {stop_time-start_time}")
 
     job.halt()
 

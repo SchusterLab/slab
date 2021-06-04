@@ -25,7 +25,7 @@ t_vec = np.arange(T_min, T_max + dt/2, dt)
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
-two_chi = -1.118e6
+two_chi = -1.119e6
 
 avgs = 1000
 reset_time = int(3.5e6)
@@ -102,10 +102,10 @@ with program() as storage_t1:
             active_reset(biased_th_g_jpa)
             align('storage', 'rr', 'jpa_pump', 'qubit')
             # update_frequency("qubit", ge_IF+two_chi)
-            play("CW"*amp(0.4), "storage", duration=300)
+            play("CW"*amp(0.4), "storage", duration=30)
             wait(t, 'storage')
             frame_rotation_2pi(phi, 'storage')
-            play("CW"*amp(0.4), "storage", duration=300)
+            play("CW"*amp(0.4), "storage", duration=30)
             align("storage", "qubit")
             play("res_pi", "qubit")
             align('qubit', 'rr', 'jpa_pump')
@@ -133,26 +133,13 @@ else:
     print ("Execution done")
 
     result_handles = job.result_handles
-
-    res_handle = result_handles.get("res")
-    # res_handle.wait_for_values(1)
-    # plt.figure()
-    # while(result_handles.is_processing()):
-    #     res = res_handle.fetch_all()
-    #     plt.plot(4*t_vec, res, '.-')
-    #     # plt.xlabel(r'Time ($\mu$s)')
-    #     # plt.ylabel(r'$\Delta \nu$ (kHz)')
-    #     plt.pause(5)
-    #     plt.clf()
-
-
-    # result_handles.wait_for_all_values()
+    result_handles.wait_for_all_values()
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
     print ("Data collection done")
 
     job.halt()
-
+    plt.plot(4*t_vec/1e3, res, '.-')
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,

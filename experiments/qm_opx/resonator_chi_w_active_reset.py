@@ -1,34 +1,76 @@
-from configuration_IQ import config, rr_LO, rr_freq, rr_IF, qubit_LO
-from qm.QuantumMachinesManager import QuantumMachinesManager
+"""
+Created on May 2021
+
+@author: Ankur Agrawal, Schuster Lab
+"""
+from configuration_IQ import config, rr_IF, rr_freq, biased_th_g_jpa, two_chi
 from qm.qua import *
-from qm import SimulationConfig
-import matplotlib.pyplot as plt
+from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import SimulationConfig, LoopbackInterface
+from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 import numpy as np
-from h5py import File
+import matplotlib.pyplot as plt
 from slab import*
+from h5py import File
+import scipy
 import os
 from slab.dataanalysis import get_next_filename
+"""Cross-Kerr (Chi shift of the readout resonator with qubit in |g> and in |e>"""
+
+simulation_config = SimulationConfig(
+    duration=60000,
+    simulation_interface=LoopbackInterface(
+        [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=230, noisePower=0.5**2
+    )
+)
+
+qmm = QuantumMachinesManager()
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+
+def active_reset(biased_th, to_excited=False):
+    res_reset = declare(bool)
+
+    wait(5000//4, "jpa_pump")
+    align("rr", "jpa_pump")
+    play('pump_square', 'jpa_pump')
+    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+    wait(1000//4, 'rr')
+    # save(I, "check")
+
+    if to_excited == False:
+        with while_(I < biased_th):
+            align('qubit', 'rr', 'jpa_pump')
+            with if_(~res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
+    else:
+        with while_(I > biased_th):
+            align('qubit', 'rr', 'jpa_pump')
+            with if_(res_reset):
+                play('pi', 'qubit')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
+            wait(1000//4, 'rr')
 
 f_min = -2.5e6
 f_max = 2.5e6
 df = 25e3
 f_vec = rr_freq - np.arange(f_min, f_max + df/2, df)
-reset_time = 500000
+
+reset_time = int(5e5)
+
 avgs = 1000
 simulation = 0
 with program() as resonator_spectroscopy:
 
     f = declare(int)
     i = declare(int)
-    Ig = declare(fixed)
-    Qg = declare(fixed)
-    Ie = declare(fixed)
-    Qe = declare(fixed)
-
-    I1 = declare(fixed)
-    Q1 = declare(fixed)
-    I2 = declare(fixed)
-    Q2 = declare(fixed)
+    I = declare(fixed)
+    res = declare(bool)
 
     Ig_st = declare_stream()
     Qg_st = declare_stream()
@@ -37,83 +79,60 @@ with program() as resonator_spectroscopy:
 
     with for_(i, 0, i < avgs, i+1):
 
-        with for_(f, f_min + rr_IF, f < f_max + rr_IF + df / 2, f + df):
+        with for_(f, f_min + rr_IF, f <=f_max + rr_IF, f + df):
+
             update_frequency("rr", f)
-            wait(reset_time//4, "rr")
-            measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
-            # measure("long_readout", "rr", None,
-            #         demod.full("long_integW1", I1, 'out1'),
-            #         demod.full("long_integW2", Q1, 'out1'),
-            #         demod.full("long_integW1", I2, 'out2'),
-            #         demod.full("long_integW2", Q2, 'out2'))
-            assign(Ig, I1 - Q2)
-            assign(Qg, I2 + Q1)
+            wait(reset_time//4, 'rr')
+            align('rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
-            save(Ig, Ig_st)
-            save(Qg, Qg_st)
+            save(I, Ig_st)
+            save(res, Qg_st)
 
-            align("rr", 'qubit')
+            align('qubit', 'rr', 'jpa_pump')
 
-            wait(reset_time//4, "qubit")
-            play("pi", "qubit")
-            align("qubit", "rr")
-            measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
-            # measure("long_readout", "rr", None,
-            #         demod.full("long_integW1", I1, 'out1'),
-            #         demod.full("long_integW2", Q1, 'out1'),
-            #         demod.full("long_integW1", I2, 'out2'),
-            #         demod.full("long_integW2", Q2, 'out2'))
-            assign(Ie, I1 - Q2)
-            assign(Qe, I2 + Q1)
+            wait(reset_time//4, 'qubit')
+            play('pi', 'qubit')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
-            save(Ie, Ie_st)
-            save(Qe, Qe_st)
+            save(I, Ie_st)
+            save(res, Qe_st)
 
     with stream_processing():
 
         Ig_st.buffer(len(f_vec)).average().save('Ig')
-        Qg_st.buffer(len(f_vec)).average().save('Qg')
+        Qg_st.boolean_to_int().buffer(len(f_vec)).average().save('Qg')
         Ie_st.buffer(len(f_vec)).average().save('Ie')
-        Qe_st.buffer(len(f_vec)).average().save('Qe')
-
+        Qe_st.boolean_to_int().buffer(len(f_vec)).average().save('Qe')
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
 if simulation:
-    job = qm.simulate(resonator_spectroscopy, SimulationConfig(150000))
+    job = qm.simulate(resonator_spectroscopy, SimulationConfig(15000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 else:
     job = qm.execute(resonator_spectroscopy, duration_limit=0, data_limit=0)
-    print("Starting the experiment")
 
     res_handles = job.result_handles
     res_handles.wait_for_all_values()
 
-    Ig_handle = res_handles.get("Ig")
-    Qg_handle = res_handles.get("Qg")
+    Ig = np.array(res_handles.get("Ig").fetch_all())
+    Qg = np.array(res_handles.get("Qg").fetch_all())
 
-    Ie_handle = res_handles.get("Ie")
-    Qe_handle = res_handles.get("Qe")
-
-    Ig = np.array(Ig_handle.fetch_all())
-    Qg = np.array(Qg_handle.fetch_all())
-
-    Ie = np.array(Ie_handle.fetch_all())
-    Qe = np.array(Qe_handle.fetch_all())
+    Ie = np.array(res_handles.get("Ie").fetch_all())
+    Qe = np.array(res_handles.get("Qe").fetch_all())
 
     print ("Data collection done")
 
     job.halt()
+    plt.figure()
+    plt.plot(Ig**2)
+    plt.plot(Ie**2)
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

@@ -18,38 +18,39 @@ def IQ_imbalance(g, phi):
 ################
 # CONFIGURATION:
 ################
-long_redout_len = 3500
+long_redout_len = 2000
 readout_len = 3000
 
 qubit_LO = 4.6470*1e9
-qubit_freq = 4.746892010604675  *1e9
+qubit_freq = 4.746947661357474*1e9
 ge_IF = int(qubit_freq - qubit_LO)
 
-qubit_ef_freq = 4.6072838821511315 * 1e9
+qubit_ef_freq = 4.607396975213376 * 1e9
 ef_IF = -int(qubit_LO-qubit_ef_freq) #LSB
-two_chi = 1.13e6
+two_chi = -1.123*1e6
 
 ####---------------------####
 rr_LO = 8.1516 *1e9
 
 rr_freq_g = 8.051843423081882*1e9
 rr_freq_e = 8.051472688135474*1e9
-rr_freq = 8.051670073076659*1e9 #for 4us
-# rr_freq = rr_freq_g
+rr_freq = 8.051665272161907*1e9
 
 rr_IF = int(rr_LO - rr_freq)
 
-rr_amp = 1.0*0.115
+rr_amp = 1.0*0.047
 
 biased_th_g = 0.0012
 biased_th_g_jpa = 0.003
 
 pump_LO = rr_LO
-pump_IF = 100e6-15e6
+pump_IF = int(100e6-15e6)
 
-pump_amp = 1.0*0.063
+pump_amp = 1.0*0.060
+
+disc_file = 'ge_disc_params_jpa.npz'
 ####---------------------####
-storage_freq = 6.01124448e9
+storage_freq = 6.0112452222931045 *1e9
 storage_LO = 6.111e9
 storage_IF = int(abs(storage_freq-storage_LO))
 # storage_LO = storage_freq - storage_IF
@@ -59,23 +60,23 @@ sb_IF = 100e6
 sb_LO = sb_freq + sb_IF
 
 gauss_len = 40
-gauss_amp = 0.45 * 0.95 #the mixer goes crazy above 0.95
+gauss_amp = 0.45  #the mixer goes crazy above 0.95
 
 pi_len = 40
-pi_amp = 0.5244
+pi_amp = 0.3741
 
-half_pi_len = int(pi_len/2)
-half_pi_amp = pi_amp
+half_pi_len = pi_len
+half_pi_amp = pi_amp/2
 
 pi_len_resolved = 3000
-Pi_amp_resolved = 0.0068
+Pi_amp_resolved = 0.0050
 
 pi_ef_len = 40
-pi_ef_amp = 0.4398
+pi_ef_amp = 0.3210
 
 opt_readout = "C:\\_Lib\\python\\slab\\experiments\\qm_opx\\pulses\\00019_readout_optimal_pulse.h5"
 with File(opt_readout,'r') as a:
-    opt_amp = 0.067*np.array(a['I_wf'])
+    opt_amp = 0.065*np.array(a['I_wf'])
 opt_len = len(opt_amp)
 pump_len = opt_len
 
@@ -89,8 +90,8 @@ config = {
         'con1': {
             'type': 'opx1',
             'analog_outputs': {
-                1: {'offset': 0.0095},  # qubit I
-                2: {'offset':  -0.064},  # qubit Q
+                1: {'offset': 0.0066},#0.0095},  # qubit I
+                2: {'offset':  -0.0175},#-0.064},  # qubit Q
                 3: {'offset': -0.0025},  # RR I
                 4: {'offset': 0.0038},  # RR Q
                 5: {'offset': -0.021},  # sb I
@@ -584,9 +585,9 @@ config = {
     'mixers': {
         'mixer_qubit': [
             {'intermediate_frequency': ge_IF, 'lo_frequency': qubit_LO,
-             'correction': IQ_imbalance(-0.015, 0.015 * np.pi)},
+             'correction': IQ_imbalance(-0.0, 0.0 * np.pi)},
             {'intermediate_frequency': ef_IF, 'lo_frequency': qubit_LO,
-             'correction': IQ_imbalance(-0.015, 0.012 * np.pi)}
+             'correction': IQ_imbalance(-0.008, 0.003 * np.pi)}
         ],
 
         'mixer_RR': [

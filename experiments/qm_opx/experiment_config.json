@@ -1,6 +1,6 @@
 {
   "time_rabi": {
-    "amp":  0.4,
+    "amp":  0.45,
     "t_min": 0, "dt": 1, "t_max": 100, "avgs": 1000, "pulse_type":"gauss"
   },
 

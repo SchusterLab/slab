@@ -5,9 +5,6 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from slab.instruments import instrumentmanager
-from slab.dsfit import*
-from tqdm import tqdm
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
@@ -107,17 +104,17 @@ else:
 
     job.halt()
 
-    # times = 4*times/1e3
-    #
-    # plt.plot(times, I)
-    # path = os.getcwd()
-    # data_path = os.path.join(path, "data/")
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'ramsey_phase', suffix='.h5'))
-    # print(seq_data_file)
-    # with File(seq_data_file, 'w') as f:
-    #     f.create_dataset("I", data=I)
-    #     f.create_dataset("Q", data=Q)
-    #     f.create_dataset("time", data=times)
-    #     f.create_dataset("ramsey_freq", data=ramsey_freq)
-    #     f.create_dataset("qubit_freq", data=qubit_freq)
+    times = 4*times/1e3
+
+    plt.plot(times, Q, '.-')
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'ramsey_phase', suffix='.h5'))
+    print(seq_data_file)
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=Q)
+        f.create_dataset("time", data=times)
+        f.create_dataset("ramsey_freq", data=ramsey_freq)
+        f.create_dataset("qubit_freq", data=qubit_freq)

@@ -1,9 +1,8 @@
-from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, rr_freq
+from configuration_IQ import config, long_redout_len
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
-from tqdm import tqdm
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -16,12 +15,10 @@ reset_time = 500000
 avgs = 5000
 simulation = 0
 
-a_min = 0.000
-a_max = 0.010
+a_min = 0.050
+a_max = 0.070
 da = 0.001
 amp_vec = np.arange(a_min, a_max + da/2, da)
-
-start_time = time.time()
 
 with program() as histogram:
 
@@ -57,12 +54,12 @@ with program() as histogram:
             """Just readout without playing anything"""
             wait(reset_time // 4, "rr")
             align("rr", "jpa_pump")
-            play('pump_square'*amp(a), 'jpa_pump')
-            measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
+            play('pump_square'*amp(a), 'jpa_pump', duration=long_redout_len//4)
+            measure("long_readout", "rr", None,
+                    demod.full("long_integW1", I1, 'out1'),
+                    demod.full("long_integW2", Q1, 'out1'),
+                    demod.full("long_integW1", I2, 'out2'),
+                    demod.full("long_integW2", Q2, 'out2'))
 
             assign(Ig, I1 - Q2)
             assign(Qg, I2 + Q1)
@@ -74,15 +71,14 @@ with program() as histogram:
             """Play a ge pi pulse and then readout"""
             wait(reset_time // 4, "qubit")
             play("pi", "qubit")
-            align("qubit", "rr")
-            align("rr", "jpa_pump")
+            align('qubit', "rr", "jpa_pump")
             # frame_rotation_2pi(np.pi/2, "jpa_pump")
-            play('pump_square'*amp(a), 'jpa_pump')
-            measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
+            play('pump_square'*amp(a), 'jpa_pump', duration=long_redout_len//4)
+            measure("long_readout", "rr", None,
+                    demod.full("long_integW1", I1, 'out1'),
+                    demod.full("long_integW2", Q1, 'out1'),
+                    demod.full("long_integW1", I2, 'out2'),
+                    demod.full("long_integW2", Q2, 'out2'))
 
             assign(Ie, I1 - Q2)
             assign(Qe, I2 + Q1)
@@ -118,8 +114,6 @@ else:
     Qg = job.result_handles.Qg.fetch_all()['value']
     Qe = job.result_handles.Qe.fetch_all()['value']
     print("Data fetched")
-    stop_time = time.time()
-    print(f"Time taken: {stop_time - start_time}")
 
     job.halt()
 

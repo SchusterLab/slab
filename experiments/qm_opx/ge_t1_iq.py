@@ -1,4 +1,4 @@
-from configuration_IQ import config, biased_th_g
+from configuration_IQ import config, biased_th_g_jpa
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -30,7 +30,7 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
@@ -69,11 +69,11 @@ with program() as ge_t1:
     I2 = declare(fixed)
     Q2 = declare(fixed)
 
-    # res = declare(bool)
+    res = declare(bool)
     I = declare(fixed)
     Q = declare(fixed)
 
-    # res_st = declare_stream()
+    res_st = declare_stream()
     I_st = declare_stream()
     Q_st = declare_stream()
 
@@ -84,31 +84,32 @@ with program() as ge_t1:
     with for_(n, 0, n < avgs, n + 1):
 
         with for_(t, T_min, t < T_max + dt/2, t + dt):
-            wait(reset_time//4, "qubit")
-            # active_reset(biased_th_g)
-            # align("qubit", 'rr')
+            # wait(reset_time//4, "qubit")
+            active_reset(biased_th_g_jpa)
+            align("qubit", 'rr', 'jpa_pump')
             play("pi", "qubit")
             wait(t, "qubit")
-            align("qubit", "rr")
-            # discriminator.measure_state("clear", "out1", "out2", res, I=I)
-            #
-            # save(res, res_st)
-            # save(I, I_st)
-            measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
-            assign(I, I1-Q2)
-            assign(Q, I2+Q1)
+            save(res, res_st)
             save(I, I_st)
-            save(Q, Q_st)
+            # measure("clear", "rr", None,
+            #         demod.full("clear_integW1", I1, 'out1'),
+            #         demod.full("clear_integW2", Q1, 'out1'),
+            #         demod.full("clear_integW1", I2, 'out2'),
+            #         demod.full("clear_integW2", Q2, 'out2'))
+            #
+            # assign(I, I1-Q2)
+            # assign(Q, I2+Q1)
+            # save(I, I_st)
+            # save(Q, Q_st)
 
     with stream_processing():
-        # res_st.boolean_to_int().buffer(len(times)).average().save('res')
+        res_st.boolean_to_int().buffer(len(times)).average().save('res')
         I_st.buffer(len(times)).average().save('I')
-        Q_st.buffer(len(times)).average().save('Q')
+        # Q_st.buffer(len(times)).average().save('Q')
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -124,9 +125,9 @@ else:
 
     result_handles = job.result_handles
     result_handles.wait_for_all_values()
-    # res = result_handles.get('res').fetch_all()
+    res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
-    Q = result_handles.get('Q').fetch_all()
+    # Q = result_handles.get('Q').fetch_all()
 
     print ("Data collection done")
 

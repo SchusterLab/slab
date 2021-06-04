@@ -20,7 +20,7 @@ from slab.instruments import instrumentmanager
 
 with program() as mixer_calibration:
     with infinite_loop_():
-        play("CW"*amp(0.0), "qubit")
+        play("CW"*amp(0.5), "qubit")
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -37,8 +37,8 @@ job = qm.execute(mixer_calibration, duration_limit=0, data_limit=0)
 # plt.axvline(x=nu_LO - ge_IF, linestyle='--', color='k')
 # plt.axvline(x=nu_LO + ge_IF, linestyle='--', color='k')
 
-# qm.set_dc_offset_by_qe("qubit", "I", 0.0095)
-# qm.set_dc_offset_by_qe("qubit", "Q", -0.064)
+# qm.set_dc_offset_by_qe("qubit", "I", 0.0066)
+# qm.set_dc_offset_by_qe("qubit", "Q", -0.0175)
 
 def IQ_imbalance_corr(g, phi):
     c = np.cos(phi)
@@ -47,4 +47,4 @@ def IQ_imbalance_corr(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s,
                                    (1 - g) * s, (1 + g) * c]]
 
-# qm.set_mixer_correction("mixer_qubit", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(-0.015, 0.0175 * np.pi))
+# qm.set_mixer_correction("mixer_qubit", int(ge_IF), int(qubit_LO), IQ_imbalance_corr(-0.0, 0.0 * np.pi))

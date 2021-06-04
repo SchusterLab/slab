@@ -1,6 +1,6 @@
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config, biased_th_g, rr_LO
+from configuration_IQ import config, biased_th_g_jpa
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -16,7 +16,7 @@ simulation_config = SimulationConfig(
 )
 
 N = 5000
-wait_time = 750000
+wait_time = 500000
 lsb = True
 qmm = QuantumMachinesManager()
 
@@ -24,11 +24,11 @@ discriminator = TwoStateDiscriminator(qmm=qmm,
                                       config=config,
                                       update_tof=False,
                                       rr_qe='rr',
-                                      path='ge_disc_params_opt.npz',
+                                      path='ge_disc_params_jpa.npz',
                                       lsb=lsb)
 
-use_opt_weights = False
-biased_th_e = -biased_th_g
+use_opt_weights = True
+biased_th_e = -biased_th_g_jpa
 
 def training_measurement(readout_pulse, use_opt_weights):
 
@@ -50,24 +50,29 @@ def training_measurement(readout_pulse, use_opt_weights):
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
-    wait(5000//4, 'rr')
+
+    wait(5000//4, "jpa_pump")
+    align("rr", "jpa_pump")
+    play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
     wait(1000//4, 'rr')
 
     if to_excited == False:
         with while_(I < biased_th):
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
             with if_(~res_reset):
                 play('pi', 'qubit')
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
     else:
         with while_(I > biased_th):
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
             with if_(res_reset):
                 play('pi', 'qubit')
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
 
@@ -88,15 +93,19 @@ with program() as training_program:
 
     with for_(n, 0, n < N, n + 1):
 
-        active_reset(biased_th_g)
+        active_reset(biased_th_g_jpa)
+        align("rr", "jpa_pump")
+        play('pump_square', 'jpa_pump')
         training_measurement("clear", use_opt_weights=use_opt_weights)
         save(I, I_st)
         save(Q, Q_st)
 
-        active_reset(biased_th_g)
-        align("qubit", "rr")
+        active_reset(biased_th_g_jpa)
+
+        align("qubit", "rr", 'jpa_pump')
         play("pi", "qubit")
-        align("qubit", "rr")
+        align("qubit", "rr", 'jpa_pump')
+        play('pump_square', 'jpa_pump')
         training_measurement("clear", use_opt_weights=use_opt_weights)
         save(I, I_st)
         save(Q, Q_st)
@@ -123,17 +132,21 @@ with program() as benchmark_readout:
 
     with for_(n, 0, n < N, n + 1):
 
-        active_reset(biased_th_g)
+        active_reset(biased_th_g_jpa)
+        align("rr", "jpa_pump")
+        play('pump_square', 'jpa_pump')
         discriminator.measure_state("clear", "out1", "out2", res, I=I, Q=Q)
         save(res, res_st)
         save(I, I_st)
         save(Q, Q_st)
 
-        active_reset(biased_th_g)
-        align("qubit", "rr")
+        active_reset(biased_th_g_jpa)
+
+        align("qubit", "rr", 'jpa_pump')
         play("pi", "qubit")
-        align("qubit", "rr")
-        discriminator.measure_state("clear", "out1", "out2", res, I=I, Q=Q)
+        align("qubit", "rr", 'jpa_pump')
+        play('pump_square', 'jpa_pump')
+
         save(res, res_st)
         save(I, I_st)
         save(Q, Q_st)

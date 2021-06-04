@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_freq, rr_LO, qubit_LO, ge_IF,  biased_th_g_jpa
+from configuration_IQ import config, ge_IF, biased_th_g_jpa, two_chi
 from qm.qua import *
 from qm import SimulationConfig
 from qm import SimulationConfig, LoopbackInterface
@@ -56,15 +56,15 @@ def active_reset(biased_th, to_excited=False):
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -1.5e6
-f_max = -0.5e6
-df = 20e3
+f_min = -5.5e6
+f_max = 0.5e6
+df = 40e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
-# filename = 'oct_pulses/g1.h5'
+filename = 'oct_pulses/g1.h5'
 
 # filename = "S:\\Ankur\\Stimulated Emission\\pulses\\picollo\\2021-03-23\\00001_g0_to_g1_2.0us_qamp_7.5_camp_0.2_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5"
-filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g1_2.0us_qamp_24.0_camp_0.25_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5'
+# filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g2_2.0us_qamp_7.5_camp_0.8_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5'
 
 with File(filename,'r') as a:
     Iq = np.array(a['uks'][-1][0], dtype=float)
@@ -82,9 +82,9 @@ def transfer_function(omegas_in, cavity=False, qubit=True, pulse_length=2000):
     # pull calibration data from file, handling properly in case of multimode cavity
 
     if cavity==True:
-        fn_file = cal_path + '\\00000_2021_04_01_cavity_square.h5'
+        fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
     elif qubit==True:
-        fn_file = cal_path + '\\00000_2021_03_29_qubit_square.h5'
+        fn_file = cal_path + '\\00000_2021_05_21_qubit_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -134,9 +134,9 @@ config['waveforms']['soct_wf_q']['samples'] = Qc
 
 pulse_len = 500
 
-avgs = 10
-reset_time = int(3.5e2)
-simulation = 1
+avgs = 1000
+reset_time = int(3.5e6)
+simulation = 0
 with program() as oct_test:
 
     ##############################
@@ -157,15 +157,19 @@ with program() as oct_test:
     with for_(n, 0, n < avgs, n + 1):
 
         with for_(f, ge_IF + f_min, f < ge_IF + f_max + df/2, f + df):
+
             update_frequency("qubit", ge_IF)
             wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
-            align('storage', 'qubit')
+            align('storage', 'rr', 'jpa_pump', 'qubit')
+            active_reset(biased_th_g_jpa)
+            align('storage', 'rr', 'jpa_pump', 'qubit')
             play("soct", "storage", duration=pulse_len)
             play("qoct", "qubit", duration=pulse_len)
             align("storage", "qubit")
             update_frequency("qubit", f)
             play("res_pi", "qubit")
-            align("qubit", "rr")
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
             save(res, res_st)
@@ -188,38 +192,23 @@ else:
     """To run the actual experiment"""
     job = qm.execute(oct_test, duration_limit=0, data_limit=0)
     print("Experiment done")
-    # start_time = time.time()
 
     result_handles = job.result_handles
-    res_handle = result_handles.get("res")
-    res_handle.wait_for_values(1)
-
-    plt.figure()
-    while(result_handles.is_processing()):
-        res = res_handle.fetch_all()
-        plt.plot(f_vec, res)
-        # plt.xlabel(r'Time ($\mu$s)')
-        # plt.ylabel(r'$\Delta \nu$ (kHz)')
-        plt.pause(5)
-        plt.clf()
-    #
     # result_handles.wait_for_all_values()
     # res = result_handles.get('res').fetch_all()
     # I = result_handles.get('I').fetch_all()
     #
+    # plt.figure()
+    # plt.plot(f_vec, res, '.-')
     # job.halt()
-    # stop_time = time.time()
-    # print(f"Time taken: {stop_time-start_time}")
     #
     # path = os.getcwd()
     # data_path = os.path.join(path, "data/")
     # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'number_splitting', suffix='.h5'))
+    #                              get_next_filename(data_path, 'oct_fock', suffix='.h5'))
     # print(seq_data_file)
-    # f_vec = qubit_freq + f_vec
     # with File(seq_data_file, 'w') as f:
     #     f.create_dataset("I", data=I)
     #     f.create_dataset("Q", data=res)
-    #     # f.create_dataset("freq", data=f_vec)
-    #     # f.create_dataset("n_max", data=n_max)
-    #     # f.create_dataset("two_chi", data=two_chi)
+    #     f.create_dataset("freq", data=f_vec)
+    #     f.create_dataset("two_chi", data=two_chi)

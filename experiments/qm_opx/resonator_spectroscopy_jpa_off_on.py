@@ -10,9 +10,9 @@ import os
 from slab.dataanalysis import get_next_filename
 
 """readout resonator spectroscopy, varying the IF frequency"""
-f_min = -2.5e6
-f_max = 2.5e6
-df = 25e3
+f_min = -5e6
+f_max = 5e6
+df = 50e3
 f_vec = rr_freq - np.arange(f_min, f_max + df/2, df)
 
 avgs = 2000
@@ -57,7 +57,7 @@ with program() as resonator_spectroscopy:
             wait(reset_time//4, 'rr')
 
             align('rr', 'jpa_pump')
-            play('pump_square'*amp(0.0625), 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             measure("long_readout", "rr", None,
                     demod.full("long_integW1", I1, 'out1'),
                     demod.full("long_integW2", Q1, 'out1'),
@@ -99,25 +99,43 @@ else:
 
     job.halt()
 
-    plt.figure()
-    plt.plot(I1**2 + Q1**2)
-    plt.plot(I2**2 + Q2**2)
+    x = f_vec
+
+    plt.figure(dpi=300)
+    pow_1 = 10*np.log10(I1**2 + Q1**2)
+    pow_2 = 10*np.log10(I2**2 + Q2**2)
+    plt.plot(x/1e9, pow_1, 'b.', label='JPA Off')
+    plt.plot(x/1e9, pow_2, 'r.', label='JPA On')
+    plt.xlabel(r' Frequency (GHz)')
+    plt.ylabel('Arb. units')
+    plt.legend()
     plt.show()
 
-    x = f_vec
-    plt.figure()
-    ph = np.arctan2(np.array(Q1), np.array(I1))
-    ph = np.unwrap(ph, discont=3.141592653589793, axis=-1)
-    m = (ph[-1]-ph[0])/(x[-1] - x[0])
-    ph = ph - m*x*0.95
-    ph = ph -np.mean(ph)
-    plt.plot(ph)
-    ph = np.arctan2(np.array(Q2), np.array(I2))
-    ph = np.unwrap(ph, discont=3.141592653589793, axis=-1)
-    m = (ph[-1]-ph[0])/(x[-1] - x[0])
-    ph = ph - m*x*0.95
-    ph = ph -np.mean(ph)
-    plt.plot(ph)
+    #
+    # plt.figure(dpi=300)
+    # pow_1 = 10*np.log10(I1**2 + Q1**2)
+    # pow_2 = 10*np.log10(I2**2 + Q2**2)
+    # plt.plot(x/1e9, pow_1, 'b.', label='JPA Off')
+    # plt.plot(x/1e9, pow_2, 'r.', label='JPA On')
+    # plt.xlabel(r' Frequency (GHz)')
+    # plt.ylabel('Arb. units')
+    # plt.legend()
+    # plt.show()
+
+
+    # plt.figure()
+    # ph = np.arctan2(np.array(Q1), np.array(I1))
+    # ph = np.unwrap(ph, discont=3.141592653589793, axis=-1)
+    # m = (ph[-1]-ph[0])/(x[-1] - x[0])
+    # ph = ph - m*x*0.95
+    # ph = ph -np.mean(ph)
+    # plt.plot(ph)
+    # ph = np.arctan2(np.array(Q2), np.array(I2))
+    # ph = np.unwrap(ph, discont=3.141592653589793, axis=-1)
+    # m = (ph[-1]-ph[0])/(x[-1] - x[0])
+    # ph = ph - m*x*0.95
+    # ph = ph -np.mean(ph)
+    # plt.plot(ph)
 
     # path = os.getcwd()
     # data_path = os.path.join(path, "data/")
