@@ -226,8 +226,7 @@ class RFSoCExperiment(PulseExperiment):
                 duration = qinst.parameters["duration"]
                 inst_type = InstructionType.PARAMETRIC
                 parameters = qinst.parameters
-                # !TODO generate samples here
-                samples = None
+                samples = self.backend.samples(pulse_shape, parameters)
                 self._inst_pulse(constant, duration, inst_type, pulse_shape, parameters,
                                  samples, t0, qinst, insts, stats, log_extra)
             # check for sample pulse, otherwise instruction unrecognized, raise exception

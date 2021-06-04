@@ -2,6 +2,8 @@
 rfsoc_backend.py
 """
 
+import numpy as np
+
 from ..backend import SLabBackend
 from .rfsoc_experiment import RFSoCExperiment
 from .qsystem0 import PfbSoc
@@ -99,6 +101,10 @@ class RFSoCBackend(SLabBackend):
     @classmethod
     def required_config_keys(cls):
         return super(RFSoCBackend, cls).required_config_keys() + RFSOC_BACKEND_KEYS_REQUIRED
+    #ENDDEF
+
+    def samples(self, name, kwargs):
+        return (super().samples(name, kwargs).real * self.tproc_max_gain).astype(np.int16)
     #ENDDEF
 #ENDCLASS
 

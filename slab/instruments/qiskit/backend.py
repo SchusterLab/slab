@@ -14,6 +14,7 @@ References:
 [9 - PulseQobjExperimentConfig] https://github.com/Qiskit/qiskit-terra/blob/a17594a0aadff1f52d6ab2a203062753fcda4b03/qiskit/qobj/pulse_qobj.py#L468
 [10 - QasmQobjConfig] https://github.com/Qiskit/qiskit-terra/blob/a17594a0aadff1f52d6ab2a203062753fcda4b03/qiskit/qobj/qasm_qobj.py#L285
 [11] https://github.com/Qiskit/qiskit-terra/blob/2eee56616d50a9e26756f855ef4aa0135920ad78/qiskit/result/result.py#L202
+[12] https://github.com/Qiskit/qiskit-terra/blob/2eee56616d50a9e26756f855ef4aa0135920ad78/qiskit/pulse/library/parametric_pulses.py
 """
 
 import argparse
@@ -33,6 +34,7 @@ import traceback
 import yaml
 from qiskit.providers.jobstatus import JobStatus, JOB_FINAL_STATES
 from qiskit.providers.models import PulseBackendConfiguration, PulseDefaults
+from qiskit.pulse.library import Constant, Drag, Gaussian, GaussianSquare
 from qiskit.qobj import PulseQobj
 from qiskit.qobj.utils import MeasLevel, MeasReturnType
 from qiskit.result import Result
@@ -316,6 +318,7 @@ class SLabBackend(object):
         self.defaults_payload = bytes(json.dumps(defaults_dict, cls=PulseEncoder,
                                                  ensure_ascii=False), "utf-8")
 
+        # configure logging
         # generate log file path
         lt = time.localtime()
         lt_str = ("{:04d}-{:02d}-{:02d}-{:02d}:{:02d}:{:02d}"
@@ -687,5 +690,25 @@ class SLabBackend(object):
                                 "".format(job_id), extra=log_extra)
             #ENDFOR
         #ENDWHILE
+    #ENDDEF
+
+    def samples(self, name, kwargs):
+        """
+        see [12]
+        """
+        name = name.lower()
+        if name == "constant":
+            samples = Constant(**kwargs).get_waveform().samples
+        elif name == "drag":
+            samples = Drag(**kwargs).get_waveform().samples
+        elif name == "gaussian":
+            samples = Gaussian(**kwargs).get_waveform().samples
+        elif name == "gaussian_square":
+            samples = GaussianSquare(**kwargs).get_waveform().samples
+        else:
+            raise Exception("Unkown pulse shape {}".format(name))
+        #ENDIF
+
+        return samples
     #ENDDEF
 #ENDCLASS

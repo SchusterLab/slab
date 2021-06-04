@@ -38,8 +38,8 @@ class SLabProviderInterface(ProviderInterface):
         for key in self.backends_url_dict.keys():
             url = self.backends_url_dict[key]
             # attempt HEAD request to backend
-            res = requests.head(url)
             try:
+                res = requests.head(url)
                 res.raise_for_status()
                 success = True
             except Exception as e:
