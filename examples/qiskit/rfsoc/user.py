@@ -2,6 +2,8 @@
 user.py
 """
 
+import time
+
 import h5py
 import numpy as np
 import matplotlib as mpl
@@ -10,6 +12,7 @@ import matplotlib.pyplot as plt
 from slab import generate_file_path
 from slab.instruments.qiskit import SLabProviderInterface
 from qiskit import pulse
+from qiskit.providers.jobstatus import JOB_FINAL_STATES
 from qiskit.qobj.utils import MeasLevel, MeasReturnType
 
 DPI = 300
@@ -24,7 +27,7 @@ def get_closest_multiple_of_16(num):
     return int(num + 8 ) - (int(num + 8 ) % 16)
 #ENDDEF
 
-def rs(plot=False):
+def rs(plot=True):
     provider = SLabProviderInterface()
     backend = provider.get_backend("RFSoC2")
     backend_config = backend.configuration()
@@ -40,7 +43,7 @@ def rs(plot=False):
     meas_duration = get_closest_multiple_of_16(32000) #dts
     meas_pulse = pulse.library.Constant(meas_duration, meas_amp)
     
-    meas_freq_count = 1
+    meas_freq_count = 100
     meas_freq_start = 90 * MHz #Hz
     meas_freq_stop = 110 * MHz #Hz
     meas_freqs = np.linspace(meas_freq_start, meas_freq_stop, meas_freq_count)
@@ -61,7 +64,8 @@ def rs(plot=False):
         schedule_los.append({
             meas_chan: meas_freq,
         })
-    #ENDFOR 
+    #ENDFOR
+    
     job = backend.run(
         schedule, meas_level=MeasLevel.KERNELED,
         meas_return=MeasReturnType.AVERAGE, shots=num_shots,
@@ -70,24 +74,22 @@ def rs(plot=False):
         shots_per_set=10,
     )
 
-    return job
+    job.wait_for_final_state()
+    result = job.result()
 
     # parse data
-    i_data = np.zeros(meas_freq_count)
-    q_data = np.zeros(meas_freq_count)
-    amp_data = np.zeros(meas_freq_count)
+    data = np.zeros(meas_freq_count, dtype=np.complex128)
+    amp_data = np.zeros(meas_freq_count, dtype=np.complex128)
     for i in range(meas_freq_count):
-        data = results[i]["a0"][0]
-        i_data[i] = data.real
-        q_data[i] = data.imag
+        data[i] = result.get_memory(i)[0]
         amp_data[i] = abs(data)
     #ENDFOR
 
     if plot:
         meas_freqs_Hz = meas_freqs / MHz
         fig = plt.figure()
-        # plt.plot(meas_freqs_Hz, i_data, label="I")
-        # plt.plot(meas_freqs_Hz, q_data, label="Q")
+        # plt.plot(meas_freqs_Hz, data.real, label="I")
+        # plt.plot(meas_freqs_Hz, data.imag, label="Q")
         plt.plot(meas_freqs_Hz, amp_data)
         plt.scatter(meas_freqs_Hz, amp_data, label="A")
         plt.xlabel("DDS Frequency (MHz)")
@@ -99,7 +101,7 @@ def rs(plot=False):
         print("plotted to {}".format(plot_file_path))
     #ENDIF
     
-    return results
+    return result
 #ENDDEF
 
 def main():

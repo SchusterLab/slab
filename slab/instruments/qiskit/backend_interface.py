@@ -17,12 +17,9 @@ from qiskit.providers.options import Options
 from qiskit.qobj import PulseQobj
 from qiskit.qobj.utils import MeasLevel, MeasReturnType
 
+from .job import SLabJob
 from .json_util import PulseEncoder
 from .backend import JOB_ID_ERROR
-
-QUEUE_KEYS = [
-    "job_id"
-]
 
 class SLabBackendInterface(BackendInterface):
     """

@@ -12,12 +12,15 @@ __pycache__
 # julia
 Manifest.toml
 
-# instrument cfg
+# instruments
 instruments/instrument.cfg
 instruments/awg/test M8195A.ipynb
 instruments/awg/.ipynb_checkpoints/test M8195A-checkpoint.ipynb
 instruments/instruments.cfg
 *.dll
+
+# examples
+!examples/qiskit/rfsoc/config.yaml
 
 # binary
 *.DS_Store

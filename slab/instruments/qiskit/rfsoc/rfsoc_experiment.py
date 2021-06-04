@@ -1,15 +1,11 @@
 """
 rfsoc_experiment.py
-
-References:
-[0] https://github.com/Qiskit/qiskit-terra/blob/2eee56616d50a9e26756f855ef4aa0135920ad78/qiskit/result/models.py#L99
 """
 
 from enum import Enum
 import logging
 
 import numpy as np
-from qiskit.result.models import ExperimentResult, ExperimentResultData
 from qiskit.qobj.utils import MeasLevel, MeasReturnType
 
 from ..experiment import PulseExperiment
@@ -141,8 +137,8 @@ class RFSoCExperiment(PulseExperiment):
             }
         #ENDFOR
         # get default freq for all DAC channels
-        meas_freqs = self.config["meas_lo_freq"]
-        qubit_freqs = self.config["qubit_lo_freq"]
+        meas_freqs = self.config.meas_lo_freq
+        qubit_freqs = self.config.qubit_lo_freq
         # set default freq for all DAC channels
         for (i, frequency) in enumerate(qubit_freqs):
             ch_name = "d{}".format(i)
@@ -163,7 +159,7 @@ class RFSoCExperiment(PulseExperiment):
             self._inst_freq(rdds_ch_idx, frequency, t0, insts, stats, log_extra, prefix="init rdds")
         #ENDFOR
         # parse experiment instructions
-        for qinst in self.qexp.instructions:
+        for qinst in self.qexpt.instructions:
             name = qinst.name
             t0 = qinst.t0
             # check for delay
@@ -306,12 +302,14 @@ class RFSoCExperiment(PulseExperiment):
                     p.regwi(p_ch, r_addr, inst.addr, "ch {} addr".format(ch_idx))
                     # determine mode code
                     # write gain for special case of a constant pulse to minimize memory impact
-                    # TODO: `inst.parameters["amp"][1] == 0.` is checking that the complex part of
+                    # TODO: `np.isreal` is checking that the complex part of
                     # the amplitude is zero. this check will be deprecated in future
                     # firmware versions; currently, however, the DDS can't have a complex value
-                    constant = inst.constant and inst.parameters["amp"][1] == 0.
-                    if constant:
-                        gain_val = int(inst.parameters["amp"][0] * self.backend.tproc_max_gain)
+                    if inst.constant and not np.isreal(inst.parameters["amp"]):
+                        raise Exception("DDS does not currently support complex amplitudes.")
+                    #ENDIF
+                    if inst.constant:
+                        gain_val = int(inst.parameters["amp"].real * self.backend.tproc_max_gain)
                         p.regwi(p_ch, r_gain, gain_val, "ch {} gain".format(ch_idx))
                         mode_code = self._mode_code(
                             self.backend.stdysel_zero, self.backend.mode_oneshot,
@@ -331,7 +329,7 @@ class RFSoCExperiment(PulseExperiment):
                     p.set(ch_idx, p_ch, r_freq, r_phase, r_addr, r_gain, r_mode, r_t,
                           "ch {} play".format(ch_idx))
                     # reset gain to unity if a constant pulse was played
-                    if constant:
+                    if inst.constant:
                         p.regwi(p_ch, r_gain, self.backend.tproc_max_gain,
                                 "ch {} gain".format(ch_idx))
                     #ENDIF
@@ -379,7 +377,7 @@ class RFSoCExperiment(PulseExperiment):
             #ENDFOR
         #ENDFOR
         # wait until next experiment
-        p.synci(p.us2cycles(self.config["rep_delay"]), "rep delay")
+        p.synci(p.us2cycles(self.config.rep_delay), "rep delay")
         # end loop
         p.loopnz(p_i, r_i, "LOOP_I")
         # end program
@@ -454,7 +452,7 @@ class RFSoCExperiment(PulseExperiment):
         self.backend.soc.tproc.start()
         # get memory for each acquire statement
         # TODO assumes ["meas_return"] == "avg"
-        data = np.zeros(self.memory_count, dtype=np.complex128)
+        memory = np.zeros(self.memory_count, dtype=np.complex128)
         for i, ch_idx in enumerate(self.insts.keys()):
             for inst in self.insts[ch_idx]:
                 if inst.inst_type == InstructionType.ACQUIRE:
@@ -464,27 +462,16 @@ class RFSoCExperiment(PulseExperiment):
                         address=inst.addr,
                         length=shots
                     )
-                    data_ = i_data + 1j * q_data
+                    data = i_data + 1j * q_data
                     # average over shots if necessary
                     if self.config.meas_return == MeasReturnType.AVERAGE:
-                        data_ = np.sum(data_) / data.shape[0]
+                        data = np.sum(data) / data.shape[0]
                     #ENDIF
-                    data[inst.memory] = data_
+                    memory[inst.memory] = data
                 #ENDIF
             #ENDIF
         #ENDIF
 
-        # format result, see [0]
-        result = ExperimentResult(
-            shots=(self.shots - shots, self.shots),
-            success=self.shots == self.shots_completed,
-            data=ExperimentResultData(
-                memory=data,
-            ),
-            meas_level=self.config.meas_level,
-            meas_return=self.config.meas_return,
-        )
-        
-        return result
+        return memory
     #ENDDEF
 #ENDCLASS

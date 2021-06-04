@@ -1,0 +1,101 @@
+%YAML 1.2
+---
+### PULSE BACKEND CONFIGURAITON ###
+# https://github.com/Qiskit/qiskit-terra/blob/main/
+# qiskit/providers/models/backendconfiguration.py#L493
+backend_name: "RFSoC2"
+backend_version: "0.1"
+n_qubits: 2
+basis_gates: []
+gates: []
+local: true
+simulator: false
+conditional: true
+open_pulse: true
+memory: true
+# `max_shots` is unlimited in principle
+max_shots: 100000
+coupling_map: [[1], [0]]
+n_uchannels: 0
+u_channel_lo: []
+meas_levels: [1]
+# `lo_range` is really the intermediate frequency output by the DDS of the RFSoC, which
+# is limited to 6.144 GHz
+qubit_lo_range: [[0, 6.144], [0, 6.144]]
+meas_lo_range: [[0, 6.144]]
+# 1 / 6.144
+dt: 0.162760416666667
+dtm: 0.162760416666667
+rep_times: []
+meas_kernels: []
+discriminators: []
+dynamic_reprate_enabled: true
+# RFSoC master clock is 48-bit, so maximum delay in DAC (dt) units is 16 * (2^48)
+# 16 * (2^48) * dt * 1e-9 = 733 008 us
+# where dt is as in this config file, see above
+rep_delay_range: [0., 733008.]
+default_rep_delay: 0.
+# https://github.com/Qiskit/qiskit-terra/issues/6469
+parametric_pulses: ["constant", "gaussian", "gaussian_square"]
+processor_type: {}
+
+### PULSE DEFAULTS ###
+# https://github.com/Qiskit/qiskit-terra/blob/main/
+# qiskit/providers/models/pulsedefaults.py#L164
+# we use qubit_freq_est slightly differntly than was intended
+qubit_freq_est: [5., 6.]
+meas_freq_est: [8.]
+buffer: 0
+pulse_library: []
+cmd_def: []
+
+### SLAB BACKEND ###
+# `shots_per_set` is limited by how many IQ points we can store in the
+# "AVG" portion of the average buffer, which is 2^14 = 16384
+default_shots_per_set: 1000
+log_level: 10
+log_path: "log"
+result_timeout: 86400 # 1 day in seconds
+result_timeout_sleep: 10 # 3600 # 1 hour in seconds
+
+### RFSoC BACKEND ###
+ch_name_idx: {
+    "d0": 4, # qubit
+    "d1": 2, # cavity
+    "m0": 3, # readout
+    "a0": 0, # acquire readout
+    "r0": 5, # readout dds
+}
+# TODO: this will be deprecated in a new firmware version
+ch_idx_rdds: {
+    3: 5,
+}
+ch_idx_page: {
+    0: 0,
+    1: 0,
+    2: 1,
+    3: 1,
+    4: 2,
+    5: 2
+}
+ch_idx_reg: [
+    # ch0 - page0
+    {"out": 16},
+    # ch1 - page0
+    {"freq": 24, "phase": 25, "addr": 26, "gain": 27, "mode": 28, "t": 29, "adc_freq": 30},
+    # ch2 - page1
+    {"freq": 16, "phase": 17, "addr": 18, "gain": 19, "mode": 20, "t": 21, "adc_freq": 22},
+    # ch3 - page1
+    {"freq": 24, "phase": 25, "addr": 26, "gain": 27, "mode": 28, "t": 29, "adc_freq": 30},
+    # ch4 - page2
+    {"freq": 16, "phase": 17, "addr": 18, "gain": 19, "mode": 20, "t": 21, "adc_freq": 22},
+    # ch5 - page2
+    {"freq": 24},
+]
+# miscellaneous tproc registers, access these lists with the same index
+misc_page: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+misc_reg: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+tproc_initial_cycle_offset: 1000
+adc_trig_offset: 256
+acquire_pad: 10
+rfsoc_binary_file_path: "qsystem_0.bit"

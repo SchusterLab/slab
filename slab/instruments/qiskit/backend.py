@@ -31,9 +31,12 @@ import time
 import traceback
 
 import yaml
-from qiskit.providers.jobstatus import JobStatus
+from qiskit.providers.jobstatus import JobStatus, JOB_FINAL_STATES
 from qiskit.providers.models import PulseBackendConfiguration, PulseDefaults
+from qiskit.qobj import PulseQobj
+from qiskit.qobj.utils import MeasLevel, MeasReturnType
 from qiskit.result import Result
+from qiskit.result.models import ExperimentResult, ExperimentResultData
 
 from .json_util import PulseEncoder
 
@@ -138,8 +141,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         log_extra = {"tid": tid % TID_MASK}
         ctype, pdict = cgi.parse_header(self.headers.get("content-type"))
         # log POST
-        self.server.backend.logger.log(logging.INFO, "received POST {} content-type {} from {}"
-                                       "".format(path, ctype, caddr_str), extra=log_extra)
+        self.server.backend.logger.log(logging.INFO, "received POST {} from {}"
+                                       "".format(path, caddr_str), extra=log_extra)
         # break on post path
         if path == "/job-queue" or path == "/job-retrieve":
             if ctype != "application/json":
@@ -153,7 +156,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 length = int(self.headers.get("content-length"))
                 in_payload = self.rfile.read(length)
                 if path == "/job-queue":
-                    out_payload = self.server.backend.queue_(in_payload)
+                    out_payload = self.server.backend.queue(in_payload)
                     out_payload_name = "queue"
                 elif path == "/job-retrieve":
                     out_payload = self.server.backend.retrieve(in_payload)
@@ -161,8 +164,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 #ENDIF
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
-                self.wfile.write(out_payload)
                 self.end_headers()
+                self.wfile.write(out_payload)
                 self.server.backend.logger.log(logging.INFO, "returned {} payload"
                                                "".format(out_payload_name), extra=log_extra)
         else:
@@ -286,9 +289,9 @@ class SLabBackend(object):
         self.job_id_lock = threading.Lock()
         self.job_id_counter = 0
         # see [4]
-        self.failure_result = Result(self.backend_name, self.backend_version, "", "", False, [],
-                                     status=JobStatus.ERROR)
-        self.failure_result_payload = bytes(json.dumps(result_failure.to_dict(), cls=PulseEncoder,
+        failure_result = Result(self.backend_name, self.backend_version, "", "", False, [],
+                                status=JobStatus.ERROR)
+        self.failure_result_payload = bytes(json.dumps(failure_result.to_dict(), cls=PulseEncoder,
                                                        ensure_ascii=False), "utf-8")
         
         # prep backend_config and defaults payloads
@@ -437,7 +440,7 @@ class SLabBackend(object):
         self.logger.log(DEBUG_V, "released {}".format(name), extra=log_extra)
     #ENDDEF
 
-    def queue_(self, qobj_payload):
+    def queue(self, qobj_payload):
         tid = threading.get_ident()
         log_extra = {"tid": tid % TID_MASK}
 
@@ -445,17 +448,22 @@ class SLabBackend(object):
         try:
             qobj_dict = json.loads(qobj_payload)
             qobj = PulseQobj.from_dict(qobj_dict)
-        except Error as e:
+        except Exception as e:
             qobj = None
-            self.logger.log(logging.INFO, "encountered invalid JSON in job_queue\n{}"
+            self.logger.log(logging.INFO, "invalid qobj_payload in job_queue",
+                            extra=log_extra)
+            self.logger.log(logging.DEBUG, "qobj_payload exception\n{}"
                             "".format(traceback.format_exc()), extra=log_extra)
         #ENDTRY
 
         # continue processing the job if qobj was valid
-        if qobj is not None:
-            # create result for each experiment, set job_id to JOB_ID_ERROR
+        if qobj is None:
+            job_id = JOB_ID_ERROR
+        else:
+            # create result for each experiment, set job_valid to False
             # if any experiment content is malformed
             # see [4], [8], [9], [10]
+            job_valid = True
             results = list()
             for qexpt in qobj.experiments:
                 shots = (0, 0)
@@ -465,15 +473,15 @@ class SLabBackend(object):
                 # currently, we only support the following meas_level and meas_return types
                 if not (meas_level == MeasLevel.KERNELED
                         and meas_return == MeasReturnType.AVERAGE):
-                    job_id = JOB_ID_ERROR
-                    self.logger.log(logging.INFO, "encountered malformed experiment content "
+                    job_valid = False
+                    self.logger.log(logging.INFO, "malformed experiment content "
                                     "in job_queue",
                                     extra=log_extra)
                     break
                 #ENDIF
                 # number of memory slots is determined in parsing and the
                 # `memory` field is not set here
-                data = ExperimentData()
+                data = ExperimentResultData()
                 result = ExperimentResult(
                     shots, success, data, meas_level=meas_level,
                     status=JobStatus.QUEUED, meas_return=meas_return,
@@ -481,16 +489,10 @@ class SLabBackend(object):
                 )
                 results.append(result)
             #ENDFOR
-            
-            if not job_id == JOB_ID_ERROR:
-                # create result for job
-                success = False
-                result = Result(
-                self.backend_name, self.backend_version, qobj.qobj_id, job_id,
-                    success, results, date=time.localtime(), status=JobStatus.QUEUED,
-                    header=qobj.header
-                )
 
+            if not job_valid:
+                job_id = JOB_ID_ERROR
+            else:
                 # create unique job_id for job
                 self._acquire_lock(self.job_id_lock, "job_id_lock", log_extra)
                 job_id = str(self.job_id_counter)
@@ -503,21 +505,26 @@ class SLabBackend(object):
                 self.queue_qobjs[job_id] = qobj
                 self._release_lock(self.queue_lock, "queue_lock", log_extra)
 
+                # create result for job
+                success = False
+                result = Result(
+                    self.backend_name, self.backend_version, qobj.qobj_id, job_id,
+                    success, results, date=time.localtime(), status=JobStatus.QUEUED,
+                    header=qobj.header
+                )
+
                 # append job to results
                 self._acquire_lock(self.results_lock, "results_lock", log_extra)
                 self.results[job_id] = result
                 self._release_lock(self.results_lock, "results_lock", log_extra)
             #ENDIF
-        # else, send failure response
-        else:
-            job_id = JOB_ID_ERROR
         #ENDIF
 
         # format response
         out_dict = {
             "job_id": job_id,
         }
-        out_payload = bytes(json.dumps(out_dict, ensure_ascii=False), "utf-8")
+        out_payload = bytes(json.dumps(out_dict, cls=PulseEncoder, ensure_ascii=False), "utf-8")
 
         return out_payload
     #ENDDEF
@@ -533,18 +540,20 @@ class SLabBackend(object):
             assert isinstance(job_id, str)
         except Exception as e:
             job_id = None
-            self.logger.log(logging.INFO, "encountered invalid JSON in job_retrieve\n{}"
+            self.logger.log(logging.INFO, "invalid job_id_payload in job_retrieve",
+                            extra=log_extra)
+            self.logger.log(logging.DEBUG, "job_id_payload exception\n{}"
                             "".format(traceback.format_exc()), extra=log_extra)
         #ENDTRY
         
         # retrieve corresponding result
         if job_id is not None:
             self._acquire_lock(self.results_lock, "results_lock", log_extra)
-            out_dict = copy.copy(self.results.get(job_id, None))
+            out_dict = self.results.get(job_id, None).to_dict()
             self._release_lock(self.results_lock, "results_lock", log_extra)
         #ENDIF
         if out_dict is not None:
-            out_payload = bytes(json.dumps(out_dict, ensure_ascii=False), "utf-8")
+            out_payload = bytes(json.dumps(out_dict, cls=PulseEncoder, ensure_ascii=False), "utf-8")
         else:
             out_payload = self.failure_result_payload
         #ENDIF
@@ -595,9 +604,12 @@ class SLabBackend(object):
                         experiments.append(experiment)
                     #ENDFOR
 
+                    # grab results
+                    # NOTE this thread is the only one that writes
+                    # to `self.results`, so this non-locking read is OKAY
+                    results = copy.copy(self.results[job_id].results)
                     # run experiments in round-robin fashion until they
                     # have all been exhausted
-                    results = [None] * len(experiments)
                     all_exhausted = False
                     while not all_exhausted:
                         # set all_exhausted to True, if any single experiment is exhausted,
@@ -610,40 +622,34 @@ class SLabBackend(object):
                                 continue
                             # if not exhausted, execute a set
                             else:
+                                # NOTE we are writing to a local list, not the one
+                                # in `self.results`, so this write is OKAY. furthermore
+                                # `run_next_set` never modifies `results[j]`
                                 results[j] = experiment.run_next_set(results[j])
                             #ENDIF
                         #ENDFOR
                         # update results
-                        self.logger.log(DEBUG_V, "updating job results - before aquire",
-                                        extra=log_extra)
                         self._acquire_lock(self.results_lock, "results_lock", log_extra)
-                        self.logger.log(DEBUG_V, "updating job results - before loop",
-                                        extra=log_extra)
                         for j in range(len(results)):
                             self.results[job_id].results[j] = results[j]
                         #ENDIF
-                        self.logger.log(DEBUG_V, "updating job results - before release",
-                                        extra=log_extra)
                         self._release_lock(self.results_lock, "results_lock", log_extra)
                     #ENDWHILE
                     
                     # job done
-                    self.logger.log(DEBUG_V, "updating job metadata", extra=log_extra)
                     self._acquire_lock(self.results_lock, "results_lock", log_extra)
                     self.results[job_id].status = JobStatus.DONE
                     self.results[job_id].success = True
                     self.results[job_id].date = time.localtime()
                     self._release_lock(self.results_lock, "results_lock", log_extra)
-                    self.logger.log(logging.INFO, "executed j{}".format(job_id), extra=log_extra)
+                    self.logger.log(logging.INFO, "j{} succeeded".format(job_id), extra=log_extra)
                 except Exception as e:
                     # job error
-                    self.logger.log(logging.DEBUG, "j{} exception\n{}"
-                                    "".format(job_id, traceback.format_exc()), extra=log_extra)
                     self._acquire_lock(self.results_lock, "results_lock", log_extra)
                     self.results[job_id].status = JobStatus.ERROR
                     self.results[job_id].date = time.localtime()
                     self._release_lock(self.results_lock, "results_lock", log_extra)
-                    self.logger.log(logging.INFO, "encountered exception in job j{}"
+                    self.logger.log(logging.INFO, "j{} failed"
                                     "".format(job_id), extra=log_extra)
                     self.logger.log(logging.DEBUG, "j{} exception\n{}"
                                     "".format(job_id, traceback.format_exc()), extra=log_extra)

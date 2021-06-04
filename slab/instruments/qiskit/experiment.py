@@ -1,11 +1,16 @@
 """
 experiment.py
+
+References:
+[0] https://github.com/Qiskit/qiskit-terra/blob/2eee56616d50a9e26756f855ef4aa0135920ad78/qiskit/result/models.py#L99
 """
 
 import copy
 
 import numpy as np
-
+from qiskit.providers import JobStatus
+from qiskit.result.models import ExperimentResult, ExperimentResultData
+from qiskit.qobj import PulseQobjConfig
 from qiskit.qobj.utils import MeasReturnType, MeasLevel
 
 class PulseExperiment(object):
@@ -20,7 +25,7 @@ class PulseExperiment(object):
         self.qobj = qobj
         self.qexpt = qexpt
         # config uses job-level config info
-        self.config = copy.copy(qobj.config)
+        self.config = PulseQobjConfig.from_dict(copy.copy(qobj.config.__dict__))
         # config prioritizes experiment-level config info
         if qexpt.config is not None:
             self.config.__dict__.update(qexpt.config.__dict__)
@@ -39,14 +44,14 @@ class PulseExperiment(object):
     def run_next_set(self, prev_result):
         # run the next set if all sets have not been run
         if self.exhausted:
-            result = None
+            memory = None
         else:
             if self.shots_completed + self.shots_per_set > self.shots:
                 shots = self.shots - self.shots_completed
             else:
                 shots = self.shots_per_set
             #ENDIF
-            result = self._run(shots)
+            memory = self._run(shots)
             self.shots_completed += shots
             if self.shots_completed == self.shots:
                 self.exhausted = True
@@ -54,27 +59,37 @@ class PulseExperiment(object):
         #ENDIF
 
         # concatenate this result with previous result
-        if result is None:
+        if memory is None:
             result = prev_result
         else:
-            shots = (prev_result.shots[0], result.shots[1])
-            result.shots = shots
-            # memory is uninitialized for the first prev_result
-            if prev_result.data.memory is not None:
+            # memory is not set for the first `prev_result`
+            if hasattr(prev_result.data, "memory"):
                 if (self.config.meas_level == MeasLevel.KERNELED
-                and self.config.meas_return == MeasReturnType.AVERAGE):
+                    and self.config.meas_return == MeasReturnType.AVERAGE):
                     prev_count = prev_result.shots[1] - prev_result.shots[0]
-                    prev_data = prev_result.data.memory
-                    this_count = result["shots"][1] - result["shots"][0]
-                    this_data = prev_result["data"]["memory"]
-                    data = ((prev_data * prev_count + this_data * this_count)
+                    prev_memory = prev_result.data.memory
+                    this_count = self.shots_completed - shots
+                    memory = ((prev_memory * prev_count + memory * this_count)
                             / (prev_count + this_count))
                 else:
                     raise NotImplementedError("Only MeasLevel.KERNELED and MeasReturn.AVERAGE "
                                               "are currently supported.")
                 #ENDIF
-                result.data.memory = data
             #ENDIF
+            # see [0]
+            success = self.exhausted
+            status = JobStatus.DONE if self.exhausted else JobStatus.RUNNING
+            result = ExperimentResult(
+                shots=(prev_result.shots[0], self.shots_completed),
+                success=success,
+                data=ExperimentResultData(
+                    memory=memory,
+                ),
+                meas_level=self.config.meas_level,
+                status=status,
+                meas_return=self.config.meas_return,
+                header=self.qexpt.header,
+            )
         #ENDIF
         
         return result
