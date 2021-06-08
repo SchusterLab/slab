@@ -14,7 +14,7 @@ class DigitalAttenuator(SerialInstrument):
     """
 
     
-    def __init__(self, name="", address='COM3', enabled=True, timeout=0):
+    def __init__(self, name="", address='COM6', enabled=True, timeout=0):
         """Note when initialized the attenuator board will reset to -31.5dB"""
         SerialInstrument.__init__(self, name, address, enabled, timeout, query_sleep=0.1)
         self.term_char = '\n'
@@ -41,3 +41,4 @@ class DigitalAttenuator(SerialInstrument):
         self.ser.flushInput()
         val = float(self.query('G'))
         return -val * 0.5
+    
