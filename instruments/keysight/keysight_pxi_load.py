@@ -676,17 +676,17 @@ class KeysightSingleQubit:
         qbB_Q = []
         for ii in tqdm(range(self.num_avg)):
             if "A" in self.on_qubits:
-                ch1 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_1.shape).T[
+                ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
                       int(w[0]):int(w[1])].T
-                ch2 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_2.shape).T[
+                ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
                       int(w[0]):int(w[1])].T
                 qbA_I.append(ch1)
                 qbA_Q.append(ch2)
             if "B" in self.on_qubits:
-                ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(self.readoutB_window[0]):int(
-                    self.readoutB_window[1])].T
-                ch4 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(self.readoutB_window[0]):int(
-                    self.readoutB_window[1])].T
+                ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[
+                      int(w[0]):int(w[1])].T
+                ch4 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[
+                      int(w[0]):int(w[1])].T
                 qbB_I.append(ch3)
                 qbB_Q.append(ch4)
         if "A" in self.on_qubits:

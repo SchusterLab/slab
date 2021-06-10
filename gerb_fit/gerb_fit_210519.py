@@ -216,7 +216,7 @@ def check_sync(filenb, expt_name, expt_num=0):
         ax3 = fig.add_subplot(133, title='Expt num = ' + str(expt_num))
         ax3.plot(np.arange(data_1[0].size*dt_dig, step=dt_dig), data_1[expt_num])
         ax3.plot(np.arange(data_1[0].size*dt_dig, step=dt_dig), data_2[expt_num])
-        ax3.axvspan(readout_window[0], readout_window[1], alpha=0.2, color='b')
+        ax3.axvspan(readout_window[0]*dt_dig, readout_window[1]*dt_dig, alpha=0.2, color='b')
         ax3.set_xlabel('Time (ns)')
         ax3.set_ylabel('Signal')
         fig.tight_layout()
