@@ -200,33 +200,42 @@ class PulseSequences:
         sequencer.append('sideband', Idle(time=time))
 
     def ff_square(self, sequencer, ff_len, flip_amp=False):
+        area_vec = []
         for qb, flux in enumerate(self.expt_cfg['ff_vec']):
             if flip_amp:
                 flux = -flux
-            sequencer.append('ff_Q%s' % qb,
-                             Square(max_amp=flux, flat_len=ff_len[qb],
+            pulse = Square(max_amp=flux, flat_len=ff_len[qb],
                                     ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
-                                    phase=0))
+                                    phase=0)
+            area_vec.append(pulse.get_area())
+            sequencer.append('ff_Q%s' % qb, pulse)
+        return np.asarray(area_vec)
 
     def ff_ramp(self,sequencer,ff_len,flip_amp = False):
+        area_vec = []
         for qb,flux in enumerate(self.expt_cfg['ff_vec']):
             if flip_amp:
                 flux = -flux
-            sequencer.append('ff_Q%s' % qb,
-                             linear_ramp(max_amp=flux, flat_len=ff_len[qb],
+            pulse = linear_ramp(max_amp=flux, flat_len=ff_len[qb],
                                     ramp1_len=self.lattice_cfg['ff_info']['ff_linear_ramp_len'],
                                          ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
-                                         cutoff_sigma=2, freq=0, phase=0))
+                                         cutoff_sigma=2, freq=0, phase=0)
+            area_vec.append(pulse.get_area())
+            sequencer.append('ff_Q%s' % qb,pulse)
+        return np.asarray(area_vec)
 
     def ff_adb(self,sequencer,ff_len,flip_amp = False):
+        area_vec = []
         for qb,flux in enumerate(self.expt_cfg['ff_vec']):
             if flip_amp:
                 flux = -flux
-            sequencer.append('ff_Q%s' % qb,
-                             adb_ramp(max_amp=flux, flat_len=ff_len[qb],
+            pulse = adb_ramp(max_amp=flux, flat_len=ff_len[qb],
                                       adb_ramp1_sig=self.lattice_cfg['ff_info']['ff_adb_ramp_sig'],
                                          ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
-                                         cutoff_sigma=2, freq=0, phase=0))
+                                         cutoff_sigma=2, freq=0, phase=0)
+            area_vec.append(pulse.get_area())
+            sequencer.append('ff_Q%s' % qb, pulse)
+        return np.asarray(area_vec)
 
     def ff_comp(self, sequencer, area_vec):
         for qb in range(len(self.expt_cfg['ff_vec'])):
@@ -237,19 +246,13 @@ class PulseSequences:
                                     phase=0))
 
     def ff_square_and_comp(self, sequencer, ff_len):
-        for qb, flux in enumerate(self.expt_cfg['ff_vec']):
-            sequencer.append('ff_Q%s' % qb,
-                             Square(max_amp=flux, flat_len=ff_len[qb],
-                                    ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
-                                    phase=0))
+        area_vec = self.ff_square(self, sequencer, ff_len, flip_amp=False)
 
         # COMPENSATION PULSE
-        for qb, flux in enumerate(self.expt_cfg['ff_vec']):
-            sequencer.append('ff_Q%s' % qb,
-                             Square(max_amp=-flux,
-                                    flat_len= ff_len[qb],
-                                    ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
-                                    phase=0))
+        if self.quantum_device_cfg["ff_info"]["ff_comp_sym"]:
+            self.ff_square(self, sequencer, ff_len, flip_amp=True)
+        else:
+            self.ff_comp(self, sequencer, area_vec)
 
     def pad_start_pxi(self,sequencer,on_qubits=None, time = 500):
         # Need 500 ns of padding for the sequences to work reliably. Not sure exactly why.
@@ -530,26 +533,29 @@ class PulseSequences:
 
             #add flux pulse to put them in resonance
             if self.expt_cfg["ff_pulse_type"]== "linear":
-                self.ff_ramp(sequencer, ff_len, flip_amp=False)
+                area_vec = self.ff_ramp(sequencer, ff_len, flip_amp=False)
 
             elif self.expt_cfg["ff_pulse_type"]== "adb":
-                self.ff_adb(sequencer, ff_len, flip_amp=False)
+                area_vec = self.ff_adb(sequencer, ff_len, flip_amp=False)
 
             elif self.expt_cfg["ff_pulse_type"]== "square":
-                self.ff_square(sequencer, ff_len, flip_amp=False)
+                area_vec = self.ff_square(sequencer, ff_len, flip_amp=False)
 
             #synch all channels except flux before adding readout, then do readout
             self.readout_pxi(sequencer, self.expt_cfg['rd_qbs'], overlap=False, synch_channels=self.channels)
 
             #add compensation flux to pulse
-            if self.expt_cfg["ff_pulse_type"]== "linear":
-                self.ff_ramp(sequencer, ff_len, flip_amp=True)
+            if self.quantum_device_cfg["ff_info"]["ff_comp_sym"]:
+                if self.expt_cfg["ff_pulse_type"]== "linear":
+                    self.ff_ramp(sequencer, ff_len, flip_amp=True)
 
-            elif self.expt_cfg["ff_pulse_type"]== "adb":
-                self.ff_adb(sequencer, ff_len, flip_amp=True)
+                elif self.expt_cfg["ff_pulse_type"]== "adb":
+                    self.ff_adb(sequencer, ff_len, flip_amp=True)
 
-            elif self.expt_cfg["ff_pulse_type"]== "square":
-                self.ff_square(sequencer, ff_len, flip_amp=True)
+                elif self.expt_cfg["ff_pulse_type"]== "square":
+                    self.ff_square(sequencer, ff_len, flip_amp=True)
+            else:
+                self.ff_comp(sequencer, area_vec)
 
 
         return sequencer.complete(self, plot=True)
@@ -581,11 +587,11 @@ class PulseSequences:
 
                 # add flux pulse
                 if pulse_type=='square':
-                    self.ff_square(sequencer, ff_len=ff_len)
+                    area_vec = self.ff_square(sequencer, ff_len=ff_len)
                 elif pulse_type=="linear_ramp":
-                    self.ff_ramp(sequencer, ff_len=ff_len)
+                    area_vec = self.ff_ramp(sequencer, ff_len=ff_len)
                 elif pulse_type=="adb":
-                    self.ff_adb(sequencer, ff_len=ff_len)
+                    area_vec = self.ff_adb(sequencer, ff_len=ff_len)
 
 
             else:
@@ -598,11 +604,11 @@ class PulseSequences:
 
                 #add flux pulse
                 if pulse_type == 'square':
-                    self.ff_square(sequencer, ff_len=ff_len)
+                    area_vec = self.ff_square(sequencer, ff_len=ff_len)
                 elif pulse_type == "linear_ramp":
-                    self.ff_ramp(sequencer, ff_len=ff_len)
+                    area_vec = self.ff_ramp(sequencer, ff_len=ff_len)
                 elif pulse_type=="adb":
-                    self.ff_adb(sequencer, ff_len=ff_len)
+                    area_vec = self.ff_adb(sequencer, ff_len=ff_len)
 
                 #wait time dt, the apply ppiq
                 self.idle_q(sequencer, time=delt)
@@ -616,12 +622,15 @@ class PulseSequences:
             #add compensation flux pulse
             fluxch = [ch for ch in self.channels if 'ff' in ch]
             sequencer.sync_channels_time(fluxch + ['readoutA'])
-            if pulse_type == 'square':
-                self.ff_square(sequencer, ff_len=ff_len, flip_amp=True)
-            elif pulse_type == "linear_ramp":
-                self.ff_ramp(sequencer, ff_len=ff_len, flip_amp=True)
-            elif pulse_type == "adb":
-                self.ff_adb(sequencer, ff_len=ff_len)
+            if self.quantum_device_cfg["ff_info"]["ff_comp_sym"]:
+                if pulse_type == 'square':
+                    self.ff_square(sequencer, ff_len=ff_len, flip_amp=True)
+                elif pulse_type == "linear_ramp":
+                    self.ff_ramp(sequencer, ff_len=ff_len, flip_amp=True)
+                elif pulse_type == "adb":
+                    self.ff_adb(sequencer, ff_len=ff_len)
+            else:
+                self.ff_comp(sequencer, area_vec)
 
             sequencer.end_sequence()
 
