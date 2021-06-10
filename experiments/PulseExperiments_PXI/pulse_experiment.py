@@ -268,7 +268,7 @@ class Experiment:
                 # changed fn in rfgenerators.py to be set_output for all, changed back
 
                 # for SignalCores
-                if 'SC' in self.hardware_cfg['readout_los'][ii]:
+                if 'SC' in self.hardware_cfg['drive_los'][ii]:
                     d.set_output_state(True)
                 else:
                     d.set_output(True)
