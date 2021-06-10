@@ -280,7 +280,7 @@ class PulseSequences:
             sequencer.append('readout%s' % qubit_id,
                              Square(max_amp=self.quantum_device_cfg['readout'][qubit_id]['amp'],
                                     flat_len=self.quantum_device_cfg['readout'][qubit_id]['length'],
-                                    ramp_sigma_len=20, cutoff_sigma=2, freq=self.quantum_device_cfg['readout'][qubit_id]['freq'],
+                                    ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.quantum_device_cfg['readout'][qubit_id]['freq'],
                                     phase=0, phase_t0=readout_time_5ns_multiple))
         sequencer.append('digtzr_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
 
@@ -305,7 +305,7 @@ class PulseSequences:
             sequencer.append('readout%s' % qubit_id,
                              Square(max_amp=self.quantum_device_cfg['readout'][qubit_id]['amp'],
                                     flat_len=self.quantum_device_cfg['readout'][qubit_id]['length'],
-                                    ramp_sigma_len=20, cutoff_sigma=2, freq=0,
+                                    ramp_sigma_len=0.001, cutoff_sigma=2, freq=0,
                                     phase=0, phase_t0=readout_time_5ns_multiple))
         sequencer.append('digtzr_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
 
@@ -612,6 +612,74 @@ class PulseSequences:
             sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
+
+    def adb_ramp_cal_ppiq(self, sequencer):
+        delt = self.expt_cfg['delt']
+        pulse_type = self.expt_cfg['pulse_type']
+        for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+
+            if delt<0:
+                #ppiq first if dt less than zero
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'],
+                               amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+
+                # wait time dt, the apply flux pulse
+                for qb in range(8):
+                    sequencer.append('ff_Q%s' % qb, Idle(time=-delt))
+
+                if self.expt_cfg["ff_len"] == "auto":
+                    ff_len = 8 * [
+                        self.expt_cfg['qb_pulse_length'] + delt + self.quantum_device_cfg['readout'][qubit_id[0]][
+                            'length']]
+                else:
+                    ff_len = self.lattice_cfg['ff_info']["ff_len"]
+
+                # add flux pulse
+                if pulse_type=='square':
+                    self.ff_square(sequencer, ff_len=ff_len)
+                elif pulse_type=="linear_ramp":
+                    self.ff_ramp(sequencer, ff_len=ff_len)
+
+
+            else:
+                #flux pulse first if dt greater than zero
+                if self.expt_cfg["ff_len"] == "auto":
+                    ff_len = 8*[self.expt_cfg['qb_pulse_length']+delt+self.quantum_device_cfg['readout'][qubit_id[0]][
+                        'length']]
+                else:
+                    ff_len = self.lattice_cfg['ff_info']["ff_len"]
+
+                #add flux pulse
+                if pulse_type == 'square':
+                    self.ff_square(sequencer, ff_len=ff_len)
+                elif pulse_type == "linear_ramp":
+                    self.ff_ramp(sequencer, ff_len=ff_len)
+
+                #wait time dt, the apply ppiq
+                self.idle_q(sequencer, time=delt)
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+
+            #synch all channels except flux before adding readout, then do readout
+            channels_excluding_fluxch = [ch for ch in self.channels if 'ff' not in ch]
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'], overlap=False, synch_channels=channels_excluding_fluxch)
+
+            #add compensation flux pulse
+            fluxch = [ch for ch in self.channels if 'ff' in ch]
+            sequencer.sync_channels_time(fluxch + ['readoutA'])
+            if pulse_type == 'square':
+                self.ff_square(sequencer, ff_len=ff_len, flip_amp=True)
+            elif pulse_type == "linear_ramp":
+                self.ff_ramp(sequencer, ff_len=ff_len, flip_amp=True)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+
 
     # def ff_ramp_cal_ppiq_ramp(self, sequencer):
     #     delt = self.expt_cfg['delt']
