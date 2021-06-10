@@ -218,6 +218,16 @@ class PulseSequences:
                                          ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
                                          cutoff_sigma=2, freq=0, phase=0))
 
+    def ff_adb(self,sequencer,ff_len,flip_amp = False):
+        for qb,flux in enumerate(self.expt_cfg['ff_vec']):
+            if flip_amp:
+                flux = -flux
+            sequencer.append('ff_Q%s' % qb,
+                             adb_ramp(max_amp=flux, flat_len=ff_len[qb],
+                                      adb_ramp1_sig=self.lattice_cfg['ff_info']['ff_adb_ramp_sig'],
+                                         ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
+                                         cutoff_sigma=2, freq=0, phase=0))
+
     def ff_comp(self, sequencer, area_vec):
         for qb in range(len(self.expt_cfg['ff_vec'])):
             ff_len = area_vec[qb]/self.lattice_cfg['ff_info']['comp_pulse_amp'][qb]
@@ -503,6 +513,36 @@ class PulseSequences:
                 ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"]) + self.lattice_cfg['ff_info']['ff_pulse_padding']
             self.ff_square_and_comp(sequencer, ff_len=ff_len)
             sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def ff_2qb_swap(self, sequencer):
+
+        for ff_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=self.expt_cfg['on_qubits'], time=500)
+
+            #add pi pulse (#TODO: would like pi pulse to finish at same time
+            for qb in self.expt_cfg["pi_qb"]:
+                self.pi_q(sequencer, qb_id=qb)
+
+            sequencer.sync_channels_time(self.channels)
+
+            #add flux pulse to put them in resonance
+            if self.expt_cfg["ff_pulse_type"]== "linear":
+                self.ff_ramp(sequencer, ff_len, flip_amp=False)
+
+            elif self.expt_cfg["ff_pulse_type"]== "adb":
+                self.ff_adb(sequencer, ff_len, flip_amp=False)
+
+            elif self.expt_cfg["ff_pulse_type"]== "square":
+                self.ff_square(sequencer, ff_len, flip_amp=False)
+
+            #synch all channels except flux before adding readout, then do readout
+            self.readout_pxi(sequencer, self.expt_cfg['rd_qbs'], overlap=False, synch_channels=self.channels)
+
+            #add compensation flux to pulse
+
 
         return sequencer.complete(self, plot=True)
 
