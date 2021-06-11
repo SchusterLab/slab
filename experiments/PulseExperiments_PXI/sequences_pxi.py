@@ -2136,47 +2136,31 @@ class PulseSequences:
                 # self.gen_q(sequencer, qubit_id, amp=self.expt_cfg['qubit_amp'], len=self.expt_cfg['qubit_pulse_len'],
                 #            phase=0, pulse_type='gauss', add_freq=dfreq)
 
-            # self.gen_c(sequencer, cavity_id=self.expt_cfg['on_cavities'], amp=self.expt_cfg['cavity_amp'], len=self.expt_cfg['cavity_pulse_len'])
-            # self.gen_c(sequencer, cavity_id=self.expt_cfg['on_cavities'], amp=self.expt_cfg['cavity_amp'], len=self.expt_cfg['cavity_pulse_len'], pulse_type = 'gauss')
 
-
-            self.gen_c(sequencer, cavity_id="1", amp=self.expt_cfg['cavity_amp'],
-                       len=self.expt_cfg['cavity_pulse_len'], pulse_type='gauss')
-
-            self.gen_c(sequencer, cavity_id="2", amp=self.expt_cfg['cavity_amp'],
-                       len=self.expt_cfg['cavity_pulse_len'], pulse_type='gauss')
-            # self.idle_q(sequencer, time=self.expt_cfg['idle_time'])
-            if not self.expt_cfg['overlap']:
-                sequencer.sync_channels_time(self.channels)
-
-            self.gen_q(sequencer, "1", amp=self.expt_cfg['qubit_amp'], len=self.expt_cfg['qubit_pulse_len'],
-                       phase=0, pulse_type=self.expt_cfg['pulse_type'], add_freq=dfreq)
-            self.gen_q(sequencer, "2", amp=self.expt_cfg['qubit_amp'], len=self.expt_cfg['qubit_pulse_len'],
-                       phase=0, pulse_type=self.expt_cfg['pulse_type'], add_freq=dfreq)
             # commented out may 3, return to this and  undo bad changes, i.e. add back idle and remove the second sync??
-            # for qubit_id in self.expt_cfg['on_qubits']:
-            #
-            #     # self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
-            #
-            #     #self.gen_c(sequencer, cavity_id=self.expt_cfg['on_cavities'], amp=self.expt_cfg['cavity_amp'], len=self.expt_cfg['cavity_pulse_len'])
-            #     # self.gen_c(sequencer, cavity_id=self.expt_cfg['on_cavities'], amp=self.expt_cfg['cavity_amp'], len=self.expt_cfg['cavity_pulse_len'], pulse_type = 'gauss')
-            #
-            #     if not self.expt_cfg['overlap']:
-            #         sequencer.sync_channels_time(self.channels)
-            #     self.gen_c(sequencer, cavity_id=qubit_id, amp=self.expt_cfg['cavity_amp'],
-            #                len=self.expt_cfg['cavity_pulse_len'], pulse_type='gauss')
-            #     # self.idle_q(sequencer, time=self.expt_cfg['idle_time'])
-            #     if not self.expt_cfg['overlap']:
-            #         sequencer.sync_channels_time(self.channels)
-            #
-            #     self.gen_q(sequencer, qubit_id, amp=self.expt_cfg['qubit_amp'], len=self.expt_cfg['qubit_pulse_len'],
-            #                phase=0, pulse_type=self.expt_cfg['pulse_type'], add_freq=dfreq)
-            #
-            #     # if not self.expt_cfg['overlap']:
-            #     #     sequencer.sync_channels_time(self.channels)
-            #
-            #     # self.gen_q(sequencer, qubit_id, amp=self.expt_cfg['qubit_amp'], len=self.expt_cfg['qubit_pulse_len'],
-            #     #            phase=0, pulse_type='gauss', add_freq=dfreq)
+            for qubit_id in self.expt_cfg['on_qubits']:
+
+                # self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
+
+                #self.gen_c(sequencer, cavity_id=self.expt_cfg['on_cavities'], amp=self.expt_cfg['cavity_amp'], len=self.expt_cfg['cavity_pulse_len'])
+                # self.gen_c(sequencer, cavity_id=self.expt_cfg['on_cavities'], amp=self.expt_cfg['cavity_amp'], len=self.expt_cfg['cavity_pulse_len'], pulse_type = 'gauss')
+
+                if not self.expt_cfg['overlap']:
+                    sequencer.sync_channels_time(self.channels)
+                self.gen_c(sequencer, cavity_id=qubit_id, amp=self.expt_cfg['cavity_amp'],
+                           len=self.expt_cfg['cavity_pulse_len'], pulse_type='gauss')
+                # self.idle_q(sequencer, time=self.expt_cfg['idle_time'])
+                if not self.expt_cfg['overlap']:
+                    sequencer.sync_channels_time(self.channels)
+
+                self.gen_q(sequencer, qubit_id, amp=self.expt_cfg['qubit_amp'], len=self.expt_cfg['qubit_pulse_len'],
+                           phase=0, pulse_type=self.expt_cfg['pulse_type'], add_freq=dfreq)
+
+                # if not self.expt_cfg['overlap']:
+                #     sequencer.sync_channels_time(self.channels)
+
+                # self.gen_q(sequencer, qubit_id, amp=self.expt_cfg['qubit_amp'], len=self.expt_cfg['qubit_pulse_len'],
+                #            phase=0, pulse_type='gauss', add_freq=dfreq)
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
