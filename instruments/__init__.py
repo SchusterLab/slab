@@ -65,7 +65,11 @@ except: print("Could not load Omega 16i driver")
 try: from .lockin import SR844
 except: print("Could not load SR844 driver")
 try: from .PressureGauge import PressureGauge
+<<<<<<< Updated upstream
 except: print("Could not load PressureGauge driver")
 # Added Oct 2020 by MGP to match Gerbert branch
 try: from.SignalCore import SignalCore
 except: print("Could not load SignalCore")
+=======
+except: print("Could not load PressureGauge driver")
+>>>>>>> Stashed changes
