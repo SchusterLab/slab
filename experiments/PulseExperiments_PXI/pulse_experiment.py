@@ -259,9 +259,16 @@ class Experiment:
             for ii,d in enumerate(self.drive_los):
                 drive_freq = self.quantum_device_cfg['qubit'][str(ii+1)]['freq'] - self.quantum_device_cfg['pulse_info'][str(ii+1)]['iq_freq']
                 d.set_frequency(drive_freq*1e9)
+                d.set_power(self.quantum_device_cfg['qubit_drive_lo_powers'][str(ii + 1)])
                 readParams = d.get_rf_parameters()
-                print("Drive frequency = ", str(round(readParams.rf1_freq / 1e9, 5)), "GHz")
-                d.set_power(self.quantum_device_cfg['qubit_drive_lo_powers'][str(ii+1)])
+                if ii==0:
+                    print("_____________________________________________________________________")
+                    print("Qubit Drive A initialized")
+                if ii==1:
+                    print("_____________________________________________________________________")
+                    print("Qubit Drive B initialized")
+                print("LO Frequency = ", str(round(readParams.rf1_freq/1e9,5)), " GHz")
+                print("LO Power = ", str(round(readParams.rf_level, 2)), " dBm")
 
                 # Added by AV 04/13
                 # the set output state command works for signalcores, other gens use set_output
@@ -269,17 +276,16 @@ class Experiment:
 
                 # for SignalCores
                 if 'SC' in self.hardware_cfg['drive_los'][ii]:
+                    # SignalCore specific code, will not work for other generators
+                    d.set_clock_reference(ext_ref=True)
+                    d.set_rf_mode(val=0)  # single rf tone on output 1
+                    d.set_standby(False)
+                    d.set_rf2_standby(True)  # nothing out rf 2
                     d.set_output_state(True)
                 else:
                     d.set_output(True)
 
-                # SignalCore specific code, will not work for other generators
-                d.set_clock_reference(ext_ref=True)
-                print("drive power enabled")
-                d.set_rf_mode(val=0)  # single rf tone on output 1
-                d.set_standby(False)
-                d.set_rf2_standby(True)  # nothing out rf 2
-
+                print("LO output ON")
                 try: d.set_ext_pulse(mod=True)
                 except: print('SignalCores  - no external pulse')
         except:print ("Error in qubit drive LO configuration")
@@ -305,22 +311,30 @@ class Experiment:
         try:
             for ii, d in enumerate(self.readout_los):
                 d.set_frequency(self.quantum_device_cfg['readout'][str(ii + 1)]['freq']*1e9)
-                readParams = d.get_rf_parameters()
-                print("Readout frequency = ", str(round(readParams.rf1_freq/1e9,5)), "GHz")
-                # print ("Readout frequency = ",self.quantum_device_cfg['readout'][str(ii + 1)]['freq'],"GHz")
                 d.set_power(self.quantum_device_cfg['readout_drive_lo_powers'][str(ii + 1)])
+                readParams = d.get_rf_parameters()
+                if ii==0:
+                    print("_____________________________________________________________________")
+                    print("Readout A initialized")
+                if ii==1:
+                    print("_____________________________________________________________________")
+                    print("Readout B initialized")
+                print("LO Frequency = ", str(round(readParams.rf1_freq/1e9,5)), " GHz")
+                print("LO Power = ", str(round(readParams.rf_level, 2)), " dBm")
 
-
-
-                # for MXG
-                # d.set_ext_pulse(mod=True)
-                # d.set_output(True)
-
-                # for SignalCores
                 if 'SC' in self.hardware_cfg['readout_los'][ii]:
+                    # SignalCore specific code, will not work for other generators
+                    d.set_clock_reference(ext_ref=True)
+                    d.set_rf_mode(val=0)  # single rf tone on output 1
+                    d.set_standby(False)
+                    d.set_rf2_standby(True)  # nothing out rf 2
                     d.set_output_state(True)
                 else:
                     d.set_output(True)
+                print("LO output ON")
+                try: d.set_ext_pulse(mod=True)
+                except: print('SignalCores  - no external pulse')
+
         except:print("Error in readout drive LO configuration")
 
 
@@ -452,37 +466,63 @@ class Experiment:
     #         pass
 
 # better newer version of the above
+#     def close_signalcore_los(self):
+#         # Signal Core commands added by MGP, Oct 2020, to try to get the thing to shut off at the end of an experiment
+#         # Pop this function in run_experiment_pxi down at the bottom after awg_stop if you want to deploy it in your case
+#         # changed to not require sequence name to include signalcore
+#         # not fully tested apr 2021
+#         for ii, d in enumerate(self.cavity_drive_los):
+#             if 'SC' in self.hardware_cfg['cavity_drive_los'][ii]:
+#                 try:
+#                     for ii, d in enumerate(self.cavity_drive_los):
+#                         d.set_output_state(False)
+#                         print("SignalCore off")
+#                 except:
+#                     print("Did not properly turn the SignalCore off in run_experiment_pxi in pulse_experiment, probs ok")
+#                     raise
+#             else:
+#                 pass
+
+    # AV : revised version for closing all signalcore generators (not just the cavity drives ones as above)
     def close_signalcore_los(self):
-        # Signal Core commands added by MGP, Oct 2020, to try to get the thing to shut off at the end of an experiment
-        # Pop this function in run_experiment_pxi down at the bottom after awg_stop if you want to deploy it in your case
-        # changed to not require sequence name to include signalcore
-        # not fully tested apr 2021
         for ii, d in enumerate(self.cavity_drive_los):
             if 'SC' in self.hardware_cfg['cavity_drive_los'][ii]:
                 try:
-                    for ii, d in enumerate(self.cavity_drive_los):
-                        d.set_output_state(False)
-                        print("SignalCore off")
+                    d.set_output_state(False)
+                    print("Cavity Drive - SignalCore off")
                 except:
-                    print("Did not properly turn the SignalCore off in run_experiment_pxi in pulse_experiment, probs ok")
-                    raise
-            else:
-                pass
+                    print("Cavity Drive - SignalCore did not turn off")
+
+        for ii, d in enumerate(self.drive_los):
+            if 'SC' in self.hardware_cfg['drive_los'][ii]:
+                try:
+                    d.set_output_state(False)
+                    print("Qubit Drive - SignalCore off")
+                except:
+                    print("Qubit Drive - SignalCore did not turn off")
+
+        for ii, d in enumerate(self.readout_los):
+            if 'SC' in self.hardware_cfg['readout_los'][ii]:
+                try:
+                    d.set_output_state(False)
+                    print("Readout - SignalCore off")
+                except:
+                    print("Readout - SignalCore did not turn off")
 
     # [AV] Deprecated, initialize drive and read attens separately
-    def initiate_attenuators(self):
-        try:
-            for ii, d in enumerate(self.attens):
-                d.set_attenuator(self.quantum_device_cfg['readout']['dig_atten'])
-        except:
-            print("Error in digital attenuator configuration")
+    # def initiate_attenuators(self):
+    #     try:
+    #         for ii, d in enumerate(self.attens):
+    #             d.set_attenuator(self.quantum_device_cfg['readout']['dig_atten'])
+    #     except:
+    #         print("Error in digital attenuator configuration")
 
     # [AV] Initialize drive attenuators
     def initiate_drive_attenuators(self):
         try:
             for ii, d in enumerate(self.drive_attens):
                 d.set_attenuator(self.quantum_device_cfg['qubit'][str(ii+1)]['dig_atten'])
-                print("Drive attenuator configured")
+                print("Qubit Drive attenuator configured : ", str(round(d.get_attenuator(),2)), ' dB')
         except:
             print("Error in digital attenuator configuration")
 
@@ -491,7 +531,7 @@ class Experiment:
         try:
             for ii, d in enumerate(self.readout_attens):
                 d.set_attenuator(self.quantum_device_cfg['readout'][str(ii + 1)]['dig_atten'])
-                print("Readout attenuator configured")
+                print("Readout attenuator configured : ", str(round(d.get_attenuator(), 2)), ' dB')
         except:
             print("Error in digital attenuator configuration")
 
