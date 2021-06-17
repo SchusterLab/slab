@@ -250,11 +250,11 @@ class SequentialExperiment:
 
         self.seq_data = np.array(self.seq_data)
 
-    def rabisweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
-        experiment_name = 'rabisweep'
+    def rabi_chevron(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
+        experiment_name = 'rabi_chevron'
         expt_cfg = experiment_cfg[experiment_name]
         data_path = os.path.join(path, 'data/')
-        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'rabi_chevron', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg)
 
         for qb in experiment_cfg[experiment_name]['on_qubits']:

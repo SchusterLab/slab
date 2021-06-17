@@ -1084,7 +1084,7 @@ class KeysightChannelIn(KeysightChannel):
         if (not data) or isinstance(data, int):
             raise KeysightError("Error acquiring data", data)
         return data
-    3
+
     def readDataQuiet(self, timeout = 10000):
         '''Alternative to readData() (above) that gets the expected number of data points
         and does not throw errors. The advantage is that it almost always works,

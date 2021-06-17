@@ -517,6 +517,8 @@ def generate_quantum_device_from_lattice_v2(lattice_cfg_name, qb_ids, setups=["A
         if len(qb_ids) == 1:
             qb_ids = qb_ids * 2
 
+        quantum_device_cfg["setups"] = setups
+
         for category in lattice_cfg.keys():
             # if category is directly a list of 8 qubit values, stuff it into setups "A" and "B"
             if isinstance(lattice_cfg[category], list) and len(lattice_cfg[category]) == 8:

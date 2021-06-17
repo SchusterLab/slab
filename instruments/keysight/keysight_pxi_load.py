@@ -768,7 +768,6 @@ class KeysightSingleQubit:
         qbA_I, qbA_Q, qbB_I, qbB_Q = np.zeros(self.num_expt), np.zeros(self.num_expt), np.zeros(self.num_expt), np.zeros(self.num_expt)
         for ii in tqdm(range(self.num_avg)):
             if "A" in self.on_qubits:
-
                 qbA_I += np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
                       int(self.readoutA_window[0]):int(self.readoutA_window[1])].T, 1)
 
