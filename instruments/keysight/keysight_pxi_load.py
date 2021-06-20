@@ -299,6 +299,12 @@ class KeysightSingleQubit:
         else:
             return markers
 
+    def generatemastertrigger(self,length,trig_width = 1,trig_delay = 0):
+        trig = np.zeros(length)
+        for i in np.arange(int(trig_delay/self.dt_dig),int((trig_delay + trig_width)/self.dt_dig)):
+            trig[i] = 1
+        return trig
+
     def sequenceslist(self,sequences,waveform_channels):
         """takes the sequences arrays produced in "pulse squences" class and stored in "sequences" dict and renames
         the to  a dictionary called "wv." also makes sure that if a given sequence doesn't include a channel listed in waveform_channels, it gets listed in wv and
@@ -379,6 +385,9 @@ class KeysightSingleQubit:
         qubitB_marker = self.generatemarkers(wv, "chargeB_I", dt_mark=self.dt_m,
                                                 conv_width=self.qb_lo_conv)
 
+        #Generate master trigger (apparently this is something we might need augh)
+        trig_arr_awg = self.generatemastertrigger(len(wv["readoutA"][i]), 2 * self.trig_pulse_length)
+
         # marker array for stabilizer LO
         stabilizer_marker = self.generatemarkers(wv, "stab_I", dt_mark=self.dt_m, conv_width=self.stab_lo_conv)
 
@@ -400,6 +409,7 @@ class KeysightSingleQubit:
             PXIwave_stabilizer_marker = key.Waveform(wv["stab_I"][i], append_zero=True)
 
             PXIwave_digtzr_trig = key.Waveform(wv["digtzr_trig"][i], append_zero=True)
+            PXIwave_master_trigger = key.Waveform(trig_arr_awg, append_zero=True)
 
             PXIwave_ff_Q0 = key.Waveform(wv["ff_Q0"][i], append_zero=True)
             PXIwave_ff_Q1 = key.Waveform(wv["ff_Q1"][i], append_zero=True)
@@ -414,7 +424,6 @@ class KeysightSingleQubit:
             #Send I,Q, qubit A drive waveforms to AWG drive card
             PXIwave_chargeA_I.loadToModule(AWG_module)
             PXIwave_chargeA_Q.loadToModule(AWG_module)
-            PXIwave_digtzr_trig.loadToModule(AWG_module)
             # Queue I,Q qubitA  drive waveforms on AWG card.
             PXIwave_chargeA_I.queue(self.AWG_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
                                     delay=self.hardware_delays['chargeA_I'], cycles = 1, prescaler = 0)
@@ -424,10 +433,8 @@ class KeysightSingleQubit:
             PXIwave_chargeB_I.loadToModule(AWG_module)
             PXIwave_chargeB_Q.loadToModule(AWG_module)
             # Queue I,Q qubit Bdrive waveforms on AWG card.
-            PXIwave_digtzr_trig.queue(self.AWG_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
-                                    delay=self.hardware_delays['chargeB_I'], cycles=1, prescaler=0)
-            #PXIwave_chargeB_I.queue(self.AWG_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
-            #                        delay=self.hardware_delays['chargeB_I'], cycles=1, prescaler=0)
+            PXIwave_chargeB_I.queue(self.AWG_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
+                                   delay=self.hardware_delays['chargeB_I'], cycles=1, prescaler=0)
             PXIwave_chargeB_Q.queue(self.AWG_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
                                     delay=self.hardware_delays['chargeB_Q'], cycles=1, prescaler=0)
 
@@ -439,10 +446,9 @@ class KeysightSingleQubit:
             #Send marker waveforms to Marker card
             PXIwave_qubitA_marker.loadToModule(m_module)
             PXIwave_readoutA.loadToModule(m_module)
-            #PXIwave_digtzr_trig.loadToModule(m_module)
             # Queue marker waveforms to marker card channels
             PXIwave_qubitA_marker.queue(self.m_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['qubitA_marker'], cycles=1, prescaler=0)
-            PXIwave_qubitA_marker.queue(self.m_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
+            PXIwave_readoutA.queue(self.m_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
                                         delay=self.hardware_delays['qubitA_marker'], cycles=1, prescaler=0)
             #PXIwave_readoutA.queue(self.m_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['readoutA'], cycles=1, prescaler=0)
             # Send marker waveforms to Marker card
@@ -461,24 +467,27 @@ class KeysightSingleQubit:
 
             #####STABILIZER and DIGTZR TRIG#####
             # Load waveforms to stabilizer card
+            PXIwave_master_trigger.loadToModule((stab_module))
             PXIwave_stab_I.loadToModule(stab_module)
             PXIwave_stab_Q.loadToModule(stab_module)
             PXIwave_stabilizer_marker.loadToModule(stab_module)
             PXIwave_digtzr_trig.loadToModule(stab_module)
 
             #Queue trigger waveforms to trigger channels
+            PXIwave_master_trigger.queue(self.stab_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, cycles=1, prescaler=0)
+            PXIwave_master_trigger.queue(self.stab_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, cycles=1, prescaler=0)
             #PXIwave_stab_I.queue(self.stab_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['stab_I'], cycles=1, prescaler=0)
-            PXIwave_stab_Q.queue(self.stab_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
-                                delay=self.hardware_delays['stab_Q'],cycles=1, prescaler=0)
-            PXIwave_stabilizer_marker.queue(self.stab_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['stab_marker'], cycles=1,
-                               prescaler=0)
-            #PXIwave_digtzr_trig.queue(self.digtzr_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays["digtzr_trig"], cycles=1, prescaler=0)
-            PXIwave_qubitA_marker.queue(self.digtzr_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
-                                      delay=self.hardware_delays["digtzr_trig"], cycles=1, prescaler=0)
-
-            #Configure trigger module settings
-            self.stab_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
-                                               syncMode=1, length=10, delay=0)
+            # PXIwave_stab_Q.queue(self.stab_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
+            #                     delay=self.hardware_delays['stab_Q'],cycles=1, prescaler=0)
+            # PXIwave_stabilizer_marker.queue(self.stab_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['stab_marker'], cycles=1,
+            #                    prescaler=0)
+            # #PXIwave_digtzr_trig.queue(self.digtzr_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays["digtzr_trig"], cycles=1, prescaler=0)
+            # PXIwave_qubitA_marker.queue(self.digtzr_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
+            #                           delay=self.hardware_delays["digtzr_trig"], cycles=1, prescaler=0)
+            #
+            # #Configure trigger module settings
+            # self.stab_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
+            #                                    syncMode=1, length=10, delay=0)
 
             #####FAST FLUX MODULE1#####
             # Load FF! waveforms to trigger card
