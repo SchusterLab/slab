@@ -206,11 +206,11 @@ def check_sync(filenb, expt_name, expt_num=0):
 
         fig = plt.figure(figsize=(12, 4))
         ax = fig.add_subplot(131, title='I')
-        plt.imshow(data_1, aspect='auto')
+        plt.pcolormesh(data_1)
         ax.set_xlabel('Digitizer bins')
         ax.set_ylabel('Experiment number')
         ax2 = fig.add_subplot(132, title='Q')
-        plt.imshow(data_2, aspect='auto')
+        plt.pcolormesh(data_2)
         ax2.set_xlabel('Digitizer bins')
         ax2.set_ylabel('Experiment number')
         ax3 = fig.add_subplot(133, title='Expt num = ' + str(expt_num))

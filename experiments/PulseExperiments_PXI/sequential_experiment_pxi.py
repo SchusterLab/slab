@@ -258,8 +258,9 @@ class SequentialExperiment:
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg)
 
         for qb in experiment_cfg[experiment_name]['on_qubits']:
-            for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
-                quantum_device_cfg['readout'][qb]['freq'] = freq
+            qb_freq = copy.deepcopy(quantum_device_cfg['qubit'][qb]['freq'])
+            for freq in np.arange(expt_cfg['freq_start'], expt_cfg['freq_stop'], expt_cfg['freq_step'])+qb_freq:
+                quantum_device_cfg['qubit'][qb]['freq'] = freq
                 sequences = ps.get_experiment_sequences(experiment_name)
                 exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
                 data = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)

@@ -86,7 +86,7 @@ class Experiment:
             #TODO this totally relieson order of drive LOs being A first, then B, etc. this should be a dictionary
             # somehow but I am currently pretty out of it so will have to wait until later - G 5/5/21
             for ii,d in enumerate(self.drive_los):
-                drive_freq = self.quantum_device_cfg['qubit'][self.qubits[ii]]['freq'] - self.quantum_device_cfg[
+                drive_freq =  self.quantum_device_cfg['qubit'][self.qubits[ii]]['freq'] - self.quantum_device_cfg[
                 'pulse_info'][self.qubits[ii]]['iq_freq']
                 d.set_frequency(drive_freq * 1e9)
                 d.set_clock_reference(ext_ref=True)
@@ -329,7 +329,6 @@ class Experiment:
                 self.data = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
             else:
                 self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
-
         #
         self.pxi_stop()
         return self.data

@@ -868,6 +868,20 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=True)
 
+    def rabi_chevron(self, sequencer):
+
+        for rabi_len in np.arange(self.expt_cfg['len_start'], self.expt_cfg['len_stop'], self.expt_cfg['len_step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer,on_qubits=self.expt_cfg['on_qubits'],time=500)
+
+            for qubit_id in self.expt_cfg['on_qubits']:
+                self.gen_q(sequencer,qubit_id,len=rabi_len,amp = self.expt_cfg['amp'],phase=0,pulse_type=self.expt_cfg['pulse_type'])
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+
     def t1(self, sequencer):
 
         for t1_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
