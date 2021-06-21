@@ -81,7 +81,7 @@ def iq_process(f, raw_I, raw_Q, ran=1, phi=0, sub_mean=True):
     return I, Q, mag, phase
 
 
-def plot_freq_data(f, I, Q, mag, phase, expected_f, mag_phase_plot=False, polar=False, title='', marker=False):
+def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], mag_phase_plot=False, polar=False, title='', marker=False):
     """Fits frequency data to a lorentzian, then plots data and prints result
 
     :param f -- data frequency
@@ -90,6 +90,7 @@ def plot_freq_data(f, I, Q, mag, phase, expected_f, mag_phase_plot=False, polar=
     :param mag -- mag data
     :param phase -- phase data
     :param expected_f -- expected frequency
+    :param show -- if you want to plot I, Q, or both
     :param mag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
     :param polar -- adds a plot of I and Q in polar coordinates
     :param title -- title of plot
@@ -99,8 +100,10 @@ def plot_freq_data(f, I, Q, mag, phase, expected_f, mag_phase_plot=False, polar=
     fig = plt.figure(figsize=(14, 5))
 
     ax = fig.add_subplot(111, title=title)
-    ax.plot(f, I, 'b.-', label='I')
-    ax.plot(f, Q, 'r.-', label='Q')
+    if 'I' in show:
+        ax.plot(f, I, 'b.-', label='I')
+    if 'Q' in show:
+        ax.plot(f, Q, 'r.-', label='Q')
     if marker:
         ax.axvline(x=marker)
     ax.set_xlabel('Freq(GHz)')
@@ -222,13 +225,14 @@ def check_sync(filenb, expt_name, expt_num=0):
         fig.tight_layout()
         plt.show()
 
-def resonator_spectroscopy(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=False, debug=False, marker=False):
+def resonator_spectroscopy(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=False):
     """Fits resonator_spectroscopoy data, then plots data and prints result
 
     Keyword arguments:
     filelist -- the data runs you want to analyze and plot
     phi -- in degrees, angle by which you want to rotate IQ
     sub_mean -- if True, subtracts out the average background of IQ measurements
+    show -- if plot I, Q, or both
     mag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
     plar -- adds a plot of I and Q in polar coordinates
     debug -- print out experiment attributes
@@ -273,7 +277,7 @@ def resonator_spectroscopy(filenb, phi=0, sub_mean=True, mag_phase_plot=False, p
         # plot and fit data
         title = expt_name
         plot_freq_data(f=f, I=I, Q=Q, mag=mag, phase=phase,
-                       expected_f=readout_f, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
+                       expected_f=readout_f, show=show, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
 
 
 def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, mag_phase_plot=False, polar=False, debug=False, marker=None,
@@ -385,11 +389,12 @@ def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, mag_phase_plot
                                expected_f=nu_q, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
         return t_vals[:len(I_raw)], parray
 
-def pulse_probe_iq(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=False, debug=False, marker=None):
+def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None):
     """Fits pulse_probe_iq data, then plots data and prints result
     :param filelist -- the data runs you want to analyze and plot
     :paramphi -- in degrees, angle by which you want to rotate IQ
     :paramsub_mean -- if True, subtracts out the average background of IQ measurements
+    :param show -- if plot I or Q
     :parammag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
     :paramplar -- adds a plot of I and Q in polar coordinates
     :paramdebug -- print out experiment attributes
@@ -436,14 +441,15 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=Fal
         # plot and fit data
         title = expt_name
         p = plot_freq_data(f=f, I=I, Q=Q, mag=mag, phase=phase,
-                       expected_f=nu_q, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
+                       expected_f=nu_q, show=show, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
         return p
 
-def ff_pulse_probe_iq(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=False, debug=False, marker=None):
+def ff_pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None):
     """Fits pulse_probe_iq data, then plots data and prints result
     :param filelist -- the data runs you want to analyze and plot
     :paramphi -- in degrees, angle by which you want to rotate IQ
     :paramsub_mean -- if True, subtracts out the average background of IQ measurements
+    :param show -- if plotting I, Q, or both
     :parammag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
     :paramplar -- adds a plot of I and Q in polar coordinates
     :paramdebug -- print out experiment attributes
@@ -492,7 +498,7 @@ def ff_pulse_probe_iq(filenb, phi=0, sub_mean=True, mag_phase_plot=False, polar=
         # plot and fit data
         title = expt_name
         p = plot_freq_data(f=f, I=I, Q=Q, mag=mag, phase=phase,
-                       expected_f=nu_q, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
+                       expected_f=nu_q, show=show, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
         return p
 
 def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False):

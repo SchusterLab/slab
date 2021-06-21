@@ -385,15 +385,16 @@ class KeysightSingleQubit:
         qubitB_marker = self.generatemarkers(wv, "chargeB_I", dt_mark=self.dt_m,
                                                 conv_width=self.qb_lo_conv)
 
-        #Generate master trigger (apparently this is something we might need augh)
-        trig_arr_awg = self.generatemastertrigger(len(wv["readoutA"][i]), 2 * self.trig_pulse_length)
-
         # marker array for stabilizer LO
         stabilizer_marker = self.generatemarkers(wv, "stab_I", dt_mark=self.dt_m, conv_width=self.stab_lo_conv)
 
         for i in tqdm(range(len(wv[list(wv.keys())[0]]))):
             ## making PXI savvy waveform objects out of the arrays to send out to the PXI
             # Have to include append_zero or the triggers get messed up! idk why
+
+            # Generate master trigger (apparently this is something we might need augh)
+            trig_arr_awg = self.generatemastertrigger(len(wv["readoutA"][i]), 2 * self.trig_pulse_length)
+
             PXIwave_chargeA_I = key.Waveform(np.array(wv["chargeA_I"][i]),append_zero=True)
             PXIwave_chargeA_Q = key.Waveform(wv["chargeA_Q"][i], append_zero=True)
             PXIwave_qubitA_marker = key.Waveform(qubitA_marker[i], append_zero=True)
@@ -481,13 +482,13 @@ class KeysightSingleQubit:
             #                     delay=self.hardware_delays['stab_Q'],cycles=1, prescaler=0)
             # PXIwave_stabilizer_marker.queue(self.stab_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['stab_marker'], cycles=1,
             #                    prescaler=0)
-            # #PXIwave_digtzr_trig.queue(self.digtzr_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays["digtzr_trig"], cycles=1, prescaler=0)
+            PXIwave_digtzr_trig.queue(self.digtzr_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays["digtzr_trig"], cycles=1, prescaler=0)
             # PXIwave_qubitA_marker.queue(self.digtzr_trig_ch, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
             #                           delay=self.hardware_delays["digtzr_trig"], cycles=1, prescaler=0)
             #
             # #Configure trigger module settings
-            # self.stab_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
-            #                                    syncMode=1, length=10, delay=0)
+            self.stab_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
+                                               syncMode=1, length=10, delay=0)
 
             #####FAST FLUX MODULE1#####
             # Load FF! waveforms to trigger card
