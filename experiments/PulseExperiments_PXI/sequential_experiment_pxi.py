@@ -84,7 +84,7 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg,lattice_cfg)
 
-        for qb in experiment_cfg[experiment_name]['on_qubits']:
+        for qb in quantum_device_cfg["setups"]:
             read_freq = copy.deepcopy(quantum_device_cfg['readout'][qb]['freq'])
             for freq in np.arange(expt_cfg['start']+read_freq, expt_cfg['stop']+read_freq, expt_cfg['step']):
                 quantum_device_cfg['readout'][qb]['freq'] = freq
@@ -109,7 +109,7 @@ class SequentialExperiment:
 
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram_sweep', suffix='.h5'))
 
-        for qb in experiment_cfg[experiment_name]['on_qubits']:
+        for qb in quantum_device_cfg["setups"]:
             if sweep_amp:
                 for att in attens:
                     quantum_device_cfg['powers'][qb]['readout_drive_digital_attenuation'] = att
@@ -164,7 +164,7 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg,lattice_cfg)
 
-        for qb in experiment_cfg[experiment_name]['on_qubits']:
+        for qb in quantum_device_cfg["setups"]:
             read_freq = copy.deepcopy(quantum_device_cfg['readout'][qb]['freq'])
             for freq in np.arange(expt_cfg['start']+read_freq, expt_cfg['stop']+read_freq, expt_cfg['step']):
                 quantum_device_cfg['readout'][qb]['freq'] = freq
@@ -183,7 +183,7 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy_pi', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg)
 
-        for qb in experiment_cfg[experiment_name]['on_qubits']:
+        for qb in quantum_device_cfg["setups"]:
             read_freq = quantum_device_cfg['readout'][qb]['efreq']
             for freq in np.arange(expt_cfg['start'] + read_freq, expt_cfg['stop'] + read_freq, expt_cfg['step']):
                 quantum_device_cfg['readout'][qb]['freq'] = freq
@@ -201,7 +201,7 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg)
 
-        for qb in experiment_cfg[experiment_name]['on_qubits']:
+        for qb in quantum_device_cfg["setups"]:
             read_freq = quantum_device_cfg['readout'][qb]['freq']
             for freq in np.arange(expt_cfg['start']+read_freq, expt_cfg['stop']+read_freq, expt_cfg['step']):
                 quantum_device_cfg['readout'][qb]['freq'] = freq
@@ -220,7 +220,7 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy_pi', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg)
 
-        for qb in experiment_cfg[experiment_name]['on_qubits']:
+        for qb in quantum_device_cfg["setups"]:
             read_freq = quantum_device_cfg['readout'][qb]['efreq']
             for freq in np.arange(expt_cfg['start'] + read_freq, expt_cfg['stop'] + read_freq, expt_cfg['step']):
                 quantum_device_cfg['readout'][qb]['freq'] = freq
@@ -239,7 +239,7 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy_ef_pi', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg)
 
-        for qb in experiment_cfg[experiment_name]['on_qubits']:
+        for qb in quantum_device_cfg["setups"]:
             read_freq = quantum_device_cfg['readout'][qb]['ffreq']
             for freq in np.arange(expt_cfg['start'] + read_freq, expt_cfg['stop'] + read_freq, expt_cfg['step']):
                 quantum_device_cfg['readout'][qb]['freq'] = freq
@@ -257,7 +257,7 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'rabi_chevron', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg)
 
-        for qb in experiment_cfg[experiment_name]['on_qubits']:
+        for qb in quantum_device_cfg["setups"]:
             qb_freq = copy.deepcopy(quantum_device_cfg['qubit'][qb]['freq'])
             for freq in np.arange(expt_cfg['freq_start'], expt_cfg['freq_stop'], expt_cfg['freq_step'])+qb_freq:
                 quantum_device_cfg['qubit'][qb]['freq'] = freq
@@ -278,7 +278,7 @@ class SequentialExperiment:
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, sweep_expt_name, suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg)
 
-        for qb in experiment_cfg[experiment_name]['on_qubits']:
+        for qb in quantum_device_cfg["setups"]:
             for atten in np.arange(swp_cfg['start'], swp_cfg['stop'], swp_cfg['step']):
                 print("Attenuation set to ", atten, 'dB')
                 quantum_device_cfg['powers'][qb]['readout_drive_digital_attenuation']= atten
@@ -348,7 +348,7 @@ class SequentialExperiment:
 
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'pulse_probe_atten_sweep', suffix='.h5'))
 
-        for qb in experiment_cfg[experiment_name]['on_qubits']:
+        for qb in quantum_device_cfg["setups"]:
             for atten in attens:
 
                 quantum_device_cfg['powers'][qb]["qubit_drive_digital_attenuation"] = atten

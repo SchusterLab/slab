@@ -72,7 +72,7 @@ class PostExperiment:
 
     def pulse_probe_iq(self):
         expt_cfg = self.experiment_cfg[self.exptname]
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
 
         self.I = self.I - mean(self.I)
         self.Q = self.Q - mean(self.Q)
@@ -153,7 +153,7 @@ class PostExperiment:
     def ramsey(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
 
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
@@ -182,7 +182,7 @@ class PostExperiment:
     def echo(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
 
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
@@ -208,8 +208,8 @@ class PostExperiment:
 
     def pulse_probe_ef_iq(self):
         expt_cfg = self.experiment_cfg[self.exptname]
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
-        alpha = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
+        alpha = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['anharmonicity']
 
         self.I = self.I - mean(self.I)
         self.Q = self.Q - mean(self.Q)
@@ -291,8 +291,8 @@ class PostExperiment:
     def ef_ramsey(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
-        alpha = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
+        alpha = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['anharmonicity']
 
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
@@ -321,7 +321,7 @@ class PostExperiment:
     def ef_echo(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
 
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'],expt_cfg['step'])[:(len(P))]
@@ -347,8 +347,8 @@ class PostExperiment:
 
     def pulse_probe_fh_iq(self):
         expt_cfg = self.experiment_cfg[self.exptname]
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
-        alpha = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
+        alpha = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['anharmonicity']
 
         self.I = self.I - mean(self.I)
         self.Q = self.Q - mean(self.Q)
@@ -410,9 +410,9 @@ class PostExperiment:
     def fh_ramsey(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
-        alpha = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity']
-        alpha_fh = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity_fh']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
+        alpha = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['anharmonicity']
+        alpha_fh = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['anharmonicity_fh']
 
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
@@ -578,7 +578,7 @@ class PostExperiment:
 
     def qubit_temperature(self):
         expt_cfg = self.experiment_cfg['ef_rabi']
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
         P = eval('self.' + self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:]
         contrast = []
@@ -768,7 +768,7 @@ class PostExperiment:
     def sideband_ramsey(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
 
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
@@ -787,7 +787,7 @@ class PostExperiment:
         else:p = fitdecaysin(t, P, showfit=False)
 
         offset = ramsey_freq - p[1]
-        suggested_dc_offset = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['f0g1_dc_offset'] + offset
+        suggested_dc_offset = self.quantum_device_cfg['flux_pulse_info'][quantum_device_cfg['setups'][0]]['f0g1_dc_offset'] + offset
         print("Offset freq =", offset * 1e3, "MHz")
         print("Suggested dc offset =", suggested_dc_offset * 1e3, "MHz")
         print("T2 =", p[3], "ns")
@@ -847,7 +847,7 @@ class PostExperiment:
 
     def sideband_pulse_probe_iq(self):
         expt_cfg = self.experiment_cfg[self.exptname]
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
 
         self.I = self.I - mean(self.I)
         self.Q = self.Q - mean(self.Q)
@@ -876,7 +876,7 @@ class PostExperiment:
     def sideband_chi_ge_calibration(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
 
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
@@ -896,7 +896,7 @@ class PostExperiment:
 
         offset = ramsey_freq - p[1]
 
-        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_e'] + offset
+        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][quantum_device_cfg['setups'][0]]['chiby2pi_e'] + offset
         print("Offset freq =", offset * 1e3, "MHz")
         print("Suggested ge chi shift = 2 pi x",suggested_chi_shift* 1e3, "MHz")
         print("T2 =", p[3], "ns")
@@ -904,7 +904,7 @@ class PostExperiment:
     def sideband_chi_ef_calibration(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
 
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
@@ -924,7 +924,7 @@ class PostExperiment:
 
         offset = ramsey_freq - p[1]
 
-        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_ef'] + offset
+        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][quantum_device_cfg['setups'][0]]['chiby2pi_ef'] + offset
         print("Offset freq =", offset * 1e3, "MHz")
         print("Suggested ef chi shift = 2 pi x",suggested_chi_shift* 1e3, "MHz")
         print("T2 =", p[3], "ns")
@@ -932,7 +932,7 @@ class PostExperiment:
     def sideband_chi_gf_calibration(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         ramsey_freq = expt_cfg['ramsey_freq']
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
 
         P = eval('self.'+self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
@@ -952,7 +952,7 @@ class PostExperiment:
 
         offset = ramsey_freq - p[1]
 
-        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['chiby2pi_f'] + offset
+        suggested_chi_shift = self.quantum_device_cfg['flux_pulse_info'][quantum_device_cfg['setups'][0]]['chiby2pi_f'] + offset
         print("Offset freq =", offset * 1e3, "MHz")
         print("Suggested f chi shift = 2 pi x",suggested_chi_shift* 1e3, "MHz")
         print("T2 =", p[3], "ns")
@@ -960,7 +960,7 @@ class PostExperiment:
 
     def sideband_reset_qubit_temperature(self):
         expt_cfg = self.experiment_cfg['sideband_transmon_reset']
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
         P = eval('self.' + self.P)
         t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:]
         contrast = []
@@ -1030,7 +1030,7 @@ class PostExperiment:
 
     def sideband_cavity_photon_number(self):
         expt_cfg = self.experiment_cfg[self.exptname]
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+        nu_q = self.quantum_device_cfg['qubit'][quantum_device_cfg['setups'][0]]['freq']
 
         self.I = self.I - mean(self.I)
         self.Q = self.Q - mean(self.Q)

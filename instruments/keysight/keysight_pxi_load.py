@@ -82,7 +82,7 @@ class KeysightSingleQubit:
         print("Module used for generating fast flux pluses for Q4-Q7 = ", self.ff2_mod_no)
         self.out_mod_nums = [self.AWG_mod_no, self.marker_mod_no, self.stab_mod_no, self.ff1_mod_no, self.ff2_mod_no]
 
-        self.on_qubits = experiment_cfg[name]['on_qubits']
+        self.on_qubits = quantum_device_cfg['setups']
         self.num_avg = experiment_cfg[name]['acquisition_num']
         self.num_expt = sequences["digtzr_trig"].shape[0] #take arbitrary channel, shape will tell you num_expt
         self.trigger_period = self.hardware_cfg['trigger']['period_us']

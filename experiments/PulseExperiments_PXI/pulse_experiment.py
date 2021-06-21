@@ -27,7 +27,8 @@ class Experiment:
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
         im = InstrumentManager()
-        self.qubits = ["A", "B"]
+        self.setups = ["A", "B"]
+        self.on_setups = self.quantum_device_cfg["setups"]
         import time
         #self.fluxbias = im['dacbox']
         #self.fluxbias.setvoltage(1,0)
@@ -85,12 +86,19 @@ class Experiment:
         try:
             #TODO this totally relieson order of drive LOs being A first, then B, etc. this should be a dictionary
             # somehow but I am currently pretty out of it so will have to wait until later - G 5/5/21
-            for ii,d in enumerate(self.drive_los):
-                drive_freq =  self.quantum_device_cfg['qubit'][self.qubits[ii]]['freq'] - self.quantum_device_cfg[
-                'pulse_info'][self.qubits[ii]]['iq_freq']
-                d.set_frequency(drive_freq * 1e9)
+            for ii, s in enumerate(self.setups):
+                d = self.drive_los[ii]
+                if s in self.on_setups:
+                    drive_freq =  self.quantum_device_cfg['qubit'][s]['freq'] - self.quantum_device_cfg[
+                    'pulse_info'][s]['iq_freq']
+                    d.set_frequency(drive_freq * 1e9)
+                    d.set_power(self.quantum_device_cfg['powers'][s]['drive_lo_powers'])
+
+                else:
+                    d.set_frequency(self.hardware_cfg['lo_off_freq'] * 1e9)
+                    d.set_power(self.hardware_cfg['lo_off_power'])
+
                 d.set_clock_reference(ext_ref=True)
-                d.set_power(self.quantum_device_cfg['powers'][self.qubits[ii]]['drive_lo_powers'])
                 d.set_output_state(True)
                 d.set_rf_mode(val=0) # single RF tone on output 1
                 d.set_standby(False)
@@ -105,17 +113,25 @@ class Experiment:
                 print("RF1 EXT REF DETECTED: %s"%settingparams.operate_status.ext_ref_detect)
                 print("RF1 FREQ: %s"%(rfparams.rf1_freq))
                 print("RF1 LEVEL: %s"%(rfparams.rf_level))
+
         except:
             print ("Error in qubit drive LO configuration")
             raise
 
     def initiate_readout_LOs(self):
         try:
-            for ii, d in enumerate(self.readout_los):
-                readout_freq = self.quantum_device_cfg['readout'][self.qubits[ii]]['freq']*1e9
-                d.set_frequency(readout_freq)
+            for ii, s in enumerate(self.setups):
+                d = self.readout_los[ii]
+                if s in self.on_setups:
+                    readout_freq = self.quantum_device_cfg['readout'][s]['freq'] * 1e9
+                    d.set_frequency(readout_freq)
+                    d.set_power(self.quantum_device_cfg['powers'][s]['readout_drive_lo_powers'])
+
+                else:
+                    d.set_frequency(self.hardware_cfg['lo_off_freq'] * 1e9)
+                    d.set_power(self.hardware_cfg['lo_off_power'])
+
                 d.set_clock_reference(ext_ref=True)
-                d.set_power(self.quantum_device_cfg['powers'][self.qubits[ii]]['readout_drive_lo_powers'])
                 d.set_output_state(True)
                 d.set_rf_mode(val=0) # single RF tone on output 1
                 d.set_standby(False)
@@ -158,17 +174,27 @@ class Experiment:
 
     def initiate_readout_attenuators(self):
         try:
-            for ii, d in enumerate(self.readout_attens):
-                d.set_attenuator(self.quantum_device_cfg['powers'][self.qubits[ii]]['readout_drive_digital_attenuation'])
-                print("set readout attenuator")
+            for ii, s in enumerate(self.setups):
+                d = self.readout_attens[ii]
+                if s in self.on_setups:
+                    d.set_attenuator(self.quantum_device_cfg['powers'][s]['readout_drive_digital_attenuation'])
+                    print("set readout attenuator")
+                else:
+                    d.set_attenuator(30)
         except:
             print("Error in readout digital attenuator configuration")
 
     def initiate_drive_attenuators(self):
         try:
-            for ii, d in enumerate(self.drive_attens):
-                d.set_attenuator(self.quantum_device_cfg['powers'][self.qubits[ii]]['drive_digital_attenuation'])
-                print("set drive attenuator")
+            for ii, s in enumerate(self.setups):
+                d = self.drive_attens[ii]
+                if s in self.on_setups:
+                    d.set_attenuator(self.quantum_device_cfg['powers'][s]['drive_digital_attenuation'])
+                    print("set drive attenuator")
+                else:
+                    d.set_attenuator(30)
+                    print("set readout attenuator")
+
         except:
             print("Error in qubit drive attenuator configuration")
 
@@ -207,7 +233,7 @@ class Experiment:
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
-                if "A" in self.experiment_cfg[name]["on_qubits"] and "B" in self.experiment_cfg[name]["on_qubits"]:
+                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
                     f.add('qbA_I', data[0][0])
                     f.add('qbA_Q', data[0][1])
                     f.add('qbB_I', data[1][0])
@@ -218,7 +244,7 @@ class Experiment:
         else:
             self.slab_file = SlabFile(seq_data_file)
             with self.slab_file as f:
-                if "A" in self.experiment_cfg[name]["on_qubits"] and "B" in self.experiment_cfg[name]["on_qubits"]:
+                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
                     f.append_line('qbA_I', data[0][0])
                     f.append_line('qbA_Q', data[0][1])
                     f.append_line('qbB_I', data[1][0])
@@ -233,7 +259,7 @@ class Experiment:
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
-                if "A" in self.experiment_cfg[name]["on_qubits"] and "B" in self.experiment_cfg[name]["on_qubits"]:
+                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
                     f.add('qbA_I', data[0][0])
                     f.add('qbA_Q', data[0][1])
                     f.add('qbB_I', data[1][0])
@@ -246,7 +272,7 @@ class Experiment:
             with self.slab_file as f:
                 f.append_line('I', I.flatten())
                 f.append_line('Q', Q.flatten())
-                if "A" in self.experiment_cfg[name]["on_qubits"] and "B" in self.experiment_cfg[name]["on_qubits"]:
+                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
                     f.append_line('qbA_I', data[0][0].flatten())
                     f.append_line('qbA_Q', data[0][1].flatten())
                     f.append_line('qbB_I', data[1][0].flatten())
@@ -262,7 +288,7 @@ class Experiment:
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
-                if "A" in self.experiment_cfg[name]["on_qubits"] and "B" in self.experiment_cfg[name]["on_qubits"]:
+                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
                     f.add('qbA_I', data[0][0])
                     f.add('qbA_Q', data[0][1])
                     f.add('qbB_I', data[1][0])
@@ -273,7 +299,7 @@ class Experiment:
         else:
             self.slab_file = SlabFile(seq_data_file)
             with self.slab_file as f:
-                if "A" in self.experiment_cfg[name]["on_qubits"] and "B" in self.experiment_cfg[name]["on_qubits"]:
+                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
                     f.append_line('qbA_I', data[0][0])
                     f.append_line('qbA_Q', data[0][1])
                     f.append_line('qbB_I', data[1][0])
@@ -350,7 +376,7 @@ class Experiment:
 
 
         time.sleep(0.1)
-        for qb in self.expt_cfg['on_qubits']:
+        for qb in self.quantum_device_cfg["setups"]:
             read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
             for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq, self.expt_cfg['step']):
                 self.quantum_device_cfg['readout'][qb]['freq'] = freq
@@ -517,6 +543,49 @@ def generate_quantum_device_from_lattice_v2(lattice_cfg_name, qb_ids, setups=["A
             qb_ids = qb_ids * 2
 
         quantum_device_cfg["setups"] = setups
+
+        for category in lattice_cfg.keys():
+            # if category is directly a list of 8 qubit values, stuff it into setups "A" and "B"
+            if isinstance(lattice_cfg[category], list) and len(lattice_cfg[category]) == 8:
+                for i in range(len(qb_ids)):
+                    quantum_device_cfg[category] = {}
+                    quantum_device_cfg[category][setups[i]] = lattice_cfg[category][qb_ids[i]]
+
+            # if category is a dictionary, walk through the keys.
+            elif isinstance(lattice_cfg[category], dict):
+                quantum_device_cfg[category] = {}
+                for i in range(len(qb_ids)):
+                    quantum_device_cfg[category][setups[i]] = {}
+                for key in lattice_cfg[category]:
+                    # if one of them is a list of eight qubit values,stuff it in quantum device config
+                    if isinstance(lattice_cfg[category][key], list) and len(lattice_cfg[category][key]) == 8:
+                        for i in range(len(qb_ids)):
+                            quantum_device_cfg[category][setups[i]][key] = lattice_cfg[category][key][qb_ids[i]]
+                    #elif check if setup specific
+                    elif key == setups[0]:
+                        for key_set in lattice_cfg[category][key]:
+                            quantum_device_cfg[category][setups[0]][key_set] = lattice_cfg[category][key][key_set][qb_ids[0]]
+                    elif key == setups[1]:
+                        for key_set in lattice_cfg[category][key]:
+                            quantum_device_cfg[category][setups[1]][key_set] = lattice_cfg[category][key][key_set][qb_ids[1]]
+                    # else, just stuff it directly
+                    else:
+                        quantum_device_cfg[category][key] = lattice_cfg[category][key]
+
+            # if category is other, just stuff it directly into quantum device config
+            else:
+                quantum_device_cfg[category] = lattice_cfg[category]
+
+        return quantum_device_cfg
+
+def generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits = {'A':1,'B':2}):
+    with open(lattice_cfg_name, 'r') as f:
+        lattice_cfg = json.load(f)
+        quantum_device_cfg = {}
+
+        quantum_device_cfg["on_qubits"] = on_qubits
+        setups = list[on_qubits.keys()]
+        qb_ids  = list[on_qubits.values()]
 
         for category in lattice_cfg.keys():
             # if category is directly a list of 8 qubit values, stuff it into setups "A" and "B"
