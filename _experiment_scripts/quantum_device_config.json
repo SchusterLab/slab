@@ -1,0 +1,96 @@
+{
+  "qubit": {
+    "A": {
+      "freq": 4.93,
+      "anharmonicity": -0.2403196
+    },
+    "B": {
+      "freq": 5.967924,
+      "anharmonicity": -0.25
+    }
+  },
+  "powers": {
+    "A": {
+      "drive_lo_powers": 13,
+      "drive_digital_attenuation": 30,
+      "readout_drive_lo_powers": 13,
+      "readout_drive_digital_attenuation": 10
+    },
+    "B": {
+      "drive_lo_powers": 13,
+      "drive_digital_attenuation": 10,
+      "readout_drive_lo_powers": 13,
+      "readout_drive_digital_attenuation": 10
+    }
+  },
+  "readout": {
+    "A": {
+      "amp": 1.0,
+      "length": 12000,
+      "freq": 6.271125,
+      "gfreq": 6.271125,
+      "efreq": 6.271125,
+      "ffreq": 6.271125,
+      "window": [
+        1000,
+        4000
+      ]
+    },
+    "B": {
+      "amp": 1.0,
+      "length": 12000,
+      "freq": 6.95235,
+      "gfreq": 6.16025,
+      "efreq": 6.1593,
+      "ffreq": 6.1593,
+      "window": [
+        1000,
+        4000
+      ]
+    }
+  },
+  "pulse_info": {
+    "A": {
+      "pi_amp": 1,
+      "pi_ef_amp": 1,
+      "pi_len": 270.10069,
+      "pi_ef_len": 33,
+      "half_pi_amp": 1,
+      "half_pi_ef_amp": 0.4,
+      "half_pi_len": 135.05,
+      "half_pi_ef_len": 15,
+      "iq_freq": -0.05,
+      "Q_phase": -1.58,
+      "IQ_dc": 0,
+      "pulse_type": "gauss",
+      "ef_pulse_type": "gauss"
+    },
+    "B": {
+      "pi_amp": 1,
+      "pi_ef_amp": 1,
+      "pi_len": 270.10069,
+      "pi_ef_len": 33,
+      "half_pi_amp": 1,
+      "half_pi_ef_amp": 0.4,
+      "half_pi_len": 135.05,
+      "half_pi_ef_len": 15,
+      "iq_freq": -0.05,
+      "Q_phase": -1.58,
+      "IQ_dc": 0,
+      "pulse_type": "gauss",
+      "ef_pulse_type": "gauss"
+    }
+  },
+  "flux_pulse_info": {
+    "A": {
+      "ramp_sigma_len": 0.001
+    },
+    "B": {
+      "ramp_sigma_len": 0.001
+    }
+  },
+  "stabilizer_info": {
+    "freq": 5,
+    "stab_lo_power": 13
+  }
+}
