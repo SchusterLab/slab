@@ -596,6 +596,7 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
 
         ax.legend()
         plt.show()
+    return p
 
 
 def t1(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False):
