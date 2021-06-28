@@ -135,8 +135,12 @@ else:
     print("Data collection done!")
 
     job.halt()
+
+    plt.figure()
     plt.plot(Q, '.-')
     plt.plot(I, '.-')
+    plt.show()
+
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,

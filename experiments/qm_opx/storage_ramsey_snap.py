@@ -51,7 +51,7 @@ ramsey_freq = 10e3
 omega = 2*np.pi*ramsey_freq
 
 dt = 2500
-T_min = 0
+T_min = 4
 T_max = 300000
 t_vec = np.arange(T_min, T_max + dt/2, dt)
 
@@ -74,7 +74,7 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_j
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)

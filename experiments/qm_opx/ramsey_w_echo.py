@@ -18,7 +18,7 @@ dt = 250
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
-T_min = 4
+T_min = 8
 T_max = 30000
 times = np.arange(T_min, T_max + dt/2, dt)
 avgs = 1000
@@ -94,7 +94,8 @@ with program() as ramsey:
             align('qubit', 'rr', 'jpa_pump')
             # wait(reset_time//4, 'qubit')
             play("pi2", "qubit")
-            wait(t, "qubit")
+            wait(t/2, "qubit")
+            play('pi', 'qubit')
             frame_rotation_2pi(phi, "qubit") #2pi is already multiplied to the phase
             play("pi2", "qubit")
             align('qubit', 'rr', 'jpa_pump')
@@ -134,7 +135,7 @@ else:
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'ramsey_phase', suffix='.h5'))
+                                 get_next_filename(data_path, 'ramsey_phase_echo', suffix='.h5'))
     print(seq_data_file)
     with File(seq_data_file, 'w') as f:
         f.create_dataset("Q", data=res)

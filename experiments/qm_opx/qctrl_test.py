@@ -27,7 +27,7 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=Tr
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -56,25 +56,44 @@ def active_reset(biased_th, to_excited=False):
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -5.5e6
-f_max = 0.5e6
-df = 40e3
-f_vec = np.arange(f_min, f_max + df/2, df)
 
-filename = 'oct_pulses/g1.h5'
 
-# filename = "S:\\Ankur\\Stimulated Emission\\pulses\\picollo\\2021-03-23\\00001_g0_to_g1_2.0us_qamp_7.5_camp_0.2_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5"
-filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g3_2.0us_qamp_75_camp_8_gamp_0.02_dwdt_1.0_dw2dt2_0.1.h5'
+filename = './/test_pulse//test_snap_pi.h5'
 
 with File(filename,'r') as a:
-    Iq = np.array(a['uks'][-1][0], dtype=float)
-    Qq = np.array(a['uks'][-1][1], dtype=float)
-    Ic = np.array(a['uks'][-1][2], dtype=float)
-    Qc = np.array(a['uks'][-1][3], dtype=float)
+    Iq = np.array(a['Q_i'], dtype=float)
+    Qq = np.array(a['Q_q'], dtype=float)
     a.close()
 
 path = os.getcwd()
 cal_path = os.path.join(path, "drive_calibration")
+
+def alpha_awg_cal(alpha, cav_amp=0.4):
+    # takes input array of omegas and converts them to output array of amplitudes,
+    # using a calibration h5 file defined in the experiment config
+    # pull calibration data from file, handling properly in case of multimode cavity
+    cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
+
+    fn_file = cal_path + '\\00000_2021_6_14_cavity_square.h5'
+
+    with File(fn_file, 'r') as f:
+        omegas = np.array(f['omegas'])
+        amps = np.array(f['amps'])
+    # assume zero frequency at zero amplitude, used for interpolation function
+    omegas = np.append(omegas, 0.0)
+    amps = np.append(amps, 0.0)
+
+    o_s = omegas
+    a_s = amps
+
+    # interpolate data, transfer_fn is a function that for each omega returns the corresponding amp
+    transfer_fn = scipy.interpolate.interp1d(a_s, o_s)
+
+    omega_desired = transfer_fn(cav_amp)
+
+    pulse_length = (alpha/omega_desired)
+    """Returns time in units of 4ns for FPGA"""
+    return abs(pulse_length)//4
 
 def transfer_function(omegas_in, cavity=False, qubit=True, pulse_length=2000):
     # takes input array of omegas and converts them to output array of amplitudes,
@@ -114,29 +133,80 @@ def transfer_function(omegas_in, cavity=False, qubit=True, pulse_length=2000):
 
 Iq = transfer_function(Iq, qubit=True)
 Qq = transfer_function(Qq, qubit=True)
-Ic = transfer_function(Ic, qubit=False, cavity=True)
-Qc = transfer_function(Qc, qubit=False, cavity=True)
 
 a_max = 0.45 #Max peak-peak amplitude out of OPX
 
-Iq = [float(x*a_max) for x in Iq]
-Qq = [float(x*a_max) for x in Qq]
-Ic = [float(x*a_max) for x in Ic]
-Qc = [float(x*a_max) for x in Qc]
+Iq = [float(a_max*x) for x in Iq]
+Qq = [float(a_max*x) for x in Qq]
 
 config['pulses']['qoct_pulse']['length'] = len(Iq)
-config['pulses']['soct_pulse']['length'] = len(Ic)
 
 config['waveforms']['qoct_wf_i']['samples'] = Iq
 config['waveforms']['qoct_wf_q']['samples'] = Qq
-config['waveforms']['soct_wf_i']['samples'] = Ic
-config['waveforms']['soct_wf_q']['samples'] = Qc
 
-pulse_len = 500
+pulse_len = 1400//4
+
+
+f_min = -5.5e6
+f_max = 0.5e6
+df = 40e3
+f_vec = np.arange(f_min, f_max + df/2, df)
 
 avgs = 1000
 reset_time = int(3.5e6)
 simulation = 0
+
+def snap_seq(fock_state=0):
+
+    opx_amp = 0.4
+
+    if fock_state==0:
+        play("CW"*amp(0.0), "storage", duration=alpha_awg_cal(1.143))
+        align("storage", "qubit")
+        play("res_pi"*amp(0.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-0.0), "storage", duration=alpha_awg_cal(-0.58))
+
+    elif fock_state==1:
+        play("CW"*amp(opx_amp), "storage", duration=alpha_awg_cal(1.143))
+        align("storage", "qubit")
+        play("qoct", "qubit", duration=pulse_len)
+        align("storage", "qubit")
+        play("CW"*amp(-opx_amp), "storage", duration=alpha_awg_cal(-0.58))
+
+    elif fock_state==2:
+        play("CW"*amp(opx_amp), "storage", duration=alpha_awg_cal(0.497))
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-opx_amp), "storage", duration=alpha_awg_cal(1.133))
+        update_frequency("qubit", ge_IF + two_chi)
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(opx_amp), "storage", duration=alpha_awg_cal(0.432))
+        update_frequency("qubit", ge_IF)
+
+    elif fock_state==3:
+        play("CW"*amp(opx_amp), "storage", duration=alpha_awg_cal(0.531))
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-opx_amp), "storage", duration=alpha_awg_cal(0.559))
+        update_frequency("qubit", ge_IF + two_chi)
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(opx_amp), "storage", duration=alpha_awg_cal(0.946))
+        update_frequency("qubit", ge_IF + 2*two_chi)
+        align("storage", "qubit")
+        play("res_pi"*amp(2.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-opx_amp), "storage", duration=alpha_awg_cal(0.358))
+        update_frequency("qubit", ge_IF)
+
+f_target = 1
+
 with program() as oct_test:
 
     ##############################
@@ -160,11 +230,10 @@ with program() as oct_test:
 
             update_frequency("qubit", ge_IF)
             wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
+            # align('storage', 'rr', 'jpa_pump', 'qubit')
+            # active_reset(biased_th_g_jpa)
             align('storage', 'rr', 'jpa_pump', 'qubit')
-            active_reset(biased_th_g_jpa)
-            align('storage', 'rr', 'jpa_pump', 'qubit')
-            play("soct", "storage", duration=pulse_len)
-            play("qoct", "qubit", duration=pulse_len)
+            snap_seq(fock_state=f_target)
             align("storage", "qubit")
             update_frequency("qubit", f)
             play("res_pi", "qubit")
@@ -184,23 +253,23 @@ qm = qmm.open_qm(config)
 
 if simulation:
     """To simulate the pulse sequence"""
-    job = qmm.simulate(config, oct_test, SimulationConfig(15000))
+    job = qmm.simulate(config, oct_test, SimulationConfig(25000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 
 else:
     """To run the actual experiment"""
     job = qm.execute(oct_test, duration_limit=0, data_limit=0)
-    print("Experiment done")
+    print("Experiment running")
 
     result_handles = job.result_handles
     # result_handles.wait_for_all_values()
-    # res = result_handles.get('res').fetch_all()
-    # I = result_handles.get('I').fetch_all()
-    #
-    # plt.figure()
-    # plt.plot(f_vec, res, '.-')
-    #
+    res = result_handles.get('res').fetch_all()
+    I = result_handles.get('I').fetch_all()
+
+    plt.figure()
+    plt.plot(f_vec, res, '.-')
+    plt.show()
     # job.halt()
     #
     # path = os.getcwd()

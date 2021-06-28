@@ -1,6 +1,6 @@
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config, biased_th_g_jpa
+from configuration_IQ import config, biased_th_g_jpa, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -26,12 +26,12 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(1000//4, "jpa_pump")
+    wait(1000//4, "rr")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -73,9 +73,9 @@ with program() as power_rabi:
 
     with for_(n, 0, n < N, n + 1):
 
-        with for_(a, a_min, a< a_max + da/2, a + da):
+        with for_(a, a_min, a < a_max + da/2, a + da):
             active_reset(biased_th_g_jpa)
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
             play('gaussian'*amp(a), 'qubit')
             align('qubit', 'rr', 'jpa_pump')
             play('pump_square', 'jpa_pump')

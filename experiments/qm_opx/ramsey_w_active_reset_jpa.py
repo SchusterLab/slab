@@ -1,4 +1,4 @@
-from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa
+from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -18,7 +18,7 @@ dt = 250
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
-T_min = 0
+T_min = 4
 T_max = 30000
 times = np.arange(T_min, T_max + dt/2, dt)
 avgs = 1000
@@ -33,12 +33,13 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
+    I = declare(fixed)
 
-    wait(1000//4, "jpa_pump")
+    wait(1000//4, "rr")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -91,6 +92,7 @@ with program() as ramsey:
 
             active_reset(biased_th_g_jpa)
             align('qubit', 'rr', 'jpa_pump')
+            # wait(reset_time//4, 'qubit')
             play("pi2", "qubit")
             wait(t, "qubit")
             frame_rotation_2pi(phi, "qubit") #2pi is already multiplied to the phase

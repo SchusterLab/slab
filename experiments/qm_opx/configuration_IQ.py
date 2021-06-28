@@ -22,19 +22,19 @@ long_redout_len = 2000
 readout_len = 3000
 
 qubit_LO = 4.6470*1e9
-qubit_freq = 4.7469477841520105*1e9
+qubit_freq = 4.746957410816677  *1e9
 ge_IF = int(qubit_freq - qubit_LO)
 
 qubit_ef_freq = 4.607396975213376 * 1e9
 ef_IF = -int(qubit_LO-qubit_ef_freq) #LSB
-two_chi = -1.123*1e6
+two_chi = -1.134*1e6
 
 ####---------------------####
 rr_LO = 8.1516 *1e9
 
 rr_freq_g = 8.051843423081882*1e9
 rr_freq_e = 8.051472688135474*1e9
-rr_freq = 8.051665272161907*1e9
+rr_freq = 8.051672441843266*1e9
 
 rr_IF = int(rr_LO - rr_freq)
 
@@ -59,11 +59,13 @@ sb_freq = 3.3434e9
 sb_IF = 100e6
 sb_LO = sb_freq + sb_IF
 
+st_self_kerr = 15e3/2
+
 gauss_len = 40
 gauss_amp = 0.45  #the mixer goes crazy above 0.95
 
 pi_len = 40
-pi_amp = 0.3741
+pi_amp = 0.3751
 
 half_pi_len = pi_len
 half_pi_amp = pi_amp/2
@@ -76,7 +78,7 @@ pi_ef_amp = 0.3210
 
 opt_readout = "C:\\_Lib\\python\\slab\\experiments\\qm_opx\\pulses\\00019_readout_optimal_pulse.h5"
 with File(opt_readout,'r') as a:
-    opt_amp = 0.065*np.array(a['I_wf'])
+    opt_amp = 0.063*np.array(a['I_wf'])
 opt_len = len(opt_amp)
 pump_len = opt_len
 

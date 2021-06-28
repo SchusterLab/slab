@@ -97,9 +97,9 @@ with program() as ramsey:
         with for_(i, wait_tmin, i < wait_tmax + wait_dt/2, i + wait_dt):
             assign(phi, 0)
             with for_(t, T_min, t < T_max + dt/2, t + dt):
-                # active_reset(biased_th_g)
+                active_reset(biased_th_g)
                 reset_frame("qubit", "rr")
-                wait(reset_time//4, 'rr')
+                # wait(reset_time//4, 'rr')
                 play('long_readout', 'rr')
                 align("rr", "qubit")
                 wait(i, "qubit")

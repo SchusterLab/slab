@@ -1,6 +1,6 @@
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config
+from configuration_IQ import config, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -30,7 +30,7 @@ discriminator = TwoStateDiscriminator(qmm=qmm,
                                       config=config,
                                       update_tof=False,
                                       rr_qe='rr',
-                                      path='ge_disc_params_jpa.npz',
+                                      path=disc_file,
                                       lsb=lsb)
 
 use_opt_weights = False
@@ -70,7 +70,7 @@ with program() as training_program:
 
     with for_(n, 0, n < N, n + 1):
 
-        wait(wait_time//4, "jpa_pump")
+        wait(wait_time//4, "rr")
         align("rr", "jpa_pump")
         play('pump_square', 'jpa_pump')
         training_measurement("clear", use_opt_weights=use_opt_weights)
@@ -109,7 +109,7 @@ with program() as benchmark_readout:
 
     with for_(n, 0, n < N, n + 1):
 
-        wait(wait_time//4, "jpa_pump")
+        wait(wait_time//4, "rr")
         align("rr", "jpa_pump")
         play('pump_square', 'jpa_pump')
         discriminator.measure_state("clear", "out1", "out2", res, I=I, Q=Q)

@@ -15,7 +15,7 @@ from slab.dataanalysis import get_next_filename
 ##################
 dt = 1000
 T_max = 50000
-T_min = 25
+T_min = 4
 times = np.arange(T_min, T_max + dt/2, dt)
 
 avgs = 1000
@@ -34,27 +34,31 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_j
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
-    wait(5000//4, 'rr')
+
+    wait(1000//4, "jpa_pump")
+    align("rr", "jpa_pump")
+    play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
     wait(1000//4, 'rr')
 
     if to_excited == False:
         with while_(I < biased_th):
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
             with if_(~res_reset):
                 play('pi', 'qubit')
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
     else:
         with while_(I > biased_th):
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
             with if_(res_reset):
                 play('pi', 'qubit')
-            align('qubit', 'rr')
+            align('qubit', 'rr', 'jpa_pump')
+            play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
-
 
 with program() as ge_t1:
 
@@ -75,7 +79,7 @@ with program() as ge_t1:
 
     res_st = declare_stream()
     I_st = declare_stream()
-    Q_st = declare_stream()
+    # Q_st = declare_stream()
 
     ###############
     # the sequence:
@@ -92,9 +96,10 @@ with program() as ge_t1:
             align('qubit', 'rr', 'jpa_pump')
             play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res, I=I)
-
+            #
             save(res, res_st)
             save(I, I_st)
+            # align('qubit', 'rr')
             # measure("clear", "rr", None,
             #         demod.full("clear_integW1", I1, 'out1'),
             #         demod.full("clear_integW2", Q1, 'out1'),
@@ -112,6 +117,8 @@ with program() as ge_t1:
         # Q_st.buffer(len(times)).average().save('Q')
 
 qmm = QuantumMachinesManager()
+
+
 qm = qmm.open_qm(config)
 
 if simulation:
@@ -133,7 +140,9 @@ else:
 
     job.halt()
 
-    plt.plot(times, Q)
+    plt.figure()
+    plt.plot(times, res)
+    plt.show()
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
@@ -144,5 +153,5 @@ else:
     times = 4*times #actual clock time
     with File(seq_data_file, 'w') as f:
         f.create_dataset("I", data=I)
-        f.create_dataset("res", data=Q)
+        f.create_dataset("res", data=res)
         f.create_dataset("time", data=times)

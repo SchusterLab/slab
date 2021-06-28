@@ -164,7 +164,7 @@ coh_amp = 0.00
 camp = np.round(np.arange(0.0005, 0.001, 0.0001).tolist(), 6)
 qm = qmm.open_qm(config)
 
-avgs = 75000
+avgs = 50000
 reset_time = int(3.5e6)
 simulation = 0
 
@@ -172,7 +172,7 @@ num_pi_pulses_m = 30 #need even number to bring the qubit back to 'g' before coh
 num_pi_pulses_n = 0
 
 simulation = 0
-camp = [0.0002]
+camp = [0.0]
 
 for a in camp:
 
@@ -206,50 +206,14 @@ for a in camp:
         with for_(n, 0, n < avgs, n + 1):
 
             wait(reset_time//4, 'storage')
-            # update_frequency('qubit', ge_IF)
             align('storage', 'rr', 'jpa_pump', 'qubit')
             active_reset(biased_th_g_jpa)
             align('storage', 'rr', 'jpa_pump', 'qubit')
             ########################
-            # play("soct"*amp(0.0), "storage", duration=pulse_len)
-            # play("qoct"*amp(0.0), "qubit", duration=pulse_len)
-            # ########################
-            # align('storage', 'qubit')
-            # play("pi2", "qubit") # unconditional
-            # wait(t_chi//4, "qubit")
-            # frame_rotation(np.pi, 'qubit') #
-            # play("pi2", "qubit")
-            # align('qubit', 'rr', 'jpa_pump')
-            # play('pump_square', 'jpa_pump')
-            # discriminator.measure_state("clear", "out1", "out2", bit1, I=I)
-            # save(bit1, bit1_st)
-            #
-            # reset_frame("qubit")
-            # wait(1000//4, "rr")
-            # align("qubit", "rr", 'jpa_pump')
-            #
-            # play("pi2", "qubit") # unconditional
-            # wait(t_chi//4//2-3, "qubit") # subtracted 3 to make the simulated waveforms accurate
-            # with if_(bit1==0):
-            #     frame_rotation(np.pi, 'qubit')
-            #     play("pi2", "qubit")
-            # with else_():
-            #     frame_rotation(3/2*np.pi, 'qubit')
-            #     play("pi2", "qubit")
-            # align('qubit', 'rr', 'jpa_pump')
-            # play('pump_square', 'jpa_pump')
-            # discriminator.measure_state("clear", "out1", "out2", bit2, I=I)
-            # save(bit2, bit2_st)
-            #
-            # assign(num, Cast.to_int(bit1) + 2*Cast.to_int(bit2))
-            # update_frequency('qubit', ge_IF + (num)*two_chi)
-            # align('storage', 'rr', 'jpa_pump')
-            assign(bit1, 0)
-            assign(bit2, 0)
-            save(bit1, bit1_st)
-            save(bit2, bit2_st)
 
             play('CW'*amp(coh_amp), 'storage', duration=coh_len)
+            ########################
+            align('storage', 'qubit')
 
             with for_(i, 0, i < num_pi_pulses_m, i+1):
                 wait(1000//4, "rr")
@@ -264,8 +228,6 @@ for a in camp:
                 save(bit3, bit3_st)
 
         with stream_processing():
-            bit1_st.boolean_to_int().save_all('bit1')
-            bit2_st.boolean_to_int().save_all('bit2')
             bit3_st.boolean_to_int().buffer(num_pi_pulses_m+num_pi_pulses_n).save_all('bit3')
 
     if simulation:
@@ -295,7 +257,7 @@ for a in camp:
         path = os.getcwd()
         data_path = os.path.join(path, "data/")
         seq_data_file = os.path.join(data_path,
-                                     get_next_filename(data_path, 'photon_counting_parity_alpha', suffix='.h5'))
+                                     get_next_filename(data_path, 'photon_counting_parity_bkgd', suffix='.h5'))
         print(seq_data_file)
         with File(seq_data_file, 'w') as f:
             f.create_dataset("p_cav", data=p_cav)

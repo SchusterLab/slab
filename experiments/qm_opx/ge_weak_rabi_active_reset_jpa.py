@@ -1,6 +1,6 @@
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 from qm import SimulationConfig, LoopbackInterface
-from configuration_IQ import config, ge_IF, two_chi, biased_th_g_jpa, pi_len_resolved
+from configuration_IQ import config, ge_IF, two_chi, biased_th_g_jpa, pi_len_resolved, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -29,12 +29,12 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)

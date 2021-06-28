@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, two_chi
+from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, two_chi, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -23,7 +23,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # pull calibration data from file, handling properly in case of multimode cavity
     cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_6_14_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -57,7 +57,7 @@ f_vec = np.arange(f_min, f_max + df/2, df)
 # Fock4: D(-0.284) * S(3,pi) * D(0.775) * S(2,pi) * D(-0.632) * S(1,pi) * D(-0.831) * S(0,pi) * D(1.555) * |0>
 
 avgs = 1000
-reset_time = int(3.5e6)
+reset_time = int(3.75e6)
 simulation = 0
 
 simulation_config = SimulationConfig(
@@ -68,7 +68,7 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
@@ -78,7 +78,6 @@ def active_reset(biased_th, to_excited=False):
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
     wait(1000//4, 'rr')
-    # save(I, "check")
 
     if to_excited == False:
         with while_(I < biased_th):
@@ -272,9 +271,10 @@ else:
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
 
-    job.halt()
 
     plt.plot(f_vec, res, '.-')
+
+    job.halt()
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

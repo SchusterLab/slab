@@ -68,8 +68,8 @@ simulation_config = SimulationConfig(
 qmm = QuantumMachinesManager()
 discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 ##################
-avgs = 5000
-reset_time = int(3.5e6)
+avgs = 10000
+reset_time = int(3.75e6)
 simulation = 0
 
 num_pi_pulses_m = 0 #need even number to bring the qubit back to 'g' before coherent drive
@@ -177,7 +177,6 @@ def bd():
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", bit2, I=I)
 
-
 with program() as binary_decomposition:
 
     ##############################
@@ -186,17 +185,14 @@ with program() as binary_decomposition:
 
     n = declare(int)      # Averaging
     i = declare(int)      # Amplitudes
-    t = declare(int) #array of time delays
     bit1 = declare(bool)
     bit2 = declare(bool)
-    bit3 = declare(bool)
     num1 = declare(int)
     num2 = declare(int)
     I = declare(fixed)
 
     num1_st = declare_stream()
     num2_st = declare_stream()
-    bit3_st = declare_stream()
 
     ###############
     # the sequence:
@@ -211,65 +207,43 @@ with program() as binary_decomposition:
         active_reset(biased_th_g_jpa)
         align('storage', 'rr', 'jpa_pump', 'qubit')
         ########################
-        snap_seq(fock_state=0)
+        snap_seq(fock_state=2)
         ########################
 
         """First binary decomposition here"""
-        align('storage', 'qubit')
+        align('storage', 'rr', 'jpa_pump', 'qubit')
         bd()
-        assign(num1, Cast.to_int(bit1) + 2*Cast.to_int(bit2))
-        save(num1, num1_st)
         """First BD after the state prep ends here"""
-        ########################
-        update_frequency('qubit', ge_IF + (num1)*two_chi)
+
+        assign(num1, Cast.to_int(bit1) + 2*Cast.to_int(bit2)) #Computing the cavity state
+        save(num1, num1_st)
+        # ########################
+        # update_frequency('qubit', ge_IF + (num1)*two_chi)
         reset_frame("qubit")
         update_frequency('storage', storage_IF + (num1*(num1-1))*st_self_kerr)
-
-        # """Flip the qubit to |g> before repeated pi pulses"""
-        # align('rr', 'jpa_pump', 'qubit')
-        # with if_(bit2):
-        #     play('pi', 'qubit')
-        # align('rr', 'jpa_pump', 'qubit')
         ########################
-
         ########################
-        """Repeated pi pulses"""
-
-        with for_(i, 0, i < num_pi_pulses_m, i+1):
-            wait(500//4, "rr")
-            align("qubit", "rr", 'jpa_pump')
-            play("res_pi", "qubit")
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", bit3, I=I)
-            save(bit3, bit3_st)
-        ########################
-
-        reset_frame("qubit")
-        update_frequency('qubit', ge_IF)
 
         """active reset to bring qubit back to 'g' before the next BD"""
-        with if_(bit3):
-            align('rr', 'jpa_pump', 'qubit')
+        align('storage', 'rr', 'jpa_pump', 'qubit')
+
+        with if_(bit2):
             play('pi', 'qubit')
+            align('qubit', 'storage')
 
-        align('storage', 'rr', 'jpa_pump')
+        play('CW'*amp(0.1), 'storage', duration=50)
 
-        play('CW'*amp(0.05), 'storage', duration=100)
-
-        align("qubit", "storage")
+        align('storage', 'rr', 'jpa_pump', 'qubit')
 
         """Post BD starts"""
-        # align('rr', 'jpa_pump', 'qubit')
+        # reset_frame('qubit')
         bd()
-
         assign(num2, Cast.to_int(bit1) + 2*Cast.to_int(bit2))
         save(num2, num2_st)
 
     with stream_processing():
         num1_st.save_all('num1')
         num2_st.save_all('num2')
-        bit3_st.boolean_to_int().buffer(num_pi_pulses_m+num_pi_pulses_n).save_all('bit3')
 
 qm = qmm.open_qm(config)
 if simulation:
@@ -288,7 +262,6 @@ else:
     result_handles.wait_for_all_values()
     num1 = result_handles.get('num1').fetch_all()['value']
     num2 = result_handles.get('num2').fetch_all()['value']
-    bit3 = result_handles.get('bit3').fetch_all()['value']
 
     p_cav = [np.sum(num1==0)*100/avgs, np.sum(num1==1)*100/avgs, np.sum(num1==2)*100/avgs, np.sum(num1==3)*100/avgs]
 

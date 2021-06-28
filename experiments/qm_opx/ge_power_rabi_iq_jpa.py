@@ -5,21 +5,10 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from slab.instruments import instrumentmanager
 from slab.dsfit import*
-im = InstrumentManager()
-LO_q = im['RF5']
-LO_r = im['RF8']
 ##################
 # power_rabi_prog:
 ##################
-LO_q.set_frequency(qubit_LO)
-LO_q.set_ext_pulse(mod=False)
-LO_q.set_power(18)
-LO_r.set_frequency(rr_LO)
-LO_r.set_ext_pulse(mod=False)
-LO_r.set_power(18)
-
 a_min = 0.0
 a_max = 1.0
 da = 0.01

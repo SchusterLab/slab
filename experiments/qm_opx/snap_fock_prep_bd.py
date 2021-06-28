@@ -21,9 +21,9 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # takes input array of omegas and converts them to output array of amplitudes,
     # using a calibration h5 file defined in the experiment config
     # pull calibration data from file, handling properly in case of multimode cavity
-    cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
+    cal_path = 'C:\\_Lib\\python\\slab\\experiments\\qm_opx\\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_6_14_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -62,11 +62,11 @@ simulation_config = SimulationConfig(
 qmm = QuantumMachinesManager()
 discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
-avgs = 500
-reset_time = int(3.5e6)
+avgs = 1000
+reset_time = int(3.75e6)
 simulation = 0
 t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
-
+opx_amp = 0.40
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
     I  = declare(fixed)
@@ -98,42 +98,49 @@ def active_reset(biased_th, to_excited=False):
 
 def snap_seq(fock_state=0):
 
-    if fock_state==1:
-        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.143))
+    if fock_state==0:
+        play("CW"*amp(0.0), "storage", duration=alpha_awg_cal(1.143))
+        align("storage", "qubit")
+        play("res_pi"*amp(0.0), "qubit")
+        align("storage", "qubit")
+        play("CW"*amp(-0.0), "storage", duration=alpha_awg_cal(-0.58))
+
+    elif fock_state==1:
+        play("CW"*amp(opx_amp), "storage", duration=alpha_awg_cal(1.143))
         align("storage", "qubit")
         play("res_pi"*amp(2.0), "qubit")
         align("storage", "qubit")
-        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58))
+        play("CW"*amp(-opx_amp), "storage", duration=alpha_awg_cal(-0.58))
 
     elif fock_state==2:
-        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.497))
+        play("CW"*amp(opx_amp), "storage", duration=alpha_awg_cal(0.497))
         align("storage", "qubit")
         play("res_pi"*amp(2.0), "qubit")
         align("storage", "qubit")
-        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(1.133))
+        play("CW"*amp(-opx_amp), "storage", duration=alpha_awg_cal(1.133))
         update_frequency("qubit", ge_IF + two_chi)
         align("storage", "qubit")
         play("res_pi"*amp(2.0), "qubit")
         align("storage", "qubit")
-        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.432))
+        play("CW"*amp(opx_amp), "storage", duration=alpha_awg_cal(0.432))
         update_frequency("qubit", ge_IF)
 
     elif fock_state==3:
-        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.531))
+        play("CW"*amp(opx_amp), "storage", duration=alpha_awg_cal(0.531))
         align("storage", "qubit")
         play("res_pi"*amp(2.0), "qubit")
         align("storage", "qubit")
-        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(0.559))
+        play("CW"*amp(-opx_amp), "storage", duration=alpha_awg_cal(0.559))
         update_frequency("qubit", ge_IF + two_chi)
         align("storage", "qubit")
         play("res_pi"*amp(2.0), "qubit")
         align("storage", "qubit")
-        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.946))
+        play("CW"*amp(opx_amp), "storage", duration=alpha_awg_cal(0.946))
         update_frequency("qubit", ge_IF + 2*two_chi)
         align("storage", "qubit")
         play("res_pi"*amp(2.0), "qubit")
         align("storage", "qubit")
-        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(0.358))
+        play("CW"*amp(-opx_amp), "storage", duration=alpha_awg_cal(0.358))
         update_frequency("qubit", ge_IF)
 
 def fock_prep(f_target=1):
@@ -157,6 +164,7 @@ def fock_prep(f_target=1):
         with for_(n, 0, n < avgs, n + 1):
 
             wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
+            update_frequency('qubit', ge_IF)
             align('storage', 'rr', 'jpa_pump', 'qubit')
             active_reset(biased_th_g_jpa)
             align('storage', 'rr', 'jpa_pump', 'qubit')
@@ -206,6 +214,8 @@ def fock_prep(f_target=1):
         samples = job.get_simulated_samples()
         samples.con1.plot()
         result_handles = job.result_handles
+        # result_handles.wait_for_all_values()
+        num = result_handles.get('num').fetch_all()['value']
 
     else:
         """To run the actual experiment"""
@@ -219,19 +229,19 @@ def fock_prep(f_target=1):
 
     return num
 
-num = fock_prep(f_target=2)
+num = fock_prep(f_target=1)
 
 p_cav = [np.sum(num==0)*100/avgs, np.sum(num==1)*100/avgs, np.sum(num==2)*100/avgs, np.sum(num==3)*100/avgs]
 
 print("n=0 => {}, n=1 => {}, n=2 => {}, n=3 => {}".format(p_cav[0], p_cav[1], p_cav[2], p_cav[3]))
 
-path = os.getcwd()
-data_path = os.path.join(path, "data/")
-seq_data_file = os.path.join(data_path,
-                             get_next_filename(data_path, 'snap_fock_prep', suffix='.h5'))
-print(seq_data_file)
-
-with File(seq_data_file, 'w') as f:
-    f.create_dataset("num", data=num)
-    f.create_dataset("freq", data=f_vec)
-    f.create_dataset("two_chi", data=two_chi)
+# path = os.getcwd()
+# data_path = os.path.join(path, "data/")
+# seq_data_file = os.path.join(data_path,
+#                              get_next_filename(data_path, 'snap_fock_prep', suffix='.h5'))
+# print(seq_data_file)
+#
+# with File(seq_data_file, 'w') as f:
+#     f.create_dataset("num", data=num)
+#     f.create_dataset("freq", data=f_vec)
+#     f.create_dataset("two_chi", data=two_chi)

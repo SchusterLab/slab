@@ -1,4 +1,4 @@
-from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, two_chi
+from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, two_chi, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -59,7 +59,7 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
@@ -121,11 +121,11 @@ with program() as ramsey:
             active_reset(biased_th_g_jpa)
             align('storage', 'rr', 'jpa_pump', 'qubit')
             ##########################
-            play("CW"*amp(0.0), "storage", duration=alpha_awg_cal(1.143))
+            play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.143))
             align("storage", "qubit")
             play("res_pi"*amp(2.0), "qubit")
             align("storage", "qubit")
-            play("CW"*amp(-0.0), "storage", duration=alpha_awg_cal(-0.58)) #249
+            play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58)) #249
             ##########################
             align('storage', 'qubit')
             play("pi2", "qubit")
