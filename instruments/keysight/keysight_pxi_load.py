@@ -67,8 +67,10 @@ class KeysightSingleQubit:
         self.dt_M3201A = hardware_cfg['awg_info']['keysight_pxi']['dt_M3201A']
         self.adc_range =  hardware_cfg['awg_info']['keysight_pxi']['digtzr_vpp_range']
 
-        self.readoutA_window = np.array(quantum_device_cfg['readout']['A']['window'])
-        self.readoutB_window = np.array(quantum_device_cfg['readout']['B']['window'])
+        if 'A' in quantum_device_cfg["setups"]:
+            self.readoutA_window = np.array(quantum_device_cfg['readout']['A']['window'])
+        if 'B' in quantum_device_cfg["setups"]:
+            self.readoutB_window = np.array(quantum_device_cfg['readout']['B']['window'])
         
         self.qb_lo_conv = hardware_cfg['awg_info']['keysight_pxi']['qb_lo_conv'] #lo_delay convolves LO marker
         self.stab_lo_conv = hardware_cfg['awg_info']['keysight_pxi']['stab_lo_conv']  # lo_delay convolves LO marker
@@ -165,8 +167,16 @@ class KeysightSingleQubit:
         amp_digtzr_trig = hardware_cfg['awg_info']['keysight_pxi']['amp_stab'][3] ##THIS IS ON PURPOSE
         amp_ff1 = hardware_cfg['awg_info']['keysight_pxi']['amp_ff1']
         amp_ff2 = hardware_cfg['awg_info']['keysight_pxi']['amp_ff2']
-        IQ_dc_offsetA = quantum_device_cfg['pulse_info']['A']['IQ_dc']
-        IQ_dc_offsetB = quantum_device_cfg['pulse_info']['B']['IQ_dc']
+        if 'A' in quantum_device_cfg["setups"]:
+            IQ_dc_offsetA = quantum_device_cfg['pulse_info']['A']['IQ_dc']
+        else:
+            IQ_dc_offsetA = quantum_device_cfg['pulse_info']['B']['IQ_dc']
+        if 'B' in quantum_device_cfg["setups"]:
+            IQ_dc_offsetB = quantum_device_cfg['pulse_info']['B']['IQ_dc']
+        else:
+            IQ_dc_offsetB = quantum_device_cfg['pulse_info']['A']['IQ_dc']
+
+
         DIG_ch_delays = hardware_cfg["awg_info"]['keysight_pxi']["DIG_channels_delay_samples"]
 
 
@@ -758,7 +768,7 @@ class KeysightSingleQubit:
                 ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
                       int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
                 qbA_I.append(np.mean(ch1,1))
-                qbA_Q.append(np.mean(ch2),1)
+                qbA_Q.append(np.mean(ch2,1))
             if "B" in self.on_qubits:
                 ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(self.readoutB_window[0]):int(
                     self.readoutB_window[1])].T
@@ -767,9 +777,9 @@ class KeysightSingleQubit:
                 qbB_I.append(np.mean(ch3,1))
                 qbB_Q.append(np.mean(ch4,1))
         if "A" in self.on_qubits:
-            data.append([qbA_I.T, qbA_Q.T])
+            data.append([np.array(qbA_I).T, np.array(qbA_Q).T])
         if "B" in self.on_qubits:
-            data.append([qbB_I.T, qbB_Q.T])
+            data.append([np.array(qbB_I).T, np.array(qbB_Q).T])
         return np.asarray(data)
 
     def acquire_avg_data(self,pi_calibration=False):

@@ -45,7 +45,7 @@ def iq_rot(I, Q, phi):
     phi = phi * np.pi / 180
     Irot = I * np.cos(phi) + Q * np.sin(phi)
     Qrot = -I * np.sin(phi) + Q * np.cos(phi)
-    return I, Q
+    return Irot, Qrot
 
 
 def iq_process(f, raw_I, raw_Q, ran=1, phi=0, sub_mean=True):
@@ -81,7 +81,7 @@ def iq_process(f, raw_I, raw_Q, ran=1, phi=0, sub_mean=True):
     return I, Q, mag, phase
 
 
-def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], mag_phase_plot=False, polar=False, title='', marker=False):
+def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], mag_phase_plot=False, polar=False, title='', marker=False,plot=True):
     """Fits frequency data to a lorentzian, then plots data and prints result
 
     :param f -- data frequency
@@ -97,46 +97,48 @@ def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], mag_phase_p
     :param marker -- plots a vertical line at marker
     :returns: dsfit result
     """
-    fig = plt.figure(figsize=(14, 5))
 
-    ax = fig.add_subplot(111, title=title)
-    if 'I' in show:
-        ax.plot(f, I, 'b.-', label='I')
-    if 'Q' in show:
-        ax.plot(f, Q, 'r.-', label='Q')
-    if marker:
-        ax.axvline(x=marker)
-    ax.set_xlabel('Freq(GHz)')
-    ax.set_ylabel('I and Q (V)')
-    ax.set_xlim(f[0], f[-1])
-    ax.legend(loc='upper right')
+    p = fitlor(f, np.square(mag), showfit=False)
 
-    if mag_phase_plot:
+    if plot==True:
         fig = plt.figure(figsize=(14, 5))
-        ax3 = fig.add_subplot(111, title=' Mag and phase')
-        ax3.plot(f, mag, 'g.-', label='Magnitude')
-        ax3.set_xlabel('Freq(GHz)')
-        ax3.set_ylabel('Magnitude (V)')
-        ax3.set_xlim(f[0], f[-1])
-        p = fitlor(f, np.square(mag), showfit=False)
-        ax3.plot(f, sqrt(lorfunc(p, f)), 'k.-', label='fit')
-        ax3.axvline(p[2], color='k', linestyle='dashed', label="fit freq")
-        ax3.axvline(expected_f, color='r', linestyle='dashed', label="expected freq")
-        ax3.legend(loc='upper right')
-        ax4 = ax3.twinx()
-        ax4.plot(f, phase, 'm.-', label='Phase')
-        ax4.set_ylabel('Phase')
-        ax4.legend(loc='lower right')
+        ax = fig.add_subplot(111, title=title)
+        if 'I' in show:
+            ax.plot(f, I, 'b.-', label='I')
+        if 'Q' in show:
+            ax.plot(f, Q, 'r.-', label='Q')
+        if marker:
+            ax.axvline(x=marker)
+        ax.set_xlabel('Freq(GHz)')
+        ax.set_ylabel('I and Q (V)')
+        ax.set_xlim(f[0], f[-1])
+        ax.legend(loc='upper right')
+        if mag_phase_plot:
+            fig = plt.figure(figsize=(14, 5))
+            ax3 = fig.add_subplot(111, title=' Mag and phase')
+            ax3.plot(f, mag, 'g.-', label='Magnitude')
+            ax3.set_xlabel('Freq(GHz)')
+            ax3.set_ylabel('Magnitude (V)')
+            ax3.set_xlim(f[0], f[-1])
+            p = fitlor(f, np.square(mag), showfit=False)
+            ax3.plot(f, sqrt(lorfunc(p, f)), 'k.-', label='fit')
+            ax3.axvline(p[2], color='k', linestyle='dashed', label="fit freq")
+            ax3.axvline(expected_f, color='r', linestyle='dashed', label="expected freq")
+            ax3.legend(loc='upper right')
+            ax4 = ax3.twinx()
+            ax4.plot(f, phase, 'm.-', label='Phase')
+            ax4.set_ylabel('Phase')
+            ax4.legend(loc='lower right')
 
-    else:
-        ax2 = ax.twinx()
-        ax2.plot(f, mag, 'k.-', alpha=0.3, label='mag')
-        ax2.set_ylabel('Mag (V)')
-        p = fitlor(f, np.square(mag), showfit=False)
-        ax2.plot(f, sqrt(lorfunc(p, f)), 'k--', label='fit')
-        ax2.axvline(p[2], color='k', linestyle='dashed', label="fit  freq")
-        ax2.axvline(expected_f, color='r', linestyle='dashed', label="expected  freq")
-        ax2.legend(loc='lower right')
+        else:
+            ax2 = ax.twinx()
+            ax2.plot(f, mag, 'k.-', alpha=0.3, label='mag')
+            ax2.set_ylabel('Mag (V)')
+            p = fitlor(f, np.square(mag), showfit=False)
+            ax2.plot(f, sqrt(lorfunc(p, f)), 'k--', label='fit')
+            ax2.axvline(p[2], color='k', linestyle='dashed', label="fit  freq")
+            ax2.axvline(expected_f, color='r', linestyle='dashed', label="expected  freq")
+            ax2.legend(loc='lower right')
 
     maxpt = np.max(mag)
     maxpt_x = np.where(mag == maxpt)
@@ -146,10 +148,12 @@ def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], mag_phase_p
     print("Max Point: ", f[maxpt_x], "GHz")
     print("HWHM: ", p[3] * 1e3, "MHz")
     print()
-    fig.tight_layout()
-    plt.show()
 
-    if polar:
+    if plot==True:
+        fig.tight_layout()
+        plt.show()
+
+    if polar and plot==True:
         plt.title("I vs Q polar plot")
         plt.xlabel("I")
         plt.ylabel("Q")
@@ -199,7 +203,7 @@ def check_sync(filenb, expt_name, expt_num=0):
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
 
-        on_qb = expt_params['on_qubits'][0]
+        on_qb = quantum_device_cfg['setups'][0]
         params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
 
         readout_window = params["readout_window"]
@@ -225,7 +229,7 @@ def check_sync(filenb, expt_name, expt_num=0):
         fig.tight_layout()
         plt.show()
 
-def resonator_spectroscopy(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=False):
+def resonator_spectroscopy(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=False,plot=True):
     """Fits resonator_spectroscopoy data, then plots data and prints result
 
     Keyword arguments:
@@ -248,7 +252,7 @@ def resonator_spectroscopy(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_ph
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
 
-        on_qb = expt_params['on_qubits'][0]
+        on_qb = quantum_device_cfg['setups'][0]
         params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
         readout_params = params['readout_params']
         ran = params['ran'] # range of DAC card for processing
@@ -277,19 +281,184 @@ def resonator_spectroscopy(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_ph
         # plot and fit data
         title = expt_name
         plot_freq_data(f=f, I=I, Q=Q, mag=mag, phase=phase,
-                       expected_f=readout_f, show=show, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
+                       expected_f=readout_f, show=show, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker,plot=plot)
 
 
-def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, mag_phase_plot=False, polar=False, debug=False, marker=None,
-                     slices=False):
-    """Fits pulse_probe_iq data, then plots data and prints result
-    :param filelist -- the data runs you want to analyze and plot
-    :paramphi -- in degrees, angle by which you want to rotate IQ
-    :paramsub_mean -- if True, subtracts out the average background of IQ measurements
-    :parammag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
-    :paramplar -- adds a plot of I and Q in polar coordinates
-    :paramdebug -- print out experiment attributes
+def resonator_spectroscopy_pi(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=False,plot=True):
+    """Fits resonator_spectroscopoy data, then plots data and prints result
+
+    Keyword arguments:
+    filelist -- the data runs you want to analyze and plot
+    phi -- in degrees, angle by which you want to rotate IQ
+    sub_mean -- if True, subtracts out the average background of IQ measurements
+    show -- if plot I, Q, or both
+    mag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
+    plar -- adds a plot of I and Q in polar coordinates
+    debug -- print out experiment attributes
+    marker -- plot vertical line where you expect
     """
+    # the 'with' statement automatically opens and closes File a, even if code in the with block fails
+    expt_name = "resonator_spectroscopy_pi"
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        # get data in from json file
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran'] # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+
+        I_raw = a['I']
+        Q_raw = a['Q']
+        f = arange(expt_params['start'] + readout_f, expt_params['stop'] + readout_f, expt_params['step'])[:len(I_raw)]
+
+        if debug:
+            print("DEBUG")
+            print("averages =", expt_params['acquisition_num'])
+            print("Rd LO pwr= ", read_lo_pwr, "dBm")
+            print("Qb LO pwr= ", qb_lo_pwr, "dBm")
+            print("Rd atten= ", dig_atten_rd, "dB")
+            print("Qb atten= ", dig_atten_qb, "dB")
+            print("Readout params", readout_params)
+            print("experiment params", expt_params)
+        # process I, Q data
+        (I, Q, mag, phase) = iq_process(f=f, raw_I=I_raw, raw_Q=Q_raw, ran=ran, phi=phi, sub_mean=sub_mean)
+
+        # plot and fit data
+        title = expt_name
+        plot_freq_data(f=f, I=I, Q=Q, mag=mag, phase=phase,
+                       expected_f=readout_f, show=show, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker,plot=plot)
+
+
+def resonator_spectroscopy_chi(filenb_g, filenb_e, marker=None, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False):
+    expt_name_g = "resonator_spectroscopy"
+    expt_name_e = "resonator_spectroscopy_pi"
+    expt_name = "resonator_spectroscopy_pi"
+    fname_g = "..\\data\\" + str(filenb_g).zfill(5) + "_" + expt_name_g.lower() + ".h5"
+    fname_e = "..\\data\\" + str(filenb_e).zfill(5) + "_" + expt_name_e.lower() + ".h5"
+
+    with File(fname_g, 'r') as a:
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran'] # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+
+        I_raw = a['I']
+        Q_raw = a['Q']
+        f = arange(expt_params['start'] + readout_f, expt_params['stop'] + readout_f, expt_params['step'])[:len(I_raw)]
+
+        if debug:
+            print("DEBUG")
+            print("averages =", expt_params['acquisition_num'])
+            print("Rd LO pwr= ", read_lo_pwr, "dBm")
+            print("Qb LO pwr= ", qb_lo_pwr, "dBm")
+            print("Rd atten= ", dig_atten_rd, "dB")
+            print("Qb atten= ", dig_atten_qb, "dB")
+            print("Readout params", readout_params)
+            print("experiment params", expt_params)
+        # process I, Q data
+        (I, Q, mag, phase) = iq_process(f=f, raw_I=I_raw, raw_Q=Q_raw, ran=ran, phi=phi, sub_mean=sub_mean)
+
+        a.close()
+
+    with File(fname_e, 'r') as a:
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+
+        I_raw = a['I']
+        Q_raw = a['Q']
+        f = arange(expt_params['start'] + readout_f, expt_params['stop'] + readout_f, expt_params['step'])[
+            :len(I_raw)]
+
+        if debug:
+            print("DEBUG")
+            print("averages =", expt_params['acquisition_num'])
+            print("Rd LO pwr= ", read_lo_pwr, "dBm")
+            print("Qb LO pwr= ", qb_lo_pwr, "dBm")
+            print("Rd atten= ", dig_atten_rd, "dB")
+            print("Qb atten= ", dig_atten_qb, "dB")
+            print("Readout params", readout_params)
+            print("experiment params", expt_params)
+        # process I, Q data
+        (Ie, Qe, mage, phasee) = iq_process(f=f, raw_I=I_raw, raw_Q=Q_raw, ran=ran, phi=phi, sub_mean=sub_mean)
+
+        a.close()
+
+    I_diff = Ie - I
+    Q_diff = Qe - Q
+    Icentered_diff = I_diff - mean(I_diff)
+    Qcentered_diff = Q_diff - mean(Q_diff)
+    magcentered_diff = sqrt(Icentered_diff ** 2 + Qcentered_diff ** 2)
+    mag_diff = sqrt(I_diff ** 2 + Q_diff ** 2)
+    phase_diff = np.arctan2(I_diff, Q_diff)
+    phase_diff = np.unwrap(phase_diff)
+    phasecentered_diff = np.arctan2(Icentered_diff, Qcentered_diff)
+    phasecentered_diff = np.unwrap(phasecentered_diff)
+
+    fig = plt.figure(figsize=(14, 7))
+    ax = fig.add_subplot(111, title=expt_name_e)
+    if marker != None:
+        ax.axvline(marker, color='r')
+        print("marker is " + str(marker))
+    ax.plot(f, I_diff, 'b.-', label='I_diff')
+    ax.set_xlabel('Freq(GHz)')
+    ax.set_ylabel('I')
+    ax.legend(loc='upper left')
+    ax2 = ax.twinx()
+    ax2.plot(f, Q_diff, 'r.-', label='Q_diff')
+    ax2.set_ylabel('Q')
+    ax2.legend(loc='upper right')
+    fig.tight_layout()
+
+    fig = plt.figure(figsize=(14, 7))
+    ax = fig.add_subplot(111, title=expt_name_e)
+    ax.plot(f, magcentered_diff, 'k.-', label='Centered Magnitude e-g')
+    if marker != None:
+        ax.axvline(marker, color='r')
+        print("marker is " + str(marker))
+    ax.set_xlabel('Freq(GHz)')
+    ax.set_ylabel('Centered Magnitude')
+    ax.legend(loc='upper left')
+    ax2 = ax.twinx()
+    ax2.plot(f, phasecentered_diff, 'g.-', label='Centered Phase e-g')
+    ax2.set_ylabel('Centered Phase')
+    ax2.legend(loc='upper right')
+    fig.tight_layout()
+    plt.show()
+
+def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, debug=False, marker=None, mag_phase_plot=False, polar=False,
+                     slices=False,plot=True):
     # the 'with' statement automatically opens and closes File a, even if code in the with block fails
     expt_name = "ff_ramp_cal_ppiq"
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
@@ -300,7 +469,7 @@ def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, mag_phase_plot
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
 
-        on_qb = expt_params['on_qubits'][0]
+        on_qb = quantum_device_cfg['setups'][0]
         params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
         readout_params = params['readout_params']
         ran = params['ran'] # range of DAC card for processing
@@ -386,10 +555,10 @@ def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, mag_phase_plot
                 # plot and fit data
                 title = expt_name
                 plot_freq_data(f=freqvals, I=I, Q=Q, mag=mag, phase=phase,
-                               expected_f=nu_q, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
+                               expected_f=nu_q, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker,plot=plot)
         return t_vals[:len(I_raw)], parray
 
-def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None):
+def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None,plot = True, ff=False):
     """Fits pulse_probe_iq data, then plots data and prints result
     :param filelist -- the data runs you want to analyze and plot
     :paramphi -- in degrees, angle by which you want to rotate IQ
@@ -401,15 +570,19 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot
     """
     # the 'with' statement automatically opens and closes File a, even if code in the with block fails
     expt_name = "pulse_probe_iq"
+    if ff:
+        expt_name = "ff_pulse_probe_iq"
+
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
         # get data in from json file
         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        # print(quantum_device_cfg.keys())
         expt_params = experiment_cfg[expt_name.lower()]
 
-        on_qb = expt_params['on_qubits'][0]
+        on_qb = quantum_device_cfg['setups'][0]
         params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
         readout_params = params['readout_params']
         ran = params['ran'] # range of DAC card for processing
@@ -420,6 +593,9 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot
         qb_lo_pwr = params['qb_lo_pwr']
 
         nu_q = params['qb_freq']  # expected qubit freq
+        if ff:
+            ff_vec = expt_params['ff_vec']
+            print("fast flux vec is {}".format(ff_vec))
 
         I_raw = a['I']
         Q_raw = a['Q']
@@ -441,65 +617,11 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot
         # plot and fit data
         title = expt_name
         p = plot_freq_data(f=f, I=I, Q=Q, mag=mag, phase=phase,
-                       expected_f=nu_q, show=show, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
+                       expected_f=nu_q, show=show, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker,plot=plot)
         return p
 
 def ff_pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None):
-    """Fits pulse_probe_iq data, then plots data and prints result
-    :param filelist -- the data runs you want to analyze and plot
-    :paramphi -- in degrees, angle by which you want to rotate IQ
-    :paramsub_mean -- if True, subtracts out the average background of IQ measurements
-    :param show -- if plotting I, Q, or both
-    :parammag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
-    :paramplar -- adds a plot of I and Q in polar coordinates
-    :paramdebug -- print out experiment attributes
-    """
-    # the 'with' statement automatically opens and closes File a, even if code in the with block fails
-    expt_name = "ff_pulse_probe_iq"
-    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
-    with File(filename, 'r') as a:
-        # get data in from json file
-        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
-        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
-        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
-        expt_params = experiment_cfg[expt_name.lower()]
-
-        on_qb = expt_params['on_qubits'][0]
-        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
-        readout_params = params['readout_params']
-        ran = params['ran'] # range of DAC card for processing
-        readout_f = params['readout_freq']
-        dig_atten_qb = params['dig_atten_qb']
-        dig_atten_rd = params['dig_atten_rd']
-        read_lo_pwr = params['read_lo_pwr']
-        qb_lo_pwr = params['qb_lo_pwr']
-
-        nu_q = params['qb_freq']  # expected qubit freq
-        ff_vec = expt_params['ff_vec']
-        print("fast flux vec is {}".format(ff_vec))
-
-        I_raw = a['I']
-        Q_raw = a['Q']
-        f = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I_raw))] + nu_q
-
-        if debug:
-            print("DEBUG")
-            print("averages =", expt_params['acquisition_num'])
-            print("Rd LO pwr= ", read_lo_pwr, "dBm")
-            print("Qb LO pwr= ", qb_lo_pwr, "dBm")
-            print("Rd atten= ", dig_atten_rd, "dB")
-            print("Qb atten= ", dig_atten_qb, "dB")
-            print("Readout params", readout_params)
-            print("experiment params", expt_params)
-
-        # process I, Q data
-        (I, Q, mag, phase) = iq_process(f=f, raw_I=I_raw, raw_Q=Q_raw, ran=ran, phi=phi, sub_mean=sub_mean)
-
-        # plot and fit data
-        title = expt_name
-        p = plot_freq_data(f=f, I=I, Q=Q, mag=mag, phase=phase,
-                       expected_f=nu_q, show=show, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker)
-        return p
+    print("This version has been deprecated, just pass ff=True to pulse probe iq")
 
 def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False):
     """
@@ -528,7 +650,7 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
         pulse_type = expt_params['pulse_type']
         amp = expt_params['amp']
 
-        on_qb = expt_params['on_qubits'][0]
+        on_qb = quantum_device_cfg['setups'][0]
         params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
         readout_params = params['readout_params']
         ran = params['ran'] # range of DAC card for processing
@@ -619,7 +741,7 @@ def t1(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, de
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
 
-        on_qb = expt_params['on_qubits'][0]
+        on_qb = quantum_device_cfg['setups'][0]
         params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
         readout_params = params['readout_params']
         ran = params['ran']  # range of DAC card for processing
@@ -669,7 +791,7 @@ def t1(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, de
 
         ax.legend()
         plt.show()
-
+    return p
 
 def ramsey(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False):
     """
@@ -692,7 +814,7 @@ def ramsey(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None
 
         ramsey_freq = expt_params['ramsey_freq'] * 1e3
 
-        on_qb = expt_params['on_qubits'][0]
+        on_qb = quantum_device_cfg['setups'][0]
         params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
         readout_params = params['readout_params']
         ran = params['ran']  # range of DAC card for processing
@@ -748,7 +870,7 @@ def ramsey(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None
             print("T2* =", p[3], "us")
         ax.legend()
         plt.show()
-
+    return p, nu_q_new
 
 def echo(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False):
     """
@@ -771,7 +893,7 @@ def echo(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
 
         ramsey_freq = expt_params['ramsey_freq'] * 1e3
 
-        on_qb = expt_params['on_qubits'][0]
+        on_qb = quantum_device_cfg['setups'][0]
         params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
         readout_params = params['readout_params']
         ran = params['ran']  # range of DAC card for processing
@@ -830,7 +952,170 @@ def echo(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
             print("T2 =", p[3], "us")
         ax.legend()
         plt.show()
+        return p
 
+
+def histogram(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False,rancut=120):
+    expt_name = 'histogram'
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+
+    with File(filename, 'r') as a:
+
+        tags = ''
+
+
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
+
+        expt_cfg = (json.loads(a.attrs['experiment_cfg']))[expt_name.lower()]
+        numbins = expt_cfg['numbins']
+        print(numbins)
+        numbins = 200
+        a_num = expt_cfg['acquisition_num']
+        ns = expt_cfg['num_seq_sets']
+        readout_length = readout_params['length']
+        window = readout_params['window']
+        atten = '0'
+        print('Readout length = ', readout_length)
+        print('Readout window = ', window)
+        print("Digital atten = ", atten)
+        print("Readout freq = ", readout_f)
+        I = array(a['I'])
+        Q = array(a['Q'])
+        sample = a_num
+
+        I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
+
+        colors = ['r', 'b', 'g']
+        labels = ['g', 'e', 'f']
+        titles = ['I', 'Q']
+
+        IQs = mean(I[::3], 1), mean(Q[::3], 1), mean(I[1::3], 1), mean(Q[1::3], 1), mean(I[2::3], 1), mean(Q[2::3], 1)
+        IQsss = I.T.flatten()[0::3], Q.T.flatten()[0::3], I.T.flatten()[1::3], Q.T.flatten()[1::3], I.T.flatten()[
+                                                                                                    2::3], Q.T.flatten()[
+                                                                                                           2::3]
+
+        fig = plt.figure(figsize=(15, 7 * 5))
+
+        ax = fig.add_subplot(621, title='length,window = ' + str(readout_length) + ',' + str(window))
+        x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
+        x0e, y0e = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
+        phi = arctan((y0e - y0g) / (x0e - x0g))
+        for ii in range(2):
+            ax.plot(IQsss[2 * ii][:], IQsss[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
+
+        ax.set_xlabel('I (V)')
+        ax.set_ylabel('Q (V)')
+        ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
+        ax.set_ylim(y0g - ran / rancut, y0g + ran / rancut)
+
+        ax = fig.add_subplot(622, title=tags  + ', atten = ' + str(atten))
+
+        for ii in range(3):
+            ax.errorbar(mean(IQsss[2 * ii]), mean(IQsss[2 * ii + 1]), xerr=std(IQsss[2 * ii]),
+                        yerr=std(IQsss[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+        ax.set_xlabel('I')
+        ax.set_ylabel('Q')
+
+        ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
+        ax.set_ylim(y0g - ran / rancut , y0g + ran / rancut )
+
+        IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
+                    -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),
+                    I.T.flatten()[1::3] * cos(phi) + Q.T.flatten()[1::3] * sin(phi),
+                    -I.T.flatten()[1::3] * sin(phi) + Q.T.flatten()[1::3] * cos(phi),
+                    I.T.flatten()[2::3] * cos(phi) + Q.T.flatten()[2::3] * sin(phi),
+                    -I.T.flatten()[2::3] * sin(phi) + Q.T.flatten()[2::3] * cos(phi))
+
+        ax = fig.add_subplot(623, title='rotated')
+        x0g, y0g = mean(IQsssrot[0][:]), mean(IQsssrot[1][:])
+        x0e, y0e = mean(IQsssrot[2][:]), mean(IQsssrot[3][:])
+
+        for ii in range(3):
+            ax.plot(IQsssrot[2 * ii][:], IQsssrot[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
+
+        ax.set_xlabel('I (V)')
+        ax.set_ylabel('Q (V)')
+        ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
+        ax.set_ylim(y0g - ran / rancut , y0g + ran / rancut )
+
+        ax = fig.add_subplot(624)
+
+        for ii in range(3):
+            ax.errorbar(mean(IQsssrot[2 * ii]), mean(IQsssrot[2 * ii + 1]), xerr=std(IQsssrot[2 * ii]),
+                        yerr=std(IQsssrot[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+        ax.set_xlabel('I')
+        ax.set_ylabel('Q')
+
+        ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
+        ax.set_ylim(y0g - ran / rancut , y0g + ran / rancut )
+
+        for kk in range(4):
+
+            ax = fig.add_subplot(6, 2, kk % 2 + 5, title=expt_name + titles[kk % 2])
+            ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
+            ax.set_xlabel(titles[kk % 2] + '(V)')
+            ax.set_ylabel('Number')
+            ax.legend()
+            if kk % 2 == 0:
+                ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
+            else:
+                ax.set_xlim(y0g - ran / rancut , y0g + ran / rancut )
+
+    for ii, i in enumerate(['I', 'Q']):
+        sshg, ssbinsg = np.histogram(IQsss[ii], bins=numbins)
+        sshe, ssbinse = np.histogram(IQsss[ii + 2], bins=numbins)
+        fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
+
+        print("Single shot readout fidility from channel ", i, " = ", fid)
+
+    print('---------------------------')
+
+    for ii, i in enumerate(['I', 'Q']):
+        if ii is 0:
+            lims = [x0g - ran / rancut , x0g + ran / rancut ]
+        else:
+            lims = [y0g - ran / rancut , y0g + ran / rancut ]
+        sshg, ssbinsg = np.histogram(IQsssrot[ii], bins=numbins, range=lims)
+        sshe, ssbinse = np.histogram(IQsssrot[ii + 2], bins=numbins, range=lims)
+        fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
+
+        print("Single shot readout fidility from channel ", i, " after rotation = ", fid)
+        if ii == 0:
+            temp = fid
+        print("Optimal angle =", phi)
+
+        ax = fig.add_subplot(6, 2, 7 + ii)
+        ax.plot(ssbinse[:-1], cumsum(sshg) / sshg.sum(), color='r')
+        ax.plot(ssbinse[:-1], cumsum(sshe) / sshg.sum(), color='b')
+        ax.plot(ssbinse[:-1], np.abs(cumsum(sshe) - cumsum(sshg)) / sshg.sum(), color='k')
+        if ii == 0:
+            ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
+        else:
+            ax.set_xlim(y0g - ran / rancut , y0g + ran / rancut )
+        ax.set_xlabel(titles[ii] + '(V)')
+        ax.set_ylabel('$F$')
+
+    print('---------------------------')
+
+    fig.tight_layout()
+    plt.show()
+
+    return temp
 
 def twotoneanalysis(fname):
     with SlabFile(fname) as f:

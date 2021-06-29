@@ -1,5 +1,6 @@
 import visdom
 import numpy as np
+import scipy
 from scipy import interpolate
 from scipy import integrate
 
@@ -112,6 +113,7 @@ class adb_ramp(Pulse):
                  dt=None,
                  plot=False):
         self.max_amp = max_amp
+
         self.flat_len = flat_len
         self.ramp2_sigma_len = ramp2_sigma_len
         self.adb_ramp1_sig = adb_ramp1_sig
@@ -146,7 +148,7 @@ class adb_ramp(Pulse):
             (self.t_array >= t_flat_end) * (
                 self.t_array <= t_end) * np.exp(
                 -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
-                    2 * self.ramp_sigma_len ** 2))  # trailing gaussian edge
+                    2 * self.ramp2_sigma_len ** 2))  # trailing gaussian edge
         )
 
         pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)

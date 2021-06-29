@@ -34,7 +34,7 @@ class PulseSequences:
 
         self.channels_delay = hardware_cfg['channels_delay_array_roll_ns']
         
-        self.on_qubits = list[quantum_device_cfg["on_qubits"].keys()]
+        self.on_qubits = list(quantum_device_cfg["on_qubits"].keys())
 
         # pulse params
         for qb in self.on_qubits:
@@ -50,7 +50,7 @@ class PulseSequences:
                             ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.pulse_info[qb]['iq_freq'],phase=0)
 
             self.qubit_pi_Q = {}
-            self.qubit_half_pi_Q[qb]= Square(max_amp=self.pulse_info[qb]['pi_amp'], flat_len=self.pulse_info[qb][
+            self.qubit_pi_Q[qb]= Square(max_amp=self.pulse_info[qb]['pi_amp'], flat_len=self.pulse_info[qb][
                 'pi_len'], ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.pulse_info[qb]['iq_freq'],
                                              phase=self.pulse_info[qb]['Q_phase'])
 
@@ -124,7 +124,7 @@ class PulseSequences:
                             freq=self.pulse_info[qubit_id]['iq_freq'],phase=phase+self.pulse_info[qubit_id]['Q_phase']))
 
     def pi_q_ef(self,sequencer,qubit_id = 'A',phase = 0,pulse_type = 'square'):
-        freq = self.pulse_info[qubit_id]['iq_freq'] + self.quantum_device_cfg['qubit']['A']['anharmonicity']
+        freq = self.pulse_info[qubit_id]['iq_freq'] + self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity']
         if pulse_type.lower() == 'square':
             sequencer.append('charge%s_I' % qubit_id, Square(max_amp=self.pulse_info[qubit_id]['pi_ef_amp'], flat_len=self.pulse_info[qubit_id]['pi_ef_len'],ramp_sigma_len=0.001, cutoff_sigma=2,
                             freq=freq,phase=phase))
@@ -137,7 +137,7 @@ class PulseSequences:
                             freq=freq,phase=phase+self.pulse_info[qubit_id]['Q_phase']))
 
     def half_pi_q_ef(self,sequencer,qubit_id = 'A',phase = 0,pulse_type = 'square'):
-        freq = self.pulse_info[qubit_id]['iq_freq'] + self.quantum_device_cfg['qubit']['A']['anharmonicity']
+        freq = self.pulse_info[qubit_id]['iq_freq'] + self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity']
         if pulse_type.lower() == 'square':
             sequencer.append('charge%s_I' % qubit_id, Square(max_amp=self.pulse_info[qubit_id]['half_pi_ef_amp'], flat_len=self.pulse_info[qubit_id]['half_pi_ef_len'],ramp_sigma_len=0.001, cutoff_sigma=2,
                             freq=freq,phase=phase))
@@ -163,7 +163,7 @@ class PulseSequences:
                             freq=freq,phase=phase+self.pulse_info[qubit_id]['Q_phase']))
 
     def half_pi_q_fh(self,sequencer,qubit_id = 'A',phase = 0,pulse_type = 'square'):
-        freq = self.pulse_info[qubit_id]['iq_freq'] + self.quantum_device_cfg['qubit']['A']['anharmonicity']+self.quantum_device_cfg['qubit']['A']['anharmonicity_fh']
+        freq = self.pulse_info[qubit_id]['iq_freq'] + self.quantum_device_cfg['qubit'][qubit_id]['anharmonicity']+self.quantum_device_cfg['qubit']['A']['anharmonicity_fh']
         if pulse_type.lower() == 'square':
             sequencer.append('charge%s_I' % qubit_id, Square(max_amp=self.pulse_info[qubit_id]['half_pi_fh_amp'], flat_len=self.pulse_info[qubit_id]['half_pi_fh_len'],ramp_sigma_len=0.001, cutoff_sigma=2,
                             freq=freq,phase=phase))
@@ -202,8 +202,9 @@ class PulseSequences:
             pulse = Square(max_amp=flux, flat_len=ff_len[qb],
                                     ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
                                     phase=0)
-            area_vec.append(pulse.get_area())
+
             sequencer.append('ff_Q%s' % qb, pulse)
+            area_vec.append(pulse.get_area())
         return np.asarray(area_vec)
 
     def ff_ramp(self,sequencer,ff_len,flip_amp = False):
@@ -215,8 +216,9 @@ class PulseSequences:
                                     ramp1_len=self.lattice_cfg['ff_info']['ff_linear_ramp_len'],
                                          ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
                                          cutoff_sigma=2, freq=0, phase=0)
+            sequencer.append('ff_Q%s' % qb, pulse)
             area_vec.append(pulse.get_area())
-            sequencer.append('ff_Q%s' % qb,pulse)
+
         return np.asarray(area_vec)
 
     def ff_adb(self,sequencer,ff_len,flip_amp = False):
@@ -225,18 +227,20 @@ class PulseSequences:
             if flip_amp:
                 flux = -flux
             pulse = adb_ramp(max_amp=flux, flat_len=ff_len[qb],
-                                      adb_ramp1_sig=self.lattice_cfg['ff_info']['ff_adb_ramp_sig'],
+                                      adb_ramp1_sig=self.lattice_cfg['ff_info']['ff_adb_ramp_sig'][qb],
                                          ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
                                          cutoff_sigma=2, freq=0, phase=0)
-            area_vec.append(pulse.get_area())
+
             sequencer.append('ff_Q%s' % qb, pulse)
+            area_vec.append(pulse.get_area())
+
         return np.asarray(area_vec)
 
     def ff_comp(self, sequencer, area_vec):
         for qb in range(len(self.expt_cfg['ff_vec'])):
             ff_len = area_vec[qb]/self.lattice_cfg['ff_info']['comp_pulse_amp'][qb]
             sequencer.append('ff_Q%s' % qb,
-                             Square(max_amp=self.lattice_cfg['ff_info']['comp_pulse_amp'][qb], flat_len=ff_len[qb],
+                             Square(max_amp=self.lattice_cfg['ff_info']['comp_pulse_amp'][qb], flat_len=ff_len,
                                     ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
                                     phase=0))
 
@@ -393,6 +397,18 @@ class PulseSequences:
         self.readout_pxi(sequencer, self.on_qubits)
         sequencer.end_sequence()
         return sequencer.complete(self, plot=True)
+
+    def melting(self, sequencer):
+
+        for t in np.arange(0, self.expt_cfg["t_stop"], self.expt_cfg["t_step"]):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            for qb in self.expt_cfg["Mott_qbs"]:
+
+
+
+
+
 
     def pulse_probe_iq(self, sequencer):
 
@@ -592,7 +608,7 @@ class PulseSequences:
             else:
                 #flux pulse first if dt greater than zero
                 if self.expt_cfg["ff_len"] == "auto":
-                    ff_len = 8*[self.expt_cfg['qb_pulse_length']+delt+self.quantum_device_cfg['readout'][qubit_id[0]][
+                    ff_len = 8*[self.expt_cfg['qb_pulse_length']+delt+self.quantum_device_cfg['readout'][self.on_qubits[0]][
                         'length']]
                 else:
                     ff_len = self.lattice_cfg['ff_info']["ff_len"]
@@ -623,7 +639,7 @@ class PulseSequences:
                 elif pulse_type == "linear_ramp":
                     self.ff_ramp(sequencer, ff_len=ff_len, flip_amp=True)
                 elif pulse_type == "adb":
-                    self.ff_adb(sequencer, ff_len=ff_len)
+                    self.ff_adb(sequencer, ff_len=ff_len,flip_amp = True)
             else:
                 self.ff_comp(sequencer, area_vec)
 

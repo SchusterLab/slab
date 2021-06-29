@@ -407,6 +407,52 @@ class Experiment:
         self.pxi_stop()
         return self.data
 
+    def run_experiment_pxi_resspec_pi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy_pi', suffix='.h5'))
+
+        self.expt_cfg = self.experiment_cfg[name]
+        self.generate_datafile(path,name,seq_data_file=seq_data_file)
+        self.set_trigger()
+        self.initiate_drive_LOs()
+        self.initiate_readout_attenuators()
+        self.initiate_drive_attenuators()
+        self.initiate_pxi(name, sequences)
+        self.initiate_readout_LOs()
+        self.pxi.run()
+
+        time.sleep(0.1)
+        for qb in self.quantum_device_cfg["setups"]:
+            read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
+            for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq, self.expt_cfg['step']):
+                self.quantum_device_cfg['readout'][qb]['freq'] = freq
+                if self.expt_cfg['singleshot']:
+                    self.data =  self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+                elif self.expt_cfg['trajectory']:
+                    self.data = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+                else:
+                    self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+
+
+                self.pxi.DIG_module.stopAll()
+
+                self.initiate_readout_LOs()
+
+                self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
+                self.pxi.DIG_ch_1.clear()
+                self.pxi.DIG_ch_1.start()
+                self.pxi.DIG_ch_2.clear()
+                self.pxi.DIG_ch_2.start()
+                self.pxi.DIG_ch_3.clear()
+                self.pxi.DIG_ch_3.start()
+                self.pxi.DIG_ch_4.clear()
+                self.pxi.DIG_ch_4.start()
+                time.sleep(0.1)
+
+        #
+        self.pxi_stop()
+        return self.data
+
     def post_analysis(self, path, experiment_name, cont_name=None, P='Q', phi=0, cont_data_file=None):
         PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, path,
                                           experiment_name, self.data, P, phi, cont_data_file=cont_data_file,
@@ -584,8 +630,9 @@ def generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits = {'A':1
         quantum_device_cfg = {}
 
         quantum_device_cfg["on_qubits"] = on_qubits
-        setups = list[on_qubits.keys()]
-        qb_ids  = list[on_qubits.values()]
+        setups = list(on_qubits.keys())
+        qb_ids  = list(on_qubits.values())
+        quantum_device_cfg["setups"] = setups
 
         for category in lattice_cfg.keys():
             # if category is directly a list of 8 qubit values, stuff it into setups "A" and "B"
@@ -608,7 +655,8 @@ def generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits = {'A':1
                     elif key == setups[0]:
                         for key_set in lattice_cfg[category][key]:
                             quantum_device_cfg[category][setups[0]][key_set] = lattice_cfg[category][key][key_set][qb_ids[0]]
-                    elif key == setups[1]:
+
+                    elif len(setups)>1 and key == setups[1]:
                         for key_set in lattice_cfg[category][key]:
                             quantum_device_cfg[category][setups[1]][key_set] = lattice_cfg[category][key][key_set][qb_ids[1]]
                     # else, just stuff it directly

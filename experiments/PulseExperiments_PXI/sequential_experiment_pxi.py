@@ -70,7 +70,7 @@ class SequentialExperiment:
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
             sequences = ps.get_experiment_sequences(experiment_name)
             print("Sequences generated")
-
+            #
             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
             data = exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,seq_data_file=seq_data_file)
             self.seq_data.append(data)
