@@ -143,18 +143,18 @@ class Sequencer:
     def complete(self, sequences, plot=False):
 
         # check if pi calibration
-        if sequences.expt_cfg.get('pi_calibration'):
-            self.new_sequence(sequences)
-            sequences.pad_start_pxi_tek2(self,on_qubits=sequences.get(on_qubits),time=500)
-            sequences.readout_pxi(self, sequences.get(on_qubits))
-            self.end_sequence()
-
-            self.new_sequence(sequences)
-            sequences.pad_start_pxi_tek2(self,on_qubits= sequences.get(on_qubits),time=500)
-            for qubit_id in  sequences.get(on_qubits):
-                sequences.pi_q(self,qubit_id = qubit_id,phase = 0,pulse_type = sequences.pulse_info[qubit_id]['pulse_type'])
-            sequences.readout_pxi(self, sequences.get(on_qubits))
-            self.end_sequence()
+        # if sequences.expt_cfg.get('pi_calibration'):
+        #     self.new_sequence(sequences)
+        #     sequences.pad_start_pxi_tek2(self,on_qubits=sequences.get(on_qubits),time=500)
+        #     sequences.readout_pxi(self, sequences.get(on_qubits))
+        #     self.end_sequence()
+        #
+        #     self.new_sequence(sequences)
+        #     sequences.pad_start_pxi_tek2(self,on_qubits= sequences.get(on_qubits),time=500)
+        #     for qubit_id in  sequences.get(on_qubits):
+        #         sequences.pi_q(self,qubit_id = qubit_id,phase = 0,pulse_type = sequences.pulse_info[qubit_id]['pulse_type'])
+        #     sequences.readout_pxi(self, sequences.get(on_qubits))
+        #     self.end_sequence()
 
         #we don't need to upload sequences of the same length to keysight, since trigger period is much longer than
         # any of the sequences anyway. If this ever changes, should use synch_channels instead of equalize sequences,

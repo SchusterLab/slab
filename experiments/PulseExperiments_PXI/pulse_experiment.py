@@ -668,3 +668,8 @@ def generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits = {'A':1
                 quantum_device_cfg[category] = lattice_cfg[category]
 
         return quantum_device_cfg
+
+def melting_update(quantum_device_cfg, lattice_cfg, setup, rd_qb, lo_qb):
+    quantum_device_cfg["qubit"][setup]["freq"] = lattice_cfg["qubit"]["freq"][lo_qb]
+    quantum_device_cfg["readout"][setup]["freq"] = lattice_cfg["readout"]["freq"][rd_qb]
+    return quantum_device_cfg

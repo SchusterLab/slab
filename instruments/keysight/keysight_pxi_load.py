@@ -810,17 +810,17 @@ class KeysightSingleQubit:
         if "A" in self.on_qubits:
             qbA_I = qbA_I / self.num_avg
             qbA_Q = qbA_Q / self.num_avg
-            if pi_calibration:
-                qbA_I = (qbA_I[:-2] - qbA_I[-2]) / (qbA_I[-1] - qbA_I[-2])
-                qbA_Q = (qbA_Q[:-2] - qbA_Q[-2]) / (qbA_Q[-1] - qbA_Q[-2])
+            # if pi_calibration:
+            #     qbA_I = (qbA_I[:-2] - qbA_I[-2]) / (qbA_I[-1] - qbA_I[-2])
+            #     qbA_Q = (qbA_Q[:-2] - qbA_Q[-2]) / (qbA_Q[-1] - qbA_Q[-2])
             data.append([qbA_I, qbA_Q])
 
         if "B" in self.on_qubits:
             qbB_I = qbB_I / self.num_avg
             qbB_Q = qbB_Q / self.num_avg
-            if pi_calibration:
-                qbB_I = (qbB_I[:-2] - qbB_I[-2]) / (qbB_I[-1] - qbB_I[-2])
-                qbB_Q = (qbB_Q[:-2] - qbB_Q[-2]) / (qbB_Q[-1] - qbB_Q[-2])
+            # if pi_calibration:
+            #     qbB_I = (qbB_I[:-2] - qbB_I[-2]) / (qbB_I[-1] - qbB_I[-2])
+            #     qbB_Q = (qbB_Q[:-2] - qbB_Q[-2]) / (qbB_Q[-1] - qbB_Q[-2])
             data.append([qbB_I, qbB_Q])
 
         return np.asarray(data)
