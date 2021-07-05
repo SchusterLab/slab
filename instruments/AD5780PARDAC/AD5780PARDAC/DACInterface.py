@@ -10,14 +10,13 @@ import time
 import io
 import json
 
-
 def numtobin(num):
     temp = int ((num)*(2**18)/(10) + (2**18/2))
     if temp < 0 or temp >= (2**18):
-        print("INVALID VOLTAGE RANGE")
+        #print("INVALID VOLTAGE RANGE")
+        raise Exception("INVALID VOLTAGE RANGE")
     else:
         return int ((num)*(2**18)/(10) + (2**18/2))
-
 
 def json_log(filename, V_vec):
     t_obj = time.localtime()
@@ -66,7 +65,7 @@ class AD5780_serial():
     #string buffered ramp2
     def ramp3(self, dacnum, voltage, step, speed):
 
-        if voltage < 10.0 and voltage >= -10.0:
+        if voltage < 4.98 and voltage >= -4.98:
 
             dummy = self.ard.read_all()
             bvoltage = numtobin(voltage)
@@ -100,7 +99,12 @@ class AD5780_serial():
         time.sleep(0.05)
         self.ard.readline()
         print("DAC ","ramped to", str(voltagearray), "V")
-        json_log(filename, voltagearray)
+        # import os
+        # print(os.getcwd())
+        try:
+            json_log(filename, voltagearray)
+        except:
+            print("Could not write DAC array to json file")
 
     # def read(self,dacnum):
     #     combinedstring = 'READ %s'%(dacnum)
