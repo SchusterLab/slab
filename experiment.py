@@ -23,7 +23,6 @@ class Experiment:
 
             also loads InstrumentManager, LivePlotter, and other helpers
         """
-        '''
         self.__dict__.update(kwargs)
         self.path = path
         self.prefix = prefix
@@ -38,7 +37,7 @@ class Experiment:
         # self.dataserver= dataserver_client()
         self.fname = os.path.join(path, get_next_filename(path, prefix, suffix='.h5'))
 
-        self.load_config()'''
+        self.load_config()
 
     def load_config(self):
         if self.config_file is None:
@@ -64,12 +63,18 @@ class Experiment:
                 json.dump(self.cfg, fid)
             self.datafile().attrs['config'] = json.dumps(self.cfg)
 
-    def datafile(self, group=None, remote=False, data_file = None):
+    def datafile(self, group=None, remote=False, data_file = None, swmr=False):
         """returns a SlabFile instance
            proxy functionality not implemented yet"""
         if data_file ==None:
             data_file = self.fname
-        f = SlabFile(data_file)
+        if swmr==True:
+            f = SlabFile(data_file, 'w', libver='latest')
+        elif swmr==False:
+            f = SlabFile(data_file)
+        else:
+            raise Exception('ERROR: swmr must be type boolean')
+
         if group is not None:
             f = f.require_group(group)
         if 'config' not in f.attrs:

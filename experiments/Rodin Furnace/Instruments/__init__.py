@@ -8,8 +8,8 @@ from .localinstruments import LocalInstruments
 # except: print("Could not load InstrumentManagerWindow")
 
 # from .spectrumanalyzer import E4440
-from .nwa import E5071
-from .PNAX import N5242A
+# from .nwa import E5071
+# from .PNAX import N5242A
 # from .rfgenerators import N5183B,E8257D,BNC845
 # from .cryostat import Triton
 # from .awg import *
