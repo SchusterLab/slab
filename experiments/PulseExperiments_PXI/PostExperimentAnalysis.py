@@ -80,6 +80,40 @@ class PostExperiment:
         print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
 
 
+    def rabi(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.'+self.P)
+        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+        amp = expt_cfg['amp']
+        if self.show:
+
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(111, title=self.exptname)
+            ax.plot(t, P, 'o-', label=self.P)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(self.P)
+            ax.legend()
+            p = fitdecaysin(t[2:], P[2:], showfit=True)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
+            plt.show()
+
+        else:
+            p = fitdecaysin(t, P, showfit=False)
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+
+        print("Half pi length =", t_half_pi, "ns")
+        print("pi length =", t_pi, "ns")
+        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
+        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
+              amp * (t_half_pi) / float(int(t_half_pi) + 1))
+
+
 ###################################################################################################
     # Functions below only show one thing....
     # Edit and move up as needed
@@ -864,38 +898,7 @@ class PostExperiment:
         print("Number of echoes = ", expt_cfg['echo_times'])
         print("T2 =", p[3], "ns")
 
-    def rabi(self):
-        expt_cfg = self.experiment_cfg[self.exptname]
-        P = eval('self.'+self.P)
-        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
-        amp = expt_cfg['amp']
-        if self.show:
 
-            fig = plt.figure(figsize=(14, 7))
-            ax = fig.add_subplot(111, title=self.exptname)
-            ax.plot(t, P, 'o-', label=self.P)
-            ax.set_xlabel('Time (ns)')
-            ax.set_ylabel(self.P)
-            ax.legend()
-            p = fitdecaysin(t[2:], P[2:], showfit=True)
-            t_pi = 1 / (2 * p[1])
-            t_half_pi = 1 / (4 * p[1])
-
-            ax.axvline(t_pi, color='k', linestyle='dashed')
-            ax.axvline(t_half_pi, color='k', linestyle='dashed')
-
-            plt.show()
-
-        else:
-            p = fitdecaysin(t, P, showfit=False)
-            t_pi = 1 / (2 * p[1])
-            t_half_pi = 1 / (4 * p[1])
-
-        print("Half pi length =", t_half_pi, "ns")
-        print("pi length =", t_pi, "ns")
-        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
-        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
-              amp * (t_half_pi) / float(int(t_half_pi) + 1))
 
     def amplitude_rabi(self):
         expt_cfg = self.experiment_cfg[self.exptname]

@@ -92,6 +92,7 @@ class Experiment:
 
         self.I = None
         self.Q = None
+        # self.data = None
         self.prep_tek2 = False
 
     def initiate_pxi(self, name, sequences):
@@ -711,7 +712,9 @@ class Experiment:
                     f.append_line('QA', QA)
                     f.append_line('IB', IB)
                     f.append_line('QB', QB)
-            return IA, QA, IB, QB
+            # modified 7/2/21
+            # return IA, QA, IB, QB
+            return data
         else:
             I, Q = self.pxi.acquire_avg_data(wA, wB, pi_calibration, rotate_iq_A, rotate_iq_B, phi_A, phi_B)
             if seq_data_file == None:
@@ -725,9 +728,9 @@ class Experiment:
                 with self.slab_file as f:
                     f.append_line('I', I)
                     f.append_line('Q', Q)
-            return I, Q
-
-
+            # modified 7/2/21
+            # return I, Q
+            return data
 
 
 
@@ -752,7 +755,8 @@ class Experiment:
                     f.append_line('QA', QA.flatten())
                     f.append_line('IB', IB.flatten())
                     f.append_line('QB', QB.flatten())
-            return IA, QA, IB, QB
+            #return IA, QA, IB, QB
+            return data
         else:
             I, Q = self.pxi.SSdata_many(wA, wB)
 
@@ -767,7 +771,8 @@ class Experiment:
                     f.append_line('I', I.flatten())
                     f.append_line('Q', Q.flatten())
 
-            return I, Q
+            # return I, Q
+            return data
         # Note that if you fail to put two_qubits in the name of a two qubit experiment this will not be good.
         # In the future may modify the condition to hew more closely to config files
 
@@ -791,7 +796,8 @@ class Experiment:
                 f.append_line('I', I.flatten())
                 f.append_line('Q', Q.flatten())
 
-        return I, Q
+        #return I, Q
+        return data
 
     def run_experiment(self, sequences, path, name, seq_data_file=None, update_awg=True):
 
@@ -845,14 +851,13 @@ class Experiment:
             if self.two_qubits:
                 if self.expt_cfg['singleshot']:
                     self.IA,self.QA,self.IB,self.QB =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+
                 else:
                     self.IA,self.QA,self.IB,self.QB = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq_A = self.rotate_iq_A,rotate_iq_B = self.rotate_iq_B,phi_A=self.iq_angle_A, phi_B = self.iq_angle_B)
-
 
             else:
                 if self.expt_cfg['singleshot']:
                     self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
-
                 # elif self.expt_cfg['columnaveraged']:
                 #     print("column averaging")
                 #     self.I, self.Q = self.get_column_averaged_data(self.expt_cfg, seq_data_file=seq_data_file)
@@ -867,7 +872,83 @@ class Experiment:
         else:
             return self.I, self.Q
 
-# In the middle of modifying, 4/21
+    def run_experiment_pxi_justinits(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
+        self.expt_cfg = self.experiment_cfg[name]
+        self.generate_datafile(path, name, seq_data_file=seq_data_file)
+        self.set_trigger()
+        self.initiate_drive_LOs()
+        # self.initiate_drive_LOs_SignalCore(name)
+        self.initiate_readout_LOs()
+        self.initiate_cavity_drive_LOs(name)
+        # self.initiate_attenuators() # [AV] deprecated, moving to separate inits for drive and read attens
+        self.initiate_drive_attenuators()  # [AV] load drive attens defined in hardware_cfg/drive_attens[]
+        self.initiate_readout_attenuators()  # [AV] load drive attens defined in hardware_cfg/read_attens[]
+        self.initiate_pxi(name, sequences)
+        # self.initiate_tek2(name, path, sequences)
+        time.sleep(0.1)
+        self.awg_run(run_pxi=True, name=name)
+
+    def run_experiment_pxi_resspec(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
+        if check_sync:
+            self.pxi.acquireandplot(expt_num)
+
+        else:
+            if self.two_qubits:
+                if self.expt_cfg['singleshot']:
+                    self.IA, self.QA, self.IB, self.QB = self.get_ss_data_pxi(self.expt_cfg,
+                                                                              seq_data_file=seq_data_file)
+
+                else:
+                    self.IA, self.QA, self.IB, self.QB = self.get_avg_data_pxi(self.expt_cfg,
+                                                                               seq_data_file=seq_data_file,
+                                                                               rotate_iq_A=self.rotate_iq_A,
+                                                                               rotate_iq_B=self.rotate_iq_B,
+                                                                               phi_A=self.iq_angle_A,
+                                                                               phi_B=self.iq_angle_B)
+
+            else:
+                if self.expt_cfg['singleshot']:
+                    self.I, self.Q = self.get_ss_data_pxi(self.expt_cfg, seq_data_file=seq_data_file)
+                # elif self.expt_cfg['columnaveraged']:
+                #     print("column averaging")
+                #     self.I, self.Q = self.get_column_averaged_data(self.expt_cfg, seq_data_file=seq_data_file)
+                else:
+                    self.I, self.Q = self.get_avg_data_pxi(self.expt_cfg, seq_data_file=seq_data_file,
+                                                           rotate_iq_A=self.rotate_iq_A, rotate_iq_B=self.rotate_iq_B,
+                                                           phi_A=self.iq_angle_A, phi_B=self.iq_angle_B)
+
+        self.pxi.m_9_module.stopAll()
+        self.pxi.DIG_module.stopAll()
+
+        # self.set_trigger()
+        # Maybe check what drives we want to have on for res spect??
+        # For now we probably don't lose that much time initializing them all
+        self.initiate_drive_LOs()
+        self.initiate_cavity_drive_LOs(name)
+        self.initiate_readout_LOs()
+
+        self.pxi.configureDigitizerChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
+        self.pxi.DIG_ch_1.clear()
+        self.pxi.DIG_ch_1.start()
+        self.pxi.DIG_ch_2.clear()
+        self.pxi.DIG_ch_2.start()
+        self.pxi.DIG_ch_3.clear()
+        self.pxi.DIG_ch_3.start()
+        self.pxi.DIG_ch_4.clear()
+        self.pxi.DIG_ch_4.start()
+        time.sleep(0.1)
+
+        if self.two_qubits:
+            return self.IA, self.QA, self.IB, self.QB
+        else:
+            return self.I, self.Q
+
+
+
+
+
+
+    # In the middle of modifying, 4/21
     def post_analysis(self,experiment_name,P='I',show = False,check_sync = False):
         if check_sync:pass
         else:
