@@ -256,12 +256,40 @@ class E5071(SocketInstrument):
 
     #### Trigger
 
+    def set_trigger_mode(self, mode="RUN"):
+        """
+        NOT WORKING -TANAY
+        HOLD: Trigger is on hold until the conditions are meet, the trigger event starts.
+        SINGle: Trigger event is run once.
+        RUN: Trigger event is running continuous.
+        :param source: string
+        :return: None
+        """
+        self.write(':TRIG:MODE ' + mode)
+
+    def get_trigger_mode(self):
+        """
+        NOT WORKING -TANAY
+        Returns the trigger mode.
+        :return: string
+        """
+        answer = self.query(':TRIG:MODE?')
+        return answer.strip()
+
     def trigger_single(self):
         """
         Send a single trigger.
+        Takes a full sweep.
         :return: None
         """
         self.write(':TRIG:SING')
+
+    def trigger_bus(self):
+        """
+        Send a single bus trigger.
+        :return: None
+        """
+        self.write("*TRG")
 
     def set_trigger_average_mode(self, state=True):
         """
@@ -568,7 +596,7 @@ class E5071(SocketInstrument):
         :param timeout: optional, query timeout in ms.
         :return: np.vstack((fpts, data))
         """
-        #self.get_operation_completion()
+        self.get_operation_completion()
         self.write(":FORM:DATA ASC")
         self.write(":CALC%d:DATA:FDAT?"%channel)
         time.sleep(self.query_sleep)
@@ -918,8 +946,9 @@ def convert_nwa_files_to_hdf(nwa_file_dir, h5file, sweep_min, sweep_max, sweep_l
 
 if __name__ == '__main__':
     #    condense_nwa_files(r'C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data','C:\\Users\\dave\\Documents\\My Dropbox\\UofC\\code\\004 - test temperature sweep\\sweep data\\test')
-    na = E5071("E0571", address="192.168.14.130")
+    na = E5071("E5071", address="192.168.14.218")
     print(na.get_id())
+    na.set_power(-10.0)
 
 
 # print "Setting window"

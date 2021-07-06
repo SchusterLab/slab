@@ -112,14 +112,13 @@ class PXDAC4800:
             dll.SetActiveChannelMaskXD48(pHandle, U32(15)) # four channels
 
         ## start DAC auto calibration
-        # if fail, should return -603 or -604, any other error message - should abort
-        for ii in range(2):
+        for ii in range(4):
             calibration_result = dll.StartDacAutoCalibrationXD48(pHandle)
             print("Calibration status: " + str(calibration_result))
             if calibration_result == 0:
                 break
-            elif calibration_result not in [-603, -604]:
-                raise ValueError('PXDAC calibration returns unexpected value - Experiment terminated.')
+                # if not calibration_result == 0:
+                #     exit()
 
         ### Set output voltage to max
         dll.SetOutputVoltageCh1XD48(pHandle, U32(1023))

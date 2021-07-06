@@ -889,8 +889,8 @@ class M8195A(SocketInstrument):
 
                 #sys.stdout.write('uploading..\n')
                 # filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
-                # filename = '\"' + r'\\THORIUM-PC\M8195_sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
-                filename = '\"' + os.path.join(path, r'sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)) + '\"'
+                # filename = r'\\WINDOWS-FOK8HT7\Waveforms\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
+                filename = '\"' + os.path.join(path, r'sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)) + '\"' # Default option
                 #m8195a.set_segment_data_from_bin_file(channel,sequence_id,filename)
 
                 m8195a.set_segment_data_from_bin_file(channel, sequence_id, filename)

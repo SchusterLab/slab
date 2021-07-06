@@ -12,8 +12,8 @@ import time
 class AD5780(SocketInstrument):
     default_port = 23
 
-    def __init__(self, name='AD5780', address='', enabled=True, timeout=1, recv_length=1024):
-        SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=timeout, recv_length=recv_length)
+    def __init__(self, name='AD5780', address='', enabled=True, timeout=10, recv_length=1024):
+        SocketInstrument.__init__(self, name, address, enabled, timeout, recv_length)
         self.query_sleep=0.01
 
     def initialize(self, channel=None):

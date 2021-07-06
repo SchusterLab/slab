@@ -1,4 +1,3 @@
-
 from .instrumentmanager import InstrumentManager
 from .instrumenttypes import Instrument, VisaInstrument, TelnetInstrument, SocketInstrument, SerialInstrument, \
     WebInstrument
@@ -22,8 +21,6 @@ from .multimeter import Keithley199
 
 try: from .AD5780DAC.AD5780 import AD5780
 except: print("Could not load AD5780 dac")
-try: from .ArduinoADC import ArduinoADC
-except: print("Could not load ArduinoADC")
 try: from .labbrick.labbrick import LMS_get_device_info,LMS103,LPS802,LDA602
 except: print("Could not load labbrick")
 try: from .relaybox.relaybox import RelayBox
@@ -65,3 +62,5 @@ try: from .lockin import SR844
 except: print("Could not load SR844 driver")
 try: from .PressureGauge import PressureGauge
 except: print("Could not load PressureGauge driver")
+try: from .SignalCore import SignalCore
+except: print("Could not load SignalCore driver")

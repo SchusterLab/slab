@@ -271,7 +271,7 @@ class Tek70001(VisaInstrument):
         """valid values = 'TRIG','SEQ','GAT','CONT' """
         self.write('AWGControl:RMODe %s' % value)
 
-    def get_run_mode(self, value):
+    def get_run_mode(self):
         return self.query('AWGControl:RMODe?')
 
     def set_reference_source(self, value):
@@ -364,6 +364,9 @@ class Tek70001(VisaInstrument):
     def prep_experiment(self):
 
         # load sequence
+        # self.stop() # Added by Tanay 19 Mar 2020, seems to fix the stalling problem of tek2
+        # time.sleep(0.1) # Added by Tanay 19 Mar 2020
+        # print("Inside tek2 prep_expt")
         self.write('SOUR:CASS:SEQ "seq1",1')
         self.write("SOUR:JUMP:FORC 1")
         self.operation_complete()

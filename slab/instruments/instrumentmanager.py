@@ -62,7 +62,7 @@ class InstrumentManager(dict):
 
     def load_config_file(self, config_path):
         """Loads configuration file"""
-        print("Loaded Instruments: ", end=' ')
+        print("Loaded Instruments: ", end='')
         f = open(config_path, 'r')
         for line in f.readlines():
             isComment = self.line_is_comment_or_empty(line);
@@ -74,7 +74,11 @@ class InstrumentManager(dict):
     def load_instrument(self, config_string):
         """Loads instrument based on config_string (Name\tAddress\tType)"""
         #print config_string
+        # print("config_string: ", config_string)
         name, in_class, addr = self.parse_config_string(config_string);
+        # print("name:", name)
+        # print("in_class:", in_class)
+        # print("addr: ", addr)
         fn = getattr(slab.instruments, in_class)
         return fn(name=name, address=addr)
 
@@ -181,6 +185,7 @@ if __name__ == "__main__":
         print("Warning: Could not import slab.gui or InstrumentManagerWindow!")
     try:
         import liveplot
+
     except:
         print("Warning: Could not load liveplot")
 
