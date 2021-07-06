@@ -1,14 +1,26 @@
-# IDE meta files
-.idea
-# pyc files
-.pyc
+# editor files
+*.idea
+*.vscode
+*~
+*#
 
+# python
 *.pyc
+__pycache__
 
-*.pyc
-# Instrument cfg
+# julia
+Manifest.toml
+
+# instrument cfg
 instruments/instrument.cfg
 instruments/awg/test M8195A.ipynb
 instruments/awg/.ipynb_checkpoints/test M8195A-checkpoint.ipynb
 instruments/instruments.cfg
 *.dll
+
+# binary
+*.DS_Store
+
+# local
+out
+_test

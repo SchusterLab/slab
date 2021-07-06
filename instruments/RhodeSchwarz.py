@@ -16,16 +16,14 @@ import numpy as np
 import glob
 import os.path
 
+# def polar2mag(xs, ys):
+#     return 20*np.log10(np.sqrt(xs ** 2 + ys ** 2)), np.arctan2(ys, xs) * 180/np.pi
 
-def polar2mag(xs, ys):
-    return 20 * np.log10(np.sqrt(xs ** 2 + ys ** 2)), np.arctan2(ys, xs) * 180 / np.pi
-
-
-class RhodeSchwarz(SocketInstrument):
+class ZVB8(SocketInstrument):
     MAXSWEEPPTS = 1601
     default_port = 5025
 
-    def __init__(self, name="BatMouse", address=None, enabled=True, **kwargs):
+    def __init__(self, name="ZVB8", address=None, enabled=True, **kwargs):
         SocketInstrument.__init__(self, name, address, enabled=enabled, recv_length=2 ** 20, **kwargs)
         self.query_sleep = 0.05
         self.timeout = 100
@@ -489,8 +487,7 @@ class RhodeSchwarz(SocketInstrument):
         MLINear, MLOGarithmic, PHASe, UPHase (Unwrapped phase), IMAGinary, REAL, POLar, SMITh, SADMittance (Smith Admittance)
         SWR, GDELay (Group Delay), KELVin, FAHRenheit, CELSius
         """
-        allowed = ['MLIN', 'MLOG', 'PHAS', 'UPH', 'IMAG', 'REAL', 'POL', 'SMIT', 'SADM', 'SWR', 'GDEL', 'KEL', 'FAHR',
-                   'CEL']
+        allowed = ['MLIN', 'MLOG', 'PHAS', 'UPH', 'IMAG', 'REAL', 'POL', 'SMIT', 'SADM', 'SWR', 'GDEL', 'KEL', 'FAHR', 'CEL']
         if trace_format.upper() in allowed:
             self.write("CALC%d:FORM %s" % (trace, trace_format.upper()))
         else:
@@ -576,7 +573,7 @@ class RhodeSchwarz(SocketInstrument):
         if timeout is None:
             timeout = self.timeout
         self.get_operation_completion()
-        self.read(timeout=0.1)
+        self.read(timeout=1)
         self.write("CALC%d:DATA? FDATA" % channel)
         data_str = b''.join(self.read_lineb(timeout=timeout))
 
@@ -590,8 +587,7 @@ class RhodeSchwarz(SocketInstrument):
                 data_str += b''.join(self.read_lineb(timeout=timeout))
                 len_data_actual = len(data_str[2 + len_data_dig:-1])
 
-        data = np.fromstring(data_str, dtype=float, sep=',') if data_format == 'ascii' else np.fromstring(
-            data_str[2 + len_data_dig:-1], dtype=np.float32)
+        data = np.fromstring(data_str, dtype=float, sep=',') if data_format=='ascii' else np.fromstring(data_str[2+len_data_dig:-1], dtype=np.float32)
         fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), sweep_points)
         if len(data) == 2 * sweep_points:
             data = data.reshape((-1, 2))
@@ -689,10 +685,6 @@ class RhodeSchwarz(SocketInstrument):
         if sweep_points is not None:  self.set_sweep_points(sweep_points)
         if averages is not None:
             self.set_averages_and_group_count(averages)
-
-    ##########################
-    ### Tested R&S scripts ###
-    ##########################
 
 
 if __name__ == '__main__':
