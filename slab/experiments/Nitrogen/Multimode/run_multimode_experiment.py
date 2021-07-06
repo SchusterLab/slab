@@ -16,7 +16,7 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
         expt=MultimodeRabiExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower() == 'multimode_vacuum_rabi':
-        from slab.experiments.General.VacuumRabiExperimentPSB import MultimodeVacuumRabiExperiment
+        from slab.experiments.Nitrogen.Multimode.MultimodePulseSequenceExperiment import MultimodeVacuumRabiExperiment
         # Do Vacuum Rabi
         expt = MultimodeVacuumRabiExperiment(path=datapath, liveplot_enabled = lp_enable, **kwargs)
 
@@ -26,7 +26,7 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
 
 
     if expt_name.lower()=='multimode_rabi_line_cut_sweep':
-        #Multimode ef Rabi sweep experiment
+        from slab.experiments.Nitrogen.Multimode.MultimodePulseSequenceExperiment import MultimodeRabiLineCutSweepExperiment
         expt=MultimodeRabiLineCutSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
 
@@ -50,6 +50,7 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
 
     if expt_name.lower()=='multimode_charge_sideband_rabi_sweep':
         #Multimode ef Rabi sweep experiment
+        from slab.experiments.Nitrogen.Multimode.MultimodePulseSequenceExperiment import MultimodeChargeSidebandRabiSweepExperiment
         expt=MultimodeChargeSidebandRabiSweepExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_ramsey':
@@ -164,9 +165,24 @@ def run_multimode_experiment(expt_name, lp_enable = True, **kwargs):
         expt=MultimodeQubitModeCrossKerrExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt_name.lower()=='multimode_pulse_probe_iq':
-        #Multimode ef Rabi sweep experiment
+        from slab.experiments.Nitrogen.Multimode.MultimodePulseSequenceExperiment import MultimodePulseProbeIQExperiment
         expt=MultimodePulseProbeIQExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
+    if expt_name.lower()=='multimode_t1_direct_drive':
+        from slab.experiments.Nitrogen.Multimode.MultimodePulseSequenceExperiment import MultimodeT1DirectDriveExperiment
+        expt=MultimodeT1DirectDriveExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+
+
+    if expt_name.lower()=='multimode_chargesbt1':
+        #Multimode ef Rabi sweep experiment
+        from slab.experiments.Nitrogen.Multimode.MultimodePulseSequenceExperiment import MultimodechargesbT1Experiment
+        expt=MultimodechargesbT1Experiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
+
+    if expt_name.lower()=='multimode_parity':
+        #Do Multimode Rabi
+        from slab.experiments.Nitrogen.Multimode.MultimodePulseSequenceExperiment import MultimodeParityExperiment
+        expt=MultimodeParityExperiment(path=datapath,liveplot_enabled = lp_enable, **kwargs)
 
     if expt !=None:
         expt.go()

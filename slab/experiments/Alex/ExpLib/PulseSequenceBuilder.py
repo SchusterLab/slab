@@ -333,17 +333,8 @@ class PulseSequenceBuilder():
             for jj in range(len(pulse_sequence_matrix[ii]) - 1, -1, -1):
                 pulse_defined = True
                 pulse = pulse_sequence_matrix[ii][jj]
-
-                if pulse.target in ["q", "q2", "hetero", "hetero_carrier" ]:
-
-                    if pulse.target == "q":
-                        waveforms_key_list = ['qubit drive I','qubit drive Q']
-                    if pulse.target == "q2":
-                        waveforms_key_list = ['qubit drive 2 I', 'qubit drive 2 Q']
-                    elif pulse.target == "hetero":
-                        waveforms_key_list = ['hetero_ch1', 'hetero_ch2']
-                    elif pulse.target == "hetero_carrier":
-                        waveforms_key_list = ['hetero_carrier']
+                if pulse.target == "q":
+                    waveforms_key_list = ['qubit drive I','qubit drive Q']
 
                     for waveform_id, waveforms_key in enumerate(waveforms_key_list):
                         if waveforms_key in self.waveforms_dict:
@@ -355,12 +346,6 @@ class PulseSequenceBuilder():
                                 qubit_waveforms = gauss(self.waveforms_tpts_dict[waveforms_key],  self.origin,
                                                                       self.marker_start_buffer, self.marker_end_buffer,
                                                                       pulse_location- pulse.delay, pulse)
-                            elif pulse.type == "linear_ramp":
-                                qubit_waveforms = linear_ramp(self.waveforms_tpts_dict[waveforms_key], self.origin,
-                                                        pulse_location - pulse.delay, pulse)
-                            elif pulse.type == "logistic_ramp":
-                                qubit_waveforms = logistic_ramp(self.waveforms_tpts_dict[waveforms_key], self.origin,
-                                                        pulse_location - pulse.delay, pulse)
                             else:
                                 raise ValueError('Wrong pulse type has been defined')
                             if pulse_defined:
@@ -371,6 +356,67 @@ class PulseSequenceBuilder():
                         # self.markers_qubit_buffer[ii] += qubit_marker
                     pulse_location += pulse.span_length
 
+                if pulse.target == "q2":
+                    waveforms_key_list = ['qubit drive 2 I','qubit drive 2 Q']
+
+                    for waveform_id, waveforms_key in enumerate(waveforms_key_list):
+                        if waveforms_key in self.waveforms_dict:
+                            if pulse.type == "square":
+                                qubit_waveforms = square(self.waveforms_tpts_dict[waveforms_key], self.origin,
+                                                                       self.marker_start_buffer, self.marker_end_buffer,pulse_location- pulse.delay, pulse,
+                                                                       self.pulse_cfg)
+                            elif pulse.type == "gauss":
+                                qubit_waveforms = gauss(self.waveforms_tpts_dict[waveforms_key],  self.origin,
+                                                                      self.marker_start_buffer, self.marker_end_buffer,
+                                                                      pulse_location- pulse.delay, pulse)
+                            else:
+                                raise ValueError('Wrong pulse type has been defined')
+                            if pulse_defined:
+                                self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[waveform_id]
+
+                    pulse_location += pulse.span_length
+
+                if pulse.target == "hetero":
+
+                    waveforms_key_list = ['hetero_ch1', 'hetero_ch2']
+
+                    for waveform_id, waveforms_key in enumerate(waveforms_key_list):
+                        if waveforms_key in self.waveforms_dict:
+                            if pulse.type == "square":
+                                qubit_waveforms = square(self.waveforms_tpts_dict[waveforms_key], self.origin,
+                                                                       self.marker_start_buffer, self.marker_end_buffer,
+                                                                       pulse_location - pulse.delay, pulse,
+                                                                       self.pulse_cfg)
+                            elif pulse.type == "gauss":
+                                qubit_waveforms = gauss(self.waveforms_tpts_dict[waveforms_key],self.origin,
+                                                                      self.marker_start_buffer, self.marker_end_buffer,
+                                                                      pulse_location - pulse.delay, pulse)
+                            else:
+                                raise ValueError('Wrong pulse type has been defined')
+                            if pulse_defined:
+                                self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[waveform_id]
+                    pulse_location += pulse.span_length
+
+                if pulse.target == "hetero_carrier":
+
+                    waveforms_key_list = ['hetero_carrier']
+
+                    for waveform_id, waveforms_key in enumerate(waveforms_key_list):
+                        if waveforms_key in self.waveforms_dict:
+                            if pulse.type == "square":
+                                qubit_waveforms = square(self.waveforms_tpts_dict[waveforms_key], self.origin,
+                                                                       self.marker_start_buffer, self.marker_end_buffer,
+                                                                       pulse_location - pulse.delay, pulse,
+                                                                       self.pulse_cfg)
+                            elif pulse.type == "gauss":
+                                qubit_waveforms = gauss(self.waveforms_tpts_dict[waveforms_key],self.origin,
+                                                                      self.marker_start_buffer, self.marker_end_buffer,
+                                                                      pulse_location - pulse.delay, pulse)
+                            else:
+                                raise ValueError('Wrong pulse type has been defined')
+                            if pulse_defined:
+                                self.waveforms_dict[waveforms_key][ii] += qubit_waveforms[waveform_id]
+                    pulse_location += pulse.span_length
                 #
 
                 elif pulse.target == "idle":
@@ -399,9 +445,6 @@ class PulseSequenceBuilder():
                 if pulse.target[:4] == "flux":
                     # waveforms_key_list = ['flux_0-7',]
 
-                    # flux pulses, no carrier. (mod_freq still works)
-                    pulse.freq = 0
-                    pulse.phase = 0
                     waveforms_key = pulse.target
 
                     if waveforms_key in self.waveforms_dict:
@@ -429,9 +472,6 @@ class PulseSequenceBuilder():
                         elif pulse.type == "linear_ramp_with_mod":
                             qubit_waveforms = linear_ramp_with_mod(self.waveforms_tpts_dict[waveforms_key], self.origin,
                                                     flux_pulse_location_list[flux_index] - pulse.delay - pulse.span_length, pulse)
-                        elif pulse.type == "lz_arctan_ramp":
-                            qubit_waveforms = lz_arctan_ramp(self.waveforms_tpts_dict[waveforms_key], self.origin,
-                                                    flux_pulse_location_list[flux_index] - pulse.delay - pulse.span_length, pulse)
 
                         else:
                             raise ValueError('Wrong pulse type has been defined for flux pulses')
@@ -450,32 +490,24 @@ class PulseSequenceBuilder():
             #                                         ii] - self.tek2_trigger_delay,
             #                                     self.card_trig_width)
 
-            import scipy.signal as spsig
             if self.cfg["flux_pulse_info"]["fast_flux_pulse_shaping"]:
 
                 for ff in range(0,8):
                     flux_target = 'flux_'+str(ff)
+                    flux_kernel = np.load(r'C:\slab_data_temp\fast_flux_kernels\kernel_flux_' + str(ff) + '_v3.npy')
+                    # pad zeros to avoid boundary effects
                     waveform_original = self.waveforms_dict[flux_target][ii]
+                    lims = [max(waveform_original), min(waveform_original)]
+                    waveform_padded = np.concatenate(
+                        (np.zeros(len(flux_kernel)), waveform_original, np.zeros(len(flux_kernel))))
+                    shaped_waveform = np.convolve(waveform_padded, flux_kernel, 'same')[
+                                      len(flux_kernel):len(flux_kernel) + len(waveform_original)]
 
-                    if np.any(waveform_original):
+                    self.waveforms_dict[flux_target][ii] = shaped_waveform
 
-                        flux_kernel = np.load(r'C:\fast_flux_kernels\kernel_flux_' + str(ff) + '_v3.npy')
-                        # pad zeros to avoid boundary effects
-                        lims = [max(waveform_original), min(waveform_original)]
-                        waveform_padded = np.concatenate(
-                            (np.zeros(len(flux_kernel)), waveform_original, np.zeros(len(flux_kernel))))
-                        shaped_waveform = spsig.convolve(waveform_padded, flux_kernel, 'same')[
-                                          len(flux_kernel):len(flux_kernel) + len(waveform_original)]
-
-                        self.waveforms_dict[flux_target][ii] = shaped_waveform
-
-                        print("Seq #", ii, flux_target, "pulse shaping.. flux_a_max/min: before:", lims, \
-                            ", after:", [max(shaped_waveform), min(shaped_waveform)])
-                        if max(abs(shaped_waveform))>=1:
-                            raise Exception('Error - Shaped flux value >= 1!')
-
-                    else:
-                        # all zeros, no need for flux shaping
-                        pass
+                    print("Seq #", ii, flux_target, "pulse shaping.. flux_a_max/min: before:", lims, \
+                        ", after:", [max(shaped_waveform), min(shaped_waveform)])
+                    if max(abs(shaped_waveform))>=1:
+                        raise Exception('Error - Shaped flux value >= 1!')
 
         return self.waveforms_dict

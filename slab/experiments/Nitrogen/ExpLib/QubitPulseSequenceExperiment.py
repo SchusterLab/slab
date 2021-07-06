@@ -46,6 +46,7 @@ class QubitPulseSequenceExperiment(Experiment):
         else:
             try:
                 self.trigger_period = self.cfg['expt_trigger']['period']
+                print ("Trigger period asigned as",self.trigger_period*1e6,"us")
             except:
                 print("error in setting trigger time")
 
@@ -103,9 +104,10 @@ class QubitPulseSequenceExperiment(Experiment):
         self.drive.set_power(self.cfg['drive']['power'])
         self.drive.set_ext_pulse(mod=True)
         self.drive.set_output(True)
-        self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
-
+        try:self.readout_atten.set_attenuator(self.cfg['readout']['dig_atten'])
+        except: print ("No digital attenuator found")
         self.trigger.set_period(self.trigger_period)
+
 
         try:
             self.cfg['freq_flux']['flux']=self.extra_args['flux']

@@ -165,7 +165,6 @@ class QubitPulseSequenceExperiment(Experiment):
             self.awg_run()
             print('stop_awg = False, seqs left running.')
 
-
     def take_data(self):
 
         ####

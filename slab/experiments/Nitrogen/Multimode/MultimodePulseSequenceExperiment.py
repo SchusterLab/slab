@@ -1,4 +1,4 @@
-__author__ = 'Nelson'
+__author__ = 'Nelson/Vatsan'
 
 from slab import *
 from slab.instruments.Alazar import Alazar
@@ -282,7 +282,6 @@ class MultimodeRabiSweepExperiment(QubitPulseSequenceExperiment):
         #print self.data_file
         pass
 
-
 class MultimodeChargeSidebandRabiSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_Charge_Sideband_Rabi_Sweep', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -312,7 +311,6 @@ class MultimodeRabiLineCutSweepExperiment(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         #print self.data_file
         pass
-
 
 class MultimodeBlueSidebandSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_BlueSideband_Sweep', config_file='..\\config.json', **kwargs):
@@ -363,6 +361,21 @@ class MultimodeT1Experiment(QubitPulseSequenceExperiment):
         fitdata = fitexp(expt_pts, expt_avg_data)
         print("T1: " + str(fitdata[3]) + " ns")
         self.cfg['multimodes'][self.id]['T1'] = fitdata[3]
+
+class MultimodechargesbT1Experiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_chargesbt1', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodechargesbT1Sequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+        print("Analyzing mode T1 Data")
+        fitdata = fitexp(expt_pts, expt_avg_data)
+        print("T1: " + str(fitdata[3]) + " ns")
 
 class MultimodeEntanglementExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Multimode_Entanglement', config_file='..\\config.json', **kwargs):
@@ -1089,7 +1102,6 @@ class MultimodeTwoResonatorTomographyPhaseSweepExperiment(QubitPulseSequenceExpe
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
-
 
 class MultimodeGHZEntanglementWitnessExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_ghz_entanglement_witness', config_file='..\\config.json', **kwargs):
@@ -1900,7 +1912,6 @@ class MultimodeProcessTomographyExperiment_2(QubitPulseSequenceExperiment):
 
         pass
 
-
 class MultimodePulseProbeIQExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='multimode_pulse_probe_iq', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -1914,4 +1925,39 @@ class MultimodePulseProbeIQExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         #print self.data_file
+        pass
+
+class MultimodeParityExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_parity', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeParitySequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
+        # print("Analyzing Ramsey Data")
+        # fitdata = fitdecaysin(expt_pts, expt_avg_data)
+        #
+        # self.offset_freq =self.cfg['multimode_ramsey']['ramsey_freq'] - fitdata[1] * 1e9
+        #
+        # suggested_offset_freq = self.cfg['multimodes'][int(self.cfg['multimode_ramsey']['id'])]['dc_offset_freq'] + self.offset_freq
+        # print("Suggested offset frequency: " + str(suggested_offset_freq))
+        # print("Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz")
+        # print("T2*: " + str(fitdata[3]) + " ns")
+        pass
+
+class MultimodeT1DirectDriveExperiment(QubitPulseSequenceExperiment):
+    def __init__(self, path='', prefix='multimode_t1_direct_drive', config_file='..\\config.json', **kwargs):
+        QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
+                                                    PulseSequence=MultimodeT1DirectDriveSequence, pre_run=self.pre_run,
+                                                    post_run=self.post_run, prep_tek2= True,**kwargs)
+
+
+
+    def pre_run(self):
+        self.tek2 = InstrumentManager()["TEK2"]
+
+    def post_run(self, expt_pts, expt_avg_data):
         pass

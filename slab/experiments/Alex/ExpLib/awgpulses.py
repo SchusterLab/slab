@@ -96,26 +96,6 @@ def linear_ramp_with_mod(t, start_a, stop_a, t0, w, mod_amp, mod_freq, mod_start
                            )
     return vv
 
-def lz_arctan_ramp(t, start_a, stop_a, t0, w, aspectratio):
-
-    # optimized LZ detuning shape for constant coupling
-    # https://www-nature-com.proxy.uchicago.edu/articles/nphys2170.pdf - eqn methods (6)
-
-    # aspectratio = omega/delta
-    # where omega is the on resonant rabi freq of population (so gap is omega)
-    # and delta is the detuning at the begining/end of LZ (so whole LZ range is +-delta)
-
-    # large aspectratio (~>5) would give linear ramp
-
-    vv = np.zeros(t.shape)
-    if w > 0:
-        start = np.searchsorted(t, t0, side='left')
-        stop = np.searchsorted(t, t0 + w, side='left') # include only left end <=/<
-        t = t[start:stop]
-        vv[start:stop] = (stop_a+start_a)/2.0 + (stop_a-start_a)/2.0 \
-                                                * aspectratio * np.tan( 2 * ((t-t0)/w - 0.5) * np.arctan( 1/aspectratio ))
-    return vv
-
 def logistic_ramp(t, start_a, stop_a, t0, w):
     # smooth S-shaped ramp using logistic function
     # truncated and rescaled to be continuous
@@ -160,22 +140,21 @@ def get_pulse_span_length(cfg, type, length):
         if type == "square" or type == "square_exp":
             return length + 4 * cfg[type]['ramp_sigma'] +cfg['spacing']
 
-        if type in ["ramp", "linear_ramp", "linear_ramp_with_mod", "logistic_ramp", "lz_arctan_ramp"]:
+        if type in ["ramp", "linear_ramp", "linear_ramp_with_mod", "logistic_ramp"]:
             return length
     else:
         return 0.0
 
 def get_pulse_area(type=None, length=0, a=0, start_a=0, stop_a=0):
 
-    if type in ["linear_ramp", "linear_ramp_with_mod", 'logistic_ramp', "lz_arctan_ramp"]:
+    if type in ["linear_ramp", "linear_ramp_with_mod", 'logistic_ramp']:
         return (start_a + stop_a)/2.0*length
     else:
         return 0.0
 
 def get_pulse_power(type=None, length=0, a=0, start_a=0, stop_a=0):
 
-    # todo power not quite right for logistic and arctan
-    if type in ["linear_ramp", "linear_ramp_with_mod", 'logistic_ramp', "lz_arctan_ramp"]:
+    if type in ["linear_ramp", "linear_ramp_with_mod", 'logistic_ramp']:
         return (((start_a + stop_a)/2.0)**2)*length
     else:
         return 0.0

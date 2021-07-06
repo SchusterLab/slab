@@ -70,8 +70,13 @@ class QubitPulseSequence(PulseSequence):
                     #self.psb.append('q','cal_pi', self.pulse_type)
 
                     # use two half - pi
-                    self.psb.append('q','half_pi', self.pulse_type)
-                    self.psb.append('q','half_pi', self.pulse_type, phase = cfg['pulse_info'][self.pulse_type]['offset_phase'])
+
+                    if cfg['pulse_info']['split_cal_pi']:
+                        self.psb.append('q','half_pi', self.pulse_type)
+                        self.psb.append('q','half_pi', self.pulse_type, phase = cfg['pulse_info'][self.pulse_type]['offset_phase'])
+                    else:
+                        self.psb.append('q','pi', self.pulse_type)
+
 
                 self.pulse_sequence_matrix.append(self.psb.get_pulse_sequence())
                 total_pulse_span_length_list.append(self.psb.get_total_pulse_span_length())

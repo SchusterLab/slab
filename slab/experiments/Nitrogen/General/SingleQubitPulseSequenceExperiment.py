@@ -5,8 +5,6 @@ from slab.instruments.Alazar import Alazar
 from slab.experiments.Nitrogen.ExpLib.QubitPulseSequenceExperiment import *
 from slab.dsfit import *
 from numpy import mean, arange,around
-import numpy as np
-
 
 class RabiExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Rabi', config_file='..\\config.json', **kwargs):
@@ -15,7 +13,10 @@ class RabiExperiment(QubitPulseSequenceExperiment):
                                               post_run=self.post_run, **kwargs)
 
     def pre_run(self):
-        self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg[self.expt_cfg_name]['iq_freq'])
+        # print (self.cfg['pulse_info'][self.cfg[self.expt_cfg_name]])
+        # self.cfg['pulse_info'][self.cfg[self.expt_cfg_name]['pulse_type']]
+        # self.cfg['pulse_info'][self.cfg[self.expt_cfg_name]['pulse_type']]['iq_freq']
+        self.drive.set_frequency(self.cfg['qubit']['frequency'] - self.cfg['pulse_info'][self.pulse_type]['iq_freq'])
 
     def post_run(self, expt_pts, expt_avg_data):
 
@@ -152,8 +153,6 @@ class T1Experiment(QubitPulseSequenceExperiment):
         fitdata = fitexp(expt_pts, expt_avg_data)
         print("T1: " + str(fitdata[3]) + " ns")
 
-
-
 class T1rhoExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='T1rho', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -203,7 +202,6 @@ class RamseyExperiment(QubitPulseSequenceExperiment):
         print("Suggested Qubit Frequency: " + str(self.suggested_qubit_freq))
         print("Or Suggested Flux: " + str(self.flux - self.offset_freq / self.freq_flux_slope))
 
-
 class SpinEchoExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Spin_Echo', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -221,7 +219,6 @@ class SpinEchoExperiment(QubitPulseSequenceExperiment):
         print("Oscillation frequency: " + str(fitdata[1] * 1e3) + " MHz")
         print("T2*: " + str(fitdata[3]) + " ns")
         print("Suggested Qubit Frequency: " + str(suggested_qubit_freq))
-
 
 class EFRamseyExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_Ramsey', config_file='..\\config.json', **kwargs):
@@ -266,7 +263,6 @@ class EFT1Experiment(QubitPulseSequenceExperiment):
         fitdata = fitexp(expt_pts, expt_avg_data)
         print("EF T1: " + str(fitdata[3]) + " ns")
 
-
 class EFT1Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_T1', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -281,7 +277,6 @@ class EFT1Experiment(QubitPulseSequenceExperiment):
         fitdata = fitexp(expt_pts, expt_avg_data)
         print("EF T1: " + str(fitdata[3]) + " ns")
 
-
 class EFT1Experiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_T1', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -295,7 +290,6 @@ class EFT1Experiment(QubitPulseSequenceExperiment):
         print("Analyzing EF T1 Data")
         fitdata = fitexp(expt_pts, expt_avg_data)
         print("EF T1: " + str(fitdata[3]) + " ns")
-
 
 class HalfPiXOptimizationExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='HalfPiXOptimization', config_file='..\\config.json', **kwargs):
@@ -309,7 +303,6 @@ class HalfPiXOptimizationExperiment(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         pass
 
-
 class PiXOptimizationExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='PiXOptimization', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -321,7 +314,6 @@ class PiXOptimizationExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
-
 
 class HalfPiYPhaseOptimizationExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='HalfPiYPhaseOptimization', config_file='..\\config.json', **kwargs):
@@ -348,7 +340,6 @@ class HalfPiYPhaseOptimizationExperiment(QubitPulseSequenceExperiment):
         fitdata=fitsin(xdata[:],ydata[:],fitparams=fitparams,showfit=False)
         self.cfg['pulse_info']['gauss']['offset_phase'] = around((-(fitdata[2]%180) + 90),2)
         print("Offset Phase = %s" %(self.cfg['pulse_info']['gauss']['offset_phase']))
-
 
 class EFPulsePhaseOptimizationExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EFPulsePhaseOptimization', config_file='..\\config.json', **kwargs):
@@ -377,8 +368,6 @@ class EFPulsePhaseOptimizationExperiment(QubitPulseSequenceExperiment):
         # print "Offset Phase = %s" %(self.cfg['pulse_info']['gauss']['offset_phase'])
         #
 
-
-
 class TomographyExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Tomography', config_file='..\\config.json', **kwargs):
         QubitPulseSequenceExperiment.__init__(self, path=path, prefix=prefix, config_file=config_file,
@@ -390,7 +379,6 @@ class TomographyExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
-
 
 class HalfPiXOptimizationSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='HalfPiXOptimization_Sweep', config_file='..\\config.json', **kwargs):
@@ -416,7 +404,6 @@ class HalfPiXOptimizationSweepExperiment(QubitPulseSequenceExperiment):
             f.append_line('sweep_expt_pts', expt_pts)
             f.close()
 
-
 class PiXOptimizationSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='PiXOptimization_Sweep', config_file='..\\config.json', **kwargs):
         self.extra_args = {}
@@ -441,7 +428,6 @@ class PiXOptimizationSweepExperiment(QubitPulseSequenceExperiment):
             f.append_line('sweep_expt_pts', expt_pts)
             f.close()
 
-
 class RabiSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='Rabi_Sweep', config_file='..\\config.json', **kwargs):
         self.extra_args = {}
@@ -461,7 +447,6 @@ class RabiSweepExperiment(QubitPulseSequenceExperiment):
         # print self.data_file
         pass
 
-
 class PulseProbeIQExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='pulse_probe_iq', config_file='..\\config.json', **kwargs):
         self.extra_args = {}
@@ -478,7 +463,6 @@ class PulseProbeIQExperiment(QubitPulseSequenceExperiment):
 
     def post_run(self, expt_pts, expt_avg_data):
         pass
-
 
 class PulseProbeEFIQExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='pulse_probe_ef_iq', config_file='..\\config.json', **kwargs):
@@ -497,7 +481,6 @@ class PulseProbeEFIQExperiment(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         pass
 
-
 class EFRabiSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='EF_Rabi_Sweep', config_file='..\\config.json', **kwargs):
 
@@ -513,7 +496,6 @@ class EFRabiSweepExperiment(QubitPulseSequenceExperiment):
     def post_run(self, expt_pts, expt_avg_data):
         # print self.data_file
         pass
-
 
 class RabiRamseyT1FluxSweepExperiment(QubitPulseSequenceExperiment):
     def __init__(self, path='', prefix='rabi_ramsey_t1_flux_sweep', config_file='..\\config.json', **kwargs):
