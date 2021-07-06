@@ -1,14 +1,38 @@
-# IDE meta files
-.idea
-# pyc files
-.pyc
+# editor files
+*.idea
+*.vscode
+*~
+*\#*
 
+# python
 *.pyc
+__pycache__
+*.egg-info
 
-*.pyc
-# Instrument cfg
+# julia
+Manifest.toml
+
+# instruments
 instruments/instrument.cfg
 instruments/awg/test M8195A.ipynb
 instruments/awg/.ipynb_checkpoints/test M8195A-checkpoint.ipynb
 instruments/instruments.cfg
 *.dll
+
+# examples
+!examples/qiskit/rfsoc/config.yaml
+
+# binary
+*.DS_Store
+*.dat
+*.png
+*.pdf
+*.bit
+*.hwh
+
+# local
+out
+_test
+*.yaml
+*.log
+*.json
