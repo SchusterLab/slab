@@ -10,6 +10,7 @@ from slab.dsfit import fitdecaysin
 try:from skopt import Optimizer
 except:print("No optimizer")
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
+import copy
 
 
 # from slab.experiments.PulseExperiments.get_data import get_singleshot_data_two_qubits_4_calibration_v2,\
@@ -19,8 +20,8 @@ from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExp
 import pickle
 
 class SequentialExperiment:
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, path,analyze = False,show=True,P = 'Q'):
-
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, path, analyze = False,show=True,P = 'Q'):
+        self.experiment_cfg = experiment_cfg
         if len(self.experiment_cfg[experiment_name]['on_qubits']) == 2:
             self.two_qubits = True
         else:
@@ -31,6 +32,7 @@ class SequentialExperiment:
             self.IBs = []
             self.QAs = []
             self.QBs = []
+            self.seq_data = []
         else:
             self.Is = []
             self.Qs = []
@@ -46,6 +48,93 @@ class SequentialExperiment:
             except: print ("No post expt analysis")
         else:pass
 
+
+## Modify this if you want -- ends up adding lots of stuff to an extra collective file [MGP]
+    def resonator_spectroscopy(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+
+        experiment_name = 'resonator_spectroscopy'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+
+        # Make a call to pulse_experiment and Experiment class earlier than was historically the case, defining exp
+        # Run just the initialization part of run_experiment_pxi which we will not need to repeat
+        sequences = ps.get_experiment_sequences(experiment_name)
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+        exp.run_experiment_pxi_justinits(sequences, path, experiment_name, seq_data_file=seq_data_file)
+
+        # Loop on frequencies, only reinitializing the LOs we actually care about to increase speed.
+        # Have to auto-clear the digitizer channels
+        for qubit in experiment_cfg[experiment_name]['on_qubits']:
+            read_freq = copy.deepcopy(quantum_device_cfg['readout'][qubit]['freq'])
+
+            if self.two_qubits:
+                for freq in np.arange(expt_cfg['start'] + read_freq, expt_cfg['stop'] + read_freq, expt_cfg['step']):
+                    quantum_device_cfg['readout'][qubit]['freq'] = freq
+                    sequences = ps.get_experiment_sequences(experiment_name)
+                    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+
+                    data = exp.run_experiment_pxi_resspec(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                    # EDIT THIS TO CONFIG CHANNELS
+                    self.seq_data.append(data)
+
+                    self.IAs.append(data[0][0])
+                    self.IBs.append(data[1][0])
+                    self.QAs.append(data[0][1])
+                    self.QBs.append(data[1][1])
+                self.seq_data = np.array(self.seq_data)
+                self.IAs = np.array(self.IAs)
+                self.IBs = np.array(self.IBs)
+                self.QAs = np.array(self.QAs)
+                self.QBs = np.array(self.QBs)
+
+                # FILE APPEND OCCURS ALREADY IN THE RUN EXPT FUNCTION
+                # With two qubits, be aware that data slicing may get messy. Consider editing how the h5 file is constructed
+                # Otherwise you'll be stuck skipping indices to extract data in a weird way
+                collective_seq_data_file = os.path.join(data_path,
+                                                        get_next_filename(data_path,
+                                                                          'resonator_spectroscopy_finalarrays',
+                                                                          suffix='.h5'))
+                # Can we append this data to... a separate file?
+                self.second_slab_file = SlabFile(collective_seq_data_file)
+                with self.second_slab_file as f:
+                    f.append_line('seq data', self.seq_data)
+                    f.append_line('IAs', self.IAs)
+                    f.append_line('QAs', self.QAs)
+                    f.append_line('IBs', self.IBs)
+                    f.append_line('QBs', self.QBs)
+
+            else:
+                for freq in np.arange(expt_cfg['start'] + read_freq, expt_cfg['stop'] + read_freq, expt_cfg['step']):
+                    quantum_device_cfg['readout'][qubit]['freq'] = freq
+                    sequences = ps.get_experiment_sequences(experiment_name)
+                    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+
+                    data = exp.run_experiment_pxi_resspec(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                    self.seq_data.append(data)
+                    self.Is.append(data[0][0])
+                    self.Qs.append(data[0][1])
+                self.seq_data = np.array(self.seq_data)
+                self.Is = np.array(self.Is)
+                self.Qs = np.array(self.Qs)
+
+                collective_seq_data_file = os.path.join(data_path,
+                                                        get_next_filename(data_path,
+                                                                          'resonator_spectroscopy_finalarrays',
+                                                                          suffix='.h5'))
+                # Can we append this data to... a separate file?
+                self.second_slab_file = SlabFile(collective_seq_data_file)
+                with self.second_slab_file as f:
+                    f.append_line('seq data', self.seq_data)
+                    f.append_line('Is', self.Is)
+                    f.append_line('Qs', self.Qs)
+
+        # HAVE TO STOP THE PXI AND CLOSE SIGNALCORE LOS NOW BECAUSE WE'RE LOOPING ON RUN EXPT PXI
+        exp.pxi_stop(self)
+        exp.close_signalcore_los(self)
+
+############## things below this line do not work unless edited as of 7/21 [MGP] ###########################
 
     def histogram_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
 
@@ -240,86 +329,6 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
-    def resonator_spectroscopy(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
-        experiment_name = 'resonator_spectroscopy'
-        expt_cfg = experiment_cfg[experiment_name]
-        data_path = os.path.join(path, 'data/')
-        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
-        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
-
-        # Make a call to pulse_experiment and Experiment class earlier than was historically the case, defining exp
-        # Run just the initialization part of run_experiment_pxi which we will not need to repeat
-        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-        initialization = exp.run_experiment_pxi_justinits(sequences, path, experiment_name, seq_data_file=seq_data_file)
-
-        # Loop on frequencies, only reinitializing the LOs we actually care about to increase speed.
-        # Have to auto-clear the digitizer channels
-        for qubit in experiment_cfg[experiment_name]['on_qubits']:
-            read_freq = copy.deepcopy(quantum_device_cfg['readout'][qubit]['freq'])
-
-            # NOOOOO WE NEED A ROBUST A/B ASSIGNMENT HERE
-            # Take out the for loop replace it with generic assignments for A and B
-            # But put the for loop back in later 
-
-            if self.two_qubits:
-                for freq in np.arange(expt_cfg['start'] + read_freq, expt_cfg['stop']+read_freq, expt_cfg['step']):
-                    quantum_device_cfg['readout'][qubit]['freq'] = freq
-                    sequences = ps.get_experiment_sequences(experiment_name)
-                    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-
-                    IA, QA, IB, QB = exp.run_experiment_pxi_resspec(sequences, path, experiment_name, seq_data_file=seq_data_file)
-                    self.IAs.append(IA)
-                    self.IBs.append(IB)
-                    self.QAs.append(QA)
-                    self.QBs.append(QB)
-                self.IAs = np.array(self.IAs)
-                self.IBs = np.array(self.IBs)
-                self.QAs = np.array(self.QAs)
-                self.QBs = np.array(self.QBs)
-            # FILE APPEND OCCURS ALREADY IN THE RUN EXPT FUNCTION
-            # With two qubits, be aware that data slicing may get messy. Consider editing how the h5 file is constructed
-            # Otherwise you'll be stuck skipping indices to extract data in a weird way
-                collective_seq_data_file = os.path.join(data_path,
-                                             get_next_filename(data_path, 'resonator_spectroscopy_finalarrays', suffix='.h5'))
-                # Can we append this data to... a separate file?
-                self.second_slab_file = SlabFile(collective_seq_data_file)
-                with self.second_slab_file as f:
-                    f.append_line('IAs', IAs)
-                    f.append_line('QAs', QAs)
-                    f.append_line('IBs', IBs)
-                    f.append_line('QBs', QBs)
-
-
-
-            else:
-                for freq in np.arange(expt_cfg['start'] + read_freq, expt_cfg['stop'] + read_freq, expt_cfg['step']):
-                    quantum_device_cfg['readout'][qubit]['freq'] = freq
-                    sequences = ps.get_experiment_sequences(experiment_name)
-                    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-
-                    I, Q = exp.run_experiment_pxi_resspec(sequences, path, experiment_name, seq_data_file=seq_data_file)
-                    self.Is.append(I)
-                    self.Qs.append(Q)
-                self.Is = np.array(self.Is)
-                self.Qs = np.array(self.Qs)
-
-                collective_seq_data_file = os.path.join(data_path,
-                                                        get_next_filename(data_path,
-                                                                          'resonator_spectroscopy_finalarrays',
-                                                                          suffix='.h5'))
-                # Can we append this data to... a separate file?
-                self.second_slab_file = SlabFile(collective_seq_data_file)
-                with self.second_slab_file as f:
-                    f.append_line('Is', Is)
-                    f.append_line('Qs', Qs)
-
-        # HAVE TO STOP THE PXI AND CLOSE SIGNALCORE LOS NOW BECAUSE WE'RE LOOPING ON RUN EXPT PXI
-        exp.pxi_stop(self)
-        exp.close_signalcore_los(self)
-
-# Rewrite the above to take special function, run_experiment_pxi_resspec,that has fewer instrument re-initializations
-# How to make reference to pulse_experiment?? exp, then write a second function that just initializes the stuff
-# without running the loop in particular
 
 
     def resonator_spectroscopy_mixedtones(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):

@@ -4,44 +4,59 @@ from numpy import*
 
 class PostExperiment:
     # Need to finish modifying to allow two readouts
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, IA = None , QA = None, IB = None, QB = None, P = 'I', show = True):
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, data=None, P = 'I', show = True):
         self.quantum_device_cfg = quantum_device_cfg
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
 
         self.exptname = experiment_name
 
-        self.IA = IA
-        self.QA = QA
-        self.IB = IB
-        self.QB = QB
-        # These will be None if the data didn't get made. We can test for this explicitly
-        # self.I = I
-        # self.Q = Q
+        self.data= data
+        self.IA = []
+        self.QA = []
+        self.IB = []
+        self.QB = []
+
+
+        if len(self.experiment_cfg[experiment_name]['on_qubits']) == 2:
+            self.two_qubits = True
+        elif len(self.experiment_cfg[experiment_name]['on_qubits']) == 1:
+            self.two_qubits = False
+        else:
+            self.two_qubits = False
+            print("You have a problem with qubit number conditions, as you've likely already heard")
+
+
+        if self.two_qubits:
+            self.IA = self.data[0][0]
+            self.QA = self.data[0][1]
+            self.IB = self.data[1][0]
+            self.QB = self.data[1][1]
+        elif "1" in self.experiment_cfg[experiment_name]['on_qubits']:
+            self.I = self.data[0][0]
+            self.Q = self.data[0][1]
+        elif "2" in self.experiment_cfg[experiment_name]['on_qubits']:
+            self.I = self.data[1][0]
+            self.Q = self.data[1][1]
+
 
         # Historically a string deciding which quadrature you want to look at, gets set in run experiment
         # Modified 4/21
         alphabetlist = ['A', 'B']
         # equivalent to two qubits condition
         # else statement, worst case, looks at qubit 2
-        if len(self.experiment_cfg[experiment_name]['on_qubits']) == 2:
+        if self.two_qubits:
             # temporary choice of one qubit
-            self.P = P + 'A'
-            self.I = self.IA
-            self.Q = self.QA
-            # self.P = [P + 'A', P + 'B']
-            # WILL NOT WORK WITH ANYTHING HERE
+            self.PA = P + 'A'
+            self.PB = P + 'B'
         else:
             for qubit_id in self.experiment_cfg[experiment_name]['on_qubits']:
                 extension = alphabetlist[int(qubit_id) - 1]
-                self.P = P + extension
+                self.P = P
                 self.I = eval('self.I' + extension)
                 self.Q = eval('self.Q' + extension)
                 # check this
 
-
-
-        # self.P = P
         self.show = show
 
         # try:eval('self.' + experiment_name)()
@@ -49,73 +64,121 @@ class PostExperiment:
         eval('self.' + experiment_name)()
 ###############################################################################################
 
-# Need to modify
-
     def pulse_probe_iq(self):
         expt_cfg = self.experiment_cfg[self.exptname]
-        nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
 
-        self.I = self.I - mean(self.I)
-        self.Q = self.Q - mean(self.Q)
+        if self.two_qubits:
+            nu_qA = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+            nu_qB = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][1]]['freq']
+            self.IA = self.IA - mean(self.IA)
+            self.IB = self.IB - mean(self.IB)
+            self.QA = self.QA - mean(self.QA)
+            self.QB = self.QB - mean(self.QB)
+            fA = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_qA
+            fB = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_qB
+            ps = []
+            if self.show:
+                fig = plt.figure(figsize=(14, 7))
+                ax = fig.add_subplot(111, title=self.exptname)
+                ax.plot(fA, self.IA, 'b.-', label='I')
+                ax.plot(fA, self.QA, 'r.-', label='Q')
+                ax.set_xlabel('Freq(GHz)')
+                ax.set_ylabel('I/Q')
+                ax.legend()
+                pA = fitlor(fA, eval('self.' + self.PA), showfit=False)
+                ps.append(pA)
+                ax.plot(fA, lorfunc(pA, fA), 'k--')
+                ax.axvline(pA[2], color='g', linestyle='dashed')
+                plt.show()
 
-        f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_q
+                fig2 = plt.figure(figsize=(14, 7))
+                ax2 = fig2.add_subplot(111, title=self.exptname)
+                ax2.plot(fB, self.IB, 'b.-', label='I')
+                ax2.plot(fB, self.QB, 'r.-', label='Q')
+                ax2.set_xlabel('Freq(GHz)')
+                ax2.set_ylabel('I/Q')
+                ax2.legend()
+                pB = fitlor(fB, eval('self.' + self.PB), showfit=False)
+                ax.plot(fB, lorfunc(pB, f), 'k--')
+                ax.axvline(pB[2], color='g', linestyle='dashed')
+                ps.append(pB)
+                plt.show()
 
-        if self.show:
-            fig = plt.figure(figsize=(14, 7))
-            ax = fig.add_subplot(111, title=self.exptname)
-            ax.plot(f, self.I, 'b.-', label='I')
-            ax.plot(f, self.Q, 'r.-', label='Q')
-            ax.set_xlabel('Freq(GHz)')
-            ax.set_ylabel('I/Q')
-            ax.legend()
-            p = fitlor(f, eval('self.' + self.P), showfit=False)
-            ax.plot(f, lorfunc(p, f), 'k--')
-            ax.axvline(p[2], color='g', linestyle='dashed')
-            plt.show()
+                print("Qubit A frequency = ", pA[2], "GHz")
+                print("Qubit B frequency = ", pB[2], "GHz")
+                print("Pulse probe width A = ", pA[3] * 1e3, "MHz")
+                print("Pulse probe width B = ", pB[3] * 1e3, "MHz")
+                print("Estimated pi pulse time A: ", 1 / (sqrt(2) * 2 * pA[3]), 'ns')
+                print("Estimated pi pulse time B: ", 1 / (sqrt(2) * 2 * pB[3]), 'ns')
+
+            return ps
+
         else:
-            p = fitlor(f, eval('self.' + self.P), showfit=False)
+            nu_q = self.quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['freq']
+            self.I = self.I - mean(self.I)
+            self.Q = self.Q - mean(self.Q)
+            f = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(self.I))] + nu_q
 
-        print("Qubit frequency = ", p[2], "GHz")
-        print("Pulse probe width = ", p[3] * 1e3, "MHz")
-        print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
+            if self.show:
+                fig = plt.figure(figsize=(14, 7))
+                ax = fig.add_subplot(111, title=self.exptname)
+                ax.plot(f, self.I, 'b.-', label='I')
+                ax.plot(f, self.Q, 'r.-', label='Q')
+                ax.set_xlabel('Freq(GHz)')
+                ax.set_ylabel('I/Q')
+                ax.legend()
+                p = fitlor(f, eval('self.' + self.P), showfit=False)
+                ax.plot(f, lorfunc(p, f), 'k--')
+                ax.axvline(p[2], color='g', linestyle='dashed')
+                plt.show()
+            else:
+                p = fitlor(f, eval('self.' + self.P), showfit=False)
+
+            print("Qubit frequency = ", p[2], "GHz")
+            print("Pulse probe width = ", p[3] * 1e3, "MHz")
+            print("Estimated pi pulse time: ", 1 / (sqrt(2) * 2 * p[3]), 'ns')
+            return p
 
 
     def rabi(self):
         expt_cfg = self.experiment_cfg[self.exptname]
-        P = eval('self.'+self.P)
-        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
-        amp = expt_cfg['amp']
-        if self.show:
-
-            fig = plt.figure(figsize=(14, 7))
-            ax = fig.add_subplot(111, title=self.exptname)
-            ax.plot(t, P, 'o-', label=self.P)
-            ax.set_xlabel('Time (ns)')
-            ax.set_ylabel(self.P)
-            ax.legend()
-            p = fitdecaysin(t[2:], P[2:], showfit=True)
-            t_pi = 1 / (2 * p[1])
-            t_half_pi = 1 / (4 * p[1])
-
-            ax.axvline(t_pi, color='k', linestyle='dashed')
-            ax.axvline(t_half_pi, color='k', linestyle='dashed')
-
-            plt.show()
+        if self.two_qubits:
+            print("Just do the analysis in a jupyter notebook, friend")
 
         else:
-            p = fitdecaysin(t, P, showfit=False)
-            t_pi = 1 / (2 * p[1])
-            t_half_pi = 1 / (4 * p[1])
+            P = self.P
+            t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]
+            amp = expt_cfg['amp']
+            if self.show:
 
-        print("Half pi length =", t_half_pi, "ns")
-        print("pi length =", t_pi, "ns")
-        print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
-        print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ",
-              amp * (t_half_pi) / float(int(t_half_pi) + 1))
+                fig = plt.figure(figsize=(14, 7))
+                ax = fig.add_subplot(111, title=self.exptname)
+                ax.plot(t, P, 'o-', label=self.P)
+                ax.set_xlabel('Time (ns)')
+                ax.set_ylabel(self.P)
+                ax.legend()
+                p = fitdecaysin(t[2:], P[2:], showfit=True)
+                t_pi = 1 / (2 * p[1])
+                t_half_pi = 1 / (4 * p[1])
+
+                ax.axvline(t_pi, color='k', linestyle='dashed')
+                ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
+                plt.show()
+
+            else:
+                p = fitdecaysin(t, P, showfit=False)
+                t_pi = 1 / (2 * p[1])
+                t_half_pi = 1 / (4 * p[1])
+
+            print("Half pi length =", t_half_pi, "ns")
+            print("pi length =", t_pi, "ns")
+            print("suggested_pi_length = ", int(t_pi) + 1, "suggested_pi_amp = ", amp * (t_pi) / float(int(t_pi) + 1))
+            print("suggested_half_pi_length = ", int(t_half_pi) + 1, "suggested_half_pi_amp = ", amp * (t_half_pi) / float(int(t_half_pi) + 1))
 
 
 ###################################################################################################
-    # Functions below only show one thing....
+    # Functions below are old and likely will not work ca 7/21 [MGP]
     # Edit and move up as needed
 
     def cavity_sideband_rabi(self):

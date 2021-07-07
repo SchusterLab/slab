@@ -1,14 +1,14 @@
 from slab import InstrumentManager
-from slab.instruments.awg import write_Tek5014_file
+# from slab.instruments.awg import write_Tek5014_file
 from slab.instruments.awg.M8195A import upload_M8195A_sequence
 # import keysight_pxi_load as ks_pxi
 from slab.instruments.keysight import keysight_pxi_load as ks_pxi
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
-from slab.instruments.awg.Tek70001 import write_Tek70001_sequence
+# from slab.instruments.awg.Tek70001 import write_Tek70001_sequence
 # from slab.instruments.awg.Tek70001 import write_Tek70001_file
 from slab.instruments.awg import M8195A
-from slab.instruments.Alazar import Alazar
+# from slab.instruments.Alazar import Alazar
 import numpy as np
 import os
 import time
@@ -20,6 +20,8 @@ import json
 # from slab.experiments.PulseExperiments.get_data import get_iq_data, get_singleshot_data
 from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
 
+# Modified so a bunch of tek and alazar stuff is commented out. Modify if you want to use these ever again
+
 class Experiment:
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None):
         self.quantum_device_cfg = quantum_device_cfg
@@ -28,17 +30,20 @@ class Experiment:
         im = InstrumentManager()
 
         # ADDED 4/21, MAKE SURE YOUR KEYSIGHT_PXI_LOAD HAS TWO CLASSES FOR THIS
+        # Could alter kpl to go through if statements on "1" and "2" but we're lazy so split it into classes
         alphabetlist = ["Alice", "Bob"]
         if len(self.experiment_cfg[name]['on_qubits']) == 2:
             self.pxi = ks_pxi.KeysightDoubleQubit(self.experiment_cfg, self.hardware_cfg, self.quantum_device_cfg,
                                                   sequences, name)
             self.two_qubits = True
             print("Running experiment with both Alice and Bob")
-        else:
+        elif len(self.experiment_cfg[name]['on_qubits']) == 1:
             self.pxi = ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg, self.quantum_device_cfg,
                                               sequences, name)
             self.two_qubits = False
             print("Running experiment with qubit " + alphabetlist[int(self.experiment_cfg[name]['on_qubits'][0])-1])
+        else:
+            print("You have too many qubits, or possibly zero qubits. Weep, and then amend keysight_pxi_load")
 
 
 
@@ -92,7 +97,7 @@ class Experiment:
 
         self.I = None
         self.Q = None
-        # self.data = None
+        self.data = None
         self.prep_tek2 = False
 
     def initiate_pxi(self, name, sequences):
@@ -121,38 +126,38 @@ class Experiment:
             print("hello there, we just attempted to load waveforms")
         except:print("Error in configuring and loading sequences to PXI")
 
-    def initiate_tek2(self, name,path, sequences):
-        if 'sideband' in name:
-            try:
-                print("Connected to", self.tek2.get_id())
-                tek2_waveform_channels = self.hardware_cfg['awg_info']['tek70001a']['waveform_channels']
-                tek2_waveforms = [sequences[channel] for channel in tek2_waveform_channels]
-                for waveform in tek2_waveforms:
-                    write_Tek70001_sequence(waveform,os.path.join(path, 'sequences/'), name,awg=self.tek2)
-                self.tek2.prep_experiment()
-            except:print("tek2 sequence not uploaded")
+    # def initiate_tek2(self, name,path, sequences):
+    #     if 'sideband' in name:
+    #         try:
+    #             print("Connected to", self.tek2.get_id())
+    #             tek2_waveform_channels = self.hardware_cfg['awg_info']['tek70001a']['waveform_channels']
+    #             tek2_waveforms = [sequences[channel] for channel in tek2_waveform_channels]
+    #             for waveform in tek2_waveforms:
+    #                 write_Tek70001_sequence(waveform,os.path.join(path, 'sequences/'), name,awg=self.tek2)
+    #             self.tek2.prep_experiment()
+    #         except:print("tek2 sequence not uploaded")
 
-    def initiate_tek(self, name, path, sequences):
-        print(self.tek.get_id())
-        tek_waveform_channels_num = 4
-        tek_waveform_channels = self.hardware_cfg['awg_info']['tek5014a']['waveform_channels']
-        tek_marker_channels = self.hardware_cfg['awg_info']['tek5014a']['marker_channels']
-        tek_waveforms = []
-        for channel in tek_waveform_channels:
-            if not channel == None:
-                tek_waveforms.append(sequences[channel])
-            else:
-                tek_waveforms.append(np.zeros_like(sequences[tek_waveform_channels[0]]))
-        tek_markers = []
-        for channel in tek_marker_channels:
-            if not channel == None:
-                tek_markers.append(sequences[channel])
-            else:
-                tek_markers.append(np.zeros_like(sequences[tek_marker_channels[0]]))
-        write_Tek5014_file(tek_waveforms, tek_markers, os.path.join(path, 'sequences/tek.awg'), name)
-        self.tek.pre_load()
-        self.tek.load_sequence_file(os.path.join(path, 'sequences/tek.awg'), force_reload=True)
-        self.tek.set_amps_offsets(channel_offsets=self.hardware_cfg['awg_info']['tek5014a']['offsets'])
+    # def initiate_tek(self, name, path, sequences):
+    #     print(self.tek.get_id())
+    #     tek_waveform_channels_num = 4
+    #     tek_waveform_channels = self.hardware_cfg['awg_info']['tek5014a']['waveform_channels']
+    #     tek_marker_channels = self.hardware_cfg['awg_info']['tek5014a']['marker_channels']
+    #     tek_waveforms = []
+    #     for channel in tek_waveform_channels:
+    #         if not channel == None:
+    #             tek_waveforms.append(sequences[channel])
+    #         else:
+    #             tek_waveforms.append(np.zeros_like(sequences[tek_waveform_channels[0]]))
+    #     tek_markers = []
+    #     for channel in tek_marker_channels:
+    #         if not channel == None:
+    #             tek_markers.append(sequences[channel])
+    #         else:
+    #             tek_markers.append(np.zeros_like(sequences[tek_marker_channels[0]]))
+    #     write_Tek5014_file(tek_waveforms, tek_markers, os.path.join(path, 'sequences/tek.awg'), name)
+    #     self.tek.pre_load()
+    #     self.tek.load_sequence_file(os.path.join(path, 'sequences/tek.awg'), force_reload=True)
+    #     self.tek.set_amps_offsets(channel_offsets=self.hardware_cfg['awg_info']['tek5014a']['offsets'])
 
     def initiate_m8195a(self, path, sequences):
         print(self.m8195a.get_id())
@@ -162,8 +167,8 @@ class Experiment:
         upload_M8195A_sequence(self.m8195a, waveform_matrix, awg_info, path)
 
     def awg_prep(self):
-        self.tek.stop()
-        self.tek.prep_experiment()
+        # self.tek.stop()
+        # self.tek.prep_experiment()
         self.m8195a.stop_output()
         time.sleep(1)
 
@@ -176,7 +181,7 @@ class Experiment:
         else:
             self.m8195a.start_output()
             time.sleep(1)
-            self.tek.run()
+            # self.tek.run()
 
     def awg_stop(self,name):
         try:
@@ -205,23 +210,26 @@ class Experiment:
             # unmodified 4/21 bc not used
             self.pxi.AWG_module.stopAll()
             self.pxi.AWG_module.clearAll()
-            self.pxi.m_module.stopAll()
-            self.pxi.m_module.clearAll()
-            self.pxi.trig_module.stopAll()
-            self.pxi.trig_module.clearAll()
+            self.pxi.m_8_module.stopAll()
+            self.pxi.m_8_module.clearAll()
+            self.pxi.m_9_module.stopAll()
+            self.pxi.m_9_module.clearAll()
+            # self.pxi.trig_module.stopAll()
+            # self.pxi.trig_module.clearAll()
             self.pxi.DIG_module.stopAll()
             self.pxi.chassis.close()
         except:print('Error in stopping and closing PXI')
 
-    def initiate_alazar(self, sequence_length, averages):
-        self.hardware_cfg['alazar']['samplesPerRecord'] = 2 ** (
-            self.quantum_device_cfg['alazar_readout']['width'] - 1).bit_length()
-        self.hardware_cfg['alazar']['recordsPerBuffer'] = sequence_length
-        self.hardware_cfg['alazar']['recordsPerAcquisition'] = int(
-            sequence_length * min(averages, 100))
-        print("Prep Alazar Card")
-        self.adc = Alazar(self.hardware_cfg['alazar'])
+    # def initiate_alazar(self, sequence_length, averages):
+    #     self.hardware_cfg['alazar']['samplesPerRecord'] = 2 ** (
+    #         self.quantum_device_cfg['alazar_readout']['width'] - 1).bit_length()
+    #     self.hardware_cfg['alazar']['recordsPerBuffer'] = sequence_length
+    #     self.hardware_cfg['alazar']['recordsPerAcquisition'] = int(
+    #         sequence_length * min(averages, 100))
+    #     print("Prep Alazar Card")
+    #     self.adc = Alazar(self.hardware_cfg['alazar'])
 
+# This seems not to work or be used
     def initiate_readout_rf_m8195a(self):
         self.rf1.set_frequency(self.quantum_device_cfg['heterodyne']['1']['lo_freq'] * 1e9)
         self.rf2.set_frequency(self.quantum_device_cfg['heterodyne']['2']['lo_freq'] * 1e9)
@@ -290,23 +298,6 @@ class Experiment:
                 try: d.set_ext_pulse(mod=True)
                 except: print('SignalCores  - no external pulse')
         except:print ("Error in qubit drive LO configuration")
-
-        # # Added by MGP on October 13 2020 from Gerbert
-        ## DOES NOT WORK AS IS -- check out separate initiate function
-        # try:
-        #     for ii, d in enumerate(self.drive_los):
-        #     # Added from Gerbert by MGP, October 13 2020
-        #     # Goal is to prep signal core
-        #         drive_freq = self.quantum_device_cfg['qubit'][str(ii + 1)]['freq'] - \
-        #                  self.quantum_device_cfg['pulse_info'][str(ii + 1)]['iq_freq']
-        #         d.set_frequency(drive_freq * 1e9)
-        #         d.set_clock_reference(ext_ref=True)
-        #         d.set_output_state(True)
-        #         print("drive power enabled, check pulse_experiment")
-        #         d.set_rf_mode(val=0) # single rf tone on output 1
-        #         d.set_standby(False)
-        #         d.set_rf2_standby(True) # nothing out rf 2
-        # except: print("Error in signal core part of qubit drive LO configuration, fine if no signal core")
 
     def initiate_readout_LOs(self):
         try:
@@ -567,123 +558,123 @@ class Experiment:
         print('\n')
         print(self.data_file)
 
-    def get_singleshot_data_alazar(self, sequence_length, acquisition_num, data_file, seq_data_file):
-        avgPerAcquisition = int(min(acquisition_num, 100))
-        numAcquisition = int(np.ceil(acquisition_num / 100))
-        het_IFreqList = []
-
-        for qubit_id in ["1","2"]:
-            het_IFreqList += [self.quantum_device_cfg['heterodyne'][qubit_id]['freq']]
-
-        single_data1_list = []
-        single_data2_list = []
-        for ii in tqdm(np.arange(numAcquisition)):
-            # single_data1/2: index: (hetero_freqs, cos/sin, all_seqs)
-            single_data1, single_data2, single_record1, single_record2 = \
-                self.adc.acquire_singleshot_heterodyne_multitone_data_2(het_IFreqList, prep_function=self.awg_prep,
-                                                                        start_function=self.awg_run,
-                                                                        excise=
-                                                                        self.quantum_device_cfg['alazar_readout'][
-                                                                            'window'])
-            single_data1_list.append(single_data1)
-            single_data2_list.append(single_data2)
-
-            single_data1 = np.array(single_data1_list)
-            single_data2 = np.array(single_data2_list)
-
-            single_data1 = np.transpose(single_data1, (1, 2, 0, 3))
-            single_data1 = single_data1.reshape(*single_data1.shape[:2], -1)
-
-            single_data2 = np.transpose(single_data2, (1, 2, 0, 3))
-            single_data2 = single_data2.reshape(*single_data2.shape[:2], -1)
-
-            single_data1 = single_data1.reshape(*single_data1.shape[:2], -1, sequence_length)
-            single_data2 = single_data2.reshape(*single_data2.shape[:2], -1, sequence_length)
-
-            # single_data1/2: index: (hetero_freqs, cos/sin , seqs, acquisitions)
-            single_data1 = np.transpose(single_data1, (0, 1, 3, 2))
-            single_data2 = np.transpose(single_data2, (0, 1, 3, 2))
-
-            data_1_cos_list, data_1_sin_list, data_1_list = get_singleshot_data(single_data1, 0,
-                                                                                self.expt_cfg.get('pi_calibration',
-                                                                                                  False))
-            data_2_cos_list, data_2_sin_list, data_2_list = get_singleshot_data(single_data2, 1,
-                                                                                self.expt_cfg.get('pi_calibration',
-                                                                                                  False))
-            data_1_avg_list = np.mean(data_1_list, axis=1)
-            data_2_avg_list = np.mean(data_2_list, axis=1)
-
-            if seq_data_file == None:
-                self.slab_file = SlabFile(data_file)
-                with self.slab_file as f:
-                    f.add('single_data1', single_data1)
-                    f.add('expt_avg_data_ch1', data_1_avg_list)
-                    f.add('single_data2', single_data2)
-                    f.add('expt_avg_data_ch2', data_2_avg_list)
-                    f.close()
-
-        if not seq_data_file == None:
-            self.slab_file = SlabFile(data_file)
-            with self.slab_file as f:
-                f.append('single_data1', single_data1)
-                f.append('single_data2', single_data2)
-                f.append_line('expt_avg_data_ch1', data_1_avg_list)
-                f.append_line('expt_avg_data_ch2', data_2_avg_list)
-                f.close()
-        self.adc.close()
-        self.awg_prep()
-
-    def get_avg_data_alazar(self, acquisition_num, data_file, seq_data_file):
-        expt_data_ch1 = None
-        expt_data_ch2 = None
-        for ii in tqdm(np.arange(max(1, int(acquisition_num / 100)))):
-            tpts, ch1_pts, ch2_pts = self.adc.acquire_avg_data_by_record(prep_function=self.awg_prep,
-                                                                         start_function=self.awg_run,
-                                                                         excise=
-                                                                         self.quantum_device_cfg['alazar_readout'][
-                                                                             'window'])
-
-            if expt_data_ch1 is None:
-                expt_data_ch1 = ch1_pts
-                expt_data_ch2 = ch2_pts
-            else:
-                expt_data_ch1 = (expt_data_ch1 * ii + ch1_pts) / (ii + 1.0)
-                expt_data_ch2 = (expt_data_ch2 * ii + ch2_pts) / (ii + 1.0)
-
-            data_1_cos_list, data_1_sin_list, data_1_list = get_iq_data(expt_data_ch1,
-                                                                        het_freq=
-                                                                        self.quantum_device_cfg['heterodyne']['1'][
-                                                                            'freq'],
-                                                                        td=0,
-                                                                        pi_cal=self.expt_cfg.get('pi_calibration',
-                                                                                                 False))
-            data_2_cos_list, data_2_sin_list, data_2_list = get_iq_data(expt_data_ch2,
-                                                                        het_freq=
-                                                                        self.quantum_device_cfg['heterodyne']['2'][
-                                                                            'freq'],
-                                                                        td=0,
-                                                                        pi_cal=self.expt_cfg.get('pi_calibration',
-                                                                                                 False))
-
-            if seq_data_file == None:
-                self.slab_file = SlabFile(data_file)
-                with self.slab_file as f:
-                    f.add('expt_data_ch1', expt_data_ch1)
-                    f.add('expt_avg_data_ch1', data_1_list)
-                    f.add('expt_data_ch2', expt_data_ch2)
-                    f.add('expt_avg_data_ch2', data_2_list)
-                    f.close()
-        self.adc.close()
-        self.awg_prep()
-        if not seq_data_file == None:
-            self.slab_file = SlabFile(data_file)
-            with self.slab_file as f:
-                f.append_line('expt_avg_data_ch1', data_1_list)
-                f.append_line('expt_avg_data_ch2', data_2_list)
-                f.close()
+    # def get_singleshot_data_alazar(self, sequence_length, acquisition_num, data_file, seq_data_file):
+    #     avgPerAcquisition = int(min(acquisition_num, 100))
+    #     numAcquisition = int(np.ceil(acquisition_num / 100))
+    #     het_IFreqList = []
+    #
+    #     for qubit_id in ["1","2"]:
+    #         het_IFreqList += [self.quantum_device_cfg['heterodyne'][qubit_id]['freq']]
+    #
+    #     single_data1_list = []
+    #     single_data2_list = []
+    #     for ii in tqdm(np.arange(numAcquisition)):
+    #         # single_data1/2: index: (hetero_freqs, cos/sin, all_seqs)
+    #         single_data1, single_data2, single_record1, single_record2 = \
+    #             self.adc.acquire_singleshot_heterodyne_multitone_data_2(het_IFreqList, prep_function=self.awg_prep,
+    #                                                                     start_function=self.awg_run,
+    #                                                                     excise=
+    #                                                                     self.quantum_device_cfg['alazar_readout'][
+    #                                                                         'window'])
+    #         single_data1_list.append(single_data1)
+    #         single_data2_list.append(single_data2)
+    #
+    #         single_data1 = np.array(single_data1_list)
+    #         single_data2 = np.array(single_data2_list)
+    #
+    #         single_data1 = np.transpose(single_data1, (1, 2, 0, 3))
+    #         single_data1 = single_data1.reshape(*single_data1.shape[:2], -1)
+    #
+    #         single_data2 = np.transpose(single_data2, (1, 2, 0, 3))
+    #         single_data2 = single_data2.reshape(*single_data2.shape[:2], -1)
+    #
+    #         single_data1 = single_data1.reshape(*single_data1.shape[:2], -1, sequence_length)
+    #         single_data2 = single_data2.reshape(*single_data2.shape[:2], -1, sequence_length)
+    #
+    #         # single_data1/2: index: (hetero_freqs, cos/sin , seqs, acquisitions)
+    #         single_data1 = np.transpose(single_data1, (0, 1, 3, 2))
+    #         single_data2 = np.transpose(single_data2, (0, 1, 3, 2))
+    #
+    #         data_1_cos_list, data_1_sin_list, data_1_list = get_singleshot_data(single_data1, 0,
+    #                                                                             self.expt_cfg.get('pi_calibration',
+    #                                                                                               False))
+    #         data_2_cos_list, data_2_sin_list, data_2_list = get_singleshot_data(single_data2, 1,
+    #                                                                             self.expt_cfg.get('pi_calibration',
+    #                                                                                               False))
+    #         data_1_avg_list = np.mean(data_1_list, axis=1)
+    #         data_2_avg_list = np.mean(data_2_list, axis=1)
+    #
+    #         if seq_data_file == None:
+    #             self.slab_file = SlabFile(data_file)
+    #             with self.slab_file as f:
+    #                 f.add('single_data1', single_data1)
+    #                 f.add('expt_avg_data_ch1', data_1_avg_list)
+    #                 f.add('single_data2', single_data2)
+    #                 f.add('expt_avg_data_ch2', data_2_avg_list)
+    #                 f.close()
+    #
+    #     if not seq_data_file == None:
+    #         self.slab_file = SlabFile(data_file)
+    #         with self.slab_file as f:
+    #             f.append('single_data1', single_data1)
+    #             f.append('single_data2', single_data2)
+    #             f.append_line('expt_avg_data_ch1', data_1_avg_list)
+    #             f.append_line('expt_avg_data_ch2', data_2_avg_list)
+    #             f.close()
+    #     self.adc.close()
+    #     self.awg_prep()
+    #
+    # def get_avg_data_alazar(self, acquisition_num, data_file, seq_data_file):
+    #     expt_data_ch1 = None
+    #     expt_data_ch2 = None
+    #     for ii in tqdm(np.arange(max(1, int(acquisition_num / 100)))):
+    #         tpts, ch1_pts, ch2_pts = self.adc.acquire_avg_data_by_record(prep_function=self.awg_prep,
+    #                                                                      start_function=self.awg_run,
+    #                                                                      excise=
+    #                                                                      self.quantum_device_cfg['alazar_readout'][
+    #                                                                          'window'])
+    #
+    #         if expt_data_ch1 is None:
+    #             expt_data_ch1 = ch1_pts
+    #             expt_data_ch2 = ch2_pts
+    #         else:
+    #             expt_data_ch1 = (expt_data_ch1 * ii + ch1_pts) / (ii + 1.0)
+    #             expt_data_ch2 = (expt_data_ch2 * ii + ch2_pts) / (ii + 1.0)
+    #
+    #         data_1_cos_list, data_1_sin_list, data_1_list = get_iq_data(expt_data_ch1,
+    #                                                                     het_freq=
+    #                                                                     self.quantum_device_cfg['heterodyne']['1'][
+    #                                                                         'freq'],
+    #                                                                     td=0,
+    #                                                                     pi_cal=self.expt_cfg.get('pi_calibration',
+    #                                                                                              False))
+    #         data_2_cos_list, data_2_sin_list, data_2_list = get_iq_data(expt_data_ch2,
+    #                                                                     het_freq=
+    #                                                                     self.quantum_device_cfg['heterodyne']['2'][
+    #                                                                         'freq'],
+    #                                                                     td=0,
+    #                                                                     pi_cal=self.expt_cfg.get('pi_calibration',
+    #                                                                                              False))
+    #
+    #         if seq_data_file == None:
+    #             self.slab_file = SlabFile(data_file)
+    #             with self.slab_file as f:
+    #                 f.add('expt_data_ch1', expt_data_ch1)
+    #                 f.add('expt_avg_data_ch1', data_1_list)
+    #                 f.add('expt_data_ch2', expt_data_ch2)
+    #                 f.add('expt_avg_data_ch2', data_2_list)
+    #                 f.close()
+    #     self.adc.close()
+    #     self.awg_prep()
+    #     if not seq_data_file == None:
+    #         self.slab_file = SlabFile(data_file)
+    #         with self.slab_file as f:
+    #             f.append_line('expt_avg_data_ch1', data_1_list)
+    #             f.append_line('expt_avg_data_ch2', data_2_list)
+    #             f.close()
 
     def get_avg_data_pxi(self,expt_cfg, seq_data_file,rotate_iq_A = False,rotate_iq_B = False,phi_A=0, phi_B=0):
-        # modified 4/21
+        # modified 4/21, 7/21 [MGP]
         wA = self.pxi.readout_A_window/self.pxi.dt_dig
         wB = self.pxi.readout_B_window / self.pxi.dt_dig
         # expt_pts = np.arange(expt_cfg['start'],expt_cfg['stop'],expt_cfg['step'])
@@ -693,139 +684,205 @@ class Experiment:
 
         # I,Q = self.pxi.acquire_avg_data(wA,wB,pi_calibration,rotate_iq_A,rotate_iq_B,phi_A,phi_B)
 
-        # if self.pxi.two_qubits:
-        # destroyed pxi condition, made it part of pulse expt deciding which class to call from keysight pxi load
         if self.two_qubits:
-            IA, QA, IB, QB = self.pxi.acquire_avg_data(wA, wB, pi_calibration, rotate_iq_A, rotate_iq_B, phi_A, phi_B)
+            # IA, QA, IB, QB = ...
+            data = self.pxi.acquire_avg_data(wA, wB, pi_calibration, rotate_iq_A, rotate_iq_B, phi_A, phi_B)
             if seq_data_file == None:
                 self.slab_file = SlabFile(self.data_file)
                 with self.slab_file as f:
                     # f.add('expt_pts',expt_pts)
-                    f.add('IA', IA)
-                    f.add('QA', QA)
-                    f.add('IB', IB)
-                    f.add('QB', QB)
+                    f.add('IA', data[0][0])
+                    f.add('QA', data[0][1])
+                    f.add('IB', data[1][0])
+                    f.add('QB', data[1][1])
             else:
                 self.slab_file = SlabFile(seq_data_file)
                 with self.slab_file as f:
-                    f.append_line('IA', IA)
-                    f.append_line('QA', QA)
-                    f.append_line('IB', IB)
-                    f.append_line('QB', QB)
-            # modified 7/2/21
+                    f.append_line('IA', data[0][0])
+                    f.append_line('QA', data[0][1])
+                    f.append_line('IB', data[1][0])
+                    f.append_line('QB', data[1][1])
             # return IA, QA, IB, QB
-            return data
         else:
-            I, Q = self.pxi.acquire_avg_data(wA, wB, pi_calibration, rotate_iq_A, rotate_iq_B, phi_A, phi_B)
+            data = self.pxi.acquire_avg_data(wA, wB, pi_calibration, rotate_iq_A, rotate_iq_B, phi_A, phi_B)
             if seq_data_file == None:
                 self.slab_file = SlabFile(self.data_file)
                 with self.slab_file as f:
                     # f.add('expt_pts',expt_pts)
-                    f.add('I', I)
-                    f.add('Q', Q)
+                    f.add('I', data[0][0])
+                    f.add('Q', data[0][1])
             else:
                 self.slab_file = SlabFile(seq_data_file)
                 with self.slab_file as f:
-                    f.append_line('I', I)
-                    f.append_line('Q', Q)
+                    f.append_line('I', data[0][0])
+                    f.append_line('Q', data[0][1])
             # modified 7/2/21
             # return I, Q
-            return data
+        return data
 
 
 
-    def get_ss_data_pxi(self,expt_cfg, seq_data_file):
+    def get_ss_data_pxi(self, expt_cfg, seq_data_file):
         # Modified 4/21
         wA = self.pxi.readout_A_window / self.pxi.dt_dig
         wB = self.pxi.readout_B_window / self.pxi.dt_dig
         # need both even if one readout is disabled. It just won't get used inthe below function in keysight pxi load
         if self.two_qubits:
-            IA, QA, IB, QB = self.pxi.SSdata_many(wA, wB)
+            # IA, QA, IB, QB
+            data = self.pxi.SSdata_many(wA, wB)
             if seq_data_file == None:
                 self.slab_file = SlabFile(self.data_file)
                 with self.slab_file as f:
-                    f.add('IA', IA)
-                    f.add('QA', QA)
-                    f.add('IB', IB)
-                    f.add('QB', QB)
+                    f.add('IA', data[0][0])
+                    f.add('QA', data[0][1])
+                    f.add('IB', data[1][0])
+                    f.add('QB', data[1][1])
             else:
                 self.slab_file = SlabFile(seq_data_file)
                 with self.slab_file as f:
-                    f.append_line('IA', IA.flatten())
-                    f.append_line('QA', QA.flatten())
-                    f.append_line('IB', IB.flatten())
-                    f.append_line('QB', QB.flatten())
+                    f.append_line('IA', data[0][0].flatten())
+                    f.append_line('QA', data[0][1].flatten())
+                    f.append_line('IB', data[1][0].flatten())
+                    f.append_line('QB', data[1][1].flatten())
             #return IA, QA, IB, QB
-            return data
         else:
-            I, Q = self.pxi.SSdata_many(wA, wB)
+            data = self.pxi.SSdata_many(wA, wB)
 
             if seq_data_file == None:
                 self.slab_file = SlabFile(self.data_file)
                 with self.slab_file as f:
-                    f.add('I', I)
-                    f.add('Q', Q)
+                    f.add('I', data[0][0])
+                    f.add('Q', data[0][1])
             else:
                 self.slab_file = SlabFile(seq_data_file)
                 with self.slab_file as f:
-                    f.append_line('I', I.flatten())
-                    f.append_line('Q', Q.flatten())
+                    f.append_line('I', data[0][0].flatten())
+                    f.append_line('Q', data[0][1].flatten())
 
             # return I, Q
-            return data
+        return data
         # Note that if you fail to put two_qubits in the name of a two qubit experiment this will not be good.
         # In the future may modify the condition to hew more closely to config files
 
+    def get_traj_data_pxi(self, seq_data_file):
 
+        # These are not averaged, so they save really big arrays in all the elements of data
+        # Doesn't mean we have to treat data differently, though?
+        # Troubleshoot as necessary -- MGP 7/21
 
+        wA = self.pxi.readout_A_window / self.pxi.dt_dig
+        wB = self.pxi.readout_B_window / self.pxi.dt_dig
 
-    def get_column_averaged_data(self,expt_cfg,seq_data_file):
-        # Not modified 4/21, will not work in two qubit setup unless you change it
-        w = self.pxi.readout_window / self.pxi.dt_dig
-
-        I, Q = self.pxi.column_averaged_data()
-        print(I[0])
-        if seq_data_file == None:
-            self.slab_file = SlabFile(self.data_file)
-            with self.slab_file as f:
-                f.add('I', I)
-                f.add('Q', Q)
+        if self.two_qubits:
+            data = self.pxi.traj_data_many(wA, wB)
+            if seq_data_file == None:
+                self.slab_file = SlabFile(self.data_file)
+                with self.slab_file as f:
+                    f.add('IA', data[0][0])
+                    f.add('QA', data[0][1])
+                    f.add('IB', data[1][0])
+                    f.add('QB', data[1][1])
+            else:
+                self.slab_file = SlabFile(seq_data_file)
+                with self.slab_file as f:
+                    f.append_line('IA', data[0][0].flatten())
+                    f.append_line('QA', data[0][1].flatten())
+                    f.append_line('IB', data[1][0].flatten())
+                    f.append_line('QB', data[1][1].flatten())
         else:
-            self.slab_file = SlabFile(seq_data_file)
-            with self.slab_file as f:
-                f.append_line('I', I.flatten())
-                f.append_line('Q', Q.flatten())
-
-        #return I, Q
+            data = self.pxi.traj_data_many(wA, wB)
+            if seq_data_file == None:
+                self.slab_file = SlabFile(self.data_file)
+                with self.slab_file as f:
+                    f.add('I', data[0][0])
+                    f.add('Q', data[0][1])
+            else:
+                self.slab_file = SlabFile(seq_data_file)
+                with self.slab_file as f:
+                    f.append_line('I', data[0][0].flatten())
+                    f.append_line('Q', data[0][1].flatten())
         return data
 
-    def run_experiment(self, sequences, path, name, seq_data_file=None, update_awg=True):
 
-        self.initiate_readout_rf_m8195a()
-        self.initiate_flux()
-
-        if update_awg:
-            self.initiate_tek(name, path, sequences)
-            self.initiate_m8195a(path, sequences)
-
-        self.m8195a.start_output()
-        self.tek.prep_experiment()
-        self.tek.run()
-
-        sequence_length = len(sequences['charge1'])
-
-        self.expt_cfg = self.experiment_cfg[name]
-        acquisition_num = self.expt_cfg['acquisition_num']
-
-        self.initiate_alazar(sequence_length, acquisition_num)
-        self.generate_datafile(path, name, seq_data_file)
-
-        if self.expt_cfg.get('singleshot', True):
-            self.get_singleshot_data_alazar(sequence_length, acquisition_num, self.data_file, seq_data_file)
+    def get_traj_data_pxi_nowindow(self, seq_data_file):
+        if self.two_qubits:
+            data = self.pxi.traj_data_many_nowindow(self)
+            if seq_data_file == None:
+                self.slab_file = SlabFile(self.data_file)
+                with self.slab_file as f:
+                    f.add('IA', data[0][0])
+                    f.add('QA', data[0][1])
+                    f.add('IB', data[1][0])
+                    f.add('QB', data[1][1])
+            else:
+                self.slab_file = SlabFile(seq_data_file)
+                with self.slab_file as f:
+                    f.append_line('IA', data[0][0].flatten())
+                    f.append_line('QA', data[0][1].flatten())
+                    f.append_line('IB', data[1][0].flatten())
+                    f.append_line('QB', data[1][1].flatten())
         else:
-            self.get_avg_data_alazar(acquisition_num, self.data_file, seq_data_file)
+            data = self.pxi.traj_data_many_nowindow(self)
+            if seq_data_file == None:
+                self.slab_file = SlabFile(self.data_file)
+                with self.slab_file as f:
+                    f.add('I', data[0][0])
+                    f.add('Q', data[0][1])
+            else:
+                self.slab_file = SlabFile(seq_data_file)
+                with self.slab_file as f:
+                    f.append_line('I', data[0][0].flatten())
+                    f.append_line('Q', data[0][1].flatten())
+        return data
 
-        return self.data_file
+    #
+    # def get_column_averaged_data(self,expt_cfg,seq_data_file):
+    #     # Not modified 4/21, will not work in two qubit setup unless you change it
+    #     w = self.pxi.readout_window / self.pxi.dt_dig
+    #
+    #     I, Q = self.pxi.column_averaged_data()
+    #     print(I[0])
+    #     if seq_data_file == None:
+    #         self.slab_file = SlabFile(self.data_file)
+    #         with self.slab_file as f:
+    #             f.add('I', I)
+    #             f.add('Q', Q)
+    #     else:
+    #         self.slab_file = SlabFile(seq_data_file)
+    #         with self.slab_file as f:
+    #             f.append_line('I', I.flatten())
+    #             f.append_line('Q', Q.flatten())
+    #
+    #     #return I, Q
+    #     return data
+
+    # def run_experiment(self, sequences, path, name, seq_data_file=None, update_awg=True):
+    #
+    #     self.initiate_readout_rf_m8195a()
+    #     self.initiate_flux()
+    #
+    #     if update_awg:
+    #         self.initiate_tek(name, path, sequences)
+    #         self.initiate_m8195a(path, sequences)
+    #
+    #     self.m8195a.start_output()
+    #     self.tek.prep_experiment()
+    #     self.tek.run()
+    #
+    #     sequence_length = len(sequences['charge1'])
+    #
+    #     self.expt_cfg = self.experiment_cfg[name]
+    #     acquisition_num = self.expt_cfg['acquisition_num']
+    #
+    #     self.initiate_alazar(sequence_length, acquisition_num)
+    #     self.generate_datafile(path, name, seq_data_file)
+    #
+    #     if self.expt_cfg.get('singleshot', True):
+    #         self.get_singleshot_data_alazar(sequence_length, acquisition_num, self.data_file, seq_data_file)
+    #     else:
+    #         self.get_avg_data_alazar(acquisition_num, self.data_file, seq_data_file)
+    #
+    #     return self.data_file
 
     def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
         self.expt_cfg = self.experiment_cfg[name]
@@ -840,40 +897,32 @@ class Experiment:
         self.initiate_drive_attenuators() # [AV] load drive attens defined in hardware_cfg/drive_attens[]
         self.initiate_readout_attenuators() # [AV] load drive attens defined in hardware_cfg/read_attens[]
         self.initiate_pxi(name, sequences)
-        self.initiate_tek2(name,path,sequences)
+        # self.initiate_tek2(name,path,sequences)
         time.sleep(0.1)
         self.awg_run(run_pxi=True,name=name)
 
 
         if check_sync:self.pxi.acquireandplot(expt_num)
 
+        # Modified 7/21 to take out the if self.two_qubits conditions [MGP]
         else:
-            if self.two_qubits:
-                if self.expt_cfg['singleshot']:
-                    self.IA,self.QA,self.IB,self.QB =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
-
-                else:
-                    self.IA,self.QA,self.IB,self.QB = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq_A = self.rotate_iq_A,rotate_iq_B = self.rotate_iq_B,phi_A=self.iq_angle_A, phi_B = self.iq_angle_B)
-
+            if self.expt_cfg['singleshot']:
+                self.data =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+            elif self.expt_cfg['traj_data']:
+                self.data = self.get_traj_data_pxi(seq_data_file=seq_data_file)
+            elif self.expt_cfg['traj_data_nowindow']:
+                self.data = self.get_traj_data_pxi_nowindow(seq_data_file=seq_data_file)
             else:
-                if self.expt_cfg['singleshot']:
-                    self.I,self.Q =  self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
-                # elif self.expt_cfg['columnaveraged']:
-                #     print("column averaging")
-                #     self.I, self.Q = self.get_column_averaged_data(self.expt_cfg, seq_data_file=seq_data_file)
-                else:
-                    self.I,self.Q = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq_A = self.rotate_iq_A,rotate_iq_B = self.rotate_iq_B,phi_A=self.iq_angle_A, phi_B = self.iq_angle_B)
+                self.data = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq_A = self.rotate_iq_A,rotate_iq_B = self.rotate_iq_B,phi_A=self.iq_angle_A, phi_B = self.iq_angle_B)
+
+
 
         self.awg_stop(name)
         self.close_signalcore_los()
 
-        if self.two_qubits:
-            return self.IA, self.QA, self.IB, self.QB
-        else:
-            return self.I, self.Q
+        return self.data
 
-    def run_experiment_pxi_justinits(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
-        self.expt_cfg = self.experiment_cfg[name]
+    def run_experiment_pxi_justinits(self, sequences, path,  name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
         self.generate_datafile(path, name, seq_data_file=seq_data_file)
         self.set_trigger()
         self.initiate_drive_LOs()
@@ -889,33 +938,25 @@ class Experiment:
         self.awg_run(run_pxi=True, name=name)
 
     def run_experiment_pxi_resspec(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
+        self.expt_cfg = self.experiment_cfg[name]
         if check_sync:
             self.pxi.acquireandplot(expt_num)
 
         else:
-            if self.two_qubits:
-                if self.expt_cfg['singleshot']:
-                    self.IA, self.QA, self.IB, self.QB = self.get_ss_data_pxi(self.expt_cfg,
-                                                                              seq_data_file=seq_data_file)
+            if self.expt_cfg['singleshot']:
+                self.data = self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
+            elif self.expt_cfg['traj_data']:
+                self.data = self.get_traj_data_pxi(seq_data_file=seq_data_file)
+            elif self.expt_cfg['traj_data_nowindow']:
+                self.data = self.get_traj_data_pxi_nowindow(seq_data_file=seq_data_file)
 
-                else:
-                    self.IA, self.QA, self.IB, self.QB = self.get_avg_data_pxi(self.expt_cfg,
-                                                                               seq_data_file=seq_data_file,
+            else:
+                self.data = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,
                                                                                rotate_iq_A=self.rotate_iq_A,
                                                                                rotate_iq_B=self.rotate_iq_B,
                                                                                phi_A=self.iq_angle_A,
                                                                                phi_B=self.iq_angle_B)
 
-            else:
-                if self.expt_cfg['singleshot']:
-                    self.I, self.Q = self.get_ss_data_pxi(self.expt_cfg, seq_data_file=seq_data_file)
-                # elif self.expt_cfg['columnaveraged']:
-                #     print("column averaging")
-                #     self.I, self.Q = self.get_column_averaged_data(self.expt_cfg, seq_data_file=seq_data_file)
-                else:
-                    self.I, self.Q = self.get_avg_data_pxi(self.expt_cfg, seq_data_file=seq_data_file,
-                                                           rotate_iq_A=self.rotate_iq_A, rotate_iq_B=self.rotate_iq_B,
-                                                           phi_A=self.iq_angle_A, phi_B=self.iq_angle_B)
 
         self.pxi.m_9_module.stopAll()
         self.pxi.DIG_module.stopAll()
@@ -938,26 +979,15 @@ class Experiment:
         self.pxi.DIG_ch_4.start()
         time.sleep(0.1)
 
-        if self.two_qubits:
-            return self.IA, self.QA, self.IB, self.QB
-        else:
-            return self.I, self.Q
+        return self.data
 
 
 
-
-
-
-    # In the middle of modifying, 4/21
+    # In the middle of modifying, 7/21
     def post_analysis(self,experiment_name,P='I',show = False,check_sync = False):
         if check_sync:pass
         else:
-            if self.two_qubits:
-                PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name,
-                                    self.IA, self.QA, self.IB, self.QB, P, show)
-            elif self.experiment_cfg[experiment_name]['on_qubits'][0] == "1":
-                PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name,
-                                    self.I, self.Q, None, None, P, show)
-            elif self.experiment_cfg[experiment_name]['on_qubits'][0] == "2":
-                PA = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name,
-                                    None, None, self.I, self.Q, P, show)
+            P = PostExperiment(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, experiment_name,
+                                    self.data, P, show)
+            return P
+            # Check this

@@ -678,6 +678,7 @@ class KeysightDoubleQubit:
 
     def SSdata_many(self, wA=[0, -1], wB=[0, -1]):
 
+        data = []
         IA = []
         QA = []
         IB = []
@@ -687,11 +688,61 @@ class KeysightDoubleQubit:
             QA.append(np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(wA[0]):int(wA[1])], 0))
             IB.append(np.mean(np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(wB[0]):int(wB[1])], 0))
             QB.append(np.mean(np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(wB[0]):int(wB[1])], 0))
-        return np.array(IA).T, np.array(QA).T, np.array(IB).T, np.array(QB).T
-        # make sure this gets ported other places right
+        IAt = np.array(IA).T
+        QAt = np.array(QA).T
+        IBt = np.array(IB).T
+        QBt = np.array(QB).T
+        data.append([IAt, QAt])
+        data.append([IBt, QBt])
+        return np.asarray(data)
 
+    def traj_data_many(self, wA=[0, -1], wB=[0, -1] ):
+        data = []
+        IA = []
+        QA = []
+        IB = []
+        QB = []
+        for ii in tqdm(range(self.num_avg)):
+            ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(wA[0]):int(wA[1])].T
+            ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(wA[0]):int(wA[1])].T
+            ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(wB[0]):int(wB[1])].T
+            ch4 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(wB[0]):int(wB[1])].T
+            IA.append(ch1)
+            QA.append(ch2)
+            IB.append(ch3)
+            QB.append(ch4)
+        data.append([IA, QA])
+        data.append([IB, QB])
+        return np.asarray(data)
+
+    def traj_data_many_nowindow(self):
+        data = []
+        # default to the most permissive window conditions by force
+        wA = [0, -1]
+        wB = [0, -1]
+        IA = []
+        QA = []
+        IB = []
+        QB = []
+        for ii in tqdm(range(self.num_avg)):
+            ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(wA[0]):int(wA[1])].T
+            ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(wA[0]):int(wA[1])].T
+            ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(wB[0]):int(wB[1])].T
+            ch4 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(wB[0]):int(wB[1])].T
+            IA.append(ch1)
+            QA.append(ch2)
+            IB.append(ch3)
+            QB.append(ch4)
+        data.append([IA, QA])
+        data.append([IB, QB])
+        return np.asarray(data)
 
     def acquire_avg_data(self,wA = [0,-1],wB = [0,-1],pi_calibration=False,rotate_iq_A = False,rotate_iq_B = False,phi_A=0,phi_B=0):
+
+        data = []
+        # self.I, self.Q = np.zeros(self.num_expt), np.zeros(self.num_expt)
+        self.IA, self.QA = np.zeros(self.num_expt), np.zeros(self.num_expt)
+        self.IB, self.QB = np.zeros(self.num_expt), np.zeros(self.num_expt)
 
         if rotate_iq_A and rotate_iq_B:
             print("Rotating IQ A&B digitally")
@@ -721,6 +772,7 @@ class KeysightDoubleQubit:
                 self.QA += np.mean(QArot, 0)
                 self.IB += np.mean(IBrot, 0)
                 self.QB += np.mean(QBrot, 0)
+
         elif rotate_iq_A and not rotate_iq_B:
             print("Rotating IQ A digitally")
             # If you want to remove tqdm to get at error messages you can do it here, just leave a note for yourself
@@ -749,6 +801,7 @@ class KeysightDoubleQubit:
                 self.QA += np.mean(QArot, 0)
                 self.IB += np.mean(IBtemp, 0)
                 self.QB += np.mean(QBtemp, 0)
+
         elif rotate_iq_B and not rotate_iq_A:
             print("Rotating IQ B digitally")
             # If you want to remove tqdm to get at error messages you can do it here, just leave a note for yourself
@@ -799,7 +852,9 @@ class KeysightDoubleQubit:
             QA = (QA[:-2] - QA[-2]) / (QA[-1] - QA[-2])
             IB = (IB[:-2] - IB[-2]) / (IB[-1] - IB[-2])
             QB = (QB[:-2] - QB[-2]) / (QB[-1] - QB[-2])
-        return IA, QA, IB, QB
+        data.append([IA, QA])
+        data.append([IB, QB])
+        return np.asarray(data)
 
 
 class KeysightSingleQubit:
@@ -1601,7 +1656,7 @@ class KeysightSingleQubit:
 
 
     def SSdata_many(self,wA =[0,-1], wB =[0,-1]):
-
+        data = []
         if self.on_qubits[0] == "1":
             I = []
             Q = []
@@ -1610,7 +1665,9 @@ class KeysightSingleQubit:
                         np.mean(np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(wA[0]):int(wA[1])], 0))
                 Q.append(
                         np.mean(np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(wA[0]):int(wA[1])], 0))
-            return np.array(I).T, np.array(Q).T
+            IA = np.array(I).T
+            QA = np.array(Q).T
+            data.append([IA, QA])
         elif self.on_qubits[0] == "2":
             I = []
             Q = []
@@ -1619,14 +1676,75 @@ class KeysightSingleQubit:
                         np.mean(np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(wB[0]):int(wB[1])], 0))
                 Q.append(
                         np.mean(np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(wB[0]):int(wB[1])], 0))
-            return np.array(I).T, np.array(Q).T
+            IB =np.array(I).T
+            QB = np.array(Q).T
+            data.append([IB, QB])
         else:
             print("You have a problem with the on_qubits option")
+        return np.asarray(data)
+
+
+    def traj_data_many(self, wA=[0, -1], wB=[0, -1] ):
+        data = []
+        if "1" in self.on_qubits:
+            IA = []
+            QA = []
+            for ii in tqdm(range(self.num_avg)):
+                ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(wA[0]):int(wA[1])].T
+                ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(wA[0]):int(wA[1])].T
+                IA.append(ch1)
+                QA.append(ch2)
+            data.append([IA, QA])
+        elif "2" in self.on_qubits:
+            IB = []
+            QB = []
+            for ii in tqdm(range(self.num_avg)):
+                ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(wB[0]):int(wB[1])].T
+                ch4 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(wB[0]):int(wB[1])].T
+                IB.append(ch3)
+                QB.append(ch4)
+            data.append([IB, QB])
+        else:
+            print("you have a problem with the on_qubits option or keysight_pxi_load class choices")
+
+        return np.asarray(data)
+
+    def traj_data_many_nowindow(self):
+        data = []
+        # just default to the most permissive window conditions by force
+        wA = [0, -1]
+        wB = [0, -1]
+        if "1" in self.on_qubits:
+            IA = []
+            QA = []
+            for ii in tqdm(range(self.num_avg)):
+                ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(wA[0]):int(wA[1])].T
+                ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(wA[0]):int(wA[1])].T
+                IA.append(ch1)
+                QA.append(ch2)
+            data.append([IA, QA])
+        elif "2" in self.on_qubits:
+            IB = []
+            QB = []
+            for ii in tqdm(range(self.num_avg)):
+                ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(wB[0]):int(wB[1])].T
+                ch4 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(wB[0]):int(wB[1])].T
+                IB.append(ch3)
+                QB.append(ch4)
+            data.append([IB, QB])
+        else:
+            print("you have a problem with the on_qubits option or keysight_pxi_load class choices")
+
+        return np.asarray(data)
 
 
     def acquire_avg_data(self,wA = [0,-1],wB = [0,-1],pi_calibration=False,rotate_iq_A = False,rotate_iq_B = False,phi_A=0,phi_B=0):
+        data = []
+        # self.I, self.Q = np.zeros(self.num_expt), np.zeros(self.num_expt)
+        self.IA, self.QA = np.zeros(self.num_expt), np.zeros(self.num_expt)
+        self.IB, self.QB = np.zeros(self.num_expt), np.zeros(self.num_expt)
 
-        if self.on_qubits[0] == "1":
+        if "1" in self.on_qubits:
             if rotate_iq_A:
                 print("Rotating IQ A digitally")
                  # If you want to remove tqdm to get at error messages you can do it here, just leave a note for yourself
@@ -1639,7 +1757,7 @@ class KeysightSingleQubit:
 
                     IAtemp = np.reshape(iAd, self.data_1.shape).T[int(wA[0]):int(wA[1])]
                     QAtemp = np.reshape(qAd, self.data_2.shape).T[int(wA[0]):int(wA[1])]
-                    # Presumably we might need different rotation angles here for A, B
+                    # We have different rotation angles for qubits A, B
                     IArot = IAtemp * np.cos(phi_A) + QAtemp * np.sin(phi_A)
                     QArot = -IAtemp * np.sin(phi_A) + QAtemp * np.cos(phi_A)
 
@@ -1656,8 +1774,8 @@ class KeysightSingleQubit:
             if pi_calibration:
                 IA = (IA[:-2] - IA[-2]) / (IA[-1] - IA[-2])
                 QA = (QA[:-2] - QA[-2]) / (QA[-1] - QA[-2])
-            return IA, QA
-        elif self.on_qubits[0] == "2":
+            data.append([IA, QA])
+        elif "2" in self.on_qubits:
             if rotate_iq_B:
                 print("Rotating IQ B digitally")
                 # If you want to remove tqdm to get at error messages you can do it here, just leave a note for yourself
@@ -1691,9 +1809,11 @@ class KeysightSingleQubit:
             if pi_calibration:
                 IB = (IB[:-2] - IB[-2]) / (IB[-1] - IB[-2])
                 QB = (QB[:-2] - QB[-2]) / (QB[-1] - QB[-2])
-            return IB, QB
+            data.append([IB, QB])
         else:
             print("You have a problem with the on_qubits option at acquireavgdata")
+
+        return np.asarray(data)
 
 
 #=======================================================================================================================
@@ -1772,15 +1892,7 @@ class KeysightSingleQubit:
         ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[0])].T
         return ch1,ch2
 
-    def traj_data_many(self,w = [0,-1]):
-        I = []
-        Q = []
-        for ii in tqdm(range(self.num_avg)):
-            ch1= np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])].T
-            ch2= np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[int(w[0]):int(w[1])].T
-            I.append(ch1)
-            Q.append(ch2)
-        return np.array(I),np.array(Q)
+
 
     def SSdata_one(self,w =[0,-1]):
         ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[int(w[0]):int(w[1])]
