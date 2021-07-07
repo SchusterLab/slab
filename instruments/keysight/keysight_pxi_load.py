@@ -279,15 +279,15 @@ class KeysightDoubleQubit:
         num_expt = self.num_expt
         print('num_exp = %s' %num_expt)
 
-        print("Configuring marker channel to digitizer trigger")
-
-        self.m_9_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-        self.m_9_ch_3.configure(amplitude=amp_mark_9[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-
-        print ("Setting trigger config for all channels of all modules to External")
-
-        for n in range(1, 5):
-            self.m_9_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
+        # print("Configuring marker channel to digitizer trigger")
+        #
+        # self.m_9_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
+        # self.m_9_ch_3.configure(amplitude=amp_mark_9[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
+        #
+        # print ("Setting trigger config for all channels of all modules to External")
+        #
+        # for n in range(1, 5):
+        #     self.m_9_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
 
         print ("Configuring digitizer. ADC range set to",self.adc_range, "Vpp")
 
@@ -295,9 +295,9 @@ class KeysightDoubleQubit:
         self.DIG_ch_1.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
         # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
         self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_3.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
-        # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_4.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        # self.DIG_ch_3.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+        # # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+        # self.DIG_ch_4.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
 
 
 
@@ -1131,18 +1131,18 @@ class KeysightSingleQubit:
         num_expt = self.num_expt
         print('num_exp = %s' % num_expt)
 
-        print("Configuring marker channels")
-
-        self.m_9_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-        self.m_9_ch_3.configure(amplitude=amp_mark_9[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
-
-        print("Setting trigger config for all channels of all modules to External")
-
-        for n in range(1, 5):
-            self.m_9_module.AWGtriggerExternalConfig(nAWG=n,
-                                                     externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,
-                                                     triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
-            # self.trig_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
+        # print("Configuring marker channels")
+        #
+        # self.m_9_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
+        # self.m_9_ch_3.configure(amplitude=amp_mark_9[2], trigger_source=SD1.SD_TriggerModes.EXTTRIG)
+        #
+        # print("Setting trigger config for all channels of all modules to External")
+        #
+        # for n in range(1, 5):
+        #     self.m_9_module.AWGtriggerExternalConfig(nAWG=n,
+        #                                              externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,
+        #                                              triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
+        # #     # self.trig_module.AWGtriggerExternalConfig(nAWG=n,externalSource=SD1.SD_TriggerExternalSources.TRIGGER_EXTERN,triggerBehavior=SD1.SD_TriggerBehaviors.TRIGGER_RISE)
 
         print("Configuring digitizer. ADC range set to", self.adc_range, "Vpp")
 
@@ -1156,15 +1156,15 @@ class KeysightSingleQubit:
                                 buffer_time_out=100000, cycles=num_expt * num_avg,
                                 trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
                                 cycles_per_return=num_expt)
-        self.DIG_ch_3.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
-                                cycles=num_expt * num_avg, buffer_time_out=100000,
-                                trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
-                                cycles_per_return=num_expt)
-        # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_4.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
-                                buffer_time_out=100000, cycles=num_expt * num_avg,
-                                trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
-                                cycles_per_return=num_expt)
+        # self.DIG_ch_3.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+        #                         cycles=num_expt * num_avg, buffer_time_out=100000,
+        #                         trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+        #                         cycles_per_return=num_expt)
+        # # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+        # self.DIG_ch_4.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+        #                         buffer_time_out=100000, cycles=num_expt * num_avg,
+        #                         trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+        #                         cycles_per_return=num_expt)
 
         # print("configured digiitzer")
 

@@ -1090,8 +1090,7 @@ class KeysightChannelIn(KeysightChannel):
         and does not throw errors. The advantage is that it almost always works,
         and you don't have to worry about it raising exceptions in separate
         threads. The disadvantage is you don't have exception handling.'''
-        return self._module.DAQread(self._channel_number, self._points_per_return, 
-                                    timeout)
+        return self._module.DAQread(self._channel_number, self._points_per_return, timeout)
                 
     def start(self):
         '''Starts the channel.'''
