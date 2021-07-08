@@ -292,12 +292,49 @@ class KeysightDoubleQubit:
         print ("Configuring digitizer. ADC range set to",self.adc_range, "Vpp")
 
         self.DIG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-        self.DIG_ch_1.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
-        # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
-        # self.DIG_ch_3.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, cycles=num_expt * num_avg, buffer_time_out=100000, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
-        # # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
-        # self.DIG_ch_4.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True, cycles_per_return=num_expt)
+
+        if len(self.on_qubits) ==2:
+            self.DIG_ch_1.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    cycles=num_expt * num_avg, buffer_time_out=100000,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+            # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+            self.DIG_ch_2.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    buffer_time_out=100000, cycles=num_expt * num_avg,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+            self.DIG_ch_3.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    cycles=num_expt * num_avg, buffer_time_out=100000,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+            # # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+            self.DIG_ch_4.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    buffer_time_out=100000, cycles=num_expt * num_avg,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+
+        elif self.on_qubits[0]=='1':
+            self.DIG_ch_1.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    cycles=num_expt * num_avg, buffer_time_out=100000,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+            # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+            self.DIG_ch_2.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    buffer_time_out=100000, cycles=num_expt * num_avg,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+
+        elif self.on_qubits[0]=='2':
+            self.DIG_ch_3.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    cycles=num_expt * num_avg, buffer_time_out=100000,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+            # # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+            self.DIG_ch_4.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    buffer_time_out=100000, cycles=num_expt * num_avg,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+
 
 
 
@@ -1126,7 +1163,7 @@ class KeysightSingleQubit:
         for other experiments. See documentation in KeysightLib for the configure() methods on KeysightChannelIn and
         KeysightChannelOut. Amplitude is in volts.'''
 
-        amp_mark_9 = hardware_cfg['awg_info']['keysight_pxi']['amp_mark_9']
+        # amp_mark_9 = hardware_cfg['awg_info']['keysight_pxi']['amp_mark_9']
         num_avg = experiment_cfg[name]['acquisition_num']
         num_expt = self.num_expt
         print('num_exp = %s' % num_expt)
@@ -1146,25 +1183,51 @@ class KeysightSingleQubit:
 
         print("Configuring digitizer. ADC range set to", self.adc_range, "Vpp")
 
+
         self.DIG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-        self.DIG_ch_1.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+
+        if len(self.on_qubits)==2:
+            self.DIG_ch_1.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    cycles=num_expt * num_avg, buffer_time_out=100000,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+            # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+            self.DIG_ch_2.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    buffer_time_out=100000, cycles=num_expt * num_avg,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+
+            self.DIG_ch_3.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    cycles=num_expt * num_avg, buffer_time_out=100000,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+            # # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+            self.DIG_ch_4.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    buffer_time_out=100000, cycles=num_expt * num_avg,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+
+        elif self.on_qubits[0]=='1':
+            self.DIG_ch_1.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    cycles=num_expt * num_avg, buffer_time_out=100000,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+            # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+            self.DIG_ch_2.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+                                    buffer_time_out=100000, cycles=num_expt * num_avg,
+                                    trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
+                                    cycles_per_return=num_expt)
+        elif self.on_qubits[0]=='2':
+
+            self.DIG_ch_3.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
                                 cycles=num_expt * num_avg, buffer_time_out=100000,
                                 trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
                                 cycles_per_return=num_expt)
-        # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
-        self.DIG_ch_2.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
+            # # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
+            self.DIG_ch_4.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
                                 buffer_time_out=100000, cycles=num_expt * num_avg,
                                 trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
                                 cycles_per_return=num_expt)
-        # self.DIG_ch_3.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
-        #                         cycles=num_expt * num_avg, buffer_time_out=100000,
-        #                         trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
-        #                         cycles_per_return=num_expt)
-        # # self.DIG_ch_2.configure(full_scale = self.adc_range,points_per_cycle=self.DIG_sampl_record, buffer_time_out=100000, cycles=num_expt * num_avg, trigger_mode=SD1.SD_TriggerModes.EXTTRIG_CYCLE, use_buffering=True, cycles_per_return=num_expt)
-        # self.DIG_ch_4.configure(full_scale=self.adc_range, points_per_cycle=self.DIG_sampl_record,
-        #                         buffer_time_out=100000, cycles=num_expt * num_avg,
-        #                         trigger_mode=SD1.SD_TriggerModes.EXTTRIG, use_buffering=True,
-        #                         cycles_per_return=num_expt)
 
         # print("configured digiitzer")
 

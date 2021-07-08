@@ -28,8 +28,8 @@ class PulseSequences:
         try:self.cavity_pulse_info = self.quantum_device_cfg['cavity_pulse_info']
         except:print("No cavity pulses")
 
-        try:self.transmon_pulse_info_tek2 = self.quantum_device_cfg['transmon_pulse_info_tek2']
-        except:print("No tek2 transmon drive pulse information")
+        # try:self.transmon_pulse_info_tek2 = self.quantum_device_cfg['transmon_pulse_info_tek2']
+        # except:print("No tek2 transmon drive pulse information")
 
         self.channels = hardware_cfg['channels']
 
@@ -153,23 +153,23 @@ class PulseSequences:
         self.sideband_cooling = self.quantum_device_cfg['sideband_cooling']
 
 
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/1_100kHz.pkl'), 'rb') as f:
-            freq_a_p_1 = pickle.load(f)
+        # with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/1_100kHz.pkl'), 'rb') as f:
+        #     freq_a_p_1 = pickle.load(f)
+        #
+        # with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/2_100kHz.pkl'), 'rb') as f:
+        #     freq_a_p_2 = pickle.load(f)
+        #
+        # with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/1_ef_100kHz.pkl'), 'rb') as f:
+        #     ef_freq_a_p_1 = pickle.load(f)
+        #
+        # with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/2_ef_100kHz.pkl'), 'rb') as f:
+        #     ef_freq_a_p_2 = pickle.load(f)
 
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/2_100kHz.pkl'), 'rb') as f:
-            freq_a_p_2 = pickle.load(f)
-
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/1_ef_100kHz.pkl'), 'rb') as f:
-            ef_freq_a_p_1 = pickle.load(f)
-
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/2_ef_100kHz.pkl'), 'rb') as f:
-            ef_freq_a_p_2 = pickle.load(f)
-
-        gauss_z = np.linspace(-2,2,20)
-        gauss_envelop = np.exp(-gauss_z**2)
-
-        gauss_z = np.linspace(-2,2,20)
-        gauss_envelop = np.exp(-gauss_z**2)
+        # gauss_z = np.linspace(-2,2,20)
+        # gauss_envelop = np.exp(-gauss_z**2)
+        #
+        # gauss_z = np.linspace(-2,2,20)
+        # gauss_envelop = np.exp(-gauss_z**2)
 
 
 
