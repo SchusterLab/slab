@@ -1,3 +1,4 @@
+import copy
 import json
 from numpy import*
 from pylab import*
@@ -16,9 +17,8 @@ from scipy import interpolate
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 class Tuning:
-    def __init__(self):
-        with open("S:\\_Data\\210412 - PHMIV3_56 - BF4 cooldown 2\\210705_sawtooth_lattice_device_config.json", 'r') as f:
-            lattice_cfg = json.load(f)
+    def __init__(self, file_names):
+        lattice_cfg = file_names
         os.chdir("C:\\210701 - PHMIV3_56 - BF4 cooldown 3\\ipython notebook")
 
         try:
@@ -54,7 +54,11 @@ class Tuning:
             for ii in range(len(self.FF_SWCTM)):
                 diag = self.FF_SWCTM[ii, ii]
                 for jj in range(len(self.FF_SWCTM)):
-                    self.FF_SWCTMN[ii, jj] = self.FF_SWCTM[ii, jj] / (diag * self.FF_dVdphi[ii])
+                    if diag==0:
+                        print("zero diag element! setting to zero")
+                        self.FF_SWCTMN[ii, jj] = 0.00005
+                    else:
+                        self.FF_SWCTMN[ii, jj] = self.FF_SWCTM[ii, jj] / (diag * self.FF_dVdphi[ii])
             self.FF_SWCTMNinv = inv(self.FF_SWCTMN)
         except:
             pass
@@ -75,7 +79,6 @@ class Tuning:
         for ii in np.arange(8):
             #print('omegatophi%s' % ii + '(freq_list[%s' % ii + '])')
             vec0.append(self.omegatophi_list[ii](freq_list[ii]))
-        print("vec0 in phi: {}".format(vec0))
         if Vtype=="DC":
             return np.array(self.DC_CTMNinv.dot(vec0))
         if Vtype=="FF":
@@ -85,6 +88,7 @@ class Tuning:
         self.phitoomega_list = []
         self.omegatophi_list = []
         self.dphidomega_list = []
+        self.domegadphi_list = []
 
         for i in range(8):
             self.phitoomega_list.append(
@@ -92,7 +96,10 @@ class Tuning:
             self.omegatophi_list.append(
                 interpolate.interp1d(energylistarray[i], flxquantaarray[i], kind='cubic', ))
             self.dphidomega_list.append(
-                interpolate.interp1d(energylistarray[i][0:-1],np.diff(flxquantaarray[i])/np.diff(energylistarray[i])))
+                interpolate.interp1d(energylistarray[i][0:-1],np.diff(flxquantaarray[i])/np.diff(energylistarray[i]), kind='cubic'))
+            self.domegadphi_list.append(
+                interpolate.interp1d(flxquantaarray[i][0:-1],
+                                     np.diff(energylistarray[i]) / np.diff(flxquantaarray[i]) , kind='cubic'))
 
 
     def omega_to_V_thru_LocalSlopes(self, Vtype, jump_freq_list):
@@ -100,29 +107,48 @@ class Tuning:
         vec0 = (1 / (np.array(self.FF_dVdphi))) * (1 / (np.array(self.FF_LocalSlopes))) * np.array(jump_freq_list)
 
         # voltage to get those values
-        print(vec0)
         return np.array(self.FF_SWCTMNinv.dot(vec0))
 
-    def correct_flux_offsets(self, intended_freq, measured_freq):
-        print("calculating new flxquantaarray and updating omegatophi functions")
+    def json_log_phi_diff(self, filename, phi_diff):
+        t_obj = time.localtime()
+        t = time.asctime(t_obj)
+        with open(filename, 'r+') as f:
+            data = json.load(f)
+            data[t] = phi_diff
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=4)
+
+    def correct_flux_offsets(self, intended_freq, measured_freq, filename=None):
+        if filename==None:
+            filename = "S:\\_Data\\210412 - PHMIV3_56 - BF4 cooldown 2\\phi_diff_log.json"
+        print("calculating new flxquantaarray")
         freq_diff = np.array(intended_freq) - np.array(measured_freq)
 
         phi_diff = np.zeros(len(freq_diff))
         for ii in np.arange(8):
-            phi_diff[ii] = freq_diff[ii] * self.dphidomega_list[ii](intended_freq[ii])
+            phi_diff[ii] =  self.omegatophi_list[ii](intended_freq[ii]) - self.omegatophi_list[ii](measured_freq[ii])
 
+        new_flxquantaarray = copy.deepcopy(self.flxquantaarray)
         for i in range(8):
-            self.flxquantaarray[i] = self.flxquantaarray[i] + phi_diff[i]
+            new_flxquantaarray[i] = np.array(self.flxquantaarray[i]) + phi_diff[i]
+        self.json_log_phi_diff(filename, list(phi_diff))
 
-        self.generate_omegaphi_functions(self.energylistarray, self.flxquantaarray)
+        t = time.localtime()
+        month = t[1]
+        day = t[2]
+        hour = t[3]
+        flx_quanta_filename = time.localtime()
+        flx_name =  str(month).zfill(2) + str(day).zfill(2) + str(hour).zfill(2) + "_flxquantaarray.npy"
+        print("New fluxqanta array filename: " + flx_name)
+        np.save(flx_name, new_flxquantaarray)
 
-        return self.flxquantaarray
+        return new_flxquantaarray
 
     def plot_colored_CTM(self, Vtype, save_file = None):
         if Vtype=="DC":
-            CTM = self.DC_CTM
+            CTM = copy.copy(self.DC_CTM)
         if Vtype=="FF":
-            CTM = self.FF_SWCTM
+            CTM = copy.copy(self.FF_SWCTM)
 
         for ii in range(len(CTM)):
             diag = CTM[ii, ii]
@@ -157,6 +183,7 @@ class Tuning:
 
         if save_file !=None:
             plt.savefig(save_file,dpi=600,bbox_inches = "tight",transparent = "false")
+
         plt.show()
 
     def plot_flux_dispersion(self, save_file=None):

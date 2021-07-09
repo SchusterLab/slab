@@ -24,9 +24,8 @@ def json_log(filename, V_vec):
     with open(filename, 'r+') as f:
         data = json.load(f)
         data[t] = V_vec
-        f.seek(0)  # <--- should reset file position to the beginning.
+    with open(filename, 'w') as f:
         json.dump(data, f, indent=4)
-        f.truncate()  # remove remaining part
 
 class AD5780_serial():
     def __init__(self):

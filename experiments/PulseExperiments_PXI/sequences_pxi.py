@@ -194,49 +194,28 @@ class PulseSequences:
     def idle_sb(self,sequencer,time=0):
         sequencer.append('sideband', Idle(time=time))
 
-    def ff_square(self, sequencer, ff_len, flip_amp=False):
+    def ff_pulse(self, sequencer, ff_len, pulse_type, flux_vec, flip_amp=False):
         area_vec = []
-        for qb, flux in enumerate(self.expt_cfg['ff_vec']):
+        for qb, flux in enumerate(flux_vec):
             if flip_amp:
                 flux = -flux
-            pulse = Square(max_amp=flux, flat_len=ff_len[qb],
+            if pulse_type=="square":
+                pulse = Square(max_amp=flux, flat_len=ff_len[qb],
                                     ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=0,
                                     phase=0)
-
-            sequencer.append('ff_Q%s' % qb, pulse)
-            area_vec.append(pulse.get_area())
-        return np.asarray(area_vec)
-
-    def ff_ramp(self,sequencer,ff_len,flip_amp = False):
-        area_vec = []
-        for qb,flux in enumerate(self.expt_cfg['ff_vec']):
-            if flip_amp:
-                flux = -flux
-            pulse = linear_ramp(max_amp=flux, flat_len=ff_len[qb],
+            if pulse_type=="linear":
+                pulse = linear_ramp(max_amp=flux, flat_len=ff_len[qb],
                                     ramp1_len=self.lattice_cfg['ff_info']['ff_linear_ramp_len'],
-                                         ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
-                                         cutoff_sigma=2, freq=0, phase=0)
-            sequencer.append('ff_Q%s' % qb, pulse)
-            area_vec.append(pulse.get_area())
-
-        return np.asarray(area_vec)
-
-    def ff_adb(self,sequencer,ff_len,flip_amp = False):
-        if type(ff_len) !=list:
-            ff_len = [ff_len]*8
-
-        area_vec = []
-        for qb,flux in enumerate(self.expt_cfg['ff_vec']):
-            if flip_amp:
-                flux = -flux
-            pulse = adb_ramp(max_amp=flux, flat_len=ff_len[qb],
-                                      adb_ramp1_sig=self.lattice_cfg['ff_info']['ff_adb_ramp_sig'][qb],
-                                         ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
-                                         cutoff_sigma=2, freq=0, phase=0)
+                                    ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
+                                    cutoff_sigma=2, freq=0, phase=0)
+            if pulse_type=="adb":
+                pulse = adb_ramp(max_amp=flux, flat_len=ff_len[qb],
+                                 adb_ramp1_sig=self.lattice_cfg['ff_info']['ff_adb_ramp_sig'][qb],
+                                 ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
+                                 cutoff_sigma=2, freq=0, phase=0)
 
             sequencer.append('ff_Q%s' % qb, pulse)
             area_vec.append(pulse.get_area())
-
         return np.asarray(area_vec)
 
     def ff_comp(self, sequencer, area_vec):
@@ -402,7 +381,6 @@ class PulseSequences:
         return sequencer.complete(self, plot=True)
 
     def melting_single_readout_full_ramp(self, sequencer):
-
         qb_list = self.expt_cfg["Mott_qbs"]
         qb_freq_list = [self.lattice_cfg["qubit"]["freq"][i] for i in qb_list]
         lo_qb_temp_ind = np.argmax(qb_freq_list)
@@ -446,13 +424,23 @@ class PulseSequences:
             sequencer.sync_channels_time(self.channels)
             self.idle_q(sequencer, time=100)
             ##############################GENERATE RAMP###########################################
-            self.ff_adb(sequencer, evolution_t, flip_amp=False)
+            if self.expt_cfg["ramp_type"]== "linear":
+                area_vec = self.ff_ramp(sequencer, evolution_t, flip_amp=False)
+            elif self.expt_cfg["ramp_type"]== "adb":
+                area_vec = self.ff_adb(sequencer, evolution_t, flip_amp=False)
+            elif self.expt_cfg["ramp_type"]== "square":
+                area_vec = self.ff_square(sequencer, evolution_t, flip_amp=False)
             ############################## readout ###########################################
             self.readout_pxi(sequencer, setup, overlap=False)
             sequencer.sync_channels_time(self.channels)
 
             ############################## generate compensation ###########################################
-            self.ff_adb(sequencer, evolution_t, flip_amp=True)
+            if self.expt_cfg["ramp_type"] == "linear":
+                area_vec = self.ff_ramp(sequencer, evolution_t, flip_amp=True)
+            elif self.expt_cfg["ramp_type"] == "adb":
+                area_vec = self.ff_adb(sequencer, evolution_t, flip_amp=True)
+            elif self.expt_cfg["ramp_type"] == "square":
+                area_vec = self.ff_square(sequencer, evolution_t, flip_amp=True)
             sequencer.end_sequence()
 
         ############################## PI CAL ###########################################
@@ -616,48 +604,6 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=True)
 
-    def ff_2qb_swap(self, sequencer):
-
-        for ff_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
-            sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
-
-            #add pi pulse (#TODO: would like pi pulse to finish at same time
-            for qb in self.expt_cfg["pi_qb"]:
-                self.pi_q(sequencer, qb_id=qb)
-
-            sequencer.sync_channels_time(self.channels)
-
-            #add flux pulse to put them in resonance
-            if self.expt_cfg["ff_pulse_type"]== "linear":
-                area_vec = self.ff_ramp(sequencer, ff_len, flip_amp=False)
-
-            elif self.expt_cfg["ff_pulse_type"]== "adb":
-                area_vec = self.ff_adb(sequencer, ff_len, flip_amp=False)
-
-            elif self.expt_cfg["ff_pulse_type"]== "square":
-                area_vec = self.ff_square(sequencer, ff_len, flip_amp=False)
-
-            #synch all channels except flux before adding readout, then do readout
-            self.readout_pxi(sequencer, self.expt_cfg['rd_qbs'], overlap=False, synch_channels=self.channels)
-
-            #add compensation flux to pulse
-            if self.quantum_device_cfg["ff_info"]["ff_comp_sym"]:
-                if self.expt_cfg["ff_pulse_type"]== "linear":
-                    self.ff_ramp(sequencer, ff_len, flip_amp=True)
-
-                elif self.expt_cfg["ff_pulse_type"]== "adb":
-                    self.ff_adb(sequencer, ff_len, flip_amp=True)
-
-                elif self.expt_cfg["ff_pulse_type"]== "square":
-                    self.ff_square(sequencer, ff_len, flip_amp=True)
-            else:
-                self.ff_comp(sequencer, area_vec)
-
-
-        return sequencer.complete(self, plot=True)
-
-
     def ff_ramp_cal_ppiq(self, sequencer):
         delt = self.expt_cfg['delt']
         pulse_type = self.expt_cfg['pulse_type']
@@ -683,13 +629,7 @@ class PulseSequences:
                     ff_len = self.lattice_cfg['ff_info']["ff_len"]
 
                 # add flux pulse
-                if pulse_type=='square':
-                    area_vec = self.ff_square(sequencer, ff_len=ff_len)
-                elif pulse_type=="linear_ramp":
-                    area_vec = self.ff_ramp(sequencer, ff_len=ff_len)
-                elif pulse_type=="adb":
-                    area_vec = self.ff_adb(sequencer, ff_len=ff_len)
-
+                area_vec = self.ff_pulse(sequencer, ff_len= ff_len, pulse_type= pulse_type, flux_vec=self.expt_cfg["ff_vec"], flip_amp=False)
 
             else:
                 #flux pulse first if dt greater than zero
@@ -700,12 +640,7 @@ class PulseSequences:
                     ff_len = self.lattice_cfg['ff_info']["ff_len"]
 
                 #add flux pulse
-                if pulse_type == 'square':
-                    area_vec = self.ff_square(sequencer, ff_len=ff_len)
-                elif pulse_type == "linear_ramp":
-                    area_vec = self.ff_ramp(sequencer, ff_len=ff_len)
-                elif pulse_type=="adb":
-                    area_vec = self.ff_adb(sequencer, ff_len=ff_len)
+                area_vec = self.ff_pulse(sequencer, ff_len= ff_len, pulse_type= pulse_type, flux_vec=self.expt_cfg["ff_vec"], flip_amp=False)
 
                 #wait time dt, the apply ppiq
                 self.idle_q(sequencer, time=delt)
@@ -720,12 +655,45 @@ class PulseSequences:
             fluxch = [ch for ch in self.channels if 'ff' in ch]
             sequencer.sync_channels_time(fluxch + ['readoutA'])
             if self.quantum_device_cfg["ff_info"]["ff_comp_sym"]:
-                if pulse_type == 'square':
-                    self.ff_square(sequencer, ff_len=ff_len, flip_amp=True)
-                elif pulse_type == "linear_ramp":
-                    self.ff_ramp(sequencer, ff_len=ff_len, flip_amp=True)
-                elif pulse_type == "adb":
-                    self.ff_adb(sequencer, ff_len=ff_len,flip_amp = True)
+                self.ff_pulse(sequencer, ff_len= ff_len, pulse_type= pulse_type, flux_vec=self.expt_cfg["ff_vec"], flip_amp=True)
+            else:
+                self.ff_comp(sequencer, area_vec)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def ff_track_traj(self, sequencer, perc_flux_vec):
+        ramp_type = self.expt_cfg['ramp_type']
+        flux_vec = self.expt_cfg["ff_vec"] * perc_flux_vec
+        for dfreq in np.arange(self.expt_cfg['qbf_start'], self.expt_cfg['qbf_stop'], self.expt_cfg['qbf_step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+
+            #flux pulse first if dt greater than zero
+            if self.expt_cfg["ff_len"] == "auto":
+                ff_len = 8*[self.expt_cfg['qb_pulse_length']+self.expt_cfg["delay_post_ramp"]+self.quantum_device_cfg['readout'][self.on_qubits[0]][
+                    'length']]
+            else:
+                ff_len = self.lattice_cfg['ff_info']["ff_len"]
+
+            #add flux pulse
+            area_vec = self.ff_pulse(sequencer, ff_len= ff_len, pulse_type= ramp_type, flux_vec=flux_vec, flip_amp=False)
+
+            #wait time dt, the apply ppiq
+            self.idle_q(sequencer, time=self.expt_cfg["delay_post_ramp"])
+            for qubit_id in self.on_qubits:
+                self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+
+            #synch all channels except flux before adding readout, then do readout
+            channels_excluding_fluxch = [ch for ch in self.channels if 'ff' not in ch]
+            self.readout_pxi(sequencer, self.on_qubits, overlap=False, synch_channels=channels_excluding_fluxch)
+
+            #add compensation flux pulse
+            fluxch = [ch for ch in self.channels if 'ff' in ch]
+            sequencer.sync_channels_time(fluxch + ['readoutA'])
+            if self.quantum_device_cfg["ff_info"]["ff_comp_sym"]:
+                area_vec = self.ff_pulse(sequencer, ff_len= ff_len, pulse_type= ramp_type, flux_vec=flux_vec, flip_amp=True)
             else:
                 self.ff_comp(sequencer, area_vec)
 
