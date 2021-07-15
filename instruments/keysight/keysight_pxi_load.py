@@ -186,20 +186,6 @@ class KeysightSingleQubit:
 
         ## Output modules: Configure amplitude, dc offset, and if "trigger" channel on a module is used as a receiver or a trigger source
         # ie triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN) means it's receiving a trigger
-        print("Configuring fast flux module1 channels")
-        self.ff1_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-        self.ff1_ch_1.configure(amplitude=amp_ff1[0])
-        self.ff1_ch_2.configure(amplitude=amp_ff1[1])
-        self.ff1_ch_3.configure(amplitude=amp_ff1[2])
-        self.ff1_ch_4.configure(amplitude=amp_ff1[3])
-
-        print("Configuring fast flux module2 channels")
-        self.ff2_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
-        self.ff2_ch_1.configure(amplitude=amp_ff2[0])
-        self.ff2_ch_2.configure(amplitude=amp_ff2[1])
-        self.ff2_ch_3.configure(amplitude=amp_ff2[2])
-        self.ff2_ch_4.configure(amplitude=amp_ff2[3])
-
         print ("Configuring qubit IQ channels")
         self.AWG_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
         self.AWG_ch_1.configure(amplitude=amp_AWG[0], offset_voltage = IQ_dc_offsetA)
@@ -221,6 +207,20 @@ class KeysightSingleQubit:
         self.stab_ch_3.configure(amplitude=amp_stab[2])
         self.digtzr_trig_ch.configure(amplitude=amp_digtzr_trig)
         print ("Dig card trigger amplitude = ",amp_digtzr_trig)
+
+        print("Configuring fast flux module1 channels")
+        self.ff1_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
+        self.ff1_ch_1.configure(amplitude=amp_ff1[0])
+        self.ff1_ch_2.configure(amplitude=amp_ff1[1])
+        self.ff1_ch_3.configure(amplitude=amp_ff1[2])
+        self.ff1_ch_4.configure(amplitude=amp_ff1[3])
+
+        print("Configuring fast flux module2 channels")
+        self.ff2_module.triggerIOconfig(SD1.SD_TriggerDirections.AOU_TRG_IN)
+        self.ff2_ch_1.configure(amplitude=amp_ff2[0])
+        self.ff2_ch_2.configure(amplitude=amp_ff2[1])
+        self.ff2_ch_3.configure(amplitude=amp_ff2[2])
+        self.ff2_ch_4.configure(amplitude=amp_ff2[3])
 
 
         print ("Setting trigger mode for all channels of all output modules to External")
@@ -431,6 +431,49 @@ class KeysightSingleQubit:
             PXIwave_ff_Q6 = key.Waveform(wv["ff_Q6"][i], append_zero=True)
             PXIwave_ff_Q7 = key.Waveform(wv["ff_Q7"][i], append_zero=True)
 
+            # #####FAST FLUX MODULE1#####
+            # # Load FF! waveforms to trigger card
+            PXIwave_ff_Q0.loadToModule(ff1_module)
+            PXIwave_ff_Q1.loadToModule(ff1_module)
+            PXIwave_ff_Q2.loadToModule(ff1_module)
+            PXIwave_ff_Q3.loadToModule(ff1_module)
+
+            # Queue ff1 waveforms to ff1 channels
+            PXIwave_ff_Q0.queue(self.ff1_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
+                "ff_Q0"], cycles=1, prescaler=0)
+            PXIwave_ff_Q1.queue(self.ff1_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
+                "ff_Q1"], cycles=1, prescaler=0)
+            PXIwave_ff_Q2.queue(self.ff1_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
+                "ff_Q2"], cycles=1, prescaler=0)
+            PXIwave_ff_Q3.queue(self.ff1_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
+                "ff_Q3"], cycles=1, prescaler=0)
+
+            # Configure ff1 module settings
+            self.ff1_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
+                                                  syncMode=1, length=10, delay=0)
+
+
+            #####FAST FLUX MODULE2#####
+            # Load FF! waveforms to trigger card
+            PXIwave_ff_Q4.loadToModule(ff2_module)
+            PXIwave_ff_Q5.loadToModule(ff2_module)
+            PXIwave_ff_Q6.loadToModule(ff2_module)
+            PXIwave_ff_Q7.loadToModule(ff2_module)
+
+            # Queue ff1 waveforms to ff1 channels
+            PXIwave_ff_Q4.queue(self.ff2_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
+                "ff_Q4"],cycles=1, prescaler=0)
+            PXIwave_ff_Q5.queue(self.ff2_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
+                "ff_Q5"], cycles=1, prescaler=0)
+            PXIwave_ff_Q6.queue(self.ff2_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
+                "ff_Q6"], cycles=1, prescaler=0)
+            PXIwave_ff_Q7.queue(self.ff2_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
+                "ff_Q7"], cycles=1, prescaler=0)
+
+            # Configure ff1 module settings
+            self.ff2_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
+                                                 syncMode=1, length=10, delay=0)
+
             #####QB AWG##### #hardcoded: A:ch1,2 B:ch3,4
             #Send I,Q, qubit A drive waveforms to AWG drive card
             PXIwave_chargeA_I.loadToModule(AWG_module)
@@ -500,47 +543,6 @@ class KeysightSingleQubit:
             self.stab_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
                                                syncMode=1, length=10, delay=0)
 
-            #####FAST FLUX MODULE1#####
-            # Load FF! waveforms to trigger card
-            PXIwave_ff_Q0.loadToModule(ff1_module)
-            PXIwave_ff_Q1.loadToModule(ff1_module)
-            PXIwave_ff_Q2.loadToModule(ff1_module)
-            PXIwave_ff_Q3.loadToModule(ff1_module)
-
-            # Queue ff1 waveforms to ff1 channels
-            PXIwave_ff_Q0.queue(self.ff1_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
-                "ff_Q0"], cycles=1, prescaler=0)
-            PXIwave_ff_Q1.queue(self.ff1_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
-                "ff_Q1"], cycles=1, prescaler=0)
-            PXIwave_ff_Q2.queue(self.ff1_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
-                "ff_Q2"], cycles=1, prescaler=0)
-            PXIwave_ff_Q3.queue(self.ff1_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
-                "ff_Q3"], cycles=1, prescaler=0)
-
-            # Configure ff1 module settings
-            self.ff1_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
-                                                  syncMode=1, length=10, delay=0)
-
-            #####FAST FLUX MODULE2#####
-            # Load FF! waveforms to trigger card
-            PXIwave_ff_Q4.loadToModule(ff2_module)
-            PXIwave_ff_Q5.loadToModule(ff2_module)
-            PXIwave_ff_Q6.loadToModule(ff2_module)
-            PXIwave_ff_Q7.loadToModule(ff2_module)
-
-            # Queue ff1 waveforms to ff1 channels
-            PXIwave_ff_Q4.queue(self.ff2_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
-                "ff_Q4"],cycles=1, prescaler=0)
-            PXIwave_ff_Q5.queue(self.ff2_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
-                "ff_Q5"], cycles=1, prescaler=0)
-            PXIwave_ff_Q6.queue(self.ff2_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
-                "ff_Q6"], cycles=1, prescaler=0)
-            PXIwave_ff_Q7.queue(self.ff2_ch_4, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays[
-                "ff_Q7"], cycles=1, prescaler=0)
-
-            # Configure ff1 module settings
-            self.ff2_module.AWGqueueMarkerConfig(nAWG=1, markerMode=1, trgPXImask=0b11111111, trgIOmask=0, value=1,
-                                                 syncMode=1, length=10, delay=0)
 
     def run(self):
         print("Experiment starting. Expected time = ", self.totaltime, "mins")
@@ -556,10 +558,11 @@ class KeysightSingleQubit:
             self.DIG_ch_3.start()
             self.DIG_ch_4.clear()
             self.DIG_ch_4.start()
+
             self.AWG_module.startAll()
-            self.m_module.startAll()
-            self.stab_module.startAll()
             self.ff1_module.startAll()
+            self.stab_module.startAll()
+            self.m_module.startAll()
             self.ff2_module.startAll()
 
 

@@ -17,9 +17,10 @@ from scipy import interpolate
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 class Tuning:
-    def __init__(self, file_names):
+    def __init__(self, file_names, N=8):
         lattice_cfg = file_names
         os.chdir("C:\\210701 - PHMIV3_56 - BF4 cooldown 3\\ipython notebook")
+        self.N = N
 
         try:
             self.energylistarray = np.load(lattice_cfg["energylistarray_name"],allow_pickle = True)
@@ -29,28 +30,39 @@ class Tuning:
 
         try:
             self.FF_SWCTM = np.load(lattice_cfg["FF_SWCTM_name"])
+            self.FF_SWCTM  = self.FF_SWCTM[0:self.N,0:self.N]
+            print(self.FF_SWCTM.shape)
         except:
             print("Couldn't load FF_SWCTM")
         try:
-            self.DC_CTM = np.load(lattice_cfg["DC_CTM_name"])
+            self.DC_CTM = np.load(lattice_cfg["DC_CTM_name"])[0:self.N,0:self.N]
         except:
             print("Couldn't load DC_CTM")
 
         try:
-            self.FF_LocalSlopes = np.load(lattice_cfg["FF_LocalSlopes_name"]) # should be GHz / V
+            self.FF_LocalSlopes = np.load(lattice_cfg["FF_LocalSlopes_name"])[0:self.N] # should be GHz / V
         except:
             print("Couldn't laod local slopes")
         try:
-            self.FF_dVdphi = np.load(lattice_cfg["FF_dVdphi_name"]) # dV/dphi
+            self.FF_dVdphi = np.load(lattice_cfg["FF_dVdphi_name"])[0:self.N] # dV/dphi
         except:
             print("Couldn't load FF_dVdphi")
         try:
-            self.DC_dVdphi = np.load(lattice_cfg["DC_dVdphi_name"]) # dV/dphi
+            self.DC_dVdphi = np.load(lattice_cfg["DC_dVdphi_name"])[0:self.N] # dV/dphi
         except:
             print("Couldn't load DC_dVdphi")
 
         try:
-            self.FF_SWCTMN = np.zeros((8, 8))
+            self.DC_CTMinv = inv(self.DC_CTM)
+        except:
+            pass
+        try:
+            self.FF_SWCTMinv = inv(self.FF_SWCTM)
+        except:
+            pass
+
+        try:
+            self.FF_SWCTMN = np.zeros((self.N, self.N))
             for ii in range(len(self.FF_SWCTM)):
                 diag = self.FF_SWCTM[ii, ii]
                 for jj in range(len(self.FF_SWCTM)):
@@ -63,20 +75,36 @@ class Tuning:
         except:
             pass
 
+        self.DC_CTMN = np.zeros((self.N,self.N))
+        # temp = np.zeros((self.N,self.N))
 
-        self.DC_CTMN = np.zeros((8, 8))
+        # for ii in np.arange(self.N):
+            # for jj in np.arange(self.N):
+                # temp[ii,jj] = self.DC_CTM[ii,jj]
+
         for ii in range(len(self.DC_CTM)):
             diag = self.DC_CTM[ii, ii]
             for jj in range(len(self.DC_CTM)):
                 self.DC_CTMN[ii, jj] = self.DC_CTM[ii, jj] / (diag * self.DC_dVdphi[ii])
         self.DC_CTMNinv = inv(self.DC_CTMN)
 
+        # temp = np.zeros((self.N,self.N))
+        # temp2 = np.zeros((self.N, self.N))
+        # for ii in np.arange(self.N):
+        #     for jj in np.arange(self.N):
+        #         temp[ii,jj] = self.DC_CTM[ii,jj]
+        #         temp2[ii,jj] = self.DC_CTMNinv[ii,jj]
+        #
+        # self.DC_CTM = temp
+        # self.DC_CTMNinv = temp2
+
+
 
         self.generate_omegaphi_functions(self.energylistarray, self.flxquantaarray)
 
     def omega_to_V_thru_CTM(self, Vtype, freq_list):
         vec0 = []
-        for ii in np.arange(8):
+        for ii in np.arange(self.N):
             #print('omegatophi%s' % ii + '(freq_list[%s' % ii + '])')
             vec0.append(self.omegatophi_list[ii](freq_list[ii]))
         if Vtype=="DC":
@@ -84,13 +112,21 @@ class Tuning:
         if Vtype=="FF":
             return np.array(self.FF_SWCTMNinv.dot(vec0))
 
+
+    def omega_to_V_thru_CTM_direct(self, Vtype, freq_list):
+        if Vtype=="DC":
+            return np.array(self.DC_CTMinv.dot(np.asarray(freq_list)))
+        if Vtype=="FF":
+            return np.array(self.FF_SWCTMinv.dot(np.asarray(freq_list)))
+
+
     def generate_omegaphi_functions(self, energylistarray, flxquantaarray):
         self.phitoomega_list = []
         self.omegatophi_list = []
         self.dphidomega_list = []
         self.domegadphi_list = []
 
-        for i in range(8):
+        for i in range(self.N):
             self.phitoomega_list.append(
                 interpolate.interp1d(flxquantaarray[i], energylistarray[i], kind='cubic', ))
             self.omegatophi_list.append(
@@ -104,7 +140,7 @@ class Tuning:
 
     def omega_to_V_thru_LocalSlopes(self, Vtype, jump_freq_list):
         # This should be dphi given local slope
-        vec0 = (1 / (np.array(self.FF_dVdphi))) * (1 / (np.array(self.FF_LocalSlopes))) * np.array(jump_freq_list)
+        vec0 = (1 / (np.array(self.FF_dVdphi)[0:self.N])) * (1 / (np.array(self.FF_LocalSlopes))) * np.array(jump_freq_list)
 
         # voltage to get those values
         return np.array(self.FF_SWCTMNinv.dot(vec0))
@@ -125,11 +161,11 @@ class Tuning:
         freq_diff = np.array(intended_freq) - np.array(measured_freq)
 
         phi_diff = np.zeros(len(freq_diff))
-        for ii in np.arange(8):
+        for ii in np.arange(self.N):
             phi_diff[ii] =  self.omegatophi_list[ii](intended_freq[ii]) - self.omegatophi_list[ii](measured_freq[ii])
 
         new_flxquantaarray = copy.deepcopy(self.flxquantaarray)
-        for i in range(8):
+        for i in range(self.N):
             new_flxquantaarray[i] = np.array(self.flxquantaarray[i]) + phi_diff[i]
         self.json_log_phi_diff(filename, list(phi_diff))
 
@@ -167,15 +203,15 @@ class Tuning:
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
         # We want to show all ticks...
-        ax.set_xticks(np.arange(len(flist)))
-        ax.set_yticks(np.arange(len(qlist)))
+        ax.set_xticks(np.arange(len(CTM)))
+        ax.set_yticks(np.arange(len(CTM)))
         # ... and label them with the respective list entries
-        ax.set_xticklabels(flist)
-        ax.set_yticklabels(qlist)
+        ax.set_xticklabels(flist[0:len(CTM)])
+        ax.set_yticklabels(qlist[0:len(CTM)])
 
         # Loop over data dimensions and create text annotations.
-        for ii in range(len(qlist)):
-            for jj in range(len(flist)):
+        for ii in range(len(CTM)):
+            for jj in range(len(CTM)):
                 text = ax.text(ii, jj, round(CTM[jj, ii], 1),
                                ha="center", va="center", color="w")
 

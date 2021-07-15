@@ -457,6 +457,105 @@ def resonator_spectroscopy_chi(filenb_g, filenb_e, marker=None, phi=0, sub_mean=
     fig.tight_layout()
     plt.show()
 
+def ff_track_traj(filenb, phi=0, sub_mean=True, iq_plot=False, debug=False, marker=None, slices=False,plot=True):
+    # the 'with' statement automatically opens and closes File a, even if code in the with block fails
+    expt_name = "ff_track_traj"
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        # get data in from json file
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran'] # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+
+        flux_vec = expt_params['ff_vec']
+        print("flux vec {}".format(flux_vec))
+
+        nu_q = params['qb_freq']  # expected qubit freq
+        ppiqstart = experiment_cfg[expt_name]['qbf_start']
+        ppiqstop = experiment_cfg[expt_name]['qbf_stop']
+        ppiqstep = experiment_cfg[expt_name]['qbf_step']
+        freqvals = np.arange(ppiqstart, ppiqstop, ppiqstep) + nu_q
+
+        per_start = experiment_cfg[expt_name]['perc_flux_vec_start']
+        per_stop = experiment_cfg[expt_name]['perc_flux_vec_stop']
+        per_step = experiment_cfg[expt_name]['perc_flux_vec_step']
+        per_vals = np.arange(per_start, per_stop, per_step)
+
+        I_raw = a['I']
+        Q_raw = a['Q']
+
+        magarray = []
+        parray = []
+        for i in range(I_raw.shape[0]):
+            # process I, Q data
+            (I, Q, mag, phase) = iq_process(f=freqvals, raw_I=I_raw[i], raw_Q=Q_raw[i], ran=ran, phi=phi,
+                                            sub_mean=sub_mean)
+            magarray.append(mag)
+            p = fitlor(freqvals, np.square(mag), showfit=False)
+            parray.append(p)
+
+
+        if debug:
+            print("DEBUG")
+            print("averages =", expt_params['acquisition_num'])
+            print("Rd LO pwr= ", read_lo_pwr, "dBm")
+            print("Qb LO pwr= ", qb_lo_pwr, "dBm")
+            print("Rd atten= ", dig_atten_rd, "dB")
+            print("Qb atten= ", dig_atten_qb, "dB")
+            print("Readout params", readout_params)
+            print("experiment params", expt_params)
+
+        x, y = np.meshgrid(freqvals, per_vals[:len(I_raw)])
+        fig, ax = plt.subplots(1,1)
+        fig.set_figheight(4)
+        fig.set_figwidth(8)
+        #freq_new = np.append(freqvals, 0)
+        #tvals_new = np.append(t_vals[:len(I_raw)], 0)
+        # print(freq_new.shape)
+        # print(tvals_new.shape)
+        #ax.pcolormesh(x, y, magarray, shading='flat', cmap='RdBu')
+        ax.pcolormesh(x , y, magarray, shading='nearest', cmap='RdBu')
+        ax.set_ylabel('% of vector')
+        ax.set_xlabel('freq (GHz)')
+        ax.set_title('PPIQ Sweep Across Flux Pulse')
+        fig.tight_layout()
+        plt.show()
+        # figure(figsize=(12, 4))
+        # plt.pcolormesh(x, y, magarray, shading='nearest', cmap='RdBu')
+        # plt.show()
+
+        if iq_plot:
+            x, y = np.meshgrid(freqvals, t_vals[:len(I_raw)])
+            figure(figsize=(12, 4))
+            plt.pcolormesh(x, y, I_raw, shading='nearest', cmap='RdBu')
+            plt.show()
+            figure(figsize=(12, 4))
+            plt.pcolormesh(x, y, Q_raw, shading='nearest', cmap='RdBu')
+            plt.show()
+
+        if slices:
+            for i in range(I_raw.shape[0]):
+                # process I, Q data
+                (I, Q, mag, phase) = iq_process(f=freqvals, raw_I=I_raw[i], raw_Q=Q_raw[i], ran=ran, phi=phi,
+                                                sub_mean=sub_mean)
+
+                # plot and fit data
+                title = expt_name
+                plot_freq_data(f=freqvals, I=I, Q=Q, mag=mag, phase=phase,
+                               expected_f=nu_q, mag_phase_plot=False, polar=False, title=title, marker=marker,plot=plot)
+        return per_vals[:len(I_raw)], parray[2]
+
 def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, debug=False, marker=None, mag_phase_plot=False, polar=False,
                      slices=False,plot=True):
     # the 'with' statement automatically opens and closes File a, even if code in the with block fails
@@ -518,21 +617,22 @@ def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, debug=False, m
             print("Readout params", readout_params)
             print("experiment params", expt_params)
 
-        x, y = np.meshgrid(freqvals, t_vals[:len(I_raw)])
-        fig, ax = plt.subplots(1,1)
-        fig.set_figheight(4)
-        fig.set_figwidth(8)
-        #freq_new = np.append(freqvals, 0)
-        #tvals_new = np.append(t_vals[:len(I_raw)], 0)
-        # print(freq_new.shape)
-        # print(tvals_new.shape)
-        #ax.pcolormesh(x, y, magarray, shading='flat', cmap='RdBu')
-        ax.pcolormesh(x , y, magarray, shading='nearest', cmap='RdBu')
-        ax.set_ylabel('dt (ns)')
-        ax.set_xlabel('freq (GHz)')
-        ax.set_title('PPIQ Sweep Across Flux Pulse')
-        fig.tight_layout()
-        plt.show()
+        if plot==True:
+            x, y = np.meshgrid(freqvals, t_vals[:len(I_raw)])
+            fig, ax = plt.subplots(1,1)
+            fig.set_figheight(4)
+            fig.set_figwidth(8)
+            #freq_new = np.append(freqvals, 0)
+            #tvals_new = np.append(t_vals[:len(I_raw)], 0)
+            # print(freq_new.shape)
+            # print(tvals_new.shape)
+            #ax.pcolormesh(x, y, magarray, shading='flat', cmap='RdBu')
+            ax.pcolormesh(x , y, magarray, shading='nearest', cmap='RdBu')
+            ax.set_ylabel('dt (ns)')
+            ax.set_xlabel('freq (GHz)')
+            ax.set_title('PPIQ Sweep Across Flux Pulse')
+            fig.tight_layout()
+            plt.show()
         # figure(figsize=(12, 4))
         # plt.pcolormesh(x, y, magarray, shading='nearest', cmap='RdBu')
         # plt.show()
@@ -557,6 +657,71 @@ def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, debug=False, m
                 plot_freq_data(f=freqvals, I=I, Q=Q, mag=mag, phase=phase,
                                expected_f=nu_q, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker,plot=plot)
         return t_vals[:len(I_raw)], parray
+
+
+def melting_single_readout_full_ramp(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
+                                     debug=False, pi_cal=False, norm_plot=False, rabi_vals=None, fit_J=False):
+    expt_name = "melting_single_readout_full_ramp"
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
+
+        I_raw = np.array(a["I"])
+        Q_raw = np.array(a["Q"])
+        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+        t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
+            :(len(I_raw))]
+
+        J = []
+
+        for s in show:
+            if pi_cal:
+                plt.plot(t, eval(s)[0:-2])
+                if rabi_vals != None:
+                    plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
+                    plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
+                if fit_J:
+                    res = fit_sin(t, eval(s)[0:-2])
+                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+                    plt.plot(t, res['fitfunc'](t))
+                plt.axhline(y=eval(s)[-2], c='g', label="g")
+                plt.axhline(y=eval(s)[-1], c='r', label="e")
+                plt.legend()
+                plt.xlabel('time (ns)')
+                plt.ylabel(s + " volts")
+                plt.show()
+
+                if norm_plot:
+                    plt.plot(t, (eval(s)[0:-2] - eval(s)[-1]) / (eval(s)[-2] - eval(s)[-1]))
+                    plt.ylim((-0.1, 1))
+                    plt.xlabel('time (ns)')
+                    plt.ylabel(s + ' normalized')
+                    plt.legend()
+            #             plt.show()
+            else:
+                plt.title(s)
+                plt.plot(t, eval(s))
+                if fit_J:
+                    res = fit_sin(t, eval(s)[0:-2])
+                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+                    plt.plot(t, res['fitfunc'](t))
+                plt.show()
+        if fit_J:
+            return J
 
 def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None,plot = True, ff=False):
     """Fits pulse_probe_iq data, then plots data and prints result
@@ -623,7 +788,7 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot
 def ff_pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None):
     print("This version has been deprecated, just pass ff=True to pulse probe iq")
 
-def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False):
+def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, ff=False):
     """
     takes in rabi data, processes it, plots it, and fits it
     :param filenb: filenumber
@@ -639,6 +804,9 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
     SIGMA_CUTOFF = 4
 
     expt_name = "rabi"
+    if ff:
+        expt_name = "ff_rabi"
+
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
         #####IMPORT STUFF#####

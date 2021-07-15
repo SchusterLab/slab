@@ -98,6 +98,27 @@ class SequentialExperiment:
 
         self.seq_data = np.array(self.seq_data)
 
+    def ff_sweep_j(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
+        experiment_name = 'ff_sweep_j'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+
+        per_array = np.arange(expt_cfg['per_start'],expt_cfg['per_stop'],expt_cfg['per_step'])
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, experiment_name, suffix='.h5'))
+
+        for per in per_array:
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+            sequences = ps.get_experiment_sequences(experiment_name, perc_flux_vec=per)
+            print("Sequences generated")
+            #
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            data = exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,seq_data_file=seq_data_file)
+            self.seq_data.append(data)
+
+        self.seq_data = np.array(self.seq_data)
+
     def histogram_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
 
         expt_cfg = experiment_cfg['histogram_sweep']

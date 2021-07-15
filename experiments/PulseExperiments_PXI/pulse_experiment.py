@@ -51,7 +51,7 @@ class Experiment:
         try:self.drive_attens = [im[atten] for atten in self.hardware_cfg['drive_attens']]
         except:print("No digital attenuator specified in hardware config / failure to connect with im()")
 
-        try: self.trig = im['triggrb']
+        try: self.trig = im['BNCfungen']
         except: print ("No trigger function generator specied in hardware cfg / failure to connect with im()")
 
         self.data = None
@@ -333,6 +333,7 @@ class Experiment:
         self.expt_cfg = self.experiment_cfg[name]
         self.generate_datafile(path,name,seq_data_file=seq_data_file)
         self.set_trigger()
+        self.trig.set_output(state=False) # hold on triggering anythingg
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
         #self.initiate_stab_LOs()
@@ -340,8 +341,11 @@ class Experiment:
         self.initiate_drive_attenuators()
         self.initiate_pxi(name, sequences)
 
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.pxi.run()
+        time.sleep(0.2)
+
+        self.trig.set_output(state=True) # begin triggering experiment
 
         #TODO: not yet updated check_sync
         if check_sync:
