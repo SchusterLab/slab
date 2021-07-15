@@ -914,7 +914,7 @@ class Experiment:
             elif self.expt_cfg['traj_data_nowindow']:
                 self.data = self.get_traj_data_pxi_nowindow(seq_data_file=seq_data_file)
             else:
-                self.data = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq_A = self.rotate_iq_A,rotate_iq_B = self.rotate_iq_B,phi_A=self.iq_angle_A, phi_B = self.iq_angle_B)
+                self.data = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,rotate_iq_A = self.rotate_iq_A ,rotate_iq_B = self.rotate_iq_B, phi_A=self.iq_angle_A, phi_B = self.iq_angle_B)
 
 
 
