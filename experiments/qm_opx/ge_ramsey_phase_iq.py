@@ -17,7 +17,7 @@ dt = 250
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
-T_min = 0
+T_min = 4
 T_max = 30000
 times = np.arange(T_min, T_max + dt/2, dt)
 avgs = 1000
@@ -105,8 +105,10 @@ else:
     job.halt()
 
     times = 4*times/1e3
-
+    plt.figure()
     plt.plot(times, Q, '.-')
+    plt.plot(times, I, '.-')
+
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,

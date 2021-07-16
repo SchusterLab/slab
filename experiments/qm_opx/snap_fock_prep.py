@@ -23,7 +23,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # pull calibration data from file, handling properly in case of multimode cavity
     cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_6_14_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_7_14_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -263,7 +263,7 @@ if simulation:
 else:
     """To run the actual experiment"""
     print("Experiment execution Done")
-    job = qm.execute(snap_1, duration_limit=0, data_limit=0)
+    job = qm.execute(snap_3, duration_limit=0, data_limit=0)
 
     result_handles = job.result_handles
 
@@ -271,8 +271,9 @@ else:
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
 
-
+    plt.figure()
     plt.plot(f_vec, res, '.-')
+    plt.show()
 
     job.halt()
 

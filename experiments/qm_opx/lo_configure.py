@@ -7,6 +7,8 @@ im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
 LO_s = im['SC1E48']
+flux = im['YOKO1']
+
 ##################
 # ramsey_prog:
 ##################
@@ -23,3 +25,5 @@ LO_r.set_output(True)
 LO_s.set_frequency(storage_LO)
 LO_s.set_power(13)
 LO_s.set_output_state(True)
+
+flux.set_current(0.3988e-3)

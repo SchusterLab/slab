@@ -23,7 +23,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # pull calibration data from file, handling properly in case of multimode cavity
     cal_path = 'C:\\_Lib\\python\\slab\\experiments\\qm_opx\\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_6_14_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_7_14_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -65,8 +65,9 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=Tr
 avgs = 1000
 reset_time = int(3.75e6)
 simulation = 0
-t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
+t_chi = int((abs(0.5*1e9/two_chi))//4 + 1) # in FPGA clock cycles, qubit rotates by pi in this time
 opx_amp = 0.40
+
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
     I  = declare(fixed)
@@ -177,7 +178,7 @@ def fock_prep(f_target=1):
             """BD starts here"""
 
             play("pi2", "qubit") # unconditional
-            wait(t_chi//4, "qubit")
+            wait(t_chi, "qubit")
             frame_rotation(np.pi, 'qubit') #
             play("pi2", "qubit")
             align('qubit', 'rr', 'jpa_pump')
@@ -189,7 +190,7 @@ def fock_prep(f_target=1):
             align("qubit", "rr", 'jpa_pump')
 
             play("pi2", "qubit") # unconditional
-            wait(t_chi//4//2-3, "qubit") # subtracted 3 to make the simulated waveforms accurate
+            wait(t_chi//2-4, "qubit") # subtracted 3 to make the simulated waveforms accurate
             with if_(bit1==0):
                 frame_rotation(np.pi, 'qubit')
                 play("pi2", "qubit")
@@ -229,7 +230,7 @@ def fock_prep(f_target=1):
 
     return num
 
-num = fock_prep(f_target=1)
+num = fock_prep(f_target=2)
 
 p_cav = [np.sum(num==0)*100/avgs, np.sum(num==1)*100/avgs, np.sum(num==2)*100/avgs, np.sum(num==3)*100/avgs]
 

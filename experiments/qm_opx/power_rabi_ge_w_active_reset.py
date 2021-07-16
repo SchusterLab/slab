@@ -31,7 +31,7 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_o
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
-    wait(5000//4, 'rr')
+    wait(1000//4, 'rr')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
     wait(1000//4, 'rr')
 
@@ -96,9 +96,13 @@ res = result_handles.get('res').fetch_all()
 I = result_handles.get('I').fetch_all()
 counter1 = result_handles.get('counter1').fetch_all()
 counter2 = result_handles.get('counter2').fetch_all()
+
+plt.figure()
 plt.plot(I, '.')
+plt.show()
 plt.figure()
 plt.plot(res, '.')
+plt.show()
 
 job.halt()
 

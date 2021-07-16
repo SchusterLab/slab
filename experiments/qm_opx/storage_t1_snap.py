@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, ge_IF, biased_th_g_jpa, two_chi
+from configuration_IQ import config, ge_IF, biased_th_g_jpa, two_chi, disc_file
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -22,7 +22,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # pull calibration data from file, handling properly in case of multimode cavity
     cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_7_14_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -63,12 +63,12 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(51000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -161,13 +161,17 @@ else:
     result_handles = job.result_handles
 
     result_handles.wait_for_all_values()
+
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
+
+    plt.figure()
+    plt.plot(4*t_vec/1e3, res, '.-')
+    plt.show()
+
     print ("Data collection done")
 
     job.halt()
-
-    plt.plot(4*t_vec/1e3, res, '.-')
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

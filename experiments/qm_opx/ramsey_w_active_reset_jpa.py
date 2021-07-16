@@ -19,7 +19,7 @@ dt = 250
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
 T_min = 4
-T_max = 30000
+T_max = 50000
 times = np.arange(T_min, T_max + dt/2, dt)
 avgs = 1000
 reset_time = 500000

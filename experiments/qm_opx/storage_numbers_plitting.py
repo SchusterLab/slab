@@ -61,17 +61,17 @@ def active_reset(biased_th, to_excited=False):
 # qubit_spec_prog:
 ###############
 
-f_min = -14.0e6
+f_min = -9.0e6
 f_max = 1.0e6
-df = 60e3
+df = 40e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
-avgs = 2000
+avgs = 200
 reset_time = int(3.5e6)
 simulation = 0
 
-cav_len = 100
-cav_amp = 0.4
+cav_len = 50
+cav_amp = 0.8
 
 with program() as storage_spec:
 

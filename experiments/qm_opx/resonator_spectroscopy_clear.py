@@ -76,7 +76,9 @@ else:
 
     job.halt()
 
-    plt.plot(I**2+Q**2, '.-')
+    plt.figure()
+    plt.plot(f_vec, I**2+Q**2, '.-')
+    plt.show()
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

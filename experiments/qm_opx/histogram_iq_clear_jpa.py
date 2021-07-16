@@ -109,13 +109,13 @@ else:
     Ig = np.array(res_handles.get("Ig").fetch_all()['value'])
     Qg = np.array(res_handles.get("Qg").fetch_all()['value'])
 
-    # Ie = np.array(res_handles.get("Ie").fetch_all()['value'])
-    # Qe = np.array(res_handles.get("Qe").fetch_all()['value'])
+    Ie = np.array(res_handles.get("Ie").fetch_all()['value'])
+    Qe = np.array(res_handles.get("Qe").fetch_all()['value'])
 
     job.halt()
 
     plt.plot(Ig, Qg, '.')
-    # plt.plot(Ie, Qe, '.')
+    plt.plot(Ie, Qe, '.')
     plt.axis('equal')
 
     # path = os.getcwd()

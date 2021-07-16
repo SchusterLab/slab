@@ -38,7 +38,6 @@ with program() as training_program:
     with for_(n, 0, n < N, n + 1):
 
         wait(wait_time//4, "rr")
-
         measure("clear", "rr", adc_st,
                 demod.full("clear_integW1", I1, 'out1'),
                 demod.full("clear_integW2", Q1, 'out1'),

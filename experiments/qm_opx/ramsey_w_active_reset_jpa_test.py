@@ -1,4 +1,4 @@
-from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa
+from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -33,33 +33,28 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_opt.npz', lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
-
-    wait(5000//4, "jpa_pump")
-    align("rr", "jpa_pump")
-    play('pump_square', 'jpa_pump')
+    wait(1000//4, 'rr')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
     wait(1000//4, 'rr')
 
     if to_excited == False:
         with while_(I < biased_th):
-            align('qubit', 'rr', 'jpa_pump')
+            align('qubit', 'rr')
             with if_(~res_reset):
                 play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
+            align('qubit', 'rr')
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
     else:
         with while_(I > biased_th):
-            align('qubit', 'rr', 'jpa_pump')
+            align('qubit', 'rr')
             with if_(res_reset):
                 play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
+            align('qubit', 'rr')
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
 
@@ -91,14 +86,13 @@ def cond_ramsey():
 
             with for_(t, T_min, t < T_max + dt/2, t + dt):
 
-                active_reset(biased_th_g_jpa)
-                align('qubit', 'rr', 'jpa_pump')
+                active_reset(biased_th_g)
+                align('qubit', 'rr')
                 play("pi2", "qubit")
                 wait(t, "qubit")
                 frame_rotation_2pi(phi, "qubit") #2pi is already multiplied to the phase
                 play("pi2", "qubit")
-                align('qubit', 'rr', 'jpa_pump')
-                play('pump_square', 'jpa_pump')
+                align('qubit', 'rr')
                 discriminator.measure_state("clear", "out1", "out2", res, I=I)
                 assign(phi, phi + dphi)
 
@@ -111,36 +105,37 @@ def cond_ramsey():
 
     return ramsey
 
-qm = qmm.open_qm(config)
+    qm = qmm.open_qm(config)
 
-if simulation:
-    """To simulate the pulse sequence"""
-    job = qm.simulate(ramsey, SimulationConfig(15000))
-    samples = job.get_simulated_samples()
-    samples.con1.plot()
-else:
-    """To run the actual experiment"""
-    print("Experiment execution Done")
-    job = qm.execute(ramsey, duration_limit=0, data_limit=0)
+    if simulation:
+        """To simulate the pulse sequence"""
+        job = qm.simulate(ramsey, SimulationConfig(15000))
+        samples = job.get_simulated_samples()
+        samples.con1.plot()
+    else:
+        """To run the actual experiment"""
+        print("Experiment execution Done")
+        job = qm.execute(ramsey, duration_limit=0, data_limit=0)
 
-    result_handles = job.result_handles
-    result_handles.wait_for_all_values()
-    res = result_handles.get('res').fetch_all()
-    I = result_handles.get('I').fetch_all()
-    job.halt()
+        result_handles = job.result_handles
+        result_handles.wait_for_all_values()
+        res = result_handles.get('res').fetch_all()
+        I = result_handles.get('I').fetch_all()
+        job.halt()
 
-    times = 4*times/1e3
+        times = 4*times/1e3
 
-    plt.plot(times, res, '.-')
+        plt.plot(times, res, '.-')
 
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'ramsey_phase', suffix='.h5'))
-    print(seq_data_file)
-    with File(seq_data_file, 'w') as f:
-        f.create_dataset("Q", data=res)
-        f.create_dataset("I", data=I)
-        f.create_dataset("time", data=times)
-        f.create_dataset("ramsey_freq", data=ramsey_freq)
-        f.create_dataset("qubit_freq", data=qubit_freq)
+
+    # path = os.getcwd()
+    # data_path = os.path.join(path, "data/")
+    # seq_data_file = os.path.join(data_path,
+    #                              get_next_filename(data_path, 'ramsey_phase', suffix='.h5'))
+    # print(seq_data_file)
+    # with File(seq_data_file, 'w') as f:
+    #     f.create_dataset("Q", data=res)
+    #     f.create_dataset("I", data=I)
+    #     f.create_dataset("time", data=times)
+    #     f.create_dataset("ramsey_freq", data=ramsey_freq)
+    #     f.create_dataset("qubit_freq", data=qubit_freq)

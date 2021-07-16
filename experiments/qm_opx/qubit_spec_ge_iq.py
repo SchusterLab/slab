@@ -91,8 +91,10 @@ else:
 
     job.halt()
 
+    plt.figure()
     plt.plot(I, '.-')
     plt.plot(Q, '.-')
+    plt.show()
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

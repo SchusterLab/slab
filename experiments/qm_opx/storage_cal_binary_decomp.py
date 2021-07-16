@@ -30,7 +30,7 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=Tr
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -60,13 +60,13 @@ def active_reset(biased_th, to_excited=False):
 # qubit_spec_prog:
 ###############
 
-t_min = 20000
-t_max = 30000
-dt = 2000
+t_min = 10000
+t_max = 15000
+dt = 1000
 t_vec = np.arange(t_min, t_max + dt/2, dt)
 print(len(t_vec))
 
-cav_amp = 0.0006
+cav_amp = 0.002
 t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
 
 avgs = 2000
@@ -150,7 +150,7 @@ else:
 
     num = bit1 + 2*bit2
 
-    p_cav = [np.sum(num==0)*100/avgs, np.sum(num==1)*100/avgs, np.sum(num==2)*100/avgs, np.sum(num==3)*100/avgs]
+    p_cav = [np.sum(num==0)/avgs, np.sum(num==1)/avgs, np.sum(num==2)/avgs, np.sum(num==3)/avgs]
     print("n=0 => {}, n=1 => {}, n=2 => {},n=3 => {}".format(p_cav[0], p_cav[1], p_cav[2], p_cav[3]))
 
     job.halt()
