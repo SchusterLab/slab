@@ -75,7 +75,7 @@ class Experiment:
         except: print ("No digital attenuator specified in hardware config")
 
         try: self.trig = im['trigBNC188']
-        except: print ("No trigger function generator specied in hardware cfg")
+        except: print ("No trigger function generator specified in hardware cfg")
 
         try:self.tek2 = im['TEK2']
         except:print("No tek2")
@@ -890,6 +890,13 @@ class Experiment:
         # print(len(self.experiment_cfg[name]['on_qubits']), "len on qubits")
         self.generate_datafile(path,name,seq_data_file=seq_data_file)
         self.set_trigger()
+        # 7/2021 Modification from Gerbert's troubleshooting of de-syncing of pxi cards [MGP]
+        # Depending on what trigger they caught, they could be off a few trigger periods
+        # To prevent this, turn the trigger source off while running startAll() on AWG channels (in awg_run)
+        # Then turn trigger source back on
+
+        self.trig.set_output(state=False)
+
         self.initiate_drive_LOs()
         # self.initiate_drive_LOs_SignalCore(name)
         self.initiate_readout_LOs()
@@ -899,8 +906,11 @@ class Experiment:
         self.initiate_readout_attenuators() # [AV] load drive attens defined in hardware_cfg/read_attens[]
         self.initiate_pxi(name, sequences)
         # self.initiate_tek2(name,path,sequences)
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.awg_run(run_pxi=True,name=name)
+        time.sleep(0.2)
+        # Begin triggering experiment after awg cards are running
+        self.trig.set_output(state=True)
 
 
         if check_sync:self.pxi.acquireandplot(expt_num)

@@ -575,5 +575,16 @@ class BiasDriver(BNCAWG):
 
 if __name__ == "__main__":
     # bnc=BNCAWG(address='192.168.14.133')
-    filament = FilamentDriver(address='192.168.14.133')
-    print(filament.query('*IDN?'))
+    # filament = FilamentDriver(address='192.168.14.133')
+    # print(filament.query('*IDN?'))
+
+    bnc = BNCAWG(address='192.168.14.188')
+    ff = bnc.get_output()
+    print(ff, "original state")
+    bnc.set_output(state=False)
+    gg = bnc.get_output()
+    print(gg, "out after off")
+    bnc.set_output(state=True)
+    hh = bnc.get_output()
+    print(hh, "out after on")
+    bnc.set_output(state=False)
