@@ -137,6 +137,8 @@ class Tuning:
                 interpolate.interp1d(flxquantaarray[i][0:-1],
                                      np.diff(energylistarray[i]) / np.diff(flxquantaarray[i]) , kind='cubic'))
 
+        return [self.phitoomega_list,self.omegatophi_list,self.dphidomega_list,self.domegadphi_list]
+
 
     def omega_to_V_thru_LocalSlopes(self, Vtype, jump_freq_list):
         # This should be dphi given local slope

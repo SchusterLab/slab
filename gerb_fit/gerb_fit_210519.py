@@ -22,6 +22,7 @@ from scipy.signal import find_peaks
 print(os.getcwd())
 from scipy.signal import argrelextrema
 import copy
+from qutip import *
 
 font = {'family' : 'normal',
         'weight' : 'normal',
@@ -1602,7 +1603,7 @@ def twotoneHJC(fname, details=True):
     return [np.array(fluxpts) / 1e3, resminima, qubitpeaks]
 
 
-def twotoneHJCfitter(fname, Ec, wqmax, wqmin, fc, g, flxoffset, flxscale, details=True):
+def twotoneHJCfitter(fname, Ec, wqmax, wqmin, fc, g, flxoffset, flxscale, nb_pts=1001, details=True):
     fluxpts, rmin, qpk = twotoneHJC(fname, details=False)
     flux = fluxpts
     Ec = Ec  # 2*pi* 0.250 #GHz
@@ -1637,7 +1638,7 @@ def twotoneHJCfitter(fname, Ec, wqmax, wqmin, fc, g, flxoffset, flxscale, detail
         print('\nLower sweet spot:')
         print('cavity freq = ', vr_energies_lower[argmin(abs(vr_energies_lower - f_c))] / 2 / pi, 'GHz')
         print('qubit freq = ', vr_energies_lower[argmin(abs(vr_energies_lower - f_c)) - 1] / 2 / pi, 'GHz')
-    flux_vec = np.linspace(-2, 2, 401)
+    flux_vec = np.linspace(-1, 1, nb_pts)
 
     # qubit energy levels
     energies = np.asarray([hamiltonian(Ec, Ej, d, flux).eigenenergies() for flux in flux_vec])

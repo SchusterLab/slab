@@ -618,8 +618,8 @@ class PulseSequences:
                 ff_len = [post_flux_time-pre_flux_time]*8
             else:
                 ff_len = np.asarray(self.lattice_cfg['ff_info']["ff_len"])
-            self.ff_pulse(sequencer, ff_len=ff_len,flux_vec =self.expt_cfg['ff_vec'], pulse_type= ff_pulse_type)
-            self.ff_pulse(sequencer, ff_len=ff_len, flux_vec=self.expt_cfg['ff_vec'], pulse_type=ff_pulse_type,
+            self.ff_pulse(sequencer, ff_len=ff_len,flux_vec =self.expt_cfg['ff_vec'], pulse_type= self.expt_cfg['ff_pulse_type'])
+            self.ff_pulse(sequencer, ff_len=ff_len, flux_vec=self.expt_cfg['ff_vec'], pulse_type=self.expt_cfg['ff_pulse_type'],
                           flip_amp=True)
             sequencer.end_sequence()
 
