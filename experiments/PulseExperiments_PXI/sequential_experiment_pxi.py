@@ -119,6 +119,32 @@ class SequentialExperiment:
 
         self.seq_data = np.array(self.seq_data)
 
+    def measure_lattice_state(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
+        experiment_name = 'measure_lattice_state'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, experiment_name, suffix='.h5'))
+
+        Mott_qbs = expt_cfg["Mott_qbs"]
+        qb_freq_list = [lattice_cfg["qubit"]["freq"][i] for i in Mott_qbs]
+        lo_qb_temp_ind = np.argmax(qb_freq_list)
+        lo_qb = Mott_qbs[lo_qb_temp_ind]
+
+        for rd_qb in expt_cfg["rd_qbs"]:
+            quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: lo_qb})
+            quantum_device_cfg["readout"][setup]["freq"] = lattice_cfg["readout"]["freq"][rd_qb]
+
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+            sequences = ps.get_experiment_sequences(experiment_name, rd_qb=rd_qb)
+            print("Sequences generated")
+            #
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            data = exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,seq_data_file=seq_data_file)
+            self.seq_data.append(data)
+
+        self.seq_data = np.array(self.seq_data)
+
     def histogram_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
 
         expt_cfg = experiment_cfg['histogram_sweep']
