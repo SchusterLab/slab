@@ -674,6 +674,7 @@ def generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits = {'A':1
 
                     elif len(setups)>1 and key == setups[1]:
                         for key_set in lattice_cfg[category][key]:
+
                             quantum_device_cfg[category][setups[1]][key_set] = lattice_cfg[category][key][key_set][qb_ids[1]]
                     # else, just stuff it directly
                     else:
