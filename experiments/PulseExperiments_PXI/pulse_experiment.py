@@ -370,24 +370,20 @@ class Experiment:
         self.expt_cfg = self.experiment_cfg[name]
         self.generate_datafile(path,name,seq_data_file=seq_data_file)
         self.set_trigger()
-        self.trig.set_output(state=False)
         self.initiate_drive_LOs()
         #self.initiate_stab_LOs()
         self.initiate_readout_attenuators()
         self.initiate_drive_attenuators()
         self.initiate_pxi(name, sequences)
         self.initiate_readout_LOs()
-        time.sleep(0.2)
         self.pxi.run()
-        time.sleep(0.2)
-
-        self.trig.set_output(state=True)
 
 
+        time.sleep(0.1)
         for qb in self.quantum_device_cfg["setups"]:
             read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
             for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq, self.expt_cfg['step']):
-
+                self.quantum_device_cfg['readout'][qb]['freq'] = freq
                 if self.expt_cfg['singleshot']:
                     self.data =  self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
                 elif self.expt_cfg['trajectory']:
@@ -398,7 +394,6 @@ class Experiment:
 
                 self.pxi.DIG_module.stopAll()
 
-                self.quantum_device_cfg['readout'][qb]['freq'] = freq
                 self.initiate_readout_LOs()
 
                 self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
