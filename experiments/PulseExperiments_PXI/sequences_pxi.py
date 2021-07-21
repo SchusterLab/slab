@@ -708,31 +708,13 @@ class PulseSequences:
                                amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
             else:
                 for qubit_id in self.on_qubits:
-                    self.idle_q(sequencer=sequencer, qubit_id=qubit_id, time=ff_len[0]+delt)
+                    self.idle_q(sequencer=sequencer, qubit_id=qubit_id, time=delt)
                     self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'],
                                amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
-                #flux pulse first if dt greater than zero
-                if self.expt_cfg["ff_len"] == "auto":
-                    ff_len = 8*[self.expt_cfg['qb_pulse_length']+delt+self.quantum_device_cfg['readout'][self.on_qubits[0]][
-                        'length']]
-                else:
-                    ff_len = self.lattice_cfg['ff_info']["ff_len"]
 
-                #add flux pulse
-                area_vec = self.ff_pulse(sequencer, ff_len= ff_len, pulse_type= pulse_type, flux_vec=self.expt_cfg["ff_vec"], flip_amp=False)
-
-                #wait time dt, the apply ppiq
-                self.idle_q(sequencer, time=delt)
-                for qubit_id in self.on_qubits:
-                    self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
-
-            #synch all channels except flux before adding readout, then do readout
-            channels_excluding_fluxch = [ch for ch in self.channels if 'ff' not in ch]
-            self.readout_pxi(sequencer, self.on_qubits, overlap=False, synch_channels=channels_excluding_fluxch)
+            self.readout_pxi(sequencer, self.on_qubits, overlap=False, synch_channels=self.channels)
 
             #add compensation flux pulse
-            fluxch = [ch for ch in self.channels if 'ff' in ch]
-            sequencer.sync_channels_time(fluxch + ['readoutA'])
             if self.quantum_device_cfg["ff_info"]["ff_comp_sym"]:
                 self.ff_pulse(sequencer, ff_len= ff_len, pulse_type= pulse_type, flux_vec=self.expt_cfg["ff_vec"], flip_amp=True)
             else:
