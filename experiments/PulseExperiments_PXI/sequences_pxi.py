@@ -702,26 +702,15 @@ class PulseSequences:
 
             #add ppiq and readout
             if delt<0:
-                #ppiq first if dt less than zero
                 for qubit_id in self.on_qubits:
+                    self.idle_q(sequencer=sequencer, qubit_id=qubit_id, time=ff_len[0]+delt)
                     self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'],
                                amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
-
-                # wait time dt, the apply flux pulse
-                for qb in range(8):
-                    sequencer.append('ff_Q%s' % qb, Idle(time=-delt))
-
-                if self.expt_cfg["ff_len"] == "auto":
-                    ff_len = 8 * [
-                        self.expt_cfg['qb_pulse_length'] + delt + self.quantum_device_cfg['readout'][qubit_id[0]][
-                            'length']]
-                else:
-                    ff_len = self.lattice_cfg['ff_info']["ff_len"]
-
-                # add flux pulse
-                area_vec = self.ff_pulse(sequencer, ff_len= ff_len, pulse_type= pulse_type, flux_vec=self.expt_cfg["ff_vec"], flip_amp=False)
-
             else:
+                for qubit_id in self.on_qubits:
+                    self.idle_q(sequencer=sequencer, qubit_id=qubit_id, time=ff_len[0]+delt)
+                    self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'],
+                               amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
                 #flux pulse first if dt greater than zero
                 if self.expt_cfg["ff_len"] == "auto":
                     ff_len = 8*[self.expt_cfg['qb_pulse_length']+delt+self.quantum_device_cfg['readout'][self.on_qubits[0]][
