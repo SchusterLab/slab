@@ -382,19 +382,18 @@ class Experiment:
         time.sleep(0.2)
 
         self.trig.set_output(state=True)
+        # throw away first point
+        if self.expt_cfg['singleshot']:
+            foo = self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+        elif self.expt_cfg['trajectory']:
+            foo = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+        else:
+            foo = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
 
 
         for qb in self.quantum_device_cfg["setups"]:
             read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
             for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq, self.expt_cfg['step']):
-
-                #throw away first point
-                if self.expt_cfg['singleshot']:
-                    foo =  self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
-                elif self.expt_cfg['trajectory']:
-                    foo = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
-                else:
-                    foo = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
 
                 self.pxi.DIG_module.stopAll()
 
