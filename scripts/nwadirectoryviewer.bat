@@ -1,1 +1,0 @@
-pythonw nwadirectoryviewer.pyw %1
