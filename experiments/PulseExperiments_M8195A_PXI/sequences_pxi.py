@@ -7106,7 +7106,8 @@ class PulseSequences:
                     self.pi_q_resolved(sequencer, qubit_id, add_freq=0.0, phase=0.0,
                                        use_weak_drive=self.expt_cfg['use_weak_resolved_pulse'])
                 else:
-                    self.pi_q_resolved(sequencer, qubit_id, add_freq=2*self.quantum_device_cfg['flux_pulse_info']['1']['chiby2pi_e'][mode_index],
+                    self.pi_q_resolved(sequencer, qubit_id,
+                                       add_freq=2*self.quantum_device_cfg['flux_pulse_info']['1']['chiby2pi_e'][mode_index],
                                        phase=0.0, use_weak_drive=self.expt_cfg['use_weak_resolved_pulse'])
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()
