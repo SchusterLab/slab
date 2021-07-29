@@ -810,7 +810,7 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot
 def ff_pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None):
     print("This version has been deprecated, just pass ff=True to pulse probe iq")
 
-def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, ff=False):
+def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, ff=False,decay = True):
     """
     takes in rabi data, processes it, plots it, and fits it
     :param filenb: filenumber
@@ -883,8 +883,14 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
             ax.set_ylabel(s + " (V)")
 
             ####FIT AND ANALYZE###
-            p = fitdecaysin(t, eval(s), showfit=False, fitparams=fitparams, domain=domain)
-            ax.plot(t, decaysin3(p, t), 'k-', label="fit")
+            if decay == True:
+                p = fitdecaysin(t, eval(s), showfit=False, fitparams=fitparams, domain=domain)
+                ax.plot(t, decaysin3(p, t), 'k-', label="fit")
+            else:
+                sin3 = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) + p[3]
+                p = fitsin(t, eval(s), showfit=False, fitparams=fitparams, domain=domain)
+                ax.plot(t, sin3(p, t), 'k-', label="fit")
+
 
             t_pi = 1 / (2 * p[1])
             t_half_pi = 1 / (4 * p[1])
@@ -902,7 +908,8 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
             print("pi length =", t_pi, "ns")
             print("suggested_pi_length = ", int(t_pi) + 1, "    suggested_pi_amp = ",
                   amp * (t_pi) / float(int(t_pi) + 1))
-            print("Rabi decay time = ", p[3], "ns")
+            if decay == True:
+                print("Rabi decay time = ", p[3], "ns")
             if debug:
                 print(p)
 

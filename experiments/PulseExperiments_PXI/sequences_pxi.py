@@ -362,9 +362,19 @@ class PulseSequences:
     def resonator_spectroscopy_pi(self, sequencer):
 
         qubit_id = self.on_qubits[0]
+        res_nb = self.quantum_device_cfg["qubit"][qubit_id]["id"]
         sequencer.new_sequence(self)
         self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
-        self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+        if len(self.expt_cfg["pi_qb"])==0:
+            self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+        else:
+            for qb in self.expt_cfg["pi_qb"]:
+                pulse_info = self.lattice_cfg["pulse_info"]
+                qb_iq_freq_dif = self.lattice_cfg["qubit"]["freq"][qb] - self.lattice_cfg["qubit"]["freq"][res_nb]
+                self.gen_q(sequencer, qubit_id=qubit_id, len=pulse_info[qubit_id]["pi_len"][qb],
+                           amp=pulse_info[qubit_id]["pi_amp"][qb], add_freq=qb_iq_freq_dif, phase=0,
+                           pulse_type=pulse_info["pulse_type"][qb])
+        self.idle_q(sequencer, time=self.expt_cfg["delay"])
         self.readout_pxi(sequencer, self.on_qubits)
         sequencer.end_sequence()
         return sequencer.complete(self, plot=True)

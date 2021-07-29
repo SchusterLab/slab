@@ -17,10 +17,13 @@ from scipy import interpolate
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 class Tuning:
-    def __init__(self, file_names, N=8):
+    def __init__(self, file_names, N=8, log_tuning_files_name=None):
         lattice_cfg = file_names
         os.chdir("C:\\210701 - PHMIV3_56 - BF4 cooldown 3\\ipython notebook")
         self.N = N
+        if log_tuning_files_name==None:
+            log_tuning_files_name = "S:\\_Data\\210412 - PHMIV3_56 - BF4 cooldown 2\\log_tuning_files.json"
+        self.json_log_tuning_files(log_tuning_files_name, file_names)
 
         try:
             self.energylistarray = np.load(lattice_cfg["energylistarray_name"],allow_pickle = True)
@@ -156,6 +159,15 @@ class Tuning:
         with open(filename, 'w') as f:
             json.dump(data, f, indent=4)
 
+    def json_log_tuning_files(self, filename, tuning_file_names):
+        t_obj = time.localtime()
+        t = time.asctime(t_obj)
+        with open(filename, 'r+') as f:
+            data = json.load(f)
+            data[t] = tuning_file_names
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=4)
+
     def correct_flux_offsets(self, intended_freq, measured_freq, filename=None):
         if filename==None:
             filename = "S:\\_Data\\210412 - PHMIV3_56 - BF4 cooldown 2\\phi_diff_log.json"
@@ -175,8 +187,9 @@ class Tuning:
         month = t[1]
         day = t[2]
         hour = t[3]
+        min = t[4]
         flx_quanta_filename = time.localtime()
-        flx_name =  str(month).zfill(2) + str(day).zfill(2) + str(hour).zfill(2) + "_flxquantaarray.npy"
+        flx_name =  str(month).zfill(2) + str(day).zfill(2) + str(hour) + str(min).zfill(2) + "_flxquantaarray.npy"
         print("New fluxqanta array filename: " + flx_name)
         np.save(flx_name, new_flxquantaarray)
 
