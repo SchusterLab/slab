@@ -2,7 +2,7 @@ from slab import InstrumentManager
 from slab.instruments.awg import write_Tek5014_file
 from slab.instruments.awg.M8195A import upload_M8195A_sequence
 # import keysight_pxi_load as ks_pxi
-from slab.instruments.keysight import keysight_pxi_load_m8195a as ks_pxi
+from slab.experiments.PulseExperiments_M8195A_PXI import keysight_pxi_load_m8195a as ks_pxi
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
 from slab.instruments.awg.Tek70001 import write_Tek70001_sequence
