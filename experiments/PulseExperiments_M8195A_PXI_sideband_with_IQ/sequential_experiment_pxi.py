@@ -1,6 +1,6 @@
 from slab.experiments.PulseExperiments_M8195A_PXI_sideband_with_IQ.sequences_pxi import PulseSequences
 from slab.experiments.PulseExperiments_M8195A_PXI_sideband_with_IQ.pulse_experiment import Experiment
-from slab.instruments.keysight import keysight_pxi_load as ks_pxi
+from slab.experiments.PulseExperiments_M8195A_PXI_sideband_with_IQ import keysight_pxi_load as ks_pxi
 import numpy as np
 import os
 import json
