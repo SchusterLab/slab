@@ -2,14 +2,13 @@ import visdom
 import numpy as np
 from scipy import interpolate
 
-''' Started 7/8/2021 by Meg to address issue of simultaneous readout of qubits being fed different pulse chains. 
-Idea is to construct the array, and the t0 and t_array that provide relative phase, and then come back around later
-to multitply by a cosine with the appropriate frequency. So then pulse chains constructed from the back (readout pulse) 
-forward won't have weird issues with relative phase alignment. 
+''' Started 7/8/2021 by Meg to address issue of synchronizing pulses on multiple qubits from the pulse backs rather than 
+fronts.  Idea is to construct the array, and the t0 and t_array that provide relative phase, and then come back around 
+laterto multitply by a cosine with the appropriate frequency. So then pulse chains constructed from the back 
+(readout pulse) forward won't have weird issues with relative phase alignment. '''
 
-It remains to be seen if we'll need to flip sequences ordering around too in order to be consistent about the 
-construction of pulse chains. Start with pulse classes and work outwards.'''
-
+''' Note that the pulses have a new variable align_side to assert when you're calling them compared to pulses from the 
+pulse_classes document!'''
 
 class BackwardsPulse:
 
@@ -21,11 +20,7 @@ class BackwardsPulse:
         win = vis.line(
             X=np.arange(0, len(self.pulse_array)) * self.dt,
             Y=self.pulse_array)
-
-    # Outcome is that sequencer.append calls this and sticks pulse array on a chain of pulses assigned to a specific channel
-    # Think about orientation and inserts/flips out at sequencer.append
-    # Unless asymm pulses in which think about it in pulse classes below first after sequencer.append gets rewritten
-    # Excepting relative phase, and issues if pulses are asymmetric
+        # Think about if pulse array needs to be flipped here
 
     def generate_backwards_pulse_array(self, t0=0, dt=None):
         if dt is not None:
@@ -51,7 +46,7 @@ class BackwardsPulse:
         return np.arange(0, total_length, self.dt) + self.t0
 
 class Gauss_B(BackwardsPulse):
-    def __init__(self, max_amp, sigma_len, cutoff_sigma, freq, phase, dt=None, plot=False):
+    def __init__(self, max_amp, sigma_len, cutoff_sigma, freq, phase, dt=None, plot=False, align_side='Front'):
         self.max_amp = max_amp
         self.sigma_len = sigma_len
         self.cutoff_sigma = cutoff_sigma
@@ -59,6 +54,7 @@ class Gauss_B(BackwardsPulse):
         self.phase = phase
         self.dt = dt
         self.plot = plot
+        self.align_side = align_side
 
         self.t0 = 0
 
@@ -66,13 +62,32 @@ class Gauss_B(BackwardsPulse):
 
         pulse_array = self.max_amp * np.exp(
             -1.0 * (self.t_array - (self.t0 + 2 * self.sigma_len)) ** 2 / (2 * self.sigma_len ** 2))
-        # Spun this out to separate function below
+        # Flip isn't strictly necessary if it's symmetric but good to think ahead
+        pulse_array = np.flip(pulse_array, axis=0)
+        # Spun cosine part out to separate function below
         # pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * self.t_array + self.phase)
 
         return pulse_array
 
+
+    # Multiplies by cosine scooted over by phase. Phase is added by default in back alignment so a negative shift.
+    # Front aligned cosine gets flipped backwards so that phase shift is from the ultimate pulse front
     def scale_by_cosine(self, pulse_array_in):
-        pulse_array = pulse_array_in * np.cos(2 * np.pi * self.freq * self.t_array + self.phase)
+        # Phase offset sign is ambiguous -- was positive which corresp. to a negative shift?
+        # Keep positive as normal phase for back alignment
+        if self.align_side == 'Front':
+            # Flip time backwards for the purposes of applying phase to the array
+            cos_array = np.cos(2 * np.pi * self.freq * self.t_array + self.phase)
+            cos_array = np.flip(cos_array, axis=0)
+            pulse_array = pulse_array_in * cos_array
+        elif self.align_side == 'Back':
+            # Just have phase propagate from late to early time, with the direction of extant t_array
+            # Keep
+            pulse_array = pulse_array_in * np.cos(2 * np.pi * self.freq * self.t_array + self.phase)
+        else:
+            print("You have a problem with invoking alignment options in your pulse class, check yourself")
+            # Default to back alignment since we're constructing pulses from the back anyways here
+            pulse_array = pulse_array_in * np.cos(2 * np.pi * self.freq * self.t_array + self.phase)
         return pulse_array
 
     def get_backwards_length(self):
@@ -81,7 +96,7 @@ class Gauss_B(BackwardsPulse):
 class Square_B(BackwardsPulse):
 
     def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, freq, phase, phase_t0=0, fix_phase=True,
-                 dc_offset=0, dt=None, plot=False):
+                 dc_offset=0, dt=None, plot=False, align_side='Front'):
 
         self.max_amp = max_amp
         self.flat_len = flat_len
@@ -94,6 +109,7 @@ class Square_B(BackwardsPulse):
         self.plot = plot
         self.fix_phase = fix_phase
         self.dc_offset = dc_offset
+        self.align_side = align_side
 
         self.t0 = 0
 
@@ -115,16 +131,42 @@ class Square_B(BackwardsPulse):
                         2 * self.ramp_sigma_len ** 2))  # trailing edge
             )
 
+        pulse_array = np.flip(pulse_array, axis=0)
+
         return pulse_array
 
     def scale_by_cosine(self, pulse_array_in):
 
-        if not self.fix_phase:
-            pulse_array = pulse_array_in * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+        if self.align_side == 'Front':
+            if not self.fix_phase:
+                cos_array = np.cos(
+                    2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+                cos_array = np.flip(cos_array, axis=0)
+                pulse_array = pulse_array_in * cos_array
+            else:
+                cos_array = np.cos(2 * np.pi * (self.freq + self.dc_offset) * (
+                        self.t_array - self.phase_t0) + self.phase - 2 * np.pi * (self.dc_offset) * (
+                                                              self.t_array - self.t_array[0]))
+                cos_array = np.flip(cos_array, axis=0)
+                pulse_array = pulse_array_in * cos_array
+        elif self.align_side == 'Back':
+            # Just keep the same
+            if not self.fix_phase:
+                pulse_array = pulse_array_in * np.cos(
+                    2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+            else:
+                pulse_array = pulse_array_in * np.cos(2 * np.pi * (self.freq + self.dc_offset) * (
+                        self.t_array - self.phase_t0) + self.phase - 2 * np.pi * (self.dc_offset) * (
+                                                              self.t_array - self.t_array[0]))
         else:
-            pulse_array = pulse_array_in * np.cos(2 * np.pi * (self.freq + self.dc_offset) * (
-                            self.t_array - self.phase_t0) + self.phase - 2 * np.pi * (self.dc_offset) * (
-                                                               self.t_array - self.t_array[0]))
+            if not self.fix_phase:
+                pulse_array = pulse_array_in * np.cos(
+                    2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+            else:
+                pulse_array = pulse_array_in * np.cos(2 * np.pi * (self.freq + self.dc_offset) * (
+                        self.t_array - self.phase_t0) + self.phase - 2 * np.pi * (self.dc_offset) * (
+                                                              self.t_array - self.t_array[0]))
+
         return pulse_array
 
     def get_backwards_length(self):
