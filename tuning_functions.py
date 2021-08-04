@@ -19,7 +19,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 class Tuning:
     def __init__(self, file_names, N=8, log_tuning_files_name=None):
         lattice_cfg = file_names
-        os.chdir("C:\\210701 - PHMIV3_56 - BF4 cooldown 3\\ipython notebook")
+        os.chdir("C:\\210801 - PHMIV3_56 - BF4 cooldown 4\\ipython notebook")
         self.N = N
         if log_tuning_files_name==None:
             log_tuning_files_name = "S:\\_Data\\210412 - PHMIV3_56 - BF4 cooldown 2\\log_tuning_files.json"
@@ -131,13 +131,13 @@ class Tuning:
 
         for i in range(self.N):
             self.phitoomega_list.append(
-                interpolate.interp1d(flxquantaarray[i], energylistarray[i], kind='cubic', ))
+                scipy.interpolate.interp1d(flxquantaarray[i], energylistarray[i], kind='cubic', ))
             self.omegatophi_list.append(
-                interpolate.interp1d(energylistarray[i], flxquantaarray[i], kind='cubic', ))
+                scipy.interpolate.interp1d(energylistarray[i], flxquantaarray[i], kind='cubic', ))
             self.dphidomega_list.append(
-                interpolate.interp1d(energylistarray[i][0:-1],np.diff(flxquantaarray[i])/np.diff(energylistarray[i]), kind='cubic'))
+                scipy.interpolate.interp1d(energylistarray[i][0:-1],np.diff(flxquantaarray[i])/np.diff(energylistarray[i]), kind='cubic'))
             self.domegadphi_list.append(
-                interpolate.interp1d(flxquantaarray[i][0:-1],
+                scipy.interpolate.interp1d(flxquantaarray[i][0:-1],
                                      np.diff(energylistarray[i]) / np.diff(flxquantaarray[i]) , kind='cubic'))
 
         return [self.phitoomega_list,self.omegatophi_list,self.dphidomega_list,self.domegadphi_list]

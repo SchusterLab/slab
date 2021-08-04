@@ -8,7 +8,7 @@ Created on Thu Sep 13 19:41:56 2018
 # %pylab inline
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
-from slab.experiments.PulseExperiments_PXI.sequences_pxi import PulseSequences
+from slab.experiments.PulseExperiments_PXI_Gerbert.sequences_pxi import PulseSequences
 import time
 import numpy as np
 import os
