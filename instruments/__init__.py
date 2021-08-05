@@ -21,7 +21,7 @@ from .TDS7104 import TekTDS7104
 from .RCA18 import MCRCA18
 from .multimeter import Keithley199
 
-try: from .AD5780PARDAC.AD5780PARDAC.DACInterface import AD5780_serial
+try: from .AD5780PARDAC.DACInterface import AD5780_serial
 except: print("Could not load AD5780 dac ")
 try: from .ArduinoADC import ArduinoADC
 except: print("Could not load ArduinoADC")
