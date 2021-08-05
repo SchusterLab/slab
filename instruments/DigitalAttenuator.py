@@ -40,4 +40,10 @@ class DigitalAttenuator(SerialInstrument):
         """Returns current attenuation setting of the digital attenuator in dB"""
         self.ser.flushInput()
         val = float(self.query('G'))
+<<<<<<< HEAD
         return -val * 0.5
+=======
+        return val
+        #return -val * 0.5
+    
+>>>>>>> origin/Gerbert_PXI_2qb

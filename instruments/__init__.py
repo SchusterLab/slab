@@ -10,7 +10,11 @@ except: print("Could not load InstrumentManagerWindow")
 from .spectrumanalyzer import E4440
 from .nwa import E5071
 from .PNAX import N5242A
+<<<<<<< HEAD
 # from .RhodeSchwarz import ZVB8
+=======
+from .RhodeSchwarz import RhodeSchwarz
+>>>>>>> origin/Gerbert_PXI_2qb
 from .rfgenerators import N5183B,E8257D,BNC845
 from .cryostat import Triton
 from .awg import *
@@ -21,8 +25,8 @@ from .TDS7104 import TekTDS7104
 from .RCA18 import MCRCA18
 from .multimeter import Keithley199
 
-try: from .AD5780DAC.AD5780 import AD5780
-except: print("Could not load AD5780 dac")
+try: from .AD5780PARDAC.AD5780PARDAC.DACInterface import AD5780_serial
+except: print("Could not load AD5780 dac ")
 try: from .ArduinoADC import ArduinoADC
 except: print("Could not load ArduinoADC")
 try: from .labbrick.labbrick import LMS_get_device_info,LMS103,LPS802,LDA602
@@ -66,6 +70,9 @@ try: from .lockin import SR844
 except: print("Could not load SR844 driver")
 try: from .PressureGauge import PressureGauge
 except: print("Could not load PressureGauge driver")
+<<<<<<< HEAD
 # Added Oct 2020 by MGP to match Gerbert branch
+=======
+>>>>>>> origin/Gerbert_PXI_2qb
 try: from.SignalCore import SignalCore
 except: print("Could not load SignalCore")

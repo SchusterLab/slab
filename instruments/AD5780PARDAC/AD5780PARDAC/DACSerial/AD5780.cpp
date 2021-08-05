@@ -29,7 +29,6 @@ static long write_register(uint8_t pin, long bitcode)
     return BITCODE(b1, b2, b3);
 }
 
-
 /* Reads from a specified register 
  *
  * pin: the arduino pin that the device is connected to
@@ -59,10 +58,10 @@ static long read_register(uint8_t pin, byte register_code)
 
 void AD5780::set_gcurrval(long input)
 {
-  Serial.println("Updating gcurrval...");
+  //Serial.println("Updating gcurrval...");
   gcurrval = input;
-  Serial.print("Updated gcurrval: ");
-  Serial.println(gcurrval);
+  //Serial.print("Updated gcurrval: ");
+  //Serial.println(gcurrval);
 }
 
 AD5780::AD5780(int sync)
@@ -90,7 +89,14 @@ void AD5780::initialize_DAC() {
     write_register(_sync, init_code);
     Serial.println(read_CTRL_register()); 
     set_value(131071);
-    
+}
+
+/*
+ * Dummy initialize script that should allow handshaking between Arduino and AD5780
+ * After breaking Serial communication.  Re-writes gcurrval to AD5780.
+ */
+void AD5780::reinitialize_DAC() {
+    set_value(gcurrval);
 }
 
 
@@ -143,6 +149,9 @@ void AD5780::ramp(long finval, long step_size, int delta_t)
   //last step to get to the actual value you want
   set_value(finval);
 }
+
+
+
 
 /* These functions wrap read_register for specific registers */
 long AD5780::read_CTRL_register()

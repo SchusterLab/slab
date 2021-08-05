@@ -8,13 +8,19 @@
 #
 # ======================================================
 #
+<<<<<<< HEAD
 __author__ = 'Christopher Nolan'
+=======
+__author__ = 'Brendan S'
+
+>>>>>>> origin/Gerbert_PXI_2qb
 from slab.instruments import SocketInstrument
 import time
 import numpy as np
 import glob
 import os.path
 
+<<<<<<< HEAD
 # def polar2mag(xs, ys):
 #     return 20*np.log10(np.sqrt(xs ** 2 + ys ** 2)), np.arctan2(ys, xs) * 180/np.pi
 
@@ -23,6 +29,18 @@ class ZVB8(SocketInstrument):
     default_port = 5025
 
     def __init__(self, name="ZVB8", address=None, enabled=True, **kwargs):
+=======
+
+def polar2mag(xs, ys):
+    return 20 * np.log10(np.sqrt(xs ** 2 + ys ** 2)), np.arctan2(ys, xs) * 180 / np.pi
+
+
+class RhodeSchwarz(SocketInstrument):
+    MAXSWEEPPTS = 1601
+    default_port = 5025
+
+    def __init__(self, name="BatMouse", address=None, enabled=True, **kwargs):
+>>>>>>> origin/Gerbert_PXI_2qb
         SocketInstrument.__init__(self, name, address, enabled=enabled, recv_length=2 ** 20, **kwargs)
         self.query_sleep = 0.05
         self.timeout = 100
@@ -30,7 +48,10 @@ class ZVB8(SocketInstrument):
     def get_id(self):
         return self.query('*IDN?')
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/Gerbert_PXI_2qb
     def get_query_sleep(self):
         return self.query_sleep
 
@@ -116,7 +137,11 @@ class ZVB8(SocketInstrument):
         """
         :return: The sweep time in seconds
         """
+<<<<<<< HEAD
         answer = self.query('SENS%d:SWE:TIME?'%channel)
+=======
+        answer = self.query('SENS%d:SWE:TIME?' % channel)
+>>>>>>> origin/Gerbert_PXI_2qb
         return float(answer.strip())
 
     def set_sweep_group_count(self, count=None):
@@ -131,9 +156,16 @@ class ZVB8(SocketInstrument):
         self.write('SENSE:FOM:STATE ' + s)
 
     def set_port_powers_coupled(self, state=True):
+<<<<<<< HEAD
         self.write("SOUR:POW:COUP %d"%int(state))
 
     def setup_two_tone_measurement(self, read_frequency=None, read_power=None, probe_start=None, probe_stop=None, probe_power=None, two_tone=True ):
+=======
+        self.write("SOUR:POW:COUP %d" % int(state))
+
+    def setup_two_tone_measurement(self, read_frequency=None, read_power=None, probe_start=None, probe_stop=None,
+                                   probe_power=None, two_tone=True):
+>>>>>>> origin/Gerbert_PXI_2qb
         if two_tone:
             print("TWO TONE ON")
             self.write('SENSE:FOM:RANGE4:COUPLED 1')
@@ -170,15 +202,22 @@ class ZVB8(SocketInstrument):
             if probe_stop is not None:
                 self.write('SENSE:FOM:RANGE1:FREQUENCY:STOP %f' % probe_stop)
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> origin/Gerbert_PXI_2qb
             self.set_frequency_offset_mode_state(False)
             self.set_power(probe_power, channel=1, port=3, state=0)
             if read_power is not None:
                 self.set_power(read_power, channel=1, port=1)
 
     def setup_rf_flux_measurement(self, read_power=None, probe_power=None, read_start=None, read_stop=None,
+<<<<<<< HEAD
                                    probe_frequency=None):
+=======
+                                  probe_frequency=None):
+>>>>>>> origin/Gerbert_PXI_2qb
 
         self.write('SENSE:FOM:RANGE2:COUPLED 1')
         self.write('SENSE:FOM:RANGE3:COUPLED 1')
@@ -246,7 +285,11 @@ class ZVB8(SocketInstrument):
     def trigger_single(self, channel=1):
         self.write('initiate%d:immediate' % channel)
 
+<<<<<<< HEAD
     def set_trigger_average_mode (self, mode=None):
+=======
+    def set_trigger_average_mode(self, mode=None):
+>>>>>>> origin/Gerbert_PXI_2qb
         allowed_modes = ['poin', 'point', 'sweep']
         if mode is None:
             return
@@ -255,10 +298,19 @@ class ZVB8(SocketInstrument):
         else:
             print("trigger average mode needs to be one of " + ', '.join(allowed_modes))
 
+<<<<<<< HEAD
     def get_trigger_average_mode (self):
         data = self.query('sense:AVER:mode?')
         if data is None: return None
         else: return data.strip()
+=======
+    def get_trigger_average_mode(self):
+        data = self.query('sense:AVER:mode?')
+        if data is None:
+            return None
+        else:
+            return data.strip()
+>>>>>>> origin/Gerbert_PXI_2qb
 
     def set_trigger_average(self, state=True):
         if state:
@@ -288,7 +340,11 @@ class ZVB8(SocketInstrument):
         slope = 1 : NEGative --> falling Edge (trigger_type='EDGE') or Low Level (trigger_type='LEVEl')
         """
         if trigger_type.upper() in ["EDGE", "LEVEL"]:
+<<<<<<< HEAD
             self.write("TRIG:TYPE %s"%trigger_type)
+=======
+            self.write("TRIG:TYPE %s" % trigger_type)
+>>>>>>> origin/Gerbert_PXI_2qb
             if slope > 0:
                 self.write("TRIG:SLOP POS")
             else:
@@ -349,7 +405,11 @@ class ZVB8(SocketInstrument):
             self.write(":SOURCE%d:POWER%d:MODE ON" % (channel, port))
             self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
         else:
+<<<<<<< HEAD
             print("Turning off the port %d" %(port))
+=======
+            print("Turning off the port %d" % (port))
+>>>>>>> origin/Gerbert_PXI_2qb
             self.write(":SOURCE%d:POWER%d:MODE OFF" % (channel, port))
             # self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
 
@@ -486,7 +546,12 @@ class ZVB8(SocketInstrument):
         MLINear, MLOGarithmic, PHASe, UPHase (Unwrapped phase), IMAGinary, REAL, POLar, SMITh, SADMittance (Smith Admittance)
         SWR, GDELay (Group Delay), KELVin, FAHRenheit, CELSius
         """
+<<<<<<< HEAD
         allowed = ['MLIN', 'MLOG', 'PHAS', 'UPH', 'IMAG', 'REAL', 'POL', 'SMIT', 'SADM', 'SWR', 'GDEL', 'KEL', 'FAHR', 'CEL']
+=======
+        allowed = ['MLIN', 'MLOG', 'PHAS', 'UPH', 'IMAG', 'REAL', 'POL', 'SMIT', 'SADM', 'SWR', 'GDEL', 'KEL', 'FAHR',
+                   'CEL']
+>>>>>>> origin/Gerbert_PXI_2qb
         if trace_format.upper() in allowed:
             self.write("CALC%d:FORM %s" % (trace, trace_format.upper()))
         else:
@@ -563,7 +628,11 @@ class ZVB8(SocketInstrument):
         :param data_format: 'binary' or 'ascii' (optional, saves time). If specificied, this must be equal to get_data_transfer_format()
         :return: 2 or 3 column data containing the frequency and data (1 or 2 column).
         """
+<<<<<<< HEAD
         if data_format is None or not(data_format in ['binary', 'ascii']):
+=======
+        if data_format is None or not (data_format in ['binary', 'ascii']):
+>>>>>>> origin/Gerbert_PXI_2qb
             data_format = self.get_data_transfer_format()
 
         if sweep_points is None:
@@ -572,13 +641,21 @@ class ZVB8(SocketInstrument):
         if timeout is None:
             timeout = self.timeout
         self.get_operation_completion()
+<<<<<<< HEAD
         self.read(timeout=100)
+=======
+        self.read(timeout=0.1)
+>>>>>>> origin/Gerbert_PXI_2qb
         self.write("CALC%d:DATA? FDATA" % channel)
         data_str = b''.join(self.read_lineb(timeout=timeout))
 
         if data_format == 'binary':
             len_data_dig = np.int(data_str[1:2])
+<<<<<<< HEAD
             len_data_expected = int(data_str[2: 2+len_data_dig])
+=======
+            len_data_expected = int(data_str[2: 2 + len_data_dig])
+>>>>>>> origin/Gerbert_PXI_2qb
             len_data_actual = len(data_str[2 + len_data_dig:-1])
             # It may happen that only part of the message is received. We know that this is the case by checking
             # the checksum. If the received data is too short, just read out again.
@@ -586,7 +663,12 @@ class ZVB8(SocketInstrument):
                 data_str += b''.join(self.read_lineb(timeout=timeout))
                 len_data_actual = len(data_str[2 + len_data_dig:-1])
 
+<<<<<<< HEAD
         data = np.fromstring(data_str, dtype=float, sep=',') if data_format=='ascii' else np.fromstring(data_str[2+len_data_dig:-1], dtype=np.float32)
+=======
+        data = np.fromstring(data_str, dtype=float, sep=',') if data_format == 'ascii' else np.fromstring(
+            data_str[2 + len_data_dig:-1], dtype=np.float32)
+>>>>>>> origin/Gerbert_PXI_2qb
         fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), sweep_points)
         if len(data) == 2 * sweep_points:
             data = data.reshape((-1, 2))
@@ -685,6 +767,13 @@ class ZVB8(SocketInstrument):
         if averages is not None:
             self.set_averages_and_group_count(averages)
 
+<<<<<<< HEAD
+=======
+    ##########################
+    ### Tested R&S scripts ###
+    ##########################
+
+>>>>>>> origin/Gerbert_PXI_2qb
 
 if __name__ == '__main__':
     na = N5242A("N5242A", address="192.168.14.242")

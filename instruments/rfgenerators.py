@@ -232,7 +232,11 @@ class BNC845(SocketInstrument):
     :py:class:`~slab.instruments.instrumenttypes.SocketInstrument`
     """
     default_port=18
+<<<<<<< HEAD
     def __init__(self,name='BNC845',address='', enabled=True, recv_length=1024, timeout=40):
+=======
+    def __init__(self,name='BNC845',address='', enabled=True, recv_length=1024, timeout=10):
+>>>>>>> origin/Gerbert_PXI_2qb
         #SocketInstrument.__init__(self,name,address,5025,enabled,timeout,recv_length)        
         SocketInstrument.__init__(self,name,address,enabled,recv_length,timeout)
         

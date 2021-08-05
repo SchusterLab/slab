@@ -923,12 +923,14 @@ class Experiment:
 
         return self.data
 
-    def run_experiment_pxi_resspec(self, sequences, path, name, update_awg=False, expt_num=0, check_sync=False, save_errs=False):
+# Use this one if you're running the shorter resonator_spectroscopy in sequential_experiment_pxi
+    def run_experiment_pxi_resspec(self, sequences, path, name, update_awg=False,  check_sync=False, save_errs=False):
         data_path = os.path.join(path, 'data/')
         self.seq_data_file = os.path.join(data_path, get_next_filename(data_path, name, suffix='.h5'))
         experiment_name = name
         self.expt_cfg = self.experiment_cfg[experiment_name]
         # self.expt_cfg = self.expt_cfg[experiment_name]
+        # print(self.expt_cfg['on_qubits'], "on qubits")
 
         self.generate_datafile(path, name, self.seq_data_file)
         self.set_trigger()
@@ -945,102 +947,51 @@ class Experiment:
         for qubit in self.expt_cfg['on_qubits']:
             read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qubit]['freq'])
             for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq, self.expt_cfg['step']):
+
                 self.quantum_device_cfg['readout'][qubit]['freq'] = freq
+                self.initiate_readout_LOs()
                 # Put more data options in here
-                self.data = self.get_avg_data_pxi(self.expt_cfg, seq_data_file=self.seq_data_file)
+                if self.expt_cfg['singleshot']:
+                    self.data = self.get_ss_data_pxi(self.expt_cfg, seq_data_file=seq_data_file)
+                elif self.expt_cfg['traj_data']:
+                    self.data = self.get_traj_data_pxi(seq_data_file=seq_data_file)
+                elif self.expt_cfg['traj_data_nowindow']:
+                    self.data = self.get_traj_data_pxi_nowindow(seq_data_file=seq_data_file)
+                else:
+                    self.data = self.get_avg_data_pxi(self.expt_cfg, seq_data_file=self.seq_data_file)
 
                 self.pxi.DIG_module.stopAll()
-                # self.pxi.DIG_module.clearAll()
-                self.initiate_readout_LOs()
-                # Drive and sideband LOs should be the same the whole time so leave as-is
-                # IS THIS NOT ONE BEHIND THE FREQUENCY IN QUESTION THAT WE'RE TARGETING? OK?
+                #self.pxi.DIG_module.clearAll()
+
+                # self.awg_stop(experiment_name)
+                # self.pxi = ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg, self.quantum_device_cfg,
+                #                                       sequences, name)
                 self.pxi.configureDigitizerChannels(self.hardware_cfg, self.experiment_cfg, experiment_name)
 
                 if self.two_qubits:
                     self.pxi.DIG_ch_1.clear()
                     self.pxi.DIG_ch_1.start()
-                    self.pxi.DIG_ch_1.clear()
+                    self.pxi.DIG_ch_2.clear()
                     self.pxi.DIG_ch_2.start()
-                    # self.pxi.DIG_ch_3.clear()
-                    # self.pxi.DIG_ch_3.start()
-                    # self.pxi.DIG_ch_4.clear()
-                    # self.pxi.DIG_ch_4.start()
-                elif "1" in self.experiment_cfg[experiment_name]['on_qubits']:
+                    self.pxi.DIG_ch_3.clear()
+                    self.pxi.DIG_ch_3.start()
+                    self.pxi.DIG_ch_4.clear()
+                    self.pxi.DIG_ch_4.start()
+                elif '1' == self.expt_cfg['on_qubits'][0]:
                     self.pxi.DIG_ch_1.clear()
                     self.pxi.DIG_ch_1.start()
-                    self.pxi.DIG_ch_1.clear()
+                    self.pxi.DIG_ch_2.clear()
                     self.pxi.DIG_ch_2.start()
-                # elif self.experiment_cfg[experiment_name]['on_qubits'] == '2':
-                #     self.pxi.DIG_ch_3.clear()
-                #     self.pxi.DIG_ch_3.start()
-                #     self.pxi.DIG_ch_4.clear()
-                #     self.pxi.DIG_ch_4.start()
+                elif "2" == self.expt_cfg['on_qubits'][0]:
+                    self.pxi.DIG_ch_3.clear()
+                    self.pxi.DIG_ch_3.start()
+                    self.pxi.DIG_ch_4.clear()
+                    self.pxi.DIG_ch_4.start()
                 else:
                     print("yikes o'clock qubit addresing error")
                 time.sleep(0.1)
-        self.pxi_stop()
+        self.awg_stop(experiment_name)
         return self.data
-
-
-    # old
-    # def run_experiment_pxi_justinits(self, sequences, path,  name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
-    #     self.generate_datafile(path, name, seq_data_file=seq_data_file)
-    #     self.set_trigger()
-    #     self.initiate_drive_LOs()
-    #     # self.initiate_drive_LOs_SignalCore(name)
-    #     self.initiate_readout_LOs()
-    #     self.initiate_cavity_drive_LOs(name)
-    #     # self.initiate_attenuators() # [AV] deprecated, moving to separate inits for drive and read attens
-    #     self.initiate_drive_attenuators()  # [AV] load drive attens defined in hardware_cfg/drive_attens[]
-    #     self.initiate_readout_attenuators()  # [AV] load drive attens defined in hardware_cfg/read_attens[]
-    #     self.initiate_pxi(name, sequences)
-    #     # self.initiate_tek2(name, path, sequences)
-    #     time.sleep(0.1)
-    #     self.awg_run(run_pxi=True, name=name)
-    # old
-    # def run_experiment_pxi_resspec(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
-    #     self.expt_cfg = self.experiment_cfg[name]
-    #     if check_sync:
-    #         self.pxi.acquireandplot(expt_num)
-    #
-    #     else:
-    #         if self.expt_cfg['singleshot']:
-    #             self.data = self.get_ss_data_pxi(self.expt_cfg,seq_data_file=seq_data_file)
-    #         elif self.expt_cfg['traj_data']:
-    #             self.data = self.get_traj_data_pxi(seq_data_file=seq_data_file)
-    #         elif self.expt_cfg['traj_data_nowindow']:
-    #             self.data = self.get_traj_data_pxi_nowindow(seq_data_file=seq_data_file)
-    #
-    #         else:
-    #             self.data = self.get_avg_data_pxi(self.expt_cfg,seq_data_file=seq_data_file,
-    #                                                                            rotate_iq_A=self.rotate_iq_A,
-    #                                                                            rotate_iq_B=self.rotate_iq_B,
-    #                                                                            phi_A=self.iq_angle_A,
-    #                                                                            phi_B=self.iq_angle_B)
-    #
-    #
-    #     # self.pxi.m_9_module.stopAll()
-    #     self.pxi.DIG_module.stopAll()
-    #
-    #     # self.set_trigger()
-    #     # Maybe check what drives we want to have on for res spect??
-    #     # For now we probably don't lose that much time initializing them all
-    #     self.initiate_drive_LOs()
-    #     self.initiate_cavity_drive_LOs(name)
-    #     self.initiate_readout_LOs()
-    #
-    #     self.pxi.configureDigitizerChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
-    #     self.pxi.DIG_ch_1.clear()
-    #     self.pxi.DIG_ch_1.start()
-    #     self.pxi.DIG_ch_2.clear()
-    #     self.pxi.DIG_ch_2.start()
-    #     self.pxi.DIG_ch_3.clear()
-    #     self.pxi.DIG_ch_3.start()
-    #     self.pxi.DIG_ch_4.clear()
-    #     self.pxi.DIG_ch_4.start()
-    #     time.sleep(0.1)
-    #
-    #     return self.data
 
 
 
