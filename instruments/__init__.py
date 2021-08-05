@@ -10,11 +10,7 @@ except: print("Could not load InstrumentManagerWindow")
 from .spectrumanalyzer import E4440
 from .nwa import E5071
 from .PNAX import N5242A
-<<<<<<< HEAD
-# from .RhodeSchwarz import ZVB8
-=======
 from .RhodeSchwarz import RhodeSchwarz
->>>>>>> origin/Gerbert_PXI_2qb
 from .rfgenerators import N5183B,E8257D,BNC845
 from .cryostat import Triton
 from .awg import *
@@ -70,9 +66,5 @@ try: from .lockin import SR844
 except: print("Could not load SR844 driver")
 try: from .PressureGauge import PressureGauge
 except: print("Could not load PressureGauge driver")
-<<<<<<< HEAD
-# Added Oct 2020 by MGP to match Gerbert branch
-=======
->>>>>>> origin/Gerbert_PXI_2qb
 try: from.SignalCore import SignalCore
 except: print("Could not load SignalCore")

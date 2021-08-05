@@ -1090,14 +1090,9 @@ class KeysightChannelIn(KeysightChannel):
         and does not throw errors. The advantage is that it almost always works,
         and you don't have to worry about it raising exceptions in separate
         threads. The disadvantage is you don't have exception handling.'''
-<<<<<<< HEAD
-        return self._module.DAQread(self._channel_number, self._points_per_return, timeout)
-                
-=======
         return self._module.DAQread(self._channel_number, self._points_per_return, 
                                     timeout)
 
->>>>>>> origin/Gerbert_PXI_2qb
     def start(self):
         '''Starts the channel.'''
         err = self._module.DAQstart(self._channel_number)
@@ -1291,7 +1286,7 @@ class KeysightChannelOut(KeysightChannel):
                     self._channel_number, frequency)
             if err < 0:
                 raise KeysightError("Error setting frequency", err)
-                
+
     def mute(self):
         '''Mutes the channel by setting amplitude to 0 and storing
         the previous amplitude.'''
