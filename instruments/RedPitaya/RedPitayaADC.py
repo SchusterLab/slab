@@ -1,9 +1,9 @@
 from rpyc import connect
 #from PyRedPitaya.pc import RedPitaya
-from PyRedPitaya.client_memory import ClientMemory
-from PyRedPitaya.memory import MemoryInterface
-from PyRedPitaya.enum import Enum
-from PyRedPitaya.instrument import *
+from .PyRedPitaya.client_memory import ClientMemory
+from .PyRedPitaya.memory import MemoryInterface
+from .PyRedPitaya.enum import Enum
+from .PyRedPitaya.instrument import *
 from slab.instruments import write_PXDAC4800_file
 import time
 import tqdm
@@ -12,12 +12,11 @@ from glob import glob
 from matplotlib.collections import LineCollection
 from slab import SlabFile
 
-from slab.instruments.awg.M8195A import *
 
 import matplotlib.pyplot as plt
 from numpy import *
 
-REDPITAYA_IP = '192.168.14.208'
+REDPITAYA_IP = '192.168.14.175'
 
 
 class Scope2(MemoryInterface):
@@ -50,15 +49,16 @@ class Scope2(MemoryInterface):
     #equalization filter not implemented here
     dac2_on_ch1 = GetSetBit(0x50, pos=0)
     dac1_on_ch2 = GetSetBit(0x50, pos=1)
+    set_deb_len = GetSetRegister(0x90, SignedInteger(size=20))
 
-    hw_avgs = GetSetRegister(0xAC, UnsignedInteger(size=18))
+    hw_avgs = GetSetRegister(0xAC, UnsignedInteger(size=32))
     version = GetRegister(0xB0, UnsignedInteger(size=32))
     hw_avg_status = GetRegister(0xB4, UnsignedInteger(size=32))
     adc_trigged = GetSetBit(0xB4, pos=3)
     npt_mode = GetSetBit(0xB4, pos=2)
     avg_mode = GetSetBit(0xB4, pos=1)
     avg_do = GetSetBit(0xB4, pos=0)
-    avg_cnt= GetRegister(0xB8, UnsignedInteger(size=18))
+    avg_cnt= GetRegister(0xB8, UnsignedInteger(size=32))
 
     abc_a_score = GetRegister(0xBC, SignedInteger(size=32))
     abc_b_score = GetRegister(0xC0, SignedInteger(size=32))
@@ -154,6 +154,7 @@ class Scope2(MemoryInterface):
         self.threshold_ch1 = threshold_ch1
         self.threshold_ch2 = threshold_ch2
         self.trigger_source = trigger_source
+        self.set_deb_len = 1000
 
 
     def acquire_avg(self, samples, avgs=1):
@@ -176,18 +177,18 @@ class Scope2(MemoryInterface):
 
         return self.get_rawdata(0x10000, length = samples)/ max(1, self.avg_cnt), self.get_rawdata(0x20000, length = samples) / max(1, self.avg_cnt)
 
-    def acquire_singleshot(self, samples, start=0, stop=None, shots=1, dual_ch=False, use_filter=False, start_function = None, prep_function = None):
+    def acquire_singleshot(self, samples, start=0, stop=None, shots=1, dual_ch=False, use_filter=False,
+                           start_function=None, prep_function=None):
 
         if not prep_function == None:
             prep_function()
 
         if stop is None: stop = samples
-        shot_data_ch1 = np.zeros(shots,dtype=long)
-        if dual_ch: shot_data_ch2 = np.zeros(shots,dtype=long)
-        shots_read=0
-        loops=0
-        data_length=self.data_length
-
+        shot_data_ch1 = np.zeros(shots, dtype=int)
+        if dual_ch: shot_data_ch2 = np.zeros(shots, dtype=int)
+        shots_read = 0
+        loops = 0
+        data_length = self.data_length
 
         self.reset_writestate_machine(v=True)
         self.trigger_delay = samples
@@ -203,35 +204,45 @@ class Scope2(MemoryInterface):
         self.win_start = start
         self.win_stop = stop
 
-        ch1_address=0x10000
-        ch2_address=0x20000
+        ch1_address = 0x10000
+        ch2_address = 0x20000
 
         self.reset_writestate_machine(v=False)
         self.arm_trigger()
 
+        print("###########################")
+        print("sleeping 0.1s!")
+        time.sleep(0.1)
+        print("###########################")
+
         if not start_function == None:
             start_function()
 
-        cnt=self.avg_cnt
+        cnt = self.avg_cnt
         while (cnt < shots or shots_read < cnt):
             if cnt - shots_read > data_length:
-                print "Overflow after %d shots, with %d shots read!" % (cnt, shots_read)
+                print("Overflow after %d shots, with %d shots read!" % (cnt, shots_read))
                 break
-            mem_start=4*(shots_read % data_length)
+            mem_start = 4 * (shots_read % data_length)
             read_length = cnt - shots_read
 
-
-            shot_data_ch1[shots_read:shots_read+read_length] = array(self.reads(ch1_address+mem_start, read_length),copy=True,dtype=int32)
+            shot_data_ch1[shots_read:shots_read + read_length] = array(self.reads(ch1_address + mem_start, read_length),
+                                                                       copy=True, dtype=int32)
             if dual_ch:
-                shot_data_ch2[shots_read:shots_read+read_length] = array(self.reads(ch1_address+mem_start, read_length),copy=True,dtype=int32)
+                shot_data_ch2[shots_read:shots_read + read_length] = array(
+                    self.reads(ch2_address + mem_start, read_length), copy=True, dtype=int32)
 
             shots_read += read_length
 
-            loops+=1
-            #if loops % 2**11 ==0: print "x",
-            #print "loops: %d, cnt: %d, shots_read: %d, start: %d, length: %d" % (loops,cnt,shots_read,start,read_length)
+            loops += 1
+            # if loops % 2**11 ==0: print "x",
+            # print "loops: %d, cnt: %d, shots_read: %d, start: %d, length: %d" % (loops,cnt,shots_read,start,read_length)
 
-            cnt=self.avg_cnt
+            cnt = self.avg_cnt
+
+        #convert from 2's complement
+        shot_data_ch1[shot_data_ch1 > 2 ** 31] -= 2 ** 31
+        shot_data_ch2[shot_data_ch2 > 2 ** 31] -= 2 ** 31
 
         if dual_ch:
             return shot_data_ch1, shot_data_ch2
@@ -244,7 +255,7 @@ class Scope2(MemoryInterface):
             self.writes(0x40000, np.zeros(self.data_length).astype('int16'))
             self.writes(0x50000, (np.ones(self.data_length)).astype('int16'))
             self.writes(0x60000, (np.ones(self.data_length)).astype('int16'))
-            print "clear conv buffer"
+            print("clear conv buffer")
         else:
             self.writes(0x30000, ((xg+xe)/2).astype('int16'))
             self.writes(0x40000, ((yg+ye)/2).astype('int16'))
@@ -285,7 +296,7 @@ class Scope2(MemoryInterface):
                 break
             if f == 65537:
                 self.data_decimation = 65536
-                print "Frequency too low: Impossible to sample the entire waveform"
+                print("Frequency too low: Impossible to sample the entire waveform")
 
 def plot_trajectory(x,y,cmap='winter'):
     points = np.array([x, y]).T.reshape(-1, 1, 2)
@@ -316,38 +327,43 @@ class RedPitaya(ClientMemory):
     asgb = InterfaceDescriptor(ASG,channel='B')
 
 
-def setup_redpitaya_adc(awg,num_experiments,samples=2048,window=(80,8000),shots=2**14,plot_data=False):
+def setup_redpitaya_adc(num_experiments,samples=500,window=(80,8000),shots=2**14,plot_data=False, start_function = None, stop_function = None):
 
     start = int(window[0]/8) #ns to sample index (the factor 8 comes from time (ns) to take an oscillation of 125MHz)
     stop = int(window[1]/8) #ns to sample index
 
+    samples = stop+1
+
+    print("Start: " + str(start))
+    print("Stop: " + str(stop))
+
+    print("Samples: " + str(samples))
+
     ### Test Single Shot Mode
     rp = RedPitaya(connect(REDPITAYA_IP, port=18861))
-    print "RedPitaya .bit version: %d" % rp.scope.version
+    print("RedPitaya .bit version: %d" % rp.scope.version)
 
-    rp.scope.setup_trigger (trigger_source=4, threshold_ch1 = 2000, threshold_ch2 = 2000)
+    rp.scope.setup_trigger (trigger_source=6, threshold_ch1 = 2000, threshold_ch2 = 2000)
 
-
-    def run_awg():
-        awg.start_all_output()
-
-    def stop_awg():
-        awg.stop_output()
-
-    run_awg()
+    # rp.scope.setup_trigger (trigger_source=6, threshold_ch1 = 0, threshold_ch2 = 0)
+    start_function()
 
     ch1, ch2 = rp.scope.acquire_avg (samples = samples, avgs = shots)
+
+    stop_function()
+
     tpts = rp.scope.times[:len(ch1)]/1e-6
 
-    plt.interactive(False)
-    plt.figure()
+    if plot_data:
+        plt.interactive(False)
+        plt.figure()
 
-    #figsize(24,6)
-    plt.subplot(131,xlabel="Time (us)", ylabel="Voltage", title="Averaging Acquisition")
-    plt.plot (tpts,ch1,'r',label='ch1')
-    plt.plot (tpts,ch2,'b',label='ch2')
-    plt.axvspan(tpts[start], tpts[stop], color='g', alpha=0.2, lw=0)
-    plt.legend()
+        #figsize(24,6)
+        plt.subplot(131,xlabel="Time (us)", ylabel="Voltage", title="Averaging Acquisition")
+        plt.plot (tpts,ch1,'r',label='ch1')
+        plt.plot (tpts,ch2,'b',label='ch2')
+        plt.axvspan(tpts[start], tpts[stop], color='g', alpha=0.2, lw=0)
+        plt.legend()
 
 
     rp.scope.setup_convolution_filter(xg=zeros(2**12),yg=zeros(2**12),xe=ones(2**12),ye=ones(2**12))
@@ -355,35 +371,49 @@ def setup_redpitaya_adc(awg,num_experiments,samples=2048,window=(80,8000),shots=
     #shot_data0 = rp.scope.acquire_singleshot (samples = samples, start = start, stop = stop, shots = shots, dual_ch=False, use_filter=True)
 
 
-
+    shots = shots * num_experiments
     shot_data1,shot_data2 = rp.scope.acquire_singleshot (samples = samples, start = start, stop = stop, shots = shots, dual_ch=True
-                                                         , use_filter=False, start_function= run_awg, prep_function = stop_awg)
+                                                         , use_filter=False, start_function= start_function, prep_function = stop_function)
 
+    data_crop1 = shot_data1[0:math.floor(shots / num_experiments) * num_experiments]
+    print(shape(data_crop1))
+    data_crop1_matrix = np.reshape(data_crop1, (-1, num_experiments))
+    print(shape(data_crop1_matrix))
+    data_crop1_avg = np.mean(data_crop1_matrix, axis=0)
+    data_crop1_std = np.std(data_crop1_matrix, axis=0)
+
+    data_crop2 = shot_data2[0:math.floor(shots / num_experiments) * num_experiments]
+    data_crop2_matrix = np.reshape(data_crop2, (-1, num_experiments))
+
+    data_crop2_avg = np.mean(data_crop2_matrix, axis=0)
+    data_crop2_std = np.std(data_crop2_matrix, axis=0)
+
+    print("hw_avgs: %d, avg_cnt: %d, adc_trigged: %d, npt_mode: %d, avg_mode: %d, avg_do: %d, ss_mode: %d" %(rp.scope.hw_avgs,rp.scope.avg_cnt,rp.scope.adc_trigged, rp.scope.npt_mode, rp.scope.avg_mode, rp.scope.avg_do,rp.scope.ss_mode ))
+    print("t1: %d, t2: %d, t3: %d, t4: %d, t5: %d" % (rp.scope.t1,rp.scope.t2,rp.scope.t3,rp.scope.t4,rp.scope.t5))
 
     if plot_data:
         plt.subplot(132,xlabel="Shot #", ylabel="Score", title="Single Shot Raw")
-        plt.plot (shot_data1)
+        plt.plot(shot_data1)
+        plt.plot(shot_data2)
 
 
         plt.subplot(133,xlabel="Experiment #", ylabel="Score", title="Average Data")
 
-        data_crop = shot_data1[num_experiments-1:math.floor(shots/num_experiments)*num_experiments-1]
-        data_crop_matrix = np.reshape(data_crop, (-1, num_experiments))
-        data_crop_avg = np.mean(data_crop_matrix, axis=0)
-        data_crop_std = np.std(data_crop_matrix, axis=0)
 
-        plt.errorbar(arange(num_experiments),data_crop_avg,yerr=data_crop_std)
+
+        plt.errorbar(arange(num_experiments),data_crop1_avg,yerr=data_crop1_std)
+        plt.errorbar(arange(num_experiments), data_crop2_avg, yerr=data_crop2_std)
         plt.xlim(-1,num_experiments+1)
 
 
-        print "hw_avgs: %d, avg_cnt: %d, adc_trigged: %d, npt_mode: %d, avg_mode: %d, avg_do: %d, ss_mode: %d" %(rp.scope.hw_avgs,rp.scope.avg_cnt,rp.scope.adc_trigged, rp.scope.npt_mode, rp.scope.avg_mode, rp.scope.avg_do,rp.scope.ss_mode )
-        print "t1: %d, t2: %d, t3: %d, t4: %d, t5: %d" % (rp.scope.t1,rp.scope.t2,rp.scope.t3,rp.scope.t4,rp.scope.t5)
+
 
         plt.show()
 
-    return data_crop_avg
+    return data_crop1_avg, data_crop2_avg
 
 
 if __name__ == "__main__":
     m8195a = M8195A(address ='192.168.14.234:5025')
+    # m8195a = M8195A(address ='192.168.14.175')
     setup_redpitaya_adc(m8195a,num_experiments=4,samples=2048,window=(80,8000),shots=2**14,plot_data=True)

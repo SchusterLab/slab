@@ -108,7 +108,7 @@ class ClockConfig(Config):
             for (rate, value) in ClockConfig.sample_rate:
                 if rate >= self.sample_rate:
                     if rate > self.sample_rate:
-                        print "Warning: sample_rate not found. Using first smaller value", rate, "Khz"
+                        print("Warning: sample_rate not found. Using first smaller value", rate, "Khz")
                         self.sample_rate = rate
                     sample_rate = value
                     break
@@ -183,7 +183,7 @@ class InputConfig(Config):
         for (voltage, value) in InputConfig.input_range:
             if input_range <= voltage:
                 if input_range < voltage:
-                    print "Warning: input range not found, using closest value,", voltage, "Volts"
+                    print("Warning: input range not found, using closest value,", voltage, "Volts")
                 self.input_range_voltage = voltage
                 self.input_range = value
         self.params = [("channel", channel), ("coupling", coupling), ("input range", self.input_range_voltage)]
@@ -265,16 +265,16 @@ class BufferInfo(ConfigStruct):
 #                             bi.samplesPerRecord, bi.recordsPerBuffer,
 #                             bi.recordsPerAcquisition,)
 def test():
-    print "Starting Test"
+    print("Starting Test")
     handle = Az.AlazarGetBoardBySystemID(C.c_uint32(1), C.c_uint32(1))
     if(MyAz.configureBoard(handle)):
-        print "Configured"   
+        print("Configured")   
         out_array = defaultConfig.output_array()
         #fmt_out_arr = C.cast(out_array, C.POINTER(C.POINTER(U32)))
         MyAz.acquireData(handle, 
                          C.byref(defaultConfig), 
                          out_array)
-        print "Acquired"
+        print("Acquired")
         return out_array
 
 def config():

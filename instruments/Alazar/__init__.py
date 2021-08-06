@@ -1,1 +1,1 @@
-from dsalazar import *
+from .dsalazar import *

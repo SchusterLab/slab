@@ -45,7 +45,7 @@ if __name__ == "__main__":
     win = QtGui.QMainWindow()
     widget = QtGui.QWidget()
     layout = QtGui.QVBoxLayout(widget)
-    for name, args in scripts.items():
+    for name, args in list(scripts.items()):
         button = QtGui.QPushButton(name)
         button.clicked.connect(create_popen_fn(args))
         layout.addWidget(button)

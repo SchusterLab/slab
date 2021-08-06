@@ -32,13 +32,13 @@ class TekTDS7104(VisaInstrument):
                 #print "Loaded %s %s" % (rpl[0], rpl[1])
                 pass
             else:
-                print "Error, loaded wrong instrument?"
-                print reply
+                print("Error, loaded wrong instrument?")
+                print(reply)
 
         except Exception:
-            print "Instrument not connected"
-            print "Make sure utilites->LAN server status->VXI-11 Server is started"
-            print "Otherwise check NI-MAX"
+            print("Instrument not connected")
+            print("Make sure utilites->LAN server status->VXI-11 Server is started")
+            print("Otherwise check NI-MAX")
 
 
     def _preamble(self, channel = 3):
@@ -162,8 +162,8 @@ class TekTDS7104(VisaInstrument):
         with expt.datafile() as f:
             f.append_line("Time %s" % (self.preamble["XUNIT"]), self.xdata)
             f.append_line("Amplitude %s" % (self.preamble["YUNIT"]), self.ydata)
-            f.append_pt("%s" % self.scale.keys()[0], self.scale[self.scale.keys()[0]])
-            f.append_pt("%s" % self.scale.keys()[1], self.scale[self.scale.keys()[1]])
+            f.append_pt("%s" % list(self.scale.keys())[0], self.scale[list(self.scale.keys())[0]])
+            f.append_pt("%s" % list(self.scale.keys())[1], self.scale[list(self.scale.keys())[1]])
             f.close()
 
 

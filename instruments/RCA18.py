@@ -1,6 +1,6 @@
 __author__ = 'Aman LaChapelle'
 
-import urllib2 as _url
+from urllib.request import urlopen
 from math import *
 from slab import *
 from slab.instruments import SocketInstrument
@@ -13,9 +13,9 @@ class MCRCA18(SocketInstrument):
         self.tcp_port = int(address.split(":")[1])
 
     def send_command(self, command = None, show = True):
-        response = _url.urlopen('http://%s:%d/%s' % (self.tcp_ip, self.port, command))
+        response = urlopen('http://%s:%d/%s' % (self.tcp_ip, self.port, command))
         if show == True:
-            print response.read()
+            print(response.read())
 
     def get_largest(self):
         counter = []
@@ -28,7 +28,7 @@ class MCRCA18(SocketInstrument):
         return counter[0]
 
     def ports_one(self):
-        response = _url.urlopen('http://%s:%d/SWPORT?' % (self.tcp_ip, self.port))
+        response = urlopen('http://%s:%d/SWPORT?' % (self.tcp_ip, self.port))
         ports = int(response.read())
         if ports == 0:
             return "None" # edit this for the new array
@@ -78,16 +78,16 @@ class MCRCA18(SocketInstrument):
 
 
 if __name__ == "__main__":
-    print "Usage:\n>>> <name> = rf_switch()\n>>> " \
+    print("Usage:\n>>> <name> = rf_switch()\n>>> " \
           "<name>.ports_one(<port>)\n>>> <name>.switch_port(<port>)" \
-          "\n>>> <name>.send_command('<command>')"
-    print "Commands are here:\n" \
+          "\n>>> <name>.send_command('<command>')")
+    print("Commands are here:\n" \
           "http://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf\n" \
-          "Section 4.4"
+          "Section 4.4")
     temp = MCRCA18()
-    print temp.ports_one()
+    print(temp.ports_one())
     temp.measure_cavity(3)
-    print temp.ports_one()
+    print(temp.ports_one())
     temp.all_to_zero()
     #command = raw_input("Enter a command: ")
     #temp.send_command(command, show = False)

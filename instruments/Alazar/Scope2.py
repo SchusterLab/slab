@@ -9,7 +9,7 @@ if DEBUG:
     uifile = open("ScopeWindow2_ui.py", 'w')
     uic.compileUi("ScopeWindow2.ui", uifile)
     uifile.close()
-from ScopeWindow2_ui import *
+from .ScopeWindow2_ui import *
 
 from guiqwt.builder import make
 import numpy as np

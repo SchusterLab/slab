@@ -15,7 +15,7 @@ try:
         chase_dll_path = r'C:\_Lib\python\slab\instruments\awg\chase\dax22000_lib_DLL64.dll'
     chaseDLL = C.CDLL(chase_dll_path)
 except:
-    print "Warning could not load Chase AWG dll, check that dll located at '%s'" % chase_dll_path
+    print("Warning could not load Chase AWG dll, check that dll located at '%s'" % chase_dll_path)
 
 
 class SegmentStruct(C.Structure):

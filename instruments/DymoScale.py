@@ -22,14 +22,14 @@ def grab():
                 data = None
                 if e.args == ('Operation timed out',):
                     attempts -= 1
-                    print "timed out... trying again"
+                    print("timed out... trying again")
                     continue
 
         return data
     except usb.core.USBError as e:
-        print "USBError: " + str(e.args)
+        print("USBError: " + str(e.args))
     except IndexError as e:
-        print "IndexError: " + str(e.args)
+        print("IndexError: " + str(e.args))
 
 
 
@@ -41,7 +41,7 @@ def listen():
     last_raw_weight = 0
     last_raw_weight_stable = 4
 
-    print "listening for weight..."
+    print("listening for weight...")
 
     while True:
         time.sleep(.5)

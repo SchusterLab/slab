@@ -18,7 +18,7 @@ from guiqwt.plot import CurveWidget, ImageWidget
 from guiqwt.builder import make
 
 #from slab import *
-from Server_ui import *
+from .Server_ui import *
 
 LOGFILENAME='log.txt'
 LOGENABLED=True
@@ -76,10 +76,10 @@ def log_error(info=''):
 def print_log():
     try:
         f=open(LOGFILENAME,'r')
-        print f.read()
+        print(f.read())
         f.close()
     except:
-        print "Log file empty/non-existant."
+        print("Log file empty/non-existant.")
 
 def write_log(s):
     f=open(LOGFILENAME,'a')

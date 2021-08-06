@@ -7,7 +7,7 @@ Created on Thu Aug 18 14:53:45 2011
 from numpy import *
 from guiqwt.pyplot import *
 
-from spectrum_analyzer import *
+from .spectrum_analyzer import *
 from rfgenerators import *
 import pickle
 import time
@@ -38,7 +38,7 @@ for frequency in frequencies:
     lo.set_power(10)
     lo.set_output(True)
 
-    print "RF Frequency: "+str(frequency)
+    print("RF Frequency: "+str(frequency))
 
     lp = -80
     rp = 10
@@ -53,7 +53,7 @@ for frequency in frequencies:
         else:
             lp = (lp + rp) / 2
     minPower.append([frequency, (lp+rp)/2])
-    print (frequency, (lp+rp)/2)
+    print((frequency, (lp+rp)/2))
 
 lo.set_output(False)
 rf.set_output(False)

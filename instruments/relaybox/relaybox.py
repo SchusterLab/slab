@@ -13,7 +13,7 @@ therefore sometimes the program has to wait for the timeout. This is currently
 source of delay in the program. 
 """
 from slab.instruments import SerialInstrument, WebInstrument
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 
 class RelayBox(SerialInstrument, WebInstrument):
@@ -32,10 +32,10 @@ class RelayBox(SerialInstrument, WebInstrument):
         if self.protocol == "http":
             port = str(port)
             if state: 
-                urllib2.urlopen(self.address+ "/relaybox/json?"+ "ON" + port)
+                urllib.request.urlopen(self.address+ "/relaybox/json?"+ "ON" + port)
                 
             else: 
-                urllib2.urlopen(self.address+ "/relaybox/json?"+ "OF" + port)
+                urllib.request.urlopen(self.address+ "/relaybox/json?"+ "OF" + port)
                            
     
     def get_relay(self,port=0):
@@ -44,8 +44,8 @@ class RelayBox(SerialInstrument, WebInstrument):
             relay_status=[x=='1' for x in bin(256+int(ans[4:-2]))[-8:]]
             relay_status.reverse()
         if self.protocol=="http":
-            f = urllib2.urlopen(self.address+ "/relaybox/json?RS0")
-            relay_status=[int(y[0]) for y in f.read(1000).split(':')[2:]]
+            f = urllib.request.urlopen(self.address+ "/relaybox/json?RS0")
+            relay_status=[int(y[0]) for y in f.read(1000).decode().split(':')[2:]]
         if port !=0: return relay_status[port-1]
         else: return relay_status
             
@@ -55,8 +55,8 @@ class RelayBox(SerialInstrument, WebInstrument):
             ans=self.query('@%s AI %d' % (self.boxaddress,port))
             analog_inputs=[int(x) for x in ans.split()[1:]]
         if self.protocol=="http":
-            f = urllib2.urlopen(self.address+ "/relaybox/json?"+"AI0")
-            analog_inputs=[int(y.split(',')[0]) for y in f.read(1000).split(':')[2:]]
+            f = urllib.request.urlopen(self.address+ "/relaybox/json?"+"AI0")
+            analog_inputs=[int(y.split(',')[0]) for y in f.read(1000).decode().split(':')[2:]]
         if port!=0: return analog_inputs[port-1]
         else: return analog_inputs
             
@@ -68,7 +68,7 @@ class RelayBox(SerialInstrument, WebInstrument):
              self.query('@%s TR %d %03d' % (self.boxaddress,port,pulse_width))
         if self.protocol=="http":
              port = str(port)
-             urllib2.urlopen(self.address+ "/relaybox/json?"+ "TR" + port)
+             urllib.request.urlopen(self.address+ "/relaybox/json?"+ "TR" + port)
             
     def keep_alive(self,time_to_live=0):
         self.query('@%s KA %d' % (self.boxaddress,time_to_live))

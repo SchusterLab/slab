@@ -45,7 +45,7 @@ def main():
     RF2.set_power(0)
     
 
-    print "Configure NA"
+    print("Configure NA")
 #    na.set_default_state()
 #    na.set_power(-20)
 #    na.set_ifbw(ifbw)
@@ -65,16 +65,16 @@ def main():
             'trigger_source1': 'external', 'recordsPerBuffer': 1, 'sample_rate': 1000000, 
             'timeout': 5000, 'ch1_range': 4, 'ch2_enabled': False, 'recordsPerAcquisition': 1}
             
-    print "Configuring card"
+    print("Configuring card")
     scope_settings= AlazarConfig(config)
     
     card=Alazar(scope_settings)
     card.configure(scope_settings)
 
-    print "go"
-    print "Taking %d data points." % len(Freqs)
-    print "|"+("  "*(len(Freqs)/10))+" |"
-    print "|",
+    print("go")
+    print("Taking %d data points." % len(Freqs))
+    print("|"+("  "*(len(Freqs)/10))+" |")
+    print("|", end=' ')
     #figure(1)
     tpts,ch1_pts,ch2_pts=card.acquire_avg_data()    
     #fig1=FigureClient(xlabel='Time',ylabel='Amplitude',title='Scope')
@@ -88,7 +88,7 @@ def main():
     Amps=[]
     freqs=[]
     for ind,ff in enumerate(Freqs):
-        if mod(ind,len(Freqs)/10.) ==0: print "-",
+        if mod(ind,len(Freqs)/10.) ==0: print("-", end=' ')
         RF1.set_frequency(ff)
         RF2.set_frequency(ff+IFfreq)
 #        na.set_center_frequency(ff)
@@ -107,7 +107,7 @@ def main():
         S21_plot_1.send((dtpts, amp1pts))
         S21_plot_2.send((array(freqs),array(Amps)))
         
-    print "|"
+    print("|")
 #    figure(2)
 #    imshow(array(Amps))
 #    show()

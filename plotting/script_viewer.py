@@ -341,7 +341,7 @@ class PlotStacker(qt.QSplitter):
             plotkwargs['xdata'] = xpts[0], xpts[-1]
         widget = PlotItem(ident, rank, accum, plotkwargs, trace, xpts, ypts)
         uncollapsed = lambda ident: not(self.plots[ident].collapsed)
-        if len(filter(uncollapsed, self.plots.iterkeys())) > 3:
+        if len(list(filter(uncollapsed, iter(self.plots.keys())))) > 3:
             widget.collapse()
         widget.remove_button.clicked.connect(lambda: self.remove_plot(ident))
         widget.zoom_button.clicked.connect(lambda: self.zoom_plot(ident))
@@ -370,15 +370,15 @@ class PlotStacker(qt.QSplitter):
                 self.clear_plot(ident)
         plot = self.plots[ident]
         if plot.rank is 1:
-            for item in plot.items.values():
+            for item in list(plot.items.values()):
                 item.set_data([],[])
         elif plot.rank is 2:
-            for item in plot.items.values():
+            for item in list(plot.items.values()):
                 item.set_data([[]])
     
     def remove_plot(self, ident):
         if ident == "_all_plots_":
-            for i in self.plots.keys():
+            for i in list(self.plots.keys()):
                 self.remove_plot(i)
             return
         widget = self.plots.pop(ident)
@@ -397,7 +397,7 @@ class PlotStacker(qt.QSplitter):
         try:
             item = plot.items[trace]
         except:
-            print ident, trace
+            print(ident, trace)
             raise 
         if plot.accum is True and plot.rank is 1:
             x, y = item.get_data()
@@ -482,12 +482,12 @@ class ScriptViewerWindow(gui.SlabWindow, UiClass):
         
 
 def view():
-    print "Starting window"
+    print("Starting window")
     sys.exit(gui.runWin(ScriptViewerWindow))
 
 
 def serve(n):
-    print "Serving test data"
+    print("Serving test data")
     with ScriptPlotter() as plotter:
         #plotter.clear_plots()
         #plotter.init_plot("sin", rank=2, xpts=np.linspace(0, 1, n), ypts=np.linspace(0, 2*np.pi), accum='x')
@@ -504,7 +504,7 @@ def serve(n):
 
         t = 0
         x = np.linspace(0, 2*np.pi)
-        print "starting"
+        print("starting")
         #plotter.zoom_plot("cos")
         for i in range(n):
             time.sleep(.1)
@@ -516,7 +516,7 @@ def serve(n):
             plotter.plot(np.sin(x + t), "trig", "sin")
             plotter.plot(np.tan(x + t), "tan")
         plotter.close()
-        print "done"
+        print("done")
     
 if __name__ == "__main__":
     #serve(100)    

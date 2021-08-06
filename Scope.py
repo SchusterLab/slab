@@ -4,8 +4,8 @@ Created on Mon May 16 18:29:46 2011
 
 @author: Phil
 """
-from gui import *
-from instruments.Alazar.TestAlazarApi import *
+from .gui import *
+from .instruments.Alazar.TestAlazarApi import *
 
 class ScopeDataSet(DataSet):
     bgm1=BeginGroup("Acquisition Properties")
@@ -64,14 +64,14 @@ class ScopeWindow(SlabWindow):
 
 
     def go(self):
-        print "GO!"
+        print("GO!")
         p = Process(target=acquire_data, args=(self.guidata.dataset,self.pipes,))
         p.start()
-        print "Process started"
+        print("Process started")
         self.statusBar().showMessage("Acquiring Data", 5000)
 
 def acquire_data(params,pipes=None):
-    print "Acquiring data"
+    print("Acquiring data")
     if pipes!=None:    
         ch1_pipe=pipes['Ch1']
         ch2_pipe=pipes['Ch2']
@@ -79,8 +79,8 @@ def acquire_data(params,pipes=None):
     samples = defaultConfig.postTriggerSamples + defaultConfig.preTriggerSamples
     x = linspace(0, 1, samples)
     MyAz.configureBoard(handle)
-    print "Configured Board"
-    for ii in xrange(params.buffers):
+    print("Configured Board")
+    for ii in range(params.buffers):
         out_array = defaultConfig.output_array()
         MyAz.acquireData(handle, C.byref(defaultConfig), out_array)
         y1 = np.ctypeslib.as_array(out_array[0], (samples,))

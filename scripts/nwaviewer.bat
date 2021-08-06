@@ -1,1 +1,0 @@
-c:\python26\pythonw S:\_Lib\python\slab\scripts\nwaviewer.pyw %1

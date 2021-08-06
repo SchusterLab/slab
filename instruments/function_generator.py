@@ -57,7 +57,7 @@ class BNCAWG(SocketInstrument):
             do_set = 'NORM' if state.lower() == 'normal' else 'INV'
             self.write('OUTP:POL %s'%do_set)
         else:
-            print "State must be 'normal' or 'inverted' for inverted output."
+            print("State must be 'normal' or 'inverted' for inverted output.")
 
     def get_output_polarity(self):
         """
@@ -576,4 +576,4 @@ class BiasDriver(BNCAWG):
 if __name__ == "__main__":
     # bnc=BNCAWG(address='192.168.14.133')
     filament = FilamentDriver(address='192.168.14.133')
-    print filament.query('*IDN?')
+    print(filament.query('*IDN?'))

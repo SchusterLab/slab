@@ -51,7 +51,7 @@ class Dymo(Instrument):
                     data = None
                     if e.args == ('Operation timed out',):
                         attempts -= 1
-                        print "timed out... trying again"
+                        print("timed out... trying again")
                         continue
             scaling_factor=10.0**self.twos_comp(data[3],8)
             if data[2] == 12:
@@ -61,13 +61,13 @@ class Dymo(Instrument):
             raw_weight=(data[4] + data[5] * 256)*scaling_factor
             return raw_weight*lbs_factor
         except usb.core.USBError as e:
-            print "USBError: " + str(e.args)
+            print("USBError: " + str(e.args))
         except IndexError as e:
-            print "IndexError: " + str(e.args)
+            print("IndexError: " + str(e.args))
 
 
 if __name__ =="__main__":
     d=Dymo()
-    print d.get_id()
-    print d.get_weight()
+    print(d.get_id())
+    print(d.get_weight())
 

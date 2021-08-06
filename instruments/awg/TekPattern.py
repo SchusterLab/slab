@@ -22,7 +22,7 @@ import struct
 import io
 import h5py
 import numpy as np
-import StringIO
+import io
 
 #comment if not debugging
 #from liveplot import LivePlotClient
@@ -177,11 +177,11 @@ def write_Tek_file(awgData, fileName, seqName, options=None, do_string_IO=False)
 
     numSeqs = max(len(awgData['ch12']['linkList']), len(awgData['ch34']['linkList']))
     
-    print "num seqs" + str(numSeqs)    
+    print("num seqs" + str(numSeqs))    
     
     #Open the file
     if do_string_IO:
-        FID = StringIO.StringIO()
+        FID = io.StringIO()
     else:
         FID = io.open(fileName, 'wb')
 
@@ -224,7 +224,7 @@ def write_Tek_file(awgData, fileName, seqName, options=None, do_string_IO=False)
             write_field(FID, 'OUTPUT_WAVEFORM_NAME_'+str(chanct), seqName+'Ch'+str(chanct)+'001', 'char')
     
     #Now write the waveforms (i.e. extract out the waveform data from the dictionaries)
-    wfs = range(4)
+    wfs = list(range(4))
 
 
     for ct in range(numSeqs):
@@ -233,7 +233,7 @@ def write_Tek_file(awgData, fileName, seqName, options=None, do_string_IO=False)
 
         #lp.append_z('debug2',np.array(wfs[0],dtype=float))
         #On the Tek, all four channels need to have the same length
-        maxLength = max(map(lambda wf : wf.size, wfs))
+        maxLength = max([wf.size for wf in wfs])
         for wfct in range(4):
             if wfs[wfct].size < maxLength:
                 wfs[wfct] = np.append(wfs[wfct], MAX_WAVEFORM_VALUE*np.ones(maxLength-wfs[wfct].size, dtype=np.uint16))

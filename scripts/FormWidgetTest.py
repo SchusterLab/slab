@@ -62,18 +62,18 @@ class ScopeWindow(SlabWindow):
         self.plotswidget.addWidget(self.curvewidget)    #Add the plot to the plots widget
 
     def save_bookmark(self,filename):
-        print json.dumps(self.guidata.get())
+        print(json.dumps(self.guidata.get()))
 
     def go(self):
-        print "GO!"
+        print("GO!")
         #p = Process(target=acquire_data, args=(self.guidata.dataset,self.pipes,))
         #p.start()
-        print "Process started"
-        print self.guidata.get()
+        print("Process started")
+        print(self.guidata.get())
         self.statusBar().showMessage("Acquiring Data", 5000)
 
 def acquire_data(params,pipes=None):
-    print "Acquiring data"
+    print("Acquiring data")
 #    if pipes!=None:    
 #        ch1_pipe=pipes['Ch1']
 #        ch2_pipe=pipes['Ch2']

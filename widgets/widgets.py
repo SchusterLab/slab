@@ -22,8 +22,8 @@ if DEBUG:
     uifile = open("SweepDialog_ui.py", 'w')
     uic.compileUi("SweepDialog.ui", uifile)
     uifile.close()
-from SweepDialog_ui import Ui_SweepDialog
-from AlazarWidget_ui import Ui_AlazarForm
+from .SweepDialog_ui import Ui_SweepDialog
+from .AlazarWidget_ui import Ui_AlazarForm
 import PyQt4.Qt as Qt
 import guiqwt.plot
 import guiqwt.builder
@@ -51,7 +51,7 @@ class SlabLinePlot(guiqwt.plot.CurvePlot):
         
 class SlabSpinBox(QDoubleSpinBox):
     def __init__(self, *args, **kwargs):
-        self.precision = kwargs.pop('precision') if kwargs.has_key('precision') else 4
+        self.precision = kwargs.pop('precision') if 'precision' in kwargs else 4
         QDoubleSpinBox.__init__(self, *args, **kwargs)
         self.maxv = 10 ** 3
         self.minv = 10 ** -2

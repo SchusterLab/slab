@@ -19,10 +19,10 @@ import time
 from threading import Thread
 
 from instruments import E8257D
-from spectrum_analyzer import SpectrumAnalyzer
-from sa_calibration_manager import *
+from .spectrum_analyzer import SpectrumAnalyzer
+from .sa_calibration_manager import *
 
-from spectrum_analyzer_sweep_ui import *
+from .spectrum_analyzer_sweep_ui import *
 
 class SpectrumAnalyzerWindow(QMainWindow, Ui_SpectrumAnalyzerWindow):
     def __init__(self, sa, sacm, lo, parent = None):    
@@ -94,10 +94,10 @@ class SpectrumAnalyzerWindow(QMainWindow, Ui_SpectrumAnalyzerWindow):
                 power = self.sacm.get_rf_power(self.frequencySpinBox.value()*1e9, power)
             
         except OutputOutOfRangeError as e:
-                print e
+                print(e)
                 power = self.sacm.get_rf_power(e.frequency, e.lower_bound)
         except Exception as e:
-            print e
+            print(e)
             return 
             
         self.powerLCD.display(power)
@@ -235,10 +235,10 @@ class SweepThread(Thread):
                     self.spec.append(r)
             
             except OutputOutOfRangeError as e:
-                print e
+                print(e)
                 self.spec.append(self.sacm.get_rf_power(e.frequency, e.lower_bound))
             except Exception as e:
-                print e
+                print(e)
         
         """unlock sweep by enabling the sweep button"""
         self.sweeping[0] = False

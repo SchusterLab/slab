@@ -10,11 +10,8 @@ import ctypes as C
 import numpy as np
 import sys
 
-from PyQt4.QtGui import *
-from PyQt4.QtCore import QTimer
 
 from slab.instruments import *
-from labbrick_ui import *
 
 U8 = C.c_uint8
 U8P = C.POINTER(U8)
@@ -25,24 +22,24 @@ I32 = C.c_int32
 CFLT = C.c_float
 
 try:
-    LDA602dllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_atten.dll'
+    LDA602dllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_atten64.dll'
     LDADLL=C.CDLL(LDA602dllpath)
 except:
-    print "Warning could not load LDA labbrick dll, check that dll located at '%s'" % LDA602dllpath
+    print("Warning could not load LDA labbrick dll, check that dll located at '%s'" % LDA602dllpath)
 
 try:
     #LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
     LMS103dllpath=r'C:\_Lib\python\slab\instruments\labbrick\vnx_fmsynth.dll'
     LMSDLL=C.CDLL(LMS103dllpath)
 except:
-    print "Warning could not load LMS labbrick dll, check that dll located at '%s'" % LMS103dllpath
+    print("Warning could not load LMS labbrick dll, check that dll located at '%s'" % LMS103dllpath)
 
 try:
     #LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
-    LPSdllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_dps.dll'
+    LPSdllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_dps64.dll'
     LPSDLL=C.CDLL(LPSdllpath)
 except:
-    print "Warning could not load LPS labbrick dll, check that dll located at '%s'" % LPSdllpath
+    print("Warning could not load LPS labbrick dll, check that dll located at '%s'" % LPSdllpath)
 
 
 def LPS_get_device_info():
@@ -64,7 +61,7 @@ def LPS_get_device_info():
         serial=int(dll.fnLPS_GetSerialNumber(U32(devid)))
 #            devstr="Device: %d\tModel: %s\tSerial: %d" % (devid,model,serial)
 #            print devstr
-        devinfos.append({"model":model,"serial":serial,"devid":U32(devid)})
+        devinfos.append({"model":model.value,"serial":serial,"devid":U32(devid)})
     return devinfos
 
 
@@ -83,11 +80,11 @@ def LMS_get_device_info():
     devinfos=[]
     for devid in devids:
         model=C.create_string_buffer(8194)
-        dll.fnLMS_GetModelName(U32(devid),model)
+        dll.fnLMS_GetModelNameA(U32(devid),model)
         serial=int(dll.fnLMS_GetSerialNumber(U32(devid)))
 #            devstr="Device: %d\tModel: %s\tSerial: %d" % (devid,model,serial)
 #            print devstr
-        devinfos.append({"model":model,"serial":serial,"devid":U32(devid)})
+        devinfos.append({"model":model.value,"serial":serial,"devid":U32(devid)})
     return devinfos
 
 
@@ -110,13 +107,13 @@ def LDA_get_device_info():
         serial=int(dll.fnLDA_GetSerialNumber(U32(devid)))
 #            devstr="Device: %d\tModel: %s\tSerial: %d" % (devid,model,serial)
 #            print devstr
-        devinfos.append({"model":model,"serial":serial,"devid":U32(devid)})
+        devinfos.append({"model":model.value,"serial":serial,"devid":U32(devid)})
     return devinfos
 
 
 class LDA602(Instrument):
     'The interface to the Lab Brick Phase shifter'
-    dll=LDADLL
+    #dll=LDADLL
 
     def __init__(self,name='LDA602',address=9083,enabled=True):
         Instrument.__init__(self,name,address,enabled=True)
@@ -139,8 +136,8 @@ class LDA602(Instrument):
             #print devinfo
             if devinfo['serial']==serial:
                 return devinfo
-        print "Error Labbrick serial # %d not found! returning first device found" % serial
-        print devinfos
+        print("Error Labbrick serial # %d not found! returning first device found" % serial)
+        print(devinfos)
         return None
 
     def get_num_devices(self):
@@ -169,7 +166,7 @@ class LDA602(Instrument):
         :return:
         """
         if attenuation>63 or attenuation<0:
-            print "%.2f dB falls outside the range (0 - 63 dB). Setting to attenuation to 63 dB" % attenuation
+            print("%.2f dB falls outside the range (0 - 63 dB). Setting to attenuation to 63 dB" % attenuation)
             attenuation = 63
 
         self.dll.fnLDA_SetAttenuation(self.devid, U32(int(attenuation/0.25)))
@@ -222,8 +219,8 @@ class LPS802(Instrument):
             #print devinfo
             if devinfo['serial']==serial:
                 return devinfo
-        print "Error Labbrick serial # %d not found! returning first device found" % serial
-        print devinfos
+        print("Error Labbrick serial # %d not found! returning first device found" % serial)
+        print(devinfos)
         return None
 
     def get_num_devices(self):
@@ -301,11 +298,11 @@ class LMS103(Instrument):
         serial=int(serial)
         devinfos=LMS_get_device_info()
         for devinfo in devinfos:
-            print devinfo
+            print(devinfo)
             if devinfo['serial']==serial:
                 return devinfo
-        print "Error Labbrick serial # %d not found! returning first device found" % serial
-        print devinfos
+        print("Error Labbrick serial # %d not found! returning first device found" % serial)
+        print(devinfos)
         return None
 
     def get_num_devices(self):
@@ -313,7 +310,7 @@ class LMS103(Instrument):
   
     def get_model_name(self):
         model_name=C.create_string_buffer(8194)
-        self.dll.fnLMS_GetModelName(self.devid,model_name)
+        self.dll.fnLMS_GetModelNameA(self.devid,model_name)
         return model_name.value
         
     def get_serial_number(self):
@@ -337,6 +334,9 @@ class LMS103(Instrument):
         
     def get_use_internal_reference(self):
         return bool(self.dll.fnLMS_GetUseInternalRef(self.devid))
+
+    def set_use_internal_reference(self, mode=True):
+        self.dll.fnLMS_SetUseInternalRef(self.devid, U8(int(mode)))
 
     def get_use_internal_pulse_mod(self): # This is broken -- Phil
         return bool(self.dll.LMS_GetUseInternalPulseMod(self.devid))
@@ -423,58 +423,6 @@ class LMS103(Instrument):
                 'PLL':self.get_PLL_status()
                 }
 
-try:
-    from guiqwt.pyplot import *
-    
-        
-    class LabbrickWindow(QMainWindow, Ui_labbrickWindow):
-        def __init__(self, address=None,parent = None):
-        
-            QMainWindow.__init__(self, parent)
-            self.setupUi(self)
-            self.updateButton.clicked.connect(self.update_rf)
-            self.autoupdateCheckBox.stateChanged.connect(self.autoupdateCheckBox_changed)
-    
-            if address is not None:
-                self.rf=LMS103(address=address)
-            else:
-                devinfo=LMS_get_device_info()[0]
-                self.rf=LMS103(address=devinfo['serial'])
-                #self.rf=LMS103(address=1198)
-                
-            #print self.rf.get_serial_number()
-            self.get_state()
-            self.ctimer = QTimer()      #Setup autoupdating timer to call update_plots at 10Hz
-            self.ctimer.timeout.connect(self.update_rf)
-            
-        def update_rf(self):
-            self.ctimer.stop()
-            self.rf.set_frequency(self.frequencySpinBox.value())
-            self.rf.set_power(self.powerSpinBox.value())
-            self.rf.set_pulse_parameters(self.pulsewidthSpinBox.value()*1e-6,self.pulserepSpinBox.value()*1e-6,self.modCheckBox.isChecked())
-            self.rf.set_output(self.outputCheckBox.isChecked())
-            self.get_state()
-            self.ctimer.start(1000)
-            #print "Update!"
-            
-        def get_state(self):
-            settings=self.rf.get_settings()
-            self.frequencySpinBox.setValue(settings['frequency'])
-            self.powerSpinBox.setValue(settings['power'])
-            self.generatorNumber.display(self.rf.get_serial_number())
-            self.outputCheckBox.setChecked(settings['output'])
-            self.modCheckBox.setChecked(settings['mod'])
-            self.pulsewidthSpinBox.setValue(settings['pulse_width']*1e6)
-            self.pulserepSpinBox.setValue(settings['pulse_period']*1e6)
-            self.PLLBox.setChecked(settings['PLL'])
-           
-        def autoupdateCheckBox_changed(self):
-            if self.autoupdateCheckBox.isChecked():
-                self.ctimer.start(1000)
-            else:
-                self.ctimer.stop()
-except:
-    print "Warning could not load LabBrick Gui"
 
 if __name__=="__main__":
     #app = QApplication(sys.argv)
@@ -488,11 +436,11 @@ if __name__=="__main__":
     testLPS=True
     if testLPS:
         lps=LPS802(address=4823)
-        print lps.get_id()
-        print lps.get_min_working_frequency()
-        print lps.get_max_working_frequency()
-        print lps.get_working_frequency()
-        print lps.get_phase()
+        print(lps.get_id())
+        print(lps.get_min_working_frequency())
+        print(lps.get_max_working_frequency())
+        print(lps.get_working_frequency())
+        print(lps.get_phase())
         lps.set_phase(lps.get_phase()+10,6e9)
-        print lps.get_phase()
+        print(lps.get_phase())
 

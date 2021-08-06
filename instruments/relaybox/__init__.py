@@ -1,1 +1,1 @@
-from relaybox import RelayBox
+from .relaybox import RelayBox

@@ -8,11 +8,11 @@ from slab.instruments import VisaInstrument, InstrumentManager
 import numpy as np
 from numpy import array, floor, zeros
 from collections import namedtuple
-from TekPattern import write_Tek_file
+from .TekPattern import write_Tek_file
 import hashlib
 import struct
 import io
-import StringIO
+import io
 import time
 
 #comment out if not debugging
@@ -31,6 +31,13 @@ class Tek5014(VisaInstrument):
         VisaInstrument.__init__(self, name, address, enabled, timeout)
         self._loaded_waveforms = []
         self.current_sequence_hash = ''
+
+    def write(self, s):
+        if self.enabled: self.instrument.write(s)
+
+    def read(self, timeout=None):
+        # todo: implement timeout, reference SocketInstrument.read
+        if self.enabled: return self.instrument.read()
 
     def get_id(self):
         return self.query("*IDN?")
@@ -347,10 +354,12 @@ class Tek5014(VisaInstrument):
 
     def load_sequence_file(self, filename, force_reload=False):
 
-        sequence_hash = hashlib.md5(open(filename).read()).hexdigest()
-        if (self.current_sequence_hash != sequence_hash) or force_reload:
-            self.current_sequence_hash = sequence_hash
-            self.write("AWGControl:SREStore '%s' \n" % (filename))
+        self.write("AWGControl:SREStore '%s' \n" % (filename))
+
+        # sequence_hash = hashlib.md5(open(filename).read().encode()).hexdigest()
+        # if (self.current_sequence_hash != sequence_hash) or force_reload:
+        #     self.current_sequence_hash = sequence_hash
+        #     self.write("AWGControl:SREStore '%s' \n" % (filename))
 
     def prep_experiment(self):
         self.write("SEQuence:JUMP 1")
@@ -487,9 +496,9 @@ def write_field(FID, fieldName, data, dataType):
         dataSize = typeSizes[dataType]
 
     FID.write(struct.pack('<II', len(fieldName) + 1, dataSize))
-    FID.write(fieldName + chr(0))
+    FID.write((fieldName + chr(0)).encode())
     if dataType == 'char':
-        FID.write(data)
+        FID.write(data.encode())
     elif dataType == 'uint128':
         # struct doesn't support uint128 so write two 64bits
         # there are smarter ways but we really only need this for the fake timestamp
@@ -554,7 +563,7 @@ def write_waveform(FID, WFname, WFnumber, data):
     tmpString = 'WAVEFORM_DATA_' + numString + chr(0)
     dataSize = 2 * data.size
     FID.write(struct.pack('<II', len(tmpString), dataSize))
-    FID.write(tmpString)
+    FID.write(tmpString.encode())
     FID.write(data.tostring())
 
 
@@ -582,7 +591,7 @@ def write_Tek5014_file(waveforms, markers, filename, seq_name, options=None, do_
 
     # Open the file
     if do_string_io:
-        FID = StringIO.StringIO()
+        FID = io.StringIO()
     else:
         FID = io.open(filename, 'wb')
 
@@ -627,7 +636,7 @@ def write_Tek5014_file(waveforms, markers, filename, seq_name, options=None, do_
     # Now write the waveforms (i.e. extract out the waveform data from the dictionaries)
     for seqct in range(num_seqs):
         # On the Tek, all four channels need to have the same length
-        print "x",
+        print("x", end=' ')
         for wfct in range(4):
             data = pack_waveform(waveforms[wfct][seqct], markers[2 * wfct][seqct], markers[2 * wfct + 1][seqct])
             write_waveform(FID, '{0}Ch{1}{2:03d}'.format(seq_name, wfct + 1, seqct + 1), 4 * seqct + 1 + wfct, data)
@@ -651,7 +660,7 @@ def write_Tek5014_file(waveforms, markers, filename, seq_name, options=None, do_
     if do_string_io:
         return FID.getvalue()
     FID.close()
-    print "\nFinished writing sequence with %d steps to %s" % (num_seqs,filename)
+    print("\nFinished writing sequence with %d steps to %s" % (num_seqs,filename))
 
 
 #### Creating pattern files
@@ -725,4 +734,4 @@ class Tek5014Sequence:
 
 if __name__ == "__main__":
     awg = Tek5014(address='192.168.14.136')
-    print awg.get_id()
+    print(awg.get_id())

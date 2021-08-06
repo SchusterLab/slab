@@ -16,7 +16,7 @@ import time
 class RFSwitch(RelayBox):    
 
     def __init__(self,name="",address="",enabled=True, RF_Status=[False,False,False,False,False,False]):
-        print "Switch", name, "at address", address, " is initiated!" 
+        print("Switch", name, "at address", address, " is initiated!") 
         RelayBox.__init__(self,name,address,enabled)
         self.RF_Status=RF_Status
         
@@ -64,11 +64,11 @@ if __name__=="__main__":
 
     for i in range(6):
        rfs_3.activate(i+1)
-       print rfs_3.RF_Status
+       print(rfs_3.RF_Status)
     
     for i in range(6):
        rfs_3.deactivate(i+1)
-       print rfs_3.RF_Status
+       print(rfs_3.RF_Status)
     
     
     

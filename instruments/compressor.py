@@ -103,6 +103,7 @@ class CP2800(SerialInstrument):
         # print hexs
         decs = [int(h, 16) for h in hexs]
         self.ser.write(bytearray(decs))
+        time.sleep(self.timeout)
         answer = self.parse_message(self.ser.readline())
         return answer["dictionary_data"]
 
@@ -219,11 +220,11 @@ class CP2800(SerialInstrument):
         self.ser.flushInput()
         
 if __name__ == "__main__":
-    cp = CP2800(address='COM6', baudrate=115200, timeout=0.1)
+    cp = CP2800(address='COM10', baudrate=115200, timeout=0.5)
 
-    print("The compressor status is %d"%cp.get_compressor_status())
-    print("The compressor runtime is %d minutes"%cp.get_compressor_runtime())
-    print("The input water temperature is %.1fC"%cp.get_input_water_temperature())
-    print("The output water temperature is %.1fC"%cp.get_output_water_temperature())
-    print("The helium temperature is %.1fC"%cp.get_helium_temperature())
-    print("The oil temperature is %.1fC"%cp.get_oil_temperature())
+    print(("The compressor status is %d"%cp.get_compressor_status()))
+    print(("The compressor runtime is %d minutes"%cp.get_compressor_runtime()))
+    print(("The input water temperature is %.1fC"%cp.get_input_water_temperature()))
+    print(("The output water temperature is %.1fC"%cp.get_output_water_temperature()))
+    print(("The helium temperature is %.1fC"%cp.get_helium_temperature()))
+    print(("The oil temperature is %.1fC"%cp.get_oil_temperature()))

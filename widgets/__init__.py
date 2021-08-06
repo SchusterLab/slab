@@ -1,3 +1,3 @@
-from widgets import *
+from .widgets import *
 
 widget_dict = { "Alazar" : AlazarWidget }

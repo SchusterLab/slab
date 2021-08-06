@@ -65,7 +65,7 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
             try:
                 return float(self.query('R5')[1:])
             except:
-                print "Warning: get_setpoint failed, trying again"
+                print("Warning: get_setpoint failed, trying again")
         raise Exception ("Error: get_setpoint failed several times giving up!")
        
        
@@ -123,9 +123,9 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
                 if abs(current-setpt)<tol:
                     return
                 else:
-                    print self.name+": set_point out of tolerance range\nSet to: %f\tRead back: %f" % (current,setpt)
+                    print(self.name+": set_point out of tolerance range\nSet to: %f\tRead back: %f" % (current,setpt))
             except:
-                print "Warning: could not set set_point trying again..."
+                print("Warning: could not set set_point trying again...")
             count+=1
             self.reset_connection()
             time.sleep(1)
@@ -156,7 +156,7 @@ class IPSMagnet(SerialInstrument,VisaInstrument):
                 mode={0:"Rest",1:"Sweeping",2:"Sweep Limiting",3:"Sweep and Sweep Limit"}[n]
                 done = True
             except:
-                print "Warning: get_mode failed!"
+                print("Warning: get_mode failed!")
             
         return mode
           
@@ -314,17 +314,17 @@ if __name__ == '__main__':
     #print fridge.get_settings()
     
 if __name__ == '__main__':
-    print "HERE"
+    print("HERE")
     #magnet=IPSMagnet(address='COM1')
     magnet=IPSMagnet(address='GPIB0::25::INSTR')
     magnet.set_mode('remote_unlocked')
     #magnet.set_local()
-    print magnet.get_id()
+    print(magnet.get_id())
     #magnet.set_heater()
     #magnet.set_current_sweeprate(0.3) 
     #magnet.hold()
     
-    print "done"
+    print("done")
     #print fridge.get_status()
     #d=fridge.get_temperatures()
     #print fridge.get_temperatures()

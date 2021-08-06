@@ -64,23 +64,23 @@ class ScopeWindow(SlabWindow):
 
 
     def go(self):
-        print "GO!"
+        print("GO!")
         p = Process(target=acquire_data, args=(self.guidata.dataset,self.pipes,))
         p.start()
-        print "Process started"
+        print("Process started")
         self.statusBar().showMessage("Acquiring Data", 5000)
         p.join()
  
  
 def acquire_data(params,pipes=None):
-    print "Acquiring data"
+    print("Acquiring data")
     if pipes!=None:    
         ch1_pipe=pipes['Ch1']
         ch2_pipe=pipes['Ch2']
     card = Card()
     x = linspace(-5, 5, card.samples)
     card.configure()
-    for ii in xrange(4):
+    for ii in range(4):
         card.acquire()
         y1 = card.cur_result[0]
         if pipes!=None:

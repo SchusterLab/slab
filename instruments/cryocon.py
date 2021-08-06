@@ -56,7 +56,7 @@ class Cryocon(SocketInstrument):
 
 if __name__=="__main__":
     c=Cryocon(address='192.168.14.165:5000')
-    print c.get_id()
-    print c.get_temp('A')
+    print(c.get_id())
+    print(c.get_temp('A'))
   
       

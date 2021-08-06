@@ -1,4 +1,4 @@
-from __future__ import division
+
 import numpy as np
 import os
 import signal
@@ -131,7 +131,7 @@ def AcquireData(board, waitBar):
 
     start = time.clock() # Keep track of when acquisition started
     board.startCapture() # Start the acquisition
-    print("Capturing %d record. Press any key to abort" % recordsPerCapture)
+    print(("Capturing %d record. Press any key to abort" % recordsPerCapture))
     buffersCompleted = 0
     bytesTransferred = 0
     while not waitBar.hasUserCancelled():
@@ -147,12 +147,12 @@ def AcquireData(board, waitBar):
     recordsPerSec = 0
     if captureTime_sec > 0:
         recordsPerSec = recordsPerCapture / captureTime_sec
-    print("Captured %d records in %f rec (%f records/sec)" % (recordsPerCapture, captureTime_sec, recordsPerSec))
+    print(("Captured %d records in %f rec (%f records/sec)" % (recordsPerCapture, captureTime_sec, recordsPerSec)))
 
     buffer = ats.DMABuffer(bytesPerSample, bytesPerBuffer)
 
     # Transfer the records from on-board memory to our buffer
-    print("Transferring %d records..." % recordsPerCapture)
+    print(("Transferring %d records..." % recordsPerCapture))
 
     for record in range(recordsPerCapture):
         for channel in range(channelCount):
@@ -189,7 +189,7 @@ def AcquireData(board, waitBar):
     bytesPerSec = 0
     if transferTime_sec > 0:
         bytesPerSec = bytesTransferred / transferTime_sec
-    print("Transferred %d bytes (%f bytes per sec)" % (bytesTransferred, bytesPerSec))
+    print(("Transferred %d bytes (%f bytes per sec)" % (bytesTransferred, bytesPerSec)))
 
 # Handler for the SIGINT signal. This gets called when the user
 # presses Ctrl+C.

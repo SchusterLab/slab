@@ -48,7 +48,7 @@ STDERR = sys.stderr
 try:
     from PyQt4.QtGui import QFormLayout
 except ImportError:
-    raise ImportError, "Warning: formlayout requires PyQt4 >v4.3"
+    raise ImportError("Warning: formlayout requires PyQt4 >v4.3")
 
 from PyQt4.QtGui import (QWidget, QLineEdit, QComboBox, QLabel, QSpinBox, 
                          QDoubleSpinBox, QIcon, QStyle, QDialogButtonBox, 
@@ -107,7 +107,7 @@ def text_to_qcolor(text):
     color = QColor()
     if isinstance(text, QString):
         text = str(text)
-    if not isinstance(text, (unicode, str)):
+    if not isinstance(text, str):
         return color
     if text.startswith('#') and len(text)==7:
         correct = '#0123456789abcdef'
@@ -149,7 +149,7 @@ class ColorLayout(QHBoxLayout):
     
 def font_is_installed(font):
     """Check if font is installed"""
-    return [fam for fam in QFontDatabase().families() if unicode(fam)==font]
+    return [fam for fam in QFontDatabase().families() if str(fam)==font]
 
 def tuple_to_qfont(tup):
     """
@@ -171,7 +171,7 @@ def tuple_to_qfont(tup):
     return font
 
 def qfont_to_tuple(font):
-    return (unicode(font.family()), int(font.pointSize()),
+    return (str(font.family()), int(font.pointSize()),
             font.italic(), font.bold())
 
 
@@ -190,7 +190,7 @@ class FontLayout(QGridLayout):
         # Font size
         self.size = QComboBox(parent)
         self.size.setEditable(True)
-        sizelist = range(6, 12) + range(12, 30, 2) + [36, 48, 72]
+        sizelist = list(range(6, 12)) + list(range(12, 30, 2)) + [36, 48, 72]
         size = font.pointSize()
         if size not in sizelist:
             sizelist.append(size)
@@ -229,17 +229,17 @@ class FormWidget(QWidget):
             self.formlayout.addRow(QLabel(comment))
             self.formlayout.addRow(QLabel(" "))
         if DEBUG:
-            print "\n"+("*"*80)
-            print "DATA:", self.data
-            print "*"*80
-            print "COMMENT:", comment
-            print "*"*80
+            print("\n"+("*"*80))
+            print("DATA:", self.data)
+            print("*"*80)
+            print("COMMENT:", comment)
+            print("*"*80)
         self.setup()
 
     def setup(self):
         for name,label, value in self.data:
             if DEBUG:
-                print "value:", value
+                print("value:", value)
             if not name is None:
                 self.names.append(name)
             if name is None and label is None and value is None:
@@ -256,7 +256,7 @@ class FormWidget(QWidget):
                 field = FontLayout(value, self)
             elif text_to_qcolor(value).isValid():
                 field = ColorLayout(QColor(value), self)
-            elif isinstance(value, (str, unicode)):
+            elif isinstance(value, str):
                 field = QLineEdit(value, self)
             elif isinstance(value, (list, tuple)):
                 selindex = value.pop(0)
@@ -272,8 +272,8 @@ class FormWidget(QWidget):
                 elif selindex in keys:
                     selindex = keys.index(selindex)
                 elif not isinstance(selindex, int):
-                    print >>STDERR, "Warning: '%s' index is invalid (label: " \
-                                    "%s, value: %s)" % (selindex, label, value)
+                    print("Warning: '%s' index is invalid (label: " \
+                                    "%s, value: %s)" % (selindex, label, value), file=STDERR)
                     selindex = 0
                 field.setCurrentIndex(selindex)
             elif isinstance(value, bool):
@@ -309,8 +309,8 @@ class FormWidget(QWidget):
                 continue
             elif tuple_to_qfont(value) is not None:
                 value = field.get_font()
-            elif isinstance(value, (str, unicode)):
-                value = unicode(field.text())
+            elif isinstance(value, str):
+                value = str(field.text())
             elif isinstance(value, (list, tuple)):
                 index = int(field.currentIndex())
                 if isinstance(value[0], (list, tuple)):
@@ -511,19 +511,19 @@ if __name__ == "__main__":
     #--------- datalist example
     datalist = create_datalist_example()
     def apply_test(data):
-        print "data:", data
-    print "result:", fedit(datalist, title="Example",
+        print("data:", data)
+    print("result:", fedit(datalist, title="Example",
                            comment="This is just an <b>example</b>.",
-                           apply=apply_test)
+                           apply=apply_test))
     
     #--------- datagroup example
     datagroup = create_datagroup_example()
-    print "result:", fedit(datagroup, "Global title")
+    print("result:", fedit(datagroup, "Global title"))
         
     #--------- datagroup inside a datagroup example
     datalist = create_datalist_example()
     datagroup = create_datagroup_example()
-    print "result:", fedit(((datagroup, "Title 1", "Tab 1 comment"),
+    print("result:", fedit(((datagroup, "Title 1", "Tab 1 comment"),
                             (datalist, "Title 2", "Tab 2 comment"),
                             (datalist, "Title 3", "Tab 3 comment")),
-                            "Global title")
+                            "Global title"))

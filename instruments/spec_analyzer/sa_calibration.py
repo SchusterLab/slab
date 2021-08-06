@@ -4,7 +4,7 @@ Created on Tue Aug 23 17:50:07 2011
 
 @author: Dai
 """
-from spectrum_analyzer import *
+from .spectrum_analyzer import *
 from rfgenerators import *
 import pickle
 import time
@@ -35,11 +35,11 @@ for freq, mp in min_power:
         #the calibration data is stored in a 2D array
         nd = [freq, sa.get_power(), pwr]
         cali.append(nd)
-        print nd
+        print(nd)
         rf.set_output(False)
     lo.set_output(False)
 
-print cali
+print(cali)
 pickle.dump(cali, open('10dBm_'+str(step)+'_cali.data', 'w'))
 
 c = np.array(cali)

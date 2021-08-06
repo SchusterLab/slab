@@ -40,7 +40,7 @@ class dataCacheProxy():
         # self.currentStack.post = self.post
 
     def set_data_file_path(self, newFile=False):
-        print 'create new file: ', newFile
+        print('create new file: ', newFile)
         try:
             if newFile == True:
                 #print 'creating new file'
@@ -149,21 +149,21 @@ class dataCacheProxy():
             self.current_stack = self.stack_prefix + str(100000 + index)[1:]
             try:
                 self.index()
-                print "the last stack is ", self.current_stack
+                print("the last stack is ", self.current_stack)
                 break
             except IOError:
-                print 'file does not exist, current_stack is ', self.current_stack;
+                print('file does not exist, current_stack is ', self.current_stack);
                 break
             except:
                 index += 1
-                print '.',
+                print('.', end=' ')
 
     def index(self, keyString=''):
         def get_indices(f, keyList):
             if len(keyList) == 0 or (keyList == ['', ]):
                 try:
-                    return f.keys()
-                except AttributeError, e:
+                    return list(f.keys())
+                except AttributeError as e:
                     return e
             else:
                 return get_indices(f[keyList[0]], keyList[1:])
@@ -171,7 +171,7 @@ class dataCacheProxy():
         try:
             if keyString[-1] == '.':
                 keyString = keyString[:-1]
-        except IndexError, e:
+        except IndexError as e:
             pass
         keyList = keyString.split('.')
         with SlabFile(self.path, 'r') as f:
@@ -188,16 +188,16 @@ class dataCacheProxy():
         with SlabFile(self.path) as f:
             try:
                 f.create_group(self.current_stack)
-                print "new stack: ", self.current_stack;
-            except ValueError, error:
-                print "{} already exists. Move to next index.".format(self.current_stack)
+                print("new stack: ", self.current_stack);
+            except ValueError as error:
+                print("{} already exists. Move to next index.".format(self.current_stack))
                 self.new_stack()
 
     def note(self, string, keyString=None, printOption=False, maxLength=79):
         if keyString == None:
             keyString = 'notes'
         if printOption:
-            print string
+            print(string)
         for line in textwrap2.wrap(string, maxLength):
             self.post(keyString, line + ' ' * (maxLength - len(line)))
 
@@ -210,9 +210,9 @@ class dataCacheProxy():
         """
 
         if not isinstance(d, dict):
-            print 'object is not a dictionary object'
+            print('object is not a dictionary object')
             return
-        for key, value in d.iteritems():
+        for key, value in d.items():
             if isinstance(value, dict):
                 self.set_dict(keyString + '.' + key, value)
             else:
@@ -228,7 +228,7 @@ class dataCacheProxy():
             return d
 
 if __name__ == "__main__":
-    print "running a test..."
+    print("running a test...")
 
     # Setting up the instance
     exp = lambda: None;
@@ -272,21 +272,21 @@ if __name__ == "__main__":
     cache = dataCacheProxy(exp, newFile=True)
     cache.find_last_stack()
     cache.set_dict('dictionary', d)
-    print cache.index_current_stack('dictionary')
+    print(cache.index_current_stack('dictionary'))
     d_copy = cache.get_dict('dictionary')
-    print d, d_copy
+    print(d, d_copy)
     assert d == d_copy, 'set_dict and get_dict round-trip failed'
 
     ## create new file and just add to the root
     cache = dataCacheProxy(exp, newFile=True)
     cache.set_dict('dictionary', d)
-    print cache.index_current_stack('dictionary')
+    print(cache.index_current_stack('dictionary'))
     d_copy = cache.get_dict('dictionary')
-    print d, d_copy
+    print(d, d_copy)
     assert d == d_copy, 'set_dict and get_dict round-trip failed'
 
     cache.find_last_stack()
-    print 'the latest stack is: ', cache.current_stack
+    print('the latest stack is: ', cache.current_stack)
 
     #now data is saved in the dataCache
     #now I want to move some data to a better file

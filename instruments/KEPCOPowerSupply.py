@@ -73,11 +73,11 @@ class KEPCOPowerSupply(SerialInstrument):
                     current_value = float(current_value)
                     return current_value
                 else:
-                    print  "The Machine didn't return a float"
-                    print current_value
-                    print type(current_value)
+                    print("The Machine didn't return a float")
+                    print(current_value)
+                    print(type(current_value))
             except:
-                    print "Getting the current again..."
+                    print("Getting the current again...")
             count+=1
             time.sleep(1)
         raise Exception("The Machine wouldn't return a floating number. Try smacking it.")

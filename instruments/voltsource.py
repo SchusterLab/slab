@@ -12,7 +12,9 @@ import numpy as np
 
 class VoltageSource:
     def ramp_volt(self, v, sweeprate=1, channel=1):
+        # channel is only for SRS, YOKO ignore channel
         start = self.get_volt(channel=channel)
+        print(start)
         stop = v
         if stop == start: return
         start_t = time.time()
@@ -39,7 +41,7 @@ class VoltageSource:
         step_t = time.time() - start_t
         #print start,stop, start_t,step_t
         total_t = abs(stop - start) / sweeprate
-        steps = max(total_t / step_t,2)
+        steps = int(max(total_t / step_t,2))
         #print start,stop,start_t,step_t, total_t, steps
 
         for ii in linspace(start, stop, steps)[1:]:
@@ -107,7 +109,7 @@ class SRS900(SerialInstrument, VisaInstrument, VoltageSource):
         return self.query("*IDN?")
 
     def set_volt(self, voltage, channel=1):
-        self.write('SNDT %d,\"VOLT %f\"' % (channel, voltage))
+        self.write('SNDT %d,\"VOLT %.3f\"' % (channel, voltage))
 
     def get_volt(self, channel=1):
         return float(self.query("VOLT?", channel))
@@ -125,8 +127,8 @@ class SRS900(SerialInstrument, VisaInstrument, VoltageSource):
 class YokogawaGS200(SocketInstrument, VoltageSource):
     default_port = 7655
 
-    def __init__(self, name='YOKO', address='', enabled=True, timeout=10, recv_length=1024):
-        SocketInstrument.__init__(self, name, address, enabled, timeout, recv_length)
+    def __init__(self, name='YOKO', address='', enabled=True,  recv_length=1024,timeout=10):
+        SocketInstrument.__init__(self, name=name, address=address, enabled=enabled, recv_length=recv_length,timeout=timeout)
         self.query_sleep=0.01
 
     def get_id(self):
@@ -203,8 +205,7 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
             raise Exception("ERROR: Need to set Yoko voltage in current mode")
 
     def set_volt(self, voltage, channel=0):
-        # Channel keyword not used for the Yokogawa.
-        # This is implemented for compatibility with other sources that use ramp_voltage (e.g. SRS)
+        # channel does nothing...for compatibility with the SRS
         """Set yoko voltage"""
         if self.get_mode() == "VOLT":
             self.set_level(voltage)
@@ -212,8 +213,7 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
             raise Exception("ERROR: Need to set Yoko voltage in voltage mode")
 
     def get_volt(self, channel=0):
-        # Channel keyword not used for the Yokogawa.
-        # This is implemented for compatibility with other sources that use ramp_voltage (e.g. SRS)
+        # channel does nothing...for compatibility with the SRS - alex
         """Get yoko voltage"""
         if self.get_mode() == "VOLT":
             return self.get_level()
@@ -309,9 +309,9 @@ class YokogawaGS200(SocketInstrument, VoltageSource):
 
     def flush_program_memory(self):
         """Deletes all programs from the memory"""
-        print "Deleting programs from memory:"
+        print("Deleting programs from memory:")
         for program in self.get_programs():
-            print "\t%s"%program
+            print("\t%s"%program)
             self.delete_program(program)
 
     def linear_ramp(self, Vi, Vf, dt=0.1):
@@ -343,12 +343,12 @@ def test_yoko(yoko=None):
     if yoko is None:
         yoko = YokogawaGS200(address='10.120.35.219')
 
-    print yoko.get_id()
+    print(yoko.get_id())
     yoko.set_mode('current')
-    print yoko.get_mode()
-    print yoko.get_volt()
+    print(yoko.get_mode())
+    print(yoko.get_volt())
     yoko.set_measure_state()
-    print yoko.get_measure()
+    print(yoko.get_measure())
 
 
 if __name__ == "__main__":

@@ -96,7 +96,7 @@ class Seekat(SerialInstrument):
         :return: None
         """
         if verbose:
-            print 'Channel = ' + str(channel) + ',  Voltage = ' + str(round(voltage, 3)),
+            print('Channel = ' + str(channel) + ',  Voltage = ' + str(round(voltage, 3)), end=' ')
         n1, n2, m1, m2 = self.get_channel_bits(channel)
         d1, d2 = self.get_voltage_bits(voltage)
 
@@ -105,7 +105,7 @@ class Seekat(SerialInstrument):
 
         self.ser.flushInput()
         time.sleep(0.02)
-        self.ser.write(str(SS))
+        self.write(SS)
         self.ser.flush()
 
     def get_voltage(self, channel, ndigits=4):
@@ -124,14 +124,14 @@ class Seekat(SerialInstrument):
         S1 = '255,254,253,' + str(n1) + ',0,0,' + str(n2) + ',0,0'
 
         time.sleep(0.02)
-        self.ser.write(str(S1))
+        self.write(S1)
         self.ser.flushInput()
         time.sleep(0.02)
-        self.ser.write(str(S1))
+        self.write(S1)
         self.ser.flushInput()
         time.sleep(0.02)
 
-        self.ser.write(str('255,254,253,0,0,0,0,0,0'))
+        self.write('255,254,253,0,0,0,0,0,0')
 
         time.sleep(0.02)
 
@@ -170,7 +170,7 @@ class Seekat(SerialInstrument):
         self.set_voltage(channel, offset_voltage)
         blah = self.get_voltage(channel, 9)
         offset = -blah
-        print 'Offset calibration:\nSet to 0 V volt\nMeasure %.6fV' % (blah)
+        print('Offset calibration:\nSet to 0 V volt\nMeasure %.6fV' % (blah))
 
         offsetsteps = round(offset / (38.14 * math.exp(-6)))
 
@@ -181,7 +181,7 @@ class Seekat(SerialInstrument):
         time.sleep(0.005)
         SS = '255,254,253,' + str(n1) + ',' + str(d1 * m1) + ',' + str(d2 * m1) + ',' + str(n2) + ',' + str(
             d1 * m2) + ',' + str(d2 * m2)
-        self.ser.write(str(SS))
+        self.write(SS)
         while self.ser.inWaiting():
             self.ser.readline()
         time.sleep(1)
@@ -192,7 +192,7 @@ class Seekat(SerialInstrument):
         time.sleep(2)
         blah = self.get_voltage(channel, 9)
         offset = blah - min_voltage
-        print 'Gain calibration:\nSet to -10 V volt\nMeasure %.6fV' % (blah)
+        print('Gain calibration:\nSet to -10 V volt\nMeasure %.6fV' % (blah))
         offsetsteps = round(offset / (152.59 * math.exp(-6)))
         offest8 = gbin(int(offsetsteps) % (2 ** 8), 8)
         d1 = 0
@@ -200,7 +200,7 @@ class Seekat(SerialInstrument):
         time.sleep(0.005)
         SS = '255,254,253,' + str(n1 + 16) + ',' + str(d1 * m1) + ',' + str(d2 * m1) + ',' + str(n2 + 16) + ',' + str(
             d1 * m2) + ',' + str(d2 * m2)
-        self.ser.write(str(SS))
+        self.write(SS)
         while self.ser.inWaiting():
             self.ser.readline()
         time.sleep(1)
@@ -209,7 +209,7 @@ class Seekat(SerialInstrument):
         offset_voltage = 0
         self.set_voltage(channel, offset_voltage)
 
-        print "Calibration Complete !!!"
+        print("Calibration Complete !!!")
 
     def ramp(self, channel=1, period=0, start=-10, stop=10, step=40):
         """
@@ -232,7 +232,7 @@ class Seekat(SerialInstrument):
         for i in np.linspace(start, stop, step):
             d1, d2 = self.get_voltage_bits(i)
             code[rd] = [255, 254, 253, n1, d1 * m1, d2 * m1, n2, d1 * m2, d2 * m2]
-            print code[rd]
+            print(code[rd])
             rd += 1
 
         delay = 0
@@ -241,7 +241,7 @@ class Seekat(SerialInstrument):
             for rd in range(0, step):
                 SC = '255,254,253,' + str(code[rd, 3]) + ',' + str(code[rd, 4]) + ',' + str(code[rd, 5]) + ',' + str(
                     code[rd, 6]) + ',' + str(code[rd, 7]) + ',' + str(code[rd, 8]) + ','
-                self.ser.write(SC)
+                self.write(SC)
                 self.ser.flush()
                 if delay >= 0:
                     time.sleep(delay)
@@ -250,13 +250,13 @@ class Seekat(SerialInstrument):
                     code[step - rd - 1, 5]) + ',' + str(
                     code[step - rd - 1, 6]) + ',' + str(code[step - rd - 1, 7]) + ',' + str(
                     code[step - rd - 1, 8]) + ','
-                self.ser.write(SC)
+                self.write(SC)
                 self.ser.flush()
                 if delay >= 0:
                     time.sleep(delay)
             btoc = time.time()
             delay -= ((btoc - btic) - float(period)) / (step * 2)
-            print btoc - btic
+            print(btoc - btic)
 
 
 if __name__ == "__main__":
@@ -264,5 +264,5 @@ if __name__ == "__main__":
     time.sleep(3)
 
     for k in range(8):
-        print "ch%d: Measured voltage is %.2f V" % (k + 1, o.get_voltage(k + 1))
+        print("ch%d: Measured voltage is %.2f V" % (k + 1, o.get_voltage(k + 1)))
         time.sleep(1)

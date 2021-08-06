@@ -1,11 +1,11 @@
 __author__ = 'Nitrogen'
 
-from liveplot import LivePlotClient
+# from liveplot import LivePlotClient
 # from dataserver import dataserver_client
 import os.path
 import json
 
-from slab import SlabFile, InstrumentManager, get_next_filename, AttrDict
+from slab import SlabFile, InstrumentManager, get_next_filename, AttrDict, LocalInstruments
 
 
 class Experiment:
@@ -33,8 +33,8 @@ class Experiment:
         else:
             self.config_file = None
         self.im = InstrumentManager()
-        if liveplot_enabled:
-            self.plotter = LivePlotClient()
+        # if liveplot_enabled:
+        #     self.plotter = LivePlotClient()
         # self.dataserver= dataserver_client()
         self.fname = os.path.join(path, get_next_filename(path, prefix, suffix='.h5'))
 
@@ -55,7 +55,7 @@ class Experiment:
         except:
             pass
         if self.cfg is not None:
-            for alias, inst in self.cfg['aliases'].iteritems():
+            for alias, inst in self.cfg['aliases'].items():
                 setattr(self, alias, self.im[inst])
 
     def save_config(self):
@@ -69,11 +69,15 @@ class Experiment:
            proxy functionality not implemented yet"""
         if data_file ==None:
             data_file = self.fname
-        f = SlabFile(data_file)
+        f = SlabFile(data_file, 'w')
         if group is not None:
             f = f.require_group(group)
         if 'config' not in f.attrs:
-            f.attrs['config'] = json.dumps(self.cfg)
+            try:
+                f.attrs['config'] = json.dumps(self.cfg)
+            except TypeError as err:
+                print(('Error in saving cfg into datafile (experiment.py):', err))
+
         return f
 
     def go(self):

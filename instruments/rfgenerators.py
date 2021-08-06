@@ -15,7 +15,7 @@ class N5183B(SocketInstrument):
     """
     default_port=5025
     def __init__(self,name='N5183B',address='',enabled=True,timeout=10, recv_length=1024):
-        SocketInstrument.__init__(self,name,address,enabled,timeout,recv_length)
+        SocketInstrument.__init__(self,name=name,address=address,enabled=enabled,timeout=timeout,recv_length=recv_length)
 
     def get_id(self):
         """Get Instrument ID String"""
@@ -270,7 +270,7 @@ class BNC845(SocketInstrument):
     def set_power(self,power):
         """Set CW power in dBm"""
         self.write(':POWER %f' % power)
-        print "BNC845 is fixed output power - 13dBm"
+        print("BNC845 is fixed output power - 13dBm")
         
         
     def get_power(self):
@@ -332,24 +332,24 @@ def test_BNC845(rf=None):
     if rf is None:
         rf=BNC845(address='192.168.14.151')
     
-    print rf.get_id()
+    print(rf.get_id())
     rf.set_output(False)
-    print "Output: ", rf.get_output()
+    print("Output: ", rf.get_output())
     rf.set_frequency(10e9)
-    print "Frequency: %g" % rf.get_frequency()
-    print "Reference source: %s" % rf.get_reference_source()
+    print("Frequency: %g" % rf.get_frequency())
+    print("Reference source: %s" % rf.get_reference_source())
     
     
     
 def test_8257D (rf=None):   
     if rf is None:
         rf=E8257D(address='192.168.14.131')
-    print rf.query('*IDN?')
+    print(rf.query('*IDN?'))
     rf.set_output(False)
     rf.set_frequency(10e9)
-    print "Frequency: %f" % rf.get_frequency()
+    print("Frequency: %f" % rf.get_frequency())
     rf.set_power(-10)
-    print "Power: %f" % rf.get_power()
+    print("Power: %f" % rf.get_power())
     rf.set_sweep(start=1e9,stop=2e9,numpts=101,dwell=10e-3)
     rf.set_sweep_mode()
     

@@ -25,12 +25,32 @@ class N5242A(SocketInstrument):
     def __init__(self, name="E5071", address=None, enabled=True, **kwargs):
         SocketInstrument.__init__(self, name, address, enabled=enabled, recv_length=2 ** 20, **kwargs)
         self.query_sleep = 0.05
+        self.timeout = 100000
 
     def get_id(self):
         return self.query('*IDN?')
 
     def get_query_sleep(self):
         return self.query_sleep
+
+    def set_display_state(self, state=True):
+        """
+        Specifies whether to disable or enable all analyzer display information in all windows in the analyzer application.
+        Marker data is not updated. More CPU time is spent making measurements instead of updating the display.
+        http://na.support.keysight.com/pna/help/latest/Programming/GP-IB_Command_Finder/Display.htm
+        :param state: True/False
+        :return: None
+        """
+        enable = 1 if state else 0
+        self.write("DISP:ENAB %d" % enable)
+
+    def get_display_state(self):
+        """
+        Specifies whether to disable or enable all analyzer display information in all windows in the analyzer application.
+        Marker data is not updated. More CPU time is spent making measurements instead of updating the display.
+        :return:
+        """
+        return self.query("DISP:ENAB?")
 
     #### Frequency setup
     def set_start_frequency(self, freq, channel=1):
@@ -114,7 +134,7 @@ class N5242A(SocketInstrument):
 
     def setup_two_tone_measurement(self, read_frequency=None, read_power=None, probe_start=None, probe_stop=None, probe_power=None, two_tone=True ):
         if two_tone:
-            print "TWO TONE ON"
+            print("TWO TONE ON")
             self.write('SENSE:FOM:RANGE4:COUPLED 1')
             self.write('SENSE:FOM:RANGE2:COUPLED 0')
             self.write('SENSE:FOM:RANGE3:COUPLED 0')
@@ -140,7 +160,7 @@ class N5242A(SocketInstrument):
             if probe_power is not None:
                 self.set_power(probe_power, channel=1, port=3)
         else:
-            print "TWO TONE OFF"
+            print("TWO TONE OFF")
             self.write('SENSE:FOM:RANGE2:COUPLED 1')
             self.write('SENSE:FOM:RANGE3:COUPLED 1')
             self.write('SENSE:FOM:RANGE4:COUPLED 0')
@@ -155,6 +175,27 @@ class N5242A(SocketInstrument):
             self.set_power(probe_power, channel=1, port=3, state=0)
             if read_power is not None:
                 self.set_power(read_power, channel=1, port=1)
+
+    def setup_rf_flux_measurement(self, read_power=None, probe_power=None, read_start=None, read_stop=None,
+                                   probe_frequency=None):
+
+        self.write('SENSE:FOM:RANGE2:COUPLED 1')
+        self.write('SENSE:FOM:RANGE3:COUPLED 1')
+        self.write('SENSE:FOM:RANGE4:COUPLED 0')
+        if read_start is not None:
+            self.write('SENSE:FOM:RANGE1:FREQUENCY:START %f' % read_start)
+        if read_stop is not None:
+            self.write('SENSE:FOM:RANGE1:FREQUENCY:STOP %f' % read_stop)
+
+        if probe_frequency is not None:
+            self.write('SENSE:FOM:RANGE4:FREQUENCY:START %f' % probe_frequency)
+            self.write('SENSE:FOM:RANGE4:FREQUENCY:STOP %f' % probe_frequency)
+
+        self.set_frequency_offset_mode_state(True)
+        if read_power is not None:
+            self.set_power(read_power, channel=1, port=1)
+        if probe_power is not None:
+            self.set_power(probe_power, channel=1, port=3)
 
     #### Averaging
     def set_averages(self, averages, channel=1):
@@ -211,7 +252,7 @@ class N5242A(SocketInstrument):
         elif mode.lower() in allowed_modes:
             self.write('sense:AVER:mode ' + mode)
         else:
-            print "trigger average mode needs to be one of " + ', '.join(allowed_modes)
+            print("trigger average mode needs to be one of " + ', '.join(allowed_modes))
 
     def get_trigger_average_mode (self):
         data = self.query('sense:AVER:mode?')
@@ -230,7 +271,7 @@ class N5242A(SocketInstrument):
     def set_trigger_source(self, source="immediate"):  # IMMEDIATE, MANUAL, EXTERNAL
         allowed_sources = ['ext', 'imm', 'man', 'immediate', 'external', 'manual']
         if source.lower() not in allowed_sources:
-            print "source need to be one of " + ', '.join(allowed_sources)
+            print("source need to be one of " + ', '.join(allowed_sources))
         self.write('TRIG:SEQ:SOUR ' + source)
 
     def get_trigger_source(self):  # INTERNAL, MANUAL, EXTERNAL,BUS
@@ -254,14 +295,62 @@ class N5242A(SocketInstrument):
         else:
             raise ValueError("Input not understood!")
 
+    def set_external_trigger_connector(self, connector="MAIN"):
+        """
+        Specifies the connector to use for the external trigger input.
+        Meas Trig In BNC || material handler I/O Pin 18 || Internal routing of  pulse 3 output to the MEAS TRIG IN on the rear panel.
+        :param trigger_connector: string; one of the following: ["MAIN", "MATH", "PULSE3"]
+        :return: None
+        """
+        if connector.upper() in ["MAIN", "MATH", "PULSE3"]:
+            self.write("TRIG:ROUTE:INP %s" % connector.upper())
+
+    def get_external_trigger_connector(self):
+        """
+            Gets the connector to use for the external trigger input.
+            Meas Trig In BNC || material handler I/O Pin 18 || Internal routing of  pulse 3 output to the MEAS TRIG IN on the rear panel.
+            :param trigger_connector: string; one of the following: ["MAIN", "MATH", "PULSE3"]
+            :return: None
+            """
+        return self.query("TRIG:ROUTE:INP?")
+
+    def set_channel_trigger_state(self, state):
+        """
+        Trigger mode. choose from:
+
+        CHANnel - Each trigger signal causes ALL traces in that channel to be swept.
+        SWEep - Each Manual or External trigger signal causes ALL traces that share a source port to be swept.
+        POINt -- Each Manual or External trigger signal causes one data point to be measured.
+        TRACe - Allowed ONLY when SENS:SWE:GEN:POIN is enabled. Each trigger signal causes two identical measurements to be
+        triggered separately - one trigger signal is required for each measurement. Other trigger mode settings cause two
+        identical parameters to be measured simultaneously.
+        :param state: 'CHAN', 'POIN', 'SWE', 'TRAC'
+        :return: None
+        """
+        if state.upper() in ['CHAN', 'POIN', 'SWE', 'TRAC']:
+            self.write("SENS:SWE:TRIG:MODE %s" % state)
+
+    def get_channel_trigger_state(self):
+        """
+        CHANnel - Each trigger signal causes ALL traces in that channel to be swept.
+        SWEep - Each Manual or External trigger signal causes ALL traces that share a source port to be swept.
+        POINt -- Each Manual or External trigger signal causes one data point to be measured.
+        TRACe - Allowed ONLY when SENS:SWE:GEN:POIN is enabled. Each trigger signal causes two identical measurements to be
+        triggered separately - one trigger signal is required for each measurement. Other trigger mode settings cause two
+        identical parameters to be measured simultaneously.
+        :return:
+        """
+        return self.query("SENS:SWE:TRIG:MODE?")
+
     #### Source
     def set_power(self, power, channel=1, port=1, state=1):
         if state:
             self.write(":SOURCE%d:POWER%d:MODE ON" % (channel, port))
             self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
         else:
-            print "Turning off the port %d" %(port)
+            print("Turning off the port %d" %(port))
             self.write(":SOURCE%d:POWER%d:MODE OFF" % (channel, port))
+            # self.write(":SOURCE%d:POWER%d %f" % (channel, port, power))
 
     def get_power(self, channel=1, port=1):
         return float(self.query(":SOURCE%d:POWER%d?" % (channel, port)))
@@ -299,7 +388,7 @@ class N5242A(SocketInstrument):
             return None
         else:
             data_list = data.strip().split(',')
-            return zip(*[iter(data_list)] * 2)
+            return list(zip(*[iter(data_list)] * 2))
 
     def select_measurement(self, name=None, channel=1):
         query = "calc%d:par:sel '%s'" % (channel, name)
@@ -403,8 +492,9 @@ class N5242A(SocketInstrument):
             raise ValueError("Specified trace format not allowed. Use %s" % allowed)
 
     def get_format(self, trace=1):
-        """
-        Returns the display format for the measurement.
+        """set_format: need to run after active trace is set.
+        valid options are
+        {MLOGarithmic|PHASe|GDELay| SLINear|SLOGarithmic|SCOMplex|SMITh|SADMittance|PLINear|PLOGarithmic|POLar|MLINear|SWR|REAL| IMAGinary|UPHase|PPHase}
         """
         data = self.query("CALC%d:FORM?" % (trace))
         if data is None:
@@ -451,7 +541,7 @@ class N5242A(SocketInstrument):
         :param channel: Measurement channel
         :return: Numeric, returned value always in degrees
         """
-        query = "CALC%d:OFFS:PHAS?"
+        query = "CALC%d:OFFS:PHAS?" % channel
         data = self.query(query)
         if data is None:
             return None
@@ -480,19 +570,19 @@ class N5242A(SocketInstrument):
 
         if timeout is None:
             timeout = self.timeout
-        # query_sleep_before = self.query_sleep
         self.get_operation_completion()
+        self.read(timeout=0.1)
         self.write("CALC%d:DATA? FDATA" % channel)
-        data_str = ''.join(self.read_line(timeout=timeout))
+        data_str = b''.join(self.read_lineb(timeout=timeout))
 
         if data_format == 'binary':
-            len_data_dig = np.int(data_str[1])
+            len_data_dig = np.int(data_str[1:2])
             len_data_expected = int(data_str[2: 2+len_data_dig])
             len_data_actual = len(data_str[2 + len_data_dig:-1])
             # It may happen that only part of the message is received. We know that this is the case by checking
             # the checksum. If the received data is too short, just read out again.
             while len_data_actual != len_data_expected:
-                data_str += ''.join(self.read_line(timeout=timeout))
+                data_str += b''.join(self.read_lineb(timeout=timeout))
                 len_data_actual = len(data_str[2 + len_data_dig:-1])
 
         data = np.fromstring(data_str, dtype=float, sep=',') if data_format=='ascii' else np.fromstring(data_str[2+len_data_dig:-1], dtype=np.float32)
@@ -597,4 +687,4 @@ class N5242A(SocketInstrument):
 
 if __name__ == '__main__':
     na = N5242A("N5242A", address="192.168.14.242")
-    print na.get_id()
+    print(na.get_id())

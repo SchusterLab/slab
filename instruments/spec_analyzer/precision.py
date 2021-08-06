@@ -5,7 +5,7 @@ Created on Thu Aug 25 15:56:42 2011
 @author: Dai
 """
 from rfgenerators import *
-from spectrum_analyzer import *
+from .spectrum_analyzer import *
 
 sa = SpectrumAnalyzer(address='128.135.35.167')
 rf = E8257D(address='rfgen1.circuitqed.com')
@@ -25,8 +25,8 @@ for pwr in range(-200, 0, 1):
     rf.set_output()
     time.sleep(0.2)
     op = sa.get_power()
-    print 'SA output: '+str(op)
-    print
+    print('SA output: '+str(op))
+    print()
     rf.set_output(False)
 
 """  

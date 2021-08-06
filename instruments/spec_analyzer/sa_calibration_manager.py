@@ -24,14 +24,14 @@ class SACalibrationManager:
         if cali_data != None:
             #self.cali_data = np.array(cali_data)
             for freq, op, pwr in cali_data:
-                if not freq in self.cali_pwr.keys():
+                if not freq in list(self.cali_pwr.keys()):
                     self.cali_pwr[freq] = []
                 else:
                     self.cali_pwr[freq].append([op, pwr])
                     
             for k in self.cali_pwr:
                 self.cali_pwr[k].sort()                
-            self.cali_freq = self.cali_pwr.keys()
+            self.cali_freq = list(self.cali_pwr.keys())
             self.cali_freq.sort()
             self.lower_freq_bound = self.cali_freq[0]
             self.upper_freq_bound = self.cali_freq[len(self.cali_freq)-1]
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     sam = SACalibrationManager(pickle.load(open('10dBm_cali.data')))
     
     from instruments import E8257D
-    from spectrum_analyzer import *
+    from .spectrum_analyzer import *
         
     rf = E8257D(address='rfgen2.circuitqed.com')
     lo = E8257D(address='rfgen1.circuitqed.com')
@@ -166,15 +166,15 @@ if __name__ == '__main__':
             try:
                 ppwr = sam.get_rf_power(f, op)
                 err = abs(ppwr-pwr)
-                print 'RF frequency: '+str(f)+', SA output: '+str(op)            
-                print 'Measured: '+str(pwr)+', Predicted: '+str(ppwr)
-                print 'Difference: '+str(err)
-                print
+                print('RF frequency: '+str(f)+', SA output: '+str(op))            
+                print('Measured: '+str(pwr)+', Predicted: '+str(ppwr))
+                print('Difference: '+str(err))
+                print()
                 if (err > 0.5):
                     le.append([f, op, pwr, ppwr, err])
             except OutOfRangeError as e:
-                print 'frequency: '+str(f)+', sa output: '+str(op)+', rf power: '+str(pwr)
-                print e
+                print('frequency: '+str(f)+', sa output: '+str(op)+', rf power: '+str(pwr))
+                print(e)
             
     le = np.array(le)
     le = le.transpose()

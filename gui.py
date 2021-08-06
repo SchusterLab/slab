@@ -43,7 +43,7 @@ from IPython.qt.manager import QtKernelManager
 from IPython.lib import guisupport
 
 from slab.instruments import InstrumentManager
-from dataanalysis import get_next_filename
+from .dataanalysis import get_next_filename
 #from slab.widgets import SweepDialog
 from PyQt4.Qt import *
 try:
@@ -112,7 +112,7 @@ class DictProxy(QObject):
     def __contains__(self, key):
         return key in self.cache
     def keys(self):                 #Added by DS not sure if this is right
-        return self.cache.keys()
+        return list(self.cache.keys())
 
 class DataThread(QObject):
     def __init__(self, config_file=None):
@@ -148,7 +148,7 @@ class DataThread(QObject):
         self.instruments.load_config_file(filename)
 
     def list_instruments(self):
-        for key, inst in self.instruments.iteritems():
+        for key, inst in self.instruments.items():
             self.msg(key + inst.name)
 
     def get_local_params(self):
@@ -177,8 +177,8 @@ class DataThread(QObject):
         self.msg("Sweeping...")
         params = Bunch(self.params)
         if whichStack[params.sweep1] == 0:
-            prange = range(params.sweep1_start_int,
-                           params.sweep1_stop_int, params.sweep1_step_int)
+            prange = list(range(params.sweep1_start_int,
+                           params.sweep1_stop_int, params.sweep1_step_int))
         else:
             prange = np.arange(params.sweep1_start_float,
                            params.sweep1_stop_float, params.sweep1_step_float)
@@ -201,7 +201,7 @@ class DataThread(QObject):
 
     def run_data_thread(self, method, *args):
         if DEBUG:
-            print method, "running"
+            print(method, "running")
             self.msg(method)
             self.msg(args)
         getattr(self, method)(*args)
@@ -258,20 +258,20 @@ class SlabWindow(QMainWindow):
             self.actionExperimental_Settings.triggered.connect(
                 self.data_thread_obj.save_experimental_settings)
         except Exception as e:
-                    print "Could not connect menu actions", e
+                    print("Could not connect menu actions", e)
         try:
             self.actionExperimental_and_Instrument_Settings.triggered.connect(
                     self.data_thread_obj.save_all_settings)
 
         except Exception as e:
-            print "Could not connect menu actions", e
+            print("Could not connect menu actions", e)
 
         try:
             self.actionLoad.triggered.connect(
                     self.data_thread_obj.load_settings)
 
         except Exception as e:
-            print "Could not connect menu actions", e
+            print("Could not connect menu actions", e)
 
         if autoparam:
             self.autoparam(self, prefix)
@@ -279,14 +279,14 @@ class SlabWindow(QMainWindow):
     def auto_register_gui(self, container=None, prefix=""):
         if container is None:
             container = self
-        for wname, widget in self_dict(container, prefix).items():
+        for wname, widget in list(self_dict(container, prefix).items()):
             if not inspect.isroutine(widget):
                 self.gui[wname] = widget
 
     def autoparam(self, container, prefix="param_"):
-        for wname, widget in self_dict(container, prefix).items():
+        for wname, widget in list(self_dict(container, prefix).items()):
             if isinstance(widget, QWidget) or isinstance(widget, QAction):
-                if DEBUG: print "attached parameter", wname
+                if DEBUG: print("attached parameter", wname)
                 self.register_param(widget, wname)
 
     def run_on_plot_manager(self, plot_name, method_name, args, kwargs):
@@ -336,18 +336,18 @@ class SlabWindow(QMainWindow):
         it's first (and only) method the List/TreeWidgetItem clicked.
         """
         self.registered_actions.append(method)
-        for WidgetC, sig_name in self.launcher_widget_tools.iteritems():
+        for WidgetC, sig_name in self.launcher_widget_tools.items():
             if isinstance(launch_widget, WidgetC):
                 getattr(launch_widget, sig_name).connect(
                     lambda *args:
                         self.start_script(method, *args))
-                print "attached method", method
+                print("attached method", method)
                 break
         else:
-            print "Did not attach", method, "could not identify widget", launch_widget
+            print("Did not attach", method, "could not identify widget", launch_widget)
 
         if abort_widget is not None:
-            for WidgetC, sig_name in self.launcher_widget_tools.iteritems():
+            for WidgetC, sig_name in self.launcher_widget_tools.items():
                 if isinstance(abort_widget, WidgetC):
                     getattr(abort_widget, sig_name).connect(self.data_thread_obj.abort, Qt.DirectConnection)
 
@@ -390,7 +390,7 @@ class SlabWindow(QMainWindow):
 
     def read_param_widgets(self):
         for widget, name in self.param_widgets:
-            for cls, clstools in self.widget_tools.items():
+            for cls, clstools in list(self.widget_tools.items()):
                 if isinstance(widget, cls):
                     if clstools["read"] is not None:
                         if hasattr(clstools["read"], "__call__"):
@@ -403,7 +403,7 @@ class SlabWindow(QMainWindow):
          res = lookup(self.param_widgets, name, 1)
          if res is not None:
              widget, name = res
-             for cls, clstools in self.widget_tools.items():
+             for cls, clstools in list(self.widget_tools.items()):
                  if isinstance(widget, cls):
                     if clstools["write"] is not None:
                         if hasattr(clstools["write"], "__call__"):
@@ -415,7 +415,7 @@ class SlabWindow(QMainWindow):
     def register_param(self, widget, name):
         self.param_widgets.append((widget, name))
         set_fn = lambda i: self.set_param(name, i)
-        for cls, clstools in self.widget_tools.items():
+        for cls, clstools in list(self.widget_tools.items()):
             if isinstance(widget, cls):
                 if hasattr(clstools["change_signal"], "__call__"):
                     clstools["change_signal"](widget, set_fn)
@@ -423,7 +423,7 @@ class SlabWindow(QMainWindow):
                     getattr(widget, clstools["change_signal"]).connect(set_fn)
                 break
         else:
-            print "Error: Could Not match parameter", name, "with class"
+            print("Error: Could Not match parameter", name, "with class")
 
     def msg(self, *args):
         t = time.strftime("%d %H:%M:%S")
@@ -432,16 +432,16 @@ class SlabWindow(QMainWindow):
             self.message_box.append(message)
         except Exception as e:
             if DEBUG:
-                print "no msg box:", e
-                print message_
+                print("no msg box:", e)
+                print(message_)
 
     def status(self, message):
         try:
             self.statusbar.showMessage(message)
         except Exception as e:
             if DEBUG:
-                print "no status bar:", e
-                print message
+                print("no status bar:", e)
+                print(message)
 
     def progress(self, pair):
         val, tot = pair
@@ -464,11 +464,11 @@ class SlabWindow(QMainWindow):
         self.sweep_dialog = sd = SweepDialog()
 
         try: self.actionStart_Sweep.triggered.connect(sd.exec_)
-        except AttributeError: print "No actionStart_Sweep to connect"
+        except AttributeError: print("No actionStart_Sweep to connect")
         self.whichStack = {}
         for w, name in self.param_widgets:
             if isinstance(w, QSpinBox) or isinstance(w, QDoubleSpinBox):
-                print "sweep enabled on", name
+                print("sweep enabled on", name)
                 sd.param_sweep1.addItem(name)
                 sd.param_sweep2.addItem(name)
                 if isinstance(w, QSpinBox):

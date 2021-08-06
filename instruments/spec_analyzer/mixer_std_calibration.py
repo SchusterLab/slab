@@ -13,10 +13,10 @@ import pickle
 
 #from instruments import AWG81180A
 from slab.instruments import InstrumentManager
-from spectrum_analyzer import *
-from sa_calibration_manager import *
+from .spectrum_analyzer import *
+from .sa_calibration_manager import *
 
-from single_sideband_mod import *
+from .single_sideband_mod import *
 
 
 def int2amp(intensity):
@@ -112,7 +112,7 @@ if __name__ == '__main__':
         except OutputOutOfRangeError as e:
             pusbs.append(e.lower_bound_pwr)
         
-        print 'p, lsb, usb = '+repr((p, plsbs[i], pusbs[i]))
+        print('p, lsb, usb = '+repr((p, plsbs[i], pusbs[i])))
         i += 1
 
 #    """sweep I, Q and collect sidebands amplitudes"""    

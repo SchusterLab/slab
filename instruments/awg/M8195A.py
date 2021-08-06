@@ -9,6 +9,8 @@ from slab.instruments import SocketInstrument
 
 import numpy as np
 import sys
+from tqdm import tqdm
+import os
 
 
 class M8195A(SocketInstrument):
@@ -17,8 +19,9 @@ class M8195A(SocketInstrument):
     def __init__(self, name='M8195A', address='', enabled=True,timeout = 1000):
         address = address.upper()
 
-        SocketInstrument.__init__(self, name, address, enabled, timeout)
+        SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=timeout)
         self._loaded_waveforms = []
+        self.socket.setblocking(1)
 
     ## 6.5 System Related Commands
 
@@ -524,16 +527,10 @@ class M8195A(SocketInstrument):
             raise Exception('M8195A: Invalid reference source')
 
     def set_reference_clock_frequency(self,value):
-        if self.get_reference_source() == 'EXT':
-            self.write(':ROSC:FREQ %f' %value)
-        else:
-            raise Exception('M8195A: Not in external reference source')
+        self.write(':ROSC:FREQ %f' %value)
 
     def get_reference_clock_frequency(self):
-        if self.get_reference_source() == 'EXT':
-            return self.query(':ROSC:FREQ?')
-        else:
-            raise Exception('M8195A: Not in external reference source')
+        return self.query(':ROSC:FREQ?')
 
     def set_reference_clock_range(self,value):
         if self.get_reference_source() == 'EXT':
@@ -740,8 +737,7 @@ class M8195A(SocketInstrument):
         self.write(':TRAC%d:IMP %d,%s,%s,%s,%s,%d,%s' %(channel,segment_id,file_name,data_type,marker_flag,padding,init_value,ignore_header_parameters))
 
     def set_segment_data_from_bin_file(self,channel,segment_id,file_name):
-        self.write(':TRAC%d:IMP %d,%s,%s,%s,%s,%s,%d,%s' %(channel,segment_id,file_name,'BIN8','IONL','OFF','FILL',0,'ON'))
-
+        self.write(':TRAC%d:IMP %d,%s,%s, IONLY, ON, ALEN' %(channel,segment_id,file_name,'BIN8'))
 
     def delete_segment(self,channel,segment_id):
         self.write(':TRAC%d:DEL %d' %(channel,segment_id))
@@ -807,175 +803,201 @@ class M8195A(SocketInstrument):
         return self.query(':TEST:TST?')
 
 
-## Setup AWG
+    ## Setup AWG
 
-def setup_awg(m8195a,num_channels):
-    m8195a.stop_output()
-    m8195a.set_factory_default()
+    def setup_awg(m8195a,num_channels,amplitudes=[1.,1.,1.,1.]):
 
-    if num_channels == 1:
-        m8195a.set_dac_mode('SING')
+        m8195a.stop_output()
+        m8195a.set_factory_default()
 
-    elif num_channels == 2:
-        m8195a.set_dac_mode('DUAL')
+        if num_channels == 1:
+            m8195a.set_dac_mode('SING')
 
-    elif num_channels == 4:
-        m8195a.set_dac_mode('FOUR')
+        elif num_channels == 2:
+            m8195a.set_dac_mode('DUAL')
 
-    m8195a.set_dac_sample_rate_divider(num_channels)
+        elif num_channels == 4:
+            m8195a.set_dac_mode('FOUR')
 
-    for ii in range(1,num_channels+1):
-        m8195a.set_waveform_sample_source(ii,'EXT')
+        m8195a.set_dac_sample_rate_divider(num_channels)
+
+        for ii in range(1,num_channels+1):
+            m8195a.set_waveform_sample_source(ii,'EXT')
+            m8195a.set_amplitude(ii,amplitudes[ii-1])
 
 
-def define_segments(m8195a,waveform_matrix):
+        m8195a.set_reference_clock_frequency(10e6)
+        m8195a.set_reference_source('EXT')
 
-    waveform_shape = waveform_matrix.shape
 
-    num_channels = waveform_shape[0]
-    sequence_length = waveform_shape[1]
-    segment_length = waveform_shape[2]
+    def define_segments(m8195a,waveform_matrix):
 
-    for sequence_id in range(1,sequence_length+1):
-        sys.stdout.write('x')
+        waveform_shape = waveform_matrix.shape
 
-        m8195a.set_segment_size(1,sequence_id,segment_length)
+        num_channels = waveform_shape[0]
+        sequence_length = waveform_shape[1]
+        segment_length = waveform_shape[2]
 
-        for channel in range(1,num_channels+1):
+        for sequence_id in range(1,sequence_length+1):
+            sys.stdout.write('x')
 
-            segment_data_array = 127*waveform_matrix[channel-1][sequence_id-1]
+            m8195a.set_segment_size(1,sequence_id,segment_length)
+
+            for channel in range(1,num_channels+1):
+
+                segment_data_array = 127*waveform_matrix[channel-1][sequence_id-1]
+                segment_data_csv = ','.join(['%d' %num for num in segment_data_array])
+                m8195a.set_segment_data(channel,sequence_id,0,segment_data_csv)
+
+        print('\n')
+
+
+    def define_segments_binary(m8195a,waveform_matrix, path):
+
+        # waveform_shape = waveform_matrix.shape
+        #
+        # num_channels = waveform_shape[0]
+        # sequence_length = waveform_shape[1]
+        # segment_length = waveform_shape[2]
+
+        #waveform_shape = waveform_matrix.shape
+
+        num_channels = len(waveform_matrix)#[0]
+        sequence_length = waveform_matrix[0].shape[0]
+        segment_length = waveform_matrix[0].shape[1]
+
+        sys.stdout.write('Writing and uploading M8195A sequences...')
+        for sequence_id in tqdm(list(range(1,sequence_length+1))):
+
+            m8195a.set_segment_size(1,sequence_id,segment_length)
+
+            for channel in range(1,num_channels+1):
+
+                #sys.stdout.write('writing seq id=' + str(sequence_id) + '..')
+
+                # todo:
+                # hack: M8195A sequence start from second sequence - '(sequence_id-2)'
+                segment_data_array = 127*waveform_matrix[channel-1][(sequence_id-2)%sequence_length]
+                # filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)
+                filename = os.path.join(path, r'sequences\m8195a_%d_%d.bin8' %(sequence_id,channel))
+                # filename = r'C:\M8195_sequences\m8195a_%d_%d.bin8' % (sequence_id, channel)
+                with open(filename, 'wb')  as f:
+                    segment_data_array.astype('int8').tofile(f)
+
+                # name = r'C:\slab_data_temp\m8195test\m8195a_ramsey_long_%d_%d.npy' % (sequence_id, channel)
+                # np.save(name, segment_data_array)
+
+                #sys.stdout.write('uploading..\n')
+                # filename = '\"' + r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
+                # filename = '\"' + r'\\THORIUM-PC\M8195_sequences\m8195a_%d_%d.bin8' %(sequence_id,channel) + '\"'
+                filename = '\"' + os.path.join(path, r'sequences\m8195a_%d_%d.bin8' %(sequence_id,channel)) + '\"'
+                #m8195a.set_segment_data_from_bin_file(channel,sequence_id,filename)
+
+                m8195a.set_segment_data_from_bin_file(channel, sequence_id, filename)
+
+
+    def define_segments_test(m8195a,segment_length,sequence_length,dt):
+
+        time_array = np.arange(0,segment_length)*dt
+
+        for ii in range(1,sequence_length+1):
+            sys.stdout.write('x')
+
+            m8195a.set_segment_size(1,ii,segment_length)
+
+            freq1 = 0.05 #GHz
+            freq3 = 0.05  #GHz
+
+            segment_data_array = 127*np.cos(2*np.pi*freq1*time_array)
             segment_data_csv = ','.join(['%d' %num for num in segment_data_array])
-            m8195a.set_segment_data(channel,sequence_id,0,segment_data_csv)
+            m8195a.set_segment_data(1,ii,0,segment_data_csv)
 
-    print '\n'
+            segment_data_array = (ii/float(sequence_length)) * 127*np.cos(2*np.pi*freq3*time_array)
+            segment_data_csv = ','.join(['%d' %num for num in segment_data_array])
+            m8195a.set_segment_data(3,ii,0,segment_data_csv)
 
-
-# TODO: The binary file loading is not working yet.
-def define_segments_binary(m8195a,waveform_matrix):
-
-    waveform_shape = waveform_matrix.shape
-
-    num_channels = waveform_shape[0]
-    sequence_length = waveform_shape[1]
-    segment_length = waveform_shape[2]
-
-    for sequence_id in range(1,sequence_length+1):
-        sys.stdout.write('x')
-
-        m8195a.set_segment_size(1,sequence_id,segment_length)
-
-        for channel in range(1,num_channels+1):
-
-            segment_data_array = 127*waveform_matrix[channel-1][sequence_id-1]
-
-            filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin' %(sequence_id,channel)
-            with open(filename, 'wb')  as f:
-                segment_data_array.astype('int8').tofile(f)
-
-    for sequence_id in range(1,sequence_length+1):
-        for channel in range(1,num_channels+1):
-
-            filename = r'S:\_Data\160714 - M8195A Test\sequences\m8195a_%d_%d.bin' %(sequence_id,channel)
-
-            m8195a.set_segment_data_from_bin_file(channel,sequence_id,filename)
-
-    print '\n'
+        print('\n')
 
 
-def define_segments_test(m8195a,segment_length,sequence_length,dt):
+    def define_sequence(m8195a,sequence_length):
 
-    time_array = np.arange(0,segment_length)*dt
-
-    for ii in range(1,sequence_length+1):
-        sys.stdout.write('x')
-
-        m8195a.set_segment_size(1,ii,segment_length)
-
-        freq1 = 0.05 #GHz
-        freq3 = 0.05  #GHz
-
-        segment_data_array = 127*np.cos(2*np.pi*freq1*time_array)
-        segment_data_csv = ','.join(['%d' %num for num in segment_data_array])
-        m8195a.set_segment_data(1,ii,0,segment_data_csv)
-
-        segment_data_array = (ii/float(sequence_length)) * 127*np.cos(2*np.pi*freq3*time_array)
-        segment_data_csv = ','.join(['%d' %num for num in segment_data_array])
-        m8195a.set_segment_data(3,ii,0,segment_data_csv)
-
-    print '\n'
+        m8195a.write_sequence_data(0,1,start=True)
+        for ii in range(2,sequence_length):
+            m8195a.write_sequence_data(ii-1,ii)
+        m8195a.write_sequence_data(sequence_length-1,sequence_length,end=True)
 
 
-def define_sequence(m8195a,sequence_length):
+    def start_output(m8195a):
+
+        for ii in [1,2,3,4]:
+            m8195a.set_enabled(ii,True)
+        m8195a.start_all_output()
+
+    def get_sample_sequence(m8195a,num_channels,segment_length,sequence_length,dt):
+
+        time_array = np.arange(0,segment_length)*dt
+        freq = 0.05 #GHz
+
+        waveform_channel_list = []
+
+        for channels in range(1,num_channels+1):
+            waveform_sequence_list = []
+            for sequence_id in range(sequence_length):
+                if channels == 1:
+                    waveform_sequence_list.append(np.cos(2*np.pi*freq*time_array))
+                else:
+                    waveform_sequence_list.append((sequence_id/float(sequence_length))*np.cos(2*np.pi*freq*time_array))
+            waveform_sequence_array = np.array(waveform_sequence_list)
+            waveform_channel_list.append(waveform_sequence_array)
+
+        waveform_channel_array = np.array(waveform_channel_list)
+
+        return waveform_channel_array
 
 
-    m8195a.write_sequence_data(0,1,start=True)
-    for ii in range(2,sequence_length):
-        m8195a.write_sequence_data(ii-1,ii)
+def upload_M8195A_sequence(m8195a,waveform_matrix,awg, path):
 
-    m8195a.write_sequence_data(sequence_length-1,sequence_length,end=True)
+    amplitudes = awg['amplitudes']
 
+    # m8195a = M8195A(address ='192.168.14.234:5025')
+    # m8195a.socket.setblocking(1)
 
-def start_output(m8195a):
+    # waveform_shape = waveform_matrix.shape
+    #
+    # num_channels = waveform_shape[0]
+    # sequence_length = waveform_shape[1]
+    # segment_length = waveform_shape[2]
 
-    for ii in [1,2,3,4]:
-        m8195a.set_enabled(ii,True)
-    m8195a.start_all_output()
+    num_channels = len(waveform_matrix)  # [0]
+    sequence_length = waveform_matrix[0].shape[0]
+    segment_length = waveform_matrix[0].shape[1]
 
-def get_sample_sequence(num_channels,segment_length,sequence_length,dt):
-
-    time_array = np.arange(0,segment_length)*dt
-    freq = 0.05 #GHz
-
-    waveform_channel_list = []
-
-    for channels in range(1,num_channels+1):
-        waveform_sequence_list = []
-        for sequence_id in range(sequence_length):
-            if channels == 1:
-                waveform_sequence_list.append(np.cos(2*np.pi*freq*time_array))
-            else:
-                waveform_sequence_list.append((sequence_id/float(sequence_length))*np.cos(2*np.pi*freq*time_array))
-        waveform_sequence_array = np.array(waveform_sequence_list)
-        waveform_channel_list.append(waveform_sequence_array)
-
-    waveform_channel_array = np.array(waveform_channel_list)
-
-    return waveform_channel_array
-
-
-def upload_M8195A_sequence(waveform_matrix):
-    m8195a = M8195A(address ='192.168.14.234:5025')
-    m8195a.socket.setblocking(1)
-
-    waveform_shape = waveform_matrix.shape
-
-    num_channels = waveform_shape[0]
-    sequence_length = waveform_shape[1]
-    segment_length = waveform_shape[2]
-
-    setup_awg(m8195a,num_channels=num_channels)
-
-
+    m8195a.setup_awg(num_channels=num_channels,amplitudes=amplitudes)
 
     dt = float(num_channels)/64. #ns
 
     # waveform_matrix = get_sample_sequence(4,segment_length,sequence_length,dt)
 
-    period = 1./(50*1e3) #s
-
     # define_segments_test(m8195a,segment_length,sequence_length,dt)
 
-    define_segments(m8195a,waveform_matrix)
+    # define_segments(m8195a,waveform_matrix)
+
+    m8195a.define_segments_binary(waveform_matrix, path)
 
     m8195a.set_mode('STS')
-    define_sequence(m8195a,sequence_length)
+    m8195a.define_sequence(sequence_length)
 
-    m8195a.set_advancement_event_source('INT')
+    m8195a.set_advancement_event_source('TRIG')
     m8195a.set_sequence_starting_id(0)
 
-    m8195a.set_internal_trigger_frequency(1./period)
+    # m8195a.set_internal_trigger_frequency(1./period)
 
-    start_output(m8195a)
+    # confirm upload complete by waiting for response
+    print('Wait for upload to finish...')
+    print(m8195a.get_id())
+    print('Upload to M8195A finished.')
+
+    m8195a.start_output()
 
 
 if __name__ == "__main__":
@@ -984,7 +1006,7 @@ if __name__ == "__main__":
 
     num_channels = 4
 
-    setup_awg(m8195a,num_channels=num_channels)
+    m8195a.setup_awg(num_channels=num_channels)
 
 
 
@@ -993,24 +1015,23 @@ if __name__ == "__main__":
 
     dt = float(num_channels)/64. #ns
 
-    waveform_matrix = get_sample_sequence(4,segment_length,sequence_length,dt)
+    waveform_matrix = m8195a.get_sample_sequence(4,segment_length,sequence_length,dt)
 
     period = 1./50 #s
 
     # define_segments_test(m8195a,segment_length,sequence_length,dt)
 
-    define_segments(m8195a,waveform_matrix)
+    m8195a.define_segments_binary(waveform_matrix)
 
     # define_segments_binary(m8195a,waveform_matrix)
 
     m8195a.set_mode('STS')
-    define_sequence(m8195a,sequence_length)
+    m8195a.define_sequence(sequence_length)
 
     m8195a.set_advancement_event_source('INT')
     m8195a.set_sequence_starting_id(0)
 
     m8195a.set_internal_trigger_frequency(1./period)
 
-    start_output(m8195a)
-
+    m8195a.start_output()
 

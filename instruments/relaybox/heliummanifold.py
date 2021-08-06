@@ -24,7 +24,7 @@ class HeliumManifold(RelayBox):
 
     def __init__(self, name="Helium Manifold", address="COM6", enabled=True, timeout=0, puffs=0):
         RelayBox.__init__(self, name, address, enabled, timeout)
-        print "Manifold", name, "at address", address, " is initiated!"
+        print("Manifold", name, "at address", address, " is initiated!")
         self.puffs = puffs
         self.query_sleep = .1
 
@@ -62,7 +62,7 @@ class HeliumManifold(RelayBox):
         return self.gas_state, self.pump_state, self.cryostat_state
 
     def set_gas(self, state=False, override=False):
-        if self.DEBUG_HELIUM_MANIFOLD_VERBOSE: print "Set gas: %s" % str(state)
+        if self.DEBUG_HELIUM_MANIFOLD_VERBOSE: print("Set gas: %s" % str(state))
         if not state or override:
             self.set_relay(self.gas_port, state)
         else:
@@ -74,7 +74,7 @@ class HeliumManifold(RelayBox):
         self.get_manifold_status()
 
     def set_pump(self, state=False, override=False):
-        if self.DEBUG_HELIUM_MANIFOLD_VERBOSE: print "Set Pump: %s" % str(state)
+        if self.DEBUG_HELIUM_MANIFOLD_VERBOSE: print("Set Pump: %s" % str(state))
         if not state or override:
             self.set_relay(self.pump_port, state)
         else:
@@ -86,7 +86,7 @@ class HeliumManifold(RelayBox):
         self.get_manifold_status()
 
     def set_cryostat(self, state=False, override=False):
-        if self.DEBUG_HELIUM_MANIFOLD_VERBOSE: print "Set cryostat: %s" % str(state)
+        if self.DEBUG_HELIUM_MANIFOLD_VERBOSE: print("Set cryostat: %s" % str(state))
         if not state or override:
             self.set_relay(self.cryostat_port, state)
         else:
@@ -109,7 +109,7 @@ class HeliumManifold(RelayBox):
             if timeout is not None:
                 if time.time() - start_time > timeout:
                     done = True
-                    print "HeManifold Pressure timeout final P=%f bar" % self.get_pressure()
+                    print("HeManifold Pressure timeout final P=%f bar" % self.get_pressure())
         self.get_manifold_status()
 
     def wait_for_pressure_fall(self, threshold, timeout=None):
@@ -124,7 +124,7 @@ class HeliumManifold(RelayBox):
             if timeout is not None:
                 if time.time() - start_time > timeout:
                     done = True
-                    print "HeManifold Pressure timeout final P=%f bar" % self.get_pressure()
+                    print("HeManifold Pressure timeout final P=%f bar" % self.get_pressure())
         self.get_manifold_status()
 
     def wait_for_vacuum(self, min_time=0, timeout=None):
@@ -135,7 +135,7 @@ class HeliumManifold(RelayBox):
             if (time.time() - start_time > min_time): evacuated = True
 
     def pump_manifold(self, min_time=0, timeout=None):
-        if self.DEBUG_HELIUM_MANIFOLD: print "Pump manifold."
+        if self.DEBUG_HELIUM_MANIFOLD: print("Pump manifold.")
         self.set_gas(False)
         self.set_cryostat(False)
         self.set_pump(True)
@@ -143,7 +143,7 @@ class HeliumManifold(RelayBox):
         self.get_manifold_status()
 
     def pump_cryostat(self, min_time=0, timeout=None):
-        if self.DEBUG_HELIUM_MANIFOLD: print "Pump cryostat."
+        if self.DEBUG_HELIUM_MANIFOLD: print("Pump cryostat.")
         self.set_gas(False)
         self.set_cryostat(False)
         self.set_pump(True)
@@ -154,7 +154,7 @@ class HeliumManifold(RelayBox):
     #        self.get_manifold_status()
 
     def fill_manifold(self, fill_level=0.20, timeout=None):
-        if self.DEBUG_HELIUM_MANIFOLD: print "Fill manifold to %f bar." % (fill_level)
+        if self.DEBUG_HELIUM_MANIFOLD: print("Fill manifold to %f bar." % (fill_level))
         self.set_cryostat(False)
         self.set_pump(False)
         self.set_gas(True)
@@ -167,12 +167,12 @@ class HeliumManifold(RelayBox):
 
     def puff(self, pressure, n=1, min_time=0, timeout=None):
         for i in range(n):
-            if self.DEBUG_HELIUM_MANIFOLD: print "Puff #%d" % (self.puffs + 1)
+            if self.DEBUG_HELIUM_MANIFOLD: print("Puff #%d" % (self.puffs + 1))
             self.pump_manifold(min_time=min_time, timeout=timeout)
             self.fill_manifold(pressure, timeout)
             self.set_cryostat(True)
             self.puffs += 1
-            if self.DEBUG_HELIUM_MANIFOLD: print "Letting puff out."
+            if self.DEBUG_HELIUM_MANIFOLD: print("Letting puff out.")
             self.wait_for_vacuum(min_time=min_time, timeout=timeout)
             self.set_cryostat(False)
 
@@ -183,14 +183,14 @@ class HeliumManifold(RelayBox):
         self.puffs = puffs
 
     def clean_manifold(self, n=1, min_time=0, timeout=None):
-        if self.DEBUG_HELIUM_MANIFOLD: print "Clean manifold %d times." % n
+        if self.DEBUG_HELIUM_MANIFOLD: print("Clean manifold %d times." % n)
         self.pump_manifold(min_time=min_time, timeout=timeout)
         for i in range(n):
             self.fill_manifold(timeout=timeout)
             self.pump_manifold(min_time=min_time, timeout=timeout)
 
     def seal_manifold(self):
-        if self.DEBUG_HELIUM_MANIFOLD_VERBOSE: print "Seal manifold."
+        if self.DEBUG_HELIUM_MANIFOLD_VERBOSE: print("Seal manifold.")
         self.set_gas(False)
         self.set_cryostat(False)
         self.set_pump(False)

@@ -74,8 +74,8 @@ class MultimodeFluxSideBandFluxSweepSequence(PulseSequence):
         mtpts = self.get_marker_times('qubit buffer')
         ftpts = self.get_waveform_times('qubit 1 flux')
 
-        print len(wtpts)
-        print len(ftpts)
+        print(len(wtpts))
+        print(len(ftpts))
 
         for ii, d in enumerate(self.mm_flux_sideband_pts):
             self.markers['readout pulse'][ii] = ap2.square(mtpts, 1, self.origin+self.measurement_delay,

@@ -14,15 +14,15 @@ dac = DAx22000('dac', '1')
 im=InstrumentManager()
 trig = im['trig']
 
-print dac.initialize(ext_clk_ref=False)
-print dac.set_clk_freq(freq=0.5e9)
+print(dac.initialize(ext_clk_ref=False))
+print(dac.set_clk_freq(freq=0.5e9))
 
 xpts = np.arange(4096)
 ypts = np.ceil(2047.5 + 2047.5 * np.sin(2.0 * np.pi * xpts / (32)))
-print ypts
-print dac.create_single_segment(1, 0, 2047, 2047, ypts, 1)
-print dac.place_mrkr2(1)
-print dac.set_ext_trig(ext_trig=True)
+print(ypts)
+print(dac.create_single_segment(1, 0, 2047, 2047, ypts, 1))
+print(dac.place_mrkr2(1))
+print(dac.set_ext_trig(ext_trig=True))
 
 numsegs = 128
 segs = []
@@ -30,7 +30,7 @@ waveforms = []
 segment_size = 1280
 
 def waveform_compressor(waveform):
-    print "compressing"
+    print("compressing")
 
 
 for ii in range(numsegs):
@@ -54,12 +54,12 @@ for ii in range(numsegs):
             triggered = True
         segs.append(DAx22000Segment(xpts[jj*segment_size:(jj+1)*segment_size] * 4095.0 / max(xpts)  * ii / numsegs, loops=0, triggered=triggered))
 
-print len(segs)
+print(len(segs))
 dac.create_segments(chan=1, segments=segs, loops=0)
 dac.create_segments(chan=2, segments=segs, loops=0)
 
-print dac.set_ext_trig(ext_trig=True)
-print dac.run(trigger_now=False)
+print(dac.set_ext_trig(ext_trig=True))
+print(dac.run(trigger_now=False))
 
 expt.cfg['alazar']["samplesPerRecord"]=8192
 expt.cfg['alazar']["recordsPerBuffer"]=numsegs
@@ -72,12 +72,12 @@ trig.set_output(True)
 def trig_stop():
     trig.set_output(False)
     dac.stop()
-    print "trig stop"
+    print("trig stop")
 
 def trig_start():
     trig.set_output(True)
     dac.run(trigger_now=False)
-    print "trig start"
+    print("trig start")
 
 tpts, ch1_pts, ch2_pts = adc.acquire_avg_data_by_record(prep_function=None, start_function=None)
 

@@ -1,20 +1,21 @@
 __author__ = 'dave'
 import numpy as np
 
-from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence, write_PXDAC4800_file
+from slab.instruments.awg import write_Tek5014_file, write_Tek70001_sequence, write_PXDAC4800_file, M8195A, upload_M8195A_sequence
 from slab.instruments.awg.PXDAC4800 import PXDAC4800
-from slab.instruments import InstrumentManager
-from slab.instruments.awg.M8195A import upload_M8195A_sequence
+from slab.instruments import InstrumentManager, LocalInstruments
+from slab.instruments.keysight import KeysightPulseSequence as kps
 import os
+import time
 
 
 def round_samples(x, min_samples=0, increment=1):
-    return max(min_samples, int(increment * np.ceil(float(x) / float(increment))))
-
+    ## non-integer round samples
+    return max(min_samples, increment * int(np.ceil(float(x) / float(increment))))
 
 class PulseSequence:
     def __init__(self, name, awg_info, sequence_length):
-        self.name = name
+        self.name = name.lower()
         self.awg_info = awg_info
         self.sequence_length = sequence_length
         self.waveforms = {}
@@ -26,29 +27,33 @@ class PulseSequence:
             for waveform in awg['waveforms']:
                 self.waveform_info[waveform['name']] = waveform.copy()
 
-            for marker in awg['markers']:
-                self.marker_info[marker['name']] = marker.copy()
-
+            if 'markers' in  awg:
+                for marker in awg['markers']:
+                    self.marker_info[marker['name']] = marker.copy()
 
     def init_waveforms_markers(self):
         for awg in self.awg_info:
             for waveform in awg['waveforms']:
-                waveform_length=self.waveform_info[waveform['name']]['length']
-                waveform_clk_length = round_samples( waveform_length* awg['clock_speed'],awg['min_samples'],awg['min_increment'])
+                # round_samples ensure waveform_length is int multiple of 1/clk_speed
+                waveform_length = round_samples(self.waveform_info[waveform['name']]['length'], increment=1.0/awg['clock_speed'])
+                waveform_clk_length = round_samples(waveform_length * awg['clock_speed'], awg['min_samples'],
+                                                    awg['min_increment'])
                 self.waveforms[waveform['name']] = np.zeros((self.sequence_length, waveform_clk_length))
-                self.waveform_info[waveform['name']]['tpts'] = np.linspace(0., (waveform_clk_length-1)/awg['clock_speed'],waveform_clk_length)
+                self.waveform_info[waveform['name']]['tpts'] = np.linspace(0., (waveform_clk_length - 1) / awg[
+                    'clock_speed'], waveform_clk_length)
 
-            for marker in awg['markers']:
-                marker_length=self.marker_info[marker['name']]['length']
-                marker_clk_length = round_samples( marker_length* awg['clock_speed'],awg['min_samples'],awg['min_increment'])
-                self.markers[marker['name']] = np.zeros((self.sequence_length, marker_clk_length))
-                self.marker_info[marker['name']]['tpts'] = np.linspace(0., (marker_clk_length-1)/awg['clock_speed'],marker_clk_length)
+            if 'markers' in  awg:
+                for marker in awg['markers']:
+                    marker_length=self.marker_info[marker['name']]['length']
+                    marker_clk_length = round_samples( marker_length* awg['clock_speed'],awg['min_samples'],awg['min_increment'])
+                    self.markers[marker['name']] = np.zeros((self.sequence_length, marker_clk_length))
+                    self.marker_info[marker['name']]['tpts'] = np.linspace(0., (marker_clk_length-1)/awg['clock_speed'],marker_clk_length)
 
     def set_all_lengths(self, length):
-        for name in self.marker_info.keys():
+        for name in list(self.marker_info.keys()):
             self.set_marker_length(name, length)
 
-        for name in self.waveform_info.keys():
+        for name in list(self.waveform_info.keys()):
             self.set_waveform_length(name, length)
 
     def set_waveform_length(self, name, length):
@@ -63,28 +68,49 @@ class PulseSequence:
     def get_marker_times(self, name):
         return self.marker_info[name]['tpts']
 
-    def write_sequence(self, path, file_prefix, upload=False):
-        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence
-            , 'PXDAC4800':self.write_PXDAC4800_sequence, 'M8195A':self.write_M8195A_sequence}
+    def write_sequence(self, path, file_prefix, upload=False,
+                       keysight_channels_waveforms=None,
+                       keysight_channels_markers=None,
+                       HVI_enabled=True):
+        '''The new serialized_keysight_waveforms/markers parameters are ordered tuples of
+        the channels (serialized according to protocol in KeysightLib.py) that are to
+        play waveforms, corresponding to the order of the waveforms and markers in the
+        array that contains them.
+        
+        HVI_enabled '''
+        write_function = {'Tek5014': self.write_Tek5014_sequence, 'Tek70001': self.write_Tek70001_sequence,
+                          'PXDAC4800_1': self.write_PXDAC4800_1_sequence,
+                          'PXDAC4800_2': self.write_PXDAC4800_2_sequence,
+                          'PXDAC4800_3': self.write_PXDAC4800_3_sequence,
+                          'M8195A': self.write_M8195A_sequence,
+                          'KeysightM31xxA': self.write_keysightM31xxA_sequence}
         for awg in self.awg_info:
-            try:
-                write_function[awg['type']](awg, path, file_prefix, awg['upload'])
-            except Exception,e: print str(e)
-            except KeyError:
-                print "Error in writing pulse to awg named: " + str(awg['type'])
+            # try:
+            print(awg['type'])
+            if not awg['type'] == "NONE":
+                write_function[awg['type']](awg, path, file_prefix, awg['upload'],
+                              keysight_channels_waveforms, keysight_channels_markers)
+            # except KeyError:
+            #     print "Error in writing pulse to awg named: " + str(awg['type'])
 
-    def write_M8195A_sequence(self,awg,path,file_prefix,upload=False):
-        print "writing M8195A sequence"
-        waveforms_qubit_drive = self.waveforms['qubit drive I']
-        waveforms_qubit_2 = self.waveforms['M8195A CH2']
-        waveforms_readout = self.markers['readout pulse']
-        waveforms_card = self.markers['card trigger']
+    def write_M8195A_sequence(self, awg, path, file_prefix, upload=False, **kwargs):
 
-        waveform_matrix = np.array([waveforms_qubit_drive,waveforms_qubit_2,waveforms_readout,waveforms_card])
+        start_time = time.time()
+        print('\nStart writing M8195A sequences...(PulseSequence.py)')
+        print('fast awg waveforms (ch1-4):', [waveform['name'] for waveform in awg['waveforms']])
 
-        upload_M8195A_sequence(waveform_matrix)
+        # todo: this is where RAM blows up..
+        waveform_matrix = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
 
-    def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False):
+        # im = InstrumentManager()
+        # print type(im[awg['name']])
+        m8195a = M8195A(address='192.168.14.244:5025')
+        upload_M8195A_sequence(m8195a,waveform_matrix, awg, path)
+
+        end_time = time.time()
+        print('Finished writing M8195A sequences in', end_time - start_time, 'seconds.\n')
+
+    def write_Tek5014_sequence(self, awg, path, file_prefix, upload=False, **kwargs):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
         markers = [self.markers[marker['name']] for marker in awg['markers']]
         write_Tek5014_file(waveforms, markers, os.path.join(path, file_prefix + '.awg'), self.name)
@@ -92,12 +118,23 @@ class PulseSequence:
         if upload:
             im = InstrumentManager()
             im[awg['name']].pre_load()
-            #print "Sequence preloaded"
+            # print "Sequence preloaded"
             im[awg['name']].load_sequence_file(os.path.join(path, file_prefix + '.awg'), force_reload=True)
-            print "Sequence file uploaded"
+            print("Sequence file uploaded")
             im[awg['name']].prep_experiment()
+            
+    def write_keysightM31xxA_sequence(self, awg, path, file_prefix, upload=False, **kwargs):
+        waveforms = ([self.waveforms[waveform['name']] for waveform in awg['waveforms']],)
+        markers = ([self.markers[marker['name']] for marker in awg['waveforms']],)
+        #we want to pass in waveforms and markers as tuples
+        #corresponding to the specific channels we are using in order
+        #these are the same ordering of channels that go in the keysight_channels_waveforms
+        #and keysight_channels_markers parameters of write_sequence
+        kps.writeKeysightFile(waveforms, markers, os.path.join(path, file_prefix + '.kst'),
+                              waveform_channels = kwargs["keysight_channels_waveforms"],
+                              marker_channels = kwargs["keysight_channels_markers"])
 
-    def write_Tek70001_sequence(self, awg, path, file_prefix, upload=False):
+    def write_Tek70001_sequence(self, awg, path, file_prefix, upload=False, **kwargs):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
         # markers=[self.markers[marker['name']] for marker in awg['markers']]
 
@@ -110,17 +147,31 @@ class PulseSequence:
         else:
             tek7 = None
 
-    def write_PXDAC4800_sequence(self, awg, path, file_prefix, upload=False):
+    def write_PXDAC4800_1_sequence(self, awg, path, file_prefix, upload=False, **kwargs):
+        self.write_PXDAC4800_sequence(awg, path, file_prefix, upload, 1)
+
+    def write_PXDAC4800_2_sequence(self, awg, path, file_prefix, upload=False, **kwargs):
+        self.write_PXDAC4800_sequence(awg, path, file_prefix, upload, 2)
+
+    def write_PXDAC4800_3_sequence(self, awg, path, file_prefix, upload=False, **kwargs):
+        self.write_PXDAC4800_sequence(awg, path, file_prefix, upload, 3)
+
+    def write_PXDAC4800_sequence(self, awg, path, file_prefix, upload=False, brdNum=0, **kwargs):
         waveforms = [self.waveforms[waveform['name']] for waveform in awg['waveforms']]
-        write_PXDAC4800_file(waveforms, os.path.join(path, file_prefix + '.rd16'), self.name,awg['iq_offsets'])
+        offset_bytes_list = write_PXDAC4800_file(waveforms, os.path.join(path, file_prefix + '_%d.rd16' % brdNum),
+                                                 self.name,
+                                                 awg['iq_offsets_bytes'], awg['sample_size'])
+        # TODO : code would not work if upload is false
         if upload:
-            PXDAC4800().load_sequence_file(os.path.join(path, file_prefix + '.rd16'))
-            print "Sequence file uploaded"
-            print "Waveform length: " + str(len(waveforms[0][0]))
-            PXDAC4800.waveform_length = len(waveforms[0][0])
-            PXDAC4800().run_experiment()
+            pxdac4800 = LocalInstruments().inst_dict['pxdac4800_%d' % brdNum]
+            pxdac4800.load_sequence_file(os.path.join(path, file_prefix + '_%d.rd16' % brdNum), awg)
+            print("Sequence file uploaded")
+            print("Waveform length: " + str(len(waveforms[0][0])))
+            pxdac4800.waveform_length = len(waveforms[0][0])
+            print("PXDAC4800 waveform length: " + str(pxdac4800.waveform_length))
+            pxdac4800.run_experiment()
 
-
+            return pxdac4800
 
     def build_sequence(self):
         """Abstract method to be implemented by specific sequences, fills out waveforms and markers"""
@@ -140,5 +191,4 @@ class PulseSequenceArray:
 
     def reshape_data(self, data):
         pass
-
-
+    
