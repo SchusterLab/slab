@@ -1,8 +1,8 @@
 import copy
 
-from slab.experiments.PulseExperiments_PXI.sequences_pxi import PulseSequences
-from slab.experiments.PulseExperiments_PXI.pulse_experiment import Experiment
-from slab.instruments.keysight import keysight_pxi_load as ks_pxi
+from slab.experiments.PulseExperiments_PXI_Gerbert.sequences_pxi import PulseSequences
+from slab.experiments.PulseExperiments_PXI_Gerbert.pulse_experiment import Experiment
+from slab.experiments.PulseExperiments_PXI_Gerbert import keysight_pxi_load as ks_pxi
 import numpy as np
 import os
 import json
@@ -11,7 +11,7 @@ from slab.datamanagement import SlabFile
 from slab.dsfit import fitdecaysin
 try:from skopt import Optimizer
 except:print("No optimizer")
-from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperimentAnalyzeAndSave
+from slab.experiments.PulseExperiments_PXI_Gerbert.PostExperimentAnalysis import PostExperimentAnalyzeAndSave
 
 
 # from slab.experiments.PulseExperiments.get_data import get_singleshot_data_two_qubits_4_calibration_v2,\

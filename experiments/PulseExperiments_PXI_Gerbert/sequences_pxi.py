@@ -665,7 +665,7 @@ class PulseSequences:
             #add IQ pulse
             self.idle_q(sequencer, time=self.lattice_cfg['ff_info']['ff_settling_time'])
             for qubit_id in self.on_qubits:
-                self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+                self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
             self.idle_q(sequencer, time=self.expt_cfg['delay'])
 
             #synch all channels except flux before adding readout, then do readout
