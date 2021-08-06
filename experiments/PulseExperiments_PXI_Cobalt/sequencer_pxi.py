@@ -143,6 +143,7 @@ class Sequencer:
         self.multiple_sequences.append(sequence)
 
     def complete(self, sequences, plot=True):
+        # Maybe take the first two if statements out 7/21 as our expt configs have no such option
         if sequences.expt_cfg.get('9_calibration', False):
             qubit_state = ['g','e','f']
 
@@ -189,7 +190,7 @@ class Sequencer:
             sequences.readout(self, sequences.expt_cfg.get('on_qubits',["1", "2"]))
             self.end_sequence()
         elif sequences.expt_cfg.get('pi_calibration', False):
-            # returns value unless pi cal is not an option in which case returns false?
+            # returns value unless pi cal is not an option in which case returns false
             # so this will be what runs in sequences that have a pi cal option in the associated expt config
 
             self.new_sequence(sequences)

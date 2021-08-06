@@ -28,8 +28,8 @@ class PulseSequences:
         try:self.cavity_pulse_info = self.quantum_device_cfg['cavity_pulse_info']
         except:print("No cavity pulses")
 
-        try:self.transmon_pulse_info_tek2 = self.quantum_device_cfg['transmon_pulse_info_tek2']
-        except:print("No tek2 transmon drive pulse information")
+        # try:self.transmon_pulse_info_tek2 = self.quantum_device_cfg['transmon_pulse_info_tek2']
+        # except:print("No tek2 transmon drive pulse information")
 
         self.channels = hardware_cfg['channels']
 
@@ -153,23 +153,23 @@ class PulseSequences:
         self.sideband_cooling = self.quantum_device_cfg['sideband_cooling']
 
 
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/1_100kHz.pkl'), 'rb') as f:
-            freq_a_p_1 = pickle.load(f)
+        # with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/1_100kHz.pkl'), 'rb') as f:
+        #     freq_a_p_1 = pickle.load(f)
+        #
+        # with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/2_100kHz.pkl'), 'rb') as f:
+        #     freq_a_p_2 = pickle.load(f)
+        #
+        # with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/1_ef_100kHz.pkl'), 'rb') as f:
+        #     ef_freq_a_p_1 = pickle.load(f)
+        #
+        # with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/2_ef_100kHz.pkl'), 'rb') as f:
+        #     ef_freq_a_p_2 = pickle.load(f)
 
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/2_100kHz.pkl'), 'rb') as f:
-            freq_a_p_2 = pickle.load(f)
-
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/1_ef_100kHz.pkl'), 'rb') as f:
-            ef_freq_a_p_1 = pickle.load(f)
-
-        with open(os.path.join(self.quantum_device_cfg['fit_path'],'comm_sideband/2_ef_100kHz.pkl'), 'rb') as f:
-            ef_freq_a_p_2 = pickle.load(f)
-
-        gauss_z = np.linspace(-2,2,20)
-        gauss_envelop = np.exp(-gauss_z**2)
-
-        gauss_z = np.linspace(-2,2,20)
-        gauss_envelop = np.exp(-gauss_z**2)
+        # gauss_z = np.linspace(-2,2,20)
+        # gauss_envelop = np.exp(-gauss_z**2)
+        #
+        # gauss_z = np.linspace(-2,2,20)
+        # gauss_envelop = np.exp(-gauss_z**2)
 
 
 
@@ -794,9 +794,7 @@ class PulseSequences:
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
             for qubit_id in self.expt_cfg['on_qubits']:
-                ## Meg commented this out 9/16/2020 because it wasn't working when RF sources got switched
-                ## Seems like newer versions use a different pulse structure, including gen_q?
-                ## pulled in gen_q from cavity_drive_pulse_probe_iq which definitely worked in the spring
+                ## Meg commented this out 9/16/2020 , it would work fine but seems identical to gen_q
                 # sequencer.append('charge%s_I' % qubit_id,
                 #                  Square(max_amp=self.expt_cfg['amp'], flat_len=self.expt_cfg['pulse_length'],
                 #                         ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
@@ -808,6 +806,7 @@ class PulseSequences:
                 #                         phase=self.pulse_info[qubit_id]['Q_phase']))
                 self.gen_q(sequencer, qubit_id, amp=self.expt_cfg['amp'], len=self.expt_cfg['pulse_length'],
                            phase=0, pulse_type="square", add_freq=dfreq)
+
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
 
@@ -2131,36 +2130,36 @@ class PulseSequences:
 
             self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
 
-                #self.gen_c(sequencer, cavity_id=self.expt_cfg['on_cavities'], amp=self.expt_cfg['cavity_amp'], len=self.expt_cfg['cavity_pulse_len'])
-                # self.gen_c(sequencer, cavity_id=self.expt_cfg['on_cavities'], amp=self.expt_cfg['cavity_amp'], len=self.expt_cfg['cavity_pulse_len'], pulse_type = 'gauss')
-                # self.gen_q(sequencer, qubit_id, amp=self.expt_cfg['qubit_amp'], len=self.expt_cfg['qubit_pulse_len'],
-                #            phase=0, pulse_type='gauss', add_freq=dfreq)
-
 
             # commented out may 3, return to this and  undo bad changes, i.e. add back idle and remove the second sync??
             for qubit_id in self.expt_cfg['on_qubits']:
+                cavity_id = qubit_id
 
-                # self.pad_start_pxi_tek2(sequencer, on_qubits=self.expt_cfg['on_qubits'])
-
-                #self.gen_c(sequencer, cavity_id=self.expt_cfg['on_cavities'], amp=self.expt_cfg['cavity_amp'], len=self.expt_cfg['cavity_pulse_len'])
-                # self.gen_c(sequencer, cavity_id=self.expt_cfg['on_cavities'], amp=self.expt_cfg['cavity_amp'], len=self.expt_cfg['cavity_pulse_len'], pulse_type = 'gauss')
-
-                if not self.expt_cfg['overlap']:
-                    sequencer.sync_channels_time(self.channels)
-                self.gen_c(sequencer, cavity_id=qubit_id, amp=self.expt_cfg['cavity_amp'],
-                           len=self.expt_cfg['cavity_pulse_len'], pulse_type='gauss')
+                # self.gen_c(sequencer, cavity_id=qubit_id, amp=self.expt_cfg['cavity_amp'],
+                #            len=self.expt_cfg['cavity_pulse_len'], pulse_type='gauss')
                 # self.idle_q(sequencer, time=self.expt_cfg['idle_time'])
-                if not self.expt_cfg['overlap']:
-                    sequencer.sync_channels_time(self.channels)
+
+                # took out the guts of gen_c
+                add_freq = 0
+                phase = 0
+                sequencer.append('cavity%s_I' % cavity_id, Gauss(max_amp=self.expt_cfg['cavity%s_amp' % cavity_id], sigma_len=self.expt_cfg['cavity%s_pulse_len' % cavity_id],
+                                                                 cutoff_sigma=2, freq=self.cavity_pulse_info[cavity_id][
+                                                                                          'iq_freq'] + add_freq,
+                                                                 phase=phase))
+                sequencer.append('cavity%s_Q' % cavity_id, Gauss(max_amp=self.expt_cfg['cavity%s_amp' % cavity_id], sigma_len=self.expt_cfg['cavity%s_pulse_len' % cavity_id],
+                                                                 cutoff_sigma=2, freq=self.cavity_pulse_info[cavity_id][
+                                                                                          'iq_freq'] + add_freq,
+                                                                 phase=phase + self.cavity_pulse_info[cavity_id][
+                                                                     'Q_phase']))
+
+            if not self.expt_cfg['overlap']:
+                sequencer.sync_channels_time(self.channels)
+            for qubit_id in self.expt_cfg['on_qubits']:
+
 
                 self.gen_q(sequencer, qubit_id, amp=self.expt_cfg['qubit_amp'], len=self.expt_cfg['qubit_pulse_len'],
                            phase=0, pulse_type=self.expt_cfg['pulse_type'], add_freq=dfreq)
 
-                # if not self.expt_cfg['overlap']:
-                #     sequencer.sync_channels_time(self.channels)
-
-                # self.gen_q(sequencer, qubit_id, amp=self.expt_cfg['qubit_amp'], len=self.expt_cfg['qubit_pulse_len'],
-                #            phase=0, pulse_type='gauss', add_freq=dfreq)
 
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
             sequencer.end_sequence()

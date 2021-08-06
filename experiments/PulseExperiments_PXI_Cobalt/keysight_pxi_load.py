@@ -1061,10 +1061,10 @@ class KeysightSingleQubit:
         # print("got channels, module for digitizer")
 
         # pretty sure we could have used data_1 and data_2 for any 1 qubit experiment and just reassigned digitizer channels but whatever
-        if self.on_qubits[0] == "1":
+        if "1" in self.on_qubits:
             self.data_1, self.data_2 = np.zeros((self.num_expt, self.DIG_sampl_record)), np.zeros(
                     (self.num_expt, self.DIG_sampl_record))
-        elif self.on_qubits[0] == "2":
+        if "2" in self.on_qubits:
             self.data_3, self.data_4 = np.zeros((self.num_expt, self.DIG_sampl_record)), np.zeros(
                     (self.num_expt, self.DIG_sampl_record))
         else:
@@ -1815,8 +1815,8 @@ class KeysightSingleQubit:
                     iAd = self.DIG_ch_1.readDataQuiet(timeout=20000)
                     qAd = self.DIG_ch_2.readDataQuiet(timeout=20000)
                     # if you have buffer issues try this verbose version
-                    # iAd=self.DIG_ch_1.readData(data_points=self.data_1.shape[0]*self.data_1.shape[1])
-                     # qAd = self.DIG_ch_2.readData(data_points=self.data_2.shape[0] * self.data_2.shape[1])
+                    # iAd = self.DIG_ch_1.readData(data_points=self.data_1.shape[0]*self.data_1.shape[1])
+                    # qAd = self.DIG_ch_2.readData(data_points=self.data_2.shape[0] * self.data_2.shape[1])
 
                     IAtemp = np.reshape(iAd, self.data_1.shape).T[int(wA[0]):int(wA[1])]
                     QAtemp = np.reshape(qAd, self.data_2.shape).T[int(wA[0]):int(wA[1])]

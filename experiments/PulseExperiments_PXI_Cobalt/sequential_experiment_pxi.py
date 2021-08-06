@@ -66,7 +66,7 @@ class SequentialExperiment:
 
         exp.run_experiment_pxi_resspec(sequences=sequences, path=path, name=experiment_name)
 
-# This one works as well as the above one! Pick which one you're using but either should go just fine 
+# This one works as well as the above one! Pick which one you're using but either should go just fine [MGP] 7/7/2021
     # def resonator_spectroscopy(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     #     experiment_name = 'resonator_spectroscopy'
     #     data_path = os.path.join(path, 'data/')
