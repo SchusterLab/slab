@@ -70,7 +70,8 @@ except: print("Could not load PressureGauge driver")
 try: from.SignalCore import SignalCore
 except: print("Could not load SignalCore")
 from .spectrumanalyzer import E4440
-from .nwa import E5071, E5071_USB
+try: from .nwa import E5071, E5071_USB
+except: print("Could not load E5071")
 from .PNAX import N5242A
 from .rfgenerators import N5183B,E8257D,BNC845
 from .cryostat import Triton
