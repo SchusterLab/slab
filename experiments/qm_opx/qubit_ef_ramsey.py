@@ -22,7 +22,7 @@ dt = 250
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
-T_min = 0
+T_min = 8
 T_max = 15000
 times = np.arange(T_min, T_max + dt/2, dt)
 

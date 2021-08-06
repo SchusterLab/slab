@@ -26,4 +26,4 @@ LO_s.set_frequency(storage_LO)
 LO_s.set_power(13)
 LO_s.set_output_state(True)
 
-flux.set_current(0.3988e-3)
+# flux.set_current(0.388e-3)

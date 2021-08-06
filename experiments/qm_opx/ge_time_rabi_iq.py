@@ -54,9 +54,9 @@ def active_reset(biased_th, to_excited=False):
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
 
-t_min = 0
-t_max = 5000
-dt = 250
+t_min = 4
+t_max = 50
+dt = 2
 t_vec = np.arange(t_min, t_max + dt/2, dt)
 avgs = 1000
 reset_time = int(5e5)
@@ -87,7 +87,7 @@ with program() as time_rabi:
             active_reset(biased_th_g_jpa)
             align('qubit', 'rr', 'jpa_pump')
             # wait(reset_time//4, 'qubit')
-            play('CW'*amp(0.003), 'qubit', duration=t)
+            play('CW'*amp(1.0), 'qubit', duration=t)
             align('qubit', 'rr', 'jpa_pump')
             play('pump_square', 'jpa_pump')
             discriminator.measure_state("clear", "out1", "out2", res, I=I)

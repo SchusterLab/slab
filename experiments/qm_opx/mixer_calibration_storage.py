@@ -15,7 +15,7 @@ from slab.instruments import instrumentmanager
 
 with program() as mixer_calibration:
     with infinite_loop_():
-        play("CW"*amp(0.5), "storage")
+        play("CW"*amp(0.0), "storage")
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
@@ -38,8 +38,8 @@ job = qm.execute(mixer_calibration, duration_limit=0, data_limit=0)
 # plt.axvline(x=storage_LO - storage_IF, linestyle='--', color='k')
 # plt.axvline(x=storage_LO + storage_IF, linestyle='--', color='k')
 
-# qm.set_dc_offset_by_qe("storage", "I", 0.0)
-# qm.set_dc_offset_by_qe("storage", "Q", 0.0)
+# qm.set_dc_offset_by_qe("storage", "I", -0.018)
+# qm.set_dc_offset_by_qe("storage", "Q", -0.014)
 
 
 # print([a1, a2, a3])

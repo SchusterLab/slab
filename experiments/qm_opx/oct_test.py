@@ -27,7 +27,7 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=Tr
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -64,7 +64,7 @@ f_vec = np.arange(f_min, f_max + df/2, df)
 filename = 'oct_pulses/g1.h5'
 
 # filename = "S:\\Ankur\\Stimulated Emission\\pulses\\picollo\\2021-03-23\\00001_g0_to_g1_2.0us_qamp_7.5_camp_0.2_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5"
-filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g3_2.0us_qamp_75_camp_8_gamp_0.02_dwdt_1.0_dw2dt2_0.1.h5'
+# filename = 'S:\\_Data\\210326 - QM_OPX\oct_pulses\\00000_g0_to_g1_2.0us_qamp_24.0_camp_0.12_gamp_0.1_dwdt_1.0_dw2dt2_0.1.h5'
 
 with File(filename,'r') as a:
     Iq = np.array(a['uks'][-1][0], dtype=float)
@@ -82,9 +82,9 @@ def transfer_function(omegas_in, cavity=False, qubit=True, pulse_length=2000):
     # pull calibration data from file, handling properly in case of multimode cavity
 
     if cavity==True:
-        fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
+        fn_file = cal_path + '\\00000_2021_7_30_cavity_square.h5'
     elif qubit==True:
-        fn_file = cal_path + '\\00000_2021_05_21_qubit_square.h5'
+        fn_file = cal_path + '\\00000_2021_07_30_qubit_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -163,8 +163,10 @@ with program() as oct_test:
             align('storage', 'rr', 'jpa_pump', 'qubit')
             active_reset(biased_th_g_jpa)
             align('storage', 'rr', 'jpa_pump', 'qubit')
+            #########################
             play("soct", "storage", duration=pulse_len)
             play("qoct", "qubit", duration=pulse_len)
+            #########################
             align("storage", "qubit")
             update_frequency("qubit", f)
             play("res_pi", "qubit")
@@ -200,7 +202,8 @@ else:
     #
     # plt.figure()
     # plt.plot(f_vec, res, '.-')
-    #
+    # plt.show()
+
     # job.halt()
     #
     # path = os.getcwd()

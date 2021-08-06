@@ -53,7 +53,7 @@ def transfer_function(omegas_in, cavity=False, qubit=True, pulse_length=2000):
     # pull calibration data from file, handling properly in case of multimode cavity
 
     if cavity==True:
-        fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
+        fn_file = cal_path + '\\00000_2021_7_30_cavity_square.h5'
     elif qubit==True:
         fn_file = cal_path + '\\00000_2021_05_21_qubit_square.h5'
 
@@ -372,7 +372,7 @@ def stim_em(coh_amp=0.0, coh_len=100, f_state=0, n_pi_m=10, n_pi_n=30, avgs=1000
             ########################
 
             with for_(i, 0, i < n_pi_m, i+1):
-                wait(500//4, "rr")
+                wait(1000//4, "rr")
                 align("qubit", "rr", 'jpa_pump')
                 play("res_pi", "qubit")
                 align('qubit', 'rr', 'jpa_pump')
