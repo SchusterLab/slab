@@ -328,7 +328,8 @@ class SlabFile(h5py.File):
         self.flush()
 
     def append_pt(self, dataset, pt):
-        if isinstance(dataset,str): dataset=str(dataset)
+        if isinstance(dataset,str):
+            dataset=str(dataset)
         if isinstance(dataset, str) :
             try:
                 dataset = self[dataset]
@@ -340,6 +341,13 @@ class SlabFile(h5py.File):
         dataset.resize(shape)
         dataset[-1] = pt
         self.flush()
+
+    def append_dset_pt(self, dataset, pt):
+        shape = dataset.shape[0]
+        shape = shape + 1
+        dataset.resize((shape, ))
+        dataset[-1] = pt
+        dataset.flush()
 
     def note(self, note):
         """Add a timestamped note to HDF file, in a dataset called 'notes'"""

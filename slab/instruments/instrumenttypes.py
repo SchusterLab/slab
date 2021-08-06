@@ -269,6 +269,18 @@ class SerialInstrument(Instrument):
         time.sleep(self.query_sleep)
         self.ser.open()
 
+    def flush(self):
+        self.ser.flush()
+        time.sleep(1)
+
+    def flush_input(self):
+        self.ser.flushInput()
+        time.sleep(1)
+
+    def flush_output(self):
+        self.ser.flushOutput()
+        time.sleep(1)
+
     def __del__(self):
         try:
             self.ser.close()

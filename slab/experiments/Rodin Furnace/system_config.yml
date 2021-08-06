@@ -1,0 +1,134 @@
+PID:
+  UNITS: 'C'
+  Con_Interval: 2.0
+  Con_Type: 'PID'
+  Ramp_Up_Rate: 5.0 #in deg (units) per unit time
+  Ramp_Down_Rate: 5.0
+  Ramp_Time_Unit: 'MIN' #must be SEC, MIN, HOUR
+  CHANNELS:
+    1:
+      Set_Point: 100.00
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: True
+      Con_Mode: 'AUTO'
+    2:
+      Set_Point: 100.00
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: True
+      Con_Mode: 'AUTO'
+    3:
+      Set_Point: 100.00
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: True
+      Con_Mode: 'AUTO'
+    4:
+      Set_Point: 100.00
+      P: 100.00
+      I: 5.0
+      D: 0
+      RUN: True
+      Con_Mode: 'AUTO'
+    5:
+      Set_Point: 100.00
+      P: 50.0
+      I: 20
+      D: 0
+      RUN: True
+      Con_Mode: 'AUTO'
+    6:
+      Set_Point: 100.00
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: False
+      Con_Mode: 'AUTO'
+    7:
+      Set_Point: 100.00
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: False
+      Con_Mode: 'AUTO'
+    8:
+      Set_Point: 40
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: False
+      Con_Mode: 'AUTO'
+
+Pressure_Monitor:
+  UNITS: 'mbar'
+  SET_POINTS:
+    1:
+      CHANNEL: 1
+      SP_H: 1.0E-4
+      SP_L: 9.0E-5
+    2:
+      CHANNEL: 1
+      SP_H: 1.0E-4
+      SP_L: 1.0E-3
+    3:
+      CHANNEL: 2
+      SP_H: 5.0E2
+      SP_L: 1.0E-2
+    4:
+      CHANNEL: 2
+      SP_H: 3.3E-2
+      SP_L: 3.2E-2
+    5:
+      CHANNEL: 1
+      SP_H: 8.5E-2
+      SP_L: 8.0E-2
+    6:
+      CHANNEL: 1
+      SP_H: 8.5E-3
+      SP_L: 8.0E-3
+
+PLC:
+  VALVES:
+    BACKING:
+      CHANNEL: 1
+    ROUGHING:
+      CHANNEL: 2
+    GATE:
+      CHANNEL: 3
+    PULSE:
+      CHANNEL: 4
+    RGA:
+      CHANNEL: 5
+
+TURBO:
+  SP_TYPE: 'freq' #or 'power'
+  SP_VAL: 350 #unit Hz
+  SP_HYST: 2 #percent of SP_val hysteresis
+  LOW_SPEED: False
+  SOFT_START: False
+  COOLING: 'water'
+  HIGH_SPEED_VAL: 825 #825 maximum, unit Hz
+  LOW_SPEED_VAL: 400 #350 minimum, unit Hz
+  GAS_TYPE: 'N2'
+
+SUPPLY:
+  max_current: 14.00
+  max_volts: 46.00
+  min_volts: 12.00
+  port: 'COM3'
+
+TEMPSCAN:
+  CHANNELS:
+    101:
+      SENS: 'TC'
+      TYPE: 'K'
+      UNIT: 'C'
+      TRIG: 'IMM'
+
+
+
+

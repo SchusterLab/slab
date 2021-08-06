@@ -1,0 +1,65 @@
+PID:
+  Port: 'COM15'
+  UNITS: 'C'
+  Con_Interval: 2.0
+  Con_Type: 'PID'
+  Ramp_Up_Rate: 5.0 #in deg (units) per unit time
+  Ramp_Down_Rate: 5.0
+  Ramp_Time_Unit: 'MIN' #must be SEC, MIN, HOUR
+  CHANNELS:
+    1:
+      Set_Point: 100.00
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: True
+      Con_Mode: 'AUTO'
+    2:
+      Set_Point: 100.00
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: True
+      Con_Mode: 'AUTO'
+    3:
+      Set_Point: 100.00
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: True
+      Con_Mode: 'AUTO'
+    4:
+      Set_Point: 100.00
+      P: 100.00
+      I: 5.0
+      D: 0
+      RUN: True
+      Con_Mode: 'AUTO'
+    5:
+      Set_Point: 100.00
+      P: 50.0
+      I: 20
+      D: 0
+      RUN: True
+      Con_Mode: 'AUTO'
+    6:
+      Set_Point: 100.00
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: False
+      Con_Mode: 'AUTO'
+    7:
+      Set_Point: 100.00
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: False
+      Con_Mode: 'AUTO'
+    8:
+      Set_Point: 40
+      P: 100.00
+      I: 10.0
+      D: 0
+      RUN: False
+      Con_Mode: 'AUTO'

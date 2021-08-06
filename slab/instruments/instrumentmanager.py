@@ -73,7 +73,7 @@ class InstrumentManager(dict):
 
     def load_instrument(self, config_string):
         """Loads instrument based on config_string (Name\tAddress\tType)"""
-        #print config_string
+        #print(config_string)
         name, in_class, addr = self.parse_config_string(config_string);
         fn = getattr(slab.instruments, in_class)
         return fn(name=name, address=addr)

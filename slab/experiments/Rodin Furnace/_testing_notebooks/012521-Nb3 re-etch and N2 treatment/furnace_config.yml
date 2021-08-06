@@ -1,0 +1,37 @@
+RGA:
+  scan_masses:
+    He: 4
+    N2: 28
+    H2: 2
+    O2: 32
+    H2O: 18
+    Ar:  40
+    CO2: 44
+  scan_rate: 4
+  fil_current: 1
+  e_energy: 70
+  ion_energy: 'high'
+  foc_volts: 90
+  units: 'mbar'
+  interval: 5.0 
+  port: 'COM9'
+  data_path: 
+
+Furnace:
+  Ramp_up_rate: .002 #rate is in volts a second
+  Ramp_down_rate: .01
+  Pre_heat_time: 3600 #seconds
+  P_hold: 3.0E-5
+  P_start: 6.0E-6
+  Hold_v: 44.5
+  Hold_time: 14400
+  logging_interval: 5
+
+Nitrogen_Doping:
+  nitrogen_step: True
+  nitrogen_delay_time: 13920 #time in seconds till start of nitrogen sequence start
+  nitrogen_hold_time: 120 #should be in whole multiples of 60 seconds, otherwise it rounds down to nearest whole minute
+  
+
+
+
