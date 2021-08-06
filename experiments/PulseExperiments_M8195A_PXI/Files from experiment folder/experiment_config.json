@@ -1,0 +1,296 @@
+{
+  "rabi": {
+    "amp": 1.0,
+    "stop": 101, "step": 1.0, "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 800, "on_qubits": ["1"],"singleshot":false,"pulse_type":"gauss"
+  },
+  "rabi_sideband": {
+    "amp": 1.0,
+    "stop": 500, "step": 10.0, "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 100, "on_qubits": ["1"],"singleshot":true
+  },
+  "t1": {
+    "stop": 250000.0, "step": 10000.0,
+    "start": 0.0, "acquisition_num": 3000, "on_qubits": ["1"], "pi_calibration": true,"singleshot":false
+  },
+
+  "t1_sideband": {
+    "stop": 20000, "step": 2000.0,
+    "start": 0.0, "acquisition_num": 100, "on_qubits": ["1"], "pi_calibration": false,"singleshot":true
+  },
+
+  "ramsey": {
+     "stop": 40000, "step": 400.0,
+    "start": 0.0, "ramsey_freq": 0.0002, "acquisition_num": 2001, "on_qubits": ["1"], "pi_calibration": true,"singleshot":false
+  },
+
+  "echo": {
+    "stop": 40000, "step": 400.0,
+    "start": 0.0, "ramsey_freq": 0.0002, "cp": false, "cpmg": true, "echo_times": 1, "acquisition_num": 4000,
+    "on_qubits": ["1"], "pi_calibration": true,"singleshot":false
+  },
+
+  "ramsey_sideband": {
+    "stop": 10000, "step": 200.0, "singleshot": true,
+    "start": 0.0, "ramsey_freq": 0.050, "acquisition_num": 50, "on_qubits": ["1"], "pi_calibration": true
+  },
+
+  "echo_sideband": {
+    "stop": 1000, "step": 10.0,
+    "start": 0.0, "ramsey_freq": 0.005, "cp": true, "cpmg": false, "echo_times": 1, "acquisition_num": 100,
+    "on_qubits": ["1"], "pi_calibration": true
+  },
+
+  "vacuum_rabi": {
+    "stop": -0.10, "step": 1e-3,
+    "start": -0.2, "acquisition_num": 2000, "on_qubits": ["2"], "singleshot": false
+  },
+  "pulse_probe": {
+    "stop": 4.9, "step": 2e-3, "pulse_length": 5000, "pulse_amp": 0.0, "singleshot": false,
+    "start": 4.7, "acquisition_num": 500, "on_qubits": ["2"]
+  },"pulse_probe_iq": {
+    "stop": 0.05, "step": 0.001, "pulse_length": 40000, "amp": 1.0, "singleshot": false,
+    "start": -0.05, "acquisition_num": 1000, "on_qubits": ["1"],"pi_calibration":true
+  },"pulse_probe_ef_iq": {
+    "stop": 0.005, "step": 0.0001, "pulse_length": 5000, "amp": 0.01, "singleshot": false,
+    "start": -0.005, "acquisition_num": 2000, "on_qubits": ["1"],"pi_calibration":true,"pulse_type":"square"
+  },
+  "histogram": {
+    "acquisition_num": 2000, "on_qubits": ["1"], "singleshot": true,"num_seq_sets":42,"numbins":100
+  },
+   "sideband_histogram": {
+    "simultaneous":false,"acquisition_num": 5000, "on_qubits": ["1"], "singleshot": true,"num_seq_sets":33,"numbins":100,"amp": 1.0,
+     "center_freq":6.0 ,"offset_freq":-3.175, "length":15000,"wait_after_reset":3000,"detuning":3.2767772921513,"single_tone":true,"single_freq":1.3452937005964072
+  },
+  "histogram_sweep": {
+    "atten_start": -12.0, "atten_stop": -5.0,"atten_step": 1.0, "freq_start": 8.071, "freq_stop": 8.0724,"freq_step": 0.0001,"sweep_amp":true
+  },
+  "sideband_rabi_freq": {
+    "pulse_len": 50.0, "amp": 1.0, "pi_calibration": true,
+    "stop": 3.20, "step": 0.005,
+    "start": 0.9, "acquisition_num": 2000, "on_qubits": ["1"], "around": "", "freq_range":0.005
+  },
+  "ef_sideband_rabi_freq": {
+    "pulse_len": 50.0, "amp": 0.2, "pi_calibration": true,
+    "stop": 3.32, "step": 0.0001,
+    "start": 3.20, "acquisition_num": 2000, "on_qubits": ["1"], "around": "comm", "freq_range":0.005
+  },
+  "ef_rabi": {
+    "amp": 1.0, "stop": 101, "step": 1.0, "ge_pi": true, "singleshot": false,
+    "start": 0.0, "acquisition_num": 800, "on_qubits": ["1"], "pi_calibration":true,"ef_pi_for_cal":false
+  },
+  "ef_t1": {
+    "stop": 150000.0, "step": 5000.0,
+    "start": 0.0, "acquisition_num": 1000, "on_qubits": ["1"], "pi_calibration": true,"singleshot":false,"ef_pi_for_cal":false
+  },
+  "ef_ramsey": {
+    "stop": 10000, "step": 100.0,
+    "start": 0.0, "ramsey_freq": 0.0005, "acquisition_num": 2000, "on_qubits": ["1"], "pi_calibration": true,"singleshot":false,"ef_pi_for_cal":true
+  },
+  "ef_echo": {
+    "stop": 20000, "step": 200.0,
+    "start": 0.0, "ramsey_freq": 0.0005, "cp": false, "cpmg": true, "echo_times": 1, "acquisition_num": 2000,
+    "on_qubits": ["1"], "pi_calibration": true,"singleshot":false
+  },"pulse_probe_fh_iq": {
+    "stop": 0.05, "step": 0.001, "pulse_length": 5000, "amp": 1.0, "singleshot": false,
+    "start": -0.05, "acquisition_num": 5000, "on_qubits": ["1"],"pi_calibration":false,"pulse_type":"square"
+  },
+  "fh_rabi": {
+    "amp": 0.974, "stop": 101, "step": 1.0, "ge_pi": true,"ef_pi": true, "singleshot": false,
+    "start": 0.0, "acquisition_num": 2000, "on_qubits": ["1"], "pi_calibration":false
+  },
+  "fh_ramsey": {
+    "stop": 32000, "step": 320.0,
+    "start": 0.0, "ramsey_freq": 0.000125, "acquisition_num": 2500, "on_qubits": ["1"], "pi_calibration": false,"singleshot":false
+  },
+  "sideband_rabi": {
+    "amp": 0.75, "freq":3.353311767012441,
+    "stop": 1000.0, "step": 10.0, "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 1000, "on_qubits": ["1"],"f0g1":true,"h0e1":false,"singleshot":false
+  },
+  "sideband_rabi_sweep": {
+    "start":3.355,"stop":3.359,"step":0.0001,"pi_calibration": true,"singleshot":false,"on_qubits": ["1"]
+  },
+  "sideband_rabi_freq_scan": {
+    "amp": 0.75, "freq": 3.3568610621929786,"length":375.0,
+    "stop": 0.010, "step": 0.0002, "pi_calibration": true,
+    "start": -0.010, "acquisition_num": 1000, "on_qubits": ["1"],"f0g1":true,"h0e1":false,"singleshot":false
+  },
+  "sideband_rabi_freq_scan_amp_sweep": {
+    "start": 0.15, "stop": 0.85, "step": 0.1, "length_scale": 348.0, "amp_scale": 0.75
+  },
+  "sideband_rabi_two_tone_freq_scan": {
+    "amp": 1.0, "center_freq": 6.43456,"offset_freq":-0.25, "length":5000,
+    "stop": 3.220, "step": 0.0001, "pi_calibration": false,
+    "start": 3.210, "acquisition_num": 3000, "on_qubits": ["1"],"ef":false,"singleshot":false
+  },
+  "sideband_rabi_freq_scan_length_sweep": {
+    "start":0.0,"stop":5000.0,"step":500.0
+  },
+   "sideband_rabi_two_tone": {
+    "amp":1.0,"center_freq":6.43456,"offset_freq":-0.25,"detuning":3.2143492507927625,"start":0.0,"stop":2000.0,"step":20.0,
+     "pi_calibration": false,"singleshot":false,"on_qubits": ["1"],"acquisition_num": 5000,"ef":false
+  },
+  "sideband_pulse_probe_iq": {
+    "stop": 0.001, "step": 0.00003, "pulse_length": 35000, "amp": 0.005, "singleshot": false,
+    "start": -0.002, "acquisition_num": 5000, "on_qubits": ["1"],"pi_calibration":true, "f0g1":true
+  },
+   "sideband_t1": {
+    "start":0.0,"stop":300000,"step":20000.0,"pi_calibration": true,"singleshot":false,"on_qubits": ["1"],"acquisition_num": 1200
+  },
+  "sideband_ramsey": {
+    "stop": 300000.0, "step":20000.0, "singleshot": false,
+    "start":0.0, "ramsey_freq": 5e-6, "acquisition_num": 1001, "on_qubits": ["1"], "pi_calibration": true
+  }, "sequential_sideband_ramsey": {
+    "stop":128000.0,"step":32000.0,"singleshot": false,
+    "start": 0.0, "ramsey_freq": 0.00015, "acquisition_num": 2001, "on_qubits": ["1"], "pi_calibration": false
+  },
+  "sideband_pi_pi_offset": {
+    "stop": 6.28, "step": 0.2512, "singleshot": false,
+    "start": -6.28,  "acquisition_num": 801, "on_qubits": ["1"], "pi_calibration": true
+  },
+  "sideband_chi_ge_calibration": {
+    "stop": 1000.0, "step": 20.0, "singleshot": false,
+    "start": 0.0, "ramsey_freq": 0.001, "acquisition_num": 500, "on_qubits": ["1"], "pi_calibration": true,"test_parity":true
+  },
+  "sideband_chi_ef_calibration": {
+    "stop": 4000.0, "step": 40.0, "singleshot": false,
+    "start": 0.0, "ramsey_freq": 0.002, "acquisition_num": 2001, "on_qubits": ["1"], "pi_calibration": true
+  },
+  "sideband_chi_gf_calibration": {
+    "stop": 3000.0, "step": 30.0, "singleshot": false,
+    "start": 0.0, "ramsey_freq": 0.003, "acquisition_num": 2001, "on_qubits": ["1"], "pi_calibration": true
+  },
+  "sideband_transmon_reset": {
+    "stop": 50.0, "step": 1.0, "singleshot": false,"ge_pi":true,
+    "start": 0.0,  "acquisition_num": 1000, "on_qubits": ["1"], "pi_calibration": true,"sideband_freq":1.3446349511081329,"sideband_pulse_length":15000,"wait_after_reset":3000,"amp":1.0,"simultaneous":false
+  },
+    "sideband_parity_measurement": {
+     "singleshot": false,"add_photon":true, "acquisition_num": 1, "on_qubits": ["1"], "pi_calibration": true,"sideband_freq":1.3452937005964072,"sideband_pulse_length":15000,"wait_after_reset":3000,
+      "wait_before_parity":0.0,"amp":1.0,"num_expts":100, "reset": false
+  },
+    "sideband_repetitive_parity_measurement": {
+     "singleshot": true,"add_photon":true,"add_photon_location":25, "acquisition_num": 100, "on_qubits": ["1"], "pi_calibration": true,"sideband_freq":1.3452937005964072,"sideband_pulse_length":15000,
+      "wait_after_reset":25000,"wait_before_parity":0.0,"amp":1.0,"num_expts":100, "reset": false
+  },
+  "sideband_reset_qubit_temperature_wait_sweep": {
+    "wait_stop": 45000, "wait_step": 5000,"wait_start": 20000.0
+  },
+  "sideband_cavity_photon_number": {
+    "stop": 0.001, "step": 0.00012, "pulse_length": 40000, "qubit_drive_amp": 0.015,"cavity_freq":6.011377089667349,"cavity_pulse_length":10000,
+    "wait_after_cavity_drive":1,"cavity_drive_amp":2.0,"singleshot": false, "start": -0.005, "acquisition_num": 1000, "on_qubits": ["1"],"pi_calibration":true,"pulse_type":"square"
+  },
+  "cavity_drive_direct_spectroscopy": {
+    "stop": 0.0005, "step": 0.00002, "pulse_length": 50000, "amp": 1.0, "singleshot": false,
+    "start": -0.0005, "acquisition_num": 1000, "on_cavities": ["1"],"on_qubits": ["1"],"pi_calibration":false
+  },
+  "cavity_drive_pulse_probe_iq": {
+    "stop": 0.001, "step": 0.00012, "cavity_amp": 1.0, "cavity_pulse_len": 1000.0,"qubit_pulse_len": 40000, "qubit_amp": 0.015, "singleshot": false,
+    "start": -0.005, "acquisition_num": 1000, "on_cavities": "1","on_qubits": ["1"],"pi_calibration":true,"pulse_type":"square","overlap": true
+  },
+    "cavity_drive_pulse_probe_iq_amp_sweep": {
+    "stop": 1.0, "step": 0.1, "start": 0.0
+  },
+  "wigner_tomography_test_cavity_drive_sideband": {
+    "stop": 0.8, "step": 0.01, "cavity_pulse_len": 1000.0, "singleshot": false,"phase": 0.0,
+    "start": 0.0, "acquisition_num": 1000, "on_cavities": "1","on_qubits": ["1"],"state":"0","pi_calibration":true,"prep_cav_amp": 0.25,"prep_cav_len": 1500
+  },
+  "wigner_tomography_test_phase_sweep": {
+   "stop": 6.2830, "step": 0.31415, "start": 0.0
+},
+  "wigner_tomography_sideband_only_phase_sweep": {
+   "stop": 6.2830, "step": 0.31415, "start": 0.0
+},
+  "wigner_tomography_sideband_one_pulse_phase_sweep": {
+   "stop": 6.2830, "step": 0.31415, "start": 0.0
+},
+  "direct_cavity_sideband_spectroscopy": {
+    "stop": 0.002, "step": 0.00008, "pulse_length": 40000, "qubit_drive_amp": 0.015,"cavity_freq":6.01131624,"cavity_pulse_length":5000,
+    "wait_after_cavity_drive":1,"cavity_drive_amp":2.0,"singleshot": false, "start": -0.002, "acquisition_num": 1000, "on_qubits": ["1"],"pi_calibration":true,"pulse_type":"square"
+  },
+  "wigner_tomography_test_sideband_only": {
+    "stop": 2.0, "step": 0.02, "cavity_pulse_len": 15000.0, "singleshot": false,"phase": 0.0,
+    "start": 0.0, "acquisition_num": 1000, "on_cavities": "1","on_qubits": ["1"],"state":"1","pi_calibration":true,"prep_cav_amp": 0.25,"prep_cav_len": 1500,"sweep_phase": false,"amp":2.0,"delay": 20.0
+  },
+  "wigner_tomography_test_sideband_one_pulse": {
+    "stop":  2.0, "step":0.02, "cavity_pulse_len": 15000.0, "singleshot": false,"phase": 0.0,
+    "start": 0.0, "acquisition_num": 1, "on_cavities": "1","on_qubits": ["1"],"state":"1","pi_calibration":true,"prep_cav_amp": 0.25,"prep_cav_len": 1500,"sweep_phase": false,"amp":0.55,"delay": 20.0,"doubling_trick": false,"fix_phase": false
+  },
+  "sideband_transmon_ge_rabi": {
+    "amp": 0.175,
+    "stop": 100, "step":1.0 , "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 800, "on_qubits": ["1"],"singleshot":false,"pulse_type":"gauss"
+  },
+    "sideband_transmon_ge_ramsey": {
+    "stop": 10000.0, "step": 100.0, "singleshot": false,
+    "start": 0.0, "ramsey_freq": 0.00025, "acquisition_num": 2001, "on_qubits": ["1"], "pi_calibration": true
+  },
+  "sideband_transmon_ef_rabi": {
+    "amp": 0.125,
+    "stop": 80, "step":0.8 , "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 800, "on_qubits": ["1"],"singleshot":false,"pulse_type":"gauss","ge_pi": true
+  },
+  "sideband_transmon_pulse_probe_ef": {
+    "stop": 0.05, "step": 0.001, "pulse_length": 5000, "amp": 0.05, "singleshot": false,
+    "start": -0.05, "acquisition_num": 800, "on_qubits": ["1"],"pi_calibration":true,"pulse_type":"square"
+  },
+  "sideband_transmon_pulse_probe_ge": {
+    "stop": 0.002, "step": 0.00004, "pulse_length": 5000, "amp": 0.002, "singleshot": false,
+    "start": -0.002, "acquisition_num": 800, "on_qubits": ["1"],"pi_calibration":true,"pulse_type":"square","add_photon": true
+  },
+  "sideband_f0g1rabi_freq_scan": {
+    "amp": 0.748, "freq": 3.3559985942642516,"length":375.0,
+    "stop": 0.010, "step": 0.0002, "pi_calibration": true,
+    "start": -0.010, "acquisition_num": 1000, "on_qubits": ["1"],"f0g1":true,"h0e1":false,"singleshot":false
+  },
+  "sideband_f0g1rabi": {
+    "amp": 0.748,
+    "stop": 1000.0, "step":10.0 , "pi_calibration": true,
+    "start": 0.0, "acquisition_num": 800, "on_qubits": ["1"],"singleshot":false,"freq":3.353311767012441
+  },
+  "sideband_f0g1ramsey": {
+    "stop": 300000.0, "step":20000.0, "singleshot": false,
+    "start":0.0, "ramsey_freq": 5e-6, "acquisition_num": 1001, "on_qubits": ["1"], "pi_calibration": true
+  },
+  "sideband_f0g1_pi_pi_offset": {
+    "stop": 6.28, "step": 0.2512, "singleshot": false,
+    "start": -6.28,  "acquisition_num": 801, "on_qubits": ["1"], "pi_calibration": true
+  },
+    "sideband_chi_ge_calibration_alltek2": {
+    "stop": 1400.0, "step": 20.0, "singleshot": false,"add_photon":true,
+    "start": 0.0, "ramsey_freq": 0.004, "acquisition_num": 800, "on_qubits": ["1"], "pi_calibration": true,"test_parity":true
+  },"wigner_tomography_test_sideband_alltek2": {
+    "stop": 2.0, "step": 0.02, "cavity_pulse_len": 15000.0, "singleshot": false,"phase": 1.57,
+    "start": 0.0, "acquisition_num": 900, "on_cavities": "1","on_qubits": ["1"],"state":"coherent_state",
+    "pi_calibration":true,"prep_cav_amp": 2.0,"prep_cav_len": 15000,"sweep_phase": false,"amp":0.3,"delay": 20.0,"states_list": ["0","0+1","1","alpha"]
+  },
+  "wigner_tomography_2d_sideband_alltek2": {
+  "startx": 0.0,"stopx": 0.4, "stepx": 0.05, "starty": 0.0,"stopy": 0.4, "stepy": 0.05,"offset_x":0.0,"offset_y":0.0,"cavity_pulse_len": 20000.0, "singleshot": false,"phase": 1.57,
+  "acquisition_num": 900, "on_cavities": "1","on_qubits": ["1"],"state":"0","pi_calibration":true,"prep_cav_amp": 2.0,"prep_cav_len": 17500.0,"prep_cav_phase": 0.0,"sweep_phase": false,"amp":0.3,
+  "delay": 20.0, "states_list": ["0","0+1","1","0+alpha","alpha"]
+  },
+  "wigner_tomography_2d_offset_sweep": {
+  "startx": -1.2,"stopx": 1.2, "stepx": 0.4, "starty": 0.8,"stopy": -1.6, "stepy": -0.4, "states_list": ["0+alpha","0+1"]
+  },
+  "sideband_cavity_spectroscopy_alltek2": {
+    "start": -0.0005,"stop": 0.0005, "step": 1e-5, "cavity_pulse_len": 15000.0, "singleshot": false,
+     "acquisition_num": 900, "on_cavities": "1","on_qubits": ["1"],"pi_calibration":true,"prep_cav_amp": 2.0,"prep_cav_len": 15000,"prep_cav_phase": 0.0,"excite_qubit": false
+  },
+  "sideband_number_splitting_pulse_probe_ge_tek2": {
+    "start": -0.004,"stop": 0.0005, "step": 5e-5,  "singleshot": false,
+     "acquisition_num": 900, "on_cavities": "1","on_qubits": ["1"],"pi_calibration":true,"prep_cav_amp": 2.0,"prep_cav_len": 17500,"prep_cav_phase": 0.0,
+    "states_list": ["0","0+1","1","alpha","0+alpha","alpha+-alpha"],"state":"alpha+-alpha","pulse_type": "gauss","pulse_length": 972,"amp": 0.002
+  },
+  "sideband_photon_number_distribution_tek2": {
+    "N_max":15, "singleshot": false,
+     "acquisition_num": 900, "on_cavities": "1","on_qubits": ["1"],"pi_calibration":true,"prep_cav_amp": 2.0,"prep_cav_len": 17500,"prep_cav_phase": 0.0,
+    "states_list": ["0","0+1","1","alpha","0+alpha","alpha+-alpha"],"state":"alpha+-alpha"
+  },
+  "wigner_tomography_alltek2_phase_sweep": {
+   "stop": 6.2830, "step": 0.31415, "start": 0.0
+},
+  "resonator_spectroscopy": {
+    "stop": 8.05555, "step": 0.0001, "pi_calibration": false,
+    "start": 8.04755, "acquisition_num": 2000, "on_qubits": ["1"],"singleshot":false,"pi_qubit": false
+  }
+}

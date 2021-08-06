@@ -383,14 +383,6 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=True)
 
-    def resonator_spectroscopy_mixedtones(self, sequencer):
-
-        sequencer.new_sequence(self)
-        self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
-        sequencer.end_sequence()
-
-        return sequencer.complete_mixedtones(self, plot=True)
-
     def pulse_probe_iq(self, sequencer):
 
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):

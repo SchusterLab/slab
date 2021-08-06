@@ -16,7 +16,7 @@ import os
 class M8195A(SocketInstrument):
     """Keysight M8195A Arbitrary Waveform Class"""
     # default_port=5025
-    def __init__(self, name='M8195A', address='', enabled=True,timeout = 1000):
+    def __init__(self, name='M8195A', address='', enabled=True, timeout = 1000):
         address = address.upper()
 
         SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=timeout)
@@ -930,7 +930,7 @@ class M8195A(SocketInstrument):
     def start_output(m8195a):
 
         for ii in [1,2,3,4]:
-            m8195a.set_enabled(ii,True)
+            m8195a.set_enabled(ii, True)
         m8195a.start_all_output()
 
     def get_sample_sequence(m8195a,num_channels,segment_length,sequence_length,dt):
@@ -955,7 +955,7 @@ class M8195A(SocketInstrument):
         return waveform_channel_array
 
 
-def upload_M8195A_sequence(m8195a,waveform_matrix,awg, path):
+def upload_M8195A_sequence(m8195a, waveform_matrix, awg, path):
 
     amplitudes = awg['amplitudes']
 

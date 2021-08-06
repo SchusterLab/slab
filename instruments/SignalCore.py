@@ -130,13 +130,13 @@ class SignalCore(Instrument):
         return done
 
     def set_power(self, pdBm = -10):
-        if pdBm < -30:
-            pdBm = -30
-            print('Warning: Available range: -30 to +13 dBm')
+        if pdBm < -40:
+            pdBm = -40
+            print('Warning: Available range: -40 to +30 dBm')
 
-        if pdBm > 13:
-           pdBm = 13
-           print('Warning: Available range: -30 to +13 dBm')
+        if pdBm > 30:
+            pdBm = 30
+            print('Warning: Available range: -40 to +30 dBm')
 
         done = self._dll.sc5511a_set_level(self._handle, pdBm)
         if done == 0:
@@ -263,7 +263,7 @@ class SignalCore(Instrument):
             print(self.name + self.address + ' : Failed to set RF2 standby mode, please check the device status!')
         return done
 
-    def set_list_mode(self, sss_mode=1, sweep_dir=0, tri_waveform=0, hw_tdrigger=0, step_on_hw_trig=0,
+    def set_list_mode(self, sss_mode=1, sweep_dir=0, tri_waveform=0, hw_trigger=0, step_on_hw_trig=0,
                         return_to_start=0, trig_out_enable=1, trig_out_on_cycle=0):
         """ Configures list mode
             sss_mode = 0: List mode, 1: Sweep mode
@@ -363,28 +363,20 @@ class SignalCore(Instrument):
 
 
 if __name__ == '__main__':
-    print('starting signalcores')
-    # sc1 = SignalCore(name="SignalCore",address="1000209F")
-    sc2 = SignalCore(name="SignalCore", address="100020A0")
-    sc2.set_power(13)
-    # sc3 = SignalCore(name="SignalCore", address="100020A1")
-    # # sc.set_clock_reference(ext_ref=False)
-    # sc1.set_power(-50)
-    # # sc.set_output_state(True)
-    # # sc.set_rf_mode(0)
-    # sc1.set_frequency(10e9)
-    sc2.set_frequency(3.8e9)
-    # sc3.set_frequency(12e9)
-    # # sc.set_list_start_freq(2000000000)
-    # # sc.set_list_stop_freq(10000000000)
-    # # sc.set_list_dwell_time(10)
-    # # sc.set_list_cycle_count(100)
-    # # sc.set_auto_level_disable(0)
-    # # sc.set_alc_mode(0)
-    # sc2.set_standby(0)
-    # # sc.set_rf2_frequency(1000)
-    # # sc.set_rf2_standby(0)
-    # sc1.close_device()
-    # sc2.close_device()
-    # sc3.close_device()
+    sc = SignalCore(name="SignalCore",address="10001E48")
+    # sc.set_clock_reference(ext_ref=False)
+    # sc.set_power(-50)
+    # sc.set_output_state(True)
+    # sc.set_rf_mode(0)
+    sc.set_frequency(10050000000)
+    # sc.set_list_start_freq(2000000000)
+    # sc.set_list_stop_freq(10000000000)
+    # sc.set_list_dwell_time(10)
+    # sc.set_list_cycle_count(100)
+    # sc.set_auto_level_disable(0)
+    # sc.set_alc_mode(0)
+    # sc.set_standby(0)
+    # sc.set_rf2_frequency(1000)
+    # sc.set_rf2_standby(0)
+    sc.close_device()
 
