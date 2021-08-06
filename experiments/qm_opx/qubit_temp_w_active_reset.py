@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config,  ge_IF, qubit_freq, biased_th_g_jpa
+from configuration_IQ import config,  ge_IF, qubit_freq, biased_th_g_jpa, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
@@ -22,8 +22,8 @@ a_max = 1.0
 da = 0.01
 a_vec= np.arange(a_min, a_max + da/2, da)
 
-avgs = 1000
-reset_time = 500000
+avgs = 2000
+reset_time = 750000
 simulation = 0
 
 simulation_config = SimulationConfig(
@@ -34,12 +34,12 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)

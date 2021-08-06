@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, rr_IF, rr_freq, biased_th_g_jpa, two_chi
+from configuration_IQ import config, rr_IF, rr_freq, biased_th_g_jpa, two_chi, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -25,12 +25,12 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -133,6 +133,8 @@ else:
     plt.figure()
     plt.plot(Ig**2)
     plt.plot(Ie**2)
+    plt.show()
+
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

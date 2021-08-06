@@ -61,16 +61,16 @@ def active_reset(biased_th, to_excited=False):
 # qubit_spec_prog:
 ###############
 
-f_min = -9.0e6
+f_min = -5.0e6
 f_max = 1.0e6
-df = 40e3
+df = 20e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
-avgs = 200
+avgs = 500
 reset_time = int(3.5e6)
 simulation = 0
 
-cav_len = 50
+cav_len = 100
 cav_amp = 0.8
 
 with program() as storage_spec:
@@ -143,27 +143,27 @@ else:
     #     plt.pause(5)
     #     plt.clf()
     #
-    result_handles.wait_for_all_values()
-    res = result_handles.get('res').fetch_all()
-    I = result_handles.get('I').fetch_all()
-
+    # result_handles.wait_for_all_values()
+    # res = result_handles.get('res').fetch_all()
+    # I = result_handles.get('I').fetch_all()
+    #
     plt.figure()
     plt.plot(f_vec, res, '.-')
     plt.show()
-
-    job.halt()
-
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    # data_path = 'S:\\_Data\\210326 - QM_OPX\\data\\'
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'number_splitting', suffix='.h5'))
-    print(seq_data_file)
-
-    with File(seq_data_file, 'w') as f:
-        f.create_dataset("I", data=I)
-        f.create_dataset("Q", data=res)
-        f.create_dataset("freq", data=f_vec)
-        f.create_dataset("amp", data=cav_amp)
-        f.create_dataset("time", data=cav_len*4)
-        f.create_dataset("two_chi", data=two_chi)
+    #
+    # job.halt()
+    #
+    # path = os.getcwd()
+    # data_path = os.path.join(path, "data/")
+    # # data_path = 'S:\\_Data\\210326 - QM_OPX\\data\\'
+    # seq_data_file = os.path.join(data_path,
+    #                              get_next_filename(data_path, 'number_splitting', suffix='.h5'))
+    # print(seq_data_file)
+    #
+    # with File(seq_data_file, 'w') as f:
+    #     f.create_dataset("I", data=I)
+    #     f.create_dataset("Q", data=res)
+    #     f.create_dataset("freq", data=f_vec)
+    #     f.create_dataset("amp", data=cav_amp)
+    #     f.create_dataset("time", data=cav_len*4)
+    #     f.create_dataset("two_chi", data=two_chi)

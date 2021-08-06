@@ -101,9 +101,9 @@ def transfer_function(omegas_in, cavity=False, qubit=True, pulse_length=2000):
     # pull calibration data from file, handling properly in case of multimode cavity
 
     if cavity==True:
-        fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
+        fn_file = cal_path + '\\00000_2021_7_30_cavity_square.h5'
     elif qubit==True:
-        fn_file = cal_path + '\\00000_2021_05_21_qubit_square.h5'
+        fn_file = cal_path + '\\00000_2021_07_30_qubit_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])

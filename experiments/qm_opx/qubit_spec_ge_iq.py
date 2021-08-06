@@ -11,9 +11,9 @@ from slab.dataanalysis import get_next_filename
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -4e6
-f_max = 4e6
-df = 40e3
+f_min = -100e3
+f_max = 100e3
+df = 2e3
 
 f_vec = np.arange(f_min, f_max + df/2, df)
 f_vec = f_vec + qubit_freq
