@@ -131,7 +131,7 @@ class BNCAWG(SocketInstrument):
         :param period: float
         :return: None
         """
-        self.write('PULS:PER %f'%(float(period)))
+        self.write('PULS:PER %f' % (float(period)))
 
     def get_period(self):
         """

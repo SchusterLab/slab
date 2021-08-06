@@ -125,7 +125,6 @@ class VisaInstrument(Instrument):
     def close(self):
         if self.enabled: self.instrument.close()
 
-
 class TelnetInstrument(Instrument):
     def __init__(self, name, address='', enabled=True, timeout=10):
         Instrument.__init__(self, name, address, enabled, timeout, **kwargs)

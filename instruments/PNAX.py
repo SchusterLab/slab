@@ -25,7 +25,7 @@ class N5242A(SocketInstrument):
     def __init__(self, name="E5071", address=None, enabled=True, **kwargs):
         SocketInstrument.__init__(self, name, address, enabled=enabled, recv_length=2 ** 20, **kwargs)
         self.query_sleep = 0.05
-        self.timeout = 100
+        self.timeout = 100000
 
     def get_id(self):
         return self.query('*IDN?')

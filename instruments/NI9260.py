@@ -146,7 +146,7 @@ class NI9260():
         samplingMode = DAQmx_Val_OnDemand if mode == 'on_demand' else DAQmx_Val_SampClk
         DAQmxSetSampTimingType(self.handle, samplingMode)
 
-    def set_volt(self, value, first_time=False):
+    def set_volt(self, values, channels="cDAQ9189-1C742CBMod1/ao0:1, cDAQ9189-1C742CBMod2/ao0:1", first_time=False):
         """
         Run after
         - self.__init__()
@@ -160,14 +160,20 @@ class NI9260():
         sampleRate = 25600
 
         if first_time:
-            self.setup_channel()
+            self.setup_channel(name=channels)
             self.set_write_regeneration_mode(True)
             self.set_sample_clock(runContinuous=True, clockSource="", sampleRate=sampleRate, sampleSize=sampleSize)
             self.set_write_relative_to('first')
             self.set_idle_output_setting("MaintainCurrentValue")
             self.set_bypass_memory_buffer(False)
 
-        self.set_waveform(value * np.ones(sampleSize), numSamplesPerChan=sampleSize, autostart=True)
+        Trap, Resg, Trig, Trapg = values
+        Constant = np.ones(sampleSize)
+        data = np.append(np.append(np.append(Trap * Constant, Resg * Constant), Trig * Constant), Trapg * Constant)
+        # Sine = 2E-3 * np.sin(2 * np.pi * np.arange(sampleSize) / (sampleSize-1))
+        # data = np.append(np.append(np.append(Trap + Sine, Resg + Sine), Trig + Sine), Trapg + Sine)
+
+        self.set_waveform(data, numSamplesPerChan=sampleSize, autostart=True)
         # DAQmxWriteAnalogScalarF64(self.handle, autoStart=False, timeout=self.query_sleep, value=float64(value), reserved=None)
 
     def set_waveform(self, waveformData, numSamplesPerChan, autostart=True):

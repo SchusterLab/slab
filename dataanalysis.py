@@ -191,7 +191,6 @@ def current_path_index(expt_path, prefix=''):
     return int(os.path.split(dirlist[-1])[-1].split('_')[-1])
 
 def get_next_filename(datapath,prefix,suffix=''):
-    #prefix is name of expt
     ii = next_file_index(datapath, prefix)
     return "%05d_" % (ii) + prefix +suffix
 

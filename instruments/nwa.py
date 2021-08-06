@@ -5,7 +5,7 @@ Created on Mon Aug 01 21:26:31 2011
 
 For the programming manual see http://ena.support.keysight.com/e5071c/manuals/webhelp/eng/
 """
-from slab.instruments import SocketInstrument, VisaInstrument
+from slab.instruments import SocketInstrument, VisaInstrument, SerialInstrument
 import time, glob, re
 import numpy as np
 import os.path

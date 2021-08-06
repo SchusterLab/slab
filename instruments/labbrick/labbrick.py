@@ -22,7 +22,7 @@ I32 = C.c_int32
 CFLT = C.c_float
 
 try:
-    LDA602dllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_atten.dll'
+    LDA602dllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_atten64.dll'
     LDADLL=C.CDLL(LDA602dllpath)
 except:
     print("Warning could not load LDA labbrick dll, check that dll located at '%s'" % LDA602dllpath)
@@ -36,7 +36,7 @@ except:
 
 try:
     #LMS103dllpath=r'S:\_Lib\python\scratch\labbrick\vnx_fmsynth.dll'
-    LPSdllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_dps.dll'
+    LPSdllpath=r'C:\_Lib\python\slab\instruments\labbrick\VNX_dps64.dll'
     LPSDLL=C.CDLL(LPSdllpath)
 except:
     print("Warning could not load LPS labbrick dll, check that dll located at '%s'" % LPSdllpath)
@@ -61,7 +61,7 @@ def LPS_get_device_info():
         serial=int(dll.fnLPS_GetSerialNumber(U32(devid)))
 #            devstr="Device: %d\tModel: %s\tSerial: %d" % (devid,model,serial)
 #            print devstr
-        devinfos.append({"model":model,"serial":serial,"devid":U32(devid)})
+        devinfos.append({"model":model.value,"serial":serial,"devid":U32(devid)})
     return devinfos
 
 
@@ -80,11 +80,11 @@ def LMS_get_device_info():
     devinfos=[]
     for devid in devids:
         model=C.create_string_buffer(8194)
-        dll.fnLMS_GetModelName(U32(devid),model)
+        dll.fnLMS_GetModelNameA(U32(devid),model)
         serial=int(dll.fnLMS_GetSerialNumber(U32(devid)))
 #            devstr="Device: %d\tModel: %s\tSerial: %d" % (devid,model,serial)
 #            print devstr
-        devinfos.append({"model":model,"serial":serial,"devid":U32(devid)})
+        devinfos.append({"model":model.value,"serial":serial,"devid":U32(devid)})
     return devinfos
 
 
@@ -107,13 +107,13 @@ def LDA_get_device_info():
         serial=int(dll.fnLDA_GetSerialNumber(U32(devid)))
 #            devstr="Device: %d\tModel: %s\tSerial: %d" % (devid,model,serial)
 #            print devstr
-        devinfos.append({"model":model,"serial":serial,"devid":U32(devid)})
+        devinfos.append({"model":model.value,"serial":serial,"devid":U32(devid)})
     return devinfos
 
 
 class LDA602(Instrument):
     'The interface to the Lab Brick Phase shifter'
-    dll=LDADLL
+    #dll=LDADLL
 
     def __init__(self,name='LDA602',address=9083,enabled=True):
         Instrument.__init__(self,name,address,enabled=True)
@@ -310,7 +310,7 @@ class LMS103(Instrument):
   
     def get_model_name(self):
         model_name=C.create_string_buffer(8194)
-        self.dll.fnLMS_GetModelName(self.devid,model_name)
+        self.dll.fnLMS_GetModelNameA(self.devid,model_name)
         return model_name.value
         
     def get_serial_number(self):
@@ -334,6 +334,9 @@ class LMS103(Instrument):
         
     def get_use_internal_reference(self):
         return bool(self.dll.fnLMS_GetUseInternalRef(self.devid))
+
+    def set_use_internal_reference(self, mode=True):
+        self.dll.fnLMS_SetUseInternalRef(self.devid, U8(int(mode)))
 
     def get_use_internal_pulse_mod(self): # This is broken -- Phil
         return bool(self.dll.LMS_GetUseInternalPulseMod(self.devid))
