@@ -28,7 +28,7 @@ class Experiment:
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
 
-        try: self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
+        try: self.pxi = ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
         except: print("Not connected to keysight PXI")
 
         try: self.drive_los = [im[lo] for lo in self.hardware_cfg['drive_los']]
