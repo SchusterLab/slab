@@ -20,6 +20,7 @@ from .TestInstruments import EchoInstrument,RandomInstrument
 from .TDS7104 import TekTDS7104
 from .RCA18 import MCRCA18
 from .multimeter import Keithley199
+from .minicircuits_rfswitch import MiniCircuitsSwitch
 
 try: from .AD5780PARDAC.DACInterface import AD5780_serial
 except: print("Could not load AD5780 dac ")
