@@ -26,7 +26,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # pull calibration data from file, handling properly in case of multimode cavity
     cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_7_30_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -58,7 +58,7 @@ t_vec = np.arange(T_min, T_max + dt/2, dt)
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
 avgs = 1000
-reset_time = int(3.5e6)
+reset_time = int(3.75e6)
 simulation = 0 #1 to simulate the pulses
 
 simulation_config = SimulationConfig(
@@ -99,7 +99,7 @@ def active_reset(biased_th, to_excited=False):
             discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
             wait(1000//4, 'rr')
 
-with program() as storage_t1:
+with program() as storage_t2:
 
     ##############################
     # declare real-time variables:
@@ -165,12 +165,12 @@ qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
 if simulation:
-    job = qm.simulate(storage_t1, SimulationConfig(15000))
+    job = qm.simulate(storage_t2, SimulationConfig(15000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 
 else:
-    job = qm.execute(storage_t1, duration_limit=0, data_limit=0)
+    job = qm.execute(storage_t2, duration_limit=0, data_limit=0)
     print ("Execution done")
 
     result_handles = job.result_handles

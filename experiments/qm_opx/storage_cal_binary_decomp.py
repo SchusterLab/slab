@@ -60,13 +60,13 @@ def active_reset(biased_th, to_excited=False):
 # qubit_spec_prog:
 ###############
 
-t_min = 10000
-t_max = 15000
-dt = 1000
+t_min = 50
+t_max = 100
+dt = 10
 t_vec = np.arange(t_min, t_max + dt/2, dt)
 print(len(t_vec))
 
-cav_amp = 0.002
+cav_amp = 0.4
 t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
 
 avgs = 2000

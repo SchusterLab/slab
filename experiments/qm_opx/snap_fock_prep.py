@@ -23,7 +23,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # pull calibration data from file, handling properly in case of multimode cavity
     cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_7_14_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_7_30_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -263,28 +263,28 @@ if simulation:
 else:
     """To run the actual experiment"""
     print("Experiment execution Done")
-    job = qm.execute(snap_3, duration_limit=0, data_limit=0)
+    job = qm.execute(snap_1, duration_limit=0, data_limit=0)
 
     result_handles = job.result_handles
 
-    result_handles.wait_for_all_values()
+    # result_handles.wait_for_all_values()
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
 
     plt.figure()
     plt.plot(f_vec, res, '.-')
     plt.show()
-
-    job.halt()
-
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'snap_fock_prep', suffix='.h5'))
-    print(seq_data_file)
-
-    with File(seq_data_file, 'w') as f:
-        f.create_dataset("I", data=I)
-        f.create_dataset("Q", data=res)
-        f.create_dataset("freq", data=f_vec)
-        f.create_dataset("two_chi", data=two_chi)
+    #
+    # job.halt()
+    #
+    # path = os.getcwd()
+    # data_path = os.path.join(path, "data/")
+    # seq_data_file = os.path.join(data_path,
+    #                              get_next_filename(data_path, 'snap_fock_prep', suffix='.h5'))
+    # print(seq_data_file)
+    #
+    # with File(seq_data_file, 'w') as f:
+    #     f.create_dataset("I", data=I)
+    #     f.create_dataset("Q", data=res)
+    #     f.create_dataset("freq", data=f_vec)
+    #     f.create_dataset("two_chi", data=two_chi)

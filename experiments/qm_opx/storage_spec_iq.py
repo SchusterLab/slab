@@ -1,4 +1,4 @@
-from configuration_IQ import config, storage_IF, biased_th_g_jpa
+from configuration_IQ import config, storage_IF, biased_th_g_jpa, disc_file
 from qm.qua import *
 from qm import SimulationConfig
 from qm import SimulationConfig, LoopbackInterface
@@ -19,11 +19,11 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -50e3
+f_min = -100e3
 f_max = 50e3
 df = 5e3
 
@@ -84,9 +84,9 @@ else:
 
     result_handles = job.result_handles
     # result_handles.wait_for_all_values()
-    res = result_handles.get('res').fetch_all()
-    I = result_handles.get('I').fetch_all()
-    plt.plot(f_vec, res, '.-')
-    job.halt()
-
+    # res = result_handles.get('res').fetch_all()
+    # I = result_handles.get('I').fetch_all()
+    # plt.plot(f_vec, res, '.-')
+    # job.halt()
+    #
 

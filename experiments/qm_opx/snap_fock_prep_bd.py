@@ -21,9 +21,9 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # takes input array of omegas and converts them to output array of amplitudes,
     # using a calibration h5 file defined in the experiment config
     # pull calibration data from file, handling properly in case of multimode cavity
-    cal_path = 'C:\\_Lib\\python\\slab\\experiments\\qm_opx\\drive_calibration'
+    cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_7_14_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_7_30_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -42,8 +42,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
 
     pulse_length = (alpha/omega_desired)
     """Returns time in units of 4ns for FPGA"""
-    return abs(pulse_length)//4
-
+    return abs(pulse_length)//4+1
 
 # Fock0 + Fock1: D(-1.31268847) S(0, pi) * D(1.88543008) |0>
 # Fock1: D(-0.580) * S(0,pi) * D(1.143) * |0>
@@ -190,7 +189,7 @@ def fock_prep(f_target=1):
             align("qubit", "rr", 'jpa_pump')
 
             play("pi2", "qubit") # unconditional
-            wait(t_chi//2-4, "qubit") # subtracted 3 to make the simulated waveforms accurate
+            wait(t_chi//2-3, "qubit") # subtracted 3 to make the simulated waveforms accurate
             with if_(bit1==0):
                 frame_rotation(np.pi, 'qubit')
                 play("pi2", "qubit")
@@ -230,7 +229,7 @@ def fock_prep(f_target=1):
 
     return num
 
-num = fock_prep(f_target=2)
+num = fock_prep(f_target=1)
 
 p_cav = [np.sum(num==0)*100/avgs, np.sum(num==1)*100/avgs, np.sum(num==2)*100/avgs, np.sum(num==3)*100/avgs]
 

@@ -22,35 +22,36 @@ long_redout_len = 2000
 readout_len = 3000
 
 qubit_LO = 4.6470*1e9
-qubit_freq = 4.747727567065449 *1e9
+qubit_freq = 4.743051666310451 *1e9
 ge_IF = int(qubit_freq - qubit_LO)
 
-qubit_ef_freq = 4.607396975213376 * 1e9
+qubit_ef_freq = 4.603510219526698* 1e9
 ef_IF = -int(qubit_LO-qubit_ef_freq) #LSB
-two_chi = -1.116*1e6
+two_chi = -1.1262*1e6
 
 ####---------------------####
 rr_LO = 8.1516 *1e9
 
 rr_freq_g = 8.051843423081882*1e9
 rr_freq_e = 8.051472688135474*1e9
-rr_freq = 8.05166680202724*1e9
+rr_freq = 8.051669190486942*1e9
 
 rr_IF = int(rr_LO - rr_freq)
 
 rr_amp = 1.0*0.047
 
 biased_th_g = 0.0017
-biased_th_g_jpa = 0.0030
+biased_th_g_jpa = 0.0032
 
 pump_LO = rr_LO
 pump_IF = int(100e6-15e6)
+# pump_IF = int(100e6)
 
-pump_amp = 1.0*0.060
+pump_amp = 1.0*0.072
 
 disc_file = 'ge_disc_params_jpa.npz'
 ####---------------------####
-storage_freq = 6.0112452222931045 *1e9
+storage_freq = 6.011215233526263*1e9
 storage_LO = 6.111e9
 storage_IF = int(abs(storage_freq-storage_LO))
 # storage_LO = storage_freq - storage_IF
@@ -65,20 +66,20 @@ gauss_len = 60
 gauss_amp = 0.45  #the mixer goes crazy above 0.95
 
 pi_len = 60
-pi_amp = 0.7677
+pi_amp = 0.7255
 
 half_pi_len = pi_len
 half_pi_amp = pi_amp/2
 
 pi_len_resolved = 3000
-Pi_amp_resolved = 0.0157
+Pi_amp_resolved = 0.0150
 
 pi_ef_len = 40
-pi_ef_amp = 0.3210
+pi_ef_amp = 0.6646
 
 opt_readout = "C:\\_Lib\\python\\slab\\experiments\\qm_opx\\pulses\\00019_readout_optimal_pulse.h5"
 with File(opt_readout,'r') as a:
-    opt_amp = 0.063*np.array(a['I_wf'])
+    opt_amp = 0.070*np.array(a['I_wf'])
 opt_len = len(opt_amp)
 pump_len = opt_len
 
@@ -98,16 +99,16 @@ config = {
                 4: {'offset': 0.0038},  # RR Q
                 5: {'offset': -0.021},  # sb I
                 6: {'offset': -0.058},  # sb Q
-                7: {'offset': -0.018},  # storage I
-                8: {'offset': -0.014},  # storage Q
+                7: {'offset': -0.0185},  # storage I
+                8: {'offset': -0.0145},  # storage Q
                 9: {'offset': -0.002},#0.0254},  # JPA Pump I
                 10: {'offset': 0.005},#-0.0375},  # JPA Pump Q
 
             },
             'digital_outputs': {},
             'analog_inputs': {
-                1: {'offset': (-39.10)/2**12, 'gain_db': 0},
-                2: {'offset': (-47.66)/2**12, 'gain_db': 0}
+                1: {'offset': (0)/2**12, 'gain_db': 0},
+                2: {'offset': (0)/2**12, 'gain_db': 0}
             }
         }
     },
