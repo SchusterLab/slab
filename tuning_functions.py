@@ -32,6 +32,11 @@ class Tuning:
             print("Couldn't load energy list and flux quanta arrays")
 
         try:
+            self.reslistarray = np.load(lattice_cfg["reslistarray_name"],allow_pickle = True)
+        except:
+            print("Couldn't load res list arrays")
+
+        try:
             self.FF_SWCTM = np.load(lattice_cfg["FF_SWCTM_name"])
             self.FF_SWCTM  = self.FF_SWCTM[0:self.N,0:self.N]
             print(self.FF_SWCTM.shape)

@@ -571,15 +571,9 @@ class PulseSequences:
             sequencer.new_sequence(self)
             self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
             for qubit_id in self.on_qubits:
-                sequencer.append('charge%s_I' % qubit_id,
-                                 Square(max_amp=self.expt_cfg['amp'], flat_len=self.expt_cfg['pulse_length'],
-                                        ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
-                                        phase=0))
-
-                sequencer.append('charge%s_Q' % qubit_id,
-                                 Square(max_amp=self.expt_cfg['amp'], flat_len=self.expt_cfg['pulse_length'],
-                                        ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
-                                        phase=self.pulse_info[qubit_id]['Q_phase']))
+                self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['pulse_length'],
+                           amp=self.expt_cfg['amp'], add_freq=dfreq, phase=0,
+                           pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 self.idle_q(sequencer, time=self.expt_cfg['delay'])
             self.readout_pxi(sequencer, self.on_qubits,overlap=False)
 
@@ -665,7 +659,7 @@ class PulseSequences:
             #add IQ pulse
             self.idle_q(sequencer, time=self.lattice_cfg['ff_info']['ff_settling_time'])
             for qubit_id in self.on_qubits:
-                self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+                self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
             self.idle_q(sequencer, time=self.expt_cfg['delay'])
 
             #synch all channels except flux before adding readout, then do readout
@@ -698,7 +692,7 @@ class PulseSequences:
                 #ppiq first if dt less than zero
                 for qubit_id in self.on_qubits:
                     self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'],
-                               amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+                               amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
 
                 # wait time dt, the apply flux pulse
                 for qb in range(8):
@@ -728,7 +722,7 @@ class PulseSequences:
                 #wait time dt, the apply ppiq
                 self.idle_q(sequencer, time=delt)
                 for qubit_id in self.on_qubits:
-                    self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type='square')
+                    self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['qb_pulse_length'], amp=self.expt_cfg['qb_amp'], add_freq=dfreq, phase=0, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
 
             #synch all channels except flux before adding readout, then do readout
             channels_excluding_fluxch = [ch for ch in self.channels if 'ff' not in ch]
