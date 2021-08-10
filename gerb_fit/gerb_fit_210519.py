@@ -251,7 +251,7 @@ def check_sync(filenb, expt_name, expt_num=0):
         fig.tight_layout()
         plt.show()
 
-def resonator_spectroscopy(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=False,plot=True):
+def resonator_spectroscopy(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=False,plot=True, ff=False):
     """Fits resonator_spectroscopoy data, then plots data and prints result
 
     Keyword arguments:
@@ -265,7 +265,10 @@ def resonator_spectroscopy(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_ph
     marker -- plot vertical line where you expect
     """
     # the 'with' statement automatically opens and closes File a, even if code in the with block fails
-    expt_name = "resonator_spectroscopy"
+    if ff:
+        expt_name = "ff_resonator_spectroscopy"
+    else:
+        expt_name = "resonator_spectroscopy"
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
         # get data in from json file
@@ -306,7 +309,7 @@ def resonator_spectroscopy(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_ph
                        expected_f=readout_f, show=show, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker,plot=plot)
 
 
-def resonator_spectroscopy_pi(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=False,plot=True):
+def resonator_spectroscopy_pi(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=False,plot=True, ff=False):
     """Fits resonator_spectroscopoy data, then plots data and prints result
 
     Keyword arguments:
@@ -320,7 +323,11 @@ def resonator_spectroscopy_pi(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag
     marker -- plot vertical line where you expect
     """
     # the 'with' statement automatically opens and closes File a, even if code in the with block fails
-    expt_name = "resonator_spectroscopy_pi"
+    if ff:
+        expt_name = "ff_resonator_spectroscopy_pi"
+    else:
+        expt_name = "resonator_spectroscopy_pi"
+
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
         # get data in from json file

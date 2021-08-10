@@ -364,14 +364,11 @@ class Experiment:
         return self.data
 
     def run_experiment_pxi_resspec(self, sequences, path, name, seq_data_file=None, update_awg=False, expt_num=0,
-                                   check_sync=False, save_errs=False, pi=False):
+                                   check_sync=False, save_errs=False, pi=False, ff=False):
         data_path = os.path.join(path, 'data/')
-        if pi:
-            seq_data_file = os.path.join(data_path,
-                                         get_next_filename(data_path, 'resonator_spectroscopy_pi', suffix='.h5'))
-        else:
-            seq_data_file = os.path.join(data_path,
-                                         get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, name, suffix='.h5'))
+
         self.expt_cfg = self.experiment_cfg[name]
         self.generate_datafile(path, name, seq_data_file=seq_data_file)
         self.set_trigger()
@@ -386,6 +383,7 @@ class Experiment:
         self.pxi.run()
         time.sleep(0.2)
         self.trig.set_output(state=True)
+
         # throw away first point
         if self.expt_cfg['singleshot']:
             foo = self.pxi.SSdata_many()
@@ -397,6 +395,7 @@ class Experiment:
             except:
                 pi_calibration = False
             foo = self.pxi.acquire_avg_data(pi_calibration=False)
+
         for qb in self.quantum_device_cfg["setups"]:
             read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
             for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq,
