@@ -1,6 +1,6 @@
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config, biased_th_g_jpa
+from configuration_IQ import config, biased_th_g_jpa, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -22,12 +22,12 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(5000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
@@ -117,18 +117,7 @@ else:
 
     result_handles = job.result_handles
 
-    # res_handle = result_handles.get('res')
-    # res_handle.wait_for_values(1)
-
     t_vec = 4*t_vec/1e3
-
-    # while(res_handle.is_processing()):
-    #     res = res_handle.fetch_all()
-    #     plt.pcolor(res, cmap="RdBu")
-    #     # plt.colorbar()
-    #     plt.xlabel(r'Time ($\mu$s)')
-    #     plt.ylabel(r'AWG amp. (a.u.)')
-    #     plt.pause(5)
 
     result_handles.wait_for_all_values()
     res = result_handles.get('res').fetch_all()

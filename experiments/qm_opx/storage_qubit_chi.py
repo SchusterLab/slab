@@ -16,7 +16,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # pull calibration data from file, handling properly in case of multimode cavity
     cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_7_30_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -44,7 +44,7 @@ dt = 250
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
-T_min = 0
+T_min = 4
 T_max = 30000
 times = np.arange(T_min, T_max + dt/2, dt)
 avgs = 1000
@@ -108,7 +108,6 @@ with program() as ramsey:
     ###############
     # the sequence:
     ###############
-    update_frequency('qubit', ge_IF+two_chi)
 
     with for_(n, 0, n < avgs, n + 1):
 
@@ -116,6 +115,7 @@ with program() as ramsey:
 
         with for_(t, T_min, t < T_max + dt/2, t + dt):
 
+            update_frequency('qubit', ge_IF)
             wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
             align('storage', 'rr', 'jpa_pump', 'qubit')
             active_reset(biased_th_g_jpa)
@@ -127,6 +127,7 @@ with program() as ramsey:
             align("storage", "qubit")
             play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58)) #249
             ##########################
+            update_frequency('qubit', ge_IF+two_chi)
             align('storage', 'qubit')
             play("pi2", "qubit")
             wait(t, "qubit")
@@ -157,12 +158,15 @@ else:
     job = qm.execute(ramsey, duration_limit=0, data_limit=0)
 
     result_handles = job.result_handles
-    result_handles.wait_for_all_values()
+
+    # result_handles.wait_for_all_values()
+
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
-    times = 4*times/1e3
+
     plt.figure()
-    plt.plot(times, res, '.-')
+    plt.plot( 4*times/1e3, res, '.-')
+    plt.show()
 
     job.halt()
 
@@ -174,7 +178,7 @@ else:
     with File(seq_data_file, 'w') as f:
         f.create_dataset("Q", data=res)
         f.create_dataset("I", data=I)
-        f.create_dataset("time", data=times)
+        f.create_dataset("time", data= 4*times/1e3)
         f.create_dataset("ramsey_freq", data=ramsey_freq)
         f.create_dataset("qubit_freq", data=qubit_freq)
         f.create_dataset("two_chi", data=two_chi)

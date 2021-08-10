@@ -216,7 +216,7 @@ with program() as binary_decomposition:
         align('storage', 'qubit')
 
         with for_(i, 0, i < num_pi_pulses_m, i+1):
-            wait(1000//4, "rr")
+
             align("qubit", "rr", 'jpa_pump')
             play("pi2", "qubit") # unconditional
             wait(t_chi//4, "qubit")
@@ -227,6 +227,7 @@ with program() as binary_decomposition:
             discriminator.measure_state("clear", "out1", "out2", bit3, I=I)
             save(bit3, bit3_st)
             save(bit3, res_prep_vec[i])
+            wait(1000//4, "rr")
 
         with for_(j, 0, j<num_pi_pulses_m,j+1):
             with for_(k, 0, k<prior_vec.length(), k+1):

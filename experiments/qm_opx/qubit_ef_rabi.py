@@ -119,8 +119,6 @@ else:
     job = qm.execute(ef_rabi_IQ, duration_limit=0, data_limit=0)
     print("Experiment done")
 
-    start_time = time.time()
-
     res_handles = job.result_handles
     res_handles.wait_for_all_values()
     I_handle = res_handles.get("I")
@@ -129,14 +127,10 @@ else:
     Q = Q_handle.fetch_all()
     print("Data collection done!")
 
-    stop_time = time.time()
-    print(f"Time taken: {stop_time-start_time}")
-
     job.halt()
 
     plt.plot(amps, I, '.-')
     plt.plot(amps, Q, '.-')
-
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

@@ -41,7 +41,7 @@ class VoltageSource:
         step_t = time.time() - start_t
         #print start,stop, start_t,step_t
         total_t = abs(stop - start) / sweeprate
-        steps = max(total_t / step_t,2)
+        steps = int(max(total_t / step_t,2))
         #print start,stop,start_t,step_t, total_t, steps
         steps = int(steps)
 

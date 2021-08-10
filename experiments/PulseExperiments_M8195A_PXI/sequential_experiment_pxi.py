@@ -23,11 +23,13 @@ from scipy import interpolate
 import pickle
 
 class SequentialExperiment:
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, path,analyze = False,show=True,P = 'Q', return_val=False):
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, path,
+                 analyze = False,show=True,P = 'Q', return_val=False, hvi=False):
 
         self.Is = []
         self.Qs = []
         self.show = show
+        self.hvi = hvi
 
         eval('self.' + experiment_name)(quantum_device_cfg, experiment_cfg, hardware_cfg,path)
         if analyze:
@@ -43,7 +45,6 @@ class SequentialExperiment:
         #     im = InstrumentManager()
 
     def histogram_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
-
         expt_cfg = experiment_cfg['histogram_sweep']
         sweep_amp = expt_cfg['sweep_amp']
         attens = np.arange(expt_cfg['atten_start'],expt_cfg['atten_stop'],expt_cfg['atten_step'])
@@ -62,7 +63,7 @@ class SequentialExperiment:
             for att in attens:
                 quantum_device_cfg['readout']['dig_atten'] = att
                 print ("Expt num = ",ii)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -71,7 +72,7 @@ class SequentialExperiment:
             for freq in freqs:
                 quantum_device_cfg['readout']['freq'] = freq
                 print("Expt num = ", ii)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -102,7 +103,7 @@ class SequentialExperiment:
                 quantum_device_cfg['readout']['freq'] = freq
                 print ("Frequency = ",freq,"GHz")
                 print("Expt num = ", ii)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -132,7 +133,7 @@ class SequentialExperiment:
                 print("pi pulse delay: " + str(pump_wait))
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -150,7 +151,7 @@ class SequentialExperiment:
         for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
             quantum_device_cfg['readout']['freq'] = freq
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -168,7 +169,7 @@ class SequentialExperiment:
         for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
             quantum_device_cfg['readout']['freq'] = freq
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -194,7 +195,7 @@ class SequentialExperiment:
             for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
                 quantum_device_cfg['readout']['freq'] = freq
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 Is_t.append(I)
                 Qs_t.append(Q)
@@ -217,13 +218,41 @@ class SequentialExperiment:
             else:experiment_cfg['ef_rabi']['acquisition_num'] = experiment_cfg['ef_rabi']['avgs_without_pi']
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
 
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
+
+
+    def cavity_temperature(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        experiment_name = 'weak_rabi'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'cavity_temperature', suffix='.h5'))
+
+        mode_add_freq = 2 * quantum_device_cfg['flux_pulse_info']['1']['chiby2pi_e'][
+            experiment_cfg['cavity_temperature']['mode_index']]
+        for add_freq in [0.0, mode_add_freq]:
+            experiment_cfg['weak_rabi']['add_freq'] = add_freq
+            if add_freq == 0.0:
+                experiment_cfg['weak_rabi']['acquisition_num'] = \
+                    experiment_cfg['cavity_temperature']['no_shift_acquisitions']
+            else:
+                experiment_cfg['weak_rabi']['acquisition_num'] = \
+                    experiment_cfg['cavity_temperature']['add_freq_more_acquisitions']
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
 
     def coherence_and_qubit_temperature(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         data_path = os.path.join(path, 'data/')
@@ -232,7 +261,7 @@ class SequentialExperiment:
         experiment_name = 't1'
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
         sequences = ps.get_experiment_sequences(experiment_name)
-        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
         I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
         self.Is.append(I)
         self.Qs.append(Q)
@@ -240,7 +269,7 @@ class SequentialExperiment:
         experiment_name = 'ramsey'
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
         sequences = ps.get_experiment_sequences(experiment_name)
-        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
         I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
         self.Is.append(I)
         self.Qs.append(Q)
@@ -248,7 +277,7 @@ class SequentialExperiment:
         experiment_name = 'echo'
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
         sequences = ps.get_experiment_sequences(experiment_name)
-        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
         I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
         self.Is.append(I)
         self.Qs.append(Q)
@@ -265,7 +294,7 @@ class SequentialExperiment:
             else:experiment_cfg['ef_rabi']['acquisition_num'] = 10000
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -286,7 +315,7 @@ class SequentialExperiment:
             else:experiment_cfg['sideband_transmon_reset']['acquisition_num'] = 50000
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -316,7 +345,7 @@ class SequentialExperiment:
                 experiment_cfg['sideband_transmon_reset']['wait_after_reset'] = wait
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -336,7 +365,7 @@ class SequentialExperiment:
             else:experiment_cfg['two_cavity_swap_ef_rabi']['acquisition_num'] = experiment_cfg['two_cavity_swap_ef_rabi']['avgs_without_pi']
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -357,7 +386,7 @@ class SequentialExperiment:
                 'two_cavity_swap_before_ef_rabi']['avgs_without_pi']
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -377,7 +406,7 @@ class SequentialExperiment:
             expt_cfg['qub_drive_after_len'] = time_len
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -399,7 +428,7 @@ class SequentialExperiment:
             quantum_device_cfg['qubit'][expt_cfg['on_qubits'][0]]['anharmonicity'] = alpha
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -423,7 +452,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['length'] = length
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -448,7 +477,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['freq'] = freq
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -477,7 +506,7 @@ class SequentialExperiment:
             print("Sideband length set to", length_sc*amp_sc/amp,'ns')
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -502,7 +531,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['cavity_amp'] = amp
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -527,7 +556,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['phase'] = phase
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -552,7 +581,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['phase'] = phase
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -577,7 +606,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['phase'] = phase
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -602,7 +631,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['phase'] = phase
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -631,7 +660,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['offset_y'] = offset_y
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -658,7 +687,7 @@ class SequentialExperiment:
             print ("Sideband Ramsey start,stop,step = ",experiment_cfg[experiment_name]['start'],experiment_cfg[experiment_name]['stop'],experiment_cfg[experiment_name]['step'])
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -687,7 +716,7 @@ class SequentialExperiment:
 
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -715,7 +744,7 @@ class SequentialExperiment:
 
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -746,7 +775,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['length'] = lengthlist[ii]
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -778,7 +807,7 @@ class SequentialExperiment:
 
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -805,7 +834,7 @@ class SequentialExperiment:
                     quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['t1s'][ii] * 5)
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -836,7 +865,7 @@ class SequentialExperiment:
                     quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['t1s'][ii] * 5)
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -863,7 +892,7 @@ class SequentialExperiment:
                     quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['t1s'][ii] * 5)
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -890,7 +919,7 @@ class SequentialExperiment:
                     quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['t1s'][ii] * 5)
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -917,7 +946,7 @@ class SequentialExperiment:
                     quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['t1s'][ii] * 5)
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -945,7 +974,7 @@ class SequentialExperiment:
                     quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['t1s'][ii] * 5)
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -976,7 +1005,7 @@ class SequentialExperiment:
                     quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['t1s'][ii] * 5)
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1005,7 +1034,7 @@ class SequentialExperiment:
 
             yoko.set_volt(voltage)
             print ("YOKO voltage set to: ",voltage)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1036,7 +1065,7 @@ class SequentialExperiment:
         
         for jj in range(101):
             im['RFsoc'].load_rabi_pulse(jj)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1067,7 +1096,7 @@ class SequentialExperiment:
 
         for jj in range(101):
             im['RFsoc'].load_ramsey_pulse(jj)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1096,7 +1125,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['snap_phase'] = phase
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -1106,7 +1135,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['prep_cav_len'] = swp_cfg['len_list'][ii]
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -1115,7 +1144,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['prep_cav_amp'] = amp
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -1148,7 +1177,7 @@ class SequentialExperiment:
             expt_cfg['prep_cav_len'] = sigmalist[ii]
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1171,7 +1200,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['state'] = state
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1195,7 +1224,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['snap_phase'] = phase
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -1205,7 +1234,7 @@ class SequentialExperiment:
                 expt_cfg['prep_cav_len'] = float(cav_len)
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -1215,7 +1244,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['prep_cav_amp'] = amp
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -1246,7 +1275,7 @@ class SequentialExperiment:
             quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['cavity_freqs'][expt_cfg['mode_index']] = freq
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1269,7 +1298,7 @@ class SequentialExperiment:
             quantum_device_cfg['flux_pulse_info'][expt_cfg['on_qubits'][0]]['cavity_freqs'][expt_cfg['mode_index']] = freq
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1294,7 +1323,7 @@ class SequentialExperiment:
                 expt_cfg['mode_index']] = freq
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1317,7 +1346,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['snap_cav_amps'][1] = amp2
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -1346,7 +1375,7 @@ class SequentialExperiment:
             #experiment_cfg[experiment_name]['stop'] = int((0.3 / amp * 101.0 * 3)/0.0625)*0.0625
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1369,7 +1398,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['amp'] = amp
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1393,7 +1422,7 @@ class SequentialExperiment:
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
             print("got sequences")
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             print("past experiment")
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             print("got I, Q")
@@ -1420,7 +1449,7 @@ class SequentialExperiment:
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
                 print("got sequences")
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 print("past experiment")
                 I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 print("got I, Q")
@@ -1433,7 +1462,7 @@ class SequentialExperiment:
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
                 print("got sequences")
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 print("past experiment")
                 I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 print("got I, Q")
@@ -1486,7 +1515,7 @@ class SequentialExperiment:
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
                 print("got sequences")
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 print("past experiment")
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 print("got I, Q")
@@ -1500,7 +1529,7 @@ class SequentialExperiment:
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
                 print("got sequences")
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 print("past experiment")
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 print("got I, Q")
@@ -1526,7 +1555,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['evol_cav_len'] = evol_len
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             print("got I, Q")
             self.Is.append(I)
@@ -1556,7 +1585,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['calibrations']['cavity'] = sc
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1581,7 +1610,7 @@ class SequentialExperiment:
             print ("Cavity drive ramsey amp = ",amp)
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1605,7 +1634,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['mode_index'] = mode
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -1615,7 +1644,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['mode_index'] = mode
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -1635,7 +1664,7 @@ class SequentialExperiment:
         for ii in range (80):
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1659,7 +1688,7 @@ class SequentialExperiment:
                 experiment_cfg['cavity_temp_rabi']['acquisition_num'] = 2000
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1683,7 +1712,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['probe_level'] = probe_level
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1709,7 +1738,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['probe_level'] = probe_level
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1739,7 +1768,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['step'] = step
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1763,7 +1792,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['probe_level'] = probe_level
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1787,7 +1816,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['cavity_pulse_len'] = cav_pulse_len
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1815,7 +1844,7 @@ class SequentialExperiment:
                                                       (expt + 1) * swp_cfg['points_per_expt'] * expt_cfg['step'] - 1e-10
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1843,7 +1872,7 @@ class SequentialExperiment:
                                                       (expt + 1) * swp_cfg['points_per_expt'] * expt_cfg['step'] - 1e-10
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1866,7 +1895,7 @@ class SequentialExperiment:
             print ("tomgraphy point 2 index  = ",index)
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1889,7 +1918,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['cavity_pulse_len'] = cav_pulse_len
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1912,7 +1941,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['detuning'] = detuning
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1938,7 +1967,7 @@ class SequentialExperiment:
                                                       (expt + 1) * swp_cfg['points_per_expt'] * expt_cfg['step'] - 1e-10
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1965,7 +1994,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['dressing_drive_offset_freq'] = add_dressing_freq
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -1993,7 +2022,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['rabi_len'] = rabi_len
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2020,7 +2049,7 @@ class SequentialExperiment:
             experiment_cfg[experiment_name]['rabi_len'] = rabi_len
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2046,7 +2075,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['dressing_drive_offset_freq'] = df
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -2056,7 +2085,7 @@ class SequentialExperiment:
                 experiment_cfg[experiment_name]['cavity_amp'] = swp_cfg['cavity_amps'][ii]
                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
                 sequences = ps.get_experiment_sequences(experiment_name)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
                 I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
                 self.Is.append(I)
                 self.Qs.append(Q)
@@ -2081,7 +2110,7 @@ class SequentialExperiment:
             
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2112,7 +2141,7 @@ class SequentialExperiment:
 
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2142,7 +2171,7 @@ class SequentialExperiment:
 
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2172,7 +2201,7 @@ class SequentialExperiment:
 
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2202,7 +2231,7 @@ class SequentialExperiment:
 
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2232,7 +2261,7 @@ class SequentialExperiment:
 
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2260,7 +2289,7 @@ class SequentialExperiment:
                                                       (expt + 1) * swp_cfg['points_per_expt'] * expt_cfg['step'] - 1e-10
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2288,7 +2317,7 @@ class SequentialExperiment:
                                                       (expt + 1) * swp_cfg['points_per_expt'] * expt_cfg['step'] - 1e-10
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2314,7 +2343,7 @@ class SequentialExperiment:
 
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2342,7 +2371,7 @@ class SequentialExperiment:
                                                       (expt + 1) * swp_cfg['points_per_expt'] * expt_cfg['step'] - 1e-10
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)
@@ -2377,7 +2406,7 @@ class SequentialExperiment:
                                                           1e-10
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
             self.Is.append(I)
             self.Qs.append(Q)

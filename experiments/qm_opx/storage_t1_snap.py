@@ -22,7 +22,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # pull calibration data from file, handling properly in case of multimode cavity
     cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_7_14_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_7_30_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -68,7 +68,7 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=Tr
 def active_reset(biased_th, to_excited=False):
     res_reset = declare(bool)
 
-    wait(51000//4, "jpa_pump")
+    wait(1000//4, "jpa_pump")
     align("rr", "jpa_pump")
     play('pump_square', 'jpa_pump')
     discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)

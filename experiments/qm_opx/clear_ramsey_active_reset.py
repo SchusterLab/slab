@@ -59,7 +59,7 @@ dt = 25
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
-T_min = 0
+T_min = 4
 T_max = 750
 times = np.arange(T_min, T_max + dt/2, dt)
 
@@ -69,8 +69,8 @@ wait_dt = 25
 wait_tvec = np.arange(wait_tmin, wait_tmax + wait_dt/2, wait_dt)
 t_buffer = 250
 
-avgs = 200
-reset_time = 500000
+avgs = 500
+reset_time = 750000
 simulation = 0
 with program() as ramsey:
 
@@ -137,7 +137,7 @@ else:
     job = qm.execute(ramsey, duration_limit=0, data_limit=0)
 
     res_handles = job.result_handles
-    res_handles.wait_for_all_values()
+    # res_handles.wait_for_all_values()
     res = res_handles.get('res').fetch_all()
     I = res_handles.get('I').fetch_all()
 

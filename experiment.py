@@ -69,7 +69,7 @@ class Experiment:
            proxy functionality not implemented yet"""
         if data_file ==None:
             data_file = self.fname
-        f = SlabFile(data_file)
+        f = SlabFile(data_file, 'w')
         if group is not None:
             f = f.require_group(group)
         if 'config' not in f.attrs:
