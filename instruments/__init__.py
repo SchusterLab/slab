@@ -124,3 +124,15 @@ try: from .lockin import SR844
 except: print("Could not load SR844 driver")
 try: from .PressureGauge import PressureGauge
 except: print("Could not load PressureGauge driver")
+try: from .RGA100 import RGA100
+except: print('Could not load SRS RGA100 driver')
+try: from .AG850 import AG850
+except: print("Could not load AG850 Driver")
+try: from .Autonics import TM4
+except: print("Could not load Autonics TM4 Driver")
+try: from .Oerlikon import Center_Three
+except: print("Could not load Oerlikon Center Three Driver")
+try: from .TempScanner import HP34970A
+except: print("Could not load HP34970A Driver")
+try: from .PLC import FurnacePLC
+except: print("Could not load Furnace PLC")
