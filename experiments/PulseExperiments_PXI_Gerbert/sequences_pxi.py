@@ -469,6 +469,7 @@ class PulseSequences:
         self.readout_pxi(sequencer, setup, overlap=False)
         sequencer.sync_channels_time(self.channels)
         sequencer.end_sequence()
+        return sequencer.complete(self, plot=True)
 
     def ff_sweep_j(self, sequencer, perc_flux_vec):
         qb_list = self.expt_cfg["Mott_qbs"]
@@ -635,7 +636,7 @@ class PulseSequences:
         self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
         if self.expt_cfg["pulse_inside_flux"]:
             pre_flux_time = sequencer.get_time('digtzr_trig')  # could just as well be any ch
-
+            self.idle_q(sequencer, time=self.lattice_cfg["ff_info"]["ff_settling_time"])
             channels_excluding_fluxch = [ch for ch in self.channels if 'ff' not in ch]
             self.readout_pxi(sequencer, self.on_qubits, overlap=False, synch_channels=channels_excluding_fluxch)
 
@@ -644,17 +645,20 @@ class PulseSequences:
             post_flux_time = sequencer.get_time('digtzr_trig')  # could just as well be any ch
 
             if self.expt_cfg["ff_len"] == "auto":
-                ff_len = [post_flux_time - pre_flux_time + self.lattice_cfg['ff_info']['ff_pulse_padding']] * 8
+                ff_len = [post_flux_time - pre_flux_time +self.lattice_cfg['ff_info']['ff_pulse_padding']] * 8
             else:
                 ff_len = np.asarray(
-                    self.lattice_cfg['ff_info']["ff_len"] + self.lattice_cfg['ff_info']['ff_pulse_padding'])
-            self.ff_square_and_comp(sequencer, ff_len=ff_len)
+                    np.array(self.lattice_cfg['ff_info']["ff_len"]) + self.lattice_cfg['ff_info']['ff_pulse_padding'])
+            self.ff_pulse(sequencer, ff_len, pulse_type=self.expt_cfg["ff_pulse_type"],
+                          flux_vec=self.expt_cfg["ff_vec"], flip_amp=False)
+            self.ff_pulse(sequencer, ff_len, pulse_type=self.expt_cfg["ff_pulse_type"],
+                          flux_vec=self.expt_cfg["ff_vec"], flip_amp=True)
 
         else:
             sequencer.sync_channels_time(self.channels)
             if self.expt_cfg["ff_len"] == "auto":
                 ff_len = np.asarray(
-                    self.lattice_cfg['ff_info']["ff_len"]) + self.lattice_cfg['ff_info']['ff_pulse_padding']
+                    np.array(self.lattice_cfg['ff_info']["ff_len"])) + self.lattice_cfg['ff_info']['ff_pulse_padding']
             else:
                 ff_len = self.expt_cfg["ff_len"]
 

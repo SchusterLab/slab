@@ -103,7 +103,7 @@ def iq_process(f, raw_I, raw_Q, ran=1, phi=0, sub_mean=True):
     return I, Q, mag, phase
 
 
-def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], mag_phase_plot=False, polar=False, title='', marker=False,plot=True):
+def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], domain=None, mag_phase_plot=False, polar=False, title='', marker=False,plot=True):
     """Fits frequency data to a lorentzian, then plots data and prints result
 
     :param f -- data frequency
@@ -142,7 +142,7 @@ def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], mag_phase_p
             ax3.set_xlabel('Freq(GHz)')
             ax3.set_ylabel('Magnitude (V)')
             ax3.set_xlim(f[0], f[-1])
-            p = fitlor(f, np.square(mag), showfit=False)
+            p = fitlor(f, np.square(mag), showfit=False, domain=domain)
             ax3.plot(f, sqrt(lorfunc(p, f)), 'k.-', label='fit')
             ax3.axvline(p[2], color='k', linestyle='dashed', label="fit freq")
             ax3.axvline(expected_f, color='r', linestyle='dashed', label="expected freq")
@@ -156,7 +156,7 @@ def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], mag_phase_p
             ax2 = ax.twinx()
             ax2.plot(f, mag, 'k.-', alpha=0.3, label='mag')
             ax2.set_ylabel('Mag (V)')
-            p = fitlor(f, np.square(mag), showfit=False)
+            p = fitlor(f, np.square(mag), showfit=False, domain=domain)
             ax2.plot(f, sqrt(lorfunc(p, f)), 'k--', label='fit')
             ax2.axvline(p[2], color='k', linestyle='dashed', label="fit  freq")
             ax2.axvline(expected_f, color='r', linestyle='dashed', label="expected  freq")
@@ -752,7 +752,83 @@ def melting_single_readout_full_ramp(filenb, phi=0, sub_mean=False, show=["I"], 
         if fit_J:
             return J
 
-def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None,plot = True, ff=False):
+def melting_single_readout_full_ramp_v2(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
+                                     debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
+
+    expt_name = "melting_single_readout_full_ramp"
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
+
+        I_raw = np.array(a["I"])
+        Q_raw = np.array(a["Q"])
+        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+        t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
+            :(len(I_raw))]
+
+        J = []
+
+        for s in show:
+            if pi_cal:
+                pi_file = a.attrs['pi_cal_fname']
+                with File(pi_file, 'r') as p:
+                    I_raw_P = np.array(p["I"])
+                    Q_raw_P = np.array(p["Q"])
+                    (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
+                print(I_P)
+                I = np.concatenate((I, I_P))
+                Q = np.concatenate((Q, Q_P))
+                plt.plot(t, eval(s)[0:-2])
+                if rabi_vals != None:
+                    plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
+                    plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
+                if fit_J:
+                    res = fit_sin(t, eval(s)[0:-2])
+                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+                    plt.plot(t, res['fitfunc'](t))
+                plt.axhline(y=eval(s)[-2], c='g', label="g")
+                plt.axhline(y=eval(s)[-1], c='r', label="e")
+                plt.legend()
+                plt.xlabel('time (ns)')
+                plt.ylabel(s + " volts")
+                plt.show()
+
+                if norm_plot:
+                    plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
+                    plt.ylim((-0.1, 1))
+                    plt.xlabel('time (ns)')
+                    plt.ylabel(s + ' normalized')
+                    plt.legend()
+            #             plt.show()
+            else:
+                plt.title(s)
+                plt.plot(t, eval(s))
+                if fit_J:
+                    res = fit_sin(t, eval(s)[0:-2])
+                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+                    plt.plot(t, res['fitfunc'](t))
+                plt.show()
+        if fit_J:
+            return J
+        else:
+            return I,Q
+
+
+def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], domain=None,mag_phase_plot=False, polar=False, debug=False, marker=None,plot = True, ff=False):
     """Fits pulse_probe_iq data, then plots data and prints result
     :param filelist -- the data runs you want to analyze and plot
     :paramphi -- in degrees, angle by which you want to rotate IQ
@@ -811,7 +887,7 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot
         # plot and fit data
         title = expt_name
         p = plot_freq_data(f=f, I=I, Q=Q, mag=mag, phase=phase,
-                       expected_f=nu_q, show=show, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker,plot=plot)
+                       expected_f=nu_q, show=show, domain=domain, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker,plot=plot)
         return p
 
 def ff_pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None):

@@ -33,6 +33,9 @@ class Tuning:
 
         try:
             self.reslistarray = np.load(lattice_cfg["reslistarray_name"],allow_pickle = True)
+            self.qb_reslistarray = np.load(lattice_cfg["qb_reslistarray_name"], allow_pickle=True)
+            self.generate_omega_res_functions(self.qb_reslistarray, self.reslistarray)
+
         except:
             print("Couldn't load res list arrays")
 
@@ -146,6 +149,18 @@ class Tuning:
                                      np.diff(energylistarray[i]) / np.diff(flxquantaarray[i]) , kind='cubic'))
 
         return [self.phitoomega_list,self.omegatophi_list,self.dphidomega_list,self.domegadphi_list]
+
+    def generate_omega_res_functions(self, qb_reslistarray, reslistarray):
+        self.restoomega_list = []
+        self.omegatores_list = []
+
+        for i in range(self.N):
+            self.restoomega_list.append(
+                scipy.interpolate.interp1d(reslistarray[i], qb_reslistarray[i], kind='cubic', ))
+            self.omegatores_list.append(
+                scipy.interpolate.interp1d(qb_reslistarray[i], reslistarray[i], kind='cubic', ))
+
+        return [self.restoomega_list,self.omegatores_list]
 
 
     def omega_to_V_thru_LocalSlopes(self, Vtype, jump_freq_list):
