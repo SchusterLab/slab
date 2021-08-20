@@ -6,7 +6,7 @@ This repository houses experiment code for [Schuster Lab](http://schusterlab.uch
 
 ## Setup
 ```
-pip install git+https://github.com/SchusterLab/slab
+clone this repository into C:\_Lib\python\slab and add that directory to your python path
 ```
 
 
