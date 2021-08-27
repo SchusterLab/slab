@@ -26,20 +26,20 @@ try: from .AD5780PARDAC.DACInterface import AD5780_serial
 except: print("Could not load AD5780 dac ")
 try: from .ArduinoADC import ArduinoADC
 except: print("Could not load ArduinoADC")
-# try: from .labbrick.labbrick import LMS_get_device_info,LMS103,LPS802,LDA602
-# except: print("Could not load labbrick")
+try: from .labbrick.labbrick import LMS_get_device_info,LMS103,LPS802,LDA602
+except: print("Could not load labbrick")
 try: from .relaybox.relaybox import RelayBox
 except: print("Could not load relaybox")
 try: from .relaybox.heliummanifold import HeliumManifold
 except: print("Could not load heliummanifold")
 try: from .relaybox.RFSwitch import RFSwitch
 except: print("Could not load heliummanifold")
-# try: from .bkpowersupply import BKPowerSupply
-# except: print("Could not load BKPowerSupply")
-# try: from .bkpowersupply import BKPowerSupplynew
-# except: print("Could not load BKPowerSupply")
-# try: from .bkpowersupply import BKPowerSupply2
-# except: print("Could not load BKPowerSupply")
+try: from .bkpowersupply import BKPowerSupply
+except: print("Could not load BKPowerSupply")
+try: from .bkpowersupply import BKPowerSupplynew
+except: print("Could not load BKPowerSupply")
+try: from .bkpowersupply import BKPowerSupply2
+except: print("Could not load BKPowerSupply")
 try: from .KEPCOPowerSupply import KEPCOPowerSupply
 except: print("Could not load KEPCOPowerSupply")
 try: from .voltsource import SRS900
@@ -128,8 +128,8 @@ try: from .RGA100 import RGA100
 except: print('Could not load SRS RGA100 driver')
 try: from .AG850 import AG850
 except: print("Could not load AG850 Driver")
-# try: from .Autonics import TM4
-# except: print("Could not load Autonics TM4 Driver")
+try: from .Autonics import TM4
+except: print("Could not load Autonics TM4 Driver")
 try: from .Oerlikon import Center_Three
 except: print("Could not load Oerlikon Center Three Driver")
 try: from .TempScanner import HP34970A
