@@ -8,6 +8,9 @@ Author: Andrew Oriani
 
 import slab
 from slab import *
+
+#NOTE: If using this driver you must pip install crcmod for crc check functionality
+
 import crcmod
 from crcmod.predefined import *
 import time
