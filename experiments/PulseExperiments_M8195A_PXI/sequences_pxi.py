@@ -3511,7 +3511,6 @@ class PulseSequences:
                 if self.expt_cfg['use_spec_pulse_from_pulse_info']:
                     self.pi_q_resolved(sequencer, qubit_id, add_freq=df+self.expt_cfg['add_freq'], phase=0.0,
                                            use_weak_drive=self.expt_cfg['use_weak_drive'])
-
                 else:
                     if self.expt_cfg['use_weak_drive']:
                         self.gen_q_weak(sequencer, qubit_id, len=self.expt_cfg['pulse_length'], amp=self.expt_cfg['amp'],
