@@ -12,7 +12,7 @@ from .nwa import E5071
 from .PNAX import N5242A
 from .RhodeSchwarz import RhodeSchwarz
 from .rfgenerators import N5183B,E8257D,BNC845
-from .cryostat import Triton
+from .cryostat import Triton_old
 from .awg import *
 from .spec_analyzer.spectrum_analyzer import *
 from .ipsmagnet import *
@@ -24,6 +24,7 @@ from .minicircuits_rfswitch import MiniCircuitsSwitch
 
 try: from .AD5780PARDAC.DACInterface import AD5780_serial
 except: print("Could not load AD5780 dac ")
+<<<<<<< HEAD
 try: from .ArduinoADC import ArduinoADC
 except: print("Could not load ArduinoADC")
 try: from .labbrick.labbrick import LMS_get_device_info,LMS103,LPS802,LDA602
@@ -67,22 +68,13 @@ try: from .lockin import SR844
 except: print("Could not load SR844 driver")
 try: from .PressureGauge import PressureGauge
 except: print("Could not load PressureGauge driver")
+=======
+>>>>>>> a354ea817d940bf00f0576f1a1d15fe6e8e0c085
 try: from.SignalCore import SignalCore
 except: print("Could not load SignalCore")
 from .spectrumanalyzer import E4440
 try: from .nwa import E5071, E5071_USB
 except: print("Could not load E5071")
-from .PNAX import N5242A
-from .rfgenerators import N5183B,E8257D,BNC845
-from .cryostat import Triton
-from .awg import *
-from .spec_analyzer.spectrum_analyzer import *
-from .ipsmagnet import *
-from .TestInstruments import EchoInstrument,RandomInstrument
-from .TDS7104 import TekTDS7104
-from .RCA18 import MCRCA18
-from .multimeter import Keithley199
-
 try: from .AD5780DAC.AD5780 import AD5780
 except: print("Could not load AD5780 dac")
 try: from .ArduinoADC import ArduinoADC
@@ -136,3 +128,5 @@ try: from .TempScanner import HP34970A
 except: print("Could not load HP34970A Driver")
 try: from .PLC import FurnacePLC
 except: print("Could not load Furnace PLC")
+try: from .Triton import Triton
+except: print("Could not load Oxford Trition driver")
