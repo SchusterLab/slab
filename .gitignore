@@ -26,4 +26,3 @@ _test
 
 # h5 files
 *.h5
-instruments/__init__.py
