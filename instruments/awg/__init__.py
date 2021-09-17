@@ -16,10 +16,10 @@ try:
     from .M8195A import M8195A, upload_M8195A_sequence
 except:
     print("Warning failed to import M8195A")
-try:
-    from .chase import DAx22000,DAx22000Segment
-except:
-    print("Warning failed to import Chase DAx22000")
+#try:
+#    from .chase import DAx22000,DAx22000Segment
+#except:
+#    print("Warning failed to import Chase DAx22000")
 
 try:
     from .PXDAC4800 import write_PXDAC4800_file
