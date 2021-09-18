@@ -229,20 +229,24 @@ class SequentialExperiment:
 
 
     def cavity_temperature(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
-        experiment_name = 'weak_rabi'
-        expt_cfg = experiment_cfg[experiment_name]
+        if experiment_cfg['cavity_temperature']['sweep_amp']:
+            experiment_name = 'weak_rabi_sweep_amp'
+            expt_cfg = experiment_cfg[experiment_name]
+        else:
+            experiment_name = 'weak_rabi'
+            expt_cfg = experiment_cfg[experiment_name]
         data_path = os.path.join(path, 'data/')
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'cavity_temperature', suffix='.h5'))
 
         mode_add_freq = 2 * quantum_device_cfg['flux_pulse_info']['1']['chiby2pi_e'][
             experiment_cfg['cavity_temperature']['mode_index']]
         for add_freq in [0.0, mode_add_freq]:
-            experiment_cfg['weak_rabi']['add_freq'] = add_freq
+            expt_cfg['add_freq'] = add_freq
             if add_freq == 0.0:
-                experiment_cfg['weak_rabi']['acquisition_num'] = \
+                expt_cfg['acquisition_num'] = \
                     experiment_cfg['cavity_temperature']['no_shift_acquisitions']
             else:
-                experiment_cfg['weak_rabi']['acquisition_num'] = \
+                expt_cfg['acquisition_num'] = \
                     experiment_cfg['cavity_temperature']['add_freq_more_acquisitions']
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
             sequences = ps.get_experiment_sequences(experiment_name)
