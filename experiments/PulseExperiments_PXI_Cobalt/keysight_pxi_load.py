@@ -19,7 +19,7 @@ Module 10 is used for reacout.
 # %pylab inline
 from slab.instruments.keysight import KeysightLib as key
 from slab.instruments.keysight import keysightSD1 as SD1
-from slab.experiments.PulseExperiments_PXI.sequences_pxi import PulseSequences
+from slab.experiments.PulseExperiments_PXI_Cobalt.sequences_pxi import PulseSequences
 from slab.experiments.HVIExperiments import HVIExpLib as exp
 import time
 import numpy as np
@@ -50,7 +50,7 @@ class KeysightDoubleQubit:
                                        8: key.ModuleType.OUTPUT,
                                        7: key.ModuleType.OUTPUT,
                                        9: key.ModuleType.OUTPUT,
-                                       10: key.ModuleType.INPUT})
+                                       10: key.ModuleType.INPUT}, hvi=False)
         self.hardware_cfg = hardware_cfg
         self.out_mod_no_A = hardware_cfg['awg_info']['keysight_pxi']['out_mod_no'][0]
         self.out_mod_no_B = hardware_cfg['awg_info']['keysight_pxi']['out_mod_no'][1]
@@ -918,7 +918,7 @@ class KeysightSingleQubit:
                                        8: key.ModuleType.OUTPUT,
                                        7: key.ModuleType.OUTPUT,
                                        9: key.ModuleType.OUTPUT,
-                                       10: key.ModuleType.INPUT})
+                                       10: key.ModuleType.INPUT}, hvi=False)
         # self.chassis = chassis
 
         self.hardware_cfg = hardware_cfg

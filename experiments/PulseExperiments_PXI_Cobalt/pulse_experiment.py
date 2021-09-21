@@ -19,7 +19,7 @@ from slab.datamanagement import SlabFile
 from slab.dataanalysis import get_next_filename
 import json
 # from slab.experiments.PulseExperiments.get_data import get_iq_data, get_singleshot_data
-from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
+from slab.experiments.PulseExperiments_PXI_Cobalt.PostExperimentAnalysis import PostExperiment
 
 # Modified so a bunch of tek and alazar stuff is commented out. Modify if you want to use these ever again
 

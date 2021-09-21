@@ -1,6 +1,6 @@
-from slab.experiments.PulseExperiments_PXI.sequences_pxi import PulseSequences
-from slab.experiments.PulseExperiments_PXI.pulse_experiment import Experiment
-from slab.instruments.keysight import keysight_pxi_load as ks_pxi
+from slab.experiments.PulseExperiments_PXI_Cobalt.sequences_pxi import PulseSequences
+from slab.experiments.PulseExperiments_PXI_Cobalt.pulse_experiment import Experiment
+from slab.experiments.PulseExperiments_PXI_Cobalt import keysight_pxi_load as ks_pxi
 import numpy as np
 import os
 import json
@@ -9,7 +9,7 @@ from slab.datamanagement import SlabFile
 from slab.dsfit import fitdecaysin
 try:from skopt import Optimizer
 except:print("No optimizer")
-from slab.experiments.PulseExperiments_PXI.PostExperimentAnalysis import PostExperiment
+from slab.experiments.PulseExperiments_PXI_Cobalt.PostExperimentAnalysis import PostExperiment
 import copy
 import time
 
@@ -140,6 +140,37 @@ class SequentialExperiment:
     #     exp.awg_stop(experiment_name)
     #     return self.data
 
+    def histogram_amp_and_freq_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+
+        expt_cfg = experiment_cfg['histogram_amp_and_freq_sweep']
+        attens = np.arange(expt_cfg['atten_start'], expt_cfg['atten_stop'], expt_cfg['atten_step'])
+        freqs = np.arange(expt_cfg['freq_start'], expt_cfg['freq_stop'], expt_cfg['freq_step'])
+
+        experiment_name = 'histogram'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, 'histogram_amp_and_freq_sweep', suffix='.h5'))
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences(experiment_name)
+        ii = 0
+        for freq in freqs:
+            for att in attens:
+                quantum_device_cfg['readout']['dig_atten'] = att
+                print("Attenuation = ", att, "dB")
+                quantum_device_cfg['readout']['freq'] = freq
+                print("Frequency = ", freq, "GHz")
+                print("Expt num = ", ii)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+                I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.Is.append(I)
+                self.Qs.append(Q)
+                ii += 1
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
 
 ############## things below this line do not work unless edited as of 7/21 [MGP] ###########################
 
@@ -181,36 +212,36 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
-    def histogram_amp_and_freq_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
-
-        expt_cfg = experiment_cfg['histogram_amp_and_freq_sweep']
-        attens = np.arange(expt_cfg['atten_start'], expt_cfg['atten_stop'], expt_cfg['atten_step'])
-        freqs = np.arange(expt_cfg['freq_start'], expt_cfg['freq_stop'], expt_cfg['freq_step'])
-
-        experiment_name = 'histogram'
-        expt_cfg = experiment_cfg[experiment_name]
-        data_path = os.path.join(path, 'data/')
-
-        seq_data_file = os.path.join(data_path,
-                                     get_next_filename(data_path, 'histogram_amp_and_freq_sweep', suffix='.h5'))
-        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
-        sequences = ps.get_experiment_sequences(experiment_name)
-        ii = 0
-        for freq in freqs:
-            for att in attens:
-                quantum_device_cfg['readout']['dig_atten'] = att
-                print("Attenuation = ", att, "dB")
-                quantum_device_cfg['readout']['freq'] = freq
-                print("Frequency = ", freq, "GHz")
-                print("Expt num = ", ii)
-                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-                I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
-                self.Is.append(I)
-                self.Qs.append(Q)
-                ii += 1
-
-        self.Is = np.array(self.Is)
-        self.Qs = np.array(self.Qs)
+    # def histogram_amp_and_freq_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    #
+    #     expt_cfg = experiment_cfg['histogram_amp_and_freq_sweep']
+    #     attens = np.arange(expt_cfg['atten_start'], expt_cfg['atten_stop'], expt_cfg['atten_step'])
+    #     freqs = np.arange(expt_cfg['freq_start'], expt_cfg['freq_stop'], expt_cfg['freq_step'])
+    #
+    #     experiment_name = 'histogram'
+    #     expt_cfg = experiment_cfg[experiment_name]
+    #     data_path = os.path.join(path, 'data/')
+    #
+    #     seq_data_file = os.path.join(data_path,
+    #                                  get_next_filename(data_path, 'histogram_amp_and_freq_sweep', suffix='.h5'))
+    #     ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    #     sequences = ps.get_experiment_sequences(experiment_name)
+    #     ii = 0
+    #     for freq in freqs:
+    #         for att in attens:
+    #             quantum_device_cfg['readout']['dig_atten'] = att
+    #             print("Attenuation = ", att, "dB")
+    #             quantum_device_cfg['readout']['freq'] = freq
+    #             print("Frequency = ", freq, "GHz")
+    #             print("Expt num = ", ii)
+    #             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+    #             I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+    #             self.Is.append(I)
+    #             self.Qs.append(Q)
+    #             ii += 1
+    #
+    #     self.Is = np.array(self.Is)
+    #     self.Qs = np.array(self.Qs)
 
     def cavity_drive_histogram_amp_and_freq_sweep_mixedtones(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
 
