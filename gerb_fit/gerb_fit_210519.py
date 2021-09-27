@@ -30,6 +30,49 @@ font = {'family' : 'normal',
 
 matplotlib.rc('font', **font)
 
+## Json formatter for lattice_device_cfg
+# Changed basestring to str, and dict uses items() instead of iteritems().
+
+def to_json(o, level=0,):
+    INDENT = 3
+    SPACE = " "
+    NEWLINE = "\n"
+    ret = ""
+    if isinstance(o, dict):
+        ret += "{" + NEWLINE
+        comma = ""
+        for k, v in o.items():
+          ret += comma
+          comma = ",\n"
+          ret += SPACE * INDENT * (level + 1)
+          ret += '"' + str(k) + '":' + SPACE
+          ret += to_json(v, level + 1)
+
+        ret += NEWLINE + SPACE * INDENT * level + "}"
+    elif isinstance(o, str):
+        ret += '"' + o + '"'
+    elif isinstance(o, list):
+        ret += "[" + ",".join([to_json(e, level + 1) for e in o]) + "]"
+    # Tuples are interpreted as lists
+    elif isinstance(o, tuple):
+        ret += "[" + ",".join(to_json(e, level + 1) for e in o) + "]"
+    elif isinstance(o, bool):
+        ret += "true" if o else "false"
+    elif isinstance(o, int):
+        ret += str(o)
+    elif isinstance(o, float):
+        ret += '%.7g' % o
+    elif isinstance(o, numpy.ndarray) and numpy.issubdtype(o.dtype, numpy.integer):
+        ret += "[" + ','.join(map(str, o.flatten().tolist())) + "]"
+    elif isinstance(o, numpy.ndarray) and numpy.issubdtype(o.dtype, numpy.inexact):
+        ret += "[" + ','.join(map(lambda x: '%.7g' % x, o.flatten().tolist())) + "]"
+    elif o is None:
+        ret += 'null'
+    else:
+        raise TypeError("Unknown type '%s' for json serialization" % str(type(o)))
+    return ret
+
+
 def decaysin_lm(x, amp, f, phi_0, T1, offset, exp0):
     return amp*np.sin(2.*np.pi*f*x+phi_0*np.pi/180.)*np.e**(-1.*(x-exp0)/T1)+offset
 
@@ -762,6 +805,156 @@ def melting_single_readout_full_ramp_v2(filenb, phi=0, sub_mean=False, show=["I"
         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
+
+        I_raw = np.array(a["I"])
+        Q_raw = np.array(a["Q"])
+        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+        t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
+            :(len(I_raw))]
+
+        J = []
+
+        for s in show:
+            if pi_cal:
+                pi_file = a.attrs['pi_cal_fname']
+                with File(pi_file, 'r') as p:
+                    I_raw_P = np.array(p["I"])
+                    Q_raw_P = np.array(p["Q"])
+                    (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
+                print(I_P)
+                I = np.concatenate((I, I_P))
+                Q = np.concatenate((Q, Q_P))
+                plt.plot(t, eval(s)[0:-2])
+                if rabi_vals != None:
+                    plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
+                    plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
+                if fit_J:
+                    res = fit_sin(t, eval(s)[0:-2])
+                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+                    plt.plot(t, res['fitfunc'](t))
+                plt.axhline(y=eval(s)[-2], c='g', label="g")
+                plt.axhline(y=eval(s)[-1], c='r', label="e")
+                plt.legend()
+                plt.xlabel('time (ns)')
+                plt.ylabel(s + " volts")
+                plt.show()
+
+                if norm_plot:
+                    plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
+                    plt.ylim((-0.1, 1))
+                    plt.xlabel('time (ns)')
+                    plt.ylabel(s + ' normalized')
+                    plt.legend()
+            #             plt.show()
+            else:
+                plt.title(s)
+                plt.plot(t, eval(s))
+                if fit_J:
+                    res = fit_sin(t, eval(s)[0:-2])
+                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+                    plt.plot(t, res['fitfunc'](t))
+                plt.show()
+        if fit_J:
+            return J
+        else:
+            return I,Q
+
+def melting_single_readout_full_ramp_Q3(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
+                                     debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
+
+    expt_name = "melting_single_readout_full_ramp_Q3"
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg['melting_single_readout_full_ramp_Q3']
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
+
+        I_raw = np.array(a["I"])
+        Q_raw = np.array(a["Q"])
+        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+        t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
+            :(len(I_raw))]
+
+        J = []
+
+        for s in show:
+            if pi_cal:
+                pi_file = a.attrs['pi_cal_fname']
+                with File(pi_file, 'r') as p:
+                    I_raw_P = np.array(p["I"])
+                    Q_raw_P = np.array(p["Q"])
+                    (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
+                print(I_P)
+                I = np.concatenate((I, I_P))
+                Q = np.concatenate((Q, Q_P))
+                plt.plot(t, eval(s)[0:-2])
+                if rabi_vals != None:
+                    plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
+                    plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
+                if fit_J:
+                    res = fit_sin(t, eval(s)[0:-2])
+                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+                    plt.plot(t, res['fitfunc'](t))
+                plt.axhline(y=eval(s)[-2], c='g', label="g")
+                plt.axhline(y=eval(s)[-1], c='r', label="e")
+                plt.legend()
+                plt.xlabel('time (ns)')
+                plt.ylabel(s + " volts")
+                plt.show()
+
+                if norm_plot:
+                    plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
+                    plt.ylim((-0.1, 1))
+                    plt.xlabel('time (ns)')
+                    plt.ylabel(s + ' normalized')
+                    plt.legend()
+            #             plt.show()
+            else:
+                plt.title(s)
+                plt.plot(t, eval(s))
+                if fit_J:
+                    res = fit_sin(t, eval(s)[0:-2])
+                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+                    plt.plot(t, res['fitfunc'](t))
+                plt.show()
+        if fit_J:
+            return J
+        else:
+            return I,Q
+
+def melting_single_readout_full_ramp(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
+                                     debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
+
+    expt_name = "melting_single_readout_full_ramp"
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg['melting_single_readout_full_ramp']
 
         on_qb = quantum_device_cfg['setups'][0]
         params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)

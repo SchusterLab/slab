@@ -22,10 +22,11 @@ from slab.experiments.PulseExperiments_PXI_Gerbert.PostExperimentAnalysis import
 import copy
 
 class Experiment:
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None):
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None,lattice_cfg = None):
         self.quantum_device_cfg = quantum_device_cfg
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
+        self.lattice_cfg = lattice_cfg
         im = InstrumentManager()
         self.setups = ["A", "B"]
         self.on_setups = self.quantum_device_cfg["setups"]
@@ -270,8 +271,6 @@ class Experiment:
         else:
             self.slab_file = SlabFile(seq_data_file)
             with self.slab_file as f:
-                f.append_line('I', I.flatten())
-                f.append_line('Q', Q.flatten())
                 if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
                     f.append_line('qbA_I', data[0][0].flatten())
                     f.append_line('qbA_Q', data[0][1].flatten())
@@ -402,6 +401,74 @@ class Experiment:
                                   self.expt_cfg['step']):
                 self.pxi.DIG_module.stopAll()
                 self.quantum_device_cfg['readout'][qb]['freq'] = freq
+                self.initiate_readout_LOs()
+                self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
+                self.pxi.DIG_ch_1.clear()
+                self.pxi.DIG_ch_1.start()
+                self.pxi.DIG_ch_2.clear()
+                self.pxi.DIG_ch_2.start()
+                self.pxi.DIG_ch_3.clear()
+                self.pxi.DIG_ch_3.start()
+                self.pxi.DIG_ch_4.clear()
+                self.pxi.DIG_ch_4.start()
+                time.sleep(0.1)
+                if self.expt_cfg['singleshot']:
+                    self.data = self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+                elif self.expt_cfg['trajectory']:
+                    self.data = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+                else:
+                    self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+        #
+        self.pxi_stop()
+        return self.data
+
+    # sweep readout qubit LO, fix everything else.  Pi_Cal sweep after sweeping resonators, speed should be fast enough.
+    def run_experiment_pxi_melt(self, sequences, path, name, seq_data_file=None, update_awg=False, expt_num=0,
+                                   check_sync=False, save_errs=False, pi=False, ff=False):
+
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, name, suffix='.h5'))
+
+        self.expt_cfg = self.experiment_cfg[name]
+        self.generate_datafile(path, name, seq_data_file=seq_data_file)
+        self.set_trigger()
+        self.trig.set_output(state=False)
+        self.initiate_drive_LOs()
+        # self.initiate_stab_LOs()
+        self.initiate_readout_attenuators()
+        self.initiate_drive_attenuators()
+        self.initiate_pxi(name, sequences)
+        self.initiate_readout_LOs()
+        time.sleep(0.2)
+        self.pxi.run()
+        time.sleep(0.2)
+        self.trig.set_output(state=True)
+
+        # throw away first point - this should be for uploading data to PXI / incidentally checking for errors
+        if self.expt_cfg['singleshot']:
+            foo = self.pxi.SSdata_many()
+        elif self.expt_cfg['trajectory']:
+            foo = self.pxi.traj_data_many()
+        else:
+            try:
+                pi_calibration = expt_cfg['pi_calibration']
+            except:
+                pi_calibration = False
+            foo = self.pxi.acquire_avg_data(pi_calibration=False)
+
+        # TODO: replace this with readout qubit switching
+            for qb in self.expt_cfg['rd_qb']:
+                read_freq = self.lattice_cfg['readout']['freq'][qb]
+
+        # for qb in self.quantum_device_cfg["setups"]:
+        #
+        #     read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
+        #     for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq,
+        #                           self.expt_cfg['step']):
+
+                self.pxi.DIG_module.stopAll()
+                self.quantum_device_cfg['readout']['freq'] = read_freq
                 self.initiate_readout_LOs()
                 self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
                 self.pxi.DIG_ch_1.clear()
