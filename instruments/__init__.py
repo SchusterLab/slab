@@ -84,3 +84,5 @@ try: from .PLC import FurnacePLC
 except: print("Could not load Furnace PLC")
 try: from .Triton import Triton
 except: print("Could not load Oxford Trition driver")
+try: from.OmniYigController import OmniYigController
+except: print("Could not load OmniYig controller")
