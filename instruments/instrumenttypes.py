@@ -214,13 +214,16 @@ class SocketInstrument(Instrument):
 
     def read_lineb(self, eof_char=b'\n', timeout=None):
         done = False
-        start_time=time.time()
-        while time.time()-start_time<timeout:
+        while done is False:
             buffer_str = self.readb(timeout)
             # print "buffer_str", [buffer_str]
-            if buffer_str[-len(eof_char):] == eof_char:
-                break
-        return buffer_str
+            if buffer_str is None:
+                pass  # done = True
+            elif buffer_str[-len(eof_char):] == eof_char:
+                done = True
+                yield buffer_str
+            else:
+                yield buffer_str
 
 
 class SerialInstrument(Instrument):

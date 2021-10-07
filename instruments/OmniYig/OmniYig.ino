@@ -13,7 +13,7 @@ void establishContact() {
 }
 
 void setup_pins() {
-  for(int i=2;i<14,i++){
+  for(int i=2;i<14;i++){
     pinMode(i,OUTPUT);
   }
 }

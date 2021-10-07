@@ -46,6 +46,9 @@ class Experiment:
         try: self.readout_los = [im[lo] for lo in self.hardware_cfg['readout_los']]
         except: print ("No readout function generator specified in hardware config / failure to connect with im()")
 
+        # try:self.readout_yigs = [im[yig] for yig in self.hardware_cfg['readout_yigs']]
+        # except:print("No readout yigs in hardware config / failure to connect with im()")
+
         try: self.readout_attens = [im[atten] for atten in self.hardware_cfg['readout_attens']]
         except: print ("No digital attenuator specified in hardware config / failure to connect with im()")
 
@@ -173,6 +176,18 @@ class Experiment:
             print("Error in readout STABILIZER LO configuration")
             raise
 
+    def initiate_readout_yigs(self):
+        try:
+            for ii, s in enumerate(self.setups):
+                d = self.readout_yigs[ii]
+                if s in self.on_setups:
+                    d.set_yig(self.quantum_device_cfg['readout'][s]['freq'])
+                    print("Readout Yig%s"%s + " Set to: %s"%(self.quantum_device_cfg['readout'][s]['freq']))
+                else:
+                    raise ValueError("Readout Yig Frequency Not Set!")
+        except:
+            print("Error in readout yig configuration")
+
     def initiate_readout_attenuators(self):
         try:
             for ii, s in enumerate(self.setups):
@@ -212,6 +227,7 @@ class Experiment:
         f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
         f.attrs['experiment_cfg'] = json.dumps(self.experiment_cfg)
         f.attrs['hardware_cfg'] = json.dumps(self.hardware_cfg)
+        f.attrs['lattice_cfg'] = json.dumps(self.lattice_cfg)
         f.close()
 
     def generate_datafile(self,path,name,seq_data_file = None):
@@ -335,6 +351,7 @@ class Experiment:
         self.trig.set_output(state=False) # hold on triggering anythingg
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
+        self.initiate_readout_yigs()
         #self.initiate_stab_LOs()
         self.initiate_readout_attenuators()
         self.initiate_drive_attenuators()
@@ -363,7 +380,7 @@ class Experiment:
         return self.data
 
     def run_experiment_pxi_resspec(self, sequences, path, name, seq_data_file=None, update_awg=False, expt_num=0,
-                                   check_sync=False, save_errs=False, pi=False, ff=False):
+                                   check_sync=False, save_errs=False, pi=False, ff=False, two_setups=False):
         data_path = os.path.join(path, 'data/')
         seq_data_file = os.path.join(data_path,
                                      get_next_filename(data_path, name, suffix='.h5'))
@@ -378,6 +395,7 @@ class Experiment:
         self.initiate_drive_attenuators()
         self.initiate_pxi(name, sequences)
         self.initiate_readout_LOs()
+        self.initiate_readout_yigs()
         time.sleep(0.2)
         self.pxi.run()
         time.sleep(0.2)
@@ -395,29 +413,33 @@ class Experiment:
                 pi_calibration = False
             foo = self.pxi.acquire_avg_data(pi_calibration=False)
 
-        for qb in self.quantum_device_cfg["setups"]:
-            read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
-            for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq,
-                                  self.expt_cfg['step']):
-                self.pxi.DIG_module.stopAll()
-                self.quantum_device_cfg['readout'][qb]['freq'] = freq
-                self.initiate_readout_LOs()
-                self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
-                self.pxi.DIG_ch_1.clear()
-                self.pxi.DIG_ch_1.start()
-                self.pxi.DIG_ch_2.clear()
-                self.pxi.DIG_ch_2.start()
-                self.pxi.DIG_ch_3.clear()
-                self.pxi.DIG_ch_3.start()
-                self.pxi.DIG_ch_4.clear()
-                self.pxi.DIG_ch_4.start()
-                time.sleep(0.1)
-                if self.expt_cfg['singleshot']:
-                    self.data = self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
-                elif self.expt_cfg['trajectory']:
-                    self.data = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
-                else:
-                    self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+        if two_setups:
+            qb = self.lattice_cfg["qubit"]["setup"][self.expt_cfg['rd_qb']]
+        else:
+            qb = self.quantum_device_cfg["setups"][0]
+        read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
+        for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq,
+                              self.expt_cfg['step']):
+            self.pxi.DIG_module.stopAll()
+            self.quantum_device_cfg['readout'][qb]['freq'] = freq
+            self.initiate_readout_LOs()
+            self.initiate_readout_yigs()
+            self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
+            self.pxi.DIG_ch_1.clear()
+            self.pxi.DIG_ch_1.start()
+            self.pxi.DIG_ch_2.clear()
+            self.pxi.DIG_ch_2.start()
+            self.pxi.DIG_ch_3.clear()
+            self.pxi.DIG_ch_3.start()
+            self.pxi.DIG_ch_4.clear()
+            self.pxi.DIG_ch_4.start()
+            time.sleep(0.1)
+            if self.expt_cfg['singleshot']:
+                self.data = self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+            elif self.expt_cfg['trajectory']:
+                self.data = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+            else:
+                self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
         #
         self.pxi_stop()
         return self.data
@@ -440,6 +462,7 @@ class Experiment:
         self.initiate_drive_attenuators()
         self.initiate_pxi(name, sequences)
         self.initiate_readout_LOs()
+        self.initiate_readout_yigs()
         time.sleep(0.2)
         self.pxi.run()
         time.sleep(0.2)
@@ -470,6 +493,7 @@ class Experiment:
                 self.pxi.DIG_module.stopAll()
                 self.quantum_device_cfg['readout']['freq'] = read_freq
                 self.initiate_readout_LOs()
+                self.initiate_readout_yigs()
                 self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
                 self.pxi.DIG_ch_1.clear()
                 self.pxi.DIG_ch_1.start()
@@ -662,12 +686,14 @@ def generate_quantum_device_from_lattice_v2(lattice_cfg_name, qb_ids, setups=["A
 
         return quantum_device_cfg
 
-def generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits = {'A':1,'B':2}):
+def generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits = {'A':1,'B':2}, readout = None, drive=None):
     with open(lattice_cfg_name, 'r') as f:
         lattice_cfg = json.load(f)
         quantum_device_cfg = {}
 
         quantum_device_cfg["on_qubits"] = on_qubits
+        quantum_device_cfg["on_rd"] = readout
+        quantum_device_cfg["on_drive"] = drive
         setups = list(on_qubits.keys())
         qb_ids  = list(on_qubits.values())
         quantum_device_cfg["setups"] = setups

@@ -84,20 +84,29 @@ class PulseSequences:
         self.plot_visdom = plot_visdom
 
 
-    def gen_q(self,sequencer,qubit_id = 'A',len = 10,amp = 1,add_freq = 0,phase = 0,pulse_type = 'square'):
+    def gen_q(self,sequencer,qubit_id = 'A',len = 10,amp = 1,add_freq = 0, iq_overwrite = None, Q_phase_overwrite = None, phase = 0,pulse_type = 'square'):
+        if iq_overwrite!=None:
+            iq_freq = iq_overwrite
+        else:
+            iq_freq = self.pulse_info[qubit_id]['iq_freq']
+
+        if Q_phase_overwrite!=None:
+            Q_phase = Q_phase_overwrite
+        else:
+            Q_phase = self.pulse_info[qubit_id]['Q_phase']
         if pulse_type.lower() == 'square':
             sequencer.append('charge%s_I' % qubit_id, Square(max_amp=amp, flat_len=len,
-                                    ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.pulse_info[qubit_id]['iq_freq']+add_freq,
+                                    ramp_sigma_len=0.001, cutoff_sigma=2, freq=iq_freq+add_freq,
                                     phase=phase))
             sequencer.append('charge%s_Q' % qubit_id,
                          Square(max_amp=amp, flat_len= len,
-                                ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.pulse_info[qubit_id]['iq_freq']+add_freq,
-                                phase=phase+self.pulse_info[qubit_id]['Q_phase']))
+                                ramp_sigma_len=0.001, cutoff_sigma=2, freq=iq_freq+add_freq,
+                                phase=phase + Q_phase))
         elif pulse_type.lower() == 'gauss':
             sequencer.append('charge%s_I' % qubit_id, Gauss(max_amp=amp, sigma_len=len,
-                                                             cutoff_sigma=2,freq=self.pulse_info[qubit_id]['iq_freq']+add_freq,phase=phase))
+                                                             cutoff_sigma=2,freq=iq_freq+add_freq,phase=phase))
             sequencer.append('charge%s_Q' % qubit_id, Gauss(max_amp=amp, sigma_len=len,
-                                                             cutoff_sigma=2,freq=self.pulse_info[qubit_id]['iq_freq']+add_freq,phase=phase+self.pulse_info[qubit_id]['Q_phase']))
+                                                             cutoff_sigma=2,freq=iq_freq+add_freq,phase=phase+Q_phase))
 
     def pi_q(self,sequencer,qubit_id = 'A',phase = 0,pulse_type = 'square'):
         if pulse_type.lower() == 'square':
@@ -262,7 +271,7 @@ class PulseSequences:
                                     phase=0))
 
     def pad_start_pxi_tek2(self,sequencer,on_qubits=None, time = 500):
-        self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=time)
+        self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=time)
         sequencer.append('tek2_trig', Ones(time=self.hardware_cfg['trig_pulse_len']['default']))
 
     def readout(self, sequencer, on_qubits=None, sideband = False):
@@ -382,18 +391,36 @@ class PulseSequences:
         qubit_id = self.on_qubits[0]
         res_nb = self.quantum_device_cfg["qubit"][qubit_id]["id"]
         sequencer.new_sequence(self)
-        self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+        self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
         if len(self.expt_cfg["pi_qb"])==0:
             self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
         else:
             for qb in self.expt_cfg["pi_qb"]:
                 pulse_info = self.lattice_cfg["pulse_info"]
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
                 qb_iq_freq_dif = self.lattice_cfg["qubit"]["freq"][qb] - self.lattice_cfg["qubit"]["freq"][res_nb]
-                self.gen_q(sequencer, qubit_id=qubit_id, len=pulse_info[qubit_id]["pi_len"][qb],
+                self.gen_q(sequencer, qubit_id=qubit_id , len=pulse_info[qubit_id]["pi_len"][qb],
                            amp=pulse_info[qubit_id]["pi_amp"][qb], add_freq=qb_iq_freq_dif, phase=0,
                            pulse_type=pulse_info["pulse_type"][qb])
+                sequencer.sync_channels_time(self.channels)
         self.idle_q(sequencer, time=self.expt_cfg["delay"])
         self.readout_pxi(sequencer, self.on_qubits)
+        sequencer.end_sequence()
+        return sequencer.complete(self, plot=True)
+
+    def resonator_spectroscopy_pi_2setups(self, sequencer):
+        sequencer.new_sequence(self)
+        self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
+        for qb in self.expt_cfg["pi_qb"]:
+            pulse_info = self.lattice_cfg["pulse_info"]
+            setup = self.lattice_cfg["qubit"]["setup"][qb]
+
+            self.gen_q(sequencer, qubit_id=setup, len=pulse_info[setup]["pi_len"][qb],
+                       amp=pulse_info[setup]["pi_amp"][qb], phase=0,
+                       pulse_type=pulse_info["pulse_type"][qb])
+            sequencer.sync_channels_time(self.channels)
+        self.idle_q(sequencer, time=self.expt_cfg["delay"])
+        self.readout_pxi(sequencer, self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]])
         sequencer.end_sequence()
         return sequencer.complete(self, plot=True)
 
@@ -401,7 +428,7 @@ class PulseSequences:
 
         qubit_id = self.on_qubits[0]
         sequencer.new_sequence(self)
-        self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+        self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
         self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
         self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
         self.readout_pxi(sequencer, self.on_qubits)
@@ -415,7 +442,7 @@ class PulseSequences:
         setup = self.on_qubits[0]
         for evolution_t in np.arange(self.expt_cfg["evolution_t_start"], self.expt_cfg["evolution_t_stop"], self.expt_cfg["evolution_t_step"]):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
             for i, qb in enumerate(qb_list):
                 pulse_info = self.lattice_cfg["pulse_info"]
                 qb_iq_freq_dif = self.lattice_cfg["qubit"]["freq"][qb] - self.lattice_cfg["qubit"]["freq"][lo_qb]
@@ -454,7 +481,7 @@ class PulseSequences:
 
         for evolution_t in np.arange(self.expt_cfg["evolution_t_start"], self.expt_cfg["evolution_t_stop"], self.expt_cfg["evolution_t_step"]):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             ##################################GENERATE PI PULSES ################################################
             for i, qb in enumerate(qb_list):
@@ -492,7 +519,7 @@ class PulseSequences:
 
         for evolution_t in np.arange(self.expt_cfg["evolution_t_start"], self.expt_cfg["evolution_t_stop"], self.expt_cfg["evolution_t_step"]):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             ##################################GENERATE PI PULSES ################################################
             for i, qb in enumerate(qb_list):
@@ -531,7 +558,7 @@ class PulseSequences:
         setup = self.on_qubits[0]
         for evolution_t in np.arange(self.expt_cfg["evolution_t_start"], self.expt_cfg["evolution_t_stop"], self.expt_cfg["evolution_t_step"]):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             ##################################GENERATE PI PULSES ################################################
             for i, qb in enumerate(qb_list):
@@ -566,14 +593,14 @@ class PulseSequences:
         for ii,rd_qb in enumerate(rd_qb_list):
 
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
             sequencer.sync_channels_time(self.channels)
             self.readout_pxi(sequencer, setup, overlap=False)
             sequencer.sync_channels_time(self.channels)
             sequencer.end_sequence()
 
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
             pulse_info = self.lattice_cfg["pulse_info"]
             qb_iq_freq_dif = self.lattice_cfg["qubit"]["freq"][rd_qb] - self.lattice_cfg["qubit"]["freq"][3]  # modify to always refer to Q3
             sequencer.sync_channels_time(self.channels)
@@ -596,7 +623,7 @@ class PulseSequences:
         setup = self.on_qubits[0]
         for evolution_t in np.arange(self.expt_cfg["evolution_t_start"], self.expt_cfg["evolution_t_stop"], self.expt_cfg["evolution_t_step"]):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             ##################################GENERATE PI PULSES ################################################
             pulse_info = self.lattice_cfg["pulse_info"]
@@ -624,14 +651,14 @@ class PulseSequences:
         pulse_info = self.pulse_info[setup]
 
         sequencer.new_sequence(self)
-        self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+        self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
         sequencer.sync_channels_time(self.channels)
         self.readout_pxi(sequencer, setup, overlap=False)
         sequencer.sync_channels_time(self.channels)
         sequencer.end_sequence()
 
         sequencer.new_sequence(self)
-        self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+        self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
         self.pi_q(sequencer, qubit_id=setup, phase=0, pulse_type=pulse_info["pulse_type"])
         sequencer.sync_channels_time(self.channels)
         self.readout_pxi(sequencer, setup, overlap=False)
@@ -649,7 +676,7 @@ class PulseSequences:
 
         for evolution_t in np.arange(self.expt_cfg["evolution_t_start"], self.expt_cfg["evolution_t_stop"], self.expt_cfg["evolution_t_step"]):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             ##################################GENERATE PI PULSES ################################################
             for i, qb in enumerate(qb_list):
@@ -681,7 +708,7 @@ class PulseSequences:
         # if self.expt_cfg['pi_calibration']:
         #
         #     sequencer.new_sequence(self)
-        #     self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+        #     self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
         #     sequencer.sync_channels_time(self.channels)
         #     self.readout_pxi(sequencer, setup, overlap=False)
         #     sequencer.sync_channels_time(self.channels)
@@ -689,7 +716,7 @@ class PulseSequences:
         #
         #     rd_qb_iq_freq_dif = self.lattice_cfg["qubit"]["freq"][self.expt_cfg["rd_qb"]] - self.lattice_cfg["qubit"]["freq"][lo_qb]
         #     sequencer.new_sequence(self)
-        #     self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+        #     self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
         #     self.gen_q(sequencer, qubit_id=setup, len=pulse_info[setup]["pi_len"][rd_qb],
         #                amp=pulse_info[setup]["pi_amp"][rd_qb], add_freq=rd_qb_iq_freq_dif, phase=0,
         #                pulse_type=pulse_info["pulse_type"][rd_qb])
@@ -705,7 +732,7 @@ class PulseSequences:
 
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
             for qubit_id in self.on_qubits:
                 self.gen_q(sequencer=sequencer, qubit_id=qubit_id, len=self.expt_cfg['pulse_length'],
                            amp=self.expt_cfg['amp'], add_freq=dfreq, phase=0,
@@ -717,11 +744,26 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=True)
 
+    def pulse_probe_iq_2setups(self, sequencer):
+
+        for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
+            self.gen_q(sequencer=sequencer, qubit_id=self.lattice_cfg["qubit"]["setup"][self.expt_cfg["pi_qb"]], len=self.expt_cfg['pulse_length'],
+                       amp=self.expt_cfg['amp'], add_freq=dfreq, phase=0,
+                       pulse_type=self.pulse_info[self.lattice_cfg["qubit"]["setup"][self.expt_cfg["pi_qb"]]]['pulse_type'])
+            self.idle_q(sequencer, time=self.expt_cfg['delay'])
+            self.readout_pxi(sequencer, on_qubits=[self.expt_cfg["rd_setup"]],overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
     def pulse_probe_iq_gauss(self, sequencer):
 
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
             for qubit_id in self.on_qubits:
                 sequencer.append('charge%s_I' % qubit_id,
                                  Gauss(max_amp=self.expt_cfg['amp'], sigma_len=self.expt_cfg['pulse_length'],
@@ -740,7 +782,7 @@ class PulseSequences:
 
     def ff_resonator_spectroscopy(self, sequencer):
         sequencer.new_sequence(self)
-        self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+        self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
         if self.expt_cfg["pulse_inside_flux"]:
             pre_flux_time = sequencer.get_time('digtzr_trig')  # could just as well be any ch
             self.idle_q(sequencer, time=self.lattice_cfg["ff_info"]["ff_settling_time"])
@@ -786,14 +828,14 @@ class PulseSequences:
 
         qubit_id = self.on_qubits[0]
         sequencer.new_sequence(self)
-        self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+        self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
         if self.expt_cfg["pulse_inside_flux"]:
             pre_flux_time = sequencer.get_time('digtzr_trig')  # could just as well be any ch
 
             res_nb = self.quantum_device_cfg["qubit"][qubit_id]["id"]
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
             if len(self.expt_cfg["pi_qb"]) == 0:
                 self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
             else:
@@ -822,7 +864,7 @@ class PulseSequences:
             qubit_id = self.on_qubits[0]
             res_nb = self.quantum_device_cfg["qubit"][qubit_id]["id"]
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
             if len(self.expt_cfg["pi_qb"]) == 0:
                 self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
             else:
@@ -856,7 +898,7 @@ class PulseSequences:
 
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
             pre_flux_time = sequencer.get_time('digtzr_trig') #could just as well be any ch
 
             #add IQ pulse
@@ -889,7 +931,7 @@ class PulseSequences:
         pulse_type = self.expt_cfg['pulse_type']
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             if delt<0:
                 #ppiq first if dt less than zero
@@ -948,7 +990,7 @@ class PulseSequences:
         pulse_type = self.expt_cfg['pulse_type']
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             # add fast flux pulse
             sequencer.sync_channels_time(self.channels)
@@ -988,7 +1030,7 @@ class PulseSequences:
         flux_vec = np.array(self.expt_cfg["ff_vec"]) * perc_flux_vec
         for dfreq in np.arange(self.expt_cfg['qbf_start'], self.expt_cfg['qbf_stop'], self.expt_cfg['qbf_step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             #flux pulse first if dt greater than zero
             if self.expt_cfg["ff_len"] == "auto":
@@ -1025,7 +1067,7 @@ class PulseSequences:
 
         for rabi_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             if self.expt_cfg["Qpulse_in_flux"]:
                 pre_flux_time = sequencer.get_time('digtzr_trig')  # could just as well be any ch
@@ -1114,7 +1156,7 @@ class PulseSequences:
 
         for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
             pre_flux_time = sequencer.get_time('digtzr_trig')  # could just as well be any ch
             self.idle_q(sequencer, time=self.lattice_cfg['ff_info']['ff_pulse_padding'])
 
@@ -1246,7 +1288,7 @@ class PulseSequences:
 
                     # with pi pulse (e state)
                     sequencer.new_sequence(self)
-                    self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+                    self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
                     for qubit_id in self.on_qubits:
                         self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                     sequencer.sync_channels_time(self.channels)
@@ -1268,7 +1310,7 @@ class PulseSequences:
 
                     # with pi pulse and ef pi pulse (f state)
                     sequencer.new_sequence(self)
-                    self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+                    self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
                     for qubit_id in self.on_qubits:
                         self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                         self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
@@ -1448,7 +1490,7 @@ class PulseSequences:
 
         for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             for qubit_id in self.on_qubits:
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
@@ -1464,7 +1506,7 @@ class PulseSequences:
 
         for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             for qubit_id in self.on_qubits:
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
@@ -1487,7 +1529,7 @@ class PulseSequences:
 
         for t1rho_len in np.arange(self.expt_cfg['start'],self.expt_cfg['stop'],self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             for qubit_id in self.on_qubits:
                 self.half_pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
@@ -1510,7 +1552,7 @@ class PulseSequences:
 
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             for qubit_id in self.on_qubits:
                 self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
@@ -1545,7 +1587,7 @@ class PulseSequences:
 
         for ef_t1_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             for qubit_id in self.on_qubits:
 
@@ -1563,7 +1605,7 @@ class PulseSequences:
 
         for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             for qubit_id in self.on_qubits:
                 self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
@@ -1584,7 +1626,7 @@ class PulseSequences:
 
         for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             for qubit_id in self.on_qubits:
                 self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
@@ -1609,7 +1651,7 @@ class PulseSequences:
 
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             for qubit_id in self.on_qubits:
                 self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
@@ -1649,7 +1691,7 @@ class PulseSequences:
 
         for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
-            self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
 
             for qubit_id in self.on_qubits:
                 self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
@@ -1678,28 +1720,60 @@ class PulseSequences:
         for ii in range(self.expt_cfg['num_seq_sets']):
 
             for qubit_id in self.on_qubits:
-                
+
                 sequencer.new_sequence(self)
-                self.pad_start_pxi(sequencer, on_qubits=qubit_id, time=500)
+                self.pad_start_pxi(sequencer, on_qubits=["A","B"][0], time=500)
                 self.readout_pxi(sequencer,qubit_id)
                 sequencer.end_sequence()
-                
+
                 # with pi pulse (e state)
                 sequencer.new_sequence(self)
-                self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+                self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
                 for qubit_id in self.on_qubits:
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                 self.readout_pxi(sequencer, qubit_id)
                 sequencer.end_sequence()
-                
+
                 # with pi pulse and ef pi pulse (f state)
                 sequencer.new_sequence(self)
-                self.pad_start_pxi(sequencer, on_qubits=self.on_qubits, time=500)
+                self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
                 for qubit_id in self.on_qubits:
                     self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
                     self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
                 self.readout_pxi(sequencer, qubit_id)
 
+                sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def histogram_2setups(self, sequencer):
+        # vacuum rabi sequences
+        for ii in range(self.expt_cfg['num_seq_sets']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
+            self.readout_pxi(sequencer, self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]])
+            sequencer.end_sequence()
+
+            # with pi pulse (e state)
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A", "B"], time=500)
+            for qb in self.expt_cfg["pi_qbs"]:
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
+                self.pi_q(sequencer, setup, pulse_type=self.pulse_info[setup]['pulse_type'])
+                sequencer.sync_channels_time(self.channels)
+            self.readout_pxi(sequencer, self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]])
+            sequencer.end_sequence()
+
+            # with pi pulse and ef pi pulse (f state)
+            if self.expt_cfg["f"]==True:
+                sequencer.new_sequence(self)
+                self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
+                for qb in self.expt_cfg["pi_qbs"]:
+                    qubit_id = self.lattice_cfg["qubit"]["setup"][qb]
+                    self.pi_q(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['pulse_type'])
+                    self.pi_q_ef(sequencer, qubit_id, pulse_type=self.pulse_info[qubit_id]['ef_pulse_type'])
+                    sequencer.sync_channels_time(self.channels)
+                self.readout_pxi(sequencer,self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]])
                 sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)

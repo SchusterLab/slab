@@ -146,6 +146,38 @@ def iq_process(f, raw_I, raw_Q, ran=1, phi=0, sub_mean=True):
     return I, Q, mag, phase
 
 
+def return_I_Q_res(filenb, pi=False, ff=False):
+    expt_name = "resonator_spectroscopy"
+
+    if pi:
+        expt_name = expt_name + "_pi"
+    if ff:
+        expt_name = "ff_" + expt_name
+
+    fname = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+
+    with File(fname, 'r') as a:
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+
+        I_raw = a['I']
+        Q_raw = a['Q']
+        f = arange(expt_params['start'] + readout_f, expt_params['stop'] + readout_f, expt_params['step'])[:len(I_raw)]
+
+        # process I, Q data
+        (I, Q, mag, phase) = iq_process(f=f, raw_I=I_raw, raw_Q=Q_raw, ran=ran, phi=0, sub_mean=False)
+
+        a.close()
+    return f, I, Q
+
+
 def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], domain=None, mag_phase_plot=False, polar=False, title='', marker=False,plot=True):
     """Fits frequency data to a lorentzian, then plots data and prints result
 
@@ -273,8 +305,10 @@ def check_sync(filenb, expt_name, expt_num=0):
 
         readout_window = params["readout_window"]
         dt_dig = params["dt_dig"]
-        data_1 = a['I']
-        data_2 = a['Q']
+        data_1 = np.array(a['I'])
+        data_2 = np.array(a['Q'])
+        data_1 = data_1  / 2 ** 15 * 1
+        data_2 = data_2  / 2 ** 15 * 1
 
         fig = plt.figure(figsize=(12, 4))
         ax = fig.add_subplot(131, title='I')
