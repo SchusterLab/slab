@@ -1749,6 +1749,8 @@ class PulseSequences:
     def histogram_2setups(self, sequencer):
         # vacuum rabi sequences
         for ii in range(self.expt_cfg['num_seq_sets']):
+
+            #g
             sequencer.new_sequence(self)
             self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
             self.readout_pxi(sequencer, self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]])

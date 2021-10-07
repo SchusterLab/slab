@@ -785,6 +785,55 @@ class KeysightSingleQubit:
             data.append([np.array(qbB_I).T, np.array(qbB_Q).T])
         return np.asarray(data)
 
+    def avg_data_threshold(self,w =[0,-1], vecA=[0,0], phiA=0, vecB=[0,0], phiB=0,):
+        """
+        Reads off digitizer num_avg_times, each shot in shape (num_expt , dig_sample_per_record). Windows it and
+        averages over that window to give array shape (num_expt). Saves that average shot in ch1.
+        Saves all average shots in qBA_I, whose final shape will be  -> (num_avg, num_expt).
+        For whatever reason you take the transpose of this, so your data shape is (num_expt, num avg)?? oh well
+        Returns:
+        data(np.ndarray):if qb "A" OR "B" on, will return [[I, Q]], if both will return [[qbA_I, qbA_Q],[qbB_I, qbB_Q]]
+        """
+        data= []
+        qbA_I = []
+        qbA_Q = []
+        qbB_I = []
+        qbB_Q = []
+        qqA_state = []
+        qbB_state = []
+        for ii in tqdm(range(self.num_avg)):
+            if "A" in self.on_qubits:
+                ch1 = np.reshape(self.DIG_ch_1.readDataQuiet(), self.data_1.shape).T[
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
+                ch2 = np.reshape(self.DIG_ch_2.readDataQuiet(), self.data_2.shape).T[
+                      int(self.readoutA_window[0]):int(self.readoutA_window[1])].T
+                qbA_I.append(np.mean(ch1,1))
+                qbA_Q.append(np.mean(ch2,1))
+                I_centered = np.mean(ch1,1) - vecA[0]
+                Q_centered = np.mean(ch2, 1) - vecA[1]
+                I_rot = I_centered*np.cos(phiA) + Q_centered*np.sin(phiA)
+                qbA_state.append(I_rot<0)
+
+            if "B" in self.on_qubits:
+                ch3 = np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(self.readoutB_window[0]):int(
+                    self.readoutB_window[1])].T
+                ch4 = np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(self.readoutB_window[0]):int(
+                    self.readoutB_window[1])].T
+                qbB_I.append(np.mean(ch3,1))
+                qbB_Q.append(np.mean(ch4,1))
+
+                I_centered = np.mean(ch3,1) - vecB[0]
+                Q_centered = np.mean(ch4, 1) - vecB[1]
+                I_rot = I_centered*np.cos(phiB) + Q_centered*np.sin(phiB)
+                qbB_state.append(I_rot<0)
+
+
+        if "A" in self.on_qubits:
+            data.append([np.array(qbA_I).T, np.array(qbA_Q).T], np.array(qbA_state).T)
+        if "B" in self.on_qubits:
+            data.append([np.array(qbB_I).T, np.array(qbB_Q).T,  np.array(qbB_state).T])
+        return np.asarray(data)
+
     def acquire_avg_data(self,pi_calibration=False):
         """
         Reads off digitizer num_average times, in shape (num_expt * dig_sample_per_record), and windows that data.

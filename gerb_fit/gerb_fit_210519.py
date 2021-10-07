@@ -1624,6 +1624,165 @@ def histogram(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=N
 
     return temp
 
+def histogram_IQ_2setups(filenb):
+    expt_name = 'histogram_2setups'
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+
+    with File(filename, 'r') as a:
+        tags = ''
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+
+        expt_cfg = (json.loads(a.attrs['experiment_cfg']))[expt_name.lower()]
+        a_num = expt_cfg['acquisition_num']
+        ns = expt_cfg['num_seq_sets']
+        window = readout_params['window']
+
+        pi_qbs = expt_cfg['pi_qbs']
+        rd_qb = expt_cfg['rd_qb']
+        num_seq = 1 + len(pi_qbs) + expt_cfg["f"]
+
+        labels = ['gQ{}'.format(rd_qb)]
+        if len(pi_qbs)>0:
+            temp = ''
+            for i in pi_qbs:
+                temp = temp + "piQ{}".format(i)
+            labels.append(temp)
+        
+        if len(pi_qbs) > 1 or (len(pi_qbs)==0 and pi_qbs[0]!=rd_qb):
+            rd_setup = lattice_cfg["qubit"]["setup"][rd_qb]
+            I = array(a["qb{}_I".format(rd_setup)])
+            Q = array(a["qb{}_Q".format(rd_setup)])
+        else:
+            I = array(a['I'])
+            Q = array(a['Q'])
+
+        I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
+
+        IQ_means = []
+        IQ_ss = []
+        for seq in range(num_seq):
+            IQ_means.append(mean(I[seq::num_seq], 1))
+            IQ_means.append(mean(A[seq::num_seq], 1))
+
+            IQ_ss.append(I.T.flatten()[seq::num_seq])
+            IQ_ss.append(Q.T.flatten()[seq::num_seq])
+
+    return labels, IQ_ss
+
+def histogram_IQ_analyzer(IQss, labels=['g', 'e'], ran=1, tags=None, numbins=200):
+    fig = plt.figure(figsize=(15, 7 * 5))
+    colors = ['r', 'b']
+
+    ax = fig.add_subplot(621, title='length,window = ' + str(readout_length) + ',' + str(window))
+    x0g, y0g = mean(IQss[0]), mean(IQss[1])
+    x0e, y0e = mean(IQss[2]), mean(IQss[3])
+    phi = arctan((y0e - y0g) / (x0e - x0g))
+
+    for ii in range(2):
+        ax.plot(IQss[2 * ii][:], IQss[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
+
+    ax.set_xlabel('I (V)')
+    ax.set_ylabel('Q (V)')
+    ax.set_xlim(x0g - ran , x0g + ran )
+    ax.set_ylim(y0g - ran , y0g + ran )
+
+    ax = fig.add_subplot(622, title=tags)
+
+    for ii in range(2):
+        ax.errorbar(mean(IQss[2 * ii]), mean(IQss[2 * ii + 1]), xerr=std(IQss[2 * ii]),
+                    yerr=std(IQss[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+    ax.set_xlabel('I')
+    ax.set_ylabel('Q')
+    ax.set_xlim(x0g - ran, x0g + ran)
+    ax.set_ylim(y0g - ran, y0g + ran)
+
+    IQssrot = (IQss[0] * cos(phi) + IQss[1] * sin(phi),
+                -IQss[0] * sin(phi) + IQss[1] * cos(phi),
+               IQss[2] * cos(phi) + IQss[3] * sin(phi),
+               -IQss[2] * sin(phi) + IQss[3] * cos(phi))
+
+    ax = fig.add_subplot(623, title='rotated')
+    x0g, y0g = mean(IQssrot[0][:]), mean(IQssrot[1][:])
+    x0e, y0e = mean(IQssrot[2][:]), mean(IQssrot[3][:])
+
+    for ii in range(3):
+        ax.plot(IQssrot[2 * ii][:], IQssrot[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
+
+    ax.set_xlabel('I (V)')
+    ax.set_ylabel('Q (V)')
+    ax.set_xlim(x0g - ran, x0g + ran)
+    ax.set_ylim(y0g - ran, y0g + ran)
+
+    ax = fig.add_subplot(624)
+
+    for ii in range(3):
+        ax.errorbar(mean(IQssrot[2 * ii]), mean(IQssrot[2 * ii + 1]), xerr=std(IQssrot[2 * ii]),
+                    yerr=std(IQssrot[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+    ax.set_xlabel('I')
+    ax.set_ylabel('Q')
+    ax.set_xlim(x0g - ran, x0g + ran)
+    ax.set_ylim(y0g - ran, y0g + ran)
+
+    for kk in range(4):
+
+        ax = fig.add_subplot(6, 2, kk % 2 + 5, title=expt_name + titles[kk % 2])
+        ax.hist(IQssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
+        ax.set_xlabel(labels[kk % 2] + '(V)')
+        ax.set_ylabel('Number')
+        ax.legend()
+        if kk % 2 == 0:
+            ax.set_xlim(x0g - ran , x0g + ran )
+        else:
+            ax.set_xlim(y0g - ran , y0g + ran )
+
+
+    for ii, i in enumerate(['I', 'Q']):
+        sshg, ssbinsg = np.histogram(IQss[ii], bins=numbins)
+        sshe, ssbinse = np.histogram(IQss[ii + 2], bins=numbins)
+        fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
+
+        print("Single shot readout fidility from channel ", i, " = ", fid)
+
+    print('---------------------------')
+
+    for ii, i in enumerate(['I', 'Q']):
+        if ii is 0:
+            lims = [x0g - ran , x0g + ran ]
+        else:
+            lims = [y0g - ran, y0g + ran ]
+        sshg, ssbinsg = np.histogram(IQssrot[ii], bins=numbins, range=lims)
+        sshe, ssbinse = np.histogram(IQssrot[ii + 2], bins=numbins, range=lims)
+        fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
+
+        print("Single shot readout fidility from channel ", i, " after rotation = ", fid)
+        if ii == 0:
+            temp = fid
+        print("Optimal angle =", phi)
+
+        ax = fig.add_subplot(6, 2, 7 + ii)
+        ax.plot(ssbinse[:-1], cumsum(sshg) / sshg.sum(), color='r')
+        ax.plot(ssbinse[:-1], cumsum(sshe) / sshg.sum(), color='b')
+        ax.plot(ssbinse[:-1], np.abs(cumsum(sshe) - cumsum(sshg)) / sshg.sum(), color='k')
+        if ii == 0:
+            ax.set_xlim(x0g - ran , x0g + ran )
+        else:
+            ax.set_xlim(y0g - ran , y0g + ran )
+        ax.set_xlabel(titles[ii] + '(V)')
+        ax.set_ylabel('$F$')
+
+    print('---------------------------')
+
+    fig.tight_layout()
+    plt.show()
+
 def twotoneanalysis(fname):
     with SlabFile(fname) as f:
         magnitudedata = True
