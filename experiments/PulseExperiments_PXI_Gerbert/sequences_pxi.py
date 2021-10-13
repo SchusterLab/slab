@@ -1761,7 +1761,10 @@ class PulseSequences:
             self.pad_start_pxi(sequencer, on_qubits=["A", "B"], time=500)
             for qb in self.expt_cfg["pi_qbs"]:
                 setup = self.lattice_cfg["qubit"]["setup"][qb]
-                self.pi_q(sequencer, setup, pulse_type=self.pulse_info[setup]['pulse_type'])
+                pulse_info = self.lattice_cfg["pulse_info"]
+                self.gen_q(sequencer, qubit_id=setup, len=pulse_info[setup]["pi_len"][qb],
+                           amp=pulse_info[setup]["pi_amp"][qb], iq_overwrite=pulse_info[setup]["iq_freq"][qb], Q_phase_overwrite=pulse_info[setup]["Q_phase"][qb],
+                           pulse_type=pulse_info["pulse_type"][qb])
                 sequencer.sync_channels_time(self.channels)
             self.readout_pxi(sequencer, self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]])
             sequencer.end_sequence()
@@ -1777,6 +1780,58 @@ class PulseSequences:
                     sequencer.sync_channels_time(self.channels)
                 self.readout_pxi(sequencer,self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]])
                 sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def histogram_crosstalk(self, sequencer):
+        # vacuum rabi sequences
+        for ii in range(self.expt_cfg['num_seq_sets']):
+
+            #g
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
+            self.readout_pxi(sequencer, self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]])
+            sequencer.end_sequence()
+
+            # with pi pulse for actual rd qb(e state)
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A", "B"], time=500)
+            qb = self.expt_cfg["rd_qb"]
+            setup = self.lattice_cfg["qubit"]["setup"][qb]
+            pulse_info = self.lattice_cfg["pulse_info"]
+            self.gen_q(sequencer, qubit_id=setup, len=pulse_info[setup]["pi_len"][qb],
+                       amp=pulse_info[setup]["pi_amp"][qb], iq_overwrite=pulse_info[setup]["iq_freq"][qb], Q_phase_overwrite=pulse_info[setup]["Q_phase"][qb],
+                       pulse_type=pulse_info["pulse_type"][qb])
+            sequencer.sync_channels_time(self.channels)
+            self.readout_pxi(sequencer, self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]])
+            sequencer.end_sequence()
+
+            # with pi pulse (e state)
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A", "B"], time=500)
+            qb = self.expt_cfg["cross_qb"]
+            setup = self.lattice_cfg["qubit"]["setup"][qb]
+            pulse_info = self.lattice_cfg["pulse_info"]
+            self.gen_q(sequencer, qubit_id=setup, len=pulse_info[setup]["pi_len"][qb],
+                       amp=pulse_info[setup]["pi_amp"][qb], iq_overwrite=pulse_info[setup]["iq_freq"][qb], Q_phase_overwrite=pulse_info[setup]["Q_phase"][qb],
+                       pulse_type=pulse_info["pulse_type"][qb])
+            sequencer.sync_channels_time(self.channels)
+            self.readout_pxi(sequencer, self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]])
+            sequencer.end_sequence()
+
+            # with two pi pulses
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A", "B"], time=500)
+            for qb in [self.expt_cfg["rd_qb"], self.expt_cfg["cross_qb"]]:
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
+                pulse_info = self.lattice_cfg["pulse_info"]
+                self.gen_q(sequencer, qubit_id=setup, len=pulse_info[setup]["pi_len"][qb],
+                           amp=pulse_info[setup]["pi_amp"][qb], iq_overwrite=pulse_info[setup]["iq_freq"][qb],
+                           Q_phase_overwrite=pulse_info[setup]["Q_phase"][qb],
+                           pulse_type=pulse_info["pulse_type"][qb])
+                sequencer.sync_channels_time(self.channels)
+            self.readout_pxi(sequencer, self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]])
+            sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
 
