@@ -12,8 +12,8 @@ from scipy.special import ellipk
 from IPython.display import Image
 import matplotlib
 import matplotlib.pyplot as plt
-from kfit import fit_lor
-from kfit import fit_hanger
+from slab.kfit import fit_lor
+from slab.kfit import fit_hanger
 import os
 from scipy.interpolate import interp1d
 notebookdirectory = os.getcwd()
@@ -1655,7 +1655,7 @@ def histogram_IQ_2setups(filenb):
             for i in pi_qbs:
                 temp = temp + "piQ{}".format(i)
             labels.append(temp)
-        
+
         if len(pi_qbs) > 1 or (len(pi_qbs)==0 and pi_qbs[0]!=rd_qb):
             rd_setup = lattice_cfg["qubit"]["setup"][rd_qb]
             I = array(a["qb{}_I".format(rd_setup)])
