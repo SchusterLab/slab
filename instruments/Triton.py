@@ -34,35 +34,12 @@ class Triton(SocketInstrument):
         
         self.query_t('SET:DEV:TURB1:PUMP:SIG:STATE:'+state)
 
-    def collect_mix(self):
-        self.query_t('SET:SYS:DR:ACTN:COLL')
-
-    def pre_cool(self):
-        self.query_t('SET:SYS:DR:ACTN:PCL')
-
-    def warmup(self):
-        self.query_t('SET:SYS:DR:ACTN:WARM')
-
-    def cooldown(self):
-        self.query_t('SET:SYS:DR:ACTN:CLDN')    
 
     def get_status(self):
         return self.query_t('READ:SYS:DR:STATUS')
 
     def get_automation(self):
         return self.query_t('READ:SYS:DR:ACTN')
-
-    def stop_automation(self):
-        self.query_t('SET:SYS:DR:ACTN:STOP')
-
-    def empty_precool(self):
-        self.query_t('SET:SYS:DR:ACTN:EPCL')
-
-    def pause_precool(self):
-        self.query_t('SET:SYS:DR:ACTN:PCOND')
-
-    def restart_precool(self):
-        self.query_t('SET:SYS:DR:ACTN:RCOND')
 
     def set_forepump(self, state):
         if state==True:
