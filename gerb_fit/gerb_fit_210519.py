@@ -12,8 +12,8 @@ from scipy.special import ellipk
 from IPython.display import Image
 import matplotlib
 import matplotlib.pyplot as plt
-from kfit import fit_lor
-from kfit import fit_hanger
+from slab.kfit import fit_lor
+from slab.kfit import fit_hanger
 import os
 from scipy.interpolate import interp1d
 notebookdirectory = os.getcwd()
@@ -1462,7 +1462,140 @@ def echo(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
         return p
 
 
-def histogram(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False,rancut=120):
+def fid_func(Vval, ssbinsg, ssbinse, sshg, sshe):
+    ind_g = np.argmax(ssbinsg > Vval)
+    ind_e = np.argmax(ssbinse > Vval)
+    return np.abs(((np.sum(sshg[:ind_g]) - np.sum(sshe[:ind_e])) / sshg.sum()))
+
+
+def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, rancut=120,
+                  details=True, numbins=200):
+    expt_name = 'histogram'
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+
+    with File(filename, 'r') as a:
+
+        tags = ''
+
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
+
+        expt_cfg = (json.loads(a.attrs['experiment_cfg']))[expt_name.lower()]
+        # numbins = expt_cfg['numbins']
+        a_num = expt_cfg['acquisition_num']
+        ns = expt_cfg['num_seq_sets']
+        readout_length = readout_params['length']
+        window = readout_params['window']
+        atten = '0'
+
+        if details:
+            print('Readout length = ', readout_length)
+            print('Readout window = ', window)
+            print("Digital atten = ", atten)
+            print("Readout freq = ", readout_f)
+        I = array(a['I'])
+        Q = array(a['Q'])
+        sample = a_num
+
+        I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
+
+        colors = ['r', 'b', 'g']
+        labels = ['g', 'e', 'f']
+        titles = ['I', 'Q']
+
+        IQs = mean(I[::3], 1), mean(Q[::3], 1), mean(I[1::3], 1), mean(Q[1::3], 1), mean(I[2::3], 1), mean(Q[2::3], 1)
+        IQsss = I.T.flatten()[0::3], Q.T.flatten()[0::3], I.T.flatten()[1::3], Q.T.flatten()[1::3], I.T.flatten()[
+                                                                                                    2::3], Q.T.flatten()[
+                                                                                                           2::3]
+
+        x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
+        x0e, y0e = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
+        phi = arctan((y0e - y0g) / (x0e - x0g))
+        if details:
+            fig = plt.figure(figsize=(10, 5))
+
+            ax = fig.add_subplot(221, title='length,window = ' + str(readout_length) + ',' + str(window))
+            for ii in range(2):
+                ax.plot(IQsss[2 * ii][:], IQsss[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
+
+            ax.set_xlabel('I (V)')
+            ax.set_ylabel('Q (V)')
+            ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
+            ax.set_ylim(y0g - ran / rancut, y0g + ran / rancut)
+
+            ax = fig.add_subplot(222, title=tags + ', atten = ' + str(atten))
+
+            for ii in range(2):
+                ax.errorbar(mean(IQsss[2 * ii]), mean(IQsss[2 * ii + 1]), xerr=std(IQsss[2 * ii]),
+                            yerr=std(IQsss[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+            ax.set_xlabel('I')
+            ax.set_ylabel('Q')
+
+            ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
+            ax.set_ylim(y0g - ran / rancut, y0g + ran / rancut)
+
+        IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
+                    -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),
+                    I.T.flatten()[1::3] * cos(phi) + Q.T.flatten()[1::3] * sin(phi),
+                    -I.T.flatten()[1::3] * sin(phi) + Q.T.flatten()[1::3] * cos(phi),
+                    I.T.flatten()[2::3] * cos(phi) + Q.T.flatten()[2::3] * sin(phi),
+                    -I.T.flatten()[2::3] * sin(phi) + Q.T.flatten()[2::3] * cos(phi))
+
+        x0g, y0g = mean(IQsssrot[0][:]), mean(IQsssrot[1][:])
+        x0e, y0e = mean(IQsssrot[2][:]), mean(IQsssrot[3][:])
+
+        if details:
+            for kk in range(4):
+
+                ax = fig.add_subplot(2, 2, kk % 2 + 3, title=expt_name + titles[kk % 2])
+                ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
+                ax.set_xlabel(titles[kk % 2] + '(V)')
+                ax.set_ylabel('Number')
+                ax.legend()
+                if kk % 2 == 0:
+                    ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
+                else:
+                    ax.set_xlim(y0g - ran / rancut, y0g + ran / rancut)
+
+    for ii, i in enumerate(['I', 'Q']):
+        if ii is 0:
+            lims = [x0g - ran / rancut, x0g + ran / rancut]
+        else:
+            lims = [y0g - ran / rancut, y0g + ran / rancut]
+        sshg, ssbinsg = np.histogram(IQsssrot[ii], bins=numbins, range=lims)
+        sshe, ssbinse = np.histogram(IQsssrot[ii + 2], bins=numbins, range=lims)
+        fid_list = [fid_func(V, ssbinsg, ssbinse, sshg, sshe) for V in ssbinsg[0:-1]]
+        fid = max(fid_list)
+        if ii == 0:
+            temp = fid
+
+        if details:
+            print("Single shot readout fidility from channel ", i, " after rotation = ", fid)
+            print("Optimal angle =", phi)
+
+    if details:
+        print('---------------------------')
+
+        fig.tight_layout()
+        plt.show()
+
+    return temp
+
+
+def histogram_og(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False,rancut=120):
     expt_name = 'histogram'
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
 
@@ -1655,7 +1788,7 @@ def histogram_IQ_2setups(filenb):
             for i in pi_qbs:
                 temp = temp + "piQ{}".format(i)
             labels.append(temp)
-        
+
         if len(pi_qbs) > 1 or (len(pi_qbs)==0 and pi_qbs[0]!=rd_qb):
             rd_setup = lattice_cfg["qubit"]["setup"][rd_qb]
             I = array(a["qb{}_I".format(rd_setup)])
@@ -1681,7 +1814,7 @@ def histogram_IQ_analyzer(IQss, labels=['g', 'e'], ran=1, tags=None, numbins=200
     fig = plt.figure(figsize=(15, 7 * 5))
     colors = ['r', 'b']
 
-    ax = fig.add_subplot(621, title='length,window = ' + str(readout_length) + ',' + str(window))
+    ax = fig.add_subplot(621, title=tags)
     x0g, y0g = mean(IQss[0]), mean(IQss[1])
     x0e, y0e = mean(IQss[2]), mean(IQss[3])
     phi = arctan((y0e - y0g) / (x0e - x0g))
@@ -1713,7 +1846,7 @@ def histogram_IQ_analyzer(IQss, labels=['g', 'e'], ran=1, tags=None, numbins=200
     x0g, y0g = mean(IQssrot[0][:]), mean(IQssrot[1][:])
     x0e, y0e = mean(IQssrot[2][:]), mean(IQssrot[3][:])
 
-    for ii in range(3):
+    for ii in range(2):
         ax.plot(IQssrot[2 * ii][:], IQssrot[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
 
     ax.set_xlabel('I (V)')
@@ -1723,7 +1856,7 @@ def histogram_IQ_analyzer(IQss, labels=['g', 'e'], ran=1, tags=None, numbins=200
 
     ax = fig.add_subplot(624)
 
-    for ii in range(3):
+    for ii in range(2):
         ax.errorbar(mean(IQssrot[2 * ii]), mean(IQssrot[2 * ii + 1]), xerr=std(IQssrot[2 * ii]),
                     yerr=std(IQssrot[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
     ax.set_xlabel('I')
@@ -1733,7 +1866,7 @@ def histogram_IQ_analyzer(IQss, labels=['g', 'e'], ran=1, tags=None, numbins=200
 
     for kk in range(4):
 
-        ax = fig.add_subplot(6, 2, kk % 2 + 5, title=expt_name + titles[kk % 2])
+        ax = fig.add_subplot(6, 2, kk % 2 + 5, title=expt_name + labels[kk % 2])
         ax.hist(IQssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
         ax.set_xlabel(labels[kk % 2] + '(V)')
         ax.set_ylabel('Number')
@@ -1775,7 +1908,7 @@ def histogram_IQ_analyzer(IQss, labels=['g', 'e'], ran=1, tags=None, numbins=200
             ax.set_xlim(x0g - ran , x0g + ran )
         else:
             ax.set_xlim(y0g - ran , y0g + ran )
-        ax.set_xlabel(titles[ii] + '(V)')
+        ax.set_xlabel(labels[ii] + '(V)')
         ax.set_ylabel('$F$')
 
     print('---------------------------')
