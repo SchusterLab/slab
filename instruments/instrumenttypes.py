@@ -112,11 +112,11 @@ class VisaInstrument(Instrument):
             self.instrument.timeout = timeout * 1000
 
     def write(self, s):
-        if self.enabled: self.instrument.write(self.encode_s(s))
+        if self.enabled: self.instrument.write(s)
 
     def read(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
-        if self.enabled: return self.instrument.read().decode()
+        if self.enabled: return self.instrument.read()
 
     def readb(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
