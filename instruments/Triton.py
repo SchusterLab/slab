@@ -16,6 +16,7 @@ class Triton(SocketInstrument):
         self.end_char='\n'
         self.timeout=timeout
 
+
     def query_t(self, cmd):
         self.write(cmd)
         return self.read_line(timeout=self.timeout, eof_char='\n')
@@ -32,6 +33,13 @@ class Triton(SocketInstrument):
             raise TypeError('State must be bool')
         
         self.query_t('SET:DEV:TURB1:PUMP:SIG:STATE:'+state)
+
+
+    def get_status(self):
+        return self.query_t('READ:SYS:DR:STATUS')
+
+    def get_automation(self):
+        return self.query_t('READ:SYS:DR:ACTN')
 
     def set_forepump(self, state):
         if state==True:
@@ -82,6 +90,16 @@ class Triton(SocketInstrument):
         temp=data.split('\n')[0].split(':')[-1]
         return Q(temp).magnitude
 
+    def get_pressure(self, ch):
+        if ch<1 and ch>6:
+            raise Exception('Not a valid pressure channel number')
+        try:
+            data=self.query_t(f"READ:DEV:P{ch}:PRES:SIG:PRES")
+        except:
+            print('Unable to get pressure value')
+        pres=data.split('\n')[0].split(':')[-1]
+        return Q(pres).magnitude
+
     def set_mc_temp_loop(self, set_temp ,heater_range=0.0316, state=False):
         if state==True:
             state="ON"
@@ -113,3 +131,59 @@ class Triton(SocketInstrument):
 
     def get_mc_loop_heater_range(self):
         p_set=self.query_t(f'GET:DEV:T{self.mc_thermometer}:TEMP:LOOP:RANGE')
+
+    def warmup(self):
+        output=self.query_t('SET:SYS:DR:ACTN:WARM')
+        if output.split('\n')[0].split(':')[-1]=='VALID':
+            pass
+        else:
+            print('CAUTION: Unable to change warmup state, check fridge')
+
+    def precool(self):
+        output=self.query_t('SET:SYS:DR:ACTN:PCL')
+        if output.split('\n')[0].split(':')[-1]=='VALID':
+            pass
+        else:
+            print('CAUTION: Unable to change to precool state, check fridge')
+
+    def empty_precool(self):
+        output=self.query_t('SET:SYS:DR:ACTN:EPCL')
+        if output.split('\n')[0].split(':')[-1]=='VALID':
+            pass
+        else:
+            print('CAUTION: Unable to empty precool loop, check fridge')
+
+    def condense(self):
+        output=self.query_t('SET:SYS:DR:ACTN:COND')
+        if output.split('\n')[0].split(':')[-1]=='VALID':
+            pass
+        else:
+            print('CAUTION: Unable to change to condense state, check fridge')
+
+    def pause_condense(self):
+        output=self.query_t('SET:SYS:DR:ACTN:PCOND')
+        if output.split('\n')[0].split(':')[-1]=='VALID':
+            pass
+        else:
+            print('CAUTION: Unable to pause condense state, check fridge')
+
+    def collect_mix(self):
+        output=self.query_t('SET:SYS:DR:ACTN:COLL')
+        if output.split('\n')[0].split(':')[-1]=='VALID':
+            pass
+        else:
+            print('CAUTION: Unable to collect mic, check fridge status')
+
+    def stop_automation(self):
+        output=self.query_t('SET:SYS:DR:ACTN:STOP')
+        if output.split('\n')[0].split(':')[-1]=='VALID':
+            pass
+        else:
+            print('CAUTION: Unable to stop automation, check fridge status')
+
+    def full_cooldown(self):
+        output=self.query_t('SET:SYS:DR:ACTN:CLDN')
+        if output.split('\n')[0].split(':')[-1]=='VALID':
+            pass
+        else:
+            print('CAUTION: Unable to start full cooldown, check fridge status')
