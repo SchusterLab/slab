@@ -146,13 +146,15 @@ def iq_process(f, raw_I, raw_Q, ran=1, phi=0, sub_mean=True):
     return I, Q, mag, phase
 
 
-def return_I_Q_res(filenb, pi=False, ff=False):
+def return_I_Q_res(filenb, pi=False, ff=False, twosetups=False):
     expt_name = "resonator_spectroscopy"
 
     if pi:
         expt_name = expt_name + "_pi"
     if ff:
         expt_name = "ff_" + expt_name
+    if twosetups:
+        expt_name = expt_name + "_2setups"
 
     fname = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
 
@@ -160,15 +162,25 @@ def return_I_Q_res(filenb, pi=False, ff=False):
         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
         quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
         expt_params = experiment_cfg[expt_name.lower()]
 
         on_qb = quantum_device_cfg['setups'][0]
+        if twosetups:
+            rd_qb = expt_params["rd_qb"]
+            on_qb = lattice_cfg["qubit"]['setup'][rd_qb]
+
         params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
         ran = params['ran']  # range of DAC card for processing
         readout_f = params['readout_freq']
 
-        I_raw = a['I']
-        Q_raw = a['Q']
+        try:
+            I_raw = a['I']
+            Q_raw = a['Q']
+        except:
+            I_raw = a['qb{}_I'.format(on_qb)]
+            Q_raw = a['qb{}_Q'.format(on_qb)]
+
         f = arange(expt_params['start'] + readout_f, expt_params['stop'] + readout_f, expt_params['step'])[:len(I_raw)]
 
         # process I, Q data
@@ -979,6 +991,81 @@ def melting_single_readout_full_ramp_Q3(filenb, phi=0, sub_mean=False, show=["I"
         else:
             return I,Q
 
+def melting_single_readout_full_ramp_2setups(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
+                                     debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
+
+    expt_name = "melting_single_readout_full_ramp_Q3"
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg['melting_single_readout_full_ramp_Q3']
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
+
+        I_raw = np.array(a["I"])
+        Q_raw = np.array(a["Q"])
+        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+        t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
+            :(len(I_raw))]
+
+        J = []
+
+        for s in show:
+            if pi_cal:
+                pi_file = a.attrs['pi_cal_fname']
+                with File(pi_file, 'r') as p:
+                    I_raw_P = np.array(p["I"])
+                    Q_raw_P = np.array(p["Q"])
+                    (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
+                print(I_P)
+                I = np.concatenate((I, I_P))
+                Q = np.concatenate((Q, Q_P))
+                plt.plot(t, eval(s)[0:-2])
+                if rabi_vals != None:
+                    plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
+                    plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
+                if fit_J:
+                    res = fit_sin(t, eval(s)[0:-2])
+                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+                    plt.plot(t, res['fitfunc'](t))
+                plt.axhline(y=eval(s)[-2], c='g', label="g")
+                plt.axhline(y=eval(s)[-1], c='r', label="e")
+                plt.legend()
+                plt.xlabel('time (ns)')
+                plt.ylabel(s + " volts")
+                plt.show()
+
+                if norm_plot:
+                    plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
+                    plt.ylim((-0.1, 1))
+                    plt.xlabel('time (ns)')
+                    plt.ylabel(s + ' normalized')
+                    plt.legend()
+            #             plt.show()
+            else:
+                plt.title(s)
+                plt.plot(t, eval(s))
+                if fit_J:
+                    res = fit_sin(t, eval(s)[0:-2])
+                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+                    plt.plot(t, res['fitfunc'](t))
+                plt.show()
+        if fit_J:
+            return J
+        else:
+            return I,Q
+
 def melting_single_readout_full_ramp(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
                                      debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
 
@@ -1163,6 +1250,8 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
 
 
         ####GET IQ #####
+        if "threshold" in expt_params.keys() and expt_params["threshold"]:
+            state = array(a["state"])
         I_raw = array(a["I"])
         Q_raw = array(a["Q"])
         (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
@@ -1469,8 +1558,11 @@ def fid_func(Vval, ssbinsg, ssbinse, sshg, sshe):
 
 
 def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, rancut=120,
-                  details=True, numbins=200):
+                  details=True, numbins=200, ff=False, IQrot = True):
     expt_name = 'histogram'
+    if ff:
+        expt_name = 'ff_histogram'
+
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
 
     with File(filename, 'r') as a:
@@ -1523,7 +1615,10 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
 
         x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
         x0e, y0e = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
-        phi = arctan((y0e - y0g) / (x0e - x0g))
+        if IQrot:
+            phi = arctan((y0e - y0g) / (x0e - x0g))
+        else:
+            phi = 0
         if details:
             fig = plt.figure(figsize=(10, 5))
 
@@ -1809,6 +1904,65 @@ def histogram_IQ_2setups(filenb):
             IQ_ss.append(Q.T.flatten()[seq::num_seq])
 
     return labels, IQ_ss
+
+
+def histogram_IQ_crosstalk(filenb, phi=0):
+    """returns:
+    labels: [g, e, piQcross, pipiQcross]
+    IQss: [ [I_g, Q_g], [I_e, Q_e], [I_piQcross, Q_piQcross], [I_pipiQcross, Q_pipiQcross]]
+    IQssrot: same, but rotated """
+    expt_name = 'histogram_crosstalk'
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+
+    with File(filename, 'r') as a:
+        tags = ''
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+        expt_cfg = experiment_cfg[expt_name.lower()]
+
+        cross_qb = expt_cfg['cross_qb']
+        rd_qb = expt_cfg['rd_qb']
+
+        on_qb = lattice_cfg["qubit"]["setup"][rd_qb]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+
+        a_num = expt_cfg['acquisition_num']
+        ns = expt_cfg['num_seq_sets']
+        window = readout_params['window']
+
+        num_seq = 4
+        labels = ['gQ{}'.format(rd_qb), "eQ{}".format(rd_qb), "gQ{}piQ{}".format(rd_qb, cross_qb),
+                  "eQ{}piQ{}".format(rd_qb, cross_qb)]
+
+        try:
+            I = array(a['I'])
+            Q = array(a['Q'])
+        except:
+            rd_setup = lattice_cfg["qubit"]["setup"][rd_qb]
+            I = array(a["qb{}_I".format(rd_setup)])
+            Q = array(a["qb{}_Q".format(rd_setup)])
+
+        I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
+
+        IQ_means = []
+        IQss = []
+        for seq in range(num_seq):
+            IQss.append(
+                [I.T.flatten()[seq::num_seq],
+                 Q.T.flatten()[seq::num_seq]]
+            )
+        IQssrot = []
+
+        for IQs in IQss:
+            Irot = IQs[0] * cos(phi) + IQs[1] * sin(phi)
+            Qrot = -IQs[0] * sin(phi) + IQs[1] * cos(phi)
+            IQssrot.append([Irot, Qrot])
+
+    return labels, IQss, IQssrot
 
 def histogram_IQ_analyzer(IQss, labels=['g', 'e'], ran=1, tags=None, numbins=200):
     fig = plt.figure(figsize=(15, 7 * 5))

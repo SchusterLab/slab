@@ -271,6 +271,52 @@ class Experiment:
                     f.append_line('Q', data[0][1])
         return data
 
+    def get_avg_data_threshold_pxi(self,expt_cfg, name, seq_data_file):
+        vec_A = [0, 0]
+        vec_B = [0, 0]
+        phi_A = 0
+        phi_B = 0
+
+        if "A" in self.quantum_device_cfg["setups"]:
+            vec_A = self.quantum_device_cfg["readout"]["A"]["vec"]
+            phi_A = self.quantum_device_cfg["readout"]["A"]["phi"]
+
+        if "B" in self.quantum_device_cfg["setups"]:
+            vec_B = self.quantum_device_cfg["readout"]["B"]["vec"]
+            phi_B = self.quantum_device_cfg["readout"]["B"]["phi"]
+
+
+        data = self.pxi.avg_data_threshold(vecA=vec_A, phiA=phi_A, vecB=vec_B, phiB=phi_B)
+        if seq_data_file == None:
+            self.slab_file = SlabFile(self.data_file)
+            with self.slab_file as f:
+                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
+                    f.add('qbA_I', data[0][0])
+                    f.add('qbA_Q', data[0][1])
+                    f.add('qbA_state', data[0][2])
+                    f.add('qbB_I', data[1][0])
+                    f.add('qbB_Q', data[1][1])
+                    f.add('qbB_state', data[1][2])
+                else:
+                    f.add('I', data[0][0])
+                    f.add('Q', data[0][1])
+                    f.add('state', data[0][2])
+        else:
+            self.slab_file = SlabFile(seq_data_file)
+            with self.slab_file as f:
+                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
+                    f.append_line('qbA_I', data[0][0])
+                    f.append_line('qbA_Q', data[0][1])
+                    f.append_line('qbA_state', data[0][2])
+                    f.append_line('qbB_I', data[1][0])
+                    f.append_line('qbB_Q', data[1][1])
+                    f.append_line('qbB_state', data[1][2])
+                else:
+                    f.append_line('I', data[0][0])
+                    f.append_line('Q', data[0][1])
+                    f.append_line('state', data[0][2])
+        return data
+
     def get_ss_data_pxi(self,expt_cfg, name, seq_data_file):
         data = self.pxi.SSdata_many()
         if seq_data_file == None:
@@ -373,6 +419,8 @@ class Experiment:
                 self.data =  self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
             elif self.expt_cfg['trajectory']:
                 self.data = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+            elif 'threshold' in self.expt_cfg.keys() and self.expt_cfg['threshold']:
+                self.data = self.get_avg_data_threshold_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
             else:
                 self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
         #

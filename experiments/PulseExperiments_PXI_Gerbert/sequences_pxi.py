@@ -416,7 +416,8 @@ class PulseSequences:
             setup = self.lattice_cfg["qubit"]["setup"][qb]
 
             self.gen_q(sequencer, qubit_id=setup, len=pulse_info[setup]["pi_len"][qb],
-                       amp=pulse_info[setup]["pi_amp"][qb], phase=0,
+                       amp=pulse_info[setup]["pi_amp"][qb], iq_overwrite=pulse_info[setup]["iq_freq"][qb],
+                       Q_phase_overwrite=pulse_info[setup]["Q_phase"][qb],
                        pulse_type=pulse_info["pulse_type"][qb])
             sequencer.sync_channels_time(self.channels)
         self.idle_q(sequencer, time=self.expt_cfg["delay"])
@@ -541,6 +542,44 @@ class PulseSequences:
             self.idle_q(sequencer, time=self.expt_cfg['wait_post_flux'])
             sequencer.sync_channels_time(self.channels)
             self.readout_pxi(sequencer, setup, overlap=False)
+            sequencer.sync_channels_time(self.channels)
+
+            ############################## generate compensation ###########################################
+            flux_vec = self.expt_cfg["ff_vec"]
+            self.ff_pulse(sequencer, [evolution_t]*8, pulse_type=self.expt_cfg["ramp_type"], flux_vec=flux_vec, flip_amp=True)
+            sequencer.end_sequence()
+        return sequencer.complete(self, plot=True)
+
+    def melting_single_readout_full_ramp_2setups(self, sequencer):
+        qb_list = self.expt_cfg["Mott_qbs"]
+
+        rd_setup = self.lattice_cfg["qubit"]["setup"][self.expt_cfg["rd_qb"]]
+
+        for evolution_t in np.arange(self.expt_cfg["evolution_t_start"], self.expt_cfg["evolution_t_stop"], self.expt_cfg["evolution_t_step"]):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
+
+            ##################################GENERATE PI PULSES ################################################
+            for i, qb in enumerate(qb_list):
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
+                pulse_info = self.lattice_cfg["pulse_info"]
+                self.gen_q(sequencer, qubit_id=setup, len=pulse_info[setup]["pi_len"][qb],
+                           amp=pulse_info[setup]["pi_amp"][qb], iq_overwrite=pulse_info[setup]["iq_freq"][qb],
+                           Q_phase_overwrite=pulse_info[setup]["Q_phase"][qb],
+                           pulse_type=pulse_info["pulse_type"][qb])
+                self.idle_q(sequencer, time=20)
+                sequencer.sync_channels_time(self.channels)
+
+            sequencer.sync_channels_time(self.channels)
+            self.idle_q(sequencer, time=100)
+            ##############################GENERATE RAMP###########################################
+            flux_vec = self.expt_cfg["ff_vec"]
+            self.ff_pulse(sequencer, ff_len = [evolution_t]*8, pulse_type = self.expt_cfg["ramp_type"], flux_vec= flux_vec, flip_amp=False)
+            ############################## readout ###########################################
+            sequencer.sync_channels_time(self.channels)
+            self.idle_q(sequencer, time=self.expt_cfg['wait_post_flux'])
+            sequencer.sync_channels_time(self.channels)
+            self.readout_pxi(sequencer, rd_setup, overlap=False)
             sequencer.sync_channels_time(self.channels)
 
             ############################## generate compensation ###########################################
@@ -1331,9 +1370,6 @@ class PulseSequences:
                                   flux_vec=self.expt_cfg["ff_vec"], flip_amp=True)
 
                     sequencer.end_sequence()
-
-
-                sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
 
