@@ -521,11 +521,16 @@ class Experiment:
                                           cont_name=cont_name, save=False)
         return PA.p
 
-    def post_analysisandsave(self, path, experiment_name, cont_name, P='Q', phi=0, cont_data_file=None):
-        PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, path,
+    def post_analysisandsave(self, path, experiment_name, cont_name, P='Q', phi=0, cont_data_file=None,
+                             save=True, obj=False):
+        PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg,
+                                          self.lattice_cfg, path,
                                           experiment_name, self.data, P, phi, cont_data_file=cont_data_file,
-                                          cont_name=cont_name, save=True)
-        return PA.p
+                                          cont_name=cont_name, save=save)
+        if obj:
+            return PA
+        else:
+            return PA.p
 
 
 

@@ -213,7 +213,7 @@ class Tuning:
         print("New fluxqanta array filename: " + flx_name)
         np.save(flx_name, new_flxquantaarray)
 
-        return new_flxquantaarray
+        return flx_name
 
     def plot_colored_CTM(self, Vtype, save_file = None):
         if Vtype=="DC":
