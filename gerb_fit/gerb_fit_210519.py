@@ -1615,8 +1615,11 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
 
         x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
         x0e, y0e = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
+        vec = [(x0g+x0e)/2, (y0g+y0e)/2]
         if IQrot:
             phi = arctan((y0e - y0g) / (x0e - x0g))
+            if x0g>x0e:
+                phi = phi+np.pi
         else:
             phi = 0
         if details:
@@ -1642,6 +1645,8 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
             ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
             ax.set_ylim(y0g - ran / rancut, y0g + ran / rancut)
 
+        I = I-vec[0]
+        Q = Q-vec[1]
         IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
                     -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),
                     I.T.flatten()[1::3] * cos(phi) + Q.T.flatten()[1::3] * sin(phi),
@@ -1656,7 +1661,8 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
             for kk in range(4):
 
                 ax = fig.add_subplot(2, 2, kk % 2 + 3, title=expt_name + titles[kk % 2])
-                ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
+                ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)],histtype=u'step', linewidth = 1.5)
+                ax.axvline(x=0)
                 ax.set_xlabel(titles[kk % 2] + '(V)')
                 ax.set_ylabel('Number')
                 ax.legend()
@@ -1687,7 +1693,7 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
         fig.tight_layout()
         plt.show()
 
-    return temp
+    return temp, phi, vec, IQsssrot[0], IQsssrot[2]
 
 
 def histogram_og(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False,rancut=120):
