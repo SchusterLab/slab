@@ -571,11 +571,8 @@ class N5242A(SocketInstrument):
         if timeout is None:
             timeout = self.query_sleep
         self.get_operation_completion()
-<<<<<<< Updated upstream
-        self.read(timeout=1)
-=======
+        # self.read(timeout=1)
         self.read(timeout=0.1)
->>>>>>> Stashed changes
         self.write("CALC%d:DATA? FDATA" % channel)
         # data_str=self.read_lineb(timeout=timeout)
         # print(data_str)
