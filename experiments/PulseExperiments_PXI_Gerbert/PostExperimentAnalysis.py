@@ -20,7 +20,7 @@ class PostExperimentAnalyzeAndSave:
         self.save = save
 
         self.exptname = experiment_name
-        self.data
+        self.data =data
         self.P = P
         if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
             self.qbA_I_raw = data[0][0]
@@ -105,11 +105,11 @@ class PostExperimentAnalyzeAndSave:
         mag = np.sqrt(np.square(I) + np.square(Q))
 
         # IQ rotate
-        I, Q = iq_rot(I, Q, phi)
+        I, Q = self.iq_rot(I, Q, phi)
 
         return I, Q, mag, phase
 
-    def get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb):
+    def get_params(self, hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb):
 
         params = {}
         params['ran'] = hardware_cfg['awg_info']['keysight_pxi']['digtzr_vpp_range']
@@ -130,13 +130,12 @@ class PostExperimentAnalyzeAndSave:
     def pulse_probe_iq(self):
         print("Starting pulse probe analysis")
         expt_params = self.experiment_cfg[self.exptname]
-        params = self.get_params(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, expt_params[
-            'on_qubits'][0])
+        params = self.get_params(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, self.quantum_device_cfg['setups'][0])
 
         nu_q = params['qb_freq']
 
         I, Q, mag, phase = self.iq_process(raw_I=self.I_raw, raw_Q= self.Q_raw, sub_mean=True, phi=self.phi)
-        f = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))] + nu_q
+        f = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))] + nu_q
         exp_nb = self.current_file_index(prefix=self.exptname)
 
         try:
@@ -163,7 +162,7 @@ class PostExperimentAnalyzeAndSave:
 
         I, Q, mag, phase = self.iq_process(raw_I=self.I_raw, raw_Q=self.Q_raw, sub_mean=self.sub_mean, phi=self.phi)
 
-        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I_raw))]
         exp_nb = self.current_file_index(prefix=self.exptname)
 
         pulse_type = expt_params['pulse_type']
@@ -187,7 +186,7 @@ class PostExperimentAnalyzeAndSave:
                 if domain[1] < t[-1] / 8:
                     print("exiting loop")
                     satisfied = True
-                print("rabi fit worked!")
+                    print("rabi fit worked!")
         except:
             print("rabi fit failed on exp", exp_nb)
             p = [0, 0, 0, 0, 0]
@@ -206,7 +205,7 @@ class PostExperimentAnalyzeAndSave:
         expt_params = self.experiment_cfg[self.exptname]
 
         I, Q, mag, phase = self.iq_process(raw_I=self.I_raw, raw_Q=self.Q_raw, sub_mean=self.sub_mean, phi=self.phi)
-        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I_raw))]
         exp_nb = self.current_file_index(prefix=self.exptname)
         t = t / 1000  # convert to us
         try:
@@ -219,7 +218,7 @@ class PostExperimentAnalyzeAndSave:
 
         t1_meta = [exp_nb, time.time(), self.raw_I_mean, self.raw_Q_mean]
 
-        if save:
+        if self.save:
             with self.cont_slab_file as file:
                 file.append_line('t1_meta', t1_meta)
                 file.append_line('t1_fit', p)
@@ -231,7 +230,7 @@ class PostExperimentAnalyzeAndSave:
         expt_params = self.experiment_cfg[self.exptname]
 
         I, Q, mag, phase = self.iq_process(raw_I=self.I_raw, raw_Q=self.Q_raw, sub_mean=self.sub_mean, phi=self.phi)
-        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I_raw))]
         t = t/1000 #convert to us
         exp_nb = self.current_file_index(prefix=self.exptname)
 
@@ -260,7 +259,7 @@ class PostExperimentAnalyzeAndSave:
 
         I, Q = self.I_raw / 2 ** 15 * ran, self.Q_raw / 2 ** 15 * ran
 
-        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I_raw))]
         t = t/1000 #convert to us
         exp_nb = self.current_file_index(prefix=self.exptname)
 
@@ -280,62 +279,61 @@ class PostExperimentAnalyzeAndSave:
                 print("appended line correctly")
         self.p = p
 
-        def fid_func(Vval, ssbinsg, ssbinse, sshg, sshe):
-            ind_g = np.argmax(ssbinsg > Vval)
-            ind_e = np.argmax(ssbinse > Vval)
-            return np.abs(((np.sum(sshg[:ind_g]) - np.sum(sshe[:ind_e])) / sshg.sum()))
+    def fid_func(self,Vval, ssbinsg, ssbinse, sshg, sshe):
+        ind_g = np.argmax(ssbinsg > Vval)
+        ind_e = np.argmax(ssbinse > Vval)
+        return np.abs(((np.sum(sshg[:ind_g]) - np.sum(sshe[:ind_e])) / sshg.sum()))
 
-        def histogram(self):
-            print("Starting histogram analysis")
-            expt_params = self.experiment_cfg[self.exptname]
+    def histogram(self):
+        print("Starting histogram analysis")
+        expt_params = self.experiment_cfg[self.exptname]
 
-            I, Q, mag, phase = self.iq_process(raw_I=self.I_raw, raw_Q=self.Q_raw, sub_mean=self.sub_mean, phi=self.phi)
+        I, Q = self.I_raw / 2 ** 15 * 1, self.Q_raw / 2 ** 15 * 1
 
-            numbins
-            rancut
+        numbins = expt_params["numbins"]
 
-            IQs = mean(I[::3], 1), mean(Q[::3], 1), mean(I[1::3], 1), mean(Q[1::3], 1), mean(I[2::3], 1), mean(Q[2::3],
-                                                                                                               1)
-            IQsss = I.T.flatten()[0::3], Q.T.flatten()[0::3], I.T.flatten()[1::3], Q.T.flatten()[1::3], I.T.flatten()[
-                                                                                                        2::3], Q.T.flatten()[
-                                                                                                               2::3]
-            x0g, y0g = mean(IQsss[0]), mean(IQsss[1])
-            x0e, y0e = mean(IQsss[2]), mean(IQsss[3])
-            phi = arctan((y0e - y0g) / (x0e - x0g))
+        IQs = mean(I[::3], 1), mean(Q[::3], 1), mean(I[1::3], 1), mean(Q[1::3], 1), mean(I[2::3], 1), mean(Q[2::3],
+                                                                                                           1)
+        IQsss = I.T.flatten()[0::3], Q.T.flatten()[0::3], I.T.flatten()[1::3], Q.T.flatten()[1::3], I.T.flatten()[
+                                                                                                    2::3], Q.T.flatten()[
+                                                                                                           2::3]
+        x0g, y0g = mean(IQsss[0]), mean(IQsss[1])
+        x0e, y0e = mean(IQsss[2]), mean(IQsss[3])
+        phi = arctan((y0e - y0g) / (x0e - x0g))
 
-            IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
-                        -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),
-                        I.T.flatten()[1::3] * cos(phi) + Q.T.flatten()[1::3] * sin(phi),
-                        -I.T.flatten()[1::3] * sin(phi) + Q.T.flatten()[1::3] * cos(phi),
-                        I.T.flatten()[2::3] * cos(phi) + Q.T.flatten()[2::3] * sin(phi),
-                        -I.T.flatten()[2::3] * sin(phi) + Q.T.flatten()[2::3] * cos(phi))
+        IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
+                    -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),
+                    I.T.flatten()[1::3] * cos(phi) + Q.T.flatten()[1::3] * sin(phi),
+                    -I.T.flatten()[1::3] * sin(phi) + Q.T.flatten()[1::3] * cos(phi),
+                    I.T.flatten()[2::3] * cos(phi) + Q.T.flatten()[2::3] * sin(phi),
+                    -I.T.flatten()[2::3] * sin(phi) + Q.T.flatten()[2::3] * cos(phi))
 
-            x0g, y0g = mean(IQsssrot[0][:]), mean(IQsssrot[1][:])
-            x0e, y0e = mean(IQsssrot[2][:]), mean(IQsssrot[3][:])
+        x0g, y0g = mean(IQsssrot[0][:]), mean(IQsssrot[1][:])
+        x0e, y0e = mean(IQsssrot[2][:]), mean(IQsssrot[3][:])
 
-            for ii, i in enumerate(['I', 'Q']):
-                if ii is 0:
-                    lims = [x0g - ran / rancut, x0g + ran / rancut]
-                else:
-                    lims = [y0g - ran / rancut, y0g + ran / rancut]
-                sshg, ssbinsg = np.histogram(IQsssrot[ii], bins=numbins, range=lims)
-                sshe, ssbinse = np.histogram(IQsssrot[ii + 2], bins=numbins, range=lims)
-                fid_list = [fid_func(V, ssbinsg, ssbinse, sshg, sshe) for V in ssbinsg[0:-1]]
-                temp = max(fid_list)
-                if ii == self.P:
-                    fid = temp
+        for ii, i in enumerate(['I', 'Q']):
+            # if ii is 0:
+            #     lims = [x0g - ran / rancut, x0g + ran / rancut]
+            # else:
+            #     lims = [y0g - ran / rancut, y0g + ran / rancut]
+            sshg, ssbinsg = np.histogram(IQsssrot[ii], bins=numbins)
+            sshe, ssbinse = np.histogram(IQsssrot[ii + 2], bins=numbins)
+            fid_list = [self.fid_func(V, ssbinsg, ssbinse, sshg, sshe) for V in ssbinsg[0:-1]]
+            temp = max(fid_list)
+            if i == self.P:
+                fid = temp
 
-            exp_nb = self.current_file_index(prefix=self.exptname)
+        exp_nb = self.current_file_index(prefix=self.exptname)
 
-            p = [fid, phi]
+        p = [fid, phi]
 
-            if self.save:
-                hist_meta = [exp_nb, time.time(), IQsssrot[0], IQsssrot[2]]
-                with self.cont_slab_file as file:
-                    file.append_line('hist_meta', hist_meta)
-                    file.append_line('hist_fit', p)
-                    print("appended line correctly")
-            self.p = p
+        if self.save:
+            hist_meta = [exp_nb, time.time(), IQsssrot[0], IQsssrot[2]]
+            with self.cont_slab_file as file:
+                file.append_line('hist_meta', hist_meta)
+                file.append_line('hist_fit', p)
+                print("appended line correctly")
+        self.p = p
 
 
     def save_cfg_info(self, f):

@@ -19,6 +19,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 class Tuning:
     def __init__(self, file_names, N=8, log_tuning_files_name=None):
         lattice_cfg = file_names
+        og_dir = os.getcwd()
         os.chdir("C:\\210801 - PHMIV3_56 - BF4 cooldown 4\\ipython notebook")
         self.N = N
         if log_tuning_files_name==None:
@@ -112,6 +113,7 @@ class Tuning:
 
 
         self.generate_omegaphi_functions(self.energylistarray, self.flxquantaarray)
+        os.chdir(og_dir)
 
     def omega_to_V_thru_CTM(self, Vtype, freq_list):
         vec0 = []
