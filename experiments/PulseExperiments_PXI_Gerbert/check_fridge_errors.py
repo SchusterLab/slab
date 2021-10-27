@@ -5,6 +5,7 @@ import time
 import sys
 import smtplib, ssl
 import numpy as np
+import os
 
 
 def send_email(message_string, receiver_email="schusterbf4error@gmail.com"):
@@ -25,7 +26,7 @@ ERROR: """ + message_string
 
 
 def post_message_to_slack(text, channel, blocks=None):
-    slack_token = 'xoxb-4064849523-2636786978391-d5WaJOB5XrwLsc41TmTcAn7v'
+    slack_token = os.environ["SLACK_BOT_TOKEN"]
     slack_channel = channel
     slack_icon_emoji = ':cool:'
     slack_user_name = 'BF4 bot'
