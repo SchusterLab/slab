@@ -1,5 +1,5 @@
-from slab.experiments.PulseExperiments_PXI.sequential_experiment_pxi import SequentialExperiment
-from slab.experiments.PulseExperiments_PXI.pulse_experiment import generate_quantum_device_from_lattice_v3
+from slab.experiments.PulseExperiments_PXI_Gerbert.sequential_experiment_pxi import SequentialExperiment
+from slab.experiments.PulseExperiments_PXI_Gerbert.pulse_experiment import generate_quantum_device_from_lattice_v3
 import json
 from loadNsave_lattice import load_lattice_to_quantum_device
 from loadNsave_lattice import load_quantum_device_to_lattice
@@ -8,9 +8,9 @@ import numpy as np
 import os
 import cProfile
 path = os.getcwd()
-path = "C:\\210412 - PHMIV3_56 - BF4 cooldown 2"
+path = "C:\\210801 - PHMIV3_56 - BF4 cooldown 4"
 
-lattice_cfg_name = '210526_sawtooth_lattice_device_config.json'
+lattice_cfg_name = '211004_2qb_sawtooth_lattice_device_config.json'
 with open('experiment_config.json', 'r') as f:
     experiment_cfg = json.load(f)
 with open('hardware_config.json', 'r') as f:
@@ -19,146 +19,125 @@ with open(lattice_cfg_name, 'r') as f:
     lattice_cfg = json.load(f)
 
 setup = 'A'
-# experiment_name = 'rabi_chevron'
-# for i in [4] :
-#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={'A':i})
+
+
+# ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+# ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+experiment_name = 'rabi_chevron'
+#for atten in [15,20,25]:
+for i in [0,1,2,3,4,5,6] :
+    setup = lattice_cfg["qubit"]["setup"][i]
+    quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup:i})
+    #quantum_device_cfg['powers'][setup]['drive_digital_attenuation'] = atten
+    SequentialExperiment(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, experiment_name, path,
+                         analyze=False, show=False)
+
+# ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+# ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#
+
+# experiment_name = 'ff_ramp_cal_ppiq'
+# # for len in [30, 45, 60, 75, 90, 105, 120]
+# for i in [0,1,2,3,4,5,6]:
+#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup:i})
+#     fluxvec =   [ 0.00449093,  0.00720628,  0.00833802,  0.01046896,  0.01268877,
+#         0.01870046, -0.40597256]
+#     # quantum_device_cfg["readout"][setup]["freq"] = 6.95274431
+#     # quantum_device_cfg["qubit"][setup]["freq"] = 4.9
+#     experiment_cfg[experiment_name]['ff_vec'] = fluxvec
+#     experiment_cfg[experiment_name]['qb_pulse_length'] = 20#quantum_device_cfg["pulse_info"][setup]["pi_len"]
+#     if i == 7:
+#         experiment_cfg[experiment_name]['start'] = -0.080
+#         experiment_cfg[experiment_name]['stop'] = 0.080
+#         experiment_cfg[experiment_name]['step'] = 0.002
+#         experiment_cfg[experiment_name]['acquisition_num'] = 1000
+#     SequentialExperiment(quantum_device_cfg,experiment_cfg,hardware_cfg,lattice_cfg,experiment_name,path,analyze=False,show=False)
+
+# ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+# ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#
+# for i in [0]:
+#     experiment_name = 'ff_track_traj'
+#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup:i})
+#     experiment_cfg[experiment_name]['qb_pulse_length'] = quantum_device_cfg["pulse_info"][setup]["pi_len"]
+#     SequentialExperiment(quantum_device_cfg,experiment_cfg,hardware_cfg,lattice_cfg,experiment_name,path,analyze=False,show=False)
+
+# ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+# ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+# FF_sweep_J
+# # FF vectors for pairwise tunneling expts - (Q0Q1), (Q1Q2), ... (Q6Q7)
+# tunnelingtuningarray = [[0.6111356561464186,
+#   -0.2409600465624277,
+#   -0.009096762534661785,
+#   -0.0001603163141109757,
+#   0.001986750019511134,
+#   0.0016582130820045607,
+#   0.004321265852499337],
+#  [-0.0026592946276772634,
+#   -0.27404228353397614,
+#   -0.3313054512081607,
+#   -0.028381893351336288,
+#   -0.018583320844547477,
+#   -0.016616870814918708,
+#   -0.01553000885834576],
+#  [0.010417972180164046,
+#   0.04861520958943927,
+#   -0.28181735352311194,
+#   0.6066331636539565,
+#   0.04368875337927353,
+#   0.03279840615597376,
+#   0.0271399911570401],
+#  [0.05637023947280395,
+#   0.12092043735018243,
+#   0.09486722387202276,
+#   0.7035317959345865,
+#   -0.5251592783818917,
+#   -0.018194960929093763,
+#   -0.023052974828639057],
+#  [0.02991577551526566,
+#   0.051619240955039926,
+#   0.04731334344431247,
+#   0.054875499420508754,
+#   -0.6131983621202085,
+#   0.3742576742643604,
+#   -0.08722315426571213],
+#  [-0.006075205216874307,
+#   -0.009249795018051489,
+#   -0.010077843832960686,
+#   -0.01150052739694312,
+#   -0.018835963941975932,
+#   0.45525716664889243,
+#   -0.4324411926216422]]
+#
+# for ii in [4, 5]:
+#     experiment_name = 'ff_sweep_j'
+#     expt_cfg = experiment_cfg[experiment_name]
+#
+#     expt_cfg = experiment_cfg[experiment_name]
+#
+#     ## Modification for tunneling Expt
+#     expt_cfg['ff_vec'] = tunnelingtuningarray[ii]
+#     expt_cfg['rd_qb'] = ii
+#     expt_cfg['Mott_qbs'] = [ii]
+#     # End tunneling expt interjection
+#
+#     rd_qb = expt_cfg["rd_qb"]
+#     Mott_qbs = expt_cfg["Mott_qbs"]
+#
+#     qb_freq_list = [lattice_cfg["qubit"]["freq"][i] for i in Mott_qbs]
+#     lo_qb_temp_ind = np.argmax(qb_freq_list)
+#     lo_qb = Mott_qbs[lo_qb_temp_ind]
+#
+#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: lo_qb})
+#     quantum_device_cfg["readout"][setup]["freq"] = lattice_cfg["readout"]["freq"][rd_qb]
+#     quantum_device_cfg["powers"][setup]["readout_drive_digital_attenuation"] = \
+#     lattice_cfg["powers"][setup]["readout_drive_digital_attenuation"][rd_qb]
+#
+#     experiment_cfg[experiment_name]['qb_pulse_length'] = quantum_device_cfg["pulse_info"][setup]["pi_len"]
 #     SequentialExperiment(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, experiment_name, path,
 #                          analyze=False, show=False)
 
-#
-# experiment_name = 'ff_ramp_cal_ppiq'
-# # tuning_V = -0.2724424465331699
-# tuning_V = 0.30
-# # for len in [30, 45, 60, 75, 90, 105, 120]
-# for i in [0]:
-#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup:i})
-#     experiment_cfg[experiment_name]['ff_vec'] = [0]*8
-#     print("Tuning Fast Flux line %s"%(i) + ' To %s'%(tuning_V))
-#     experiment_cfg[experiment_name]['ff_vec'][i] = tuning_V
-#     SequentialExperiment(quantum_device_cfg,experiment_cfg,hardware_cfg,lattice_cfg,experiment_name,path,analyze=False,show=False)
-#
 
-# experiment_name = 'ff_ramp_cal_ppiq'
-# slopearray = [ 0.16704477,  0.17774266, -0.15928814, -0.15937513, -0.13656257,-0.1745105 , -0.160629  ,  0.12958199] # should be GHz / V * 1.5 because of AWG scaling
-#
-# freq_shift = 0.080 #in GHz
-#
-# # fluxvec = [-0.59810378, -0.03356398, -0.01415546, -0.00825048, -0.00687183,-0.00631984, -0.00547   , -0.0034931 ]
-#
-# for flux_line in [0,1,2,3,4,5,6,7]:
-#
-#     ## move qubit frequency to +-freq_shift.  If bottom of sawtooth, go down.  If top, go up to avoid collisions. (trajsign)
-#     windowcenterarray = [-freq_shift, 0.0, freq_shift]
-#     if flux_line%2 == 0:
-#         windowcenterarray = windowcenterarray[0:2]
-#     else:
-#         windowcenterarray = windowcenterarray[1:3]
-#     if flux_line%2 == 0:
-#         trajectorysign = -1
-#     else:
-#         trajectorysign = 1
-#
-#     for cross_qb in [0,1,2,3,4,5,6,7]:
-#         for j,center in enumerate(windowcenterarray):
-#                 quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: cross_qb})
-#
-#                 ## Truncate PPIQ time domain based direction of flux tuning
-#                 if ((flux_line%2 == 0) and (j==1)) or ((flux_line%2==1) and (j==0)) :
-#                     experiment_cfg[experiment_name]['dt_start'] = -1500
-#                     experiment_cfg[experiment_name]['dt_stop'] = -549
-#                 else:
-#                     experiment_cfg[experiment_name]['dt_start'] = 1000
-#                     experiment_cfg[experiment_name]['dt_stop'] = 1751
-#
-#                 ## truncate frequency domain to qubit center, or tuned frequency center + window
-#                 if cross_qb==flux_line:
-#                     experiment_cfg[experiment_name]['start'] = center -0.03
-#                     experiment_cfg[experiment_name]['stop'] = center +0.03
-#                 else:
-#                     experiment_cfg[experiment_name]['start'] =  -0.03
-#                     experiment_cfg[experiment_name]['stop'] =  0.03
-#
-#                 #Q7 needs twice as much averaging and a shorter pi-time
-#                 if cross_qb ==7:
-#                     experiment_cfg[experiment_name]['acquisition_num'] = 4000
-#                     experiment_cfg[experiment_name]['qb_pulse_length'] = 60
-#                 elif cross_qb ==6:
-#                     experiment_cfg[experiment_name]['acquisition_num'] = 150
-#                     experiment_cfg[experiment_name]['qb_pulse_length'] = 150
-#                 else:
-#                     experiment_cfg[experiment_name]['acquisition_num'] = 300
-#                     experiment_cfg[experiment_name]['qb_pulse_length'] = 200
-#
-#
-#                 ## move qubit frequency to +-100MHz.  If bottom of sawtooth, go down.  If top, go up to avoid collisions. (trajsign)
-#                 #experiment_cfg[experiment_name]['ff_vec'] = (np.array([-0.09410226, -0.00528077, -0.00222714, -0.00129808, -0.00108117,-0.00099433, -0.00086062, -0.00054959])*10).tolist()
-#                 experiment_cfg[experiment_name]['ff_vec'] = [0]*8
-#                 print("Tuning Fast Flux line %s"%(flux_line) + ' To %s'%(trajectorysign * freq_shift / slopearray[flux_line]))
-#                 experiment_cfg[experiment_name]['ff_vec'][flux_line] = trajectorysign * freq_shift / slopearray[flux_line]
-#                 # experiment_cfg[experiment_name]['ff_vec'] = fluxvec
-#                 SequentialExperiment(quantum_device_cfg,experiment_cfg,hardware_cfg,lattice_cfg,experiment_name,path,analyze=False,show=False)
-
-experiment_name = 'ff_ramp_cal_ppiq'
-V_list = [[-0.59803692, -0.03281403, -0.01352511, -0.00901331, -0.00725197,
-        -0.00675848, -0.00585488, -0.00300657],
- [-0.00833183,  0.56181223,  0.03412918,  0.01664799,  0.0129929 ,
-         0.01079088,  0.01122221, -0.00081603],
- [1.10925915e-02, 2.26603137e-04, 6.26638566e-01, 4.02085207e-02,
-        2.50865936e-02, 2.13568446e-02, 1.96832404e-02, 9.94222598e-03],
- [-0.01699203, -0.05036118, -0.03125702, -0.62197699, -0.05545865,
-        -0.04160449, -0.03788166, -0.01605463],
- [-0.04847151, -0.08294779, -0.07930629, -0.09185497,  0.71090097,
-         0.07649574,  0.06984086,  0.0429169 ],
- [ 0.01271953,  0.02020309,  0.02227524,  0.02734896,  0.03873521,
-        -0.56760954,  0.02927935,  0.05638923],
- [-0.00666383, -0.01061193, -0.0134053 , -0.01431529, -0.02047026,
-        -0.02543666,  0.61949683,  0.0243462 ],
- [-0.00403606, -0.0066451 , -0.00835878, -0.00859257, -0.01146417,
-        -0.0138364 , -0.01644578,  0.77122239]]
-
-
-
-for flux_line in [0, 1, 2, 3, 4, 5, 6, 7]:
-    freq_shift = 0.100 * (-1)**(flux_line+1)  # in GHz
-    for cross_qb in [0, 1, 2,3 , 4, 5, 6, 7]:
-        for j, center in enumerate([0, freq_shift]):
-            quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: cross_qb})
-
-            ## Truncate PPIQ time domain based direction of flux tuning
-            if (j==0):
-                experiment_cfg[experiment_name]['dt_start'] = -1500
-                experiment_cfg[experiment_name]['dt_stop'] = -1499
-            else:
-                experiment_cfg[experiment_name]['dt_start'] = 1000
-                experiment_cfg[experiment_name]['dt_stop'] = 1499
-
-            ## truncate frequency domain to qubit center, or tuned frequency center + window
-            if cross_qb==flux_line:
-                experiment_cfg[experiment_name]['start'] = center -0.02
-                experiment_cfg[experiment_name]['stop'] = center +0.02
-            else:
-                experiment_cfg[experiment_name]['start'] =  -0.02
-                experiment_cfg[experiment_name]['stop'] =  0.02
-
-            #Q7 needs twice as much averaging and a shorter pi-time
-            if cross_qb ==7:
-                experiment_cfg[experiment_name]['acquisition_num'] = 4000
-                experiment_cfg[experiment_name]['qb_pulse_length'] = 60
-            elif cross_qb ==6:
-                experiment_cfg[experiment_name]['acquisition_num'] = 150
-                experiment_cfg[experiment_name]['qb_pulse_length'] = 150
-            else:
-                experiment_cfg[experiment_name]['acquisition_num'] = 150
-                experiment_cfg[experiment_name]['qb_pulse_length'] = 200
-
-
-            ## move qubit frequency to +-100MHz.  If bottom of sawtooth, go down.  If top, go up to avoid collisions. (trajsign)
-            #experiment_cfg[experiment_name]['ff_vec'] = (np.array([-0.09410226, -0.00528077, -0.00222714, -0.00129808, -0.00108117,-0.00099433, -0.00086062, -0.00054959])*10).tolist()
-            if j==0:
-                experiment_cfg[experiment_name]['ff_vec'] = [0]*8
-            else:
-                experiment_cfg[experiment_name]['ff_vec'] = V_list[flux_line]
-            print(experiment_cfg[experiment_name]['ff_vec'])
-
-            SequentialExperiment(quantum_device_cfg,experiment_cfg,hardware_cfg,lattice_cfg,experiment_name,path,analyze=False,show=False)
-
+#///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+# ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

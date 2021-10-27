@@ -72,14 +72,14 @@ channels = {
         "ABORT_temp": 5},
 }
 
-# receiver_email_list= ["schusterbf4error@gmail.com", "andrei.vrajitoarea@gmail.com", "bsaxberg@uchicago.edu", "glcroberts@uchicago.edu"]
-receiver_email_list = ["schusterbf4error@gmail.com"]
-slack_channels = ['UB2UYK6FP']
-# slack_channels = ['UB2UYK6FP', 'U0179LMURHA','U1Q9UU3HT', 'USW7K9V9P', '#bf4','U041WQZFT']
+receiver_email_list= ["schusterbf4error@gmail.com", "andrei.vrajitoarea@gmail.com", "bsaxberg@uchicago.edu", "glcroberts@uchicago.edu"]
+#receiver_email_list = ["schusterbf4error@gmail.com"]
+#slack_channels = ['UB2UYK6FP']
+slack_channels = ['UB2UYK6FP', 'U0179LMURHA','U1Q9UU3HT', 'USW7K9V9P', '#bf4','U041WQZFT']
 
 if __name__ == "__main__":
 
-    while NB_ERRORS < len(channels):
+    while NB_ERRORS < len(channels)*2:
         try:
             req = requests.get('http://192.168.14.212:5001/channel/measurement/latest', timeout=10)
         except:

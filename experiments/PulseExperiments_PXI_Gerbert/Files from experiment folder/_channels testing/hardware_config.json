@@ -1,0 +1,199 @@
+{
+  "channels": [
+    "charge1_I",
+    "charge1_Q",
+    "readout",
+    "readout_trig",
+    "sideband",
+    "tek2_trig",
+    "cavity1_I",
+    "cavity1_Q"
+  ],
+  "drive_los": [
+    "scqub"
+  ],
+  "readout_los": [
+    "scred"
+  ],
+  "readout_attens": [
+    "readoutattengrb"
+  ],
+  "drive_attens": [
+    "driveattengrb"
+  ],
+  "fluxbias": [
+    "dacbox"
+  ],
+  "channels_awg": {
+    "charge1_I": "keysight_pxi",
+    "charge1_Q": "keysight_pxi",
+    "cavity1_I": "keysight_pxi",
+    "cavity1_Q": "keysight_pxi",
+    "readout": "keysight_pxi",
+    "readout_trig": "keysight_pxi",
+    "tek2_trig": "keysight_pxi",
+    "sideband": "tek70001a"
+  },
+  "channels_delay": {
+    "readout_trig": -200,
+    "readout": 10,
+    "sideband": 0,
+    "tek2_trig": -1500
+  },
+  "channels_delay_documentation": {
+    "readout_trig_is to digitizer": -100,
+    "readout is to LO": 6,
+    "readout_trig_cw": -2100,
+    "readout_cw": -1994
+  },
+  "flux_bias_settings": {
+    "ramp_speed": 100,
+    "ramp_step": 100
+  },
+  "awg_info": {
+    "m8195a": {
+      "dt": 0.0625,
+      "min_increment": 2560,
+      "min_samples": 2560,
+      "time_delay": 650,
+      "waveform_channels": [
+        "charge1",
+        "flux1",
+        "charge2",
+        "flux2"
+      ],
+      "amplitudes": [
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "tek5014a": {
+      "dt": 0.83333333333,
+      "min_increment": 16,
+      "min_samples": 256,
+      "time_delay": 0,
+      "waveform_channels": [
+        "hetero1_I",
+        "hetero1_Q",
+        "hetero2_I",
+        "hetero2_Q"
+      ],
+      "marker_channels": [
+        "alazar_trig",
+        "readout1_trig",
+        "readout2_trig",
+        "m8195a_trig",
+        null,
+        null,
+        null,
+        null
+      ],
+      "offsets": [
+        -0.007,
+        -0.003,
+        -0.015,
+        0
+      ]
+    },
+    "keysight_pxi": {
+      "dt": 1,
+      "dt_dig": 2,
+      "min_increment": 32,
+      "min_samples": 256,
+      "time_delay": 0,
+      "waveform_channels": [
+        "charge1_I",
+        "charge1_Q",
+        "readout",
+        "readout_trig",
+        "tek2_trig",
+        "cavity1_I",
+        "cavity1_Q"
+      ],
+      "waveform_channel_index": [
+        1,
+        2,
+        1,
+        2
+      ],
+      "amplitudes": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "amp_mark": [
+        3,
+        3,
+        2,
+        3
+      ],
+      "amp_trig": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "out_mod_no": 7,
+      "samplesPerRecord": 3200,
+      "marker_mod_no": 8,
+      "lo_delay": 30,
+      "qb_lo_delay": 2,
+      "trig_mod_no": 9,
+      "m3201a_trig_delay": 140,
+      "prev_m3201...delay": 190,
+      "m3102a_card_delay": 800,
+      "abs_trig_delay": 100,
+      "m3102_vpp_range": 1.0
+    },
+    "tek70001a": {
+      "dt": 0.02,
+      "min_increment": 16,
+      "min_samples": 4800,
+      "time_delay": 1500,
+      "waveform_channels": [
+        "sideband"
+      ],
+      "amplitude": 1.0,
+      "offset": 0.0,
+      "trig_delay": 0
+    }
+  },
+  "alazar": {
+    "clock_edge": "rising",
+    "trigger_delay": 0,
+    "ch1_filter": true,
+    "ch1_enabled": true,
+    "samplesPerRecord": 8192,
+    "bufferCount": 20,
+    "trigger_edge1": "rising",
+    "trigger_edge2": "rising",
+    "ch2_range": 2.0,
+    "timeout": 100000,
+    "trigger_level2": 0.5,
+    "trigger_level1": 0.5,
+    "ch2_coupling": "DC",
+    "trigger_coupling": "DC",
+    "ch2_filter": true,
+    "trigger_operation": "or",
+    "ch1_coupling": "DC",
+    "trigger_source2": "disabled",
+    "trigger_source1": "external",
+    "recordsPerAcquisition": 6200,
+    "sample_rate": 1000000,
+    "clock_source": "reference",
+    "ch1_range": 2.0,
+    "ch2_enabled": true,
+    "recordsPerBuffer": 62
+  },
+  "trig_pulse_len": {
+    "default": 100,
+    "alazar": 100,
+    "m8195a": 100
+  },
+  "trigger": {
+    "period_us": 200
+  }
+}

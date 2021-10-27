@@ -6,7 +6,10 @@ Created on Sun Aug 04 2015
 """
 
 from slab import *
+from slab.instruments import *
 from slab.datamanagement import SlabFile
+from matplotlib.pyplot import *
+from slab.instruments import *
 from numpy import *
 import os
 import datetime
@@ -25,8 +28,7 @@ from slab.instruments.nwa import E5071
 #from liveplot import LivePlotClient
 #from slab.instruments import N5242A
 from slab.dsfit import fithanger_new_withQc
-from matplotlib.pyplot import *
-from slab.instruments import *
+
 DCBOX = 1
 YOKO = 0
 if DCBOX == 1:
@@ -36,7 +38,6 @@ if DCBOX == 1:
 
     # from slab.instruments.AD5780DAC import AD5780
     # dac = AD5780(name='dacbox',address = 'COM3',enabled = True,timeout=1)
-    from DACInterface import AD5780_serial
     dac = AD5780_serial()
     time.sleep(2)
 
@@ -52,17 +53,15 @@ im = InstrumentManager()
 #     dcflux2.set_range(0.001)
 #     dcflux2.set_output(True)
 
-im = InstrumentManager()
-
 isPNAX = 1  # has to be PNAX
 if isPNAX:
-    nwa = im['PNAX2']
+    nwa = im['PNAX']
 
 print (nwa.get_id())
 # drive = im['RF3']
 print ('Deviced Connected')
 expt_path = os.getcwd() + '\data'
-path = "C:\\210412 - PHMIV3_56 - BF4 cooldown 2"
+path = "C:\\210801 - PHMIV3_56 - BF4 cooldown 4"
 expt_path = path + '\data'
 
 def flux_map_onetone(qubitInd, fluxInd):
@@ -75,16 +74,14 @@ def flux_map_onetone(qubitInd, fluxInd):
 
     prefix = "flux_map-automate_"+ str(datetime.date.today()) + "_q" + str(qubitInd) + "_f" + str(fluxInd)
 
-    numpts = [5]*8 #nb of points
-
-    # Convert to volts assuming 50 ohms impedance
+    numpts = [3]*8 #nb of points
 
     #flux matrix measurement
-    # diag_offset = [0,0.6,1.4,-1.6,1.6,-0.8,-1.2,-2.040] # flux matrix offset
-    diag_offset = [0.0]*8
-    diag_offset = [0,0,0,0,0,0,0,0]
-    diag_range = [1.500]*8
-    #diag_range = [0.050,0.050,0.050,0.050,0.050,0.050,0.050,0.040]
+    diag_offset = [0,0,0,0,0,0,0,0] # flux matrix offset
+    diag_offset = [0, 0.75, 1.200, 1.650, 1.395, -0.75, 1.125, 1.833]  # flux matrix offset
+    #diag_offset = [0.0]*8
+    diag_range = [3.000]*8
+    diag_range = [0.050,0.050,0.050,0.050,0.050,0.050,0.050,0.040]
     offdiag_range = [0.120,0.120,0.120,0.120,0.120,0.120,0.120,0.120]
 
     # test frequency position of qubits using inversion matrix
@@ -95,9 +92,9 @@ def flux_map_onetone(qubitInd, fluxInd):
 
     # flux bias box rampspeed
     #ie how fast move in voltage, these two integer values in C code control how fast write to register
-    # parallelramp() with rampspeed = 1, step = 1 ramps at 5mV/sec , roughly 1% flux quanta / second
+    # parallelramp() with rampspeed = 1, step = 1 ramps at 2.5mV/sec , roughly 0.5% flux quanta / second
     rampspeed = 1
-    step = 1
+    step = 8
 
     all_f_vary_pts_T = []
 
@@ -118,13 +115,13 @@ def flux_map_onetone(qubitInd, fluxInd):
 
     all_f_vary_pts = array(all_f_vary_pts_T).transpose()
 
+    read_power = [-25]*8
+    # read_freq_center = [6.16e9, 6.285e9, 6.39e9, 6.505e9, 6.62e9, 6.735e9, 6.83e9, 6.96e9]
 
-
-    #read_power = [-65,-65,-65,-65,-65,-65,-65,-65] #45
-    read_power = [-5]*8
-    read_power = [-10,-10,-10,-10,-10,-10,-10,-10]
-    read_power = [-58]*8
-    read_freq_center = [6.16e9, 6.285e9, 6.39e9, 6.505e9, 6.62e9, 6.735e9, 6.83e9, 6.96e9]
+    ## Cooldown 3 freq adjustment
+    #read_freq_center = np.array(read_freq_center) + np.array([0,-13,-15,-10,-10,-20,-5,-14])*10**6
+    ## Cooldown 4 freq
+    read_freq_center = [6.180e9, 6.290e9, 6.405e9, 6.510e9, 6.610e9, 6.735e9, 6.835e9, 6.955e9]
     bw=40e6
     read_freq_start = []
     read_freq_stop = []
@@ -133,26 +130,25 @@ def flux_map_onetone(qubitInd, fluxInd):
         read_freq_stop.append(elem + bw / 2)
 
 
-    drive_power = [0,0,0,0,0,0,0,-15]
-    #drive_power = [-5,-5,-5,-5,-5,-5,-5,-20]
+    drive_power = [-10,-10,-10,-10,-10,-10,-10,-35]
 
-    drive_freq_start = [4.0e9,4.0e9,4.0e9,4.0e9,4.0e9,4.0e9,4.0e9,4.0e9]
-    drive_freq_stop = [6.05e9,6.05e9,6.05e9,6.05e9,6.05e9,6.05e9,6.05e9,6.05e9]
+    drive_freq_start = [4.0e9,4.0e9,4.0e9,4.0e9,4.0e9,4.0e9,4.0e9,4.75e9]
+    drive_freq_stop = [6.05e9,6.05e9,6.05e9,6.05e9,6.05e9,6.05e9,6.05e9,5.25e9]
 
     # flux crosstalk matrix drive frequencies
-    # drive_freq_start = [4.80e9,4.7e9,4.7e9,4.87e9,4.7e9,4.9e9,5.1e9,4.8e9]
-    # drive_freq_stop = [5.40e9,5.3e9,5.3e9,5.47e9,5.3e9,5.65e9,5.7e9,5.2e9]
+    # drive_freq_start = [4.80e9,5.1e9,4.85e9,4.9e9,4.85e9,4.8e9,4.8e9,4.8e9]
+    # drive_freq_stop = [5.30e9,5.5e9,5.5e9,5.4e9,5.4e9,5.2e9,5.35e9,5.2e9]
 
     # single tone
     sweep_pts = 4001
-    ifbw = [200]*8
+    ifbw = [500]*8
 
     avgs = 2# for the four res: 2,5
 
     # two tone
     sweep_pts2 = 4001
     avgs2 = 2 #10
-    ifbw2 = [1000]*8
+    ifbw2 = [500]*8
     delay = 0
 
     if isPNAX:
@@ -195,21 +191,9 @@ def flux_map_onetone(qubitInd, fluxInd):
             print ('flux target =', pt_target)
             pt = (pt_target)
 
-            # if YOKO == 1:
-            #     print( "Driving YOKO at (%.3f) mA" % (pt[fluxInd]*1000))
-            #     dcflux2.ramp_current(pt[fluxInd], rampspeed)
-
-
             print("Driving DCBOX at %s"%(pt_target) + " V")
             dac.parallelramp(pt_target,stepsize = step,steptime = rampspeed)
-            # for jj,elem in enumerate(pt_target):
-            #     dac.ramp3(jj+1,elem+0.0001,step=step,speed=rampspeed)
-            #     time.sleep(5)
-                #WHICH index do we use for yoko here, should be 3?
-                #yokorampnA = int ((3.0157) * (pt[fluxInd] * 10**3))
-                #dcfluxoffset.set_current(yokorampnA)
-                #dcfluxoffset.ramp_current( yokorampnA* 10 ** -9, 0.005) # ramp current in mA
-                #print("Ramp YOKO to yokorampnA* 10 ** -6")
+
             time.sleep(2)
 
             print( "Set up for a Single Tone Sweep")
@@ -228,12 +212,9 @@ def flux_map_onetone(qubitInd, fluxInd):
             mags = data[1]
             phases = data[2]
             print ("finished downloading")
-            #time.sleep(na.get_query_sleep())
 
             #choose to use magnitude or phase information from singletone spectroscopy
             phasedetect = 0
-
-
 
             if phasedetect == 1:
 
@@ -262,16 +243,6 @@ def flux_map_onetone(qubitInd, fluxInd):
                 print(freq_peak)
             else:
                 freq_readout = fpoints[argmin(mags)]
-                # freq_min = fpoints[argmax(mags)]
-                # freq_readout = (freq_max + freq_min)/2
-                #freq_readout = (6.978e9)
-                # if ii==0:
-                #     figure(figsize=(15,15))
-                #     subplot(111,title='magpts',xlabel = 'Freq (GHz)',ylabel = 'mags')
-                #     plt.scatter(fpoints,mags)
-                #     plt.axvline(freq_readout)
-                #     plt.show()
-                # print(freq_readout)
 
             print ("Set up for Two Tone Measurement, ReadFreq =", freq_readout)
             nwa.set_ifbw(ifbw2[Res_index])
@@ -290,11 +261,6 @@ def flux_map_onetone(qubitInd, fluxInd):
             mags2 = data[1]
             phases2 = data[2]
             print ("finished downloading")
-            # time.sleep(na.get_query_sleep())
-
-            #freq_peak_q = fpoints2[argmax(mags2)]
-
-            #print "QubitFreq =", freq_peak_q
 
             with SlabFile(fname) as f:
                 for ii in range(8):
@@ -311,19 +277,14 @@ def flux_map_onetone(qubitInd, fluxInd):
                 f.append_pt('probe_power', drive_power[Res_index])
                 f.append_pt('read_freq', freq_readout)
 
-        # for jj in range(len(diag_offset)):
-        #     srs.ramp_volt( 0.0, sweeprate=0.15, channel=(jj + 1) )
-        # time.sleep(0.2)
-
         print (fname)
-######
 
-
-for ii in [2,3,4,5,6,7]:
-    flux_map_onetone(qubitInd=ii, fluxInd=ii)
+for ii in [7]:
+    for jj in [0,1,2,3,4,5,6,7]:
+        flux_map_onetone(qubitInd=ii, fluxInd=jj)
 
 print ("Returning DCBOX to 0V")
 rampspeed = 1
-step = 1
+step = 8
 dac.parallelramp([0,0,0,0,0,0,0,0],stepsize = step,steptime = rampspeed)
 time.sleep(1)

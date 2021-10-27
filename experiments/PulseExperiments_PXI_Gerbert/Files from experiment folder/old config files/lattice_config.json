@@ -1,0 +1,80 @@
+{
+	"Frequency":{
+		"0":4.1,
+		"1":4.1,
+		"2":4.1,
+		"3":4.1,
+		"4":4.1,
+		"5":4.1,
+		"6":4.1,
+		"7":4.1
+	},
+	"Anharmonicity":{
+		"0":-0.250,
+		"1":-0.250,
+		"2":-0.250,
+		"3":-0.250,
+		"4":-0.250,
+		"5":-0.250,
+		"6":-0.250,
+		"7":-0.250
+	},
+	"ReadoutResonator":{
+		"0":6.1,
+		"1":6.1,
+		"2":6.1,
+		"3":6.1,
+		"4":6.1,
+		"5":6.987,
+		"6":6.1,
+		"7":6.1
+	},
+	"Readout":{
+		"1": {"amp": 1.0, "length": 2000, "window":[800, 2000],"dig_atten":-15},
+		"2": {"amp": 1.0, "length": 2000, "window":[800, 2000],"dig_atten":-15},
+		"3": {"amp": 1.0, "length": 2000, "window":[800, 2000],"dig_atten":-15},
+		"3": {"amp": 1.0, "length": 2000, "window":[800, 2000],"dig_atten":-15},
+		"4": {"amp": 1.0, "length": 2000, "window":[800, 2000],"dig_atten":-15},
+		"5": {"amp": 1.0, "length": 2000, "window":[800, 2000],"dig_atten":-15},
+		"6": {"amp": 1.0, "length": 2000, "window":[800, 2000],"dig_atten":-15},
+		"7": {"amp": 1.0, "length": 2000, "window":[800, 2000],"dig_atten":-15}
+	},
+	"Pulse":{
+		"iq_freq":0.15,
+		"Q_phase":-1.57079,
+		"0": {
+	      "pi_amp":0.996, "pi_ef_amp": 0.929, "pi_len":  148, "pi_ef_len": 13, "half_pi_amp": 0.996, "half_pi_ef_amp":  0.862,
+	      "half_pi_len":  74, "half_pi_ef_len": 7,"pulse_type":"gauss","ef_pulse_type":"gauss"
+	    },
+	    "1": {
+	      "pi_amp":0.996, "pi_ef_amp": 0.929, "pi_len":  148, "pi_ef_len": 13, "half_pi_amp": 0.996, "half_pi_ef_amp":  0.862,
+	      "half_pi_len":  74, "half_pi_ef_len": 7,"pulse_type":"gauss","ef_pulse_type":"gauss"
+	    },
+	    "2": {
+	      "pi_amp":0.996, "pi_ef_amp": 0.929, "pi_len":  148, "pi_ef_len": 13, "half_pi_amp": 0.996, "half_pi_ef_amp":  0.862,
+	      "half_pi_len":  74, "half_pi_ef_len": 7,"pulse_type":"gauss","ef_pulse_type":"gauss"
+	    },
+	    "3": {
+	      "pi_amp":0.996, "pi_ef_amp": 0.929, "pi_len":  148, "pi_ef_len": 13, "half_pi_amp": 0.996, "half_pi_ef_amp":  0.862,
+	      "half_pi_len":  74, "half_pi_ef_len": 7,"pulse_type":"gauss","ef_pulse_type":"gauss"
+	    },
+	    "4": {
+	      "pi_amp":0.996, "pi_ef_amp": 0.929, "pi_len":  148, "pi_ef_len": 13, "half_pi_amp": 0.996, "half_pi_ef_amp":  0.862,
+	      "half_pi_len":  74, "half_pi_ef_len": 7,"pulse_type":"gauss","ef_pulse_type":"gauss"
+	    },
+	    "5": {
+	      "pi_amp":0.996, "pi_ef_amp": 0.929, "pi_len":  148, "pi_ef_len": 13, "half_pi_amp": 0.996, "half_pi_ef_amp":  0.862,
+	      "half_pi_len":  74, "half_pi_ef_len": 7,"pulse_type":"gauss","ef_pulse_type":"gauss"
+	    },
+	    "6": {
+	      "pi_amp":0.996, "pi_ef_amp": 0.929, "pi_len":  148, "pi_ef_len": 13, "half_pi_amp": 0.996, "half_pi_ef_amp":  0.862,
+	      "half_pi_len":  74, "half_pi_ef_len": 7,"pulse_type":"gauss","ef_pulse_type":"gauss"
+	    },
+	    "7": {
+	      "pi_amp":0.996, "pi_ef_amp": 0.929, "pi_len":  148, "pi_ef_len": 13, "half_pi_amp": 0.996, "half_pi_ef_amp":  0.862,
+	      "half_pi_len":  74, "half_pi_ef_len": 7,"pulse_type":"gauss","ef_pulse_type":"gauss"
+	    }
+	},
+  },
+  "fit_path": "S:\\_Data\\171206 - Communication\\fit"
+}

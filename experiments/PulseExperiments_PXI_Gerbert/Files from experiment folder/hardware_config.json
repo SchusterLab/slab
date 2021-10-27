@@ -26,6 +26,9 @@
     "scredA",
     "scredB"
   ],
+   "readout_yigs": [
+    "yigA"
+  ],
   "stab_los":["stab_los"],
   "readout_attens": [
     "readoutattengrbA",
@@ -40,7 +43,7 @@
   "fluxbias": [
     "dacbox"
   ],
-  "channels_awg": {
+    "channels_awg": {
     "chargeA_I": "keysight_pxi",
     "chargeA_Q": "keysight_pxi",
     "chargeB_I": "keysight_pxi",
@@ -62,10 +65,10 @@
   "channels_delay_array_roll_ns": {
     "chargeA_I": 12,
     "chargeA_Q": 12,
-    "chargeB_I": 3,
-    "chargeB_Q": 3,
+    "chargeB_I": 14,
+    "chargeB_Q": 14,
     "readoutA": -1,
-    "readoutB": 0,
+    "readoutB": 9,
     "digtzr_trig": -1,
     "stab_I": 0,
     "stab_Q": 0,
@@ -122,7 +125,7 @@
       "amp_awg": [
         1,
         1,
-        3,
+        1,
         1
       ],
       "amp_mark": [
@@ -153,15 +156,15 @@
       "channels_delay_hardware_10ns": {
         "chargeA_I": 17,
         "chargeA_Q": 17,
-        "chargeB_I": 17,
-        "chargeB_Q": 17,
+        "chargeB_I": 15,
+        "chargeB_Q": 15,
         "readoutA": 2,
         "readoutB": 2,
         "stab_I": 0,
         "stab_Q": 0,
         "digtzr_trig": 0,
         "qubitA_marker":3,
-        "qubitB_marker":3,
+        "qubitB_marker":4,
         "stab_marker":0,
         "ff_Q0": 18,
         "ff_Q1": 18,
@@ -175,8 +178,7 @@
 
       "DIG_channels_delay_samples": [
         0, 0, 0, 0] ,
-      "qb_lo_conv_og": 25,
-      "qb_lo_conv": 1,
+      "qb_lo_conv": 15,
       "stab_lo_conv":1,
       "ff1_mod_no": 5,
       "ff2_mod_no": 6,
@@ -197,6 +199,6 @@
     "m8195a": 200
   },
   "trigger": {
-    "period_us": 200
+    "period_us": 500
   }
 }

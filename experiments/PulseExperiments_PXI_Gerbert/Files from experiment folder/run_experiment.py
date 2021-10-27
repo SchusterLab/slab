@@ -1,19 +1,21 @@
 import platform
 print(platform.python_version())
-from slab.experiments.PulseExperiments_PXI.sequences_pxi import PulseSequences
-from slab.experiments.PulseExperiments_PXI.pulse_experiment import Experiment
-from slab.experiments.PulseExperiments_PXI.pulse_experiment import generate_quantum_device_from_lattice_v3
+from slab.experiments.PulseExperiments_PXI_Gerbert.sequences_pxi import PulseSequences
+from slab.experiments.PulseExperiments_PXI_Gerbert.pulse_experiment import Experiment
+from slab.experiments.PulseExperiments_PXI_Gerbert.pulse_experiment import generate_quantum_device_from_lattice_v3
+from slab.experiments.PulseExperiments_PXI_Gerbert.pulse_experiment import melting_update
+from slab.dataanalysis import get_next_filename
+from slab.datamanagement import SlabFile
 
+import copy
 import json
 import numpy as np
 import os
 path = os.getcwd()
-path = "C:\\210412 - PHMIV3_56 - BF4 cooldown 2"
+path = "C:\\210801 - PHMIV3_56 - BF4 cooldown 4"
 
 show = 'I'
-
-lattice_cfg_name = '210526_sawtooth_lattice_device_config.json'
-
+lattice_cfg_name = '211008_2qb_sawtooth_lattice_device_config.json'
 with open('experiment_config.json', 'r') as f:
     experiment_cfg = json.load(f)
 with open('hardware_config.json', 'r') as f:
@@ -22,175 +24,647 @@ with open(lattice_cfg_name, 'r') as f:
     lattice_cfg = json.load(f)
 
 
-setup = 'A'
+# ##################################################################################
+# #################### Pair-Wise Tunneling ###################
+# ##################################################################################
+# FF vectors for pairwise tunneling expts - (Q0Q1), (Q1Q2), ... (Q5Q6)
 
-# experiment_names = ['resonator_spectroscopy']
-# for i in [5,6]:
-#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: i})
+tunnelingtuningarray = [0.0021537070237979076, 0.042709406303825075, -0.6445610650169042, 0.5441308722777675, 0.026913406030430572, 0.01586734077476971, 0.013037553438887461]
+
+# experiment_names = ['melting_single_readout_full_ramp']
+# for ii in [2]:
 #     for experiment_name in experiment_names:
+#         expt_cfg = experiment_cfg[experiment_name]
+#
+#         ## Modification for random walk
+#         expt_cfg['rd_qb'] = ii
+#         expt_cfg['Mott_qbs'] = [3]
+#
+#         rd_qb = expt_cfg["rd_qb"]
+#         Mott_qbs = expt_cfg["Mott_qbs"]
+#
+#         qb_freq_list = [lattice_cfg["qubit"]["freq"][i] for i in Mott_qbs]
+#         lo_qb_temp_ind = np.argmax(qb_freq_list)
+#         lo_qb = 3#Mott_qbs[lo_qb_temp_ind]
+#
+#         quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: lo_qb})
+#
+#         quantum_device_cfg["readout"][setup]["freq"] = lattice_cfg["readout"]["freq"][rd_qb]
+#         quantum_device_cfg["powers"][setup]["readout_drive_digital_attenuation"] = lattice_cfg["powers"][setup]["readout_drive_digital_attenuation"][rd_qb]
+#
+#         data_path = os.path.join(path, 'data/')
+#         melt_file = os.path.join(data_path, get_next_filename(data_path, experiment_name, suffix='.h5'))
+#         expt_cfg['ff_vec'] = tunnelingtuningarray
+#
+#         # run melting
 #         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
 #         sequences = ps.get_experiment_sequences(experiment_name)
 #         print("Sequences generated")
 #         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+#         exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,
+#                                seq_data_file=None)
 #
-#         if experiment_name == 'resonator_spectroscopy':
-#             exp.run_experiment_pxi_resspec(sequences, path, experiment_name, expt_num=0, check_sync=False)
-#         else:
-#             exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False)
+#         #run pi_cal
+#         pi_file = os.path.join(data_path, get_next_filename(data_path, "pi_cal", suffix='.h5'))
+#         if expt_cfg["pi_calibration"]:
+#             quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: rd_qb})
+#
+#             experiment_cfg["pi_cal"] = experiment_cfg["melting_single_readout_full_ramp"]
+#             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#             sequences = ps.get_experiment_sequences("pi_cal")
+#             print("Sequences generated")
+#             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, 'pi_cal')
+#             exp.run_experiment_pxi(sequences, path, 'pi_cal', expt_num=0, check_sync=False,
+#                                    seq_data_file=None)
+#
+#             slab_file = SlabFile(melt_file)
+#             with slab_file as f:
+#                 f.attrs["pi_cal_fname"] = pi_file
+# tunnelingtuningarray = [0.0021537070237979076, 0.042709406303825075, -0.6445610650169042, 0.5441308722777675, 0.026913406030430572, 0.01586734077476971, 0.013037553438887461]
+#
+# experiment_names = ['pop_swap_for_debugging']
+# for ii in [2]:
+#     for experiment_name in experiment_names:
+#         expt_cfg = experiment_cfg[experiment_name]
+#
+#         ## Modification for random walk
+#
+#         # qb_freq_list = [lattice_cfg["qubit"]["freq"][i] for i in Mott_qbs]
+#         # lo_qb_temp_ind = np.argmax(qb_freq_list)
+#         lo_qb = 0#Mott_qbs[lo_qb_temp_ind]
+#
+#         quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: lo_qb})
+#
+#         # quantum_device_cfg["readout"][setup]["freq"] = lattice_cfg["readout"]["freq"][rd_qb]
+#         # quantum_device_cfg["powers"][setup]["readout_drive_digital_attenuation"] = lattice_cfg["powers"][setup]["readout_drive_digital_attenuation"][rd_qb]
+#
+#         data_path = os.path.join(path, 'data/')
+#         melt_file = os.path.join(data_path, get_next_filename(data_path, experiment_name, suffix='.h5'))
+#         expt_cfg['ff_vec'] = tunnelingtuningarray
+#
+#         # run melting
+#         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#         sequences = ps.get_experiment_sequences(experiment_name)
+#         print("Sequences generated")
+#         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+#         exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,
+#                                seq_data_file=None)
+#
+#         #run pi_cal
+#         pi_file = os.path.join(data_path, get_next_filename(data_path, "pi_cal", suffix='.h5'))
+#         if expt_cfg["pi_calibration"]:
+#             quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: lo_qb})
+#
+#             experiment_cfg["pi_cal"] = experiment_cfg["melting_single_readout_full_ramp"]
+#             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#             sequences = ps.get_experiment_sequences("pi_cal")
+#             print("Sequences generated")
+#             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, 'pi_cal')
+#             exp.run_experiment_pxi(sequences, path, 'pi_cal', expt_num=0, check_sync=False,
+#                                    seq_data_file=None)
+#
+#             slab_file = SlabFile(melt_file)
+#             with slab_file as f:
+#                 f.attrs["pi_cal_fname"] = pi_file
 
-
-experiment_names = ['pulse_probe_iq']
-ppiq_avgs = [250,250,250,250,250,250,250,2000]
-for i in [0, 1, 2,3,4, 5, 6, 7]:
-    quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup:i})
-    experiment_cfg['pulse_probe_iq']['acquisition_num'] = ppiq_avgs[i]
+# ##################################################################################
+# #################### Normal Melting Code - only care about MOTT qbs setup ###################
+# ##################################################################################
+experiment_names = ['melting_single_readout_full_ramp_2setups']
+# # # # pilenchangelist = np.linspace(-10,10,6)
+# # # # for jj,delta in enumerate(pilenchangelist):
+# # # # for reps in range(10):
+avgs_list = [2000]*8
+# avgs_list[1] = 2000
+for ii in [0, 1, 2, 3, 4, 5, 6]:
     for experiment_name in experiment_names:
+        expt_cfg = experiment_cfg[experiment_name]
+
+        ## Modification for random walk
+        expt_cfg['rd_qb'] = ii
+        expt_cfg['Mott_qbs'] = [5]
+        expt_cfg['acquisition_num'] = avgs_list[ii]
+
+        rd_qb = expt_cfg["rd_qb"]
+        Mott_qbs = expt_cfg["Mott_qbs"]
+        rd_setup = lattice_cfg["qubit"]["setup"][rd_qb]
+        Mott_setup = lattice_cfg["qubit"]["setup"][Mott_qbs[0]] #BIG ASSUMPTION: ALL MOTT QBS ON SAME SETUP, AND ALL REFER TO SAME LO
+
+        quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={rd_setup:rd_qb, Mott_setup: Mott_qbs[0]})
+
+        quantum_device_cfg["readout"][rd_setup]["freq"] = lattice_cfg["readout"][rd_setup]["freq"][rd_qb]
+        quantum_device_cfg["powers"][rd_setup]["readout_drive_digital_attenuation"] = lattice_cfg["powers"][rd_setup]["readout_drive_digital_attenuation"][rd_qb]
+        quantum_device_cfg["readout"][rd_setup]["window"] = lattice_cfg["readout"][rd_setup]["window"][
+            expt_cfg['rd_qb']]
+        quantum_device_cfg["readout"][rd_setup]["vec"] = lattice_cfg["readout"][rd_setup]["vec"][
+            expt_cfg['rd_qb']]
+        quantum_device_cfg["readout"][rd_setup]["phi"] = lattice_cfg["readout"][rd_setup]["phi"][
+            expt_cfg['rd_qb']]
+
+        if rd_setup!=Mott_setup:
+            quantum_device_cfg["readout"][Mott_setup]["freq"] = 8
+            quantum_device_cfg["powers"][Mott_setup]["readout_drive_digital_attenuation"] = 99
+            quantum_device_cfg["qubit"][rd_setup]["freq"] = 8
+            quantum_device_cfg["powers"][rd_setup]["drive_digital_attenuation"] = 99
+
+        data_path = os.path.join(path, 'data/')
+        melt_file = os.path.join(data_path, get_next_filename(data_path, experiment_name, suffix='.h5'))
+
+        # run melting
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
         sequences = ps.get_experiment_sequences(experiment_name)
         print("Sequences generated")
-        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-        if experiment_name == 'resonator_spectroscopy':
-            exp.run_experiment_pxi_resspec(sequences, path, experiment_name, expt_num=0, check_sync=False)
-        else:
-            exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False)
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, lattice_cfg=lattice_cfg)
+        exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,
+                               seq_data_file=None)
 
-# experiment_names = ['rabi']
-# ## gauss
-# ## rabi_start_array = [0,0,0,0,0,0,0,0]
-# ## rabi_stop_array = [2000,1500,1500,2000,1500,1500,1000,500]
-# ## rabi_step_array = [20,15,15,20,15,15,15,5]
-# ## rabi_step_avgs = [500,500,500,500,500,500,500,1500]
-# ###square wave
+        #run pi_cal
+        pi_file = os.path.join(data_path, get_next_filename(data_path, "pi_cal", suffix='.h5'))
+        if expt_cfg["pi_calibration"]:
+            quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={rd_setup: rd_qb})
+
+            # quantum_device_cfg['pulse_info'][setup]['pi_len'] = lattice_cfg['pulse_info'][setup]['pi_len_melt'][ii] - (np.ones(8)*delta)[ii]
+
+            experiment_cfg["pi_cal"] = experiment_cfg["melting_single_readout_full_ramp_2setups"]
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+            sequences = ps.get_experiment_sequences("pi_cal")
+            print("Sequences generated")
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, 'pi_cal', lattice_cfg=lattice_cfg)
+            exp.run_experiment_pxi(sequences, path, 'pi_cal', expt_num=0, check_sync=False,
+                                   seq_data_file=None)
+
+            slab_file = SlabFile(melt_file)
+            with slab_file as f:
+                f.attrs["pi_cal_fname"] = pi_file
+
+# ##################################################################################
+# #################### Normal Melting Code (Ref Q3 LO) ###################
+# #################### with detuning factor for transversing the Phase Transition ####################
+# ##################################################################################
+
+
+# experiment_names = ['melting_single_readout_full_ramp_Q3']
+#
+# ## ff vector for going to the SF
+# expt_cfg = experiment_cfg['melting_single_readout_full_ramp_Q3']
+# FFvec = expt_cfg['ff_vec']
+#
+# # detuning factor
+# detfactor = np.array([0.        , 0.21524003, 0.38415179, 0.51670698, 0.62073098,
+#        0.70236486, 0.76642785, 0.81670193, 0.85615501, 0.88711621,
+#        0.91141332, 0.93048072, 0.94544405, 0.95718668, 0.96640182,
+#        0.97363349, 0.97930862, 0.98376223, 0.98725725, 0.99      ,
+#        1.        ])
+#
+# avgs_list = [4000]*8
+# avgs_list[1]= 4000
+#
+# for jj in range(len(detfactor)):
+#     for ii in [0,1,2,3,4,5,6]:
+#         for experiment_name in experiment_names:
+#             expt_cfg = experiment_cfg[experiment_name]
+#
+#             # update FF vector
+#             expt_cfg['ff_vec'] = list(np.array(FFvec) * detfactor[jj])
+#
+#             ## Modification for random walk
+#             expt_cfg['rd_qb'] = ii
+#             expt_cfg['Mott_qbs'] = [3]
+#             expt_cfg['acquisition_num'] = avgs_list[ii]
+#
+#             rd_qb = expt_cfg["rd_qb"]
+#             Mott_qbs = expt_cfg["Mott_qbs"]
+#
+#             lo_qb = 3 # modify to always refer to Q3
+#             quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: lo_qb})
+#
+#             quantum_device_cfg["readout"][setup]["freq"] = lattice_cfg["readout"]["freq"][rd_qb]
+#             quantum_device_cfg["powers"][setup]["readout_drive_digital_attenuation"] = lattice_cfg["powers"][setup]["readout_drive_digital_attenuation"][rd_qb]
+#
+#             # lattice_cfg['pulse_info'][setup]['pi_len_melt'] = lattice_cfg['pulse_info'][setup]['pi_len_melt'] + np.ones(8)*delta
+#
+#             data_path = os.path.join(path, 'data/')
+#             melt_file = os.path.join(data_path, get_next_filename(data_path, experiment_name, suffix='.h5'))
+#
+#             # run melting
+#             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#             sequences = ps.get_experiment_sequences(experiment_name)
+#             print("Sequences generated")
+#             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+#             exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,
+#                                    seq_data_file=None)
+#
+#             #run pi_cal
+#             pi_file = os.path.join(data_path, get_next_filename(data_path, "pi_cal", suffix='.h5'))
+#             if expt_cfg["pi_calibration"]:
+#                 quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: rd_qb})
+#
+#                 # quantum_device_cfg['pulse_info'][setup]['pi_len'] = lattice_cfg['pulse_info'][setup]['pi_len_melt'][ii] - (np.ones(8)*delta)[ii]
+#
+#                 experiment_cfg["pi_cal"] = experiment_cfg["melting_single_readout_full_ramp_Q3"]
+#                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#                 sequences = ps.get_experiment_sequences("pi_cal")
+#                 print("Sequences generated")
+#                 exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, 'pi_cal')
+#                 exp.run_experiment_pxi(sequences, path, 'pi_cal', expt_num=0, check_sync=False,
+#                                        seq_data_file=None)
+#
+#                 slab_file = SlabFile(melt_file)
+#                 with slab_file as f:
+#                     f.attrs["pi_cal_fname"] = pi_file
+
+##################################################################################
+#################### Rabi ###################
+##################################################################################
+#
+# experiment_names = ['rabi_pi']
+# # # gauss wave
 # rabi_start_array = [0,0,0,0,0,0,0,0]
-# rabi_stop_array = [4000,3000,3000,4000,3000,3000,2000,500]
-# rabi_step_array = [40,30,30,40,30,30,20,10]
-# rabi_step_avgs = [500,500,500,500,500,500,500,2000]
-# for i in [7]:
-#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup:i})
-#     experiment_cfg['rabi']['start'] = rabi_start_array[i]
-#     experiment_cfg['rabi']['stop'] = rabi_stop_array[i]
-#     experiment_cfg['rabi']['step'] = rabi_step_array[i]
-#     experiment_cfg['rabi']['acquisition_num'] = rabi_step_avgs[i]
-#     for experiment_name in experiment_names:
-#         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
-#         sequences = ps.get_experiment_sequences(experiment_name)
-#         print("Sequences generated")
-#         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-#         if experiment_name == 'resonator_spectroscopy':
-#             exp.run_experiment_pxi_resspec(sequences, path, experiment_name, expt_num=0, check_sync=False)
-#         else:
-#             exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False)
-
-# experiment_names = ['t1']
-# t1_start_array = [0,0,0,0,0,0,0,0]
-# t1_stop_array = [250000,450000,350000,300000,450000,450000,450000,20000]
-# t1_step_array = [20000,40000,30000,30000,40000,40000,40000,1000]
-# t1_avgs = [1000,1000,1000,1000,1000,1000,1000,3000]
-# for i in [0, 1, 2, 3, 4, 5, 6, 7]:
-#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup:i})
-#     experiment_cfg['t1']['start'] = t1_start_array[i]
-#     experiment_cfg['t1']['stop'] = t1_stop_array[i]
-#     experiment_cfg['t1']['step'] = t1_step_array[i]
-#     experiment_cfg['t1']['acquisition_num'] = t1_avgs[i]
-#     for experiment_name in experiment_names:
-#         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
-#         sequences = ps.get_experiment_sequences(experiment_name)
-#         print("Sequences generated")
-#         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-#         if experiment_name == 'resonator_spectroscopy':
-#             exp.run_experiment_pxi_resspec(sequences, path, experiment_name, expt_num=0, check_sync=False)
-#         else:
-#             exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False)
-
-# experiment_names = ['ramsey']
-# ramsey_start_array = [0,0,0,0,0,0,0,0]
-# ramsey_stop_array = [2000,2000,2000,2000,2000,2000,2000,1000]
-# ramsey_step_array = [20,20,20,20,20,20,20,10]
-# ramsey_freq_array = [0.0025,0.0025,0.0025,0.0025,0.0025,0.0025,0.0025,0.005,]
-# ramsey_avgs = [1500,1500,1500,1500,1500,1500,1500,8000]
-# for i in [0,1,2,3,4,5,6,7]:
-#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup:i})
-#     experiment_cfg['ramsey']['start'] = ramsey_start_array[i]
-#     experiment_cfg['ramsey']['stop'] = ramsey_stop_array[i]
-#     experiment_cfg['ramsey']['step'] = ramsey_step_array[i]
-#     experiment_cfg['ramsey']['ramsey_freq'] = ramsey_freq_array[i]
-#     experiment_cfg['ramsey']['acquisition_num'] = ramsey_avgs[i]
-#     for experiment_name in experiment_names:
-#         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
-#         sequences = ps.get_experiment_sequences(experiment_name)
-#         print("Sequences generated")
-#         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-#         if experiment_name == 'resonator_spectroscopy':
-#             exp.run_experiment_pxi_resspec(sequences, path, experiment_name, expt_num=0, check_sync=False)
-#         else:
-#             exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False)
-
-# experiment_names = ['echo']
-# echo_start_array = [0,0,0,0,0,0,0,0]
-# echo_stop_array = [2000,2000,2000,2000,2000,2000,2000,1000]
-# echo_step_array = [20,20,20,20,20,20,20,10]
-# echo_freq_array = [0.0025,0.0025,0.0025,0.0025,0.0025,0.0025,0.0025,0.005,]
-# echo_avgs = [1000,1000,1000,1000,1000,1000,1000,8000]
-# for i in [0, 1, 2, 3, 4, 5, 6, 7]:
-#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup:i})
-#     experiment_cfg['echo']['start'] = echo_start_array[i]
-#     experiment_cfg['echo']['stop'] = echo_stop_array[i]
-#     experiment_cfg['echo']['step'] = echo_step_array[i]
-#     experiment_cfg['echo']['ramsey_freq'] = echo_freq_array[i]
-#     experiment_cfg['echo']['acquisition_num'] = echo_avgs[i]
-#     for experiment_name in experiment_names:
-#         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
-#         sequences = ps.get_experiment_sequences(experiment_name)
-#         print("Sequences generated")
-#         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-#         if experiment_name == 'resonator_spectroscopy':
-#             exp.run_experiment_pxi_resspec(sequences, path, experiment_name, expt_num=0, check_sync=False)
-#         else:
-#             exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False)
-
-# experiment_names = ['resonator_spectroscopy_pi']
-# for i in [0,1,2,3,4,5,6]:
-#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: i})
-#     for experiment_name in experiment_names:
-#         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
-#         sequences = ps.get_experiment_sequences(experiment_name)
-#         print("Sequences generated")
-#         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+# rabi_stop_array = [800]*8
+# rabi_step_array = [8]*8
+# rabi_amp_array = [1,1,1,0.71,0.71,1,0.71,1]
 #
-#         if experiment_name == 'resonator_spectroscopy':
-#             exp.run_experiment_pxi_resspec(sequences, path, experiment_name, expt_num=0, check_sync=False)
-#         if experiment_name == 'resonator_spectroscopy_pi':
-#             exp.run_experiment_pxi_resspec_pi(sequences, path, experiment_name, expt_num=0, check_sync=False)
-#         else:
-#             exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False)
-
-# experiment_names = ['histogram']
-# for i in [0,1,2,3,4,5,6]:
-#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: i})
+# rabi_avgs = [500,500,500,500,500,500,500,2000]
+# rabi_avgs = [250,4000,250,250,250,250,250,1000]
+# for i in [5]:
+#     # for j in np.linspace(-0.0005,0.0005,10):
+#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup:i})
+#     quantum_device_cfg["powers"][setup]["readout_drive_digital_attenuation"] = lattice_cfg["powers"][setup]["readout_drive_digital_attenuation"][i]
+#     experiment_cfg['rabi_pi']['start'] = rabi_start_array[i]
+#     experiment_cfg['rabi_pi']['stop'] = rabi_stop_array[i]
+#     experiment_cfg['rabi_pi']['step'] = rabi_step_array[i]
+#     experiment_cfg['rabi_pi']['acquisition_num'] = rabi_avgs[i]
+#     experiment_cfg['rabi_pi']['amp'] = rabi_amp_array[i]
+#     # if i==0:
+#         # experiment_cfg['rabi']['amp'] = 0.2
+#     quantum_device_cfg['qubit'][setup]['freq'] = lattice_cfg['qubit']['freq'][i]
+#     # quantum_device_cfg['readout'][setup]['freq'] = lattice_cfg['readout']['freq'][i] + j
+#
 #     for experiment_name in experiment_names:
 #         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
 #         sequences = ps.get_experiment_sequences(experiment_name)
 #         print("Sequences generated")
 #         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-#         if experiment_name == 'resonator_spectroscopy':
-#             exp.run_experiment_pxi_resspec(sequences, path, experiment_name, expt_num=0, check_sync=False)
-#         if experiment_name == 'resonator_spectroscopy_pi':
-#             exp.run_experiment_pxi_resspec_pi(sequences, path, experiment_name, expt_num=0, check_sync=False)
-#         else:
-#             exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False)
-#
+#         exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False)
 
-# experiment_names = ['ff_ramp_cal_ppiq']
-# ff_ramp_cal_ppiq_avgs = [250,250,250,250,250,250,250,8000]
-# for i in [0]:
-#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup:i})
-#     experiment_cfg['ff_ramp_cal_ppiq']['acquisition_num'] = ff_ramp_cal_ppiq_avgs[i]
-#     for experiment_name in experiment_names:
-#         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
-#         sequences = ps.get_experiment_sequences(experiment_name)
-#         print("Sequences generated")
-#         # exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-#         # if experiment_name == 'resonator_spectroscopy':
-#         #     exp.run_experiment_pxi_resspec(sequences, path, experiment_name, expt_num=0, check_sync=False)
-#         # else:
-#         #     exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False)
+
+############################################################
+############# TESTING MULTI-READOUT RAMP CODE ##############
+############################################################
+# experiment_names = ['melting_multi_readout_full_ramp_Q3']
+# # # pilenchangelist = np.linspace(-10,10,6)
+# # # for jj,delta in enumerate(pilenchangelist):
+# for experiment_name in experiment_names:
+#     expt_cfg = experiment_cfg[experiment_name]
+#
+#     ## Modification for random walk
+#     # expt_cfg['rd_qb'] = ii
+#     expt_cfg['Mott_qbs'] = [1,3,5]
+#
+#     rd_qb = expt_cfg["rd_qb"]
+#     Mott_qbs = expt_cfg["Mott_qbs"]
+#
+#     lo_qb = 3 # modify to always refer to Q3
+#     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: lo_qb})
+#
+#     # THIS SHOULD BE MOVED INTO THE RUN_EXPT_PXI SCRIPT?
+#     # quantum_device_cfg["readout"][setup]["freq"] = lattice_cfg["readout"]["freq"][rd_qb]
+#     # quantum_device_cfg["powers"][setup]["readout_drive_digital_attenuation"] = lattice_cfg["powers"][setup]["readout_drive_digital_attenuation"][rd_qb]
+#
+#     # lattice_cfg['pulse_info'][setup]['pi_len_melt'] = lattice_cfg['pulse_info'][setup]['pi_len_melt'] + np.ones(8)*delta
+#
+#     data_path = os.path.join(path, 'data/')
+#     melt_file = os.path.join(data_path, get_next_filename(data_path, experiment_name, suffix='.h5'))
+#
+#     # run melting
+#     ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#     sequences = ps.get_experiment_sequences(experiment_name)
+#     print("Sequences generated")
+#     exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name,lattice_cfg)
+#     exp.run_experiment_pxi_melt(sequences, path, experiment_name, expt_num=0, check_sync=False,
+#                            seq_data_file=None)
+
+
+
+############################################################
+############ T1 EFFECTIVE OVER RAMP EXPERIMENT #############
+############################################################
+## Tune each qubit independently - avoid NNN collisions
+
+#
+# Vlist = [[ 0.32870921,  0.01573542,  0.00813843,  0.00473567,  0.00410542,
+#          0.00423764,  0.00393695],
+#        [ 0.00329826, -0.26393504, -0.01906595, -0.00833061, -0.00660842,
+#         -0.00645232, -0.00514674],
+#        [ 0.63332699,  0.13344196, -0.55161402,  0.09189483, -0.97461612,
+#         -0.11352074, -0.10621645],
+#        [ 0.00851155, -0.46386104, -0.02903834,  0.54286124, -0.00300122,
+#          0.67916629, -0.01583193],
+#        [ 0.0524714 ,  0.08948378,  0.08731939,  0.1065936 , -0.62903438,
+#         -0.03367583, -0.76355934],
+#        [-0.00859071, -0.0158421 , -0.01581256, -0.0211702 , -0.02913302,
+#          0.41665998, -0.02594637],
+#        [ 0.00540107,  0.00747078,  0.0096533 ,  0.0130216 ,  0.01453579,
+#          0.02101243, -0.44511561]]
+
+# ramplenlist = [1.00000000e+00, 1.24407162e+00, 1.54771421e+00, 1.92546733e+00,
+#        2.39541927e+00, 2.98007314e+00, 3.70742444e+00, 4.61230155e+00,
+#        5.73803348e+00, 7.13852463e+00, 8.88083594e+00, 1.10483960e+01,
+#        1.37449960e+01, 1.70997595e+01, 2.12733255e+01, 2.64655407e+01,
+#        3.29250282e+01, 4.09610933e+01, 5.09585339e+01, 6.33960661e+01,
+#        7.88692470e+01, 9.81189923e+01, 1.22067054e+02, 1.51860158e+02,
+#        1.88924914e+02, 2.35036125e+02, 2.92401774e+02, 3.63768750e+02,
+#        4.52554380e+02, 5.63010063e+02, 7.00424844e+02, 8.71378673e+02,
+#        1.08405748e+03, 1.34864515e+03, 1.67781117e+03, 2.08731727e+03,
+#        2.59677218e+03, 3.23057059e+03, 4.01906120e+03, 5.00000000e+03]
+
+# Loop over different shapes as well!
+# Can only go for like 30us before epxonential functions fail, adjust pulse sequence generation for this
+
+# experiment_names = ['melting_single_readout_full_ramp_2setups']
+# # for kk,len in enumerate(ramplenlist):
+# for jj,ff_vec in enumerate(Vlist):
+#     for ii in [0,1,2,3,4,5,6]:
+#         if jj == ii:
+#             for experiment_name in experiment_names:
+#                 expt_cfg = experiment_cfg[experiment_name]
+#                 expt_cfg['evolution_t_start'] = 0
+#                 expt_cfg['evolution_t_step'] = 500#round(500/len)
+#                 expt_cfg['evolution_t_stop'] = 30000
+#
+#                 # TODO: Import latticecfg, modify exponential ramp parameters
+#
+#                 expt_cfg = experiment_cfg[experiment_name]
+#                 expt_cfg['rd_qb'] = ii
+#                 expt_cfg['Mott_qbs'] = [ii]
+#                 expt_cfg['ramp_type'] = "rexp"
+#                 rd_qb = expt_cfg["rd_qb"]
+#                 Mott_qbs = expt_cfg["Mott_qbs"]
+#                 rd_setup = lattice_cfg["qubit"]["setup"][rd_qb]
+#                 Mott_setup = lattice_cfg["qubit"]["setup"][
+#                     Mott_qbs[0]]  # BIG ASSUMPTION: ALL MOTT QBS ON SAME SETUP, AND ALL REFER TO SAME LO
+#
+#                 quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name,
+#                                                                              on_qubits={rd_setup: rd_qb,
+#                                                                                         Mott_setup:
+#                                                                                             Mott_qbs[0]})
+#
+#                 quantum_device_cfg["readout"][rd_setup]["freq"] = lattice_cfg["readout"][rd_setup]["freq"][rd_qb]
+#                 quantum_device_cfg["powers"][rd_setup]["readout_drive_digital_attenuation"] = \
+#                     lattice_cfg["powers"][rd_setup]["readout_drive_digital_attenuation"][rd_qb]
+#                 quantum_device_cfg["readout"][rd_setup]["window"] = lattice_cfg["readout"][rd_setup]["window"][
+#                     expt_cfg['rd_qb']]
+#
+#                 if rd_setup != Mott_setup:
+#                     quantum_device_cfg["readout"][Mott_setup]["freq"] = 8
+#                     quantum_device_cfg["powers"][Mott_setup]["readout_drive_digital_attenuation"] = 99
+#                     quantum_device_cfg["qubit"][rd_setup]["freq"] = 8
+#                     quantum_device_cfg["powers"][rd_setup]["drive_digital_attenuation"] = 99
+#
+#                 expt_cfg['ff_vec'] = ff_vec
+#
+#                 data_path = os.path.join(path, 'data/')
+#                 melt_file = os.path.join(data_path, get_next_filename(data_path, experiment_name, suffix='.h5'))
+#
+#                 # lattice_cfg['ff_info']['ff_exp_ramp_len'] = [len,len,len,len,len,len,len,len]
+#                 # lattice_cfg['ff_info']['ff_exp_ramp_tau'] = [len*(2/5),len*(2/5),len*(2/5),len*(2/5),len*(2/5),len*(2/5),len*(2/5),len*(2/5)]
+#
+#                 # run melting
+#                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#                 sequences = ps.get_experiment_sequences(experiment_name)
+#                 print("Sequences generated")
+#                 exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, lattice_cfg=lattice_cfg)
+#                 exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,
+#                                        seq_data_file=None)
+#
+#                 #run pi_cal
+#                 pi_file = os.path.join(data_path, get_next_filename(data_path, "pi_cal", suffix='.h5'))
+#                 if expt_cfg["pi_calibration"]:
+#                     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={rd_setup: rd_qb})
+#
+#                     # quantum_device_cfg['pulse_info'][setup]['pi_len'] = lattice_cfg['pulse_info'][setup]['pi_len_melt'][ii] - (np.ones(8)*delta)[ii]
+#
+#                     experiment_cfg["pi_cal"] = experiment_cfg["melting_single_readout_full_ramp_Q3"]
+#                     ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#                     sequences = ps.get_experiment_sequences("pi_cal")
+#                     print("Sequences generated")
+#                     exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, 'pi_cal')
+#                     exp.run_experiment_pxi(sequences, path, 'pi_cal', expt_num=0, check_sync=False,
+#                                            seq_data_file=None)
+#
+#                     slab_file = SlabFile(melt_file)
+#                     with slab_file as f:
+#                         f.attrs["pi_cal_fname"] = pi_file
+
+
+############################################################
+############ T1 SIDEBAND #############
+############################################################
+# experiment_names = ['sideband_t1']
+# sb_freq_list = 10**(np.linspace(0, 2, 15))/1000
+# for sb_freq in sb_freq_list:
+#     for sb_qb in [0]:
+#         for rd_qb in [0]:
+#             for experiment_name in experiment_names:
+#                 expt_cfg = experiment_cfg[experiment_name]
+#
+#                 expt_cfg['rd_qb'] = rd_qb
+#                 expt_cfg['sb_qb'] = sb_qb
+#                 expt_cfg["sb_freq"]=sb_freq
+#
+#                 quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: sb_qb})
+#
+#                 quantum_device_cfg["readout"][setup]["freq"] = lattice_cfg["readout"]["freq"][expt_cfg["rd_qb"]]
+#                 quantum_device_cfg["powers"][setup]["readout_drive_digital_attenuation"] = lattice_cfg["powers"][setup]["readout_drive_digital_attenuation"][expt_cfg["rd_qb"]]
+#
+#                 data_path = os.path.join(path, 'data/')
+#                 melt_file = os.path.join(data_path, get_next_filename(data_path, experiment_name, suffix='.h5'))
+#
+#
+#                 # run sideband
+#                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#                 sequences = ps.get_experiment_sequences(experiment_name)
+#                 print("Sequences generated")
+#                 exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+#                 exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,
+#                                        seq_data_file=None)
+#
+#                 #run pi_cal
+#                 pi_file = os.path.join(data_path, get_next_filename(data_path, "pi_cal", suffix='.h5'))
+#                 if expt_cfg["pi_calibration"]:
+#                     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={setup: expt_cfg["rd_qb"]})
+#
+#                     experiment_cfg["pi_cal"] = experiment_cfg[experiment_name]
+#                     ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#                     sequences = ps.get_experiment_sequences("pi_cal")
+#                     print("Sequences generated")
+#                     exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, 'pi_cal')
+#                     exp.run_experiment_pxi(sequences, path, 'pi_cal', expt_num=0, check_sync=False,
+#                                            seq_data_file=None)
+#
+#                     slab_file = SlabFile(melt_file)
+#                     with slab_file as f:
+#                         f.attrs["pi_cal_fname"] = pi_file
+
+# ##################################################################################
+# #################### ADIABATICITY AND REVERSABILITY EXPERIMENT ###################
+# ##################################################################################
+
+# Vlistholder = [[ 0.65818269,  0.03254779,  0.01065907,  0.01279519,  0.00656659,
+#          0.00564104,  0.00556769],
+#        [ 0.00483788, -0.31708644, -0.01658604, -0.01214218, -0.00745395,
+#         -0.0056054 , -0.00340977],
+#        [ 0.01068335, -0.00980526,  0.9375889 ,  0.06441132,  0.03225491,
+#          0.04752409,  0.02621389],
+#        [ 0.01546956,  0.05222554,  0.03792053,  0.64780287,  0.0494931 ,
+#          0.04661816,  0.03351592],
+#        [ 0.0244215 ,  0.04336317,  0.04162581,  0.05007612, -0.37948415,
+#         -0.03021336, -0.03727678],
+#        [-0.01640294, -0.02917997, -0.02734631, -0.04053531, -0.04903622,
+#          0.72890904, -0.03814249],
+#        [ 0.00751881,  0.00741148,  0.01095495,  0.01141264,  0.01532703,
+#          0.0414454 , -0.5774855 ]]
+#
+# expramplenlist = [1.00000000e+00, 1.56560656e+00, 2.45112389e+00, 3.83749564e+00,
+#        6.00800835e+00, 9.40617727e+00, 1.47263728e+01, 2.30557058e+01,
+#        3.60961643e+01, 5.65123915e+01, 8.84761707e+01, 1.38518873e+02,
+#        2.16866056e+02, 3.39526920e+02, 5.31565572e+02, 8.32222546e+02,
+#        1.30293308e+03, 2.03988057e+03, 3.19365039e+03, 5.00000000e+03]
+#
+# experiment_names = ['melting_single_readout_full_ramp_2setups']
+# # pilenchangelist = np.linspace(-10,10,6)
+# for kk, drivequb in enumerate([5]):
+#     for jj,expramplen in enumerate(expramplenlist):
+#         for ii in [0, 1, 2, 3, 4, 5, 6]:
+#             for experiment_name in experiment_names:
+#                 lattice_cfg['ff_info']['ff_exp_ramp_len'] = list(np.ones(7) * expramplen)
+#                 lattice_cfg['ff_info']['ff_exp_ramp_tau'] = list(np.ones(7) * expramplen * (2 / 5))
+#
+#                 expt_cfg = experiment_cfg[experiment_name]
+#                 expt_cfg['rd_qb'] = ii
+#                 expt_cfg['Mott_qbs'] = [drivequb]
+#                 expt_cfg['ramp_type'] = "rexp"
+#                 # expt_cfg['ff_vec'] = Vlistholder[kk] # this is for bringing only the drivequbits to the lattice
+#                 rd_qb = expt_cfg["rd_qb"]
+#                 Mott_qbs = expt_cfg["Mott_qbs"]
+#                 rd_setup = lattice_cfg["qubit"]["setup"][rd_qb]
+#                 Mott_setup = lattice_cfg["qubit"]["setup"][Mott_qbs[0]]  # BIG ASSUMPTION: ALL MOTT QBS ON SAME SETUP, AND ALL REFER TO SAME LO
+#
+#                 quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={rd_setup: rd_qb,
+#                                                                                                           Mott_setup:
+#                                                                                                               Mott_qbs[0]})
+#
+#                 quantum_device_cfg["readout"][rd_setup]["freq"] = lattice_cfg["readout"][rd_setup]["freq"][rd_qb]
+#                 quantum_device_cfg["powers"][rd_setup]["readout_drive_digital_attenuation"] = \
+#                 lattice_cfg["powers"][rd_setup]["readout_drive_digital_attenuation"][rd_qb]
+#                 quantum_device_cfg["readout"][rd_setup]["window"] = lattice_cfg["readout"][rd_setup]["window"][
+#                     expt_cfg['rd_qb']]
+#
+#                 if rd_setup != Mott_setup:
+#                     quantum_device_cfg["readout"][Mott_setup]["freq"] = 8
+#                     quantum_device_cfg["powers"][Mott_setup]["readout_drive_digital_attenuation"] = 99
+#                     quantum_device_cfg["qubit"][rd_setup]["freq"] = 8
+#                     quantum_device_cfg["powers"][rd_setup]["drive_digital_attenuation"] = 99
+#
+#
+#                 data_path = os.path.join(path, 'data/')
+#                 melt_file = os.path.join(data_path, get_next_filename(data_path, experiment_name, suffix='.h5'))
+#
+#                 # run melting
+#                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#                 sequences = ps.get_experiment_sequences(experiment_name)
+#                 print("Sequences generated")
+#                 exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name )
+#                 exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,
+#                                        seq_data_file=None)
+#
+#                 #run pi_cal
+#                 pi_file = os.path.join(data_path, get_next_filename(data_path, "pi_cal", suffix='.h5'))
+#                 if expt_cfg["pi_calibration"]:
+#                     quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={rd_setup: rd_qb})
+#
+#                     # quantum_device_cfg['pulse_info'][setup]['pi_len'] = lattice_cfg['pulse_info'][setup]['pi_len_melt'][ii] - (np.ones(8)*delta)[ii]
+#
+#                     experiment_cfg["pi_cal"] = experiment_cfg["melting_single_readout_full_ramp_2setups"]
+#                     ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#                     sequences = ps.get_experiment_sequences("pi_cal")
+#                     print("Sequences generated")
+#                     exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, 'pi_cal', lattice_cfg=lattice_cfg)
+#                     exp.run_experiment_pxi(sequences, path, 'pi_cal', expt_num=0, check_sync=False,
+#                                            seq_data_file=None)
+#
+#                     slab_file = SlabFile(melt_file)
+#                     with slab_file as f:
+#                         f.attrs["pi_cal_fname"] = pi_file
+
+# ##################################################################################
+# #################### ADIABATICITY AND REVERSABILITY EXPERIMENT
+# HACKED to do repeated piCals
+# ###################
+# ##################################################################################
+
+
+# experiment_names = ['melting_single_readout_full_ramp_2setups']
+# # pilenchangelist = np.linspace(-10,10,6)
+# for jj in range(30):
+#     for ii in [0,1,2,3,4,5,6]:
+#         for experiment_name in experiment_names:
+#             # lattice_cfg['ff_info']['ff_exp_ramp_len'] = list(np.ones(7) * expramplen)
+#             # lattice_cfg['ff_info']['ff_exp_ramp_tau'] = list(np.ones(7) * expramplen * (2 / 5))
+#
+#             expt_cfg = experiment_cfg[experiment_name]
+#             expt_cfg['rd_qb'] = ii
+#             expt_cfg['Mott_qbs'] = [ii]
+#             expt_cfg['ramp_type'] = "rexp"
+#             # expt_cfg['ff_vec'] = Vlistholder[kk] # this is for bringing only the drivequbits to the lattice
+#             rd_qb = expt_cfg["rd_qb"]
+#             Mott_qbs = expt_cfg["Mott_qbs"]
+#             rd_setup = lattice_cfg["qubit"]["setup"][rd_qb]
+#             Mott_setup = lattice_cfg["qubit"]["setup"][Mott_qbs[0]]  # BIG ASSUMPTION: ALL MOTT QBS ON SAME SETUP, AND ALL REFER TO SAME LO
+#
+#             quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={rd_setup: rd_qb,
+#                                                                                                       Mott_setup:
+#                                                                                                           Mott_qbs[0]})
+#
+#             quantum_device_cfg["readout"][rd_setup]["freq"] = lattice_cfg["readout"][rd_setup]["freq"][rd_qb]
+#             quantum_device_cfg["powers"][rd_setup]["readout_drive_digital_attenuation"] = \
+#             lattice_cfg["powers"][rd_setup]["readout_drive_digital_attenuation"][rd_qb]
+#             quantum_device_cfg["readout"][rd_setup]["window"] = lattice_cfg["readout"][rd_setup]["window"][
+#                 expt_cfg['rd_qb']]
+#
+#             if rd_setup != Mott_setup:
+#                 quantum_device_cfg["readout"][Mott_setup]["freq"] = 8
+#                 quantum_device_cfg["powers"][Mott_setup]["readout_drive_digital_attenuation"] = 99
+#                 quantum_device_cfg["qubit"][rd_setup]["freq"] = 8
+#                 quantum_device_cfg["powers"][rd_setup]["drive_digital_attenuation"] = 99
+#
+#
+#             data_path = os.path.join(path, 'data/')
+#             # melt_file = os.path.join(data_path, get_next_filename(data_path, experiment_name, suffix='.h5'))
+#
+#             # NOT run melting
+#             # ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#             # sequences = ps.get_experiment_sequences(experiment_name)
+#             # print("Sequences generated")
+#             # exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name )
+#             # exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,
+#             #                        seq_data_file=None)
+#
+#             #run pi_cal
+#             pi_file = os.path.join(data_path, get_next_filename(data_path, "pi_cal", suffix='.h5'))
+#             if expt_cfg["pi_calibration"]:
+#                 quantum_device_cfg = generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits={rd_setup: rd_qb})
+#
+#                 # quantum_device_cfg['pulse_info'][setup]['pi_len'] = lattice_cfg['pulse_info'][setup]['pi_len_melt'][ii] - (np.ones(8)*delta)[ii]
+#
+#                 experiment_cfg["pi_cal"] = experiment_cfg["melting_single_readout_full_ramp_2setups"]
+#                 ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
+#                 sequences = ps.get_experiment_sequences("pi_cal")
+#                 print("Sequences generated")
+#                 exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, 'pi_cal', lattice_cfg=lattice_cfg)
+#                 exp.run_experiment_pxi(sequences, path, 'pi_cal', expt_num=0, check_sync=False,
+#                                        seq_data_file=None)
+#
+#                 slab_file = SlabFile(pi_file)
+#                 # with slab_file as f:
+#                 #     f.attrs["pi_cal_fname"] = pi_file
