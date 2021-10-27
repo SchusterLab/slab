@@ -573,7 +573,7 @@ class Experiment:
                              save=True, obj=False):
         PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg,
                                           self.lattice_cfg, path,
-                                          experiment_name, self.data, P, phi, cont_data_file=cont_data_file,
+                                          experiment_name, self.data, P, phi=phi, cont_data_file=cont_data_file,
                                           cont_name=cont_name, save=save)
         if obj:
             return PA
@@ -739,53 +739,58 @@ def generate_quantum_device_from_lattice_v2(lattice_cfg_name, qb_ids, setups=["A
 
         return quantum_device_cfg
 
-def generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits = {'A':1,'B':2}, readout = None, drive=None):
-    with open(lattice_cfg_name, 'r') as f:
-        lattice_cfg = json.load(f)
-        quantum_device_cfg = {}
+def generate_quantum_device_from_lattice_v3(lattice_cfg_name, on_qubits = {'A':1,'B':2}, readout = None, drive=None, lattice_cfg_dict=None):
 
-        quantum_device_cfg["on_qubits"] = on_qubits
-        quantum_device_cfg["on_rd"] = readout
-        quantum_device_cfg["on_drive"] = drive
-        setups = list(on_qubits.keys())
-        qb_ids  = list(on_qubits.values())
-        quantum_device_cfg["setups"] = setups
+    if lattice_cfg_dict==None:
+        with open(lattice_cfg_name, 'r') as f:
+            lattice_cfg = json.load(f)
+    else:
+        lattice_cfg = copy.deepcopy(lattice_cfg_dict)
 
-        for category in lattice_cfg.keys():
-            # if category is directly a list of 8 qubit values, stuff it into setups "A" and "B"
-            if isinstance(lattice_cfg[category], list) and len(lattice_cfg[category]) == 8:
-                for i in range(len(qb_ids)):
-                    quantum_device_cfg[category] = {}
-                    quantum_device_cfg[category][setups[i]] = lattice_cfg[category][qb_ids[i]]
+    quantum_device_cfg = {}
 
-            # if category is a dictionary, walk through the keys.
-            elif isinstance(lattice_cfg[category], dict):
+    quantum_device_cfg["on_qubits"] = on_qubits
+    quantum_device_cfg["on_rd"] = readout
+    quantum_device_cfg["on_drive"] = drive
+    setups = list(on_qubits.keys())
+    qb_ids  = list(on_qubits.values())
+    quantum_device_cfg["setups"] = setups
+
+    for category in lattice_cfg.keys():
+        # if category is directly a list of 8 qubit values, stuff it into setups "A" and "B"
+        if isinstance(lattice_cfg[category], list) and len(lattice_cfg[category]) == 8:
+            for i in range(len(qb_ids)):
                 quantum_device_cfg[category] = {}
-                for i in range(len(qb_ids)):
-                    quantum_device_cfg[category][setups[i]] = {}
-                for key in lattice_cfg[category]:
-                    # if one of them is a list of eight qubit values,stuff it in quantum device config
-                    if isinstance(lattice_cfg[category][key], list) and len(lattice_cfg[category][key]) == 8:
-                        for i in range(len(qb_ids)):
-                            quantum_device_cfg[category][setups[i]][key] = lattice_cfg[category][key][qb_ids[i]]
-                    #elif check if setup specific
-                    elif key == setups[0]:
-                        for key_set in lattice_cfg[category][key]:
-                            quantum_device_cfg[category][setups[0]][key_set] = lattice_cfg[category][key][key_set][qb_ids[0]]
+                quantum_device_cfg[category][setups[i]] = lattice_cfg[category][qb_ids[i]]
 
-                    elif len(setups)>1 and key == setups[1]:
-                        for key_set in lattice_cfg[category][key]:
+        # if category is a dictionary, walk through the keys.
+        elif isinstance(lattice_cfg[category], dict):
+            quantum_device_cfg[category] = {}
+            for i in range(len(qb_ids)):
+                quantum_device_cfg[category][setups[i]] = {}
+            for key in lattice_cfg[category]:
+                # if one of them is a list of eight qubit values,stuff it in quantum device config
+                if isinstance(lattice_cfg[category][key], list) and len(lattice_cfg[category][key]) == 8:
+                    for i in range(len(qb_ids)):
+                        quantum_device_cfg[category][setups[i]][key] = lattice_cfg[category][key][qb_ids[i]]
+                #elif check if setup specific
+                elif key == setups[0]:
+                    for key_set in lattice_cfg[category][key]:
+                        quantum_device_cfg[category][setups[0]][key_set] = lattice_cfg[category][key][key_set][qb_ids[0]]
 
-                            quantum_device_cfg[category][setups[1]][key_set] = lattice_cfg[category][key][key_set][qb_ids[1]]
-                    # else, just stuff it directly
-                    else:
-                        quantum_device_cfg[category][key] = lattice_cfg[category][key]
+                elif len(setups)>1 and key == setups[1]:
+                    for key_set in lattice_cfg[category][key]:
 
-            # if category is other, just stuff it directly into quantum device config
-            else:
-                quantum_device_cfg[category] = lattice_cfg[category]
+                        quantum_device_cfg[category][setups[1]][key_set] = lattice_cfg[category][key][key_set][qb_ids[1]]
+                # else, just stuff it directly
+                else:
+                    quantum_device_cfg[category][key] = lattice_cfg[category][key]
 
-        return quantum_device_cfg
+        # if category is other, just stuff it directly into quantum device config
+        else:
+            quantum_device_cfg[category] = lattice_cfg[category]
+
+    return quantum_device_cfg
 
 def melting_update(quantum_device_cfg, lattice_cfg, setup, rd_qb, lo_qb):
     quantum_device_cfg["qubit"][setup]["freq"] = lattice_cfg["qubit"]["freq"][lo_qb]
