@@ -20,39 +20,61 @@ import json
 from slab.experiments.PulseExperiments_PXI_Gerbert.get_data import get_iq_data, get_singleshot_data
 from slab.experiments.PulseExperiments_PXI_Gerbert.PostExperimentAnalysis import PostExperimentAnalyzeAndSave
 import copy
+import sys
 
 class Experiment:
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None,lattice_cfg = None):
+    def __init__(self,  quantum_device_cfg=None, experiment_cfg=None, hardware_cfg=None,  sequences=None, name=None,lattice_cfg = None):
         self.quantum_device_cfg = quantum_device_cfg
         self.experiment_cfg = experiment_cfg
+        self.expt_params = self.experiment_cfg[name]
         self.hardware_cfg = hardware_cfg
         self.lattice_cfg = lattice_cfg
         im = InstrumentManager()
+
         self.setups = ["A", "B"]
-        self.on_setups = self.quantum_device_cfg["setups"]
-        import time
+        self.on_qbs = self.expt_params["on_qbs"]
+        self.qb_setups = [self.lattice_cfg["qubit"]["setup"][qb] for qb in self.on_qbs]
+        if not ("on_rds" in self.expt_params.keys()) or self.expt_params["on_rds"]==[] or self.expt_params["on_rds"]=="auto":
+            self.on_rds = self.on_qbs
+        else:
+            self.on_rds = self.expt_params["on_rds"]
+        self.rd_setups = [self.lattice_cfg["qubit"]["setup"][qb] for qb in self.on_rds]
+
         #self.fluxbias = im['dacbox']
         #self.fluxbias.setvoltage(1,0)
         time.sleep(1)
 
-        self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
+        self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, self.lattice_cfg, sequences, name)
 
-        try: self.drive_los = [im[lo] for lo in self.hardware_cfg['drive_los']]
+        try:
+            self.drive_los = copy.deepcopy(self.hardware_cfg['drive_los'])
+            for key in self.hardware_cfg['drive_los']:
+                self.drive_los[key] = im[self.hardware_cfg['drive_los'][key]]
         except: print ("No drive function generator specified in hardware config / failure to connect with im()")
 
         try: self.stab_los = [im[lo] for lo in self.hardware_cfg['stab_los']]
         except: print ("No stabilizer function generator specified in hardware config / failure to connect with im()")
 
-        try: self.readout_los = [im[lo] for lo in self.hardware_cfg['readout_los']]
+        try:
+            self.readout_los = copy.deepcopy(self.hardware_cfg['readout_los'])
+            for key in self.hardware_cfg['readout_los']:
+                self.readout_los[key] = im[self.hardware_cfg['readout_los'][key]]
         except: print ("No readout function generator specified in hardware config / failure to connect with im()")
 
         # try:self.readout_yigs = [im[yig] for yig in self.hardware_cfg['readout_yigs']]
         # except:print("No readout yigs in hardware config / failure to connect with im()")
 
-        try: self.readout_attens = [im[atten] for atten in self.hardware_cfg['readout_attens']]
+        try:
+            self.readout_attens = copy.deepcopy(self.hardware_cfg['readout_attens'])
+            for key in self.hardware_cfg['readout_attens']:
+                self.readout_attens[key] = im[self.hardware_cfg['readout_attens'][key]]
+
         except: print ("No digital attenuator specified in hardware config / failure to connect with im()")
 
-        try:self.drive_attens = [im[atten] for atten in self.hardware_cfg['drive_attens']]
+        try:
+            self.drive_attens = copy.deepcopy(self.hardware_cfg['drive_attens'])
+            for key in self.hardware_cfg['drive_attens']:
+                self.drive_attens[key] = im[self.hardware_cfg['drive_attens'][key]]
         except:print("No digital attenuator specified in hardware config / failure to connect with im()")
 
         try: self.trig = im['BNCfungen']
@@ -71,7 +93,7 @@ class Experiment:
         pxi_sequences = {}
         for channel in pxi_waveform_channels:
             pxi_sequences[channel] = sequences[channel]
-        self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
+        self.pxi.configureChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, self.lattice_cfg, name)
         print('configureOK')
         self.pxi.loadAndQueueWaveforms(pxi_sequences)
         print('LoadandConfigureOK')
@@ -88,19 +110,22 @@ class Experiment:
     # now setting for SignalCore
     def initiate_drive_LOs(self):
         try:
-            #TODO this totally relieson order of drive LOs being A first, then B, etc. this should be a dictionary
-            # somehow but I am currently pretty out of it so will have to wait until later - G 5/5/21
-            for ii, s in enumerate(self.setups):
-                d = self.drive_los[ii]
-                if s in self.on_setups:
-                    drive_freq =  self.quantum_device_cfg['qubit'][s]['freq'] - self.quantum_device_cfg[
-                    'pulse_info'][s]['iq_freq']
-                    d.set_frequency(drive_freq * 1e9)
-                    d.set_power(self.quantum_device_cfg['powers'][s]['drive_lo_powers'])
 
-                else:
+            for setup in self.setups:
+                d = self.drive_los[setup]
+                qbs_w_setup = [qb for qb in self.on_qbs if self.lattice_cfg["qubit"]["setup"][qb]== setup]
+                powers = [self.lattice_cfg["powers"][setup]["drive_lo_powers"][qb] for qb in qbs_w_setup]
+                if len(set(powers))>1: #check if two qubits being run on same setup at same time have same LO power
+                    print("two qubits on the same setup have different drive lo powers!")
+                    sys.exit()
+                elif len(qbs_w_setup)==0: # if no qubits on that setup, detune LO
                     d.set_frequency(self.hardware_cfg['lo_off_freq'] * 1e9)
                     d.set_power(self.hardware_cfg['lo_off_power'])
+                else: #set LO frequency and power with first qubit
+                    drive_freq =  self.lattice_cfg['qubit']['freq'][qbs_w_setup[-1]] - self.lattice_cfg[
+                    'pulse_info'][setup]['iq_freq'][qbs_w_setup[-1]]
+                    d.set_frequency(drive_freq * 1e9)
+                    d.set_power(powers[-1])
 
                 d.set_clock_reference(ext_ref=True)
                 d.set_output_state(True)
@@ -124,16 +149,20 @@ class Experiment:
 
     def initiate_readout_LOs(self):
         try:
-            for ii, s in enumerate(self.setups):
-                d = self.readout_los[ii]
-                if s in self.on_setups:
-                    readout_freq = self.quantum_device_cfg['readout'][s]['freq'] * 1e9
-                    d.set_frequency(readout_freq)
-                    d.set_power(self.quantum_device_cfg['powers'][s]['readout_drive_lo_powers'])
-
-                else:
+            for ii, setup in enumerate(self.setups):
+                d = self.readout_los[setup]
+                rds_w_setup = [qb for qb in self.on_rds if self.lattice_cfg["qubit"]["setup"][qb]== setup]
+                if len(set(rds_w_setup))>1: #check if two qubits have readout on same setup - will not work
+                    print("two qubits on the same setup are both being asked to readout!")
+                    sys.exit()
+                elif len(rds_w_setup)==0: # if no qubits on that setup, detune LO
                     d.set_frequency(self.hardware_cfg['lo_off_freq'] * 1e9)
+
                     d.set_power(self.hardware_cfg['lo_off_power'])
+                else: #set LO frequency and power with first qubit
+                    readout_freq =  self.lattice_cfg['readout'][setup]['freq'][rds_w_setup[-1]]
+                    d.set_frequency(readout_freq * 1e9)
+                    d.set_power(self.lattice_cfg["powers"][setup]["readout_drive_lo_powers"][rds_w_setup[-1]])
 
                 d.set_clock_reference(ext_ref=True)
                 d.set_output_state(True)
@@ -178,41 +207,47 @@ class Experiment:
 
     def initiate_readout_yigs(self):
         try:
-            for ii, s in enumerate(self.setups):
-                d = self.readout_yigs[ii]
-                if s in self.on_setups:
-                    d.set_yig(self.quantum_device_cfg['readout'][s]['freq'])
-                    print("Readout Yig%s"%s + " Set to: %s"%(self.quantum_device_cfg['readout'][s]['freq']))
-                else:
-                    raise ValueError("Readout Yig Frequency Not Set!")
+            for ii, s in enumerate(self.rd_setups):
+                d = self.readout_yigs[s]
+                d.set_yig(self.lattice_cfg['readout'][s]['freq'][self.on_rds[ii]])
+                print("Readout Yig%s"%s + " Set to: %s"%(self.lattice_cfg['readout'][s]['freq'][self.on_rds[ii]]))
         except:
             print("Error in readout yig configuration")
 
     def initiate_readout_attenuators(self):
         try:
             for ii, s in enumerate(self.setups):
-                d = self.readout_attens[ii]
-                if s in self.on_setups:
-                    d.set_attenuator(self.quantum_device_cfg['powers'][s]['readout_drive_digital_attenuation'])
-                    print("set readout attenuator")
-                else:
+                d = self.readout_attens[s]
+                rds_w_setup = [qb for qb in self.on_rds if self.lattice_cfg["qubit"]["setup"][qb] == s]
+                if len(set(rds_w_setup)) > 1:  # check if two rds being run on same setup
+                    print("two qubits on the same setup have readout happening, this cannot be!")
+                    sys.exit()
+                elif len(rds_w_setup) == 0:  # if no qubits on that setup, set atten to 30
                     d.set_attenuator(30)
+                else:  # set atten
+                    d.set_attenuator(self.lattice_cfg['powers'][s]['readout_drive_digital_attenuation'][rds_w_setup[-1]])
+                    print("set readout attenuator")
+
         except:
             print("Error in readout digital attenuator configuration")
 
     def initiate_drive_attenuators(self):
-        try:
-            for ii, s in enumerate(self.setups):
-                d = self.drive_attens[ii]
-                if s in self.on_setups:
-                    d.set_attenuator(self.quantum_device_cfg['powers'][s]['drive_digital_attenuation'])
-                    print("set drive attenuator")
-                else:
-                    d.set_attenuator(30)
-                    print("set readout attenuator")
+        #try:
+        for ii, s in enumerate(self.setups):
+            d = self.drive_attens[s]
+            qbs_w_setup = [qb for qb in self.on_qbs if self.lattice_cfg["qubit"]["setup"][qb] == s]
+            attens = [self.lattice_cfg["powers"][s]["drive_digital_attenuation"][qb] for qb in qbs_w_setup]
+            if len(set(attens)) > 1:  # check if two qubits being run on same setup at same time have same atten
+                print("two qubits on the same setup have different drive attens!")
+                sys.exit()
+            elif len(qbs_w_setup) == 0:  # if no qubits on that setup, set atten to max
+                d.set_attenuator(30)
+            else:  # set  atten with last qb
+                d.set_attenuator(self.lattice_cfg['powers'][s]['drive_digital_attenuation'][qbs_w_setup[-1]])
+                print("set drive attenuator")
 
-        except:
-            print("Error in qubit drive attenuator configuration")
+        # except:
+        #     print("Error in qubit drive attenuator configuration")
 
 
     def set_trigger(self):
@@ -224,7 +259,7 @@ class Experiment:
             print("Error in trigger configuration")
 
     def save_cfg_info(self, f):
-        f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
+        #f.attrs['quantum_device_cfg'] = json.dumps(self.quantum_device_cfg)
         f.attrs['experiment_cfg'] = json.dumps(self.experiment_cfg)
         f.attrs['hardware_cfg'] = json.dumps(self.hardware_cfg)
         f.attrs['lattice_cfg'] = json.dumps(self.lattice_cfg)
@@ -250,7 +285,7 @@ class Experiment:
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
-                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
+                if "A" in self.rd_setups and "B" in self.rd_setups:
                     f.add('qbA_I', data[0][0])
                     f.add('qbA_Q', data[0][1])
                     f.add('qbB_I', data[1][0])
@@ -261,7 +296,7 @@ class Experiment:
         else:
             self.slab_file = SlabFile(seq_data_file)
             with self.slab_file as f:
-                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
+                if "A" in self.rd_setups and "B" in self.rd_setups:
                     f.append_line('qbA_I', data[0][0])
                     f.append_line('qbA_Q', data[0][1])
                     f.append_line('qbB_I', data[1][0])
@@ -277,20 +312,21 @@ class Experiment:
         phi_A = 0
         phi_B = 0
 
-        if "A" in self.quantum_device_cfg["setups"]:
-            vec_A = self.quantum_device_cfg["readout"]["A"]["vec"]
-            phi_A = self.quantum_device_cfg["readout"]["A"]["phi"]
+        for rd in self.on_rds:
+            if "A" in self.lattice_cfg["qubit"]["setup"][rd]:
+                vec_A = self.lattice_cfg["readout"]["A"]["vec"][rd]
+                phi_A = self.lattice_cfg["readout"]["A"]["phi"][rd]
 
-        if "B" in self.quantum_device_cfg["setups"]:
-            vec_B = self.quantum_device_cfg["readout"]["B"]["vec"]
-            phi_B = self.quantum_device_cfg["readout"]["B"]["phi"]
+            if "B" in self.lattice_cfg["qubit"]["setup"][rd]:
+                vec_B = self.lattice_cfg["readout"]["B"]["vec"][rd]
+                phi_B = self.lattice_cfg["readout"]["B"]["phi"][rd]
 
 
         data = self.pxi.avg_data_threshold(vecA=vec_A, phiA=phi_A, vecB=vec_B, phiB=phi_B)
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
-                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
+                if "A" in self.rd_setups and "B" in self.rd_setups:
                     f.add('qbA_I', data[0][0])
                     f.add('qbA_Q', data[0][1])
                     f.add('qbA_state', data[0][2])
@@ -304,7 +340,7 @@ class Experiment:
         else:
             self.slab_file = SlabFile(seq_data_file)
             with self.slab_file as f:
-                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
+                if "A" in self.rd_setups and "B" in self.rd_setups:
                     f.append_line('qbA_I', data[0][0])
                     f.append_line('qbA_Q', data[0][1])
                     f.append_line('qbA_state', data[0][2])
@@ -322,7 +358,7 @@ class Experiment:
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
-                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
+                if "A" in self.rd_setups and "B" in self.rd_setups:
                     f.add('qbA_I', data[0][0])
                     f.add('qbA_Q', data[0][1])
                     f.add('qbB_I', data[1][0])
@@ -333,7 +369,7 @@ class Experiment:
         else:
             self.slab_file = SlabFile(seq_data_file)
             with self.slab_file as f:
-                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
+                if "A" in self.rd_setups and "B" in self.rd_setups:
                     f.append_line('qbA_I', data[0][0].flatten())
                     f.append_line('qbA_Q', data[0][1].flatten())
                     f.append_line('qbB_I', data[1][0].flatten())
@@ -349,7 +385,7 @@ class Experiment:
         if seq_data_file == None:
             self.slab_file = SlabFile(self.data_file)
             with self.slab_file as f:
-                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
+                if "A" in self.rd_setups and "B" in self.rd_setups:
                     f.add('qbA_I', data[0][0])
                     f.add('qbA_Q', data[0][1])
                     f.add('qbB_I', data[1][0])
@@ -360,7 +396,7 @@ class Experiment:
         else:
             self.slab_file = SlabFile(seq_data_file)
             with self.slab_file as f:
-                if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
+                if "A" in self.rd_setups and "B" in self.rd_setups:
                     f.append_line('qbA_I', data[0][0])
                     f.append_line('qbA_Q', data[0][1])
                     f.append_line('qbB_I', data[1][0])
@@ -461,18 +497,14 @@ class Experiment:
                 pi_calibration = False
             foo = self.pxi.acquire_avg_data(pi_calibration=False)
 
-        if two_setups:
-            qb = self.lattice_cfg["qubit"]["setup"][self.expt_cfg['rd_qb']]
-        else:
-            qb = self.quantum_device_cfg["setups"][0]
-        read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
+        read_freq = copy.deepcopy(self.lattice_cfg['readout'][self.rd_setups[0]]['freq'][self.on_rds[0]])
         for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq,
                               self.expt_cfg['step']):
             self.pxi.DIG_module.stopAll()
-            self.quantum_device_cfg['readout'][qb]['freq'] = freq
+            self.lattice_cfg['readout'][self.rd_setups[0]]['freq'][self.on_rds[0]] = freq
             self.initiate_readout_LOs()
             self.initiate_readout_yigs()
-            self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
+            self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, self.lattice_cfg, name)
             self.pxi.DIG_ch_1.clear()
             self.pxi.DIG_ch_1.start()
             self.pxi.DIG_ch_2.clear()
@@ -493,78 +525,78 @@ class Experiment:
         return self.data
 
     # sweep readout qubit LO, fix everything else.  Pi_Cal sweep after sweeping resonators, speed should be fast enough.
-    def run_experiment_pxi_melt(self, sequences, path, name, seq_data_file=None, update_awg=False, expt_num=0,
-                                   check_sync=False, save_errs=False, pi=False, ff=False):
-
-        data_path = os.path.join(path, 'data/')
-        seq_data_file = os.path.join(data_path,
-                                     get_next_filename(data_path, name, suffix='.h5'))
-
-        self.expt_cfg = self.experiment_cfg[name]
-        self.generate_datafile(path, name, seq_data_file=seq_data_file)
-        self.set_trigger()
-        self.trig.set_output(state=False)
-        self.initiate_drive_LOs()
-        # self.initiate_stab_LOs()
-        self.initiate_readout_attenuators()
-        self.initiate_drive_attenuators()
-        self.initiate_pxi(name, sequences)
-        self.initiate_readout_LOs()
-        self.initiate_readout_yigs()
-        time.sleep(0.2)
-        self.pxi.run()
-        time.sleep(0.2)
-        self.trig.set_output(state=True)
-
-        # throw away first point - this should be for uploading data to PXI / incidentally checking for errors
-        if self.expt_cfg['singleshot']:
-            foo = self.pxi.SSdata_many()
-        elif self.expt_cfg['trajectory']:
-            foo = self.pxi.traj_data_many()
-        else:
-            try:
-                pi_calibration = expt_cfg['pi_calibration']
-            except:
-                pi_calibration = False
-            foo = self.pxi.acquire_avg_data(pi_calibration=False)
-
-        # TODO: replace this with readout qubit switching
-            for qb in self.expt_cfg['rd_qb']:
-                read_freq = self.lattice_cfg['readout']['freq'][qb]
-
-        # for qb in self.quantum_device_cfg["setups"]:
-        #
-        #     read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
-        #     for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq,
-        #                           self.expt_cfg['step']):
-
-                self.pxi.DIG_module.stopAll()
-                self.quantum_device_cfg['readout']['freq'] = read_freq
-                self.initiate_readout_LOs()
-                self.initiate_readout_yigs()
-                self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
-                self.pxi.DIG_ch_1.clear()
-                self.pxi.DIG_ch_1.start()
-                self.pxi.DIG_ch_2.clear()
-                self.pxi.DIG_ch_2.start()
-                self.pxi.DIG_ch_3.clear()
-                self.pxi.DIG_ch_3.start()
-                self.pxi.DIG_ch_4.clear()
-                self.pxi.DIG_ch_4.start()
-                time.sleep(0.1)
-                if self.expt_cfg['singleshot']:
-                    self.data = self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
-                elif self.expt_cfg['trajectory']:
-                    self.data = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
-                else:
-                    self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
-        #
-        self.pxi_stop()
-        return self.data
+    # def run_experiment_pxi_melt(self, sequences, path, name, seq_data_file=None, update_awg=False, expt_num=0,
+    #                                check_sync=False, save_errs=False, pi=False, ff=False):
+    #
+    #     data_path = os.path.join(path, 'data/')
+    #     seq_data_file = os.path.join(data_path,
+    #                                  get_next_filename(data_path, name, suffix='.h5'))
+    #
+    #     self.expt_cfg = self.experiment_cfg[name]
+    #     self.generate_datafile(path, name, seq_data_file=seq_data_file)
+    #     self.set_trigger()
+    #     self.trig.set_output(state=False)
+    #     self.initiate_drive_LOs()
+    #     # self.initiate_stab_LOs()
+    #     self.initiate_readout_attenuators()
+    #     self.initiate_drive_attenuators()
+    #     self.initiate_pxi(name, sequences)
+    #     self.initiate_readout_LOs()
+    #     self.initiate_readout_yigs()
+    #     time.sleep(0.2)
+    #     self.pxi.run()
+    #     time.sleep(0.2)
+    #     self.trig.set_output(state=True)
+    #
+    #     # throw away first point - this should be for uploading data to PXI / incidentally checking for errors
+    #     if self.expt_cfg['singleshot']:
+    #         foo = self.pxi.SSdata_many()
+    #     elif self.expt_cfg['trajectory']:
+    #         foo = self.pxi.traj_data_many()
+    #     else:
+    #         try:
+    #             pi_calibration = expt_cfg['pi_calibration']
+    #         except:
+    #             pi_calibration = False
+    #         foo = self.pxi.acquire_avg_data(pi_calibration=False)
+    #
+    #     # TODO: replace this with readout qubit switching
+    #         for qb in self.expt_cfg['rd_qb']:
+    #             read_freq = self.lattice_cfg['readout']['freq'][qb]
+    #
+    #     # for qb in self.quantum_device_cfg["setups"]:
+    #     #
+    #     #     read_freq = copy.deepcopy(self.quantum_device_cfg['readout'][qb]['freq'])
+    #     #     for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq,
+    #     #                           self.expt_cfg['step']):
+    #
+    #             self.pxi.DIG_module.stopAll()
+    #             self.quantum_device_cfg['readout']['freq'] = read_freq
+    #             self.initiate_readout_LOs()
+    #             self.initiate_readout_yigs()
+    #             self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, name)
+    #             self.pxi.DIG_ch_1.clear()
+    #             self.pxi.DIG_ch_1.start()
+    #             self.pxi.DIG_ch_2.clear()
+    #             self.pxi.DIG_ch_2.start()
+    #             self.pxi.DIG_ch_3.clear()
+    #             self.pxi.DIG_ch_3.start()
+    #             self.pxi.DIG_ch_4.clear()
+    #             self.pxi.DIG_ch_4.start()
+    #             time.sleep(0.1)
+    #             if self.expt_cfg['singleshot']:
+    #                 self.data = self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+    #             elif self.expt_cfg['trajectory']:
+    #                 self.data = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+    #             else:
+    #                 self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+    #     #
+    #     self.pxi_stop()
+    #     return self.data
 
 
     def post_analysis(self, path, experiment_name, cont_name=None, P='Q', phi=0, cont_data_file=None):
-        PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, path,
+        PA = PostExperimentAnalyzeAndSave(self.quantum_device_cfg, self.experiment_cfg, self.hardware_cfg, self.lattice_cfg, path,
                                           experiment_name, self.data, P, phi, cont_data_file=cont_data_file,
                                           cont_name=cont_name, save=False)
         return PA.p

@@ -17,10 +17,13 @@ from scipy import interpolate
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 class Tuning:
-    def __init__(self, file_names, N=8, log_tuning_files_name=None):
+    def __init__(self, file_names, N=8, log_tuning_files_name=None, files_dir=None):
         lattice_cfg = file_names
         og_dir = os.getcwd()
-        os.chdir("C:\\210801 - PHMIV3_56 - BF4 cooldown 4\\ipython notebook")
+        if files_dir==None:
+            os.chdir("C:\\210801 - PHMIV3_56 - BF4 cooldown 4\\ipython notebook")
+        else:
+            os.chdir(files_dir)
         self.N = N
         if log_tuning_files_name==None:
             log_tuning_files_name = "S:\\_Data\\210412 - PHMIV3_56 - BF4 cooldown 2\\log_tuning_files.json"

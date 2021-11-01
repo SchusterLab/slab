@@ -22,7 +22,7 @@ class PostExperimentAnalyzeAndSave:
         self.exptname = experiment_name
         self.data =data
         self.P = P
-        if "A" in self.quantum_device_cfg["setups"] and "B" in self.quantum_device_cfg["setups"]:
+        if len(data)>1:
             self.qbA_I_raw = data[0][0]
             self.qbA_Q_raw = data[0][1]
             self.qbB_I_raw = data[1][0]
@@ -109,28 +109,58 @@ class PostExperimentAnalyzeAndSave:
 
         return I, Q, mag, phase
 
-    def get_params(self, hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb):
+    def get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=False):
 
         params = {}
+
         params['ran'] = hardware_cfg['awg_info']['keysight_pxi']['digtzr_vpp_range']
         params['dt_dig'] = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
-        params['readout_params'] = quantum_device_cfg['readout'][on_qb]
-        params['readout_freq'] = params['readout_params']["freq"]
-        params['readout_window'] = params['readout_params']["window"] * params['dt_dig']
+        params['readout_params'] = lattice_cfg['readout']
 
-        params['dig_atten_qb'] = quantum_device_cfg['powers'][on_qb]['drive_digital_attenuation']
-        params['dig_atten_rd'] = quantum_device_cfg['powers'][on_qb]['readout_drive_digital_attenuation']
-        params['read_lo_pwr'] = quantum_device_cfg['powers'][on_qb]['readout_drive_lo_powers']
-        params['qb_lo_pwr'] = quantum_device_cfg['powers'][on_qb]['drive_lo_powers']
+        if one_qb:
+            on_qb = on_qbs[0]
+            rd_qb = rd_qbs[0]
+            params["rd_setup"] = lattice_cfg["qubit"]["setup"][rd_qb]
+            params["qb_setup"] = lattice_cfg["qubit"]["setup"][on_qb]
+            rd_setup = params["rd_setup"]
+            qb_setup = params["qb_setup"]
+            params['readout_freq'] = params['readout_params'][rd_setup]["freq"][rd_qb]
+            params['readout_window'] = params['readout_params'][rd_setup]["window"][rd_qb] * params['dt_dig']
 
-        params['qb_freq'] = quantum_device_cfg['qubit'][on_qb]['freq']
+            params['dig_atten_qb'] = lattice_cfg['powers'][qb_setup]['drive_digital_attenuation'][on_qb]
+            params['dig_atten_rd'] = lattice_cfg['powers'][rd_setup]['readout_drive_digital_attenuation'][rd_qb]
+            params['read_lo_pwr'] = lattice_cfg['powers'][rd_setup]['readout_drive_lo_powers'][rd_qb]
+            params['qb_lo_pwr'] = lattice_cfg['powers'][qb_setup]['drive_lo_powers'][on_qb]
+
+            params['qb_freq'] = lattice_cfg['qubit']['freq'][on_qb]
+
+        else:
+            on_qb = on_qbs[0]
+            rd_qb = rd_qbs[0]
+            params["rd_setup"] = lattice_cfg["qubit"]["setup"][rd_qb]
+            params["qb_setup"] = lattice_cfg["qubit"]["setup"][on_qb]
+            rd_setup = params["rd_setup"]
+            qb_setup = params["qb_setup"]
+            params['readout_freq'] = params['readout_params'][rd_setup]["freq"][rd_qb]
+            params['readout_window'] = params['readout_params'][rd_setup]["window"][rd_qb] * params['dt_dig']
+
+            params['dig_atten_qb'] = lattice_cfg['powers'][qb_setup]['drive_digital_attenuation'][on_qb]
+            params['dig_atten_rd'] = lattice_cfg['powers'][rd_setup]['readout_drive_digital_attenuation'][rd_qb]
+            params['read_lo_pwr'] = lattice_cfg['powers'][rd_setup]['readout_drive_lo_powers'][rd_qb]
+            params['qb_lo_pwr'] = lattice_cfg['powers'][qb_setup]['drive_lo_powers'][on_qb]
+
+            params['qb_freq'] = lattice_cfg['qubit']['freq'][on_qb]
 
         return params
 
     def pulse_probe_iq(self):
         print("Starting pulse probe analysis")
         expt_params = self.experiment_cfg[self.exptname]
-        params = self.get_params(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, self.quantum_device_cfg['setups'][0])
+        on_qbs = expt_params['on_qbs']
+        on_rds = expt_params['on_rds']
+
+        get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+
 
         nu_q = params['qb_freq']
 
@@ -253,8 +283,11 @@ class PostExperimentAnalyzeAndSave:
     def echo(self):
         print("Starting echo analysis")
         expt_params = self.experiment_cfg[self.exptname]
-        on_qb = quantum_device_cfg['setups'][0]
-        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        on_qbs = expt_params['on_qbs']
+        on_rds = expt_params['on_rds']
+
+        get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+
         ran = params['ran']
 
         I, Q = self.I_raw / 2 ** 15 * ran, self.Q_raw / 2 ** 15 * ran

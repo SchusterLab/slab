@@ -8,10 +8,10 @@
 #
 # ======================================================
 #
-__author__ = 'Brendan S'
+__author__ = 'Christopher Nolan'
 
 from slab.instruments import SocketInstrument
-import time
+from time import *
 import numpy as np
 import glob
 import os.path
@@ -19,6 +19,435 @@ import os.path
 
 def polar2mag(xs, ys):
     return 20 * np.log10(np.sqrt(xs ** 2 + ys ** 2)), np.arctan2(ys, xs) * 180 / np.pi
+
+class ZVB8(SocketInstrument):
+
+	MAXSWEEPPTS = 1601
+	default_port = 5025
+	def __init__(self, name="BatMouse", address=None, enabled=True, reset = True, **kwargs):
+		SocketInstrument.__init__(self, name, address, enabled=enabled, recv_length=2 ** 20, **kwargs)
+		self.query_sleep = 0.05
+		self.timeout = 100
+		if reset:
+			self.reset()
+
+	def get_id(self):
+		print('I\'m Bat Mouse!')
+		return self.query('*IDN?')
+
+	def reset(self):
+		# Reset and clear all errors
+		self.write('*RST; *CLS')
+		self.write('OUTP OFF')
+		self.write('ROSCillator EXT') # external 10MHz reference clock
+
+	def trans_default_settings(self):
+		# Transmission measurement settings
+		settings={}
+
+		settings['channel']      = 1
+		settings['avg_time']     = 10
+		settings['measurement']  = 'S21'
+		settings['start_freq']   = 6e9
+		settings['stop_freq']    = 8e9
+		settings['freq_points']  = 1001
+		settings['RFpower']      = -20
+		settings['ifBW']         = 500
+		settings['mode']         = 'MOV'
+
+		return settings
+	
+	def trans_meas(self, settings):
+
+		channel      = settings['channel']
+		time         = settings['avg_time']
+		measurement  = settings['measurement']
+		start        = settings['start_freq']
+		stop         = settings['stop_freq']
+		sweep_points = settings['freq_points']
+		rf_power     = settings['RFpower']
+		ifBW         = settings['ifBW']
+		mode         = settings['mode']
+
+		#Turn off output and switch to single sweep mode instead of continuous sweeps
+		self.write('OUTP OFF')
+		self.write('INIT:CONT OFF')
+
+		#Configure averaging
+		self.configure_averages(channel, 1e4, mode) #high number so that VNA keeps averaging regardless of user averaging time
+		self.configure_measurement(channel, measurement)
+
+		#Configure frequency sweep and RF power
+		self.configure_frequency(channel, start, stop, sweep_points)
+		self.write("SOURce:POWer:MODE ON")
+		self.write("SOURce:POWer %f" % (rf_power))
+		self.write("sens%d:bwid %f" % (channel, ifBW))
+
+		# start averaging and wait
+		self.avg_time(channel, time)
+		self.autoscale(window=1)
+
+		# sleep(2.0)
+		# self.configure_trace(channel, 'mag', measurement, 'MLOG')
+		sleep(1.0)
+		# data_mag = self.read_data()
+		# data_mag = self.get_trace(channel,'mag') # attempt to grab data referring to trace only
+
+		# self.configure_trace(channel, 'phase', measurement, 'PHAS')
+		sleep(1.0)
+		# data_phase = self.read_data()
+		# data_phase = self.get_trace(channel,'phase')
+		data = self.get_channel_data(channel)
+
+		# data={}
+		# data['freq'] = datastore[2]
+		# data['mag'] = datastore[0]
+		# data['phase'] = datastore[1]
+
+		self.write('OUTP OFF')
+		return data
+
+	def spec_default_settings(self):
+		'''Return default settings for spec measurement'''
+		settings = {}
+
+		settings['channel']      = 1
+		settings['avg_time']     = 10
+		settings['measurement']  = 'S21'
+		settings['start_freq']   = 3e9
+		settings['stop_freq']    = 5e9
+		settings['freq_points'] = 1001
+		settings['RFpower']      = -10
+		settings['RFport']       = 3
+		settings['Mport']        = 2
+		settings['CAVport']      = 1
+		settings['CAVpower']     = -5
+		settings['CAVfreq']      = 7e9
+		settings['ifBW']         = 500
+		settings['mode']         = 'MOV'
+
+		return settings
+
+	def spec_meas(self, settings):
+		'''
+		Perform spec measurement using settings dict.
+		Measurement consists of:
+		    -setting up an cavity port (fixed frequency/power), CAVport
+		    -setting up a probe port (swept freq), RFport
+		    -configuring the measurement port (Mport) to measure
+		        S(Mport-CAVport) as function of RFfreq
+		Currently just plots data on VNA
+		'''
+		channel      = settings['channel']
+		time         = settings['avg_time']
+		measurement  = settings['measurement']
+		start        = settings['start_freq']
+		stop         = settings['stop_freq']
+		sweep_points = settings['freq_points']
+		rf_power     = settings['RFpower']
+		rf_port      = settings['RFport']
+		m_port       = settings['Mport']
+		cav_port     = settings['CAVport']
+		cav_power    = settings['CAVpower']
+		cav_freq     = settings['CAVfreq']
+		ifBW         = settings['ifBW']
+		mode         = settings['mode']
+
+		#Turn off output and switch to single sweep mode instead of continuous sweeps
+		self.write('OUTP OFF')
+		self.write('INIT:CONT OFF')
+
+		#Configure averaging
+		self.configure_averages(channel, 1e4, mode)
+
+		#Clear old traces on channels and define a new trace to measure 'S21'
+		self.configure_measurement(channel, measurement)
+
+		#Configure frequency sweep and RF power
+		# self.configure_frequency(channel, start, stop, sweep_points)
+		self.write("SOURce:POWer:MODE ON")
+		self.write("SOURce:POWer %f" % (rf_power))
+		self.write("sens%d:bwid %f" % (channel, ifBW))
+
+		#Configure ports
+		#RF
+		##########################################
+		#It seems like the data comes out more cleanly when only the rf port is 
+		#configured in generator mode. Not sure why this is the case but this
+		#cleared out a lot of noise spikes in the spec data
+		##########################################
+		#configures rf_port to always be on during measurements
+		self.write('SOUR{}:POW{}:PERM ON'.format(channel, rf_port))
+		self.write('SENS{}:FREQ{}:STAR {}; STOP {}'.format(channel, rf_port, start, stop))
+		# self.write('SENS{}:SWE{}:POIN {}'.format(channel, rf_port, sweep_points))
+		self.write('SENS{}:SWE:POIN {}'.format(channel, sweep_points))
+		#Measure
+		#configure to only receive
+		# self.write('SOUR{}:POW{}:STATE OFF'.format(channel, m_port))
+		#only look at what is happening at cav_freq
+		self.write('SOUR{}:FREQ{}:CONV:ARB:IFR 1, 1, {}, FIX'.format(channel, m_port, cav_freq))
+		#LO
+		#always keep cav_port on during measurements
+		# self.write('SOUR{}:POW{}:PERM ON'.format(channel, cav_port))
+		#only output at 60MHz
+		self.write('SOUR{}:FREQ{}:CONV:ARB:IFR 1, 1, {}, FIX'.format(channel, cav_port, cav_freq))
+		#fixed power of cav_power (ignores the power level of Ch1)
+		self.write('SOUR{}:POW{}:OFFS {}, ONLY'.format(channel, cav_port, cav_power))
+		self.query('*OPC?')
+
+		self.avg_time(channel, time)
+		# self.autoscale(window=1)
+
+		# data = self.get_channel_data(channel)
+		# sleep(2.0)
+		# self.configure_trace(channel, 'mag', measurement, 'MLOG')
+
+		sleep(1)
+		# data_mag = self.read_data()
+
+		# self.configure_trace(channel, 'phase', measurement, 'PHAS')
+		# sleep(1.0)
+		# data_phase = self.read_data()
+		# data={}
+		# data['freq'] = data_mag[0]
+		# data['mag'] = data_mag[1]
+		# data['phase'] = data_mag[1]#data_phase[1]
+		data = self.get_channel_data(channel)
+		self.write('OUTP OFF')
+		return data
+
+
+	### Helpers and utility functions
+	def autoscale(self, window=1, ref_trace=None):
+		'''Autoscale window to match ref_trace range'''
+		tracestr = ''
+		if ref_trace is not None:
+			tracestr = ",'{}'".format(ref_trace)
+			self.write("DISP:WIND{}:TRAC:Y:AUTO ONCE{}".format(window, tracestr))
+		if ref_trace is None:
+			traces = self.get_channel_traces(1)[::2]
+			for trace in traces:
+				tracestr = ",'{}'".format(trace)
+				self.write("DISP:WIND{}:TRAC:Y:AUTO ONCE{}".format(window, tracestr))
+
+	def avg_time(self, channel, time):
+		'''
+		Set the instrument to measure for 'time' seconds. The instrument will
+		autoscale after 20% of the time has elapsed so that the traces can be
+		examined on the VNA
+		Arguments:
+		    channel (int): channel being used for the measurement
+		    time (int): time in seconds that the instrument will measure
+		'''
+		self.clear_averages(channel)
+		self.write('OUTP ON')
+		self.write('INIT{}:IMM'.format(channel))
+		sleep(time/5)
+		self.autoscale()
+		sleep(4*time/5)
+
+	def clear_all_traces(self):
+		'''Clear all traces defined on instrument'''
+		self.write('CALC:PAR:DEL:ALL')
+		self.query('*OPC?')
+
+	def clear_averages(self, channel):
+		'''Clear averages on channel'''
+		self.write('SENS{}:AVER:CLE'.format(channel))
+
+	def clear_channel_traces(self, channel):
+		'''Clear all traces defined in channel'''
+		self.write('CALC{}:PAR:DEL:CALL'.format(channel))
+		self.query('*OPC?')
+
+
+	def configure_averages(self, channel, averages, mode='MOV'):
+		'''Set up channel to measure averages traces'''
+		self.write('SENS{}:AVER ON'.format(channel))
+		self.write('SENS{}:AVER:MODE {}'.format(channel, mode))
+		self.write('SENS{}:AVER:COUN {}'.format(channel, averages))
+		self.write('SENS{}:SWE:COUN {}'.format(channel, averages))
+		self.clear_averages(channel)
+		self.query('*OPC?')
+
+	def configure_frequency(self, channel, start=None, stop=None, sweep_points=None, center=None, span=None):
+		'''
+		Set up frequency axis
+		Arguments:
+		    channel(int): channel number, channel must have been created beforehand
+		    if specified:
+		        start(float/str): frequency of sweep start ('10 MHz' or 10e6)
+		        stop(float/str): frequency of sweep end ('100 MHz' or 100e6)
+		    if specified:
+		        center(float/str): center of frequency sweep
+		        span(float/str): span of frequency sweep
+		    sweep_points(int): number of points in sweep
+		'''
+		if sweep_points is None:
+			sweep_points = 501
+		if start is not None and stop is not None:
+			self.write('SENS{}:FREQ:STAR {}; STOP {}'.format(channel, start, stop))
+			self.write('SENS{}:SWE:POIN {}'.format(channel, sweep_points))
+		if center is not None and span is not None:
+			self.write('SENS{}:FREQ:CENT {}; SPAN {}'.format(channel, center, span))
+			self.write('SENS{}:SWE:POIN {}'.format(channel, sweep_points))
+		self.query('*OPC?')
+
+	def configure_measurement(self, channel, measurement, window = 1):
+		'''
+		Set up a basic 'Sij' measurement configuring traces for magnitude and 
+		phase. If the traces already exist, the code will ignore the clearing
+		commands and return without doing anything
+		Arguments:
+		    channel (int): channel number for measurement
+		    measurement (string): measurement to be performed (e.g 'S21')
+		    window (int): window to display the traces in (default 1)
+		'''
+		traces = self.get_channel_traces(channel)
+		reinit = True
+		if 'mag' in traces and 'phase' in traces:
+			reinit = False
+		if reinit:
+			self.clear_channel_traces(channel)
+			self.configure_trace(channel, 'mag', measurement, 'MLOG')
+			self.configure_trace(channel, 'phase', measurement, 'PHAS')
+			self.display_trace('mag',tracenum=1, window=window)
+			self.display_trace('phase',tracenum=2, window=window)
+
+	def configure_trace(self, channel, name, meastype, measformat):
+		'''
+		Configure trace to measure a specific parameter in a given format
+		Argument:
+		    channel(int): channel number
+		    name(str): name to assign to trace
+		    meastype(str): parameter being measured (e.g. 'S21')
+		    measformat(str): format to measure parameter (e.g. 'MLOG' for dB scale)
+		'''
+		self.write("CALC{}:PAR:SDEF '{}', '{}'".format(channel, name, meastype))
+		self.write("CALC{}:FORM {}".format(channel, measformat))
+		self.query('*OPC?')
+
+	def display_trace(self, trace, tracenum, window):
+		'''
+		Display trace in window assigning it the tracenum number
+		Arguments:
+		    trace (str): name of trace to be displayed
+		    tracenum (int): number to assign to trace in window
+		    window (int): window to display trace in (will create a new one if needed)
+		'''
+		self.write('DISP:WIND{}:STAT ON'.format(window))
+		self.query('*OPC?')
+		self.write('DISP:WIND{}:TRAC{}:FEED "{}"'.format(window, tracenum, trace))
+		self.query('*OPC?')
+
+	def get_channel_axis(self, channel):
+		'''Return numpy array of channel x-axis'''
+		# xaxis = self.query_ascii_values("CALC{}:DATA:STIM?".format(channel))
+		xaxis = self.query("CALC{}:DATA:STIM?".format(channel))
+		return np.asarray(xaxis)
+
+	def get_channel_data(self, channel):
+		'''Return dictionary with all the data from a channel'''
+		traces = self.get_channel_traces(channel)[::2]
+		data = {}
+		for trace in traces:
+			data[trace] = self.get_trace(channel, trace)
+		data['xaxis'] = self.get_channel_axis(channel)
+		return data
+
+	def get_channel_traces(self, channel):
+		'''Return list of traces defined in channel'''
+		instresp  = self.query('CALC{}:PAR:CAT?'.format(channel))
+		tracelist = instresp.strip("\n'").split(',')
+		return tracelist
+
+	def get_trace(self, channel, name):
+		'''
+		Return measurement data for trace with name 'name'
+		Arguments:
+		    channel(int): channel number
+		    name(str): trace name, same as name given at trace creation
+		'''
+		tracelist = self.get_channel_traces(channel)[::2]
+		if name not in tracelist:
+			print('Trace not found, possible options are: {}'.format(tracelist))
+			return np.zeros(1000)
+		# data = self.query_ascii_values("CALC{}:DATA:TRAC? '{}',FDAT".format(channel, name))
+		data = self.query("CALC{}:DATA:TRAC? '{}',FDAT".format(channel, name))
+		return data#np.asarray(data)
+
+	def read_data(self, sweep_points=None, channel=1, timeout=None, data_format='ascii'):
+		"""
+		Read current NWA Data that is displayed on the screen. Returns TWO numbers per data point for Polar ('POL')
+		and Smith Chart ('SMIT') format, see set_format.
+		:param sweep_points: number of sweep points (optional, saves time)
+		:param channel: measurement channel (optional, saves time)
+		:param timeout: timeout in seconds (optional)
+		:param data_format: 'binary' or 'ascii' (optional, saves time). If specificied, this must be equal to get_data_transfer_format()
+		:return: 2 or 3 column data containing the frequency and data (1 or 2 column).
+		"""
+		if data_format is None or not (data_format in ['binary', 'ascii']):
+			data_format = self.get_data_transfer_format()
+
+		if sweep_points is None:
+			sweep_points = self.get_sweep_points()
+
+		if timeout is None:
+			timeout = self.timeout
+		# self.get_operation_completion()
+		self.read(timeout=1)
+		self.write("CALC%d:DATA? FDATA" % channel)
+		data_str = b''.join(self.read_lineb(timeout=timeout))
+
+		if data_format == 'binary':
+			len_data_dig = np.int(data_str[1:2])
+			len_data_expected = int(data_str[2: 2 + len_data_dig])
+			len_data_actual = len(data_str[2 + len_data_dig:-1])
+			# It may happen that only part of the message is received. We know that this is the case by checking
+			# the checksum. If the received data is too short, just read out again.
+			while len_data_actual != len_data_expected:
+
+				data_str += b''.join(self.read_lineb(timeout=timeout))
+				len_data_actual = len(data_str[2 + len_data_dig:-1])
+
+		data = np.fromstring(data_str, dtype=float, sep=',') if data_format == 'ascii' else np.fromstring(
+			data_str[2 + len_data_dig:-1], dtype=np.float32)
+		fpts = np.linspace(self.get_start_frequency(), self.get_stop_frequency(), sweep_points)
+		if len(data) == 2 * sweep_points:
+			data = data.reshape((-1, 2))
+			data = data.transpose()
+			return np.vstack((fpts, data))
+		else:
+			return np.vstack((fpts, data))
+
+	def get_data_transfer_format(self):
+		"""
+		Returns the data format for transferring measurement data and frequency data.
+		:return: 'ascii' or 'binary'
+		"""
+		answer = self.query('FORM:DATA?')
+		ret = 'ascii' if 'ASC' in answer else 'binary'
+		return ret
+
+	def get_sweep_points(self, channel=1):
+		data = self.query(":sense%d:sweep:points?" % (channel))
+		return int(data)
+
+	def get_operation_completion(self):
+		data = self.query("*OPC?")
+		if data is None:
+			return False
+		else:
+			return bool(int(data.strip()))
+
+	def get_start_frequency(self, channel=1):
+		return float(self.query(":SENS%d:FREQ:START?" % channel))
+
+	def get_stop_frequency(self, channel=1):
+		return float(self.query(":SENS%d:FREQ:STOP?" % channel))
+
+
+
 
 
 class RhodeSchwarz(SocketInstrument):
@@ -694,7 +1123,7 @@ class RhodeSchwarz(SocketInstrument):
     ### Tested R&S scripts ###
     ##########################
 
-
 if __name__ == '__main__':
-    na = N5242A("N5242A", address="192.168.14.242")
-    print(na.get_id())
+	print("hello")
+    # na = N5242A("N5242A", address="192.168.14.242")
+    # print(na.get_id())

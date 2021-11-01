@@ -65,11 +65,11 @@ channels = {
     1: {"label": "55K",
         "ABORT_temp": 42},
     2: {"label": "4K",
-        "ABORT_temp": 4},
+        "ABORT_temp": 3.5},
     5: {"label": "STILL",
-        "ABORT_temp": 5},
+        "ABORT_temp": 1},
     8: {"label": "MXC",
-        "ABORT_temp": 5},
+        "ABORT_temp": 0.20},
 }
 
 receiver_email_list= ["schusterbf4error@gmail.com", "andrei.vrajitoarea@gmail.com", "bsaxberg@uchicago.edu", "glcroberts@uchicago.edu"]
