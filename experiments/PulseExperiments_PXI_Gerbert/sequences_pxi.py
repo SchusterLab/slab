@@ -100,7 +100,7 @@ class PulseSequences:
 
     def pi_q_ef(self,sequencer,qb = 0,phase = 0,pulse_type = 'square'):
         setup = self.lattice_cfg["qubit"]["setup"][qb]
-        freq = self.pulse_info[setup]['iq_freq'] + self.lattice_cfg['qubit']['anharmonicity'][qb]
+        freq = self.pulse_info[setup]['iq_freq'][qb] + self.lattice_cfg['qubit']['anharmonicity'][qb]
         if pulse_type.lower() == 'square':
             sequencer.append('charge%s_I' % setup, Square(max_amp=self.pulse_info[setup]['pi_ef_amp'][qb], flat_len=self.pulse_info[setup]['pi_ef_len'][qb],ramp_sigma_len=0.001, cutoff_sigma=2,
                             freq=freq,phase=phase))
@@ -114,7 +114,7 @@ class PulseSequences:
 
     def half_pi_q_ef(self,sequencer,qb = 0,phase = 0,pulse_type = 'square'):
         setup = self.lattice_cfg["qubit"]["setup"][qb]
-        freq = self.pulse_info[setup]['iq_freq'] + self.lattice_cfg['qubit']['anharmonicity'][qb]
+        freq = self.pulse_info[setup]['iq_freq'][qb] + self.lattice_cfg['qubit']['anharmonicity'][qb]
         if pulse_type.lower() == 'square':
             sequencer.append('charge%s_I' % setup, Square(max_amp=self.pulse_info[setup]['half_pi_ef_amp'][qb], flat_len=self.pulse_info[setup]['half_pi_ef_len'][qb],ramp_sigma_len=0.001, cutoff_sigma=2,
                             freq=freq,phase=phase))

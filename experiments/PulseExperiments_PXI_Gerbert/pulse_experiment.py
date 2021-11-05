@@ -121,7 +121,7 @@ class Experiment:
                 elif len(qbs_w_setup)==0: # if no qubits on that setup, detune LO
                     d.set_frequency(self.hardware_cfg['lo_off_freq'] * 1e9)
                     d.set_power(self.hardware_cfg['lo_off_power'])
-                else: #set LO frequency and power with first qubit
+                else: #set LO frequency and power with last qubit
                     drive_freq =  self.lattice_cfg['qubit']['freq'][qbs_w_setup[-1]] - self.lattice_cfg[
                     'pulse_info'][setup]['iq_freq'][qbs_w_setup[-1]]
                     d.set_frequency(drive_freq * 1e9)
@@ -521,6 +521,7 @@ class Experiment:
             else:
                 self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
         #
+        self.lattice_cfg['readout'][self.rd_setups[0]]['freq'][self.on_rds[0]] = read_freq
         self.pxi_stop()
         return self.data
 
@@ -611,8 +612,6 @@ class Experiment:
             return PA
         else:
             return PA.p
-
-
 
 def load_lattice_to_quantum_device(lattice_cfg_name, quantum_device_cfg_name, qb_id, setup_id):
     with open(quantum_device_cfg_name, 'r') as f:

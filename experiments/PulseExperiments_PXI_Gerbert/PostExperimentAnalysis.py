@@ -6,6 +6,7 @@ from slab.datamanagement import SlabFile
 import json
 import time
 import glob
+from h5py import File
 
 class PostExperimentAnalyzeAndSave:
 
@@ -109,7 +110,7 @@ class PostExperimentAnalyzeAndSave:
 
         return I, Q, mag, phase
 
-    def get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=False):
+    def get_params(self, hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=False):
 
         params = {}
 
@@ -119,7 +120,7 @@ class PostExperimentAnalyzeAndSave:
 
         if one_qb:
             on_qb = on_qbs[0]
-            rd_qb = rd_qbs[0]
+            rd_qb = on_rds[0]
             params["rd_setup"] = lattice_cfg["qubit"]["setup"][rd_qb]
             params["qb_setup"] = lattice_cfg["qubit"]["setup"][on_qb]
             rd_setup = params["rd_setup"]
@@ -136,7 +137,7 @@ class PostExperimentAnalyzeAndSave:
 
         else:
             on_qb = on_qbs[0]
-            rd_qb = rd_qbs[0]
+            rd_qb = on_rds[0]
             params["rd_setup"] = lattice_cfg["qubit"]["setup"][rd_qb]
             params["qb_setup"] = lattice_cfg["qubit"]["setup"][on_qb]
             rd_setup = params["rd_setup"]
@@ -159,7 +160,7 @@ class PostExperimentAnalyzeAndSave:
         on_qbs = expt_params['on_qbs']
         on_rds = expt_params['on_rds']
 
-        get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+        params = self.get_params(self.hardware_cfg, self.experiment_cfg, self.lattice_cfg, on_qbs, on_rds, one_qb=True)
 
 
         nu_q = params['qb_freq']
@@ -255,6 +256,71 @@ class PostExperimentAnalyzeAndSave:
                 print("appended line correctly")
         self.p=p
 
+    def return_I_Q_res(self, filenb, pi=False, ff=False):
+        expt_name = "resonator_spectroscopy"
+
+        if pi:
+            expt_name = expt_name + "_pi"
+        if ff:
+            expt_name = "ff_" + expt_name
+
+        fname = self.data_path + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+
+        with File(fname, 'r') as a:
+            hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+            experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+            lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+            expt_params = experiment_cfg[expt_name.lower()]
+
+            on_qbs = expt_params['on_qbs']
+            on_rds = expt_params['on_rds']
+
+            params = self.get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+            ran = params['ran']  # range of DAC card for processing
+            readout_f = params['readout_freq']
+
+            try:
+                I_raw = a['I']
+                Q_raw = a['Q']
+            except:
+                I_raw = a['qb{}_I'.format(on_qb)]
+                Q_raw = a['qb{}_Q'.format(on_qb)]
+
+            f = arange(expt_params['start'] + readout_f, expt_params['stop'] + readout_f, expt_params['step'])[
+                :len(I_raw)]
+
+            # process I, Q data
+            (I, Q, mag, phase) = self.iq_process(raw_I=I_raw, raw_Q=Q_raw, ran=ran, phi=0, sub_mean=False)
+
+            a.close()
+        return f, I, Q
+
+    def res_spec_eg(self):
+        print("Starting res_spec_eg analysis")
+        experiment_name_g = 'resonator_spectroscopy'
+        experiment_name_e = 'resonator_spectroscopy_pi'
+        exp_nb_g = self.current_file_index(prefix=experiment_name_g)
+        exp_nb_e = self.current_file_index(prefix=experiment_name_e)
+
+        phi=self.phi*np.pi/180
+        f, Ig, Qg = self.return_I_Q_res(exp_nb_g, pi=False)
+        Irotg = Ig * cos(phi) + Qg * sin(phi)
+        Qrotg = -Ig * sin(phi) + Qg * cos(phi)
+        f, Ie, Qe = self.return_I_Q_res(exp_nb_e, pi=True)
+        Irote = Ie * cos(phi) + Qe * sin(phi)
+        Qrote = -Ie * sin(phi) + Qe * cos(phi)
+
+        p = [f[np.argmax(np.abs(Irote - Irotg))]]
+
+        res_spec_eg_meta = [exp_nb_g, exp_nb_e, time.time()]
+
+        if self.save:
+            with self.cont_slab_file as file:
+                file.append_line('res_spec_eg_meta',res_spec_eg_meta_meta)
+                file.append_line('res_spec_eg_fit', p)
+                print("appended line correctly")
+        self.p=p
+
     def ramsey(self):
         print("Starting ramsey analysis")
         expt_params = self.experiment_cfg[self.exptname]
@@ -286,7 +352,7 @@ class PostExperimentAnalyzeAndSave:
         on_qbs = expt_params['on_qbs']
         on_rds = expt_params['on_rds']
 
-        get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+        params = self.get_params(self.hardware_cfg, self.experiment_cfg, self.lattice_cfg, on_qbs, on_rds, one_qb=True)
 
         ran = params['ran']
 
@@ -333,6 +399,8 @@ class PostExperimentAnalyzeAndSave:
         x0g, y0g = mean(IQsss[0]), mean(IQsss[1])
         x0e, y0e = mean(IQsss[2]), mean(IQsss[3])
         phi = arctan((y0e - y0g) / (x0e - x0g))
+        if x0g > x0e:
+            phi = phi + np.pi
 
         IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
                     -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),

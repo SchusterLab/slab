@@ -163,7 +163,7 @@ def return_I_Q_res(filenb, pi=False, ff=False):
         on_qbs = expt_params['on_qbs']
         on_rds = expt_params['on_rds']
 
-        get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
         ran = params['ran']  # range of DAC card for processing
         readout_f = params['readout_freq']
 
@@ -313,6 +313,22 @@ def get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb
 
 
     return params
+
+def get_config(filenb, expt_name):
+    """Takes in any experiemnt, and returns config
+
+    Keyword arguments:
+    filenb -- the data runs you want to analyze and plot
+    expt_name -- the name of the experiment you are doing this with
+    """
+    # the 'with' statement automatically opens and closes File a, even if code in the with block fails
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        # get data in from json file
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+    return hardware_cfg, experiment_cfg, lattice_cfg
 
 def check_sync(filenb, expt_name, expt_num=0):
     """Takes in any experiemnt, and plots averaged dig sample per record + window for each expt
@@ -1630,7 +1646,7 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
         a_num = expt_cfg['acquisition_num']
         ns = expt_cfg['num_seq_sets']
         readout_length = readout_params['length']
-        window = readout_params['window']
+        window = params['readout_window']
         atten = '0'
 
         if details:
@@ -1698,15 +1714,17 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
         x0e, y0e = mean(IQsssrot[2][:]), mean(IQsssrot[3][:])
 
         if details:
-            for kk in range(4):
+            for kk in range(2):
 
-                ax = fig.add_subplot(2, 2, kk % 2 + 3, title=expt_name + titles[kk % 2])
-                ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)],histtype=u'step', linewidth = 1.5)
+                ax = fig.add_subplot(2, 2, kk + 3, title=expt_name + titles[kk ])
+                ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[0], label=labels[0],histtype=u'step', linewidth = 1.5)
+                ax.hist(IQsssrot[kk+1], bins=numbins, alpha=0.75, color=colors[1], label=labels[1],
+                        histtype=u'step', linewidth=1.5)
                 ax.axvline(x=0)
-                ax.set_xlabel(titles[kk % 2] + '(V)')
+                ax.set_xlabel(titles[kk] + '(V)')
                 ax.set_ylabel('Number')
                 ax.legend()
-                if kk % 2 == 0:
+                if kk == 0:
                     ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
                 else:
                     ax.set_xlim(y0g - ran / rancut, y0g + ran / rancut)
@@ -1769,7 +1787,7 @@ def histogram_og(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domai
         a_num = expt_cfg['acquisition_num']
         ns = expt_cfg['num_seq_sets']
         readout_length = readout_params['length']
-        window = readout_params['window']
+        window = params['readout_window']
         atten = '0'
         print('Readout length = ', readout_length)
         print('Readout window = ', window)
@@ -1920,7 +1938,7 @@ def histogram_IQ_2setups(filenb):
         expt_cfg = (json.loads(a.attrs['experiment_cfg']))[expt_name.lower()]
         a_num = expt_cfg['acquisition_num']
         ns = expt_cfg['num_seq_sets']
-        window = readout_params['window']
+        window = params['readout_window']
 
         num_seq = 1 + len(on_qbs) + expt_cfg["f"]
 
@@ -1980,7 +1998,7 @@ def histogram_IQ_crosstalk(filenb, phi=0):
 
         a_num = expt_cfg['acquisition_num']
         ns = expt_cfg['num_seq_sets']
-        window = readout_params['window']
+        window = params['readout_window']
 
         num_seq = 4
         labels = ['gQ{}'.format(rd_qb), "eQ{}".format(rd_qb), "gQ{}piQ{}".format(rd_qb, cross_qb),
