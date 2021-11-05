@@ -1403,7 +1403,18 @@ def t1(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, de
         I_raw = array(a["I"])
         Q_raw = array(a["Q"])
         (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
-        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))]
+
+        # check for old version/new version for back-compatibility
+        try:
+            t1_len_array = expt_params["t1_len_array"]
+        except:
+            t1_len_array = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))]
+
+        # new version
+        if t1_len_array =="auto":
+            t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))]
+        else:
+            t = t1_len_array
 
         if debug:
             print("DEBUG")
