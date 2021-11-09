@@ -1091,10 +1091,10 @@ class PulseSequences:
 
     def t1(self, sequencer):
 
-        if self.expt_cfg("t1_len_array")=="auto":
+        if self.expt_cfg["t1_len_array"]=="auto":
             t1_len_array = np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step'])
         else:
-            t1_len_array = self.expt_cfg("t1_len_array")
+            t1_len_array = self.expt_cfg["t1_len_array"]
 
         for t1_len in t1_len_array:
             sequencer.new_sequence(self)

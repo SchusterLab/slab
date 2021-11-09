@@ -238,7 +238,14 @@ class PostExperimentAnalyzeAndSave:
         I, Q, mag, phase = self.iq_process(raw_I=self.I_raw, raw_Q=self.Q_raw, sub_mean=self.sub_mean, phi=self.phi)
         t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I_raw))]
         exp_nb = self.current_file_index(prefix=self.exptname)
-        t = t / 1000  # convert to us
+
+        # new version
+        if expt_params["t1_len_array"] =="auto":
+            t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))]
+        else:
+            t = expt_params["t1_len_array"]
+        t = np.array(t) / 1000  # convert to us
+
         try:
             #exponential decay (p[0]+p[1]*exp(-(x-p[2])/p[3])
             p = fitexp(t,eval(self.P),fitparams=None, domain=None, showfit=False)

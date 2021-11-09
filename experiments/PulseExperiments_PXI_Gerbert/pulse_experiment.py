@@ -232,22 +232,22 @@ class Experiment:
             print("Error in readout digital attenuator configuration")
 
     def initiate_drive_attenuators(self):
-        #try:
-        for ii, s in enumerate(self.setups):
-            d = self.drive_attens[s]
-            qbs_w_setup = [qb for qb in self.on_qbs if self.lattice_cfg["qubit"]["setup"][qb] == s]
-            attens = [self.lattice_cfg["powers"][s]["drive_digital_attenuation"][qb] for qb in qbs_w_setup]
-            if len(set(attens)) > 1:  # check if two qubits being run on same setup at same time have same atten
-                print("two qubits on the same setup have different drive attens!")
-                sys.exit()
-            elif len(qbs_w_setup) == 0:  # if no qubits on that setup, set atten to max
-                d.set_attenuator(30)
-            else:  # set  atten with last qb
-                d.set_attenuator(self.lattice_cfg['powers'][s]['drive_digital_attenuation'][qbs_w_setup[-1]])
-                print("set drive attenuator")
+        try:
+            for ii, s in enumerate(self.setups):
+                d = self.drive_attens[s]
+                qbs_w_setup = [qb for qb in self.on_qbs if self.lattice_cfg["qubit"]["setup"][qb] == s]
+                attens = [self.lattice_cfg["powers"][s]["drive_digital_attenuation"][qb] for qb in qbs_w_setup]
+                if len(set(attens)) > 1:  # check if two qubits being run on same setup at same time have same atten
+                    print("two qubits on the same setup have different drive attens!")
+                    sys.exit()
+                elif len(qbs_w_setup) == 0:  # if no qubits on that setup, set atten to max
+                    d.set_attenuator(30)
+                else:  # set  atten with last qb
+                    d.set_attenuator(self.lattice_cfg['powers'][s]['drive_digital_attenuation'][qbs_w_setup[-1]])
+                    print("set drive attenuator")
 
-        # except:
-        #     print("Error in qubit drive attenuator configuration")
+        except:
+            print("Error in qubit drive attenuator configuration")
 
 
     def set_trigger(self):

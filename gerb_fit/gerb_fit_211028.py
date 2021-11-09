@@ -1430,7 +1430,7 @@ def t1(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, de
         title = expt_name + '$, \\nu_q$ = ' + str(around(nu_q, 3)) + ' GHz '
         fig = plt.figure(figsize=(14, 5))
         ax = fig.add_subplot(111, title=title)
-        t = t / 1000  # convert to us
+        t = np.array(t) / 1000  # convert to us
         for s in show:
             if s == "Q":
                 ax.plot(t, eval(s), 'ro-', label=s)
@@ -1671,7 +1671,7 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
 
         I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
 
-        colors = ['r', 'b', 'g']
+        colors = ['b', 'r', 'g']
         labels = ['g', 'e', 'f']
         titles = ['I', 'Q']
 
@@ -1712,8 +1712,9 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
             ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
             ax.set_ylim(y0g - ran / rancut, y0g + ran / rancut)
 
-        I = I-vec[0]
-        Q = Q-vec[1]
+        I = I
+        Q = Q
+        print(phi)
         IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
                     -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),
                     I.T.flatten()[1::3] * cos(phi) + Q.T.flatten()[1::3] * sin(phi),
@@ -1729,7 +1730,7 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
 
                 ax = fig.add_subplot(2, 2, kk + 3, title=expt_name + titles[kk ])
                 ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[0], label=labels[0],histtype=u'step', linewidth = 1.5)
-                ax.hist(IQsssrot[kk+1], bins=numbins, alpha=0.75, color=colors[1], label=labels[1],
+                ax.hist(IQsssrot[kk+2], bins=numbins, alpha=0.75, color=colors[1], label=labels[1],
                         histtype=u'step', linewidth=1.5)
                 ax.axvline(x=0)
                 ax.set_xlabel(titles[kk] + '(V)')
