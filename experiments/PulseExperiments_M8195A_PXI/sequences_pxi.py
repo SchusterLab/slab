@@ -523,26 +523,21 @@ class PulseSequences:
         return sequencer.complete(self, plot=True)
 
     def pulse_probe_iq(self, sequencer):
-
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
             for qubit_id in self.expt_cfg['on_qubits']:
                 sequencer.append('charge%s' % qubit_id, Square(max_amp=self.expt_cfg['amp'], flat_len=self.expt_cfg['pulse_length'],
                                                                ramp_sigma_len=0.001, cutoff_sigma=2, freq=self.qubit_freq[qubit_id] + dfreq,
                                                                phase=0))
-
                 # sequencer.append('charge%s_Q' % qubit_id,
                 #                  Square(max_amp=self.expt_cfg['amp'], flat_len=self.expt_cfg['pulse_length'],
                 #                         ramp_sigma_len=0.001, cutoff_sigma=2, freq= self.pulse_info[qubit_id]['iq_freq'] + dfreq,
                 #                         phase=self.pulse_info[qubit_id]['Q_phase']))
             self.readout_pxi(sequencer, self.expt_cfg['on_qubits'],overlap=False)
-
             sequencer.end_sequence()
-
         return sequencer.complete(self, plot=True)
 
     def rabi(self, sequencer):
-
         for rabi_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
 
@@ -991,6 +986,37 @@ class PulseSequences:
             sequencer.end_sequence()
 
         return sequencer.complete(self, plot=self.plot_visdom)
+
+
+    def drive_through_sideband(self, sequencer):
+        # sideband rabi time domain
+        sideband_freq = self.expt_cfg['sideband_freq']
+        length = self.expt_cfg['length']
+        for repeat in range(self.expt_cfg['repeat']):
+            sequencer.new_sequence(self)
+            for qubit_id in self.expt_cfg['on_qubits']:
+                dc_offset = 0.0
+                if self.expt_cfg['use_cavity_drive']:
+                    sequencer.append('cavity',
+                                     Square(max_amp=self.expt_cfg['amp'], flat_len=length,
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                            fix_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
+                                            dc_offset=dc_offset,
+                                            plot=False))
+                else:
+                    sequencer.append('sideband',
+                                     Square(max_amp=self.expt_cfg['amp'], flat_len=length,
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id][
+                                                'ramp_sigma_len'], cutoff_sigma=2, freq=sideband_freq, phase=0,
+                                            fix_phase = self.quantum_device_cfg['flux_pulse_info'][qubit_id]['fix_phase'],
+                                            dc_offset=dc_offset,
+                                            plot=False))
+            self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=self.plot_visdom)
+
 
     def sideband_rabi_phase_test(self, sequencer):
         # sideband rabi time domain
@@ -6357,7 +6383,6 @@ class PulseSequences:
                 self.readout_pxi(sequencer, self.expt_cfg['on_qubits'])
                 sequencer.end_sequence()
         return sequencer.complete(self, plot=True)
-    
 
     def multimode_blockade_experiments_wt(self, sequencer):
         for qubit_id in self.expt_cfg['on_qubits']:
@@ -6371,7 +6396,10 @@ class PulseSequences:
                     else:
                         xs = np.array(f['ax'])
                         ys = np.array(f['ay'])
-
+                if self.expt_cfg['unique_wt_pts']:
+                    safe_pt_index = min(self.expt_cfg['unique_index_end'], len(xs))
+                    xs = xs[self.expt_cfg['unique_index_start'] : safe_pt_index]
+                    ys = ys[self.expt_cfg['unique_index_start'] : safe_pt_index]
                 for ii, y1 in enumerate(ys):
                     sequencer.new_sequence(self)
                     if self.expt_cfg['unique_wt_pts']:
@@ -7005,6 +7033,7 @@ class PulseSequences:
             channel = 'cavity_amp_vs_freq'
         else:
             fn_file = self.experiment_cfg['transfer_function_blockade_calibration_files'][channel]
+        # print(fn_file)
         if channel == 'cavity_amp_vs_amp':
             with File(fn_file, 'r') as f:
                 amps_desired = f['amps_desired'][()]

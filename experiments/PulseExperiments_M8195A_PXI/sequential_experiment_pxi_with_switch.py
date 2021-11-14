@@ -1910,6 +1910,32 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+    def sequential_multimode_blockade_experiments_wt_unique_pts(self, quantum_device_cfg, experiment_cfg, hardware_cfg,
+                                                     path):
+        swp_cfg = experiment_cfg['sequential_multimode_blockade_experiments_wt_unique_pts']
+        experiment_name = 'multimode_blockade_experiments_wt'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path,
+                                                                  'sequential_multimode_blockade_experiments_wt',
+                                                                  suffix='.h5'))
+        with File(expt_cfg['wigner_points_file_name'], 'r') as f:
+            alphax = np.array(f['alphax'])
+            max_index = len(alphax)
+        start_index = swp_cfg['start_pt_index']
+        while start_index < max_index:
+            experiment_cfg[experiment_name]['unique_index_start'] = start_index
+            experiment_cfg[experiment_name]['unique_index_end'] = start_index + swp_cfg['points_per_expt']
+            print ("wigner point start index  = ", start_index)
+            start_index += swp_cfg['points_per_expt']
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
 
     def sequential_multitone_blockaded_weak_cavity_pnrqs(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         swp_cfg = experiment_cfg['sequential_multitone_blockaded_weak_cavity_pnrqs']
