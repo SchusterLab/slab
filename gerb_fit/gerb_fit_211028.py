@@ -1624,7 +1624,7 @@ def fid_func(Vval, ssbinsg, ssbinse, sshg, sshe):
 
 
 def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, rancut=120,
-                  details=True, numbins=200, ff=False, IQrot = True):
+                  details=True, numbins=200, ff=False, IQrot = True, hard_phi=None):
     expt_name = 'histogram'
     if ff:
         expt_name = 'ff_histogram'
@@ -1687,6 +1687,8 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
             phi = arctan((y0e - y0g) / (x0e - x0g))
             if x0g>x0e:
                 phi = phi+np.pi
+            if hard_phi!=None:
+                phi=hard_phi *np.pi/180
         else:
             phi = 0
         if details:

@@ -63,7 +63,7 @@ NB_ERRORS = 0
 
 channels = {
     1: {"label": "55K",
-        "ABORT_temp": 42},
+        "ABORT_temp": 45},
     2: {"label": "4K",
         "ABORT_temp": 3.5},
     5: {"label": "STILL",
