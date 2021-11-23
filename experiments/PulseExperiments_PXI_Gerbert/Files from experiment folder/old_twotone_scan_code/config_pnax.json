@@ -1,0 +1,158 @@
+{
+  "aliases": {
+    "pnax": "PNAX"
+  },
+  "pulse_box_delay_adjust": {
+    "pulse2": 0,
+    "pulse3": 0,
+    "pulse4": 0
+  },
+  "expt_trigger": {
+    "period_ns": 500e3
+  },
+  "flux": {
+    "set_flux": true,
+    "current": 0.0029,
+    "range": 10.0e-3,
+    "ramprate": 0.008
+  },
+  "readout": {
+    "ADC_delay": 0e3,
+    "power": -5,
+    "delay": 0.0,
+    "width": 1000,
+    "freq":  6.3482e9
+  },
+  "drive": {
+    "power": 5,
+    "width": 10E3
+  },
+  "pump_drive": {
+  "power":12.5,
+  "freq":5.37389473249e9
+},
+  "qubit": {
+    "freq":  4.15e9,
+    "alpha": -250e6
+  },
+
+  "pulse_info": {
+    "pi_time": 420,
+    "half_pi_time": 210
+  },
+
+  "vacuum_rabi": {
+    "pi_pulse": false,
+    "start": 6.340e9,
+    "stop": 6.352e9,
+    "step": 200e3,
+    "averages":10
+  },
+
+  "pulse_probe": {
+    "start": 4.13e9,
+    "stop": 4.17e9,
+    "step": 500e3,
+    "averages":2000
+  },
+
+  "t1": {
+    "use_pi_time": false,
+    "start": 0,
+    "stop": 1000,
+    "step": 25,
+    "averages": 20000
+  },
+    "cavity_ringdown": {
+    "start": 0,
+    "stop": 3000000,
+    "step": 100000,
+    "averages": 10
+  },
+  "rabi": {
+    "start": 0,
+    "stop": 1000,
+    "step": 10,
+    "averages": 2000
+  },
+
+  "ef_pulse_probe":{
+    "start": 6.1e9,
+    "stop": 6.12e9,
+    "step": 0.2e6,
+    "averages": 15000,
+    "ge_freq":6.440825E9,
+    "ge_power":-10.0,
+    "ge_pulse_width":20e3
+  },
+
+  "rabi_freq_sweep": {
+    "start": 0,
+    "stop": 800,
+    "step": 2,
+    "freq_start": 4687000000.0,
+    "freq_stop": 4690000000.0,
+    "freq_step": 200000.0,
+    "averages": 1500
+  },
+
+  "ramsey": {
+    "start": 0.0,
+    "stop": 10000,
+    "step": 100,
+    "ramsey_freq": -500e3,
+    "averages": 10000
+  },
+
+  "spin_echo": {
+    "start": 0.0,
+    "stop": 1e3,
+    "step": 20.0,
+    "ramsey_freq": 5e6,
+    "averages": 2000
+  },
+
+  "alex_test": {
+    "start": 40000,
+    "stop": 150000,
+    "step": 5000,
+    "p4_width": 40000,
+    "averages": 25000
+  },
+
+  "histogram": {
+    "use_pi_time": true,
+    "drive_state_off": true,
+    "start": 0,
+    "num_pts": 10000
+  },
+  "raman":{
+    "start":4.07e9,
+    "stop": 4.12e9,
+    "step": 0.1e6,
+    "averages": 500
+  },
+
+  "raman_rabi":{
+    "start": 0,
+    "stop": 10000,
+    "step": 40,
+    "averages": 10000
+  },
+
+  "raman_ramsey":{
+    "start": 0.0,
+    "stop": 20000,
+    "step": 20.0,
+    "ramsey_freq": 0.1e6,
+    "averages": 10000
+  },
+
+  "raman_t1":{
+  "use_pi_time":true,
+    "start": 0.0,
+    "stop": 3000000,
+    "step": 75000,
+    "averages": 10000
+  }
+}

@@ -9,7 +9,7 @@ from slab.instruments import SocketInstrument
 import re
 import time
 
-class Triton(SocketInstrument):
+class Triton_old(SocketInstrument):
     default_port = 22518
 
     def __init__(self, name="Triton", address='slab-fridge1.uchicago.edu', enabled=True, timeout=1.0):
@@ -100,7 +100,7 @@ class Triton(SocketInstrument):
 
 
 if __name__ == '__main__':
-    fridge = Triton(address='192.168.14.129')
+    fridge = Triton_old(address='192.168.14.129')
     # print fridge.get_status()
     d = fridge.get_temperatures()
     # print fridge.get_temperatures()

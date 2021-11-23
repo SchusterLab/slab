@@ -355,6 +355,8 @@ class SignalCore(Instrument):
         self._dll.sc5511a_get_rf_parameters.argtypes = [c_void_p, POINTER(RFParameters)]
         self._dll.sc5511a_get_rf_parameters.restype = c_int
 
+
+
         self._dll.sc5511a_get_device_status.argtypes = [c_void_p, POINTER(DeviceStatus)]
         self._dll.sc5511a_get_device_status.restype = c_int
 

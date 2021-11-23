@@ -133,7 +133,12 @@ class PostExperiment:
     def t1(self):
         expt_cfg = self.experiment_cfg[self.exptname]
         P = eval('self.'+self.P)
-        t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]/1e3
+
+        # new version
+        if expt_cfg["t1_len_array"] == "auto":
+            t = arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])[:(len(P))]/1e3
+        else:
+            t = expt_cfg["t1_len_array"]
 
         if self.show:
 

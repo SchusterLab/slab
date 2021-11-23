@@ -9,7 +9,6 @@ class Pulse:
     def __init__(self):
         pass
 
-
     def plot_pulse(self):
         vis = visdom.Visdom()
         win = vis.line(
@@ -157,6 +156,227 @@ class adb_ramp(Pulse):
 
     def get_length(self):
         return self.adb_ramp1_sig * self.cutoff_sigma * 2  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
+
+class exp_ramp(Pulse):
+    def __init__(self, max_amp, exp_ramp_len,flat_len,tau_ramp,ramp2_sigma_len,cutoff_sigma, freq, phase, phase_t0 = 0,dt=None,plot=False):
+        self.max_amp = max_amp
+        self.exp_ramp_len = exp_ramp_len
+        self.flat_len = flat_len
+        self.tau = tau_ramp
+        self.fastfluxlength = flat_len
+        self.ramp2_sigma_len = ramp2_sigma_len
+        self.cutoff_sigma = cutoff_sigma
+        self.freq = freq
+        self.phase = phase
+        self.phase_t0 = phase_t0
+        self.dt = dt
+        self.plot = plot
+        self.t0 = 0
+
+    def get_pulse_array(self):
+
+        t_flat_start = self.t0 + self.exp_ramp_len
+
+        t_flat_end = self.t0 + self.exp_ramp_len  + self.flat_len
+
+        t_end = self.t0 + self.exp_ramp_len  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
+
+        ## Exp Ramp Coefficients
+        A = 1/(np.exp(-1*self.exp_ramp_len/self.tau)-1)
+        B = -1*A
+
+        pulse_array = \
+            self.max_amp * (
+                (self.t_array >= t_flat_start) * (
+                self.t_array < t_flat_end) +  # Normal square pulse
+
+                (self.t_array >= self.t0) * (self.t_array < t_flat_start) * (
+                        A*np.exp(-1*(self.t_array-self.t0)/self.tau) + B) +  # leading Exp Edge
+
+                (self.t_array >= t_flat_end) * (
+                        self.t_array <= t_end) * np.exp(
+            -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
+                    2 * self.ramp2_sigma_len ** 2))  # trailing gaussian edge
+        )
+
+        pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+
+        return pulse_array
+
+    def get_length(self):
+        return self.exp_ramp_len  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
+
+class multiexponential_ramp(Pulse):
+    def __init__(self, max_amp, exp_ramp_len,flat_len,tau_ramp,ramp2_sigma_len,cutoff_sigma, freq, phase,multiples = 2, phase_t0 = 0,dt=None,plot=False):
+        self.max_amp = max_amp
+        self.exp_ramp_len = exp_ramp_len
+        self.flat_len = flat_len
+        self.tau = tau_ramp
+        self.fastfluxlength = flat_len
+        self.ramp2_sigma_len = ramp2_sigma_len
+        self.cutoff_sigma = cutoff_sigma
+        self.freq = freq
+        self.phase = phase
+        self.multiples = multiples # number of ramp away + ramp backs
+        self.phase_t0 = phase_t0
+        self.dt = dt
+        self.plot = plot
+        self.t0 = 0
+
+    def get_pulse_array(self):
+
+        ## use functions instead for repeat ramps
+
+        def tempfun(t, ramplen, tau):
+            A = 1 / (np.exp(-1 * ramplen / tau) - 1)
+            B = -1 * A
+            return A * np.exp(-t / tau) + B
+
+        def tempfun2(tlist, ramplen, tau):
+            return np.heaviside(tlist, 0) * np.heaviside(-1 * tlist + ramplen, tempfun(ramplen , ramplen,tau)/2) * tempfun(tlist, ramplen,tau) + \
+                   np.heaviside(tlist - ramplen, tempfun(ramplen, ramplen, tau)/2) * np.heaviside(-1 * tlist + 2 * ramplen, 0) * (tempfun(-tlist + 2 * ramplen, ramplen, tau))
+
+        def tempfun3(tlist, ramplen, tau, multiples):
+            valholder = 0
+            for ii in range(multiples):
+                valholder += tempfun2(tlist - 2 * ii * ramplen, ramplen, tau)
+            return valholder
+
+        # t_flat_start = self.t0 + self.exp_ramp_len*2*self.multiples
+        #
+        # t_flat_end = self.t0 + self.exp_ramp_len*2*self.multiples  + self.flat_len
+        #
+        # t_end = self.t0 + self.exp_ramp_len*2*self.multiples  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
+
+        ## Exp Ramp Coefficients
+        A = 1/(np.exp(-1*self.exp_ramp_len/self.tau)-1)
+        B = -1*A
+
+        pulse_array = self.max_amp * tempfun3(np.array(self.t_array) - self.t0,self.exp_ramp_len,self.tau,self.multiples)
+
+        pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+
+        return pulse_array
+
+    def get_length(self):
+        return self.exp_ramp_len  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
+
+class multiexponential_ramp_new(Pulse):
+    def __init__(self, max_amp, exp_ramp_len,flat_len,tau_ramp,ramp2_sigma_len,cutoff_sigma, freq, phase,multiples = 2, phase_t0 = 0,dt=None,plot=False):
+        self.max_amp = max_amp
+        self.exp_ramp_len = exp_ramp_len
+        self.flat_len = flat_len
+        self.tau = tau_ramp
+        self.fastfluxlength = flat_len
+        self.ramp2_sigma_len = ramp2_sigma_len
+        self.cutoff_sigma = cutoff_sigma
+        self.freq = freq
+        self.phase = phase
+        self.multiples = multiples # number of ramp away + ramp backs
+        self.phase_t0 = phase_t0
+        self.dt = dt
+        self.plot = plot
+        self.t0 = 0
+
+    def get_pulse_array(self):
+
+        ## use functions instead for repeat ramps
+
+        def tempfun(t, ramplen, tau):
+            A = 1 / (np.exp(-1 * ramplen / tau) - 1)
+            B = -1 * A
+            return A * np.exp(-t / tau) + B
+
+        def tempfun2(tlist, ramplen, tau):
+            # return np.heaviside(tlist, 0) * np.heaviside(-1 * tlist + ramplen, tempfun(ramplen , ramplen,tau)/2) * tempfun(tlist, ramplen,tau) + \
+            #        np.heaviside(tlist - ramplen, tempfun(ramplen, ramplen, tau)/2) * np.heaviside(-1 * tlist + 2 * ramplen, 0) * (tempfun(-tlist + 2 * ramplen, ramplen, tau))
+            temparray = []
+            for t in tlist:
+                temp = 0
+                if (np.heaviside(t, 0) * np.heaviside(-1 * t + ramplen, tempfun(ramplen , ramplen,tau)/4) != 0):
+                    temp +=  tempfun(t, ramplen,tau)
+                if (np.heaviside(t - ramplen, tempfun(ramplen, ramplen, tau)/2) * np.heaviside(-1 * t + 2 * ramplen, 0) != 0):
+                    temp += tempfun(-t + 2 * ramplen, ramplen, tau)
+                # else:
+
+                temparray.append(temp)
+            return temparray
+
+        def tempfun3(tlist, ramplen, tau, multiples):
+            valholder = 0
+            for ii in range(multiples):
+                valholder += np.asarray(tempfun2(tlist - 2 * ii * ramplen, ramplen, tau))
+            return valholder
+
+        # t_flat_start = self.t0 + self.exp_ramp_len*2*self.multiples
+        #
+        # t_flat_end = self.t0 + self.exp_ramp_len*2*self.multiples  + self.flat_len
+        #
+        # t_end = self.t0 + self.exp_ramp_len*2*self.multiples  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
+
+        ## Exp Ramp Coefficients
+        A = 1/(np.exp(-1*self.exp_ramp_len/self.tau)-1)
+        B = -1*A
+
+        pulse_array = self.max_amp * tempfun3(np.array(self.t_array) - self.t0,self.exp_ramp_len,self.tau,self.multiples)
+
+        pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+
+        return pulse_array
+
+    def get_length(self):
+        # return self.exp_ramp_len  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
+        return self.exp_ramp_len*self.multiples + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
+
+class reversability_ramp(Pulse):
+    def __init__(self, max_amp, exp_ramp_len,flat_len,tau_ramp,ramp2_sigma_len,cutoff_sigma, freq, phase,evolutiontime = 200, phase_t0 = 0,dt=None,plot=False):
+        self.max_amp = max_amp
+        self.exp_ramp_len = exp_ramp_len
+        self.flat_len = flat_len
+        self.tau = tau_ramp
+        self.fastfluxlength = flat_len
+        self.ramp2_sigma_len = ramp2_sigma_len
+        self.cutoff_sigma = cutoff_sigma
+        self.freq = freq
+        self.phase = phase
+        self.evolutiontime = evolutiontime
+        self.phase_t0 = phase_t0
+        self.dt = dt
+        self.plot = plot
+        self.t0 = 0
+
+    def get_pulse_array(self):
+
+        ## use functions instead for repeat ramps
+
+        def tempfun(t, ramplen, tau):
+            A = 1 / (np.exp(-1 * ramplen / tau) - 1)
+            B = -1 * A
+            return A * np.exp(-t / tau) + B
+
+        def tempfunrev(tlist, evolutiontime, ramplen, tau):
+            if evolutiontime == 0:
+                return np.heaviside(tlist, 0) * np.heaviside(-1 * tlist + ramplen, 1/2) * tempfun(tlist, ramplen, tau) + \
+               np.heaviside((tlist - ramplen), 1/2) * np.heaviside(-1 * (tlist - evolutiontime - ramplen), 0) + \
+               np.heaviside((tlist - evolutiontime) - ramplen, 1/2) * np.heaviside(-1 * (tlist - evolutiontime) + 2 * ramplen, 0) * (tempfun(-(tlist - evolutiontime) + 2 * ramplen, ramplen, tau))
+            else:
+                return np.heaviside(tlist, 0) * np.heaviside(-1 * tlist + ramplen, 1/2) * tempfun(tlist, ramplen, tau) + \
+               np.heaviside((tlist - ramplen), 1/2) * np.heaviside(-1 * (tlist - evolutiontime - ramplen), 1/2) + \
+               np.heaviside((tlist - evolutiontime) - ramplen, 1/2) * np.heaviside(-1 * (tlist - evolutiontime) + 2 * ramplen, 0) * (tempfun(-(tlist - evolutiontime) + 2 * ramplen, ramplen, tau))
+
+        ## Exp Ramp Coefficients
+        A = 1/(np.exp(-1*self.exp_ramp_len/self.tau)-1)
+        B = -1*A
+
+        pulse_array = self.max_amp * tempfunrev(np.array(self.t_array) - self.t0,self.flat_len,self.exp_ramp_len,self.tau)
+
+        pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+
+        return pulse_array
+
+    def get_length(self):
+        return self.exp_ramp_len*2  + self.flat_len
+
 
 class linear_ramp(Pulse):
     def __init__(self, max_amp, flat_len, ramp1_len, ramp2_sigma_len, cutoff_sigma, freq, phase, phase_t0 = 0,

@@ -417,12 +417,13 @@ class SD_Module(SD_Object) :
                 self.createHvi()
         return self._SD_Object__handle
 
-    def openWithSlot(self, partNumber, nChassis, nSlot) :
+    def openWithSlot(self, partNumber, nChassis, nSlot, hvi=True) :
         if self._SD_Object__handle <= 0 :
             self._SD_Object__handle = self._SD_Object__core_dll.SD_Module_openWithSlot(partNumber.encode(), nChassis, nSlot)
 
-            if self._SD_Object__handle >= 0 and self.isHvi2Module():
-                self.createHvi()
+            if hvi:
+                if self._SD_Object__handle >= 0 and self.isHvi2Module():
+                    self.createHvi()
         return self._SD_Object__handle
 
     def openWithOptions(self, partNumber, nChassis, nSlot, options) :

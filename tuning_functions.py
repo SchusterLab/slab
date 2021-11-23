@@ -17,9 +17,13 @@ from scipy import interpolate
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 class Tuning:
-    def __init__(self, file_names, N=8, log_tuning_files_name=None):
+    def __init__(self, file_names, N=8, log_tuning_files_name=None, files_dir=None):
         lattice_cfg = file_names
-        os.chdir("C:\\210801 - PHMIV3_56 - BF4 cooldown 4\\ipython notebook")
+        og_dir = os.getcwd()
+        if files_dir==None:
+            os.chdir("C:\\210801 - PHMIV3_56 - BF4 cooldown 4\\ipython notebook")
+        else:
+            os.chdir(files_dir)
         self.N = N
         if log_tuning_files_name==None:
             log_tuning_files_name = "S:\\_Data\\210412 - PHMIV3_56 - BF4 cooldown 2\\log_tuning_files.json"
@@ -30,6 +34,14 @@ class Tuning:
             self.flxquantaarray = np.load(lattice_cfg["flxquantaarray_name"],allow_pickle = True)
         except:
             print("Couldn't load energy list and flux quanta arrays")
+
+        try:
+            self.reslistarray = np.load(lattice_cfg["reslistarray_name"],allow_pickle = True)
+            self.qb_reslistarray = np.load(lattice_cfg["qb_reslistarray_name"], allow_pickle=True)
+            self.generate_omega_res_functions(self.qb_reslistarray, self.reslistarray)
+
+        except:
+            print("Couldn't load res list arrays")
 
         try:
             self.FF_SWCTM = np.load(lattice_cfg["FF_SWCTM_name"])
@@ -104,6 +116,7 @@ class Tuning:
 
 
         self.generate_omegaphi_functions(self.energylistarray, self.flxquantaarray)
+        os.chdir(og_dir)
 
     def omega_to_V_thru_CTM(self, Vtype, freq_list):
         vec0 = []
@@ -141,6 +154,18 @@ class Tuning:
                                      np.diff(energylistarray[i]) / np.diff(flxquantaarray[i]) , kind='cubic'))
 
         return [self.phitoomega_list,self.omegatophi_list,self.dphidomega_list,self.domegadphi_list]
+
+    def generate_omega_res_functions(self, qb_reslistarray, reslistarray):
+        self.restoomega_list = []
+        self.omegatores_list = []
+
+        for i in range(self.N):
+            self.restoomega_list.append(
+                scipy.interpolate.interp1d(reslistarray[i], qb_reslistarray[i], kind='cubic', ))
+            self.omegatores_list.append(
+                scipy.interpolate.interp1d(qb_reslistarray[i], reslistarray[i], kind='cubic', ))
+
+        return [self.restoomega_list,self.omegatores_list]
 
 
     def omega_to_V_thru_LocalSlopes(self, Vtype, jump_freq_list):
@@ -193,7 +218,7 @@ class Tuning:
         print("New fluxqanta array filename: " + flx_name)
         np.save(flx_name, new_flxquantaarray)
 
-        return new_flxquantaarray
+        return flx_name
 
     def plot_colored_CTM(self, Vtype, save_file = None):
         if Vtype=="DC":

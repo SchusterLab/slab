@@ -29,7 +29,8 @@ if isPNAX:
 print( nwa.get_id())
 # drive = im['RF3']
 print ('Deviced Connected')
-expt_path = os.getcwd() + '\data'
+path = "C:\\210701 - PHMIV3_56 - BF4 cooldown 3"
+expt_path = path + '\data'
 
 sweep_pts =4001
 ifbwlist = [200,300,500,500,1000,2000,2000,4000,5000,5000]

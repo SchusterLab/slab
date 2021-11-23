@@ -6,22 +6,31 @@ from slab.datamanagement import SlabFile
 import json
 import time
 import glob
+from h5py import File
 
 class PostExperimentAnalyzeAndSave:
 
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg, data_path, experiment_name, data, P = 'Q',
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, data_path, experiment_name, data,
+                 P = 'Q',
                  phi=0, cont_data_file=None, cont_name="cont_v0", save=False):
         self.quantum_device_cfg = quantum_device_cfg
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
+        self.lattice_cfg = lattice_cfg
         self.data_path = os.path.join(data_path, 'data/')
         self.save = save
 
         self.exptname = experiment_name
-        self.data
+        self.data =data
         self.P = P
-        self.mag = []
-        self.phase = []
+        if len(data)>1:
+            self.qbA_I_raw = data[0][0]
+            self.qbA_Q_raw = data[0][1]
+            self.qbB_I_raw = data[1][0]
+            self.qbB_Q_raw = data[1][1]
+        else:
+            self.I_raw = data[0][0]
+            self.Q_raw = data[0][1]
 
         self.cont_data_file = cont_data_file
         self.cont_slab_file = None
@@ -31,6 +40,7 @@ class PostExperimentAnalyzeAndSave:
         self.raw_I_mean = None
         self.raw_Q_mean = None
         self.p = []
+        self.sub_mean=False
 
 
         if self.save:
@@ -56,82 +66,111 @@ class PostExperimentAnalyzeAndSave:
             ii = 0
         return ii
 
-    def iq_rot(self):
+    def iq_rot(self, I, Q, phi):
         """Digitially rotates IQdata by phi, calcualting phase as np.unrwap(np.arctan2(Q, I))
-        :selfparam I: I data from h5 file
-        :selfparam Q: Q data from h5 file
-        :selfparam phi: iq rotation desired (in degrees)
-        :returns: sets self.I, self.Q
+        :param I: I data from h5 file
+        :param Q: Q data from h5 file
+        :param phi: iq rotation desired (in degrees)
+        :returns: rotated I, Q
         """
-        self.phi = self.phi * np.pi / 180  # convert to radians
-        phase = np.unwrap(np.arctan2(self.Q, self.I))
-        self.Q = self.Q / np.sin(phase) * np.sin(phase + self.phi)
-        self.I = self.I / np.cos(phase) * np.cos(phase + self.phi)
+        phi = phi * np.pi / 180
+        Irot = I * np.cos(phi) + Q * np.sin(phi)
+        Qrot = -I * np.sin(phi) + Q * np.cos(phi)
+        return Irot, Qrot
 
-    def iq_process(self):
+    def iq_process(self, raw_I, raw_Q, ran=1, phi=0, sub_mean=True):
         """Converts digitial data to voltage data, rotates iq, subtracts off mean, calculates mag and phase
-        :param data: data from h5 file, [["I", "Q"]], [["qbA_I", "qbA_Q"],["qbB_I", "qbB_Q"]
+        :param f: frequency
         :param raw_I: I data from h5 file
         :param raw_Q: Q data from h5 file
-        :param on_qbs: homodyne setups being used
         :param ran: range of DAC. If set to -1, doesn't convert data to voltage
-        :returns: sets self: I, Q, mag, phase
+        :param phi: iq rotation desired (in degrees)
+        :param sub_mean: boolean, if True subtracts out average background in IQ data
+        :returns: I, Q, mag, phase
         """
-
-        raw_I = self.data[0][0]
-        raw_Q = self.data[0][1]
-        ran = self.hardware_cfg['awg_info']['keysight_pxi']['m3102_vpp_range']
-
-        self.raw_I_mean = mean(array(raw_I).flatten())
-        self.raw_Q_mean = mean(array(raw_Q).flatten())
-        self.I = array(raw_I).flatten() - self.raw_I_mean
-        self.Q = array(raw_Q).flatten() - self.raw_Q_mean
-
+        if sub_mean:
+            # ie, if want to subtract mean
+            I = array(raw_I).flatten() - mean(array(raw_I).flatten())
+            Q = array(raw_Q).flatten() - mean(array(raw_Q).flatten())
+        else:
+            I = array(raw_I).flatten()
+            Q = array(raw_Q).flatten()
 
         # divide by 2**15 to convert from bits to voltage, *ran to get right voltage range
         if ran > 0:
-            self.I = self.I / 2 ** 15 * ran
-            self.Q = self.Q / 2 ** 15 * ran
+            I = I / 2 ** 15 * ran
+            Q = Q / 2 ** 15 * ran
 
         # calculate mag and phase
-        phase = np.unwrap(np.arctan2(self.Q, self.I))
-        mag = np.sqrt(np.square(self.I) + np.square(self.Q))
-        self.mag = mag
-        self.phase = phase
+        phase = np.unwrap(np.arctan2(Q, I))
+        mag = np.sqrt(np.square(I) + np.square(Q))
 
         # IQ rotate
-        self.iq_rot()
+        I, Q = self.iq_rot(I, Q, phi)
 
-    def get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb):
-        """puts all config info into a dictionary, so that if cfg files change we just need to change this file
-        rather than all files
-        :returns: dict params
-        """
+        return I, Q, mag, phase
+
+    def get_params(self, hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=False):
 
         params = {}
+
         params['ran'] = hardware_cfg['awg_info']['keysight_pxi']['digtzr_vpp_range']
-        params['readout_params'] = quantum_device_cfg['readout'][on_qb]
-        params['readout_freq'] = params['readout_params']["freq"]
-        params['dig_atten_qb'] = quantum_device_cfg['powers'][on_qb]['drive_digital_attenuation']
-        params['dig_atten_rd'] = quantum_device_cfg['powers'][on_qb]['readout_drive_digital_attenuation']
-        params['read_lo_pwr'] = quantum_device_cfg['powers'][on_qb]['readout_drive_lo_powers']
-        params['qb_lo_pwr'] = quantum_device_cfg['powers'][on_qb]['drive_lo_powers']
-        params['qb_freq'] = quantum_device_cfg['qubit'][on_qb]['freq']
+        params['dt_dig'] = hardware_cfg['awg_info']['keysight_pxi']['dt_dig']
+        params['readout_params'] = lattice_cfg['readout']
+
+        if one_qb:
+            on_qb = on_qbs[0]
+            rd_qb = on_rds[0]
+            params["rd_setup"] = lattice_cfg["qubit"]["setup"][rd_qb]
+            params["qb_setup"] = lattice_cfg["qubit"]["setup"][on_qb]
+            rd_setup = params["rd_setup"]
+            qb_setup = params["qb_setup"]
+            params['readout_freq'] = params['readout_params'][rd_setup]["freq"][rd_qb]
+            params['readout_window'] = params['readout_params'][rd_setup]["window"][rd_qb] * params['dt_dig']
+
+            params['dig_atten_qb'] = lattice_cfg['powers'][qb_setup]['drive_digital_attenuation'][on_qb]
+            params['dig_atten_rd'] = lattice_cfg['powers'][rd_setup]['readout_drive_digital_attenuation'][rd_qb]
+            params['read_lo_pwr'] = lattice_cfg['powers'][rd_setup]['readout_drive_lo_powers'][rd_qb]
+            params['qb_lo_pwr'] = lattice_cfg['powers'][qb_setup]['drive_lo_powers'][on_qb]
+
+            params['qb_freq'] = lattice_cfg['qubit']['freq'][on_qb]
+
+        else:
+            on_qb = on_qbs[0]
+            rd_qb = on_rds[0]
+            params["rd_setup"] = lattice_cfg["qubit"]["setup"][rd_qb]
+            params["qb_setup"] = lattice_cfg["qubit"]["setup"][on_qb]
+            rd_setup = params["rd_setup"]
+            qb_setup = params["qb_setup"]
+            params['readout_freq'] = params['readout_params'][rd_setup]["freq"][rd_qb]
+            params['readout_window'] = params['readout_params'][rd_setup]["window"][rd_qb] * params['dt_dig']
+
+            params['dig_atten_qb'] = lattice_cfg['powers'][qb_setup]['drive_digital_attenuation'][on_qb]
+            params['dig_atten_rd'] = lattice_cfg['powers'][rd_setup]['readout_drive_digital_attenuation'][rd_qb]
+            params['read_lo_pwr'] = lattice_cfg['powers'][rd_setup]['readout_drive_lo_powers'][rd_qb]
+            params['qb_lo_pwr'] = lattice_cfg['powers'][qb_setup]['drive_lo_powers'][on_qb]
+
+            params['qb_freq'] = lattice_cfg['qubit']['freq'][on_qb]
+
         return params
 
     def pulse_probe_iq(self):
         print("Starting pulse probe analysis")
         expt_params = self.experiment_cfg[self.exptname]
-        params = self.get_params(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, expt_params[
-            'on_qubits'][0])
+        on_qbs = expt_params['on_qbs']
+        on_rds = expt_params['on_rds']
+
+        params = self.get_params(self.hardware_cfg, self.experiment_cfg, self.lattice_cfg, on_qbs, on_rds, one_qb=True)
+
 
         nu_q = params['qb_freq']
 
-        self.iq_process()
-        f = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))] + nu_q
+        I, Q, mag, phase = self.iq_process(raw_I=self.I_raw, raw_Q= self.Q_raw, sub_mean=True, phi=self.phi)
+        f = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))] + nu_q
         exp_nb = self.current_file_index(prefix=self.exptname)
+
         try:
-            p = fitlor(f, np.square(self.mag), showfit=False) #returns [offset,amplitude,center,hwhm]
+            p = fitlor(f, np.square(mag), showfit=False) #returns [offset,amplitude,center,hwhm]
             print("pulse probe fit worked!")
         except:
             print("Pulse probe fit failed on exp", exp_nb)
@@ -146,22 +185,39 @@ class PostExperimentAnalyzeAndSave:
         self.p = p
 
     def rabi(self):
+        # if you use gaussian pulses for Rabi, the time that you plot is the sigma -the actual pulse time is 4*sigma (4 being set in the code
+        SIGMA_CUTOFF = 4
+
         print("Starting rabi analysis")
         expt_params = self.experiment_cfg[self.exptname]
 
-        self.iq_process()
+        I, Q, mag, phase = self.iq_process(raw_I=self.I_raw, raw_Q=self.Q_raw, sub_mean=self.sub_mean, phi=self.phi)
 
-        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I_raw))]
         exp_nb = self.current_file_index(prefix=self.exptname)
+
         pulse_type = expt_params['pulse_type']
+        if pulse_type == "gauss":
+            t = t * SIGMA_CUTOFF
 
         try:
             # p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (-1. * (x - x[0]) / p[3]) + p[4]
-            if self.P=='Q':
-                p = fitdecaysin(t,self.Q,showfit=False, fitparams=None, domain=None)
-            else:
-                p = fitdecaysin(t, self.I, showfit=False, fitparams=None, domain=None)
-            print("rabi fit worked!")
+
+            satisfied = False
+            domain = [0, t[-1]]
+            while not satisfied:
+                t_d, I_d = selectdomain(t, I, domain=domain)
+                p = fitdecaysin(t, eval(self.P), showfit=False, fitparams=None, domain=domain)
+
+                if p[3] < 200:
+                    domain = [0, domain[1] / 2]
+                    print("Loop over domain for rabi")
+                else:
+                    satisfied = True
+                if domain[1] < t[-1] / 8:
+                    print("exiting loop")
+                    satisfied = True
+                    print("rabi fit worked!")
         except:
             print("rabi fit failed on exp", exp_nb)
             p = [0, 0, 0, 0, 0]
@@ -179,16 +235,20 @@ class PostExperimentAnalyzeAndSave:
         print("Starting t1 analysis")
         expt_params = self.experiment_cfg[self.exptname]
 
-        self.iq_process()
-        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        I, Q, mag, phase = self.iq_process(raw_I=self.I_raw, raw_Q=self.Q_raw, sub_mean=self.sub_mean, phi=self.phi)
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I_raw))]
         exp_nb = self.current_file_index(prefix=self.exptname)
-        t = t / 1000  # convert to us
+
+        # new version
+        if expt_params["t1_len_array"] =="auto":
+            t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))]
+        else:
+            t = expt_params["t1_len_array"]
+        t = np.array(t) / 1000  # convert to us
+
         try:
             #exponential decay (p[0]+p[1]*exp(-(x-p[2])/p[3])
-            if self.P=='Q':
-                p = fitexp(t,self.Q,fitparams=None, domain=None, showfit=False)
-            else:
-                p = fitexp(t,self.Q,fitparams=None, domain=None, showfit=False)
+            p = fitexp(t,eval(self.P),fitparams=None, domain=None, showfit=False)
             print("t1 fit worked!")
         except:
             print("t1 fit failed on exp", exp_nb)
@@ -196,10 +256,75 @@ class PostExperimentAnalyzeAndSave:
 
         t1_meta = [exp_nb, time.time(), self.raw_I_mean, self.raw_Q_mean]
 
-        if save:
+        if self.save:
             with self.cont_slab_file as file:
                 file.append_line('t1_meta', t1_meta)
                 file.append_line('t1_fit', p)
+                print("appended line correctly")
+        self.p=p
+
+    def return_I_Q_res(self, filenb, pi=False, ff=False):
+        expt_name = "resonator_spectroscopy"
+
+        if pi:
+            expt_name = expt_name + "_pi"
+        if ff:
+            expt_name = "ff_" + expt_name
+
+        fname = self.data_path + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+
+        with File(fname, 'r') as a:
+            hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+            experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+            lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+            expt_params = experiment_cfg[expt_name.lower()]
+
+            on_qbs = expt_params['on_qbs']
+            on_rds = expt_params['on_rds']
+
+            params = self.get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+            ran = params['ran']  # range of DAC card for processing
+            readout_f = params['readout_freq']
+
+            try:
+                I_raw = a['I']
+                Q_raw = a['Q']
+            except:
+                I_raw = a['qb{}_I'.format(on_qb)]
+                Q_raw = a['qb{}_Q'.format(on_qb)]
+
+            f = arange(expt_params['start'] + readout_f, expt_params['stop'] + readout_f, expt_params['step'])[
+                :len(I_raw)]
+
+            # process I, Q data
+            (I, Q, mag, phase) = self.iq_process(raw_I=I_raw, raw_Q=Q_raw, ran=ran, phi=0, sub_mean=False)
+
+            a.close()
+        return f, I, Q
+
+    def res_spec_eg(self):
+        print("Starting res_spec_eg analysis")
+        experiment_name_g = 'resonator_spectroscopy'
+        experiment_name_e = 'resonator_spectroscopy_pi'
+        exp_nb_g = self.current_file_index(prefix=experiment_name_g)
+        exp_nb_e = self.current_file_index(prefix=experiment_name_e)
+
+        phi=self.phi*np.pi/180
+        f, Ig, Qg = self.return_I_Q_res(exp_nb_g, pi=False)
+        Irotg = Ig * cos(phi) + Qg * sin(phi)
+        Qrotg = -Ig * sin(phi) + Qg * cos(phi)
+        f, Ie, Qe = self.return_I_Q_res(exp_nb_e, pi=True)
+        Irote = Ie * cos(phi) + Qe * sin(phi)
+        Qrote = -Ie * sin(phi) + Qe * cos(phi)
+
+        p = [f[np.argmax(np.abs(Irote - Irotg))]]
+
+        res_spec_eg_meta = [exp_nb_g, exp_nb_e, time.time()]
+
+        if self.save:
+            with self.cont_slab_file as file:
+                file.append_line('res_spec_eg_meta',res_spec_eg_meta_meta)
+                file.append_line('res_spec_eg_fit', p)
                 print("appended line correctly")
         self.p=p
 
@@ -207,17 +332,14 @@ class PostExperimentAnalyzeAndSave:
         print("Starting ramsey analysis")
         expt_params = self.experiment_cfg[self.exptname]
 
-        self.iq_process()
-        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        I, Q, mag, phase = self.iq_process(raw_I=self.I_raw, raw_Q=self.Q_raw, sub_mean=self.sub_mean, phi=self.phi)
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I_raw))]
         t = t/1000 #convert to us
         exp_nb = self.current_file_index(prefix=self.exptname)
 
         try:
             #p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (-1. * (x - x[0]) / p[3]) + p[4]
-            if self.P=='Q':
-                p = fitdecaysin(t,self.Q,showfit=False, fitparams=None, domain=None)
-            else:
-                p = fitdecaysin(t, self.Q, showfit=False, fitparams=None, domain=None)
+            p = fitdecaysin(t, eval(self.P), showfit=False, fitparams=None, domain=None)
             print("ramsey fit worked!")
         except:
             print("ramsey fit failed on exp", exp_nb)
@@ -234,18 +356,22 @@ class PostExperimentAnalyzeAndSave:
     def echo(self):
         print("Starting echo analysis")
         expt_params = self.experiment_cfg[self.exptname]
+        on_qbs = expt_params['on_qbs']
+        on_rds = expt_params['on_rds']
 
-        self.iq_process()
-        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I))]
+        params = self.get_params(self.hardware_cfg, self.experiment_cfg, self.lattice_cfg, on_qbs, on_rds, one_qb=True)
+
+        ran = params['ran']
+
+        I, Q = self.I_raw / 2 ** 15 * ran, self.Q_raw / 2 ** 15 * ran
+
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(self.I_raw))]
         t = t/1000 #convert to us
         exp_nb = self.current_file_index(prefix=self.exptname)
 
         try:
             #p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) * np.e ** (-1. * (x - x[0]) / p[3]) + p[4]
-            if self.P=='Q':
-                p = fitdecaysin(t,self.Q,showfit=False, fitparams=None, domain=None)
-            else:
-                p = fitdecaysin(t, self.Q, showfit=False, fitparams=None, domain=None)
+            p = fitdecaysin(t, eval(self.P), showfit=False, fitparams=None, domain=None)
             print("echo fit worked!")
         except:
             print("echo fit failed on exp", exp_nb)
@@ -256,6 +382,64 @@ class PostExperimentAnalyzeAndSave:
             with self.cont_slab_file as file:
                 file.append_line('echo_meta', echo_meta)
                 file.append_line('echo_fit', p)
+                print("appended line correctly")
+        self.p = p
+
+    def fid_func(self,Vval, ssbinsg, ssbinse, sshg, sshe):
+        ind_g = np.argmax(ssbinsg > Vval)
+        ind_e = np.argmax(ssbinse > Vval)
+        return np.abs(((np.sum(sshg[:ind_g]) - np.sum(sshe[:ind_e])) / sshg.sum()))
+
+    def histogram(self):
+        print("Starting histogram analysis")
+        expt_params = self.experiment_cfg[self.exptname]
+
+        I, Q = self.I_raw / 2 ** 15 * 1, self.Q_raw / 2 ** 15 * 1
+
+        numbins = expt_params["numbins"]
+
+        IQs = mean(I[::3], 1), mean(Q[::3], 1), mean(I[1::3], 1), mean(Q[1::3], 1), mean(I[2::3], 1), mean(Q[2::3],
+                                                                                                           1)
+        IQsss = I.T.flatten()[0::3], Q.T.flatten()[0::3], I.T.flatten()[1::3], Q.T.flatten()[1::3], I.T.flatten()[
+                                                                                                    2::3], Q.T.flatten()[
+                                                                                                           2::3]
+        x0g, y0g = mean(IQsss[0]), mean(IQsss[1])
+        x0e, y0e = mean(IQsss[2]), mean(IQsss[3])
+        phi = arctan((y0e - y0g) / (x0e - x0g))
+        if x0g > x0e:
+            phi = phi + np.pi
+
+        IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
+                    -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),
+                    I.T.flatten()[1::3] * cos(phi) + Q.T.flatten()[1::3] * sin(phi),
+                    -I.T.flatten()[1::3] * sin(phi) + Q.T.flatten()[1::3] * cos(phi),
+                    I.T.flatten()[2::3] * cos(phi) + Q.T.flatten()[2::3] * sin(phi),
+                    -I.T.flatten()[2::3] * sin(phi) + Q.T.flatten()[2::3] * cos(phi))
+
+        x0g, y0g = mean(IQsssrot[0][:]), mean(IQsssrot[1][:])
+        x0e, y0e = mean(IQsssrot[2][:]), mean(IQsssrot[3][:])
+
+        for ii, i in enumerate(['I', 'Q']):
+            # if ii is 0:
+            #     lims = [x0g - ran / rancut, x0g + ran / rancut]
+            # else:
+            #     lims = [y0g - ran / rancut, y0g + ran / rancut]
+            sshg, ssbinsg = np.histogram(IQsssrot[ii], bins=numbins)
+            sshe, ssbinse = np.histogram(IQsssrot[ii + 2], bins=numbins)
+            fid_list = [self.fid_func(V, ssbinsg, ssbinse, sshg, sshe) for V in ssbinsg[0:-1]]
+            temp = max(fid_list)
+            if i == self.P:
+                fid = temp
+
+        exp_nb = self.current_file_index(prefix=self.exptname)
+
+        p = [fid, phi]
+
+        if self.save:
+            hist_meta = [exp_nb, time.time(), IQsssrot[0], IQsssrot[2]]
+            with self.cont_slab_file as file:
+                file.append_line('hist_meta', hist_meta)
+                file.append_line('hist_fit', p)
                 print("appended line correctly")
         self.p = p
 

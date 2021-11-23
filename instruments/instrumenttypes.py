@@ -112,11 +112,11 @@ class VisaInstrument(Instrument):
             self.instrument.timeout = timeout * 1000
 
     def write(self, s):
-        if self.enabled: self.instrument.write(self.encode_s(s))
+        if self.enabled: self.instrument.write(s)
 
     def read(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
-        if self.enabled: return self.instrument.read().decode()
+        if self.enabled: return self.instrument.read()
 
     def readb(self, timeout=None):
         # todo: implement timeout, reference SocketInstrument.read
@@ -202,18 +202,15 @@ class SocketInstrument(Instrument):
         if (ready[0] and self.enabled):
             return self.socket.recv(self.recv_length)
 
-    def read_line(self, eof_char=b'\n', timeout=None):
-        done = False
-        while done is False:
+    def read_line(self, eof_char='\n', timeout=None):
+        start_time=time.time()
+        while time.time()-start_time<timeout:
             buffer_str = self.read(timeout)
             # print "buffer_str", [buffer_str]
-            if buffer_str is None:
-                pass  # done = True
-            elif buffer_str[-len(eof_char):] == eof_char:
-                done = True
-                yield buffer_str
-            else:
-                yield buffer_str
+            if buffer_str[-len(eof_char):] == eof_char:
+                break
+        return buffer_str
+
 
     def read_lineb(self, eof_char=b'\n', timeout=None):
         done = False

@@ -207,6 +207,39 @@ class Sequencer:
         self.equalize_sequences()
         self.delay_channels(self.channels_delay)
 
+        # make switch turn on when cavity drive is on
+        if 'switch_trig' in self.channels:
+            for sequence in self.multiple_sequences:
+                sequence['switch_trig'] = np.zeros(int(self.channels_awg_info['cavity']['time_delay'] / \
+                                                       self.channels_awg_info['switch_trig']['dt']))
+                sequence['switch_trig'] = np.append(sequence['switch_trig'],
+                                                    sequence['cavity'][::int(self.channels_awg_info['switch_trig']['dt'] / \
+                                                                             self.channels_awg_info['cavity']['dt'])])
+                sequence['switch_trig'] = np.append(sequence['switch_trig'],
+                                                    np.zeros(len(sequence['readout_trig']) - len(sequence['switch_trig'])))
+                for j in np.nonzero(sequence['switch_trig']):
+                    sequence['switch_trig'][j] = 1
+                ends = []
+                for j in range(len(sequence['switch_trig']) - 1):
+                    if sequence['switch_trig'][j] == 1 and sequence['switch_trig'][j+1] == 0:
+                        ends.append(j)
+                num_pad_pts = int(self.awg_info['keysight_pxi']['pad_switch_trig_end']/self.channels_awg_info['switch_trig']['dt'])
+                for index in ends:
+                    fin = min(index+num_pad_pts, len(sequence['switch_trig']))
+                    sequence['switch_trig'][index : fin] = 1
+
+                starts = []
+                for j in range(len(sequence['switch_trig']) - 1):
+                    if sequence['switch_trig'][j+1] == 1 and sequence['switch_trig'][j] == 0:
+                        starts.append(j)
+                for index in starts:
+                    fin = max(index - num_pad_pts, 0)
+                    sequence['switch_trig'][fin : index+1] = 1
+                # for j in range(len(sequence['switch_trig'])):
+                #     sequence['switch_trig'][j] = 1
+                # sequence['switch_trig'][0] = 0
+                # sequence['switch_trig'][-1] = 0
+
         if plot:self.plot_sequences()
 
         return self.multiple_sequences

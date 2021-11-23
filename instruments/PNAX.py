@@ -435,7 +435,7 @@ class N5242A(SocketInstrument):
         query_string = "calculate%d:parameter:mnumber:select?" % channel
         data = self.query(query_string)
         if data is None:
-            return data;
+            return data
         else:
             return int(data)
 
@@ -552,7 +552,7 @@ class N5242A(SocketInstrument):
     def save_file(self, fname):
         self.write('MMEMORY:STORE:FDATA \"' + fname + '\"')
 
-    def read_data(self, sweep_points=None, channel=1, timeout=None, data_format=None):
+    def read_data(self, sweep_points=None, channel=1, timeout=1, data_format=None):
         """
         Read current NWA Data that is displayed on the screen. Returns TWO numbers per data point for Polar ('POL')
         and Smith Chart ('SMIT') format, see set_format.
@@ -569,10 +569,13 @@ class N5242A(SocketInstrument):
             sweep_points = self.get_sweep_points()
 
         if timeout is None:
-            timeout = self.timeout
+            timeout = self.query_sleep
         self.get_operation_completion()
-        self.read(timeout=100)
+        # self.read(timeout=1)
+        self.read(timeout=0.1)
         self.write("CALC%d:DATA? FDATA" % channel)
+        # data_str=self.read_lineb(timeout=timeout)
+        # print(data_str)
         data_str = b''.join(self.read_lineb(timeout=timeout))
 
         if data_format == 'binary':
@@ -583,6 +586,7 @@ class N5242A(SocketInstrument):
             # the checksum. If the received data is too short, just read out again.
             while len_data_actual != len_data_expected:
                 data_str += b''.join(self.read_lineb(timeout=timeout))
+                # data_str += self.read_lineb(timeout=timeout)
                 len_data_actual = len(data_str[2 + len_data_dig:-1])
 
         data = np.fromstring(data_str, dtype=float, sep=',') if data_format=='ascii' else np.fromstring(data_str[2+len_data_dig:-1], dtype=np.float32)
@@ -592,6 +596,7 @@ class N5242A(SocketInstrument):
             data = data.transpose()
             return np.vstack((fpts, data))
         else:
+            print(len(data), len(fpts))
             return np.vstack((fpts, data))
 
     #### Meta

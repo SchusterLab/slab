@@ -44,14 +44,14 @@ class KeysightSingleQubit:
     channel 4 is the readout marker. On module 10, channel 1 is for readout of I component and channel 2 is for readout from Q component.'''
 
     def __init__(self, experiment_cfg, hardware_cfg, quantum_device_cfg, sequences, name, save_path=r"C:\Users\slab\Documents\Data",
-                 sleep_time_between_trials=50 * 1000):  # 1000*10000 if you want to watch sweep by eye
+                 sleep_time_between_trials=50 * 1000, hvi=True):  # 1000*10000 if you want to watch sweep by eye
 
         chassis = key.KeysightChassis(0,
                                       {6: key.ModuleType.OUTPUT,
                                        7: key.ModuleType.OUTPUT,
                                        8: key.ModuleType.OUTPUT,
                                        9: key.ModuleType.OUTPUT,
-                                       10: key.ModuleType.INPUT})
+                                       10: key.ModuleType.INPUT}, hvi=hvi)
 
         self.hardware_cfg = hardware_cfg
         self.jpa_pump = quantum_device_cfg['readout']['jpa_pump']
@@ -497,7 +497,7 @@ def run_keysight(experiment_cfg, hardware_cfg, sequences, name):
 
 
 if __name__ == "__main__":
-    setup = KeysightSingleQubit()
+    setup = KeysightSingleQubit(hvi=hvi)
     try:
         #waveforms_I, waveforms_Q, readout, qubit = generateWaveforms()
         #print (len(waveforms_I))

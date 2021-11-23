@@ -207,7 +207,7 @@ class KeysightError(RuntimeError):
 class KeysightChassis:
     '''Class representing a Keysight chassis.'''
     
-    def __init__(self, chassis_number = None, modules_dict = {}):
+    def __init__(self, chassis_number = None, modules_dict = {}, hvi=True):
         '''Initializes the Keysight Chassis object. 
             chassis_number: The chassis number of the chassis we are creating
             modules_dict: A dictionary representing the modules formatted as
@@ -220,10 +220,10 @@ class KeysightChassis:
         for module_number in modules_dict:
             if modules_dict[module_number] == ModuleType.INPUT:
                 self._modules[module_number] = KeysightModuleIn(
-                        self, module_number)
+                        self, module_number, hvi=hvi)
             elif modules_dict[module_number] == ModuleType.OUTPUT:
                 self._modules[module_number] = KeysightModuleOut(
-                        self, module_number)
+                        self, module_number, hvi=hvi)
                 
     def chassisNumber(self):
         '''Returns the chassis number of the Keysight Chassis object'''
@@ -633,7 +633,7 @@ class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
     implementation purposes. However, there should be no reason for user 
     to directly call methods from SD_AIN.'''
     
-    def __init__(self, chassis, slot_number):
+    def __init__(self, chassis, slot_number, hvi=True):
         '''Initializes the ModuleIn object.
         Params:
             chassis: The chassis object where the module is housed
@@ -641,7 +641,7 @@ class KeysightModuleIn(KeysightModule, SD1.SD_AIN):
         '''
         SD1.SD_AIN.__init__(self)
         self._printInitInfo(self.openWithSlot(KeysightConstants.PRODUCT,
-                                         chassis.chassisNumber(), slot_number))
+                                         chassis.chassisNumber(), slot_number, hvi=hvi))
         KeysightModule.__init__(self, chassis, slot_number)
         self._initChannels()
             
@@ -799,8 +799,8 @@ class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
     the KeysightModule parent class as well as the native SD_AOU class for
     implementation purposes. However, there should be no reason for user 
     to directly call methods from SD_AOU.'''
-    
-    def __init__(self, chassis, slot_number):
+
+    def __init__(self, chassis, slot_number, hvi=True):
         '''Initializes the ModuleIn object.
         Params:
             chassis: The chassis object where the module is housed
@@ -808,7 +808,7 @@ class KeysightModuleOut(KeysightModule, SD1.SD_AOU):
         '''
         SD1.SD_AOU.__init__(self)
         self._printInitInfo(self.openWithSlot(KeysightConstants.PRODUCT, 
-                                        chassis.chassisNumber(), slot_number))
+                                        chassis.chassisNumber(), slot_number, hvi=hvi))
         KeysightModule.__init__(self, chassis, slot_number)
         self._initChannels()
     

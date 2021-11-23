@@ -23,12 +23,13 @@ from slab.experiments.PulseExperiments_M8195A_PXI.PostExperimentAnalysis import 
 im = InstrumentManager()
 
 class Experiment:
-    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None):
+    def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,sequences=None, name=None, hvi=True):
         self.quantum_device_cfg = quantum_device_cfg
         self.experiment_cfg = experiment_cfg
         self.hardware_cfg = hardware_cfg
 
-        try: self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg, sequences, name)
+        try: self.pxi =  ks_pxi.KeysightSingleQubit(self.experiment_cfg, self.hardware_cfg,self.quantum_device_cfg,
+                                                    sequences, name, hvi=hvi)
         except: print("Not connected to keysight PXI")
 
         try: self.drive_los = [im[lo] for lo in self.hardware_cfg['drive_los']]

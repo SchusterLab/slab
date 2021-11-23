@@ -66,7 +66,7 @@
     "ff_ramp_sigma_len": [0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001],
     "ff_adb_ramp_sig": [300,300,300,300,300,300,300,300],
     "ff_pulse_padding": 0,
-    "ff_len": [10000,10000,10000,10000,10000,10000,10000,10000],
+    "ff_len": [1000,1000,1000,1000,1000,1000,1000,1000],
     "ff_linear_ramp_len": 1000,
     "comp_pulse_amp": [-0.1,-0.1,-0.1,-0.1,-0.1,-0.1,-0.1,-0.1],
     "ff_comp_sym": true
@@ -75,5 +75,17 @@
   "stabilizer_info": {
     "freq": 5,
     "stab_lo_power": 13
-  }
+  },
+
+  "energylistarray_name": "0508_energylistarray.npy",
+  "flxquantaarray_name": "0508_flxquantaarray.npy",
+
+  "FF_SWCTM_name": "20210629FFCrossTalkMatrix.npy",
+  "DC_CTM_name": "CrossTalkMatrix.npy",
+
+  "FF_LocalSlopes_name": "20210629FastFluxSlopes.npy",
+
+  "FF_dVdphi_name": "FF_dVdphi.npy",
+  "DC_dVdphi_name": "FF_dVdphi.npy"
 }
+[5.10, 5.415, 5.89, 5.95, 5.115, 3.49, 3.89, 3.835]

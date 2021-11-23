@@ -103,6 +103,47 @@
     "numbins": 101,
     "trajectory": false
   },
+  "ff_histogram": {
+    "acquisition_num": 200,
+    "on_qubits": [
+      "A"
+    ],
+    "singleshot": true,
+    "num_seq_sets": 11,
+    "numbins": 200,
+    "trajectory": false,
+    "ff_vec_1part":[0.007320569483630118, 0.007216068959167216, 0.010666111517612417, 0.011111733617072487, 0.014922915289171348, 0.04035265574789147, -0.562259540816576],
+    "ff_vec":[0,0,0,0,0,0,0],
+    "ff_len": [200, 200, 200, 200, 200, 200, 200],
+    "ff_pulse_type": "exp",
+    "Qpulse_in_flux": false
+  },
+
+    "histogram_2setups": {
+    "acquisition_num": 200,
+    "on_qubits": [
+      "A"
+    ],
+    "singleshot": true,
+    "num_seq_sets": 51,
+    "numbins": 101,
+    "pi_qbs": [],
+      "rd_qb": 0,
+    "f": false,
+    "trajectory": false
+  },
+  "histogram_crosstalk": {
+    "acquisition_num": 150,
+    "on_qubits": [
+      "A"
+    ],
+    "singleshot": true,
+    "num_seq_sets": 10,
+    "numbins": 200,
+    "cross_qb": 0,
+      "rd_qb": 0,
+    "trajectory": false
+  },
   "histogram_sweep": {
     "atten_start": -12.0,
     "atten_stop": -5.0,
@@ -112,24 +153,29 @@
     "freq_howstep": 0.0001,
     "sweep_amp": true
   },
+  "pi_cal": {
+    "acquisition_num": 200,
+    "on_qubits": ["A"]
+  },
   "pulse_probe_delay_sweep": {
     "stop": 5000,
     "step": 500.0,
     "start": 0.0
   },
   "pulse_probe_ef_iq": {
-    "stop": 0.04,
-    "step": 0.00025,
-    "pulse_length": 100,
-    "amp": 0.1,
+    "start": -0.02,
+    "stop": 0.02,
+    "step": 0.0005,
+    "pulse_length": 70,
+    "amp": 0.5,
     "singleshot": false,
-    "start": -0.04,
-    "acquisition_num": 2000,
+    "acquisition_num": 500,
     "on_qubits": [
       "A"
     ],
     "pi_calibration": false,
-    "pulse_type": "gauss",
+    "delay": 0,
+    "pulse_type": "square",
     "trajectory": false
   },
   "pulse_probe_fh_iq": {
@@ -147,14 +193,32 @@
     "pulse_type": "square"
   },
   "pulse_probe_iq": {
-    "start": -0.0200,
-    "stop": 0.0200,
+    "start": -0.02,
+    "stop": 0.02,
     "step": 0.0005,
-    "pulse_length": 150,
-    "amp": 1 ,
+    "pulse_length": 70,
+    "amp": 1,
     "singleshot": false,
     "trajectory": false,
-    "acquisition_num": 250,
+    "acquisition_num": 1,
+    "on_qubits": [
+      "A"
+    ],
+    "pi_calibration": false,
+    "delay": 0
+  },
+
+    "pulse_probe_iq_2setups": {
+    "start": -0.02,
+    "stop": 0.02,
+    "step": 0.0005,
+    "pulse_length": 70,
+    "amp": 1,
+      "pi_qb": 0,
+      "rd_setup": 0,
+    "singleshot": false,
+    "trajectory": false,
+    "acquisition_num": 1,
     "on_qubits": [
       "A"
     ],
@@ -177,27 +241,33 @@
   "delay": 0
   },
   "ff_resonator_spectroscopy": {
-    "start": -0.001,
-    "stop":0.001,
-    "step": 0.00005,
+    "start": -0.0015,
+    "stop":0.0015,
+    "step": 0.000125,
     "pi_calibration": false,
-    "acquisition_num": 3000,
+    "acquisition_num": 1250,
     "on_qubits": [
       "A"
     ],
-    "ff_vec": [0.1,0,0,0,0,0,0,0],
-    "ff_len": "auto",
+    "ff_vec": [0.01,0,0,0,0,0,0,0],
+    "ff_len": [200, 200, 200, 200, 200, 200, 200, 200],
+    "ff_pulse_type": "square",
+    "pulse_inside_flux": false,
     "singleshot": false,
     "trajectory": false
   },
   "ff_resonator_spectroscopy_pi": {
-    "start": -0.001,
-    "stop":0.001,
-    "step": 0.00005,
+    "start": -0.0015,
+    "stop":0.0015,
+    "step": 0.000125,
+    "pi_qb": [],
+    "delay": 0,
     "pi_calibration": false,
-    "acquisition_num": 2000,
+    "acquisition_num": 1250,
     "ff_vec": [0,0,0,0,0,0,0,0],
-    "ff_len": "auto",
+    "ff_len": [200, 200, 200, 200, 200, 200, 200, 200],
+    "ff_pulse_type": "square",
+    "pulse_inside_flux": false,
     "on_qubits": [
       "A"
     ],
@@ -205,56 +275,106 @@
     "trajectory": false
   },
   "ff_pulse_probe_iq": {
-    "start": -0.01,
-    "stop": 0.01,
-    "step": 0.0005,
+    "start": -0.001,
+    "stop": 0.001,
+    "step": 0.001,
     "qb_pulse_length": 500,
     "qb_amp": 1,
-    "ff_vec": [0,0,0,0,0,0.1,0,0],
+    "ff_vec": [0.01353922, 0.01863101, 0.38988923, 0.28891585, 0.02242848, 0, 0.02488111],
     "ff_len": "auto",
+    "ff_pulse_type": "square",
     "singleshot": false,
     "trajectory": false,
-    "acquisition_num": 250,
+    "acquisition_num": 200,
     "on_qubits": [
-      "B"
+      "A"
     ],
-    "pi_calibration": false,
+    "pi_calibration": true,
     "delay": 0
   },
   "ff_rabi": {
     "amp": 1.0,
-    "stop": 205,
-    "step": 1,
+    "stop": 2500,
+    "step": 1000,
     "pi_calibration": false,
     "trajectory": false,
     "start": 0.0,
-    "acquisition_num": 1000,
+    "acquisition_num": 5000,
     "on_qubits": [
       "A"
     ],
-    "ff_vec": [0,0,0,0,0,0,0,0],
-    "ff_len": "auto",
+    "ff_vec_Q3": [0.00669621, 0.02388511, 0.0198499 , 0.25857396, 0.00923038,
+       0.0158233 , 0.01351276],
+    "ff_vec":[0.0,0.0,0.0,0.0,0.0,0.0,0.0],
+    "ff_len": [200, 200, 200, 200, 200, 200, 200],
     "singleshot": false,
-    "pulse_type": "gauss"
+    "pulse_type": "gauss",
+    "ff_pulse_type": "square",
+    "Qpulse_in_flux": false
   },
   "ff_ramp_cal_ppiq": {
-    "dt_start":-500,
-    "dt_stop":3000,
-    "dt_step":500,
-    "start": -0.005,
-    "stop": 0.06,
+    "dt_start":-400,
+    "dt_stop":2000,
+    "dt_step":50,
+    "start": -0.02,
+    "stop": 0.1,
     "step": 0.0005,
-    "qb_pulse_length": 200,
-    "qb_amp": 1,
-    "ff_vec": [0,0,0,0,0,0,0,0],
+    "qb_pulse_length": 180,
+    "qb_amp": 0.5,
+    "ff_vec": [ 0.2571503 , -0.29409912, -0.35860153,  0.22886677, -0.22591712,0.39321444, -0.348597  , -0.06264801],
     "ff_len": "auto",
     "pulse_type": "adb",
     "singleshot": false,
     "trajectory": false,
-    "acquisition_num": 250,
+    "acquisition_num": 1000,
     "on_qubits": [
       "A"
     ],
+    "pi_calibration": false,
+    "delay": 0
+  },
+    "ff_ramp_down_cal_ppiq": {
+    "dt_start":-2000,
+    "dt_stop":2001,
+    "dt_step":500,
+    "start": -0.03,
+    "stop": 0.03,
+    "step": 0.0002,
+    "qb_pulse_length": 180,
+    "qb_amp": 1,
+    "ff_vec": [ 0.2571503 , -0.29409912, -0.35860153,  0.22886677, -0.22591712,0.39321444, -0.348597  , -0.06264801],
+    "ff_len": "auto",
+    "pulse_type": "square",
+    "singleshot": false,
+    "trajectory": false,
+    "acquisition_num": 1000,
+    "on_qubits": [
+      "A"
+    ],
+    "pi_calibration": false,
+    "delay": 0
+  },
+  "ff_track_traj": {
+    "perc_flux_vec_start":0.7,
+    "perc_flux_vec_stop":1.5,
+    "perc_flux_vec_step":0.1,
+    "ff_vec": [ 0.24508432, -0.32061958, -0.01292134, -0.00752542, -0.00377671,
+       -0.00207351, -0.00472491,  0.00071948],
+    "ff_len": "auto",
+    "ramp_type": "square",
+    "delay_post_ramp": 500,
+
+    "qbf_start": 0.01,
+    "qbf_stop": 0.08,
+    "qbf_step": 0.001,
+    "qb_pulse_length": 230,
+    "qb_amp": 1,
+
+    "singleshot": false,
+    "trajectory": false,
+    "acquisition_num": 200,
+    "on_qubits": [
+      "A"],
     "pi_calibration": false,
     "delay": 0
   },
@@ -303,10 +423,139 @@
     "on_qubits": ["A"],
     "pi_calibration": false
   },
-  "melting": {
-    "t_step": 10,
-    "t_stop": 4000,
-    "Mott_qbs": [0, 2, 4],
+  "pop_swap_for_debugging": {
+    "evolution_t_start": 0,
+    "evolution_t_step": 5,
+    "evolution_t_stop": 200,
+    "ff_vec": [0,0,0,0,0,0,0],
+    "ramp_type": "square",
+    "acquisition_num": 2000,
+    "wait_post_flux": 1500,
+    "pi_calibration": true,
+    "singleshot": false,
+    "trajectory": false
+  },
+  "melting_single_readout_full_ramp": {
+    "evolution_t_start": 0,
+    "evolution_t_step": 5,
+    "evolution_t_stop": 200,
+    "Mott_qbs": [3],
+    "rd_qb": 0,
+    "ff_vec": [0,0,0,0,0,0,0],
+    "ramp_type": "square",
+    "acquisition_num": 2000,
+    "wait_post_flux": 1500,
+    "pi_calibration": true,
+    "singleshot": false,
+    "trajectory": false
+  },
+  "melting_single_readout_full_ramp_Q3": {
+    "evolution_t_start": 0,
+    "evolution_t_step": 5,
+    "evolution_t_stop": 200,
+    "Mott_qbs": [5],
+    "rd_qb": 0,
+    "ff_vec_null": [0,0,0,0,0,0,0],
+    "ff_vec_lattice":[0.37252213338462553, -0.13393522097155847, -0.8540401938768366, 0.6030822529735556, -0.6487831626929745, 0.37107468557048945, -0.47866843637362616],
+    "ff_vec_1particle": [0.6996279787332578, -0.11814042278817567, -0.26028022166498216, 0.6664379192517034, -0.6385456157301072, 0.41162912368436977, -0.5064515276734408],
+    "ff_vec":[0,0,0,0,0,0,0],
+    "ramp_type": "exp",
+    "acquisition_num": 2000,
+    "wait_post_flux": 1500,
+    "pi_calibration": true,
+    "singleshot": false,
+    "trajectory": false
+  },
+
+
+
+
+
+
+
+
+
+
+  "melting_single_readout_full_ramp_2setups": {
+    "evolution_t_start": 0,
+    "evolution_t_step": 10,
+    "evolution_t_stop": 100,
+    "Mott_qbs": [5],
+    "rd_qb": 0,
+    "ff_vec_null": [0,0,0,0,0,0,0],
+    "ff_vec_lattice":[0.37252213338462553, -0.13393522097155847, -0.8540401938768366, 0.6030822529735556, -0.6487831626929745, 0.37107468557048945, -0.47866843637362616],
+    "ff_vec_1particle": [0.7042861068871173, -0.21842030702757184, 0.9948109195730926, 0.7353420567144748, -0.3286403696215986, 0.8336810148567648, -0.5958056378293117],
+    "ff_vec":[0,0,0,0,0,0,0],
+    "ramp_type": "exp",
+    "acquisition_num": 2000,
+    "wait_post_flux": 2000,
+    "pi_calibration": true,
+    "singleshot": false,
+    "trajectory": false,
+    "threshold": true
+  },
+
+
+
+
+
+
+
+
+
+
+
+  "melting_multi_readout_full_ramp_Q3": {
+    "evolution_t_start": 0,
+    "evolution_t_step": 2,
+    "evolution_t_stop": 10,
+    "Mott_qbs": [3],
+    "rd_qb": [0,1,2,3,4,5,6],
+    "ff_vec_0": [0,0,0,0,0,0,0],
+    "ff_vec_lattice":[0.6967460958570092, -0.11767429922911454, -0.25170917034618373, 0.6455229532858717, -0.6232191654685244, 0.40361251209584537, -0.5073152827352674],
+    "ff_vec_1particle": [0.6996279787332578, -0.11814042278817567, -0.26028022166498216, 0.6664379192517034, -0.6385456157301072, 0.41162912368436977, -0.5064515276734408],
+    "ff_vec": [0.3970819422529671, -0.13060283005367643, -0.5888209214087845, 0.6348857309744129, -0.6601548403758015, 0.40244710264277095, -0.5487007103178091],
+    "ramp_type": "rexp",
+    "acquisition_num": 500,
+    "wait_post_flux": 1500,
+    "singleshot": false,
+    "trajectory": false
+  },
+
+
+  "sideband_t1": {
+    "evolution_t_start": 0,
+    "evolution_t_step": 2500,
+    "evolution_t_stop": 100000,
+    "sb_qb": 0,
+    "rd_qb": [0,1,2,3,4,5,6],
+    "ff_amp": 0.4,
+    "sb_freq": 0.18,
+    "sb_sig": 300,
+    "acquisition_num": 1000,
+    "wait_post_flux": 1500,
+    "pi_calibration": true,
+    "singleshot": false,
+    "trajectory": false
+  },
+
+  "ff_sweep_j": {
+    "evolution_t_start": 0,
+    "evolution_t_step": 2.5,
+    "evolution_t_stop": 150,
+    "Mott_qbs": [3],
+    "rd_qb": 3,
+    "ff_vec": [0.01358145, 0.0187813 , 0.39001836, 0.29054384, 0.02248673,
+       0.02863775, 0.0249663 ],
+    "per_start": 0.92,
+    "per_stop": 1.08,
+    "per_step": 0.01,
+    "ramp_type": "square",
+    "acquisition_num": 1000,
+    "wait_post_flux": 500,
+    "pi_calibration": false,
+    "singleshot": false,
+    "trajectory": false
   },
   "fast_flux_flux_fact_finding_mission": {
     "start": -0.02,
@@ -342,35 +591,51 @@
     ]
   },
   "rabi": {
-    "amp": 1.0,
+    "amp": 1,
     "stop": 2000,
     "start": 0.0,
     "step": 50,
     "pi_calibration": false,
     "trajectory": false,
+    "threshold": true,
     "acquisition_num": 500,
     "on_qubits": [
       "A"
     ],
     "singleshot": false,
-    "pulse_type": "square"
+    "pulse_type": "gauss"
+  },
+  "rabi_pi": {
+    "Pi_Qbs": [2],
+    "amp": 1,
+    "stop": 2000,
+    "start": 0.0,
+    "step": 10,
+    "pi_calibration": false,
+    "trajectory": false,
+    "acquisition_num": 4000,
+    "on_qubits": [
+      "A"
+    ],
+    "singleshot": false,
+    "pulse_type": "gauss"
   },
     "rabi_chevron": {
     "amp": 1.0,
     "len_stop": 1000,
     "len_start": 0.0,
-    "len_step": 25,
-    "freq_stop": 0.005,
-    "freq_start": -0.005,
-    "freq_step": 0.0005,
+    "len_step": 50,
+    "freq_stop": 0.002,
+    "freq_start": -0.002,
+    "freq_step": 0.00025,
     "pi_calibration": false,
     "trajectory": false,
-    "acquisition_num": 500,
+    "acquisition_num": 100,
     "on_qubits": [
       "A"
     ],
     "singleshot": false,
-    "pulse_type": "square"
+    "pulse_type": "gauss"
   },
   "ramsey": {
     "stop": 2000.0,
@@ -378,7 +643,7 @@
     "singleshot": false,
     "trajectory": false,
     "start": 0.0,
-    "ramsey_freq": 0.0025,
+    "ramsey_freq": 0.003,
     "acquisition_num": 500,
     "on_qubits": [
       "A"
@@ -386,11 +651,11 @@
     "pi_calibration": false
   },
   "resonator_spectroscopy": {
-    "start": -0.004,
-    "stop":0.002,
-    "step": 0.00005,
+    "start": -0.0025,
+    "stop":0.0025,
+    "step": 0.0001,
     "pi_calibration": false,
-    "acquisition_num": 2000,
+    "acquisition_num": 750,
     "on_qubits": [
       "A"
     ],
@@ -398,11 +663,28 @@
     "trajectory": false
   },
   "resonator_spectroscopy_pi": {
-    "start": -0.004,
-    "stop":0.002,
-    "step": 0.00005,
+    "start": -0.0025,
+    "stop":0.0025,
+    "step": 0.0001,
+    "pi_qb": [],
     "pi_calibration": false,
-    "acquisition_num": 1000,
+    "acquisition_num": 750,
+    "delay": 0,
+    "on_qubits": [
+      "A"
+    ],
+    "singleshot": false,
+    "trajectory": false
+  },
+    "resonator_spectroscopy_pi_2setups": {
+    "start": -0.002,
+    "stop":0.002,
+    "step": 0.000125,
+    "pi_qb": [],
+      "rd_qb": 0,
+    "pi_calibration": false,
+    "acquisition_num": 750,
+    "delay": 0,
     "on_qubits": [
       "A"
     ],
