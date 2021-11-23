@@ -55,23 +55,47 @@ class SequentialExperiment:
 
         self.seq_data = np.array(self.data)
 
-    def ff_ramp_cal_ppiq(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
-        expt_cfg = experiment_cfg['ff_ramp_cal_ppiq']
+    def ff_ramp_down_cal_ppiq(self,quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, path):
+        expt_cfg = experiment_cfg['ff_ramp_down_cal_ppiq']
         data_path = os.path.join(path, 'data/')
 
 
         dt_array = np.arange(expt_cfg['dt_start'],expt_cfg['dt_stop'],expt_cfg['dt_step'])
-        experiment_name = 'ff_ramp_cal_ppiq'
-        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'ff_ramp_cal_ppiq', suffix='.h5'))
+        experiment_name = 'ff_ramp_down_cal_ppiq'
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'ff_ramp_down_cal_ppiq', suffix='.h5'))
 
+        lattice_temp = copy.copy(lattice_cfg)
+        on_qb = expt_cfg["on_qbs"][0]
+        on_qb_setup = lattice_cfg["qubit"]["setup"][on_qb]
+        if "on_rds" in expt_cfg.keys():
+            on_rd = expt_cfg["on_rds"][0]
+        else:
+            on_rd = on_qb
+        on_rd_setup = lattice_cfg["qubit"]["setup"][on_rd]
+
+        no_flx_rd = lattice_temp["readout"][on_rd_setup]["freq"][on_rd]
+        no_flx_qb = lattice_temp["qubit"]["freq"][on_qb]
+        flx_rd = expt_cfg["rd_freq_flux"]
+        flx_qb = expt_cfg["qb_freq_flux"]
+
+        if lattice_cfg["pulse_info"]["pulse_type"][on_qb]=="square":
+            zero_pt = expt_cfg["qb_pulse_length"]/2
+        else:
+            zero_pt = expt_cfg["qb_pulse_length"]*2
         for delt in dt_array:
+            if delt<-zero_pt:
+                lattice_cfg["readout"][on_rd_setup]["freq"][on_rd] = flx_rd
+                lattice_cfg["qubit"]["freq"][on_qb] = flx_qb
+            else:
+                lattice_cfg["readout"][on_rd_setup]["freq"][on_rd] = no_flx_rd
+                lattice_cfg["qubit"]["freq"][on_qb] = no_flx_qb
+
             experiment_cfg[experiment_name]['delt'] = float(delt)
             # print(experiment_cfg[experiment_name])
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, lattice_cfg, plot_visdom=False)
             sequences = ps.get_experiment_sequences(experiment_name)
             print("Sequences generated")
-            #
-            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, lattice_cfg=lattice_cfg)
             data = exp.run_experiment_pxi(sequences, path, experiment_name, expt_num=0, check_sync=False,seq_data_file=seq_data_file)
             self.seq_data.append(data)
 

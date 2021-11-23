@@ -144,7 +144,7 @@ def iq_process(f, raw_I, raw_Q, ran=1, phi=0, sub_mean=True):
 
     return I, Q, mag, phase
 
-def return_I_Q_res(filenb, pi=False, ff=False):
+def return_I_Q_res(filenb, phi=0, pi=False, ff=False):
     expt_name = "resonator_spectroscopy"
 
     if pi:
@@ -177,7 +177,7 @@ def return_I_Q_res(filenb, pi=False, ff=False):
         f = arange(expt_params['start'] + readout_f, expt_params['stop'] + readout_f, expt_params['step'])[:len(I_raw)]
 
         # process I, Q data
-        (I, Q, mag, phase) = iq_process(f=f, raw_I=I_raw, raw_Q=Q_raw, ran=ran, phi=0, sub_mean=False)
+        (I, Q, mag, phase) = iq_process(f=f, raw_I=I_raw, raw_Q=Q_raw, ran=ran, phi=phi, sub_mean=False)
 
         a.close()
     return f, I, Q
@@ -2043,6 +2043,97 @@ def histogram_IQ_crosstalk(filenb, phi=0):
             IQssrot.append([Irot, Qrot])
 
     return labels, IQss, IQssrot
+
+
+def qb_tomo_test(filenb, phi=0, ran=1, sub_mean=False, show=["I"], pi_cal=True, norm_plot=False, show_plot=True,
+                 verbose=True, normed=True):
+    expt_name = "qb_tomo_test"
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+        on_qbs = expt_params['on_qbs']
+        on_rds = expt_params['on_rds']
+
+        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+        if verbose == True:
+            print("prepared state: phase: {} amp: {} nb_pulses: {}".format(expt_params["phase"] * 180 / np.pi,
+                                                                           expt_params["amp"],
+                                                                           expt_params["nb_pulses"]))
+        for qb in on_rds:
+            setup = lattice_cfg["qubit"]["setup"][qb]
+            if verbose == True:
+                print(
+                    "tomography pulses: amp X90: {} amp Y90: {}".format(lattice_cfg["pulse_info"][setup]["X90_amp"][qb],
+                                                                        lattice_cfg["pulse_info"][setup]["Y90_amp"][
+                                                                            qb]))
+
+        try:
+            if "threshold" in expt_params.keys() and expt_params["threshold"]:
+                state = array(a["state"])
+            I_raw = np.array(a["I"])
+            Q_raw = np.array(a["Q"])
+        except:
+            if "threshold" in expt_params.keys() and expt_params["threshold"]:
+                state = array(a["qb{}_state".format(rd_setup)])
+            I_raw = np.array(a["qb{}_I".format(rd_setup)])
+            Q_raw = np.array(a["qb{}_Q".format(rd_setup)])
+
+        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+
+        for s in show:
+            pi_file = a.attrs['pi_cal_fname']
+            # code to link to S:\ drive data - only the filenb is needed for the function from this block for Gerbert code
+
+            path, file = os.path.split(pi_file)
+            #                 print(pi_file)
+            #                 print(path)
+            #                 sdrivedatapath = 'S:\\_Data\\210412 - PHMIV3_56 - BF4 cooldown 2\\211025 - PHMIV3_56 - BF4 cooldown 5\\data'
+            #                 pi_file = os.path.join(sdrivedatapath,file)
+            picalfilenb = int(file[0:5])
+
+            I_P, Q_P = pi_cal_SS_GMM(picalfilenb, phi=phi, ran=1, sub_mean=sub_mean)
+
+            I = np.concatenate((I, I_P))
+            Q = np.concatenate((Q, Q_P))
+
+            if verbose == True:
+                print('I pical: ' + str(I_P))
+                print('Q pical: ' + str(Q_P))
+            if "threshold" in expt_params.keys() and expt_params["threshold"]:
+                state = np.concatenate((state, state_P))
+            #
+            if show_plot == True:
+                plt.plot(np.arange(3), eval(s)[0:-2], 'o')
+                plt.axhline(y=eval(s)[-2], c='g', label="g")
+                plt.axhline(y=eval(s)[-1], c='r', label="e")
+                plt.legend()
+                plt.ylabel(s + " volts")
+                LABELS = ["X", "Y", "Z"]
+                plt.xticks(np.arange(3), LABELS)
+                plt.show()
+
+            if normed:
+                XYZ = (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2])
+            else:
+                XYZ = (eval(s)[0:-2])
+
+            if show_plot == True:
+                if norm_plot:
+                    plt.bar(np.arange(3), XYZ)
+                    plt.ylim((0, 1))
+                    if verbose == True:
+                        print(XYZ)
+                    plt.ylabel(s + ' normalized')
+                    LABELS = ["X", "Y", "Z"]
+                    plt.xticks(np.arange(3), LABELS)
+                    plt.show()
+
+    return I, Q, XYZ
 
 def histogram_IQ_analyzer(IQss, labels=['g', 'e'], ran=1, tags=None, numbins=200):
     fig = plt.figure(figsize=(15, 7 * 5))
