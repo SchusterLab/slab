@@ -63,15 +63,15 @@ def active_reset(biased_th, to_excited=False):
 
 def amp_to_tvec(c_amp):
     cav_amp = 0.8
-    t_min = int(20*(cav_amp/c_amp))
-    t_max = int(70*(cav_amp/c_amp))
+    t_min = int(10*(cav_amp/c_amp))
+    t_max = int(60*(cav_amp/c_amp))
     dt = int(10*(cav_amp/c_amp))
     return t_min, t_max, dt
 
 t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
 
 avgs = 2000
-reset_time = int(3.5e6)
+reset_time = int(3.75e6)
 simulation = 0
 
 def storage_bd(cav_amp):
@@ -177,8 +177,10 @@ def storage_bd(cav_amp):
             f.create_dataset("avgs", data=avgs)
     return
 
-st_amp = np.arange(0.001, 0.01, 0.001)
+st_amp = list(np.arange(0.001, 0.01, 0.001))
+st_amp.extend(np.arange(0.01, 0.1, 0.01))
+st_amp.extend(np.arange(0.1, 0.9, 0.1))
 
-for a in st_amp:
+for a in st_amp[9:]:
     print(a)
     storage_bd(a)

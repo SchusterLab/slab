@@ -18,8 +18,8 @@ from slab.dataanalysis import get_next_filename
 ramsey_freq = 10e3
 omega = 2*np.pi*ramsey_freq
 
-dt = 5000
-T_min = 4
+dt = 2500
+T_min = 8
 T_max = 300000
 t_vec = np.arange(T_min, T_max + dt/2, dt)
 
@@ -100,10 +100,10 @@ with program() as storage_ramsey:
             active_reset(biased_th_g_jpa)
             align('storage', 'rr', 'jpa_pump', 'qubit')
             # update_frequency("qubit", ge_IF+two_chi)
-            play("CW"*amp(0.4), "storage", duration=100)
+            play("CW"*amp(0.4), "storage", duration=50)
             wait(t, 'storage')
             frame_rotation_2pi(phi, 'storage')
-            play("CW"*amp(0.4), "storage", duration=100)
+            play("CW"*amp(-0.4), "storage", duration=50)
             align("storage", "qubit")
             play("res_pi", "qubit")
             align('qubit', 'rr', 'jpa_pump')
@@ -133,13 +133,13 @@ else:
     result_handles = job.result_handles
     # result_handles.wait_for_all_values()
     #
-    res = result_handles.get('res').fetch_all()
-    I = result_handles.get('I').fetch_all()
-    plt.figure()
-    plt.plot(4*t_vec/1e3, res, '.-')
-    plt.show()
-    print ("Data collection done")
-
+    # res = result_handles.get('res').fetch_all()
+    # I = result_handles.get('I').fetch_all()
+    # plt.figure()
+    # plt.plot(4*t_vec/1e3, res, '.-')
+    # plt.show()
+    # print ("Data collection done")
+    #
     # job.halt()
     # path = os.getcwd()
     # data_path = os.path.join(path, "data/")

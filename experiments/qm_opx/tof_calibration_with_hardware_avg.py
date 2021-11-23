@@ -23,7 +23,7 @@ with program() as tof_calibration:
     adc_st = declare_stream(adc_trace=True)
     i = declare(int)
     with for_(i, 0, i < 1000, i+1):
-        wait(200000//4, 'rr')
+        wait(20000//4, 'rr')
         reset_phase('rr')
         reset_phase('jpa_pump')
         align('rr', 'jpa_pump')
