@@ -14,7 +14,7 @@ from slab.dataanalysis import get_next_filename
 # t1:
 ##################
 dt = 1000
-T_max = 75000
+T_max = 125000
 T_min = 4
 times = np.arange(T_min, T_max + dt/2, dt)
 

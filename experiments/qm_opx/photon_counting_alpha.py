@@ -22,7 +22,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     # pull calibration data from file, handling properly in case of multimode cavity
     cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_7_30_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_08_13_cavity_square.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -89,17 +89,17 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=Tr
 coh_len = 100
 coh_amp = 0.00
 
-camp = np.round(np.arange(0.0005, 0.001, 0.0001).tolist(), 6)
+camp = np.round(np.arange(0.1, 0.5, 0.1).tolist(), 6)
 qm = qmm.open_qm(config)
 
-avgs = 100000
+avgs = 10000
 reset_time = int(3.75e6)
 simulation = 0
 
 num_pi_pulses_m = 30 #need even number to bring the qubit back to 'g' before coherent drive
 num_pi_pulses_n = 0
 
-camp = [0.0]
+# camp = [0.0]
 
 for a in camp:
 

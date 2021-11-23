@@ -7,6 +7,7 @@ from h5py import File
 def gauss(amplitude, mu, sigma, length):
     t = np.linspace(-length / 2, length / 2, length)
     gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    gauss_wave = gauss_wave - 0.5*(gauss_wave[0]+gauss_wave[-1])
     return [float(x) for x in gauss_wave]
 
 def IQ_imbalance(g, phi):
@@ -22,32 +23,32 @@ long_redout_len = 2000
 readout_len = 3000
 
 qubit_LO = 4.6470*1e9
-qubit_freq = 4.743051666310451 *1e9
+qubit_freq = 4.743013612710257   *1e9
 ge_IF = int(qubit_freq - qubit_LO)
 
-qubit_ef_freq = 4.603510219526698* 1e9
+qubit_ef_freq = 4.603506610927936 * 1e9
 ef_IF = -int(qubit_LO-qubit_ef_freq) #LSB
-two_chi = -1.1262*1e6
+two_chi = -1.2021123847875352*1e6
 
 ####---------------------####
 rr_LO = 8.1516 *1e9
 
 rr_freq_g = 8.051843423081882*1e9
 rr_freq_e = 8.051472688135474*1e9
-rr_freq = 8.051669190486942*1e9
+rr_freq = 8.051670929924413*1e9
 
 rr_IF = int(rr_LO - rr_freq)
 
 rr_amp = 1.0*0.047
 
 biased_th_g = 0.0017
-biased_th_g_jpa = 0.0032
+biased_th_g_jpa = 0.0075
 
 pump_LO = rr_LO
 pump_IF = int(100e6-15e6)
 # pump_IF = int(100e6)
 
-pump_amp = 1.0*0.072
+pump_amp = 1.0*0.060
 
 disc_file = 'ge_disc_params_jpa.npz'
 ####---------------------####
@@ -66,20 +67,23 @@ gauss_len = 60
 gauss_amp = 0.45  #the mixer goes crazy above 0.95
 
 pi_len = 60
-pi_amp = 0.7255
+pi_amp = 0.7333
 
 half_pi_len = pi_len
 half_pi_amp = pi_amp/2
 
 pi_len_resolved = 3000
-Pi_amp_resolved = 0.0150
+pi_amp_resolved = 0.0150
 
-pi_ef_len = 40
-pi_ef_amp = 0.6646
+pi_ef_len = 60
+pi_ef_amp = 0.6479
+
+half_ef_pi_len = pi_ef_len
+half_ef_pi_amp = pi_ef_amp/2
 
 opt_readout = "C:\\_Lib\\python\\slab\\experiments\\qm_opx\\pulses\\00019_readout_optimal_pulse.h5"
 with File(opt_readout,'r') as a:
-    opt_amp = 0.070*np.array(a['I_wf'])
+    opt_amp = 0.092*np.array(a['I_wf'])
 opt_len = len(opt_amp)
 pump_len = opt_len
 
@@ -107,8 +111,8 @@ config = {
             },
             'digital_outputs': {},
             'analog_inputs': {
-                1: {'offset': (0)/2**12, 'gain_db': 0},
-                2: {'offset': (0)/2**12, 'gain_db': 0}
+                1: {'offset': (950)/2**12, 'gain_db': 0},
+                2: {'offset': (950)/2**12, 'gain_db': 0}
             }
         }
     },
@@ -351,7 +355,7 @@ config = {
 
         'pi2_pulse_ef': {
             'operation': 'control',
-            'length': pi_ef_len//2,
+            'length': half_ef_pi_len,
             'waveforms': {
                 'I': 'pi2_wf_ef',
                 'Q': 'zero_wf'
@@ -361,7 +365,7 @@ config = {
 
         'minus_pi2_pulse_ef': {
             'operation': 'control',
-            'length': pi_ef_len//2,
+            'length': half_ef_pi_len,
             'waveforms': {
                 'I': 'minus_pi2_wf_ef',
                 'Q': 'zero_wf'
@@ -482,7 +486,7 @@ config = {
 
         'res_pi_wf': {
             'type': 'arbitrary',
-            'samples': gauss(gauss_amp * Pi_amp_resolved, 0.0, pi_len_resolved//4, pi_len_resolved)
+            'samples': gauss(gauss_amp * pi_amp_resolved, 0.0, pi_len_resolved//4, pi_len_resolved)
         },
 
         'pi_wf_ef': {
@@ -492,12 +496,12 @@ config = {
 
         'pi2_wf_ef': {
             'type': 'arbitrary',
-            'samples': gauss(gauss_amp * pi_ef_amp, 0.0, pi_ef_len//8, pi_ef_len//2)
+            'samples': gauss(gauss_amp * half_ef_pi_amp, 0.0, half_ef_pi_len//4, half_ef_pi_len)
         },
 
         'minus_pi2_wf_ef': {
             'type': 'arbitrary',
-            'samples': gauss(-gauss_amp * pi_ef_amp, 0.0, pi_ef_len//8, pi_ef_len//2)
+            'samples': gauss(-gauss_amp * half_ef_pi_amp, 0.0, half_ef_pi_len//4, half_ef_pi_len)
         },
 
         'long_readout_wf': {
