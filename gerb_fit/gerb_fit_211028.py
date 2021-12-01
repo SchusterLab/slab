@@ -247,7 +247,7 @@ def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], domain=None
     print("ANALYSIS")
     print("expected frequency: ", expected_f)
     print("Resonant frequency from fitting mag squared: ", p[2], "GHz")
-    print("Max Point: ", f[maxpt_x], "GHz")
+    print("Max Point: ", f[maxpt_x], "GHz at ", maxpt, " V")
     print("HWHM: ", p[3] * 1e3, "MHz")
     print()
 
@@ -1190,7 +1190,7 @@ def melting_single_readout_full_ramp(filenb, phi=0, sub_mean=False, show=["I"], 
             return I,Q
 
 
-def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], domain=None,mag_phase_plot=False, polar=False, debug=False, marker=None,plot = True, ff=False):
+def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], domain=None,mag_phase_plot=False, polar=False, debug=False, marker=None,plot = True, ff=False, pi=False):
     """Fits pulse_probe_iq data, then plots data and prints result
     :param filelist -- the data runs you want to analyze and plot
     :paramphi -- in degrees, angle by which you want to rotate IQ
@@ -1204,6 +1204,8 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], domain=None,ma
     expt_name = "pulse_probe_iq"
     if ff:
         expt_name = "ff_pulse_probe_iq"
+    if pi:
+        expt_name = "pulse_probe_iq_pi"
 
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
@@ -1256,7 +1258,7 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], domain=None,ma
 def ff_pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None):
     print("This version has been deprecated, just pass ff=True to pulse probe iq")
 
-def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, ff=False,decay = True):
+def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, ff=False, pi=False, decay = True):
     """
     takes in rabi data, processes it, plots it, and fits it
     :param filenb: filenumber
@@ -1274,6 +1276,8 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
     expt_name = "rabi"
     if ff:
         expt_name = "ff_rabi"
+    if pi:
+        expt_name = "rabi_pi"
 
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
@@ -2017,6 +2021,65 @@ def histogram_IQ_crosstalk(filenb, phi=0):
         num_seq = 4
         labels = ['gQ{}'.format(rd_qb), "eQ{}".format(rd_qb), "gQ{}piQ{}".format(rd_qb, cross_qb),
                   "eQ{}piQ{}".format(rd_qb, cross_qb)]
+
+        try:
+            I = array(a['I'])
+            Q = array(a['Q'])
+        except:
+            rd_setup = lattice_cfg["qubit"]["setup"][rd_qb]
+            I = array(a["qb{}_I".format(params["rd_setup"])])
+            Q = array(a["qb{}_Q".format(params["rd_setup"])])
+
+        I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
+
+        IQ_means = []
+        IQss = []
+        for seq in range(num_seq):
+            IQss.append(
+                [I.T.flatten()[seq::num_seq],
+                 Q.T.flatten()[seq::num_seq]]
+            )
+        IQssrot = []
+
+        for IQs in IQss:
+            Irot = IQs[0] * cos(phi) + IQs[1] * sin(phi)
+            Qrot = -IQs[0] * sin(phi) + IQs[1] * cos(phi)
+            IQssrot.append([Irot, Qrot])
+
+    return labels, IQss, IQssrot
+
+def histogram_IQ_crosstalk_combo(filenb, phi=0):
+    """returns:
+    labels: [g, e, piQcross, pipiQcross]
+    IQss: [ [I_g, Q_g], [I_e, Q_e], [I_piQcross, Q_piQcross], [I_pipiQcross, Q_pipiQcross]]
+    IQssrot: same, but rotated """
+    expt_name = 'histogram_crosstalk_combo'
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+
+    with File(filename, 'r') as a:
+        tags = ''
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+        expt_cfg = experiment_cfg[expt_name.lower()]
+
+        cross_qb = expt_cfg['cross_qb']
+        on_qbs = expt_cfg['on_qbs']
+        on_rds = expt_cfg['on_rds']
+        on_qb = on_qbs[0]
+        rd_qb = on_rds[0]
+
+        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+        readout_params = params['readout_params']
+        ran = params['ran']  # range of DAC card for processing
+
+        a_num = expt_cfg['acquisition_num']
+        ns = expt_cfg['num_seq_sets']
+        window = params['readout_window']
+
+        num_seq = 5
+        labels = ['gQ{}'.format(rd_qb), "eQ{}".format(rd_qb), "gQ{}piQ{}".format(rd_qb, cross_qb),
+                  "eQ{}piQ{}".format(rd_qb, cross_qb), "piQ{}eQ{}".format(cross_qb, rd_qb)]
 
         try:
             I = array(a['I'])

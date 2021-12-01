@@ -70,6 +70,43 @@ class PulseSequences:
             sequencer.append('charge%s_Q' % setup, Gauss(max_amp=amp, sigma_len=len,
                                                              cutoff_sigma=2,freq=iq_freq+add_freq,phase=phase+Q_phase))
 
+    # def double_gen_q(self,sequencer,qb = 0,len1=10,len2 = 10,amp1 = 1,amp2 = 1,add_freq1 = 0,add_freq2 = 0,iq_overwrite1 = None,Q_phase_overwrite1 = None,iq_overwrite2 = None,Q_phase_overwrite2 = None,phase1 = 0,phase2 = 0,pulse_type1 = 'square',pulse_type2 = 'square'):
+    #     setup = self.lattice_cfg["qubit"]["setup"][qb]
+    #     if iq_overwrite1 != None:
+    #         iq_freq1 = iq_overwrite1
+    #     else:
+    #         iq_freq1 = self.pulse_info[setup]['iq_freq'][qb]
+    #     if iq_overwrite2 != None:
+    #         iq_freq2 = iq_overwrite2
+    #     else:
+    #         iq_freq2 = self.pulse_info[setup]['iq_freq'][qb]
+    #
+    #     if Q_phase_overwrite1 != None:
+    #         Q_phase1 = Q_phase_overwrite1
+    #     else:
+    #         Q_phase1 = self.pulse_info[setup]['Q_phase'][qb]
+    #     if Q_phase_overwrite2 != None:
+    #         Q_phase2 = Q_phase_overwrite2
+    #     else:
+    #         Q_phase2 = self.pulse_info[setup]['Q_phase'][qb]
+    #
+    #     if pulse_type.lower() == 'square':
+    #         sequencer.append('charge%s_I' % setup, Square(max_amp=amp, flat_len=len,
+    #                                                       ramp_sigma_len=0.001, cutoff_sigma=2, freq=iq_freq + add_freq,
+    #                                                       phase=phase))
+    #         sequencer.append('charge%s_Q' % setup,
+    #                          Square(max_amp=amp, flat_len=len,
+    #                                 ramp_sigma_len=0.001, cutoff_sigma=2, freq=iq_freq + add_freq,
+    #                                 phase=phase + Q_phase))
+    #
+    #     elif pulse_type.lower() == 'gauss':
+    #         sequencer.append('charge%s_I' % setup, Gauss(max_amp=amp, sigma_len=len,
+    #                                                      cutoff_sigma=2, freq=iq_freq + add_freq, phase=phase))
+    #         sequencer.append('charge%s_Q' % setup, Gauss(max_amp=amp, sigma_len=len,
+    #                                                      cutoff_sigma=2, freq=iq_freq + add_freq,
+    #                                                      phase=phase + Q_phase))
+
+
     def pi_q(self,sequencer,qb = 0,phase = 0,pulse_type = 'square'):
         setup = self.lattice_cfg["qubit"]["setup"][qb]
         if pulse_type.lower() == 'square':
@@ -486,6 +523,39 @@ class PulseSequences:
                            amp=self.expt_cfg['amp'], add_freq=dfreq, phase=0,
                            pulse_type=self.pulse_info['pulse_type'][qb])
                 self.idle_q(sequencer, time=self.expt_cfg['delay'])
+            self.readout_pxi(sequencer, self.on_rds,overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def pulse_probe_iq_pi(self, sequencer):
+
+        for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
+
+            for qb in self.expt_cfg["pi_qb"]:
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
+                # self.pi_q(self, sequencer, qb=qb, phase=0, pulse_type=self.pulse_info['pulse_type'][qb])
+                # Throws an error for "multiple qb?" Replace with gen_q pi pulse
+                self.gen_q(sequencer=sequencer, qb=qb, len=self.lattice_cfg['pulse_info'][setup]['pi_len'][qb],
+                           amp=self.lattice_cfg['pulse_info'][setup]['pi_amp'][qb], add_freq=0, phase=0,
+                           pulse_type=self.pulse_info['pulse_type'][qb])
+
+            # synchronize - pi pulse before PPIQ
+            sequencer.sync_channels_time(self.channels)
+
+            for qb in self.expt_cfg["ppiq_qb"]:
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
+                self.gen_q(sequencer=sequencer, qb=qb, len=self.expt_cfg['pulse_length'],
+                           amp=self.expt_cfg['amp'], add_freq=dfreq, phase=0,
+                           pulse_type=self.pulse_info['pulse_type'][qb])
+                self.idle_q(sequencer, time=self.expt_cfg['delay'])
+
+
+
+
             self.readout_pxi(sequencer, self.on_rds,overlap=False)
 
             sequencer.end_sequence()
@@ -1653,6 +1723,70 @@ class PulseSequences:
             sequencer.new_sequence(self)
             self.pad_start_pxi(sequencer, on_qubits=["A", "B"], time=500)
             for qb in [self.on_rds[0], self.expt_cfg["cross_qb"]]:
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
+                pulse_info = self.lattice_cfg["pulse_info"]
+                self.gen_q(sequencer, qb=qb, len=pulse_info[setup]["pi_len"][qb],
+                           amp=pulse_info[setup]["pi_amp"][qb],
+                           pulse_type=pulse_info["pulse_type"][qb])
+                sequencer.sync_channels_time(self.channels)
+            self.readout_pxi(sequencer,self.on_rds)
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def histogram_crosstalk_combo(self, sequencer):
+        # vacuum rabi sequences
+        for ii in range(self.expt_cfg['num_seq_sets']):
+
+            #g
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
+            self.readout_pxi(sequencer, self.on_rds)
+            sequencer.end_sequence()
+
+            # with pi pulse for actual rd qb(e state)
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A", "B"], time=500)
+            qb = self.on_rds[0]
+            setup = self.lattice_cfg["qubit"]["setup"][qb]
+            pulse_info = self.lattice_cfg["pulse_info"]
+            self.gen_q(sequencer, qb=qb, len=pulse_info[setup]["pi_len"][qb],
+                       amp=pulse_info[setup]["pi_amp"][qb],
+                       pulse_type=pulse_info["pulse_type"][qb])
+            sequencer.sync_channels_time(self.channels)
+            self.readout_pxi(sequencer, self.on_rds)
+            sequencer.end_sequence()
+
+            # with pi pulse (e state)
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A", "B"], time=500)
+            qb = self.expt_cfg["cross_qb"]
+            setup = self.lattice_cfg["qubit"]["setup"][qb]
+            pulse_info = self.lattice_cfg["pulse_info"]
+            self.gen_q(sequencer, qb=qb, len=pulse_info[setup]["pi_len"][qb],
+                       amp=pulse_info[setup]["pi_amp"][qb],
+                       pulse_type=pulse_info["pulse_type"][qb])
+            sequencer.sync_channels_time(self.channels)
+            self.readout_pxi(sequencer, self.on_rds)
+            sequencer.end_sequence()
+
+            # with two pi pulses
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A", "B"], time=500)
+            for qb in [self.on_rds[0], self.expt_cfg["cross_qb"]]:
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
+                pulse_info = self.lattice_cfg["pulse_info"]
+                self.gen_q(sequencer, qb=qb, len=pulse_info[setup]["pi_len"][qb],
+                           amp=pulse_info[setup]["pi_amp"][qb],
+                           pulse_type=pulse_info["pulse_type"][qb])
+                sequencer.sync_channels_time(self.channels)
+            self.readout_pxi(sequencer,self.on_rds)
+            sequencer.end_sequence()
+
+            # with two pi pulses flip order
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A", "B"], time=500)
+            for qb in [self.expt_cfg["cross_qb"], self.on_rds[0]]:
                 setup = self.lattice_cfg["qubit"]["setup"][qb]
                 pulse_info = self.lattice_cfg["pulse_info"]
                 self.gen_q(sequencer, qb=qb, len=pulse_info[setup]["pi_len"][qb],
