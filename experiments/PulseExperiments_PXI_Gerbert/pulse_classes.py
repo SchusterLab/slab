@@ -64,6 +64,35 @@ class Gauss(Pulse):
     def get_length(self):
         return 2 * self.cutoff_sigma * self.sigma_len
 
+class Gauss_2freq(Pulse):
+    def __init__(self, max_amp1, max_amp2, sigma_len, cutoff_sigma, freq1, freq2, phase, dt=None, plot=False):
+        self.max_amp1 = max_amp1
+        self.max_amp2 = max_amp2
+        self.sigma_len = sigma_len
+        self.cutoff_sigma = cutoff_sigma
+        self.freq1 = freq1
+        self.freq2 = freq2
+        self.phase = phase
+        self.dt = dt
+        self.plot = plot
+
+        self.t0 = 0
+
+
+    def get_pulse_array(self):
+
+        pulse_array1 = self.max_amp1 * np.exp(
+            -1.0 * (self.t_array - (self.t0 + 2 * self.sigma_len)) ** 2 / (2 * self.sigma_len ** 2))
+        pulse_array1 = pulse_array1 * np.cos(2 * np.pi * self.freq1 * self.t_array + self.phase)
+
+        pulse_array2 = self.max_amp2 * np.exp(
+            -1.0 * (self.t_array - (self.t0 + 2 * self.sigma_len)) ** 2 / (2 * self.sigma_len ** 2))
+        pulse_array2 = pulse_array2 * np.cos(2 * np.pi * self.freq2 * self.t_array + self.phase)
+
+        return pulse_array1 +pulse_array2
+
+    def get_length(self):
+        return 2 * self.cutoff_sigma * self.sigma_len
 
 class Square(Pulse):
     def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, freq, phase, phase_t0 = 0, dt=None, plot=False):
@@ -105,6 +134,36 @@ class Square(Pulse):
     def get_length(self):
         return self.flat_len + 2 * self.cutoff_sigma * self.ramp_sigma_len
 
+
+class FreqSquare(Pulse):
+    def __init__(self, max_amp, flat_freq_Ghz, pulse_len, conv_gauss_sig_Ghz, freq, phase, phase_t0=0, dt=None,
+                 plot=False):
+        self.max_amp = max_amp
+        self.flat_freq_Ghz = flat_freq_Ghz
+        self.pulse_len = pulse_len
+        self.conv_gauss_sig_Ghz = conv_gauss_sig_Ghz
+        self.freq = freq
+        self.phase = phase
+        self.phase_t0 = phase_t0
+        self.dt = dt
+        self.plot = plot
+
+        self.t0 = 0
+
+    def get_pulse_array(self):
+        t_center = self.t0 + np.round(self.pulse_len / 2)
+        gauss_sigma = 1 / (2 * self.conv_gauss_sig_Ghz * np.pi)
+
+        pulse_array = self.max_amp * \
+                      np.sinc((self.t_array - t_center) * self.flat_freq_Ghz) * \
+                      np.exp(-1.0 * (self.t_array - t_center) ** 2 / (2 * gauss_sigma ** 2))
+
+        pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+
+        return pulse_array
+
+    def get_length(self):
+        return self.pulse_len
 
 
 class adb_ramp(Pulse):

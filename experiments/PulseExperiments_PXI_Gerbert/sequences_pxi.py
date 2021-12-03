@@ -1,6 +1,6 @@
 try:
     from .sequencer_pxi import Sequencer
-    from .pulse_classes import Gauss, Idle, Ones, Square, DRAG, ARB_freq_a,Square_two_tone, linear_ramp, adb_ramp, exp_ramp,multiexponential_ramp,reversability_ramp
+    from .pulse_classes import Gauss, Idle, Ones, Square, DRAG, ARB_freq_a,Square_two_tone, linear_ramp, adb_ramp, exp_ramp,multiexponential_ramp,reversability_ramp, FreqSquare
 except:
     from sequencer import Sequencer
     from pulse_classes import Gauss, Idle, Ones, Square, DRAG, ARB_freq_a
@@ -69,6 +69,52 @@ class PulseSequences:
                                                              cutoff_sigma=2,freq=iq_freq+add_freq,phase=phase))
             sequencer.append('charge%s_Q' % setup, Gauss(max_amp=amp, sigma_len=len,
                                                              cutoff_sigma=2,freq=iq_freq+add_freq,phase=phase+Q_phase))
+
+        elif pulse_type.lower() == 'flatfreq':
+            sequencer.append('charge%s_I' % setup, FreqSquare(max_amp=amp,
+                                                              flat_freq_Ghz=self.pulse_info['flat_len_Ghz'][qb],
+                                                              pulse_len=self.pulse_info['flat_freq_pulse_len'][qb],
+                                                              conv_gauss_sig_Ghz=self.pulse_info['conv_gauss_sig_Ghz'][qb],
+                                                              freq=iq_freq+add_freq,
+                                                              phase=phase))
+
+            sequencer.append('charge%s_Q' % setup, FreqSquare(max_amp=amp,
+                                                              flat_freq_Ghz= self.pulse_info['flat_len_Ghz'][qb],
+                                                              pulse_len=self.pulse_info['flat_freq_pulse_len'][qb],
+                                                              conv_gauss_sig_Ghz=self.pulse_info['conv_gauss_sig_Ghz'][qb],
+                                                              freq=iq_freq+add_freq,
+                                                              phase=phase+Q_phase))
+        elif pulse_type.lower() == 'multiflatfreq':
+            sequencer.append('charge%s_I' % setup, FreqSquare(max_amp=amp,
+                                                              flat_freq_Ghz=self.pulse_info['flat_len_Ghz'][qb],
+                                                              pulse_len=self.pulse_info['flat_freq_pulse_len'][qb],
+                                                              conv_gauss_sig_Ghz=self.pulse_info['conv_gauss_sig_Ghz'][qb],
+                                                              freq=iq_freq + add_freq,
+                                                              phase=phase))
+            sequencer.append('charge%s_I' % setup, FreqSquare(max_amp=amp,
+                                                              flat_freq_Ghz=self.pulse_info['flat_len_Ghz'][qb],
+                                                              pulse_len=self.pulse_info['flat_freq_pulse_len'][qb],
+                                                              conv_gauss_sig_Ghz=self.pulse_info['conv_gauss_sig_Ghz'][
+                                                                  qb],
+                                                              freq=iq_freq + add_freq,
+                                                              phase=phase))
+
+
+            sequencer.append('charge%s_Q' % setup, FreqSquare(max_amp=amp,
+                                                              flat_freq_Ghz=self.pulse_info['flat_len_Ghz'][qb],
+                                                              pulse_len=self.pulse_info['flat_freq_pulse_len'][qb],
+                                                              conv_gauss_sig_Ghz=self.pulse_info['conv_gauss_sig_Ghz'][qb],
+                                                              freq=iq_freq + add_freq,
+                                                              phase=phase + Q_phase))
+            sequencer.append('charge%s_Q' % setup, FreqSquare(max_amp=amp,
+                                                              flat_freq_Ghz=self.pulse_info['flat_len_Ghz'][qb],
+                                                              pulse_len=self.pulse_info['flat_freq_pulse_len'][qb],
+                                                              conv_gauss_sig_Ghz=self.pulse_info['conv_gauss_sig_Ghz'][
+                                                                  qb],
+                                                              freq=iq_freq + add_freq,
+                                                              phase=phase + Q_phase))
+
+
 
     # def double_gen_q(self,sequencer,qb = 0,len1=10,len2 = 10,amp1 = 1,amp2 = 1,add_freq1 = 0,add_freq2 = 0,iq_overwrite1 = None,Q_phase_overwrite1 = None,iq_overwrite2 = None,Q_phase_overwrite2 = None,phase1 = 0,phase2 = 0,pulse_type1 = 'square',pulse_type2 = 'square'):
     #     setup = self.lattice_cfg["qubit"]["setup"][qb]
@@ -276,7 +322,7 @@ class PulseSequences:
             sequencer.sync_channels_time(synch_channels)
 
         for rd in on_qubits:
-            setup = self.lattice_cfg["qubit"]["setup"][rd]
+            setup = self.lattice_cfg["readout"]["setup"][rd]
             sequencer.append('readout%s' % setup,
                              Square(max_amp=self.lattice_cfg['readout']['amp'][rd],
                                     flat_len=self.lattice_cfg['readout']['length'][rd],
@@ -529,6 +575,34 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=True)
 
+    def pulse_probe_iq_flatfreq(self, sequencer):
+
+        for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
+            for qb in self.on_qbs:
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
+
+                sequencer.append('charge%s_I' % setup, FreqSquare(max_amp=self.expt_cfg['amp'],
+                                                                 flat_freq_Ghz=self.expt_cfg['flat_len_Ghz'],
+                                                                  pulse_len=self.expt_cfg['pulse_len'],
+                                                                  conv_gauss_sig_Ghz=self.expt_cfg['conv_gauss_sig_Ghz'],
+                                                                  freq=self.pulse_info[setup]['iq_freq'][qb]+dfreq,
+                                                                  phase=0))
+                sequencer.append('charge%s_Q' % setup, FreqSquare(max_amp=self.expt_cfg['amp'],
+                                                                 flat_freq_Ghz=self.expt_cfg['flat_len_Ghz'],
+                                                                  pulse_len=self.expt_cfg['pulse_len'],
+                                                                  conv_gauss_sig_Ghz=self.expt_cfg['conv_gauss_sig_Ghz'],
+                                                                  freq=self.pulse_info[setup]['iq_freq'][qb]+dfreq,
+                                                                phase=0 + self.pulse_info[setup]['Q_phase'][qb]))
+
+                #self.idle_q(sequencer, time=self.expt_cfg['delay'])
+            self.readout_pxi(sequencer, self.on_rds,overlap=False)
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
     def pulse_probe_iq_pi(self, sequencer):
 
         for dfreq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
@@ -552,9 +626,6 @@ class PulseSequences:
                            amp=self.expt_cfg['amp'], add_freq=dfreq, phase=0,
                            pulse_type=self.pulse_info['pulse_type'][qb])
                 self.idle_q(sequencer, time=self.expt_cfg['delay'])
-
-
-
 
             self.readout_pxi(sequencer, self.on_rds,overlap=False)
 
@@ -1155,6 +1226,20 @@ class PulseSequences:
             for qb in self.on_qbs:
                 setup = self.lattice_cfg["qubit"]["setup"][qb]
                 self.gen_q(sequencer,qb,len=rabi_len,amp = self.expt_cfg['amp'],phase=0,pulse_type=self.expt_cfg['pulse_type'])
+            self.readout_pxi(sequencer, self.on_rds)
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def rabi_amp(self, sequencer):
+
+        for rabi_amp in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer,on_qubits=['A','B'],time=500)
+
+            for qb in self.on_qbs:
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
+                self.gen_q(sequencer,qb,len=self.expt_cfg["len"],amp = rabi_amp,phase=0,pulse_type=self.expt_cfg['pulse_type'])
             self.readout_pxi(sequencer, self.on_rds)
             sequencer.end_sequence()
 
@@ -1811,7 +1896,7 @@ class PulseSequences:
             self.on_rds = self.on_qbs
         else:
             self.on_rds = self.expt_cfg["on_rds"]
-        self.rd_setups = [self.lattice_cfg["qubit"]["setup"][qb] for qb in self.on_rds]
+        self.rd_setups = [self.lattice_cfg["readout"]["setup"][qb] for qb in self.on_rds]
 
         multiple_sequences = eval('self.' + experiment)(sequencer, **kwargs)
 
