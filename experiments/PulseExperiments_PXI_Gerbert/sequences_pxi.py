@@ -1,6 +1,7 @@
 try:
     from .sequencer_pxi import Sequencer
-    from .pulse_classes import Gauss, Idle, Ones, Square, DRAG, ARB_freq_a,Square_two_tone, linear_ramp, adb_ramp, exp_ramp,multiexponential_ramp,reversability_ramp, FreqSquare
+    from .pulse_classes import Gauss, Idle, Ones, Square, DRAG, ARB_freq_a,Square_two_tone, linear_ramp, adb_ramp
+    from .pulse_classes import exp_ramp,multiexponential_ramp,reversability_ramp, FreqSquare, WURST20_I, WURST20_Q
 except:
     from sequencer import Sequencer
     from pulse_classes import Gauss, Idle, Ones, Square, DRAG, ARB_freq_a
@@ -113,6 +114,20 @@ class PulseSequences:
                                                                   qb],
                                                               freq=iq_freq + add_freq,
                                                               phase=phase + Q_phase))
+        elif pulse_type.lower() == 'wurst':
+            sequencer.append('charge%s_I' % setup,
+                             WURST20_I(max_amp=self.pulse_info['wurst_amp'][qb],
+                                       bandwidth=self.pulse_info['wurst_bw'][qb],
+                                       t_length=self.pulse_info['wurst_pulselen'][qb],
+                                       freq=iq_freq + add_freq,
+                                       phase=phase))
+            sequencer.append('charge%s_Q' % setup,
+                             WURST20_Q(max_amp=self.pulse_info['wurst_amp'][qb],
+                                       bandwidth=self.pulse_info['wurst_bw'][qb],
+                                       t_length=self.pulse_info['wurst_pulselen'][qb],
+                                       freq=iq_freq + add_freq,
+                                       phase=phase,
+                                       phase_t0= Q_phase))
 
 
 
@@ -426,6 +441,47 @@ class PulseSequences:
             sequencer.end_sequence()
         return sequencer.complete(self, plot=True)
 
+    def melting_correlators_full_ramp_2setups(self, sequencer):
+        qb_list = self.expt_cfg["Mott_qbs"]
+
+        for evolution_t in np.arange(self.expt_cfg["evolution_t_start"], self.expt_cfg["evolution_t_stop"], self.expt_cfg["evolution_t_step"]):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
+
+            ##################################GENERATE PI PULSES ################################################
+            for i, qb in enumerate(qb_list):
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
+                self.gen_q(sequencer, qb=qb, len=self.pulse_info[setup]["pi_len"][qb],
+                           amp=self.pulse_info[setup]["pi_amp"][qb],
+                           pulse_type=self.pulse_info["pulse_type"][qb])
+                self.idle_q(sequencer, time=20)
+                sequencer.sync_channels_time(self.channels)
+
+            sequencer.sync_channels_time(self.channels)
+            self.idle_q(sequencer, time=100)
+            ##############################GENERATE RAMP###########################################
+            flux_vec = self.expt_cfg["ff_vec"]
+            self.ff_pulse(sequencer, ff_len = [evolution_t]*8, pulse_type = self.expt_cfg["ramp_type"], flux_vec= flux_vec, flip_amp=False)
+            ############################## readout ###########################################
+            sequencer.sync_channels_time(self.channels)
+            self.idle_q(sequencer, time=self.expt_cfg['wait_post_flux'])
+            sequencer.sync_channels_time(self.channels)
+            self.readout_pxi(sequencer, self.on_rds, overlap=False)
+            sequencer.sync_channels_time(self.channels)
+
+            ############################## generate compensation ###########################################
+            flux_vec = self.expt_cfg["ff_vec"]
+            self.ff_pulse(sequencer, [evolution_t]*8, pulse_type=self.expt_cfg["ramp_type"], flux_vec=flux_vec, flip_amp=True)
+            sequencer.end_sequence()
+
+        if self.expt_cfg["pi_calibration"]==True:
+            for rd_qb in self.on_rds:
+                if self.expt_cfg["pi_cal_2rds"]==True:
+                    self.pi_cal_sequence(sequencer, pi_qbs = [rd_qb], pi_rds = self.on_rds)
+                else:
+                    self.pi_cal_sequence(sequencer, pi_qbs = [rd_qb], pi_rds = [rd_qb])
+        return sequencer.complete(self, plot=True)
+
     def sideband_t1(self, sequencer):
         """Drives sb_qb only with a flat_top gaussian flux pulse. Amp given by ff_amp, freq of pulse given by sb_freq, gaussian edges given by sb_sig.
         all other qubits except for sb_qb are not ff modulated. no compensation pulse since its a sine"""
@@ -456,26 +512,34 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=True)
 
-    def pi_cal(self, sequencer):
+    def pi_cal_sequence(self, sequencer, pi_qbs = None, pi_rds = None):
+        #note: in pi_cal_sequence, defualt pi cal is done with self.on_qbs and self.on_rds. This can be changed as desired
+        if pi_qbs==None:
+            pi_qbs= self.on_qbs
+        if pi_rds==None:
+            pi_rds = self.on_rds
         sequencer.new_sequence(self)
         self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
         sequencer.sync_channels_time(self.channels)
-        self.readout_pxi(sequencer, self.on_rds, overlap=False)
+        self.readout_pxi(sequencer, pi_rds, overlap=False)
         sequencer.sync_channels_time(self.channels)
         sequencer.end_sequence()
 
         sequencer.new_sequence(self)
         self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
-        for qb in self.on_qbs:
+        for qb in pi_qbs:
             setup = self.lattice_cfg["qubit"]["setup"][qb]
             self.pi_q(sequencer, qb=qb, phase=0, pulse_type=self.pulse_info["pulse_type"][qb])
         sequencer.sync_channels_time(self.channels)
         if 'wait_time' in self.expt_cfg.keys():
             self.idle_q(sequencer, time=self.expt_cfg['wait_time'])
             sequencer.sync_channels_time(self.channels)
-        self.readout_pxi(sequencer, self.on_rds, overlap=False)
+        self.readout_pxi(sequencer, pi_rds, overlap=False)
         sequencer.sync_channels_time(self.channels)
         sequencer.end_sequence()
+
+    def pi_cal(self, sequencer):
+        self.pi_cal_sequence(sequencer)
         return sequencer.complete(self, plot=True)
 
     def ff_pi_cal(self, sequencer):
@@ -1601,10 +1665,41 @@ class PulseSequences:
                       flux_vec=self.expt_cfg["ff_vec"], flip_amp=True)
 
         sequencer.end_sequence()
-
         return sequencer.complete(self)
 
+    def wurst_sweep(self,sequencer):
+        sequencer.new_sequence(self)
+        self.pad_start_pxi(sequencer, on_qubits=["A", "B"], time=500)
+        for qb in self.on_qbs:
+            setup = self.lattice_cfg["qubit"]["setup"][qb]
+            iq_freq = self.lattice_cfg['pulse_info'][setup]['iq_freq'][qb]
+            # iq_freq = 0
+            add_freq = 0
+            phase = 0
 
+            sequencer.append('charge%s_I' % setup,
+                             WURST20_I(max_amp=self.expt_cfg['maxamp'],
+                                       bandwidth = self.expt_cfg['pulse_bw'],
+                                       t_length=self.expt_cfg['pulse_length'],
+                                       freq=iq_freq + add_freq,
+                                       phase=phase))
+            sequencer.append('charge%s_Q' % setup,
+                             WURST20_Q(max_amp=self.expt_cfg['maxamp'],
+                                       bandwidth=self.expt_cfg['pulse_bw'],
+                                       t_length=self.expt_cfg['pulse_length'],
+                                       freq=iq_freq + add_freq,
+                                       phase=phase,
+                                       phase_t0 = self.lattice_cfg['pulse_info'][setup]['Q_phase'][qb]))
+
+            # sequencer.append('charge%s_Q' % setup,WURST20_Q(max_amp=self.expt_cfg['maxamp'], bandwidth = self.expt_cfg['pulse_bw'],
+            #                                                  t_length=self.expt_cfg['pulse_length'], freq=iq_freq + add_freq,phase=phase + self.pulse_info[setup]['Q_phase'][qb]))
+
+        sequencer.sync_channels_time(self.channels)
+        for qb in self.on_rds:
+            setup = self.lattice_cfg["qubit"]["setup"][qb]
+            self.readout_pxi(sequencer, self.on_rds)
+        sequencer.end_sequence()
+        return sequencer.complete(self)
 
     def t1rho(self,sequencer):
 
@@ -1629,6 +1724,9 @@ class PulseSequences:
                 sequencer.end_sequence()
 
         return sequencer.complete(self, plot=True)
+
+
+
 
     def pulse_probe_ef_iq(self, sequencer):
 
