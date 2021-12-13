@@ -436,6 +436,72 @@ class reversability_ramp(Pulse):
     def get_length(self):
         return self.exp_ramp_len*2  + self.flat_len
 
+class reversability_ramp_modulate(Pulse):
+    def __init__(self, max_amp, exp_ramp_len,flat_len,tau_ramp,ramp2_sigma_len,cutoff_sigma, freq, phase,
+                 evolutiontime = 200, phase_t0 = 0, modulate_freq = 0, modulate_amp = 0, modulate_phase = 0, dt=None,
+                 plot=False):
+        self.max_amp = max_amp
+        self.exp_ramp_len = exp_ramp_len
+        self.flat_len = flat_len
+        self.tau = tau_ramp
+        self.fastfluxlength = flat_len
+        self.ramp2_sigma_len = ramp2_sigma_len
+        self.cutoff_sigma = cutoff_sigma
+        self.freq = freq
+        self.phase = phase
+        self.evolutiontime = evolutiontime
+        self.phase_t0 = phase_t0
+        self.dt = dt
+        self.plot = plot
+        self.t0 = 0
+
+        self.modulate_freq = modulate_freq
+        self.modulate_amp = modulate_amp
+        self.modulate_phase = modulate_phase
+
+    def get_pulse_array(self):
+
+        ## use functions instead for repeat ramps
+
+        def tempfun(t, ramplen, tau):
+            A = 1 / (np.exp(-1 * ramplen / tau) - 1)
+            B = -1 * A
+            return A * np.exp(-t / tau) + B
+
+        def tempfunrev(max_amp, tlist, evolutiontime, ramplen, tau, modulate_freq, modulate_amp, modulate_phase):
+            if evolutiontime == 0:
+                return max_amp * (np.heaviside(tlist, 0) * np.heaviside(-1 * tlist + ramplen, 1/2) * tempfun(
+                    tlist, ramplen, tau) + \
+               np.heaviside((tlist - ramplen), 1/2) * np.heaviside(-1 * (tlist - evolutiontime - ramplen), 0) + \
+               np.heaviside((tlist - evolutiontime) - ramplen, 1/2) * np.heaviside(-1 * (tlist - evolutiontime) + 2 *
+                                                                                   ramplen, 0) * (tempfun(-(tlist - evolutiontime) + 2 * ramplen, ramplen, tau)))
+
+            else:
+                return max_amp* (np.heaviside(tlist, 0) * np.heaviside(-1 * tlist + ramplen, 1/2) * tempfun(tlist,
+                                                                                                          ramplen,
+                                                                                                            tau)) + \
+                       max_amp*(np.heaviside((tlist - ramplen), 1/2) * np.heaviside(-1 * (tlist - evolutiontime -
+                                                                                          ramplen), 1/2)) + \
+                       modulate_amp * np.cos(tlist*2*np.pi*modulate_freq + modulate_phase) * (np.heaviside((
+                        tlist-ramplen), 1 / 2) * np.heaviside(-1 * (tlist - evolutiontime - ramplen), 1 / 2)) + \
+                       max_amp * (np.heaviside((tlist - evolutiontime) - ramplen, 1/2) * np.heaviside(-1 * (
+                        tlist-evolutiontime) + 2 * ramplen, 0) * (tempfun(-(tlist - evolutiontime) + 2 * ramplen,
+                                                                          ramplen, tau)))
+
+        ## Exp Ramp Coefficients
+        A = 1/(np.exp(-1*self.exp_ramp_len/self.tau)-1)
+        B = -1*A
+
+        pulse_array = tempfunrev(self.max_amp, np.array(self.t_array) - self.t0,self.flat_len,
+                                                self.exp_ramp_len,self.tau, self.modulate_freq)
+
+        pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
+
+        return pulse_array
+
+    def get_length(self):
+        return self.exp_ramp_len*2  + self.flat_len
+
 
 class linear_ramp(Pulse):
     def __init__(self, max_amp, flat_len, ramp1_len, ramp2_sigma_len, cutoff_sigma, freq, phase, phase_t0 = 0,

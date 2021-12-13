@@ -213,44 +213,56 @@ class PulseSequences:
         sequencer.append('charge%s_I' % setup, Idle(time=time))
         sequencer.append('charge%s_Q' % setup, Idle(time=time))
 
-    def ff_pulse(self, sequencer, ff_len, pulse_type, flux_vec, freq=0, flip_amp=False):
+    def ff_pulse(self, sequencer, ff_len, pulse_type, flux_vec, freq=0, flip_amp=False, modulate_qb=[]):
         area_vec = []
         for qb, flux in enumerate(flux_vec):
             if flip_amp:
                 flux = -flux
-            if pulse_type=="square":
-                pulse = Square(max_amp=flux, flat_len=ff_len[qb],
-                                    ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=freq,
-                                    phase=0)
-            if pulse_type=="linear":
-                pulse = linear_ramp(max_amp=flux, flat_len=ff_len[qb],
-                                    ramp1_len=self.lattice_cfg['ff_info']['ff_linear_ramp_len'],
-                                    ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
-                                    cutoff_sigma=2, freq=freq, phase=0)
-            if pulse_type=="adb":
-                pulse = adb_ramp(max_amp=flux, flat_len=ff_len[qb],
-                                 adb_ramp1_sig=self.lattice_cfg['ff_info']['ff_adb_ramp_sig'][qb],
-                                 ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
-                                 cutoff_sigma=2, freq=freq, phase=0)
-            if pulse_type=="exp":
-                pulse = exp_ramp(max_amp=flux,exp_ramp_len = self.lattice_cfg['ff_info']['ff_exp_ramp_len'][qb] ,flat_len=ff_len[qb],
-                                 tau_ramp=self.lattice_cfg['ff_info']['ff_exp_ramp_tau'][qb],
-                                 ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
-                                 cutoff_sigma=2,freq=freq, phase=0)
 
-            if pulse_type == "mexp":
-                pulse = multiexponential_ramp(max_amp=flux,exp_ramp_len = self.lattice_cfg['ff_info']['ff_exp_ramp_len'][qb] ,flat_len=ff_len[qb],
-                                 tau_ramp=self.lattice_cfg['ff_info']['ff_exp_ramp_tau'][qb],
-                                 ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
-                                 cutoff_sigma=2,freq=freq, phase=0,multiples = 30)
+            if qb in modulate_qb:
+                pulse = reversability_ramp_modulate(max_amp=flux,
+                                           exp_ramp_len=self.lattice_cfg['ff_info']['ff_exp_ramp_len'][qb],
+                                           flat_len=ff_len[qb],
+                                           tau_ramp=self.lattice_cfg['ff_info']['ff_exp_ramp_tau'][qb],
+                                           ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
+                                           cutoff_sigma=2, freq=freq, phase=0, modulate_freq = self.expt_cfg[
+                        "mod_freq"][qb], modulate_amp = self.expt_cfg["mod_amp"][qb], modulate_phase = self.expt_cfg[
+                        "mod_phase"][qb])
 
-            if pulse_type == "rexp":
-                pulse = reversability_ramp(max_amp=flux,
-                                              exp_ramp_len=self.lattice_cfg['ff_info']['ff_exp_ramp_len'][qb],
-                                              flat_len=ff_len[qb],
-                                              tau_ramp=self.lattice_cfg['ff_info']['ff_exp_ramp_tau'][qb],
-                                              ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
-                                              cutoff_sigma=2, freq=freq, phase=0)
+            else:
+                if pulse_type=="square":
+                    pulse = Square(max_amp=flux, flat_len=ff_len[qb],
+                                        ramp_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb], cutoff_sigma=2, freq=freq,
+                                        phase=0)
+                if pulse_type=="linear":
+                    pulse = linear_ramp(max_amp=flux, flat_len=ff_len[qb],
+                                        ramp1_len=self.lattice_cfg['ff_info']['ff_linear_ramp_len'],
+                                        ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
+                                        cutoff_sigma=2, freq=freq, phase=0)
+                if pulse_type=="adb":
+                    pulse = adb_ramp(max_amp=flux, flat_len=ff_len[qb],
+                                     adb_ramp1_sig=self.lattice_cfg['ff_info']['ff_adb_ramp_sig'][qb],
+                                     ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
+                                     cutoff_sigma=2, freq=freq, phase=0)
+                if pulse_type=="exp":
+                    pulse = exp_ramp(max_amp=flux,exp_ramp_len = self.lattice_cfg['ff_info']['ff_exp_ramp_len'][qb] ,flat_len=ff_len[qb],
+                                     tau_ramp=self.lattice_cfg['ff_info']['ff_exp_ramp_tau'][qb],
+                                     ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
+                                     cutoff_sigma=2,freq=freq, phase=0)
+
+                if pulse_type == "mexp":
+                    pulse = multiexponential_ramp(max_amp=flux,exp_ramp_len = self.lattice_cfg['ff_info']['ff_exp_ramp_len'][qb] ,flat_len=ff_len[qb],
+                                     tau_ramp=self.lattice_cfg['ff_info']['ff_exp_ramp_tau'][qb],
+                                     ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
+                                     cutoff_sigma=2,freq=freq, phase=0,multiples = 30)
+
+                if pulse_type == "rexp":
+                    pulse = reversability_ramp(max_amp=flux,
+                                                  exp_ramp_len=self.lattice_cfg['ff_info']['ff_exp_ramp_len'][qb],
+                                                  flat_len=ff_len[qb],
+                                                  tau_ramp=self.lattice_cfg['ff_info']['ff_exp_ramp_tau'][qb],
+                                                  ramp2_sigma_len=self.lattice_cfg['ff_info']['ff_ramp_sigma_len'][qb],
+                                                  cutoff_sigma=2, freq=freq, phase=0)
 
             sequencer.append('ff_Q%s' % qb, pulse)
             area_vec.append(pulse.get_area())
@@ -423,6 +435,42 @@ class PulseSequences:
             ############################## generate compensation ###########################################
             flux_vec = self.expt_cfg["ff_vec"]
             self.ff_pulse(sequencer, [evolution_t]*8, pulse_type=self.expt_cfg["ramp_type"], flux_vec=flux_vec, flip_amp=True)
+            sequencer.end_sequence()
+        return sequencer.complete(self, plot=True)
+
+    def melting_single_readout_modulate_2setups(self, sequencer):
+        qb_list = self.expt_cfg["Mott_qbs"]
+
+        for evolution_t in np.arange(self.expt_cfg["evolution_t_start"], self.expt_cfg["evolution_t_stop"], self.expt_cfg["evolution_t_step"]):
+            sequencer.new_sequence(self)
+            self.pad_start_pxi(sequencer, on_qubits=["A","B"], time=500)
+
+            ##################################GENERATE PI PULSES ################################################
+            for i, qb in enumerate(qb_list):
+                setup = self.lattice_cfg["qubit"]["setup"][qb]
+                self.gen_q(sequencer, qb=qb, len=self.pulse_info[setup]["pi_len"][qb],
+                           amp=self.pulse_info[setup]["pi_amp"][qb],
+                           pulse_type=self.pulse_info["pulse_type"][qb])
+                self.idle_q(sequencer, time=20)
+                sequencer.sync_channels_time(self.channels)
+
+            sequencer.sync_channels_time(self.channels)
+            self.idle_q(sequencer, time=100)
+            ##############################GENERATE RAMP###########################################
+            flux_vec = self.expt_cfg["ff_vec"]
+            self.ff_pulse(sequencer, ff_len = [evolution_t]*8, pulse_type = "rexp", flux_vec= flux_vec,
+                          flip_amp=False, modulate_qb = self.expt_cfg["mod_qb"])
+
+            ############################## readout ###########################################
+            sequencer.sync_channels_time(self.channels)
+            self.idle_q(sequencer, time=self.expt_cfg['wait_post_flux'])
+            sequencer.sync_channels_time(self.channels)
+            self.readout_pxi(sequencer, self.on_rds, overlap=False)
+            sequencer.sync_channels_time(self.channels)
+
+            ############################## generate compensation ###########################################
+            flux_vec = self.expt_cfg["ff_vec"]
+            self.ff_pulse(sequencer, [evolution_t]*8, pulse_type="rexp", flux_vec=flux_vec, flip_amp=True, modulate_qb = self.expt_cfg["mod_qb"])
             sequencer.end_sequence()
         return sequencer.complete(self, plot=True)
 
