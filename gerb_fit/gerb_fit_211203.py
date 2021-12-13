@@ -23,6 +23,7 @@ print(os.getcwd())
 from scipy.signal import argrelextrema
 import copy
 from qutip import *
+from sklearn.mixture import GaussianMixture as GM
 
 font = {'family' : 'normal',
         'weight' : 'normal',
@@ -1622,10 +1623,15 @@ def echo(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
 
 
 def fid_func(Vval, ssbinsg, ssbinse, sshg, sshe):
-    ind_g = np.argmax(ssbinsg > Vval)
-    ind_e = np.argmax(ssbinse > Vval)
+    if (ssbinsg>Vval).any():
+        ind_g = np.argmax(ssbinsg > Vval)
+    else:
+        ind_g = len(ssbinsg)
+    if (ssbinse>Vval).any():
+        ind_e = np.argmax(ssbinse > Vval)
+    else:
+        ind_e = len(ssbinse)
     return np.abs(((np.sum(sshg[:ind_g]) - np.sum(sshe[:ind_e])) / sshg.sum()))
-
 
 def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, rancut=120,
                   details=True, numbins=200, ff=False, IQrot = True, hard_phi=None):
@@ -2047,6 +2053,55 @@ def histogram_IQ_crosstalk(filenb, phi=0):
             IQssrot.append([Irot, Qrot])
 
     return labels, IQss, IQssrot
+
+
+def pi_cal_SS_GMM(filenb, phi=0, ran=1, sub_mean=False):
+    expt_name = "pi_cal"
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        I_raw_P = np.array(a["I"])
+        Q_raw_P = np.array(a["Q"])
+
+        I_temp = I_raw_P
+        Q_temp = Q_raw_P
+        UnstructuredIQdata = np.array([I_temp.flatten(), Q_temp.flatten()]).T
+
+        gm = GM(n_components=2, covariance_type='full', max_iter=100, init_params='kmeans', weights_init=None,
+                precisions_init=None, random_state=None, warm_start=False, verbose=0, verbose_interval=10).fit(
+            UnstructuredIQdata)
+
+        ## identify |g> |e> peaks.  First index of I_raw_p is |g>, mean correspodning to this is |g>
+        GMM_means = np.array(gm.means_)
+
+        GMM_gI = GMM_means[0, 0]
+        GMM_gQ = GMM_means[0, 1]
+        GMM_eI = GMM_means[1, 0]
+        GMM_eQ = GMM_means[1, 1]
+
+        data_gI = np.mean(I_temp[0, :])
+        data_gQ = np.mean(Q_temp[0, :])
+        data_eI = np.mean(I_temp[1, :])
+        data_eQ = np.mean(Q_temp[1, :])
+
+        # Simplify: just look at |g> state distance.
+        ggdiff = (GMM_gI - data_gI) ** 2 + (
+                    GMM_gQ - data_gQ) ** 2  # + (GMM_eI - data_eI)**2 + (GMM_eQ - data_eQ)**2 # |e> state variation -> not a good metric
+        gediff = (GMM_eI - data_gI) ** 2 + (GMM_eQ - data_gQ) ** 2  # + (GMM_gI - data_eI)**2 + (GMM_gQ - data_eQ)**2
+
+        ## Overwriting GMM |g> peak with data |g> peak
+        #         GMM_gI = data_gI
+        #         GMM_gQ = data_gQ
+
+        I_raw_P = np.array([GMM_gI, GMM_eI])
+        Q_raw_P = np.array([GMM_gQ, GMM_eQ])
+        if gediff < ggdiff:
+            #             print("labels out of order")
+            I_raw_P = np.array([GMM_eI, GMM_gI])
+            Q_raw_P = np.array([GMM_eQ, GMM_gQ])
+    ## Overwriting GMM |g> peak with data |g> peak
+
+    (I_P, Q_P, mag_P, phase_P) = iq_process(f=0, raw_I=I_raw_P, raw_Q=Q_raw_P, ran=ran, phi=phi, sub_mean=sub_mean)
+    return I_P, Q_P
 
 def histogram_IQ_crosstalk_combo(filenb, phi=0):
     """returns:
