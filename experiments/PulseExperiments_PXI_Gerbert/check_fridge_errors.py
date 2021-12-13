@@ -81,9 +81,9 @@ if __name__ == "__main__":
 
     while NB_ERRORS < len(channels)*2:
         try:
-            req = requests.get('http://192.168.14.212:5001/channel/measurement/latest', timeout=10)
+            req = requests.get('http://192.168.14.212:5001/channel/measurement/latest', timeout=30)
         except:
-            error_get(receiver_email_list, slack_channels)
+            error_get(["glcroberts@uchicago.edu"], [])
         data = req.json()
         nb = data["channel_nr"]
         if data["temperature"] == None or data["temperature"] > channels[nb]["ABORT_temp"]:

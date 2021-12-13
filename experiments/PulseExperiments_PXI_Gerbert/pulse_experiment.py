@@ -205,14 +205,16 @@ class Experiment:
             print("Error in readout STABILIZER LO configuration")
             raise
 
-    def initiate_readout_yigs(self):
-        try:
-            for ii, s in enumerate(self.rd_setups):
-                d = self.readout_yigs[s]
-                d.set_yig(self.lattice_cfg['readout'][s]['freq'][self.on_rds[ii]])
-                print("Readout Yig%s"%s + " Set to: %s"%(self.lattice_cfg['readout'][s]['freq'][self.on_rds[ii]]))
-        except:
-            print("Error in readout yig configuration")
+    # def initiate_readout_yigs(self):
+    #     try:
+    #         for ii, s in enumerate(self.rd_setups):
+    #             d = self.readout_yigs[s]
+    #             # d.set_yig(self.lattice_cfg['readout'][s]['freq'][self.on_rds[ii]])
+    #             d.set_yig(4.887)
+    #             print("YIG SET TO 4.887")
+    #             # print("Readout Yig%s"%s + " Set to: %s"%(self.lattice_cfg['readout'][s]['freq'][self.on_rds[ii]]))
+    #     except:
+    #         print("Error in readout yig configuration")
 
     def initiate_readout_attenuators(self):
         try:
@@ -434,7 +436,7 @@ class Experiment:
         self.trig.set_output(state=False) # hold on triggering anythingg
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
-        self.initiate_readout_yigs()
+        # self.initiate_readout_yigs()
         #self.initiate_stab_LOs()
         self.initiate_readout_attenuators()
         self.initiate_drive_attenuators()
