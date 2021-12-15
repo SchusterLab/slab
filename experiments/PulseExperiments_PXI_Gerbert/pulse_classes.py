@@ -612,12 +612,13 @@ class WURST20_I_X(Pulse):
 
     def get_pulse_array(self):
 
-        # def phi(t):
-        #     return (-1 * (self.bandwidth*2*np.pi / 2) + self.freq *2*np.pi) * t + (self.bandwidth*2*np.pi * t ** 2) / (4 * self.t_length)
+        def freq(t):
+            return (-1*(self.bandwidth*2*np.pi)/2 + self.freq * 2 * np.pi) + (self.bandwidth*2*np.pi) * (1/(1+np.exp(-t/0.25*t)) - 1/2)
         def phi(t):
-            return (-1 * (self.bandwidth*2*np.pi / 2) + self.freq *2*np.pi) * t + (self.bandwidth*2*np.pi * t ** 2) / (4 * self.t_length)
+            return np.trapz(freq(t))
         def Amp(t):
-            return 1-np.abs(np.sin(np.pi*((t-self.t_length/2)/self.t_length)))**20
+            doubler = self.t_length
+            return (1-np.abs(np.sin(np.pi*((t-doubler/2)/doubler)))**20) * np.heaviside(self.t_length-t,0)
 
         pulse_array = self.max_amp * Amp(np.array(self.t_array) - self.t0)*np.sin(phi(np.array(self.t_array) - self.t0))
 
@@ -639,10 +640,13 @@ class WURST20_Q_X(Pulse):
         self.t0 = 0
 
     def get_pulse_array(self):
+        def freq(t):
+            return (-1*(self.bandwidth*2*np.pi)/2 + self.freq * 2 * np.pi) + (self.bandwidth*2*np.pi) * (1/(1+np.exp(-t/0.25*t)) - 1/2)
         def phi(t):
-            return (-1 * (self.bandwidth*2*np.pi / 2) + self.freq *2*np.pi) * t + (self.bandwidth*2*np.pi * t ** 2) / (4 * self.t_length)
+            return np.trapz(freq(t))
         def Amp(t):
-            return 1-np.abs(np.sin(np.pi*((t-self.t_length/2)/self.t_length)))**20
+            doubler = self.t_length
+            return (1-np.abs(np.sin(np.pi*((t-doubler/2)/doubler)))**20) * np.heaviside(self.t_length-t,0)
 
         pulse_array = self.max_amp * Amp(np.array(self.t_array) - self.t0) * np.cos(phi(np.array(self.t_array) - self.t0) + self.phase_t0)
 
