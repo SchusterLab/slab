@@ -6,6 +6,7 @@ import time
 from tqdm import tqdm
 import json
 from slab.dataanalysis import get_next_filename
+from slab.dataanalysis import get_current_filename
 from slab.datamanagement import SlabFile
 from slab.dsfit import fitdecaysin
 
@@ -16,6 +17,2281 @@ from slab.experiments.PulseExperiments.get_data import get_singleshot_data_two_q
     density_matrix_maximum_likelihood
 
 import pickle
+
+
+def get_iq(expt_data, expt_pts, td=0):
+    data_cos_list = []
+    data_sin_list = []
+
+    for data, pt in zip(expt_data, expt_pts):
+        cos = np.cos(2 * np.pi * pt * (alazar_time_pts - td))
+        sin = np.sin(2 * np.pi * pt * (alazar_time_pts - td))
+        # td controls the phases. Try different td in get_iq to mitigate phase fringes.
+
+        data_cos = np.dot(data, cos) / len(cos)
+        data_sin = np.dot(data, sin) / len(sin)
+
+        data_cos_list.append(data_cos)
+        data_sin_list.append(data_sin)
+
+    plt.figure(figsize=(10, 4))
+    plt.plot(expt_pts, data_cos_list, label='I')
+    plt.plot(expt_pts, data_sin_list, label='Q')
+
+    #     plt.xlim(-0.2,-0.05)
+    #     plt.ylim(-0.005, 0.005)
+
+    plt.legend()
+
+
+def get_iq_data(expt_data, het_freq=0.148, td=0, pi_cal=False):
+    data_cos_list = []
+    data_sin_list = []
+
+    alazar_time_pts = np.arange(len(np.array(expt_data)[0]))
+    #     alazar_time_pts = np.arange(len(np.array(expt_data))) # Quick hack, needs to be fixed
+
+    for data in expt_data:
+        cos = np.cos(2 * np.pi * het_freq * (alazar_time_pts - td))
+        sin = np.sin(2 * np.pi * het_freq * (alazar_time_pts - td))
+
+        data_cos = np.dot(data, cos) / len(cos)
+        data_sin = np.dot(data, sin) / len(sin)
+
+        data_cos_list.append(data_cos)
+        data_sin_list.append(data_sin)
+
+    data_cos_list = np.array(data_cos_list)
+    data_sin_list = np.array(data_sin_list)
+
+    if pi_cal:
+
+        ge_cos = data_cos_list[-1] - data_cos_list[-2]
+        ge_sin = data_sin_list[-1] - data_sin_list[-2]
+
+        ge_mean_vec = np.array([ge_cos, ge_sin])
+
+        data_cos_sin_list = np.array([data_cos_list[:-2] - data_cos_list[-2], data_sin_list[:-2] - data_sin_list[-2]])
+
+        data_list = np.dot(ge_mean_vec, data_cos_sin_list) / np.dot(ge_mean_vec, ge_mean_vec)
+
+
+    else:
+        cos_contrast = np.abs(np.max(data_cos_list) - np.min(data_cos_list))
+        sin_contrast = np.abs(np.max(data_sin_list) - np.min(data_sin_list))
+
+        if cos_contrast > sin_contrast:
+            data_list = data_cos_list
+        else:
+            data_list = data_sin_list
+
+    return data_cos_list, data_sin_list, data_list
+
+
+def get_singleshot_data(expt_data, het_ind, pi_cal=False):
+    data_cos_list = expt_data[het_ind][0]
+    data_sin_list = expt_data[het_ind][1]
+
+    if pi_cal:
+
+        ge_cos = np.mean(data_cos_list[-1]) - np.mean(data_cos_list[-2])
+        ge_sin = np.mean(data_sin_list[-1]) - np.mean(data_sin_list[-2])
+
+        ge_mean_vec = np.array([ge_cos, ge_sin])
+
+        data_cos_sin_list = np.array([data_cos_list[:-2] - np.mean(data_cos_list[-2]),
+                                      data_sin_list[:-2] - np.mean(data_sin_list[-2])])
+
+        data_cos_sin_list = np.transpose(data_cos_sin_list, (1, 0, 2))
+
+        data_list = np.dot(ge_mean_vec, data_cos_sin_list) / np.dot(ge_mean_vec, ge_mean_vec)
+
+
+    else:
+        cos_contrast = np.abs(np.max(data_cos_list) - np.min(data_cos_list))
+        sin_contrast = np.abs(np.max(data_sin_list) - np.min(data_sin_list))
+
+        if cos_contrast > sin_contrast:
+            data_list = data_cos_list
+        else:
+            data_list = data_sin_list
+
+    return data_cos_list, data_sin_list, data_list
+
+
+def subtract_mean(data):
+    data1 = data.T
+    data1 = (data1 - np.mean(data1, axis=0))
+    return (data1.T)
+
+
+def calibrate_ramsey(a, pi_length=100, t2=1000):
+    quantum_device_cfg = json.loads(a.attrs['quantum_device_cfg'])
+    experiment_cfg = json.loads(a.attrs['experiment_cfg'])
+    hardware_cfg = json.loads(a.attrs['hardware_cfg'])
+
+    expt_cfg = experiment_cfg['ramsey_while_flux']
+    expt_pts = np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])
+    on_qubits = expt_cfg['on_qubits']
+
+    for qubit_id in on_qubits:
+
+        expt_avg_data = np.array(a['expt_avg_data_ch%s' % qubit_id])
+
+        fitguess = [max(expt_avg_data) / 2 - min(expt_avg_data) / 2, 1 / (2 * pi_length), 0, t2, \
+                    max(expt_avg_data) / 2 + min(expt_avg_data) / 2]
+        fitdata = fitdecaysin(expt_pts, expt_avg_data, fitparams=fitguess, showfit=True)
+
+        if expt_cfg['use_freq_amp_halfpi'][0]:
+            qubit_freq = expt_cfg['use_freq_amp_halfpi'][1]
+        else:
+            qubit_freq = quantum_device_cfg['qubit']['%s' % qubit_id]['freq']
+        ramsey_freq = experiment_cfg['ramsey_while_flux']['ramsey_freq']
+
+        real_qubit_freq = qubit_freq + ramsey_freq - fitdata[1]
+        possible_qubit_freq = qubit_freq + ramsey_freq + fitdata[1]
+
+        if abs(real_qubit_freq-qubit_freq)<abs(possible_qubit_freq-qubit_freq):
+            freq_guess = real_qubit_freq
+        else:
+            freq_guess = possible_qubit_freq
+
+        return freq_guess
+
+def calibrate_rabi_while_flux(a, pi_length=100, t1=1000):
+    quantum_device_cfg = json.loads(a.attrs['quantum_device_cfg'])
+    experiment_cfg = json.loads(a.attrs['experiment_cfg'])
+    hardware_cfg = json.loads(a.attrs['hardware_cfg'])
+
+    expt_cfg = experiment_cfg['rabi_while_flux']
+    expt_pts = np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])
+
+    on_cavity = expt_cfg['on_cavity']
+    ii = 0
+
+    for cavity_id in on_cavity:
+
+        expt_avg_data = np.array(a['expt_avg_data_ch%s' % cavity_id])
+
+        y = expt_avg_data
+        fitguess = [max(y) / 2 - min(y) / 2, 1 / (2 * pi_length), 0, t1, max(y) / 2 + min(y) / 2]
+        fitdata = fitdecaysin(expt_pts[:], expt_avg_data[:], fitparams=fitguess, showfit=True)
+
+        pi_length = (90.0 - fitdata[2]) / (360.0 * fitdata[1])
+        pi_length1 = pi_length
+        if pi_length1 > 0:
+            while pi_length1 > 0:
+                pi_length1 -= abs(180 / 360.0 / fitdata[1])
+            pi_length1 += abs(180 / 360.0 / fitdata[1])
+        else:
+            while pi_length1 < 0:
+                pi_length1 += abs(180 / 360.0 / fitdata[1])
+
+        pi_length11 = pi_length1 + abs(180 / 360.0 / fitdata[1])
+        comparea = fitdata[0] * np.sin(2 * np.pi * fitdata[1] * pi_length1 + fitdata[2] * np.pi / 180) * np.exp(
+            -(pi_length1 - expt_pts[0]) / fitdata[3]) + fitdata[4]
+        compareb = fitdata[0] * np.sin(2 * np.pi * fitdata[1] * pi_length11 + fitdata[2] * np.pi / 180) * np.exp(
+            -(pi_length11 - expt_pts[0]) / fitdata[3]) + fitdata[4]
+
+        if abs(compareb) > abs(comparea): pi_length1 = pi_length11
+        hpi_length = pi_length1 - abs(180 / 360.0 / fitdata[1]) / 2
+        ii = ii + 1
+
+        return pi_length1, hpi_length
+
+
+def calibration_auto(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    # Author Ziqian 19th OCT 2021
+    # automatically calibrating qubit frequency and pi, pi/2 gate length
+    # Initializing qubit frequency and gate length
+    expt_cfg = experiment_cfg['calibration_auto']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'calibration_auto', suffix='.h5'))
+    ram_acq_no = expt_cfg['ramsey_acq_num']
+    fq = {}
+    pi_gate = {}
+    pi_amp = {}
+    hpi_gate = {}
+    hpi_amp = {}
+    string_list = ['gg->eg','gg->ge','eg->fg','ge->gf','ge->ee','eg->ee','gf->ef','fg->fe','ee->fe','ee->ef','ef->ff','fe->ff']
+    fq['gg->eg'] = quantum_device_cfg['qubit']['1']['freq']
+    fq['gg->ge'] = quantum_device_cfg['qubit']['2']['freq']
+
+    fq['eg->fg'] = quantum_device_cfg['qubit']['1']['freq']+quantum_device_cfg['qubit']['1']['anharmonicity']
+    fq['ge->gf'] = quantum_device_cfg['qubit']['2']['freq']+quantum_device_cfg['qubit']['2']['anharmonicity']
+
+    fq['ge->ee'] = quantum_device_cfg['qubit']['1']['freq']+quantum_device_cfg['qubit']['qq_disp']
+    fq['eg->ee'] = quantum_device_cfg['qubit']['2']['freq']+quantum_device_cfg['qubit']['qq_disp']
+
+    fq['gf->ef'] = quantum_device_cfg['qubit']['1']['freq'] + quantum_device_cfg['qubit']['gf1_disp']
+    fq['fg->fe'] = quantum_device_cfg['qubit']['2']['freq'] + quantum_device_cfg['qubit']['fg2_disp']
+
+    fq['ee->fe'] = quantum_device_cfg['qubit']['1']['freq']+quantum_device_cfg['qubit']['1']['anharmonicity'] + quantum_device_cfg['qubit']['ef1_disp']
+    fq['ee->ef'] = quantum_device_cfg['qubit']['2']['freq']+quantum_device_cfg['qubit']['2']['anharmonicity'] + quantum_device_cfg['qubit']['fe2_disp']
+
+    fq['ef->ff'] = quantum_device_cfg['qubit']['1']['freq'] + quantum_device_cfg['qubit']['1']['anharmonicity'] + \
+                   quantum_device_cfg['qubit']['ff1_disp']
+    fq['fe->ff'] = quantum_device_cfg['qubit']['2']['freq'] + quantum_device_cfg['qubit']['2']['anharmonicity'] + \
+                   quantum_device_cfg['qubit']['ff2_disp']
+    
+    pi_gate['gg->eg'] = quantum_device_cfg['pulse_info']['1']['pi_len']
+    pi_gate['eg->fg'] = quantum_device_cfg['pulse_info']['1']['pi_ef_len']
+    pi_gate['ge->ee'] = quantum_device_cfg['pulse_info']['1']['pi_ee_len']
+    pi_gate['gf->ef'] = quantum_device_cfg['pulse_info']['1']['pi_gf_len']
+    pi_gate['ee->fe'] = quantum_device_cfg['pulse_info']['1']['pi_ef_e_len']
+    pi_gate['ef->ff'] = quantum_device_cfg['pulse_info']['1']['pi_ff_len']
+
+    pi_amp['gg->eg'] = quantum_device_cfg['pulse_info']['1']['pi_amp']
+    pi_amp['eg->fg'] = quantum_device_cfg['pulse_info']['1']['pi_ef_amp']
+    pi_amp['ge->ee'] = quantum_device_cfg['pulse_info']['1']['pi_ee_amp']
+    pi_amp['gf->ef'] = quantum_device_cfg['pulse_info']['1']['pi_gf_amp']
+    pi_amp['ee->fe'] = quantum_device_cfg['pulse_info']['1']['pi_ef_e_amp']
+    pi_amp['ef->ff'] = quantum_device_cfg['pulse_info']['1']['pi_ff_amp']
+
+    hpi_gate['gg->eg'] = quantum_device_cfg['pulse_info']['1']['half_pi_len']
+    hpi_gate['eg->fg'] = quantum_device_cfg['pulse_info']['1']['half_pi_ef_len']
+    hpi_gate['ge->ee'] = quantum_device_cfg['pulse_info']['1']['half_pi_ee_len']
+    hpi_gate['gf->ef'] = quantum_device_cfg['pulse_info']['1']['half_pi_gf_len']
+    hpi_gate['ee->fe'] = quantum_device_cfg['pulse_info']['1']['half_pi_ef_e_len']
+    hpi_gate['ef->ff'] = quantum_device_cfg['pulse_info']['1']['half_pi_ff_len']
+
+    hpi_amp['gg->eg'] = quantum_device_cfg['pulse_info']['1']['half_pi_amp']
+    hpi_amp['eg->fg'] = quantum_device_cfg['pulse_info']['1']['half_pi_ef_amp']
+    hpi_amp['ge->ee'] = quantum_device_cfg['pulse_info']['1']['half_pi_ee_amp']
+    hpi_amp['gf->ef'] = quantum_device_cfg['pulse_info']['1']['half_pi_gf_amp']
+    hpi_amp['ee->fe'] = quantum_device_cfg['pulse_info']['1']['half_pi_ef_e_amp']
+    hpi_amp['ef->ff'] = quantum_device_cfg['pulse_info']['1']['half_pi_ff_amp']
+########################################################################################
+    pi_gate['gg->ge'] = quantum_device_cfg['pulse_info']['2']['pi_len']
+    pi_gate['ge->gf'] = quantum_device_cfg['pulse_info']['2']['pi_ef_len']
+    pi_gate['eg->ee'] = quantum_device_cfg['pulse_info']['2']['pi_ee_len']
+    pi_gate['fg->fe'] = quantum_device_cfg['pulse_info']['2']['pi_gf_len']
+    pi_gate['ee->ef'] = quantum_device_cfg['pulse_info']['2']['pi_ef_e_len']
+    pi_gate['fe->ff'] = quantum_device_cfg['pulse_info']['2']['pi_ff_len']
+
+    pi_amp['gg->ge'] = quantum_device_cfg['pulse_info']['2']['pi_amp']
+    pi_amp['ge->gf'] = quantum_device_cfg['pulse_info']['2']['pi_ef_amp']
+    pi_amp['eg->ee'] = quantum_device_cfg['pulse_info']['2']['pi_ee_amp']
+    pi_amp['fg->fe'] = quantum_device_cfg['pulse_info']['2']['pi_gf_amp']
+    pi_amp['ee->ef'] = quantum_device_cfg['pulse_info']['2']['pi_ef_e_amp']
+    pi_amp['fe->ff'] = quantum_device_cfg['pulse_info']['2']['pi_ff_amp']
+
+    hpi_gate['gg->ge'] = quantum_device_cfg['pulse_info']['2']['half_pi_len']
+    hpi_gate['ge->gf'] = quantum_device_cfg['pulse_info']['2']['half_pi_ef_len']
+    hpi_gate['eg->ee'] = quantum_device_cfg['pulse_info']['2']['half_pi_ee_len']
+    hpi_gate['fg->fe'] = quantum_device_cfg['pulse_info']['2']['half_pi_gf_len']
+    hpi_gate['ee->ef'] = quantum_device_cfg['pulse_info']['2']['half_pi_ef_e_len']
+    hpi_gate['fe->ff'] = quantum_device_cfg['pulse_info']['2']['half_pi_ff_len']
+
+    hpi_amp['gg->ge'] = quantum_device_cfg['pulse_info']['2']['half_pi_amp']
+    hpi_amp['ge->gf'] = quantum_device_cfg['pulse_info']['2']['half_pi_ef_amp']
+    hpi_amp['eg->ee'] = quantum_device_cfg['pulse_info']['2']['half_pi_ee_amp']
+    hpi_amp['fg->fe'] = quantum_device_cfg['pulse_info']['2']['half_pi_gf_amp']
+    hpi_amp['ee->ef'] = quantum_device_cfg['pulse_info']['2']['half_pi_ef_e_amp']
+    hpi_amp['fe->ff'] = quantum_device_cfg['pulse_info']['2']['half_pi_ff_amp']
+
+    ## calibrating gg->eg
+    print('Calibrating |gg>-->|eg> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround+1)
+        ##################################### rabi
+        print('Calibrating |gg>-->|eg> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['gg->eg']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = []
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['gg->eg']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['gg->eg']*4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['gg->eg']*4.0/100.0, 1)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['gg->eg'], t1=1000)
+        print('Calibrated pi length: %.2f ' %(pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['gg->eg'] = pil
+        hpi_gate['gg->eg'] = hpil
+        quantum_device_cfg['pulse_info']['1']['pi_len'] = pil
+        quantum_device_cfg['pulse_info']['1']['half_pi_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |gg>-->|eg> Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['gg->eg'], pi_amp['gg->eg'], hpi_gate['gg->eg'], 'charge1']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = False
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |gg>-->|eg> transition: %s GHz' % (freq_new))
+        fq['gg->eg'] = freq_new
+        quantum_device_cfg['qubit']['1']['freq'] = freq_new
+
+    print('Calibrating |gg>-->|eg> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['gg->eg']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = []
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['gg->eg']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['gg->eg'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['gg->eg'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['gg->eg'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['gg->eg'] = pil
+    hpi_gate['gg->eg'] = hpil
+    quantum_device_cfg['pulse_info']['1']['pi_len'] = pil
+    quantum_device_cfg['pulse_info']['1']['half_pi_len'] = hpil
+
+    print('################################')
+    print('current results:')
+    for sss in string_list:
+        print(sss,'  Freq:',fq[sss],'  pi:',pi_gate[sss],'  hpi:',hpi_gate[sss])
+    print('qq_disp: ', fq['ge->ee'] - fq['gg->eg'])
+    print('gf1_disp: ', fq['gf->ef'] - fq['gg->eg'])
+    print('fg2_disp: ', fq['fg->fe'] - fq['gg->ge'])
+    print('ef1_disp: ', fq['ee->fe'] - fq['eg->fg'])
+    print('fe2_disp: ', fq['ee->ef'] - fq['ge->gf'])
+    print('ff1_disp: ', fq['ef->ff'] - fq['eg->fg'])
+    print('ff2_disp: ', fq['fe->ff'] - fq['ge->gf'])
+
+
+
+#########################################################################################
+    ## calibrating gg->ge
+    print('Calibrating |gg>-->|ge> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround + 1)
+        ##################################### rabi
+        print('Calibrating |gg>-->|ge> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['gg->ge']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = []
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['gg->ge']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['gg->ge'] * 4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['gg->ge'] * 4 / 100.0 ,1)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['gg->ge'], t1=1000)
+        print('Calibrated pi length: %.2f ' % (pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['gg->ge'] = pil
+        hpi_gate['gg->ge'] = hpil
+        quantum_device_cfg['pulse_info']['2']['pi_len'] = pil
+        quantum_device_cfg['pulse_info']['2']['half_pi_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |gg>-->|ge> Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['gg->ge'], pi_amp['gg->ge'],
+                                                                      hpi_gate['gg->ge'], 'charge2']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = False
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |gg>-->|ge> transition: %s GHz' % (freq_new))
+        fq['gg->ge'] = freq_new
+        quantum_device_cfg['qubit']['2']['freq'] = freq_new
+
+    print('Calibrating |gg>-->|ge> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['gg->ge']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = []
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['gg->ge']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['gg->ge'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['gg->ge'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['gg->ge'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['gg->ge'] = pil
+    hpi_gate['gg->ge'] = hpil
+    quantum_device_cfg['pulse_info']['2']['pi_len'] = pil
+    quantum_device_cfg['pulse_info']['2']['half_pi_len'] = hpil
+    print('################################')
+    print('current results:')
+    for sss in string_list:
+        print(sss, '  Freq:', fq[sss], '  pi:', pi_gate[sss], '  hpi:', hpi_gate[sss])
+    print('qq_disp: ', fq['ge->ee'] - fq['gg->eg'])
+    print('gf1_disp: ', fq['gf->ef'] - fq['gg->eg'])
+    print('fg2_disp: ', fq['fg->fe'] - fq['gg->ge'])
+    print('ef1_disp: ', fq['ee->fe'] - fq['eg->fg'])
+    print('fe2_disp: ', fq['ee->ef'] - fq['ge->gf'])
+    print('ff1_disp: ', fq['ef->ff'] - fq['eg->fg'])
+    print('ff2_disp: ', fq['fe->ff'] - fq['ge->gf'])
+
+
+#########################################################################################
+    ## calibrating ge->gf
+    print('Calibrating |ge>-->|gf> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround + 1)
+        ##################################### rabi
+        print('Calibrating |ge>-->|gf> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['ge->gf']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = ['2']
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['ge->gf']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['ge->gf'] * 4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['ge->gf'] * 4 / 100.0 ,1)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['ge->gf'], t1=1000)
+        print('Calibrated pi length: %.2f ' % (pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['ge->gf'] = pil
+        hpi_gate['ge->gf'] = hpil
+        quantum_device_cfg['pulse_info']['2']['pi_ef_len'] = pil
+        quantum_device_cfg['pulse_info']['2']['half_pi_ef_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |ge>-->|gf> Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['ge->gf'], pi_amp['ge->gf'],
+                                                                      hpi_gate['ge->gf'], 'charge2']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = ['2']
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = False
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |ge>-->|gf> transition: %s GHz' % (freq_new))
+        fq['ge->gf'] = freq_new
+        quantum_device_cfg['qubit']['2']['anharmonicity'] = freq_new-quantum_device_cfg['qubit']['2']['freq']
+
+    print('Calibrating |ge>-->|gf> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['ge->gf']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = ['2']
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['ge->gf']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['ge->gf'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['ge->gf'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['ge->gf'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['ge->gf'] = pil
+    hpi_gate['ge->gf'] = hpil
+    quantum_device_cfg['pulse_info']['2']['pi_ef_len'] = pil
+    quantum_device_cfg['pulse_info']['2']['half_pi_ef_len'] = hpil
+    print('################################')
+    print('current results:')
+    for sss in string_list:
+        print(sss, '  Freq:', fq[sss], '  pi:', pi_gate[sss], '  hpi:', hpi_gate[sss])
+    print('qq_disp: ', fq['ge->ee'] - fq['gg->eg'])
+    print('gf1_disp: ', fq['gf->ef'] - fq['gg->eg'])
+    print('fg2_disp: ', fq['fg->fe'] - fq['gg->ge'])
+    print('ef1_disp: ', fq['ee->fe'] - fq['eg->fg'])
+    print('fe2_disp: ', fq['ee->ef'] - fq['ge->gf'])
+    print('ff1_disp: ', fq['ef->ff'] - fq['eg->fg'])
+    print('ff2_disp: ', fq['fe->ff'] - fq['ge->gf'])
+
+
+
+    #########################################################################################
+    ## calibrating eg->fg
+    print('Calibrating |eg>-->|fg> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround + 1)
+        ##################################### rabi
+        print('Calibrating |eg>-->|fg> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['eg->fg']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = ['1']
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['eg->fg']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['eg->fg'] * 4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['eg->fg'] * 4 / 100.0 ,1)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['eg->fg'], t1=1000)
+        print('Calibrated pi length: %.2f ' % (pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['eg->fg'] = pil
+        hpi_gate['eg->fg'] = hpil
+        quantum_device_cfg['pulse_info']['1']['pi_ef_len'] = pil
+        quantum_device_cfg['pulse_info']['1']['half_pi_ef_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |eg>-->|fg> Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['eg->fg'], pi_amp['eg->fg'],
+                                                                      hpi_gate['eg->fg'], 'charge1']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = ['1']
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = False
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |eg>-->|fg> transition: %s GHz' % (freq_new))
+        fq['eg->fg'] = freq_new
+        quantum_device_cfg['qubit']['1']['anharmonicity'] = freq_new - quantum_device_cfg['qubit']['1']['freq']
+
+    print('Calibrating |eg>-->|fg> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['eg->fg']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = ['1']
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['eg->fg']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['eg->fg'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['eg->fg'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['eg->fg'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['eg->fg'] = pil
+    hpi_gate['eg->fg'] = hpil
+    quantum_device_cfg['pulse_info']['1']['pi_ef_len'] = pil
+    quantum_device_cfg['pulse_info']['1']['half_pi_ef_len'] = hpil
+    print('################################')
+    print('current results:')
+    for sss in string_list:
+        print(sss, '  Freq:', fq[sss], '  pi:', pi_gate[sss], '  hpi:', hpi_gate[sss])
+    print('qq_disp: ', fq['ge->ee'] - fq['gg->eg'])
+    print('gf1_disp: ', fq['gf->ef'] - fq['gg->eg'])
+    print('fg2_disp: ', fq['fg->fe'] - fq['gg->ge'])
+    print('ef1_disp: ', fq['ee->fe'] - fq['eg->fg'])
+    print('fe2_disp: ', fq['ee->ef'] - fq['ge->gf'])
+    print('ff1_disp: ', fq['ef->ff'] - fq['eg->fg'])
+    print('ff2_disp: ', fq['fe->ff'] - fq['ge->gf'])
+
+
+
+    #########################################################################################
+    ## calibrating ge->ee
+    print('Calibrating |ge>-->|ee> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround + 1)
+        ##################################### rabi
+        print('Calibrating |ge>-->|ee> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['ge->ee']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = ['2']
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['ge->ee']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['ge->ee'] * 4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['ge->ee'] * 4 / 100.0 ,1)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['ge->ee'], t1=1000)
+        print('Calibrated pi length: %.2f ' % (pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['ge->ee'] = pil
+        hpi_gate['ge->ee'] = hpil
+        quantum_device_cfg['pulse_info']['1']['pi_ee_len'] = pil
+        quantum_device_cfg['pulse_info']['1']['half_pi_ee_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |ge>-->|ee> Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['ge->ee'], pi_amp['ge->ee'],
+                                                                      hpi_gate['ge->ee'], 'charge1']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = ['2']
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = False
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |ge>-->|ee> transition: %s GHz' % (freq_new))
+        fq['ge->ee'] = freq_new
+        quantum_device_cfg['qubit']['qq_disp'] = freq_new - quantum_device_cfg['qubit']['1']['freq']
+
+    print('Calibrating |ge>-->|ee> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['ge->ee']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = ['2']
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['ge->ee']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['ge->ee'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['ge->ee'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['ge->ee'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['ge->ee'] = pil
+    hpi_gate['ge->ee'] = hpil
+    quantum_device_cfg['pulse_info']['1']['pi_ee_len'] = pil
+    quantum_device_cfg['pulse_info']['1']['half_pi_ee_len'] = hpil
+    print('################################')
+    print('current results:')
+    for sss in string_list:
+        print(sss, '  Freq:', fq[sss], '  pi:', pi_gate[sss], '  hpi:', hpi_gate[sss])
+    print('qq_disp: ', fq['ge->ee'] - fq['gg->eg'])
+    print('gf1_disp: ', fq['gf->ef'] - fq['gg->eg'])
+    print('fg2_disp: ', fq['fg->fe'] - fq['gg->ge'])
+    print('ef1_disp: ', fq['ee->fe'] - fq['eg->fg'])
+    print('fe2_disp: ', fq['ee->ef'] - fq['ge->gf'])
+    print('ff1_disp: ', fq['ef->ff'] - fq['eg->fg'])
+    print('ff2_disp: ', fq['fe->ff'] - fq['ge->gf'])
+
+
+#########################################################################
+    #########################################################################################
+    ## calibrating eg->ee
+    print('Calibrating |eg>-->|ee> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround + 1)
+        ##################################### rabi
+        print('Calibrating |eg>-->|ee> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['eg->ee']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = ['1']
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['eg->ee']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['eg->ee'] * 4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['eg->ee'] * 4 / 100.0 ,1)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['eg->ee'], t1=1000)
+        print('Calibrated pi length: %.2f ' % (pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['eg->ee'] = pil
+        hpi_gate['eg->ee'] = hpil
+        quantum_device_cfg['pulse_info']['2']['pi_ee_len'] = pil
+        quantum_device_cfg['pulse_info']['2']['half_pi_ee_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |eg>-->|ee> Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['eg->ee'], pi_amp['eg->ee'],
+                                                                      hpi_gate['eg->ee'], 'charge2']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = ['1']
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = False
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |eg>-->|ee> transition: %s GHz' % (freq_new))
+        fq['eg->ee'] = freq_new
+        # quantum_device_cfg['qubit']['qq_disp'] = freq_new - quantum_device_cfg['qubit']['1']['freq']
+
+    print('Calibrating |eg>-->|ee> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['eg->ee']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = ['1']
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = False
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['eg->ee']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['eg->ee'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['eg->ee'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['eg->ee'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['eg->ee'] = pil
+    hpi_gate['eg->ee'] = hpil
+    quantum_device_cfg['pulse_info']['2']['pi_ee_len'] = pil
+    quantum_device_cfg['pulse_info']['2']['half_pi_ee_len'] = hpil
+    print('################################')
+    print('current results:')
+    for sss in string_list:
+        print(sss, '  Freq:', fq[sss], '  pi:', pi_gate[sss], '  hpi:', hpi_gate[sss])
+    print('qq_disp: ', fq['ge->ee'] - fq['gg->eg'])
+    print('gf1_disp: ', fq['gf->ef'] - fq['gg->eg'])
+    print('fg2_disp: ', fq['fg->fe'] - fq['gg->ge'])
+    print('ef1_disp: ', fq['ee->fe'] - fq['eg->fg'])
+    print('fe2_disp: ', fq['ee->ef'] - fq['ge->gf'])
+    print('ff1_disp: ', fq['ef->ff'] - fq['eg->fg'])
+    print('ff2_disp: ', fq['fe->ff'] - fq['ge->gf'])
+
+
+
+    ########################################################################################
+    ## calibrating gf->ef
+    print('Calibrating |gf>-->|ef> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround + 1)
+        ##################################### rabi
+        print('Calibrating |gf>-->|ef> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['gf->ef']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = []
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+        quantum_device_cfg['pre_pulse_info']['times_prep']=[[pi_gate['gg->ge'], 0.0], [pi_gate['ge->gf'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_amps_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['charge2_amps_prep'] = [[pi_amp['gg->ge'], 0.0], [pi_amp['ge->gf'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_freqs_prep'] = [[fq['gg->ge'], 0.0], [fq['ge->gf'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['flux1_amps_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['flux2_amps_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        
+        
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['gf->ef']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['gf->ef'] * 4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['gf->ef'] * 4 / 100.0 ,1)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['gf->ef'], t1=1000)
+        print('Calibrated pi length: %.2f ' % (pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['gf->ef'] = pil
+        hpi_gate['gf->ef'] = hpil
+        quantum_device_cfg['pulse_info']['1']['pi_gf_len'] = pil
+        quantum_device_cfg['pulse_info']['1']['half_pi_gf_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |gf>-->|ef> Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['gf->ef'], pi_amp['gf->ef'],
+                                                                      hpi_gate['gf->ef'], 'charge1']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = True
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |gf>-->|ef> transition: %s GHz' % (freq_new))
+        fq['gf->ef'] = freq_new
+        quantum_device_cfg['qubit']['gf1_disp'] = freq_new - quantum_device_cfg['qubit']['1']['freq']
+
+    print('Calibrating |gf>-->|ef> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['gf->ef']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = []
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['gf->ef']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['gf->ef'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['gf->ef'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['gf->ef'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['gf->ef'] = pil
+    hpi_gate['gf->ef'] = hpil
+    quantum_device_cfg['pulse_info']['1']['pi_gf_len'] = pil
+    quantum_device_cfg['pulse_info']['1']['half_pi_gf_len'] = hpil
+    print('################################')
+    print('current results:')
+    for sss in string_list:
+        print(sss, '  Freq:', fq[sss], '  pi:', pi_gate[sss], '  hpi:', hpi_gate[sss])
+    print('qq_disp: ', fq['ge->ee'] - fq['gg->eg'])
+    print('gf1_disp: ', fq['gf->ef'] - fq['gg->eg'])
+    print('fg2_disp: ', fq['fg->fe'] - fq['gg->ge'])
+    print('ef1_disp: ', fq['ee->fe'] - fq['eg->fg'])
+    print('fe2_disp: ', fq['ee->ef'] - fq['ge->gf'])
+    print('ff1_disp: ', fq['ef->ff'] - fq['eg->fg'])
+    print('ff2_disp: ', fq['fe->ff'] - fq['ge->gf'])
+
+
+    ########################################################################################
+    ## calibrating fg->fe
+    print('Calibrating |fg>-->|fe> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround + 1)
+        ##################################### rabi
+        print('Calibrating |fg>-->|fe> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['fg->fe']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = []
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+        quantum_device_cfg['pre_pulse_info']['times_prep'] = [[pi_gate['gg->eg'], 0.0], [pi_gate['eg->fg'], 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['charge1_amps_prep'] = [[pi_amp['gg->eg'], 0.0], [pi_amp['eg->fg'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_freqs_prep'] = [[fq['gg->eg'], 0.0], [fq['eg->fg'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['charge2_amps_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+
+
+        quantum_device_cfg['pre_pulse_info']['flux1_amps_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['flux2_amps_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['fg->fe']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['fg->fe'] * 4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['fg->fe'] * 4 / 100.0 ,1)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['fg->fe'], t1=1000)
+        print('Calibrated pi length: %.2f ' % (pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['fg->fe'] = pil
+        hpi_gate['fg->fe'] = hpil
+        quantum_device_cfg['pulse_info']['2']['pi_gf_len'] = pil
+        quantum_device_cfg['pulse_info']['2']['half_pi_gf_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |fg>-->|fe Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['fg->fe'], pi_amp['fg->fe'],
+                                                                      hpi_gate['fg->fe'], 'charge2']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = True
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |fg>-->|fe> transition: %s GHz' % (freq_new))
+        fq['fg->fe'] = freq_new
+        quantum_device_cfg['qubit']['fg2_disp'] = freq_new - quantum_device_cfg['qubit']['2']['freq']
+
+    print('Calibrating |fg>-->|fe> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['fg->fe']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = []
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['fg->fe']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['fg->fe'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['fg->fe'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['fg->fe'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['fg->fe'] = pil
+    hpi_gate['fg->fe'] = hpil
+    quantum_device_cfg['pulse_info']['2']['pi_gf_len'] = pil
+    quantum_device_cfg['pulse_info']['2']['half_pi_gf_len'] = hpil
+    print('################################')
+    print('current results:')
+    for sss in string_list:
+        print(sss, '  Freq:', fq[sss], '  pi:', pi_gate[sss], '  hpi:', hpi_gate[sss])
+    print('qq_disp: ', fq['ge->ee'] - fq['gg->eg'])
+    print('gf1_disp: ', fq['gf->ef'] - fq['gg->eg'])
+    print('fg2_disp: ', fq['fg->fe'] - fq['gg->ge'])
+    print('ef1_disp: ', fq['ee->fe'] - fq['eg->fg'])
+    print('fe2_disp: ', fq['ee->ef'] - fq['ge->gf'])
+    print('ff1_disp: ', fq['ef->ff'] - fq['eg->fg'])
+    print('ff2_disp: ', fq['fe->ff'] - fq['ge->gf'])
+
+
+
+    ########################################################################################
+    ## calibrating ee->fe
+    print('Calibrating |ee>-->|fe> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround + 1)
+        ##################################### rabi
+        print('Calibrating |ee>-->|fe> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['ee->fe']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = []
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+        quantum_device_cfg['pre_pulse_info']['times_prep'] = [[pi_gate['gg->eg'], 0.0], [pi_gate['eg->ee'], 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['charge1_amps_prep'] = [[pi_amp['gg->eg'], 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_freqs_prep'] = [[fq['gg->eg'], 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['charge2_amps_prep'] = [[0.0, 0.0], [pi_amp['eg->ee'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_freqs_prep'] = [[0.0, 0.0], [fq['eg->ee'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['flux1_amps_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['flux2_amps_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['ee->fe']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['ee->fe'] * 4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['ee->fe'] * 4 / 100.0 ,1)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['ee->fe'], t1=1000)
+        print('Calibrated pi length: %.2f ' % (pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['ee->fe'] = pil
+        hpi_gate['ee->fe'] = hpil
+        quantum_device_cfg['pulse_info']['1']['pi_ef_e_len'] = pil
+        quantum_device_cfg['pulse_info']['1']['half_pi_ef_e_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |ee>-->|fe> Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['ee->fe'], pi_amp['ee->fe'],
+                                                                      hpi_gate['ee->fe'], 'charge1']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = True
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |ee>-->|fe> transition: %s GHz' % (freq_new))
+        fq['ee->fe'] = freq_new
+        quantum_device_cfg['qubit']['ef1_disp'] = freq_new - quantum_device_cfg['qubit']['1']['freq']
+
+    print('Calibrating |ee>-->|fe> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['ee->fe']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = []
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['ee->fe']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['ee->fe'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['ee->fe'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['ee->fe'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['ee->fe'] = pil
+    hpi_gate['ee->fe'] = hpil
+    quantum_device_cfg['pulse_info']['1']['pi_ef_e_len'] = pil
+    quantum_device_cfg['pulse_info']['1']['half_pi_ef_e_len'] = hpil
+
+    print('################################')
+    print('current results:')
+    for sss in string_list:
+        print(sss, '  Freq:', fq[sss], '  pi:', pi_gate[sss], '  hpi:', hpi_gate[sss])
+    print('qq_disp: ', fq['ge->ee'] - fq['gg->eg'])
+    print('gf1_disp: ', fq['gf->ef'] - fq['gg->eg'])
+    print('fg2_disp: ', fq['fg->fe'] - fq['gg->ge'])
+    print('ef1_disp: ', fq['ee->fe'] - fq['eg->fg'])
+    print('fe2_disp: ', fq['ee->ef'] - fq['ge->gf'])
+    print('ff1_disp: ', fq['ef->ff'] - fq['eg->fg'])
+    print('ff2_disp: ', fq['fe->ff'] - fq['ge->gf'])
+
+    ########################################################################################
+    ## calibrating ee->ef
+    print('Calibrating |ee>-->|ef> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround + 1)
+        ##################################### rabi
+        print('Calibrating |ee>-->|ef> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['ee->ef']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = []
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+        quantum_device_cfg['pre_pulse_info']['times_prep'] = [[pi_gate['gg->eg'], 0.0], [pi_gate['eg->ee'], 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['charge1_amps_prep'] = [[pi_amp['gg->eg'], 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_freqs_prep'] = [[fq['gg->eg'], 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['charge2_amps_prep'] = [[0.0, 0.0], [pi_amp['eg->ee'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_freqs_prep'] = [[0.0, 0.0], [fq['eg->ee'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['flux1_amps_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['flux2_amps_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0]]
+
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['ee->ef']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['ee->ef'] * 4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['ee->ef'] * 4 / 100.0)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['ee->ef'], t1=1000)
+        print('Calibrated pi length: %.2f ' % (pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['ee->ef'] = pil
+        hpi_gate['ee->ef'] = hpil
+        quantum_device_cfg['pulse_info']['2']['pi_ef_e_len'] = pil
+        quantum_device_cfg['pulse_info']['2']['half_pi_ef_e_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |ee>-->|ef> Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['ee->ef'], pi_amp['ee->ef'],
+                                                                      hpi_gate['ee->ef'], 'charge2']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = True
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |ee>-->|ef> transition: %s GHz' % (freq_new))
+        fq['ee->ef'] = freq_new
+        quantum_device_cfg['qubit']['fe2_disp'] = freq_new - quantum_device_cfg['qubit']['2']['freq']
+
+    print('Calibrating |ee>-->|ef> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['ee->ef']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = []
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['ee->ef']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['ee->ef'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['ee->ef'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['ee->ef'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['ee->ef'] = pil
+    hpi_gate['ee->ef'] = hpil
+    quantum_device_cfg['pulse_info']['2']['pi_ef_e_len'] = pil
+    quantum_device_cfg['pulse_info']['2']['half_pi_ef_e_len'] = hpil
+    print('################################')
+    print('current results:')
+    for sss in string_list:
+        print(sss, '  Freq:', fq[sss], '  pi:', pi_gate[sss], '  hpi:', hpi_gate[sss])
+    print('qq_disp: ', fq['ge->ee'] - fq['gg->eg'])
+    print('gf1_disp: ', fq['gf->ef'] - fq['gg->eg'])
+    print('fg2_disp: ', fq['fg->fe'] - fq['gg->ge'])
+    print('ef1_disp: ', fq['ee->fe'] - fq['eg->fg'])
+    print('fe2_disp: ', fq['ee->ef'] - fq['ge->gf'])
+    print('ff1_disp: ', fq['ef->ff'] - fq['eg->fg'])
+    print('ff2_disp: ', fq['fe->ff'] - fq['ge->gf'])
+
+
+    ########################################################################################
+    ## calibrating ef->ff
+    print('Calibrating |ef>-->|ff> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround + 1)
+        ##################################### rabi
+        print('Calibrating |ef>-->|ff> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['ef->ff']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = []
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+        quantum_device_cfg['pre_pulse_info']['times_prep'] = [[pi_gate['gg->eg'], 0.0], [pi_gate['eg->ee'], 0.0], [pi_gate['ee->ef'], 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['charge1_amps_prep'] = [[pi_amp['gg->eg'], 0.0], [0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_freqs_prep'] = [[fq['gg->eg'], 0.0], [0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['charge2_amps_prep'] = [[0.0, 0.0], [pi_amp['eg->ee'], 0.0], [pi_amp['ee->ef'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_freqs_prep'] = [[0.0, 0.0], [fq['eg->ee'], 0.0], [fq['ee->ef'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['flux1_amps_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['flux2_amps_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['ef->ff']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['ef->ff'] * 4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['ef->ff'] * 4 / 100.0 ,1)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['ef->ff'], t1=1000)
+        print('Calibrated pi length: %.2f ' % (pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['ef->ff'] = pil
+        hpi_gate['ef->ff'] = hpil
+        quantum_device_cfg['pulse_info']['1']['pi_ff_len'] = pil
+        quantum_device_cfg['pulse_info']['1']['half_pi_ff_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |ef>-->|ff> Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['ef->ff'], pi_amp['ef->ff'],
+                                                                      hpi_gate['ef->ff'], 'charge1']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = True
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['1']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['1']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |ef>-->|ff> transition: %s GHz' % (freq_new))
+        fq['ef->ff'] = freq_new
+        quantum_device_cfg['qubit']['ff1_disp'] = freq_new - quantum_device_cfg['qubit']['1']['freq']+quantum_device_cfg['qubit']['1']['anharmonicity']
+
+    print('Calibrating |ef>-->|ff> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['ef->ff']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = []
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['ef->ff']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['ef->ff'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['ef->ff'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['1']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['1']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '1'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['ef->ff'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['ef->ff'] = pil
+    hpi_gate['ef->ff'] = hpil
+    quantum_device_cfg['pulse_info']['1']['pi_ff_len'] = pil
+    quantum_device_cfg['pulse_info']['1']['half_pi_ff_len'] = hpil
+    print('################################')
+    print('current results:')
+    for sss in string_list:
+        print(sss, '  Freq:', fq[sss], '  pi:', pi_gate[sss], '  hpi:', hpi_gate[sss])
+    print('qq_disp: ', fq['ge->ee'] - fq['gg->eg'])
+    print('gf1_disp: ', fq['gf->ef'] - fq['gg->eg'])
+    print('fg2_disp: ', fq['fg->fe'] - fq['gg->ge'])
+    print('ef1_disp: ', fq['ee->fe'] - fq['eg->fg'])
+    print('fe2_disp: ', fq['ee->ef'] - fq['ge->gf'])
+    print('ff1_disp: ', fq['ef->ff'] - fq['eg->fg'])
+    print('ff2_disp: ', fq['fe->ff'] - fq['ge->gf'])
+
+
+    ########################################################################################
+    ## calibrating fe->ff
+    print('Calibrating |fe>-->|ff> transition')
+    for rround in range(expt_cfg['iterno']):
+        print('############## Calibration Round No: ', rround + 1)
+        ##################################### rabi
+        print('Calibrating |fe>-->|ff> Rabi')
+        experiment_cfg['rabi_while_flux']['amp'] = pi_amp['fe->ff']
+        experiment_cfg['rabi_while_flux']['flux_amp'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi'] = []
+        experiment_cfg['rabi_while_flux']['ef_pi'] = []
+        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+        experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+        quantum_device_cfg['pulse_info']['times_prep'] = [[pi_gate['gg->eg'], 0.0], [pi_gate['eg->ee'], 0.0],
+                                                          [pi_gate['ee->fe'], 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['charge1_amps_prep'] = [[pi_amp['gg->eg'], 0.0], [0.0, 0.0], [pi_amp['ee->fe'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_freqs_prep'] = [[fq['gg->eg'], 0.0], [0.0, 0.0], [fq['ee->fe'], 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['charge2_amps_prep'] = [[0.0, 0.0], [pi_amp['eg->ee'], 0.0],
+                                                                 [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_freqs_prep'] = [[0.0, 0.0], [fq['eg->ee'], 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['charge2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['flux1_amps_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux1_phases_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+
+        quantum_device_cfg['pre_pulse_info']['flux2_amps_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_freqs_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+        quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+
+        experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['fe->ff']
+        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+        experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+        experiment_cfg['rabi_while_flux']['start'] = 0.0
+        experiment_cfg['rabi_while_flux']['stop'] = pi_gate['fe->ff'] * 4.0
+        experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['fe->ff'] * 4 / 100.0 ,1)
+
+        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+        experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+        experiment_cfg['rabi_while_flux']['flux_line'] = []
+        experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('rabi_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting Rabi data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['fe->ff'], t1=1000)
+        print('Calibrated pi length: %.2f ' % (pil))
+        print('Calibrated pi/2 length: %.2f ' % (hpil))
+        pi_gate['fe->ff'] = pil
+        hpi_gate['fe->ff'] = hpil
+        quantum_device_cfg['pulse_info']['2']['pi_ff_len'] = pil
+        quantum_device_cfg['pulse_info']['2']['half_pi_ff_len'] = hpil
+
+        ########################################### ramsey
+        print('Calibrating |fe>-->|ff> Ramsey')
+        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = [True, fq['fe->ff'], pi_amp['fe->ff'],
+                                                                      hpi_gate['fe->ff'], 'charge2']
+        experiment_cfg['ramsey_while_flux']['flux_amp'] = []
+        experiment_cfg['ramsey_while_flux']['flux_probe'] = False
+        experiment_cfg['ramsey_while_flux']['singleshot'] = False
+        experiment_cfg['ramsey_while_flux']['ge_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ef_pi'] = []
+        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
+        experiment_cfg['ramsey_while_flux']['pre_pulse'] = True
+        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = False
+
+        experiment_cfg['ramsey_while_flux']['start'] = 0.0
+        experiment_cfg['ramsey_while_flux']['stop'] = 1500.0
+        experiment_cfg['ramsey_while_flux']['step'] = 5.0
+        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = 0.005
+
+        experiment_cfg['ramsey_while_flux']['acquisition_num'] = ram_acq_no
+        experiment_cfg['ramsey_while_flux']['on_qubits'] = ['2']
+        experiment_cfg['ramsey_while_flux']['on_cavity'] = ['2']
+        experiment_cfg['ramsey_while_flux']['flux_line'] = []
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = 1.0
+        experiment_cfg['ramsey_while_flux']['phase'] = [0]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux')
+
+        update_awg = False
+        ########################################### Fitting Ramsey
+        print('Fitting Ramsey data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'ramsey_while_flux', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            freq_new = calibrate_ramsey(a, pi_length=100, t2=1000)
+        print('Calibrated |fe>-->|ff> transition: %s GHz' % (freq_new))
+        fq['fe->ff'] = freq_new
+        quantum_device_cfg['qubit']['ff2_disp'] = freq_new - quantum_device_cfg['qubit']['2']['freq'] + \
+                                                  quantum_device_cfg['qubit']['2']['anharmonicity']
+
+    print('Calibrating |fe>-->|ff> Rabi')
+    experiment_cfg['rabi_while_flux']['amp'] = pi_amp['fe->ff']
+    experiment_cfg['rabi_while_flux']['flux_amp'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi'] = []
+    experiment_cfg['rabi_while_flux']['ef_pi'] = []
+    experiment_cfg['rabi_while_flux']['ge_pi2'] = []
+    experiment_cfg['rabi_while_flux']['pre_pulse'] = True
+    experiment_cfg['rabi_while_flux']['qubit_freq'] = fq['fe->ff']
+    experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = False
+    experiment_cfg['rabi_while_flux']['flux_probe'] = False
+
+    experiment_cfg['rabi_while_flux']['start'] = 0.0
+    experiment_cfg['rabi_while_flux']['stop'] = pi_gate['fe->ff'] * 4.0
+    experiment_cfg['rabi_while_flux']['step'] = np.round(pi_gate['fe->ff'] * 4 / 100.0 ,1)
+
+    experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rabi_while_flux']['on_qubits'] = ['2']
+    experiment_cfg['rabi_while_flux']['on_cavity'] = ['2']
+    experiment_cfg['rabi_while_flux']['calibration_qubit'] = '2'
+    experiment_cfg['rabi_while_flux']['flux_line'] = []
+    experiment_cfg['rabi_while_flux']['flux_freq'] = 1.0
+    experiment_cfg['rabi_while_flux']['phase'] = [0]
+
+    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    sequences = ps.get_experiment_sequences('rabi_while_flux')
+    update_awg = True
+
+    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+    exp.run_experiment(sequences, path, 'rabi_while_flux')
+
+    update_awg = False
+    ########################################### Fitting Rabi
+    print('Fitting Rabi data...')
+    data_path_now = os.path.join(data_path, get_current_filename(data_path, 'rabi_while_flux', suffix='.h5'))
+    with SlabFile(data_path_now) as a:
+        pil, hpil = calibrate_rabi_while_flux(a, pi_length=pi_gate['fe->ff'], t1=1000)
+    print('Calibrated pi length: %.2f ' % (pil))
+    print('Calibrated pi/2 length: %.2f ' % (hpil))
+    pi_gate['fe->ff'] = pil
+    hpi_gate['fe->ff'] = hpil
+    quantum_device_cfg['pulse_info']['2']['pi_ff_len'] = pil
+    quantum_device_cfg['pulse_info']['2']['half_pi_ff_len'] = hpil
+
+    ### save results
+    print('################################')
+    print('Final results:')
+    for sss in string_list:
+        print(sss, '  Freq:', fq[sss], '  pi:', pi_gate[sss], '  hpi:', hpi_gate[sss])
+    print('alpha1: ',fq['eg->fg']-fq['gg->eg'])
+    print('alpha2: ',fq['ge->gf']-fq['gg->ge'])
+    print('qq_disp: ',fq['ge->ee']-fq['gg->eg'])
+    print('gf1_disp: ',fq['gf->ef']-fq['gg->eg'])
+    print('fg2_disp: ',fq['fg->fe']-fq['gg->ge'])
+    print('ef1_disp: ',fq['ee->fe']-fq['eg->fg'])
+    print('fe2_disp: ',fq['ee->ef']-fq['ge->gf'])
+    print('ff1_disp: ',fq['ef->ff']-fq['eg->fg'])
+    print('ff2_disp: ',fq['fe->ff']-fq['ge->gf'])
+
+def histogram_time_idle_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['histogram_time_idle_sweep']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram_time_idle_sweep', suffix='.h5'))
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['histogram_while_flux']['states'] = expt_cfg['states']
+    experiment_cfg['histogram_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['histogram_while_flux']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['histogram_while_flux']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['histogram_while_flux']['flux_probe'] = expt_cfg['flux_probe']
+    experiment_cfg['histogram_while_flux']['flux_line'] = expt_cfg['flux_line']
+
+    experiment_cfg['histogram_while_flux']['amps'] = expt_cfg['amps']
+    experiment_cfg['histogram_while_flux']['freqs'] = expt_cfg['freqs']
+    experiment_cfg['histogram_while_flux']['phases'] = expt_cfg['phases']
+    experiment_cfg['histogram_while_flux']['sideband_on'] = expt_cfg['sideband_on']
+    
+    if on_qubits[0]=='1':
+        sweep_states = ['gg','eg','fg']
+    else:
+        sweep_states = ['gg','ge','gf']
+    for ss in sweep_states:
+        experiment_cfg['histogram_while_flux']['states'].append(ss)
+
+    for time in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        experiment_cfg['histogram_while_flux']['time'] = time
+        sequences = ps.get_experiment_sequences('histogram_while_flux')
+        update_awg = True
+        print('Sweep time: ',time,' ns')
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'histogram_while_flux', seq_data_file, update_awg)
+
+        update_awg = False
+
+
+def histogram_time_idle_sweep_phase_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['histogram_time_idle_sweep_phase_sweep']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram_time_idle_sweep_phase_sweep', suffix='.h5'))
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['histogram_while_flux']['states'] = expt_cfg['states']
+    experiment_cfg['histogram_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['histogram_while_flux']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['histogram_while_flux']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['histogram_while_flux']['flux_probe'] = expt_cfg['flux_probe']
+    experiment_cfg['histogram_while_flux']['flux_line'] = expt_cfg['flux_line']
+
+    experiment_cfg['histogram_while_flux']['amps'] = expt_cfg['amps']
+    experiment_cfg['histogram_while_flux']['freqs'] = expt_cfg['freqs']
+    experiment_cfg['histogram_while_flux']['phases'] = expt_cfg['phases']
+    experiment_cfg['histogram_while_flux']['sideband_on'] = expt_cfg['sideband_on']
+
+    if on_qubits[0] == '1':
+        sweep_states = ['gg', 'eg', 'fg']
+    else:
+        sweep_states = ['gg', 'ge', 'gf']
+    for ss in sweep_states:
+        experiment_cfg['histogram_while_flux']['states'].append(ss)
+
+    for phase_p in np.arange(expt_cfg['phase_start'], expt_cfg['phase_stop'], expt_cfg['phase_step']):
+
+        quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'][-2][0] = phase_p
+        print('Sweep Phase: ', phase_p)
+
+        print(quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'])
+
+        for time in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            experiment_cfg['histogram_while_flux']['time'] = time
+            sequences = ps.get_experiment_sequences('histogram_while_flux')
+            update_awg = True
+            print('Sweep time: ', time, ' ns')
+
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            exp.run_experiment(sequences, path, 'histogram_while_flux', seq_data_file, update_awg)
+
+            update_awg = False
 
 def histogram(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     expt_cfg = experiment_cfg['histogram']
@@ -833,17 +3109,20 @@ def multitone_error_divisible_gate_freq_sweep(quantum_device_cfg, experiment_cfg
         update_awg = False
 
 
-def multitone_sideband_rabi_drive_both_flux_freq_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path): ## UNCHECKED
+def multitone_sideband_rabi_drive_both_flux_freq_sweep_old(quantum_device_cfg, experiment_cfg, hardware_cfg, path): ## UNCHECKED
     expt_cfg = experiment_cfg['multitone_sideband_rabi_drive_both_flux_freq_sweep']
     data_path = os.path.join(path, 'data/')
     seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'multitone_sideband_rabi_drive_both_flux_freq_sweep', suffix='.h5'))
 
     experiment_cfg['multitone_sideband_rabi_drive_both_flux']['amps'] = expt_cfg['amps']
     experiment_cfg['multitone_sideband_rabi_drive_both_flux']['pre_pulse'] = expt_cfg['pre_pulse']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['post_pulse'] = expt_cfg['post_pulse']
     experiment_cfg['multitone_sideband_rabi_drive_both_flux']['phases'] = expt_cfg['phases']
     experiment_cfg['multitone_sideband_rabi_drive_both_flux']['start'] = expt_cfg['time_start']
     experiment_cfg['multitone_sideband_rabi_drive_both_flux']['stop'] = expt_cfg['time_stop']
     experiment_cfg['multitone_sideband_rabi_drive_both_flux']['step'] = expt_cfg['time_step']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['ge_pi'] = expt_cfg['ge_pi']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['ef_pi'] = expt_cfg['ef_pi']
     experiment_cfg['multitone_sideband_rabi_drive_both_flux']['Gaussian'] = expt_cfg['Gaussian']
     experiment_cfg['multitone_sideband_rabi_drive_both_flux']['pi_calibration'] = expt_cfg['pi_calibration']
     experiment_cfg['multitone_sideband_rabi_drive_both_flux']['flux_pi_calibration'] = expt_cfg['flux_pi_calibration']
@@ -883,7 +3162,47 @@ def multitone_sideband_rabi_drive_both_flux_freq_sweep(quantum_device_cfg, exper
         exp.run_experiment(sequences, path, 'multitone_sideband_rabi_drive_both_flux_freq_sweep', seq_data_file, update_awg)
 
         update_awg = False
-        print('Now value is:',expt_cfg['freqs_start'])
+        # print('Now value is:',expt_cfg['freqs_start'])
+
+
+def multitone_sideband_rabi_drive_both_flux_freq_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path): ## UNCHECKED
+    expt_cfg = experiment_cfg['multitone_sideband_rabi_drive_both_flux_freq_sweep']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'multitone_sideband_rabi_drive_both_flux_freq_sweep', suffix='.h5'))
+
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['amps'] = expt_cfg['amps']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['pre_pulse'] = expt_cfg['pre_pulse']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['post_pulse'] = expt_cfg['post_pulse']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['phases'] = expt_cfg['phases']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['start'] = expt_cfg['time_start']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['stop'] = expt_cfg['time_stop']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['step'] = expt_cfg['time_step']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['ge_pi'] = expt_cfg['ge_pi']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['ef_pi'] = expt_cfg['ef_pi']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['Gaussian'] = expt_cfg['Gaussian']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['flux_pi_calibration'] = expt_cfg['flux_pi_calibration']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['flux_pulse'] = expt_cfg['flux_pulse']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['flux_line'] = expt_cfg['flux_line']
+    experiment_cfg['multitone_sideband_rabi_drive_both_flux']['calibration_qubit'] = expt_cfg['calibration_qubit']
+
+    freqs_arr = np.linspace(expt_cfg['freqs_start'], expt_cfg['freqs_stop'], expt_cfg['no_points'])
+    # Simultaneously sweeping both freq. array
+
+    for ii, freqs in enumerate(freqs_arr):
+        print('Index %s: rabi_drive_freqs: %s' % (ii, freqs.tolist()))
+        experiment_cfg['multitone_sideband_rabi_drive_both_flux']['freqs'] = freqs.tolist()
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('multitone_sideband_rabi_drive_both_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'multitone_sideband_rabi_drive_both_flux_freq_sweep', seq_data_file, update_awg)
+
+        update_awg = False
 
 
 def multitone_sideband_rabi_drive_both_flux_amp_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path): ## UNCHECKED
@@ -1106,6 +3425,55 @@ def tomo_2q_multitone_charge_flux_drive_Qubit_sweep(quantum_device_cfg, experime
 
         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
         exp.run_experiment(sequences, path, 'tomo_2q_multitone_charge_flux_drive_Qubit_sweep', seq_data_file, update_awg)
+
+        update_awg = False
+
+
+def tomo_2q_multitone_charge_flux_drive_gef_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef_sweep']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'tomo_2q_multitone_charge_flux_drive_gef_sweep', suffix='.h5'))
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['default'] = expt_cfg['default']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['default_state'] = expt_cfg['default_state']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['times_prep'] = expt_cfg['times_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge1_amps_prep'] = expt_cfg['charge1_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge1_freqs_prep'] = expt_cfg['charge1_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge1_phases_prep'] = expt_cfg['charge1_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge2_amps_prep'] = expt_cfg['charge2_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge2_freqs_prep'] = expt_cfg['charge2_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge2_phases_prep'] = expt_cfg['charge2_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux1_amps_prep'] = expt_cfg['flux1_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux1_freqs_prep'] = expt_cfg['flux1_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux1_phases_prep'] = expt_cfg['flux1_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux2_amps_prep'] = expt_cfg['flux2_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux2_freqs_prep'] = expt_cfg['flux2_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux2_phases_prep'] = expt_cfg['flux2_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux_LO'] = expt_cfg['flux_LO']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['use_tomo_pulse_info'] = expt_cfg['use_tomo_pulse_info']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['sequential_tomo_pulse'] = expt_cfg['sequential_tomo_pulse']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['defined'] = expt_cfg['defined']
+    ll = len(experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef_sweep']['times_prep'][-1])
+
+    for ii, idle_time in enumerate(np.arange(expt_cfg['time_start'], expt_cfg['time_stop'], expt_cfg['time_step'])):
+
+        print('Index %s: gate_length: %s' %(ii, idle_time))
+        add_slot = []
+        for jj in range(ll):
+            add_slot.append(idle_time)
+        experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['times_prep'][-1] = add_slot
+        print(experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef'])
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('tomo_2q_multitone_charge_flux_drive_gef')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'tomo_2q_multitone_charge_flux_drive_gef_sweep', seq_data_file, update_awg)
 
         update_awg = False
 
@@ -1377,6 +3745,54 @@ def tomo_2q_multitone_charge_flux_drive_gate_sweep(quantum_device_cfg, experimen
 
         update_awg = False
 
+
+def tomo_2q_multitone_charge_flux_drive_tomo_angle_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle_sweep']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'tomo_2q_multitone_charge_flux_drive_tomo_angle_sweep', suffix='.h5'))
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['times_prep'] = expt_cfg['times_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['charge1_amps_prep'] = expt_cfg['charge1_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['charge1_freqs_prep'] = expt_cfg['charge1_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['charge1_phases_prep'] = expt_cfg['charge1_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['charge2_amps_prep'] = expt_cfg['charge2_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['charge2_freqs_prep'] = expt_cfg['charge2_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['charge2_phases_prep'] = expt_cfg['charge2_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux1_amps_prep'] = expt_cfg['flux1_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux1_freqs_prep'] = expt_cfg['flux1_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux1_phases_prep'] = expt_cfg['flux1_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux2_amps_prep'] = expt_cfg['flux2_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux2_freqs_prep'] = expt_cfg['flux2_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux2_phases_prep'] = expt_cfg['flux2_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux1_amps_tomo'] = expt_cfg['flux1_amps_tomo']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux1_freqs_tomo'] = expt_cfg['flux1_freqs_tomo']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux1_phases_tomo'] = expt_cfg['flux1_phases_tomo']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux2_amps_tomo'] = expt_cfg['flux2_amps_tomo']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux2_freqs_tomo'] = expt_cfg['flux2_freqs_tomo']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux2_phases_tomo'] = expt_cfg['flux2_phases_tomo']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['flux_LO'] = expt_cfg['flux_LO']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['use_tomo_pulse_info'] = expt_cfg['use_tomo_pulse_info']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['sequential_tomo_pulse'] = expt_cfg['sequential_tomo_pulse']
+    rel_y_angle
+
+    for ii, rel_y_angle in enumerate(np.arange(expt_cfg['rel_y_angle_start'], expt_cfg['rel_y_angle_stop'], expt_cfg['rel_y_angle_step'])):
+
+        print('Index %s: rel_y_angle: %s' %(ii, rel_y_angle))
+        experiment_cfg['tomo_2q_multitone_charge_flux_drive_tomo_angle']['rel_y_angle'] = rel_y_angle
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('tomo_2q_multitone_charge_flux_drive_tomo_angle')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'tomo_2q_multitone_charge_flux_drive_tomo_angle_sweep', seq_data_file, update_awg)
+
+        update_awg = False
+
 def tomo_1q_multitone_charge_flux_drive_sweep_halfpi_gate(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     expt_cfg = experiment_cfg['tomo_1q_multitone_charge_flux_drive_sweep_halfpi_gate']
     data_path = os.path.join(path, 'data/')
@@ -1469,227 +3885,49 @@ def tomo_1q_multitone_charge_flux_drive_sweep_pi_gate(quantum_device_cfg, experi
 
         update_awg = False
 
-def calibrate_rabi(a, pi_length=100, t1=1000):
-    quantum_device_cfg = json.loads(a.attrs['quantum_device_cfg'])
-    experiment_cfg = json.loads(a.attrs['experiment_cfg'])
-    hardware_cfg = json.loads(a.attrs['hardware_cfg'])
 
-    expt_cfg = experiment_cfg[experiment]
-    expt_pts = np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])
-    print(expt_cfg)
-
-    on_cavity = expt_cfg['on_cavity']
-    ii = 0
-
-    for cavity_id in on_cavity:
-
-        expt_avg_data = np.array(a['expt_avg_data_ch%s' % cavity_id])
-        if norm_val is not None:
-            y0, y1 = norm_val
-            expt_avg_data -= y0
-            expt_avg_data = expt_avg_data / (y1 - y0)
-
-        plt.figure(figsize=(10, 4))
-        plt.title("%s of Q%s Rdt%s at flux2=-1/2 flux1=1/4, flux2_amp=%s" \
-                  % (experiment, expt_cfg['on_cavity'][ii], cavity_id, expt_cfg['flux_amp'][1]))
-        plt.plot(expt_pts, expt_avg_data)
-        plt.xlabel("Time (ns)")
-        #         print(expt_avg_data)
-
-        y = expt_avg_data
-        fitguess = [max(y) / 2 - min(y) / 2, 1 / (2 * pi_length), 0, t1, max(y) / 2 + min(y) / 2]
-        fitdata = fitdecaysin(expt_pts[:], expt_avg_data[:], fitparams=fitguess, showfit=True)
-        #         plt.ylim(-0.1,1.1)
-
-        pi_length = (90.0 - fitdata[2]) / (360.0 * fitdata[1])
-        print('pi len: %.2f or %.2f or %.2f or %.2f' % (pi_length, (270.0 - fitdata[2]) / (360.0 * fitdata[1]),
-                                                        2 * pi_length - (270.0 - fitdata[2]) / (360.0 * fitdata[1]),
-                                                        2 * (270.0 - fitdata[2]) / (360.0 * fitdata[1]) - pi_length))
-        print('pi/2 len: %.2f or %.2f' % (
-        pi_length - 1 / fitdata[1] / 4, (270.0 - fitdata[2]) / (360.0 * fitdata[1]) - 1 / fitdata[1] / 4))
-        #         plt.axvline(1*pi_length)
-        if vlines is not None:
-            for vline in vlines:
-                plt.axvline(vline, color='g', ls='--')
-        if hlines is not None:
-            for hline in hlines:
-                plt.axhline(hline, color='g', ls='--')
-
-        print('Oscillation rate is:', 1000 * fitdata[1], 'MHz')
-        print('Oscillation amp is:', fitdata[0])
-        print('Average popularity (/2) is:', fitdata[0] / 2)
-        print('Average popularity (/3) is:', fitdata[4] / 3)
-        print('Decay Time: %s ns' % (fitdata[3]))
-        print('drive freq:', expt_cfg['qubit_freq'])
-        print('drive amp:', expt_cfg['amp'])
-        print('time step:', expt_cfg['step'])
-        print('Flux freq: %s, amp: %s, phase: %s' \
-              % (expt_cfg['flux_freq'], expt_cfg['flux_amp'], expt_cfg['phase']))
-        print('Starting point:', fitdata[0] * np.sin(fitdata[2] / 180 * np.pi) + fitdata[4])
-        ii = ii + 1
-
-
-def calibrate_ramsey(a, pi_length=100, t2=1000, freq_default=0):
-    quantum_device_cfg = json.loads(a.attrs['quantum_device_cfg'])
-    experiment_cfg = json.loads(a.attrs['experiment_cfg'])
-    hardware_cfg = json.loads(a.attrs['hardware_cfg'])
-
-    expt_cfg = experiment_cfg[experiment]
-    expt_pts = np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step'])
-    on_qubits = expt_cfg['on_qubits']
-
-    for qubit_id in on_qubits:
-
-        expt_avg_data = np.array(a['expt_avg_data_ch%s' % qubit_id])
-
-        plt.figure(figsize=(10, 4))
-        plt.title("%s of qubit %s at flux2=-1/2 flux1=1/4" % (experiment, qubit_id))
-        plt.plot(expt_pts, expt_avg_data)
-        if vline is not None: plt.axvline(vline, color='g', ls='--')
-        if hline is not None: plt.axhline(hline, color='g', ls='--')
-
-        fitguess = [max(expt_avg_data) / 2 - min(expt_avg_data) / 2, 1 / (2 * pi_length), 0, t2, \
-                    max(expt_avg_data) / 2 + min(expt_avg_data) / 2]
-        fitdata = fitdecaysin(expt_pts, expt_avg_data, fitparams=fitguess, showfit=True)
-
-        if freq_default == 0:
-            qubit_freq = quantum_device_cfg['qubit']['%s' % qubit_id]['freq']
-        else:
-            qubit_freq = freq_default
-        ramsey_freq = experiment_cfg['ramsey']['ramsey_freq']
-        real_qubit_freq = qubit_freq + ramsey_freq - fitdata[1]
-        possible_qubit_freq = qubit_freq + ramsey_freq + fitdata[1]
-        plt.text(0.8, 0.8, "Decay = %.3f us" % (fitdata[3] / 1000), transform=plt.axes().transAxes, fontsize=12)
-
-        print('====drive %s information====' % (qubit_id))
-        print('pi amp:' + str(quantum_device_cfg['pulse_info'][qubit_id]['pi_amp']))
-        print('pi time:' + str(quantum_device_cfg['pulse_info'][qubit_id]['pi_len']) + " ns")
-        print('half pi amp:' + str(quantum_device_cfg['pulse_info'][qubit_id]['half_pi_amp']))
-        print('half pi time:' + str(quantum_device_cfg['pulse_info'][qubit_id]['half_pi_len']) + " ns")
-        print('ge_pi: ' + str(expt_cfg['ge_pi']))
-        try:
-            print('Flux: ' + str(expt_cfg['flux_freq']) + ' Ghz, Amp: ' + str(expt_cfg['flux_amp']))
-        except:
-            pass
-
-        print('====qubit %s information====' % (qubit_id))
-        print('original qubit frequency:' + str(qubit_freq) + " GHz")
-        print('Dephasing Time: %s ns' % (fitdata[3]))
-        print("Oscillation frequency: %s GHz" % str(fitdata[1]))
-        print("Suggested qubit frequency: %s GHz" % str(real_qubit_freq))
-        print("possible qubit frequency: %s GHz" % str(possible_qubit_freq))
-
-
-def qubit_calibration(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
-    expt_cfg = experiment_cfg['qubit_calibration']
+def ramsey_while_flux_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['ramsey_while_flux_sweep']
     data_path = os.path.join(path, 'data/')
-
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'ramsey_while_flux_sweep', suffix='.h5'))
     on_qubits = expt_cfg['on_qubits']
 
-    iterations = expt_cfg['iteration']
-    freq = expt_cfg['initial_qubit_freq']
-    pi_length = quantum_device_cfg['pulse_info'][on_qubits]['pi_len']
-    t1 = expt_cfg['t1']
+    experiment_cfg['ramsey_while_flux']['stop'] = expt_cfg['stop']
+    experiment_cfg['ramsey_while_flux']['step'] = expt_cfg['step']
+    experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = expt_cfg['use_freq_amp_halfpi']
+    experiment_cfg['ramsey_while_flux']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = expt_cfg['flux_pi_calibration']
+    experiment_cfg['ramsey_while_flux']['flux_probe'] = expt_cfg['flux_probe']
+    experiment_cfg['ramsey_while_flux']['ge_pi'] = expt_cfg['ge_pi']
+    experiment_cfg['ramsey_while_flux']['ef_pi'] = expt_cfg['ef_pi']
+    experiment_cfg['ramsey_while_flux']['ge_pi2'] = expt_cfg['ge_pi2']
+    experiment_cfg['ramsey_while_flux']['start'] = expt_cfg['start']
+    experiment_cfg['ramsey_while_flux']['ramsey_freq'] = expt_cfg['ramsey_freq']
+    experiment_cfg['ramsey_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['ramsey_while_flux']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['ramsey_while_flux']['on_cavity'] = expt_cfg['on_cavity']
+    experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['ramsey_while_flux']['flux_amp'] = expt_cfg['flux_amp']
+    experiment_cfg['ramsey_while_flux']['flux_line'] = expt_cfg['flux_line']
+    experiment_cfg['ramsey_while_flux']['flux_freq'] = expt_cfg['flux_freq']
+    experiment_cfg['ramsey_while_flux']['phase'] = expt_cfg['phase']
+    experiment_cfg['ramsey_while_flux']['pre_pulse'] = expt_cfg['pre_pulse']
 
+    for ii, time_add in enumerate(range(expt_cfg['section'])):
 
-    for ii in range(iterations):
-        #  Perform a rabi drive first
-        experiment_cfg['rabi_while_flux']['amp'] = expt_cfg['amp']
-        experiment_cfg['rabi_while_flux']['start'] = expt_cfg['rabi_start']
-        experiment_cfg['rabi_while_flux']['stop'] = expt_cfg['rabi_stop']
-        experiment_cfg['rabi_while_flux']['step'] = expt_cfg['rabi_step']
-        experiment_cfg['rabi_while_flux']['acquisition_num'] = expt_cfg['rabi_acquisition_num']
-        experiment_cfg['rabi_while_flux']['on_qubits'] = expt_cfg['on_qubits']
-        experiment_cfg['rabi_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
-        experiment_cfg['rabi_while_flux']['flux_probe'] = expt_cfg['flux_probe']
-        experiment_cfg['rabi_while_flux']['flux_pi_calibration'] = expt_cfg['flux_pi_calibration']
-        experiment_cfg['rabi_while_flux']['calibration_qubit'] = expt_cfg['calibration_qubit']
-        experiment_cfg['rabi_while_flux']['ge_pi'] = expt_cfg['ge_pi']
-        experiment_cfg['rabi_while_flux']['ef_pi'] = expt_cfg['ef_pi']
-        experiment_cfg['rabi_while_flux']['ge_pi2'] = []
-        experiment_cfg['rabi_while_flux']['flux_line'] = expt_cfg['flux_line']
-        experiment_cfg['rabi_while_flux']['flux_freq'] = expt_cfg['flux_freq']
-        experiment_cfg['rabi_while_flux']['phase'] = expt_cfg['phase']
-        experiment_cfg['rabi_while_flux']['on_cavity'] = expt_cfg['on_cavity']
-        experiment_cfg['rabi_while_flux']['pre_pulse'] = expt_cfg['pre_pulse']
-        experiment_cfg['rabi_while_flux']['qubit_freq'] = freq
+        print('Index %s: ramsey_while_flux time section: %s' %(ii, time_add))
+        experiment_cfg['ramsey_while_flux']['start'] = expt_cfg['start']+time_add*expt_cfg['stop']
+        experiment_cfg['ramsey_while_flux']['stop'] = expt_cfg['stop']+time_add*expt_cfg['stop']
+        experiment_cfg['ramsey_while_flux']['step'] = expt_cfg['step']
 
-        print('Index %s: Current qubit frequency: %s Doing Rabi Experiment' %(ii, freq))
-        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'qubit_calibration', suffix='.h5'))
-        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
-        sequences = ps.get_experiment_sequences('rabi_while_flux')
-        update_awg = True
-
-        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
-        exp.run_experiment(sequences, path, 'qubit_calibration', seq_data_file, update_awg)
-        update_awg = False
-
-        #  Analyzing qubit pi and pi/2 gate length
-        with SlabFile(seq_data_file) as a:
-            pi_length, half_pi_length = calibrate_rabi(a, pi_length=pi_length, t1=t1)
-
-        #  update quantum_device_cfg with qubit frequency, pi, pi/2 length
-        quantum_device_cfg["qubit"][on_qubits]["freq"] = freq
-        quantum_device_cfg["pulse_info"][on_qubits]["pi_len"] = pi_length
-        quantum_device_cfg["pulse_info"][on_qubits]["half_pi_len"] = half_pi_length
-        quantum_device_cfg["pulse_info"][on_qubits]["pi_amp"] = expt_cfg['amp']
-        quantum_device_cfg["pulse_info"][on_qubits]["half_pi_amp"] = expt_cfg['amp']
-
-        # Perform Ramsey experiments
-        experiment_cfg['ramsey_while_flux']['start'] = expt_cfg['ramsey_start']
-        experiment_cfg['ramsey_while_flux']['stop'] = expt_cfg['ramsey_stop']
-        experiment_cfg['ramsey_while_flux']['step'] = expt_cfg['ramsey_step']
-        experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = expt_cfg['use_freq_amp_halfpi']
-        experiment_cfg['ramsey_while_flux']['singleshot'] = expt_cfg['singleshot']
-        experiment_cfg['ramsey_while_flux']['acquisition_num'] = expt_cfg['rabi_acquisition_num']
-        experiment_cfg['ramsey_while_flux']['on_qubits'] = expt_cfg['on_qubits']
-        experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
-        experiment_cfg['ramsey_while_flux']['flux_probe'] = expt_cfg['flux_probe']
-        experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = expt_cfg['flux_pi_calibration']
-        experiment_cfg['rabi_while_flux']['calibration_qubit'] = expt_cfg['calibration_qubit']
-        experiment_cfg['ramsey_while_flux']['ge_pi'] = expt_cfg['ge_pi']
-        experiment_cfg['ramsey_while_flux']['ef_pi'] = expt_cfg['ef_pi']
-        experiment_cfg['ramsey_while_flux']['ge_pi2'] = []
-        experiment_cfg['ramsey_while_flux']['flux_line'] = expt_cfg['flux_line']
-        experiment_cfg['ramsey_while_flux']['flux_freq'] = expt_cfg['flux_freq']
-        experiment_cfg['ramsey_while_flux']['phase'] = expt_cfg['phase']
-        experiment_cfg['ramsey_while_flux']['ramsey_freq'] = expt_cfg['ramsey_freq']
-        experiment_cfg['ramsey_while_flux']['pre_pulse'] = expt_cfg['pre_pulse']
-
-        print('Index %s: Current qubit frequency: %s Doing Ramsey Experiment' % (ii, freq))
-        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'qubit_calibration', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
         sequences = ps.get_experiment_sequences('ramsey_while_flux')
         update_awg = True
 
         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
-        exp.run_experiment(sequences, path, 'qubit_calibration', seq_data_file, update_awg)
-        update_awg = False
-
-        #  Analyzing qubit frequency
-        with SlabFile(seq_data_file) as a:
-            freq = calibrate_ramsey(a, pi_length=pi_length, t2=1000, freq_default=freq)
-
-        print('Updated Qubit frequency %s:' % (freq))
-
-
-
-
-    for ii, freq in enumerate(np.arange(expt_cfg['freq_start'], expt_cfg['freq_stop'], expt_cfg['freq_step'])):
-
-        print('Index %s: rabi_drive_freq: %s' %(ii, freq))
-        experiment_cfg['rabi_while_flux']['qubit_freq'] = freq
-
-        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
-        sequences = ps.get_experiment_sequences('rabi_while_flux')
-        update_awg = True
-
-        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
-        exp.run_experiment(sequences, path, 'qubit_calibration', seq_data_file, update_awg)
+        exp.run_experiment(sequences, path, 'ramsey_while_flux_sweep', seq_data_file, update_awg)
 
         update_awg = False
-
-
 
 def rabi_while_flux_freq_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     expt_cfg = experiment_cfg['rabi_while_flux_freq_sweep']
@@ -2012,6 +4250,37 @@ def edg_xeb_repeat(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
 
         update_awg = False
 
+
+def xeb_single_repeat(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    # Author Tanay 17 Sep 2021
+    # Repeat is the number of different sequences with same depth
+    expt_cfg = experiment_cfg['xeb_single_repeat']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'xeb_single_repeat', suffix='.h5'))
+
+    experiment_cfg['xeb_single']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['xeb_single']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['xeb_single']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['xeb_single']['edg_on'] = expt_cfg['edg_on']
+    experiment_cfg['xeb_single']['depth'] = expt_cfg['depth']
+    experiment_cfg['xeb_single']['use_tomo_pulse_info'] = expt_cfg['use_tomo_pulse_info']
+    experiment_cfg['xeb_single']['sequential_single_gate'] = expt_cfg['sequential_single_gate']
+
+
+    for ii in range(int(expt_cfg['repeat'])):
+
+        print('Index %s: ' %(ii))
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('xeb_single')
+        update_awg = True
+        # print(quantum_device_cfg['rb_gate']['gate_list_q1'])
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'xeb_single_repeat', seq_data_file, update_awg)
+
+        update_awg = False
+
 def edg_xeb_repeat_rb(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     expt_cfg = experiment_cfg['edg_xeb_repeat_rb']
     data_path = os.path.join(path, 'data/')
@@ -2044,6 +4313,38 @@ def edg_xeb_repeat_rb(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
             update_awg = False
 
 
+def xeb_single_repeat_rb(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['xeb_single_repeat_rb']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'xeb_single_repeat_rb', suffix='.h5'))
+
+    experiment_cfg['xeb_single']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['xeb_single']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['xeb_single']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['xeb_single']['edg_on'] = expt_cfg['edg_on']
+    experiment_cfg['xeb_single']['use_tomo_pulse_info'] = expt_cfg['use_tomo_pulse_info']
+    experiment_cfg['xeb_single']['sequential_single_gate'] = expt_cfg['sequential_single_gate']
+
+    circuit = np.arange(expt_cfg['circuit_depth_start'],expt_cfg['circuit_depth_stop'],expt_cfg['circuit_depth_step'])
+    for jj in circuit:
+        print('Circuit_depth: ',jj)
+        print('#####################################')
+        experiment_cfg['xeb_single']['depth'] = int(jj)
+        for ii in range(int(expt_cfg['repeat'])):
+
+            print('Index %s: ' %(ii))
+
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences('xeb_single')
+            update_awg = True
+            # print(quantum_device_cfg['rb_gate']['gate_list_q1'])
+
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            exp.run_experiment(sequences, path, 'xeb_single_repeat_rb', seq_data_file, update_awg)
+
+            update_awg = False
+
+
 def rb_full(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     expt_cfg = experiment_cfg['rb_full']
     data_path = os.path.join(path, 'data/')
@@ -2071,6 +4372,67 @@ def rb_full(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
 
             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
             exp.run_experiment(sequences, path, 'rb_full', seq_data_file, update_awg)
+
+            update_awg = False
+
+
+def rb_interleaved_full(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['rb_interleaved_full']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'rb_interleaved_full', suffix='.h5'))
+
+    experiment_cfg['rb_interleaved']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rb_interleaved']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['rb_interleaved']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['rb_interleaved']['use_tomo_pulse_info'] = expt_cfg['use_tomo_pulse_info']
+    experiment_cfg['rb_interleaved']['sequential_single_gate'] = expt_cfg['sequential_single_gate']
+    experiment_cfg['rb_interleaved']['interleaved'] = expt_cfg['interleaved']
+
+    circuit = expt_cfg['depth']
+    for jj in circuit:
+        print('Circuit_depth: ',jj)
+        print('#####################################')
+        experiment_cfg['rb_interleaved']['depth'] = int(jj)
+        for ii in range(int(expt_cfg['repeat'])):
+
+            print('Index %s: ' %(ii))
+
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences('rb_interleaved')
+            update_awg = True
+            # print(quantum_device_cfg['rb_gate']['gate_list_q1'])
+
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            exp.run_experiment(sequences, path, 'rb_interleaved_full', seq_data_file, update_awg)
+
+            update_awg = False
+
+def rb_both_full(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['rb_both_full']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'rb_both_full', suffix='.h5'))
+
+    experiment_cfg['rb_both']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['rb_both']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['rb_both']['use_tomo_pulse_info'] = expt_cfg['use_tomo_pulse_info']
+    experiment_cfg['rb_both']['sequential_single_gate'] = expt_cfg['sequential_single_gate']
+
+    circuit = expt_cfg['depth']
+    for jj in circuit:
+        print('Circuit_depth: ',jj)
+        print('#####################################')
+        experiment_cfg['rb_both']['depth'] = int(jj)
+        for ii in range(int(expt_cfg['repeat'])):
+
+            print('Index %s: ' %(ii))
+
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences('rb_both')
+            update_awg = True
+            # print(quantum_device_cfg['rb_gate']['gate_list_q1'])
+
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            exp.run_experiment(sequences, path, 'rb_both_full', seq_data_file, update_awg)
 
             update_awg = False
 
@@ -2135,11 +4497,12 @@ def multitone_rabi_while_flux_freq_sweep(quantum_device_cfg, experiment_cfg, har
     experiment_cfg['multitone_rabi_while_flux']['on_qubits'] = expt_cfg['on_qubits']
 
     freqs_arr = np.linspace(expt_cfg['freqs_start'],expt_cfg['freqs_stop'],expt_cfg['no_points'])
+    # Simultaneously sweeping both freq. array
 
     for ii, freqs in enumerate(freqs_arr):
 
-        print('Index %s: rabi_drive_freqs: %s' %(ii, list(freqs)))
-        experiment_cfg['multitone_rabi_while_flux']['freqs'] = list(freqs)
+        print('Index %s: rabi_drive_freqs: %s' %(ii, freqs.tolist()))
+        experiment_cfg['multitone_rabi_while_flux']['freqs'] = freqs.tolist()
 
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
         sequences = ps.get_experiment_sequences('multitone_rabi_while_flux')

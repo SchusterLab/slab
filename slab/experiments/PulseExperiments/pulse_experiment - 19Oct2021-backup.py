@@ -16,7 +16,6 @@ import json
 from slab.experiments.PulseExperiments.get_data import get_iq_data, get_singleshot_data
 
 
-
 class Experiment:
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg):
         self.quantum_device_cfg = quantum_device_cfg
@@ -28,7 +27,7 @@ class Experiment:
         self.rf1 = im['RF1']
         self.rf2 = im['RF2']
 
-        # self.flux1 = im['YOKO3']
+        self.flux1 = im['YOKO3']
         self.flux2 = im['YOKO2']
         flag3 = True
 
@@ -115,9 +114,9 @@ class Experiment:
         # self.rf2.set_ext_pulse(mod=True) # Changed to False on 28 May 2021
 
     def initiate_flux(self):
-        # modified by ziqian
-        # self.flux1.set_output(True)
-        # self.flux1.set_mode('current')
+        # Added by Tanay
+        self.flux1.set_output(True)
+        self.flux1.set_mode('current')
         self.flux2.set_output(True)
         self.flux2.set_mode('current')
         # flag3=True
@@ -137,19 +136,19 @@ class Experiment:
             # print('Flux2: ', (self.quantum_device_cfg['freq_flux']['2']['current_mA'] - 2/17 * self.quantum_device_cfg['freq_flux']['1']['current_mA']+ 0*6.50))
             # self.flux1.ramp_current((self.quantum_device_cfg['freq_flux']['1']['current_mA'] -3/13 * self.quantum_device_cfg['freq_flux']['2']['current_mA'] + 0*4.90)* 1e-3)
             # self.flux2.ramp_current((self.quantum_device_cfg['freq_flux']['2']['current_mA'] - 2/17 * self.quantum_device_cfg['freq_flux']['1']['current_mA'] + 0*6.50) * 1e-3)    # VSLQ4_6
-            # print('Flux1: ', (self.quantum_device_cfg['freq_flux']['1']['current_mA'] - 0.107143 *
-            #                   self.quantum_device_cfg['freq_flux']['2']['current_mA'] - 12))
+            print('Flux1: ', (self.quantum_device_cfg['freq_flux']['1']['current_mA'] - 0.107143 *
+                              self.quantum_device_cfg['freq_flux']['2']['current_mA'] - 12))
             print('Flux2: ', (self.quantum_device_cfg['freq_flux']['2']['current_mA'] - 0.0935252 *
                               self.quantum_device_cfg['freq_flux']['1']['current_mA'] - 11))
-            # self.flux1.ramp_current((self.quantum_device_cfg['freq_flux']['1']['current_mA'] - 0.107143 *
-            #                          self.quantum_device_cfg['freq_flux']['2']['current_mA'] - 12) * 1e-3)
+            self.flux1.ramp_current((self.quantum_device_cfg['freq_flux']['1']['current_mA'] - 0.107143 *
+                                     self.quantum_device_cfg['freq_flux']['2']['current_mA'] - 12) * 1e-3)
             self.flux2.ramp_current((self.quantum_device_cfg['freq_flux']['2']['current_mA'] - 0.0935252 *
                                      self.quantum_device_cfg['freq_flux']['1']['current_mA'] - 11) * 1e-3)    # VSLQ4_5R
 
         else:
-            # print('Flux1: ', self.quantum_device_cfg['freq_flux']['1']['current_mA'])
+            print('Flux1: ', self.quantum_device_cfg['freq_flux']['1']['current_mA'])
             print('Flux2: ', self.quantum_device_cfg['freq_flux']['2']['current_mA'])
-            # self.flux1.ramp_current(self.quantum_device_cfg['freq_flux']['1']['current_mA'] * 1e-3)
+            self.flux1.ramp_current(self.quantum_device_cfg['freq_flux']['1']['current_mA'] * 1e-3)
             self.flux2.ramp_current(self.quantum_device_cfg['freq_flux']['2']['current_mA'] * 1e-3)
             # if flag3:
             #     print('Flux3: ', self.quantum_device_cfg['freq_flux']['3']['current_mA'])
