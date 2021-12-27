@@ -22,6 +22,9 @@ from .RCA18 import MCRCA18
 from .multimeter import Keithley199
 from .minicircuits_rfswitch import MiniCircuitsSwitch
 
+try: from .qick_instrument import QickInstrument
+except: print("Could not import QickInstrument, try install qick package")
+
 try: from .AD5780PARDAC.DACInterface import AD5780_serial
 except: print("Could not load AD5780 dac ")
 try: from.SignalCore import SignalCore
