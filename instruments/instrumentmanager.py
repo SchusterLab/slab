@@ -45,9 +45,16 @@ class InstrumentManager(dict):
                     print("Warning: Could not connect proxies!")
                     print(e)
         if config_path is not None:
-            self.load_config_file(config_path)
+            instruments=self.load_config_file(config_path)
+        else:
+            instruments=[]
         if server and Pyro4Loaded:
-                self.serve_instruments()
+            self.serve_instruments(instruments)
+        else:
+            for instrument in instruments:
+                self[instrument.name] = instrument
+
+
 
     def line_is_comment_or_empty(self, line=""):
         _line = line.strip();
@@ -64,12 +71,14 @@ class InstrumentManager(dict):
         """Loads configuration file"""
         print("Loaded Instruments: ", end=' ')
         f = open(config_path, 'r')
+        instruments=[]
         for line in f.readlines():
             isComment = self.line_is_comment_or_empty(line);
             if not isComment:
                 name = self.parse_config_string(line)[0]
-                self[name] = self.load_instrument(line)
+                instruments.append(self.load_instrument(line))
         print("!")
+        return instruments
 
     def load_instrument(self, config_string):
         """Loads instrument based on config_string (Name\tAddress\tType)"""
@@ -91,15 +100,16 @@ class InstrumentManager(dict):
         """Sets an alias for an instrument"""
         self[alias]=self[name]
 
-    def serve_instruments(self):
+    def serve_instruments(self, instruments=None):
         """inst_dict is in form {name:instrument_instance}"""
         Pyro4.config.SERVERTYPE = "multiplex"
         daemon = Pyro4.Daemon(host=socket.gethostbyname(socket.gethostname()))
         ns = Pyro4.locateNS(self.ns_address)
-        for name, instrument_instance in list(self.items()):
-            uri = daemon.register(instrument_instance)
-            ns.register(name, uri)
-            print("Registered: %s\t%s" % (name, uri))
+     
+        for instrument in instruments:
+            uri = daemon.register(instrument)
+            ns.register(instrument.name, uri)
+            print("Registered: %s\t%s" % (instrument.name, uri))
         daemon.requestLoop()
 
     def connect_proxies(self):

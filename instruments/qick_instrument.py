@@ -1,12 +1,23 @@
 from slab.instruments import Instrument
 from qick import QickSoc
+import Pyro4
+import socket
 
 class QickInstrument(Instrument):
     
+    def serve_instrument(inst, ns_address="192.168.14.1"):
+        Pyro4.config.SERVERTYPE = "multiplex"
+        daemon = Pyro4.Daemon(host=socket.gethostbyname(socket.gethostname()))
+        ns = Pyro4.locateNS(ns_address)
+        uri = daemon.register(inst)
+        ns.register(inst.name, uri)
+        print("Registered: %s\t%s" % (inst.name, uri))
+        daemon.requestLoop()
+
     def __init__(self, name, address='', enabled=True, timeout=1, query_sleep=0, **kwargs):
         Instrument.__init__(self, name=name, address=address, enabled=enabled, timeout=timeout, query_sleep=query_sleep, **kwargs)
         self.reset()
-        
+
     def reset(self, bitfile=None, force_init_clks=False,ignore_version=True, **kwargs):
         self.soc = QickSoc(bitfile, force_init_clks,ignore_version, **kwargs)
     
@@ -56,8 +67,12 @@ class QickInstrument(Instrument):
     def set_nyquist(self, ch, nqz):
         return self.soc.set_nyquist(ch,nqz)
 
-    def load_qick_program(self, prog, debug=False):
-        self.soc.load_qick_program(prog, debug=debug)
+    def load_bin_program(self, binprog):
+        return self.soc.load_bin_program(binprog)
+
+    def load_pulse_data(self, ch, idata, qdata, addr):
+        return self.soc.load_pulse_data (ch,idata,qdata,addr)
 
     def get_avg_max_length(self, ch=0):
         return self.soc.get_avg_max_length(ch)
+
