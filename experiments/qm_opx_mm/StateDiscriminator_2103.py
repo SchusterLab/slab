@@ -58,7 +58,7 @@ class StateDiscriminator:
         sig = x * np.exp(-1j * 2 * np.pi * rr_freq * 1e-9 * (ts - self.time_diff))
         return sig
 
-    def _get_traces(self, qe, correction_method, I_res, Q_res, seq0, sig, use_hann_filter):
+    def _get_traces(self, qe, correction_method, I_res, Q_res, seq0, sig, use_hann_filter=True):
         if correction_method == 'gmm':
             data = {'x': I_res, 'y': Q_res}
             x = DataFrame(data, columns=['x', 'y'])

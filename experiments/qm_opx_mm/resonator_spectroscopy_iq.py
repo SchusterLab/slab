@@ -15,7 +15,7 @@ f_max = 3.5e6
 df = 75e3
 f_vec = rr_freq - np.arange(f_min, f_max + df/2, df)
 
-avgs = 2000
+avgs = 5000
 reset_time = 50000
 simulation = 0
 
@@ -39,14 +39,17 @@ with program() as resonator_spectroscopy:
         with for_(f, f_min + rr_IF, f <= f_max + rr_IF, f + df):
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
+            # measure("readout", "rr", None,
+            #         demod.full("integW1", I1, 'out1'),
+            #         demod.full("integW2", Q1, 'out1'),
+            #         demod.full("integW1", I2, 'out2'),
+            #         demod.full("integW2", Q2, 'out2'))
+            #
+            # assign(I, I1-Q2)
+            # assign(Q, I2+Q1)
             measure("readout", "rr", None,
-                    demod.full("integW1", I1, 'out1'),
-                    demod.full("integW2", Q1, 'out1'),
-                    demod.full("integW1", I2, 'out2'),
-                    demod.full("integW2", Q2, 'out2'))
-
-            assign(I, I1-Q2)
-            assign(Q, I2+Q1)
+                    dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
+                    dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
 
             save(I, I_st)
             save(Q, Q_st)
@@ -81,7 +84,7 @@ else:
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'resonator_spec', suffix='.h5'))
+                                 get_next_filename(data_path, 'resonator_spec_sq', suffix='.h5'))
     print(seq_data_file)
 
     with File(seq_data_file, 'w') as f:

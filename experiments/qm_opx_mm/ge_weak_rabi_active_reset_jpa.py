@@ -14,14 +14,15 @@ from slab.dataanalysis import get_next_filename
 reset_time = 500000
 N = 2000
 
-a_min= 0
-a_max = 0.01
+a_min= 0.95*pi_amp_resolved
+a_max = 1.05*pi_amp_resolved
 
 da = (a_max - a_min)/100
 a_vec = np.arange(a_min, a_max + da/2, da)
 
 qmm = QuantumMachinesManager()
 discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
+n_pi_pulses = 12
 
 with program() as power_rabi:
 
@@ -39,12 +40,15 @@ with program() as power_rabi:
 
         with for_(a, a_min, a < a_max + da/2, a + da):
 
-            discriminator.measure_state("readout", "out1", "out2", res, I=I)
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
             align('qubit_mode0', 'rr')
             play('pi', 'qubit_mode0', condition=res)
             wait(reset_time//10, 'qubit_mode0')
             align('qubit_mode0', 'rr')
-            play('gaussian'*amp(a), 'qubit_mode0', duration=pi_len_resolved//4)
+            play('pi2', 'qubit_mode0')
+            with for_(i, 0, i < n_pi_pulses, i+1):
+                play('gaussian'*amp(a), 'qubit_mode0', duration=pi_len_resolved//4)
+            play('pi2', 'qubit_mode0')
             align('qubit_mode0', 'rr')
             discriminator.measure_state("clear", "out1", "out2", res, I=I)
 

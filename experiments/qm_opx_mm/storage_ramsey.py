@@ -1,4 +1,4 @@
-from configuration_IQ import config, ge_IF, biased_th_g_jpa, storage_freq, disc_file, two_chi
+from configuration_IQ import config, ge_IF, storage_freq, disc_file_opt, two_chi
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -19,19 +19,21 @@ ramsey_freq = 10e3
 omega = 2*np.pi*ramsey_freq
 
 dt = 2500
-T_min = 8
-T_max = 300000
+T_min = 4
+T_max = 480000
 t_vec = np.arange(T_min, T_max + dt/2, dt)
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
 avgs = 2000
-reset_time = int(3.75e6)
+reset_time = int(7.5e6)
 simulation = 0 #1 to simulate the pulses
 
-
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
+
+opx_amp = 1.0
+cav_len = 8
 
 with program() as storage_ramsey:
 
@@ -61,14 +63,14 @@ with program() as storage_ramsey:
         with for_(t, T_min, t < T_max + dt/2, t + dt):
 
             wait(reset_time// 4, "storage_mode1")# wait for the storage to relax, several T1s
-            play("CW"*amp(0.55), "storage_mode1", duration=8)
+            play("CW"*amp(opx_amp), "storage_mode1", duration=cav_len)
             wait(t, 'storage_mode1')
             frame_rotation_2pi(phi, 'storage_mode1')
-            play("CW"*amp(-0.55), "storage_mode1", duration=8)
+            play("CW"*amp(-opx_amp), "storage_mode1", duration=cav_len)
             align("storage_mode1", "qubit_mode0")
             play("res_pi", "qubit_mode0")
             align('qubit_mode0', 'rr')
-            discriminator.measure_state("readout", "out1", "out2", res, I=I)
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
             assign(phi, phi + dphi)
 
             save(res, res_st)
@@ -93,16 +95,16 @@ else:
     result_handles = job.result_handles
     # result_handles.wait_for_all_values()
     #
-    # res = result_handles.get('res').fetch_all()
-    # I = result_handles.get('I').fetch_all()
-    # plt.figure()
-    # plt.plot(4*t_vec/1e3, res, '.-')
-    # plt.show()
-    # print ("Data collection done")
-    #
+    res = result_handles.get('res').fetch_all()
+    I = result_handles.get('I').fetch_all()
+    plt.figure()
+    plt.plot(4*t_vec/1e3, res, '.-')
+    plt.show()
+    print ("Data collection done")
+
     job.halt()
     path = os.getcwd()
-    data_path = os.path.join(path, "data/")
+    data_path = os.path.join(path, "data/thesis/")
     seq_data_file = os.path.join(data_path,
                                  get_next_filename(data_path, 'storage_ramsey', suffix='.h5'))
     print(seq_data_file)

@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, ge_IF, biased_th_g_jpa, two_chi, disc_file_opt
+from configuration_IQ import config, ge_IF, biased_th_g_jpa, two_chi, disc_file_opt, storage_cal_file
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -16,15 +16,11 @@ from h5py import File
 import os, scipy
 from slab.dataanalysis import get_next_filename
 """Storage cavity t1 experiment"""
-def alpha_awg_cal(alpha, cav_amp=0.5):
+def alpha_awg_cal(alpha, cav_amp=1.0, cal_file=storage_cal_file[1]):
     # takes input array of omegas and converts them to output array of amplitudes,
     # using a calibration h5 file defined in the experiment config
     # pull calibration data from file, handling properly in case of multimode cavity
-    cal_path = 'C:\_Lib\python\slab\experiments\qm_opx_mm\drive_calibration'
-
-    fn_file = cal_path + '\\00000_2021_11_09_cavity_square_mode_2.h5'
-
-    with File(fn_file, 'r') as f:
+    with File(cal_file, 'r') as f:
         omegas = np.array(f['omegas'])
         amps = np.array(f['amps'])
     # assume zero frequency at zero amplitude, used for interpolation function
@@ -42,6 +38,52 @@ def alpha_awg_cal(alpha, cav_amp=0.5):
     pulse_length = (alpha/omega_desired)
     """Returns time in units of 4ns for FPGA"""
     return abs(pulse_length)//4+1
+def snap_seq(fock_state=0):
+
+    if fock_state==0:
+        play("CW"*amp(0.0),'storage_mode1', duration=alpha_awg_cal(1.143, cav_amp=opx_amp))
+        align('storage_mode1', 'qubit_mode0')
+        play("res_2pi"*amp(0.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(-0.0),'storage_mode1', duration=alpha_awg_cal(-0.58, cav_amp=opx_amp))
+
+    elif fock_state==1:
+        play("CW"*amp(opx_amp),'storage_mode1', duration=alpha_awg_cal(1.143, cav_amp=opx_amp))
+        align('storage_mode1', 'qubit_mode0')
+        play("res_2pi"*amp(1.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(-opx_amp),'storage_mode1', duration=alpha_awg_cal(-0.58, cav_amp=opx_amp))
+
+    elif fock_state==2:
+        play("CW"*amp(opx_amp),'storage_mode1', duration=alpha_awg_cal(0.497, cav_amp=opx_amp))
+        align('storage_mode1', 'qubit_mode0')
+        play("res_2pi"*amp(1.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(-opx_amp),'storage_mode1', duration=alpha_awg_cal(1.133, cav_amp=opx_amp))
+        update_frequency('qubit_mode0', ge_IF[0] + two_chi[1])
+        align('storage_mode1', 'qubit_mode0')
+        play("res_2pi"*amp(1.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(opx_amp),'storage_mode1', duration=alpha_awg_cal(0.432, cav_amp=opx_amp))
+        update_frequency('qubit_mode0', ge_IF[0])
+
+    elif fock_state==3:
+        play("CW"*amp(opx_amp),'storage_mode1', duration=alpha_awg_cal(0.531, cav_amp=opx_amp))
+        align('storage_mode1', 'qubit_mode0')
+        play("res_2pi"*amp(1.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(-opx_amp),'storage_mode1', duration=alpha_awg_cal(0.559, cav_amp=opx_amp))
+        update_frequency('qubit_mode0', ge_IF[0] + two_chi[1])
+        align('storage_mode1', 'qubit_mode0')
+        play("res_2pi"*amp(1.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(opx_amp),'storage_mode1', duration=alpha_awg_cal(0.946, cav_amp=opx_amp))
+        update_frequency('qubit_mode0', ge_IF[0] + 2*two_chi[1])
+        align('storage_mode1', 'qubit_mode0')
+        play("res_2pi"*amp(1.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(-opx_amp),'storage_mode1', duration=alpha_awg_cal(0.358, cav_amp=opx_amp))
+        update_frequency('qubit_mode0', ge_IF[0])
 
 dt = int(10e3)
 T_max = int(5e6)
@@ -49,7 +91,7 @@ T_min = 250
 t_vec = np.arange(T_min, T_max + dt/2, dt)
 
 avgs = 1000
-reset_time = int(5e6)
+reset_time = int(7.5e6)
 simulation = 0 #1 to simulate the pulses
 
 simulation_config = SimulationConfig(
@@ -61,6 +103,10 @@ simulation_config = SimulationConfig(
 
 qmm = QuantumMachinesManager()
 discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
+
+opx_amp = 1.0
+
+f_target = 2
 
 with program() as storage_t1:
 
@@ -89,14 +135,10 @@ with program() as storage_t1:
             update_frequency("qubit_mode0", ge_IF[0])
             wait(reset_time// 4, "storage_mode1")# wait for the storage to relax, several T1s
             ########################
-            play("CW"*amp(0.5), "storage_mode1", duration=alpha_awg_cal(1.143, cav_amp=0.5))
-            align("storage_mode1", "qubit_mode0")
-            play("res_pi"*amp(2.0), "qubit_mode0")
-            align("storage_mode1", "qubit_mode0")
-            play("CW"*amp(-0.5), "storage_mode1", duration=alpha_awg_cal(-0.58, cav_amp=0.5)) #249
+            snap_seq(fock_state=f_target)
             ########################
             align("storage_mode1", "qubit_mode0")
-            update_frequency("qubit_mode0", ge_IF[0]-two_chi[1])
+            update_frequency("qubit_mode0", ge_IF[0]+two_chi[1])
             wait(t, "qubit_mode0")
             play("res_pi", "qubit_mode0")
             align('qubit_mode0', 'rr')
@@ -125,24 +167,24 @@ else:
 
     # result_handles.wait_for_all_values()
 
-    res = result_handles.get('res').fetch_all()
-    I = result_handles.get('I').fetch_all()
-
-    plt.figure()
-    plt.plot(4*t_vec/1e3, res, '.-')
-    plt.show()
+    # res = result_handles.get('res').fetch_all()
+    # I = result_handles.get('I').fetch_all()
+    #
+    # plt.figure()
+    # plt.plot(4*t_vec/1e3, res, '.-')
+    # plt.show()
     #
     # print ("Data collection done")
     #
     # job.halt()
     #
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'storage_t1', suffix='.h5'))
-    print(seq_data_file)
-
-    with File(seq_data_file, 'w') as f:
-        f.create_dataset("I", data=I)
-        f.create_dataset("res", data=res)
-        f.create_dataset("time", data=4*t_vec)
+    # path = os.getcwd()
+    # data_path = os.path.join(path, "data/")
+    # seq_data_file = os.path.join(data_path,
+    #                              get_next_filename(data_path, 'storage_t1', suffix='.h5'))
+    # print(seq_data_file)
+    #
+    # with File(seq_data_file, 'w') as f:
+    #     f.create_dataset("I", data=I)
+    #     f.create_dataset("res", data=res)
+    #     f.create_dataset("time", data=4*t_vec)

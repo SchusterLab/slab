@@ -1,6 +1,6 @@
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config, biased_th_g, disc_file, pi_amp
+from configuration_IQ import config, biased_th_g, disc_file_opt, pi_amp, half_pi_amp
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -12,15 +12,15 @@ import os
 from slab.dataanalysis import get_next_filename
 
 reset_time = 500000
-N = 2000
+N = 1000
 
-n_pi_pulses = 4
-a_pi_min= 0.8*pi_amp
-a_pi_max = 1.2*pi_amp
+n_pi_pulses = 12
+a_pi_min= 0.95*pi_amp
+a_pi_max = 1.05*pi_amp
 
-n_pi_2_pulses = 8
-a_pi_2_min= 0.85*pi_amp/2
-a_pi_2_max = 1.15*pi_amp/2
+n_pi_2_pulses = 24
+a_pi_2_min= 0.95*half_pi_amp
+a_pi_2_max = 1.05*half_pi_amp
 
 da_pi = (a_pi_max - a_pi_min)/100
 a_pi_vec = np.arange(a_pi_min, a_pi_max + da_pi/2, da_pi)
@@ -29,7 +29,7 @@ da_pi_2 = (a_pi_2_max - a_pi_2_min)/100
 a_pi_2_vec = np.arange(a_pi_2_min, a_pi_2_max + da_pi_2/2, da_pi_2)
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
 
 with program() as power_rabi:
 
@@ -46,29 +46,33 @@ with program() as power_rabi:
 
         with for_(a, a_pi_min, a < a_pi_max + da_pi/2, a + da_pi):
 
-            discriminator.measure_state("readout", "out1", "out2", res, I=I)
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
             align('qubit_mode0', 'rr')
             play('pi', 'qubit_mode0', condition=res)
-            wait(reset_time//10, 'qubit_mode0')
             align('qubit_mode0', 'rr')
+            wait(reset_time//50, 'qubit_mode0')
+            play('pi2', 'qubit_mode0')
             with for_(i, 0, i < n_pi_pulses, i+1):
                 play('gaussian'*amp(a), 'qubit_mode0')
+            play('pi2', 'qubit_mode0')
             align('qubit_mode0', 'rr')
-            discriminator.measure_state("readout", "out1", "out2", res, I=I)
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
             save(res, I_pi_st)
 
         with for_(a, a_pi_2_min, a < a_pi_2_max + da_pi_2/2, a + da_pi_2):
 
-            discriminator.measure_state("readout", "out1", "out2", res, I=I)
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
             align('qubit_mode0', 'rr')
             play('pi', 'qubit_mode0', condition=res)
-            wait(reset_time//10, 'qubit_mode0')
             align('qubit_mode0', 'rr')
+            wait(reset_time//50, 'qubit_mode0')
+            play('pi2', 'qubit_mode0')
             with for_(i, 0, i < n_pi_2_pulses, i+1):
                 play('gaussian'*amp(a), 'qubit_mode0')
+            play('pi2', 'qubit_mode0')
             align('qubit_mode0', 'rr')
-            discriminator.measure_state("readout", "out1", "out2", res, I=I)
+            discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
             save(res, I_pi_2_st)
 

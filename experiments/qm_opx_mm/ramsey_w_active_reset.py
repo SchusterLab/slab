@@ -9,19 +9,19 @@ from slab import*
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
-"""Ramsey phase conditional to run until T2 crosses a certain threshold"""
 
-ramsey_freq = 25e3
+ramsey_freq = 100e3
 omega = 2*np.pi*ramsey_freq
 
-dt = 1000
+dt = 250
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
 T_min = 4
-T_max = 150000
+T_max = 25000
 times = np.arange(T_min, T_max + dt/2, dt)
-avgs = 1000
+
+avgs = 2000
 reset_time = 500000
 simulation = 0
 
@@ -54,10 +54,10 @@ with program() as ramsey:
 
         with for_(t, T_min, t < T_max + dt/2, t + dt):
 
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
-            align('qubit_mode0', 'rr')
-            play('pi', 'qubit_mode0', condition=res)
-            wait(reset_time//10, "qubit_mode0")
+            # discriminator.measure_state("clear", "out1", "out2", res, I=I)
+            # align('qubit_mode0', 'rr')
+            # play('pi', 'qubit_mode0', condition=res)
+            wait(reset_time//2, "qubit_mode0")
             play("pi2", "qubit_mode0")
             wait(t, "qubit_mode0")
             frame_rotation_2pi(phi, "qubit_mode0") #2pi is already multiplied to the phase
@@ -83,20 +83,18 @@ if simulation:
     samples.con1.plot()
 else:
     """To run the actual experiment"""
-    print("Experiment execution Done")
     job = qm.execute(ramsey, duration_limit=0, data_limit=0)
 
     result_handles = job.result_handles
     result_handles.wait_for_all_values()
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
-    job.halt()
-
-    times = 4*times/1e3
-
     plt.figure()
-    plt.plot(times, res, '.-')
+    plt.plot(4*times/1e3, res, '.-')
     plt.show()
+
+    job.halt()
+    times = 4*times/1e3
 
     path = os.getcwd()
     data_path = os.path.join(path, "data/")

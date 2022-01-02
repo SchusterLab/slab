@@ -11,12 +11,12 @@ from slab.dataanalysis import get_next_filename
 
 """readout resonator spectroscopy with an optimal readout shape, varying the IF frequency"""
 
-f_min = -2.5e6
-f_max = 2.5e6
-df = 25e3
+f_min = -3.5e6
+f_max = 3.5e6
+df = 75e3
 f_vec = rr_freq - np.arange(f_min, f_max + df/2, df)
 
-avgs = 1000
+avgs = 5000
 reset_time = 50000
 simulation = 0
 with program() as resonator_spectroscopy:
@@ -25,10 +25,6 @@ with program() as resonator_spectroscopy:
     i = declare(int)
     I = declare(fixed)
     Q = declare(fixed)
-    I1 = declare(fixed)
-    Q1 = declare(fixed)
-    I2 = declare(fixed)
-    Q2 = declare(fixed)
 
     I_st = declare_stream()
     Q_st = declare_stream()
@@ -40,13 +36,8 @@ with program() as resonator_spectroscopy:
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
             measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
-
-            assign(I, I1-Q2)
-            assign(Q, I2+Q1)
+                    dual_demod.full('clear_integW1', 'out1', 'clear_integW3', 'out2', I),
+                    dual_demod.full('clear_integW2', 'out1', 'clear_integW1', 'out2', Q))
 
             save(I, I_st)
             save(Q, Q_st)

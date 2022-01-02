@@ -1,6 +1,6 @@
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config
+from configuration_IQ import config, disc_file_opt
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -17,9 +17,8 @@ simulation_config = SimulationConfig(
     )
 )
 
-N = 10000
+N = 5000
 wait_time = 500000
-jpa_amp = 1.0
 
 phi = 0.0
 
@@ -30,38 +29,16 @@ discriminator = TwoStateDiscriminator(qmm=qmm,
                                       config=config,
                                       update_tof=False,
                                       rr_qe='rr',
-                                      path='ge_disc_params_opt.npz',
+                                      path=disc_file_opt,
                                       lsb=lsb)
 
 use_opt_weights = False
-
-def training_measurement(readout_pulse, use_opt_weights):
-
-    if use_opt_weights:
-        discriminator.measure_state(readout_pulse, "out1", "out2", res, I=I, adc=adc_st)
-    else:
-        measure("clear", "rr", adc_st,
-                demod.full("clear_integW1", I1, 'out1'),
-                demod.full("clear_integW2", Q1, 'out1'),
-                demod.full("clear_integW1", I2, 'out2'),
-                demod.full("clear_integW2", Q2, 'out2'))
-
-        if lsb == False:
-            assign(I, I1 + Q2)
-            assign(Q, -Q1 + I2)
-        else:
-            assign(I, I1 - Q2)
-            assign(Q, Q1 + I2)
 
 with program() as training_program:
 
     n = declare(int)
     I = declare(fixed)
     Q = declare(fixed, value=0)
-    I1 = declare(fixed)
-    Q1 = declare(fixed)
-    I2 = declare(fixed)
-    Q2 = declare(fixed)
     res = declare(bool)
 
     I_st = declare_stream()
@@ -71,7 +48,9 @@ with program() as training_program:
     with for_(n, 0, n < N, n + 1):
 
         wait(wait_time//4, "rr")
-        training_measurement("clear", use_opt_weights=use_opt_weights)
+        measure("clear", "rr", adc_st,
+                dual_demod.full('clear_integW1', 'out1', 'clear_integW3', 'out2', I),
+                dual_demod.full('clear_integW2', 'out1', 'clear_integW1', 'out2', Q))
         save(I, I_st)
         save(Q, Q_st)
 
@@ -80,7 +59,9 @@ with program() as training_program:
         wait(wait_time//4, "qubit_mode0")
         play("pi", "qubit_mode0")
         align("qubit_mode0", "rr")
-        training_measurement("clear", use_opt_weights=use_opt_weights)
+        measure("clear", "rr", adc_st,
+                dual_demod.full('clear_integW1', 'out1', 'clear_integW3', 'out2', I),
+                dual_demod.full('clear_integW2', 'out1', 'clear_integW1', 'out2', Q))
         save(I, I_st)
         save(Q, Q_st)
 
@@ -91,7 +72,7 @@ with program() as training_program:
         adc_st.input2().save_all("adc2")
 
 # training + testing to get fidelity:
-discriminator.train(program=training_program, plot=True, dry_run=False, use_hann_filter=False, correction_method='robust')
+discriminator.train(program=training_program, plot=True, dry_run=False, use_hann_filter=True, correction_method='robust')
 
 with program() as benchmark_readout:
 
@@ -166,11 +147,11 @@ ax.yaxis.set_ticklabels(labels)
 plt.show()
 
 path = os.getcwd()
-data_path = os.path.join(path, "data/")
-seq_data_file = os.path.join(data_path,
-                             get_next_filename(data_path, 'histogram_disc', suffix='.h5'))
-print(seq_data_file)
-
+# data_path = os.path.join(path, "data/")
+# seq_data_file = os.path.join(data_path,
+#                              get_next_filename(data_path, 'histogram_disc_clear', suffix='.h5'))
+# print(seq_data_file)
+#
 # with File(seq_data_file, 'w') as f:
 #     f.create_dataset("I", data=I)
 #     f.create_dataset("Q", data=Q)

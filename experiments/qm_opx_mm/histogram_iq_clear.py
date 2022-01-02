@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, long_redout_len
+from configuration_IQ import config, qubit_LO, rr_LO, rr_IF, opt_len
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -17,6 +17,22 @@ reset_time = 500000
 avgs = 5000
 simulation = 0
 
+w_plus = [(1.0, opt_len)]
+w_minus = [(-1.0, opt_len)]
+w_zero = [(0.0, opt_len)]
+
+b = (30.0/180)*np.pi
+w_plus_cos = [(np.cos(b), opt_len)]
+w_minus_cos = [(-np.cos(b), opt_len)]
+w_plus_sin = [(np.sin(b), opt_len)]
+w_minus_sin = [(-np.sin(b), opt_len)]
+config['integration_weights']['clear_integW1']['cosine'] = w_plus_cos
+config['integration_weights']['clear_integW1']['sine'] = w_minus_sin
+config['integration_weights']['clear_integW2']['cosine'] = w_plus_sin
+config['integration_weights']['clear_integW2']['sine'] = w_plus_cos
+config['integration_weights']['clear_integW3']['cosine'] = w_minus_sin
+config['integration_weights']['clear_integW3']['sine'] = w_minus_cos
+
 with program() as histogram:
 
     ##############################
@@ -25,22 +41,16 @@ with program() as histogram:
 
     n = declare(int)      # Averaging
 
-    Ig = declare(fixed)
-    Qg = declare(fixed)
-
-    I1 = declare(fixed)
-    Q1 = declare(fixed)
-    I2 = declare(fixed)
-    Q2 = declare(fixed)
-
-    Ie = declare(fixed)
-    Qe = declare(fixed)
+    I = declare(fixed)
+    Q = declare(fixed)
 
     Ig_st = declare_stream()
     Qg_st = declare_stream()
 
     Ie_st = declare_stream()
     Qe_st = declare_stream()
+
+    # update_frequency('rr', rr_IF+5e3)
 
     ###############
     # the sequence:
@@ -50,32 +60,24 @@ with program() as histogram:
         """Just readout without playing anything"""
         wait(reset_time // 4, "rr")
         measure("clear", "rr", None,
-                demod.full("clear_integW1", I1, 'out1'),
-                demod.full("clear_integW2", Q1, 'out1'),
-                demod.full("clear_integW1", I2, 'out2'),
-                demod.full("clear_integW2", Q2, 'out2'))
+                dual_demod.full('clear_integW1', 'out1', 'clear_integW3', 'out2', I),
+                dual_demod.full('clear_integW2', 'out1', 'clear_integW1', 'out2', Q))
 
-        assign(Ig, I1 - Q2)
-        assign(Qg, I2 + Q1)
-        save(Ig, Ig_st)
-        save(Qg, Qg_st)
+        save(I, Ig_st)
+        save(Q, Qg_st)
 
-        align("qubit", "rr")
+        align("qubit_mode0", "rr")
 
         """Play a ge pi pulse and then readout"""
-        wait(reset_time // 4, "qubit")
-        play("pi", "qubit")
-        align("qubit", "rr")
+        wait(reset_time // 4, "qubit_mode0")
+        play("pi", "qubit_mode0")
+        align("qubit_mode0", "rr")
         measure("clear", "rr", None,
-                demod.full("clear_integW1", I1, 'out1'),
-                demod.full("clear_integW2", Q1, 'out1'),
-                demod.full("clear_integW1", I2, 'out2'),
-                demod.full("clear_integW2", Q2, 'out2'))
+                dual_demod.full('clear_integW1', 'out1', 'clear_integW3', 'out2', I),
+                dual_demod.full('clear_integW2', 'out1', 'clear_integW1', 'out2', Q))
 
-        assign(Ie, I1 - Q2)
-        assign(Qe, I2 + Q1)
-        save(Ie, Ie_st)
-        save(Qe, Qe_st)
+        save(I, Ie_st)
+        save(Q, Qe_st)
 
     with stream_processing():
         Ig_st.save_all('Ig')

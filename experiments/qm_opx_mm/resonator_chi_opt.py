@@ -1,4 +1,4 @@
-from configuration_IQ import config, rr_LO, rr_freq, rr_IF, qubit_LO
+from configuration_IQ import config, rr_LO, rr_freq, rr_IF
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -9,26 +9,19 @@ from slab import*
 import os
 from slab.dataanalysis import get_next_filename
 
-f_min = -2.5e6
-f_max = 2.5e6
+f_min = -3.5e6
+f_max = 3.5e6
 df = 25e3
 f_vec = rr_freq - np.arange(f_min, f_max + df/2, df)
 reset_time = 500000
-avgs = 1000
+avgs = 2000
 simulation = 0
 with program() as resonator_spectroscopy:
 
     f = declare(int)
     i = declare(int)
-    Ig = declare(fixed)
-    Qg = declare(fixed)
-    Ie = declare(fixed)
-    Qe = declare(fixed)
-
-    I1 = declare(fixed)
-    Q1 = declare(fixed)
-    I2 = declare(fixed)
-    Q2 = declare(fixed)
+    I = declare(fixed)
+    Q = declare(fixed)
 
     Ig_st = declare_stream()
     Qg_st = declare_stream()
@@ -41,31 +34,24 @@ with program() as resonator_spectroscopy:
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
             measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
-            assign(Ig, I1 - Q2)
-            assign(Qg, I2 + Q1)
+                    dual_demod.full('clear_integW1', 'out1', 'clear_integW3', 'out2', I),
+                    dual_demod.full('clear_integW2', 'out1', 'clear_integW1', 'out2', Q))
 
-            save(Ig, Ig_st)
-            save(Qg, Qg_st)
+            save(I, Ig_st)
+            save(Q, Qg_st)
 
-            align("rr", 'qubit')
+            align("rr", 'qubit_mode0')
 
-            wait(reset_time//4, "qubit")
-            play("pi", "qubit")
-            align("qubit", "rr")
+            wait(reset_time//4, "qubit_mode0")
+            play("pi", "qubit_mode0")
+            align("qubit_mode0", "rr")
             measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
-            assign(Ie, I1 - Q2)
-            assign(Qe, I2 + Q1)
+                    dual_demod.full('clear_integW1', 'out1', 'clear_integW3', 'out2', I),
+                    dual_demod.full('clear_integW2', 'out1', 'clear_integW1', 'out2', Q))
 
-            save(Ie, Ie_st)
-            save(Qe, Qe_st)
+
+            save(I, Ie_st)
+            save(Q, Qe_st)
 
     with stream_processing():
 
@@ -105,8 +91,13 @@ else:
 
     job.halt()
 
+    plt.figure()
+    plt.plot(f_vec, Ig**2+Qg**2, 'b.')
+    plt.plot(f_vec, Ie**2+Qe**2, 'r.')
+    plt.show()
+
     path = os.getcwd()
-    data_path = os.path.join(path, "data/")
+    data_path = os.path.join(path, "data/thesis/")
     seq_data_file = os.path.join(data_path,
                                  get_next_filename(data_path, 'resonator_chi_opt', suffix='.h5'))
     print(seq_data_file)
