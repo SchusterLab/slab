@@ -61,7 +61,7 @@ class KeysightSingleQubit:
             self.on_rds = self.on_qbs
         else:
             self.on_rds = self.expt_params["on_rds"]
-        self.rd_setups = [self.lattice_cfg["qubit"]["setup"][qb] for qb in self.on_rds]
+        self.rd_setups = [self.lattice_cfg["readout"]["setup"][qb] for qb in self.on_rds]
 
         self.AWG_mod_no = hardware_cfg['awg_info']['keysight_pxi']['AWG_mod_no'] ## AWG_mod_no is qubit AWG output
         self.marker_mod_no = hardware_cfg['awg_info']['keysight_pxi']['marker_mod_no'] ## marker is a pulse that's on for length that you want LO switch on
@@ -78,14 +78,14 @@ class KeysightSingleQubit:
         self.adc_range =  hardware_cfg['awg_info']['keysight_pxi']['digtzr_vpp_range']
 
         for rd in self.on_rds:
-            if 'A' == self.lattice_cfg["qubit"]["setup"][rd]:
+            if 'A' == self.lattice_cfg["readout"]["setup"][rd]:
                 self.readoutA_window = np.array(self.lattice_cfg['readout']['A']['window'][rd])
 
                 if lattice_cfg["weighted_readout"]["weighted_readout_on"]:
                     self.readoutA_weight = np.load(lattice_cfg["weighted_readout"]["A"]["filenames"][rd])
                 else:
                     self.readoutA_weight = np.ones((self.readoutA_window[1]-self.readoutA_window[0],1))
-            if 'B' == self.lattice_cfg["qubit"]["setup"][rd]:
+            if 'B' == self.lattice_cfg["readout"]["setup"][rd]:
                 self.readoutB_window = np.array(self.lattice_cfg['readout']['B']['window'][rd])
 
                 if lattice_cfg["weighted_readout"]["weighted_readout_on"]:
@@ -823,9 +823,10 @@ class KeysightSingleQubit:
                       int(self.readoutA_window[0]):int(self.readoutA_window[1])]*self.readoutA_weight).T, 1)
             if "B" in self.rd_setups:
                 qbB_I += np.mean((np.reshape(self.DIG_ch_3.readDataQuiet(), self.data_3.shape).T[int(
-                    self.readoutB_window[0]):int(self.readoutB_window[1])]*self.readoutB_weight).T, 1)
+                    self.readoutB_window[0]):int(self.readoutB_window[1])] * self.readoutB_weight).T, 1)
                 qbB_Q += np.mean((np.reshape(self.DIG_ch_4.readDataQuiet(), self.data_4.shape).T[int(
-                    self.readoutB_window[0]):int(self.readoutB_window[1])]*self.readoutB_weight).T, 1)
+                    self.readoutB_window[0]):int(self.readoutB_window[1])] * self.readoutB_weight).T, 1)
+
         if "A" in self.rd_setups:
             qbA_I = qbA_I / self.num_avg
             qbA_Q = qbA_Q / self.num_avg

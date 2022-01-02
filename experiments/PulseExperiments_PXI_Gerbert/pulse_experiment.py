@@ -38,7 +38,7 @@ class Experiment:
             self.on_rds = self.on_qbs
         else:
             self.on_rds = self.expt_params["on_rds"]
-        self.rd_setups = [self.lattice_cfg["qubit"]["setup"][qb] for qb in self.on_rds]
+        self.rd_setups = [self.lattice_cfg["readout"]["setup"][qb] for qb in self.on_rds]
 
         #self.fluxbias = im['dacbox']
         #self.fluxbias.setvoltage(1,0)
@@ -151,7 +151,7 @@ class Experiment:
         try:
             for ii, setup in enumerate(self.setups):
                 d = self.readout_los[setup]
-                rds_w_setup = [qb for qb in self.on_rds if self.lattice_cfg["qubit"]["setup"][qb]== setup]
+                rds_w_setup = [qb for qb in self.on_rds if self.lattice_cfg["readout"]["setup"][qb]== setup]
                 if len(set(rds_w_setup))>1: #check if two qubits have readout on same setup - will not work
                     print("two qubits on the same setup are both being asked to readout!")
                     sys.exit()
@@ -205,28 +205,31 @@ class Experiment:
             print("Error in readout STABILIZER LO configuration")
             raise
 
-    def initiate_readout_yigs(self):
-        try:
-            for ii, s in enumerate(self.rd_setups):
-                d = self.readout_yigs[s]
-                d.set_yig(self.lattice_cfg['readout'][s]['freq'][self.on_rds[ii]])
-                print("Readout Yig%s"%s + " Set to: %s"%(self.lattice_cfg['readout'][s]['freq'][self.on_rds[ii]]))
-        except:
-            print("Error in readout yig configuration")
+    # def initiate_readout_yigs(self):
+    #     try:
+    #         for ii, s in enumerate(self.rd_setups):
+    #             d = self.readout_yigs[s]
+    #             # d.set_yig(self.lattice_cfg['readout'][s]['freq'][self.on_rds[ii]])
+    #             d.set_yig(4.887)
+    #             print("YIG SET TO 4.887")
+    #             # print("Readout Yig%s"%s + " Set to: %s"%(self.lattice_cfg['readout'][s]['freq'][self.on_rds[ii]]))
+    #     except:
+    #         print("Error in readout yig configuration")
 
     def initiate_readout_attenuators(self):
         try:
             for ii, s in enumerate(self.setups):
                 d = self.readout_attens[s]
-                rds_w_setup = [qb for qb in self.on_rds if self.lattice_cfg["qubit"]["setup"][qb] == s]
+                rds_w_setup = [qb for qb in self.on_rds if self.lattice_cfg["readout"]["setup"][qb] == s]
                 if len(set(rds_w_setup)) > 1:  # check if two rds being run on same setup
                     print("two qubits on the same setup have readout happening, this cannot be!")
                     sys.exit()
                 elif len(rds_w_setup) == 0:  # if no qubits on that setup, set atten to 30
                     d.set_attenuator(30)
+                    print("atten {} set to 30, setup not used".format(s))
                 else:  # set atten
                     d.set_attenuator(self.lattice_cfg['powers'][s]['readout_drive_digital_attenuation'][rds_w_setup[-1]])
-                    print("set readout attenuator")
+                    print("set readout attenuator {} to {}".format(s,self.lattice_cfg['powers'][s]['readout_drive_digital_attenuation'][rds_w_setup[-1]] ))
 
         except:
             print("Error in readout digital attenuator configuration")
@@ -313,11 +316,11 @@ class Experiment:
         phi_B = 0
 
         for rd in self.on_rds:
-            if "A" in self.lattice_cfg["qubit"]["setup"][rd]:
+            if "A" in self.lattice_cfg["readout"]["setup"][rd]:
                 vec_A = self.lattice_cfg["readout"]["A"]["vec"][rd]
                 phi_A = self.lattice_cfg["readout"]["A"]["phi"][rd]
 
-            if "B" in self.lattice_cfg["qubit"]["setup"][rd]:
+            if "B" in self.lattice_cfg["readout"]["setup"][rd]:
                 vec_B = self.lattice_cfg["readout"]["B"]["vec"][rd]
                 phi_B = self.lattice_cfg["readout"]["B"]["phi"][rd]
 
@@ -433,7 +436,7 @@ class Experiment:
         self.trig.set_output(state=False) # hold on triggering anythingg
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
-        self.initiate_readout_yigs()
+        # self.initiate_readout_yigs()
         #self.initiate_stab_LOs()
         self.initiate_readout_attenuators()
         self.initiate_drive_attenuators()
@@ -497,11 +500,15 @@ class Experiment:
                 pi_calibration = False
             foo = self.pxi.acquire_avg_data(pi_calibration=False)
 
-        read_freq = copy.deepcopy(self.lattice_cfg['readout'][self.rd_setups[0]]['freq'][self.on_rds[0]])
-        for freq in np.arange(self.expt_cfg['start'] + read_freq, self.expt_cfg['stop'] + read_freq,
+        read_freq_list = []
+        for ii, rd in enumerate(self.on_rds):
+            read_freq_list.append(copy.deepcopy(self.lattice_cfg['readout'][self.rd_setups[ii]]['freq'][rd]))
+
+        for freq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'],
                               self.expt_cfg['step']):
             self.pxi.DIG_module.stopAll()
-            self.lattice_cfg['readout'][self.rd_setups[0]]['freq'][self.on_rds[0]] = freq
+            for ii, rd in enumerate(self.on_rds):
+                self.lattice_cfg['readout'][self.rd_setups[ii]]['freq'][rd] = freq + read_freq_list[ii]
             self.initiate_readout_LOs()
             self.initiate_readout_yigs()
             self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, self.lattice_cfg, name)
@@ -521,7 +528,80 @@ class Experiment:
             else:
                 self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
         #
-        self.lattice_cfg['readout'][self.rd_setups[0]]['freq'][self.on_rds[0]] = read_freq
+        for ii, rd in enumerate(self.on_rds):
+            self.lattice_cfg['readout'][self.rd_setups[ii]]['freq'][rd] = read_freq_list[ii]
+        self.pxi_stop()
+        return self.data
+
+    def run_experiment_pxi_histsweep(self, sequences, path, name, seq_data_file=None, update_awg=False, expt_num=0,
+                                   check_sync=False, save_errs=False, pi=False, ff=False, two_setups=False):
+        # data_path = os.path.join(path, 'data/')
+        # seq_data_file = os.path.join(data_path,
+        #                              get_next_filename(data_path, name, suffix='.h5'))
+
+        seq_data_file = None
+        self.expt_cfg = self.experiment_cfg[name]
+        #self.generate_datafile(path, name, seq_data_file=seq_data_file)
+        self.set_trigger()
+        self.trig.set_output(state=False)
+        self.initiate_drive_LOs()
+        # self.initiate_stab_LOs()
+        self.initiate_readout_attenuators()
+        self.initiate_drive_attenuators()
+        self.initiate_pxi(name, sequences)
+        self.initiate_readout_LOs()
+        time.sleep(0.2)
+        self.pxi.run()
+        time.sleep(0.2)
+        self.trig.set_output(state=True)
+
+        # throw away first point
+        if self.expt_cfg['singleshot']:
+            foo = self.pxi.SSdata_many()
+        elif self.expt_cfg['trajectory']:
+            foo = self.pxi.traj_data_many()
+        else:
+            try:
+                pi_calibration = expt_cfg['pi_calibration']
+            except:
+                pi_calibration = False
+            foo = self.pxi.acquire_avg_data(pi_calibration=False)
+
+        read_freq_list = []
+        read_atten_list = []
+        for ii, rd in enumerate(self.on_rds):
+            read_freq_list.append(copy.deepcopy(self.lattice_cfg['readout'][self.rd_setups[ii]]['freq'][rd]))
+            read_atten_list.append(copy.deepcopy(self.lattice_cfg['powers'][self.rd_setups[ii]]['readout_drive_digital_attenuation'][rd]))
+
+        for freq in np.arange(self.expt_cfg['rd_start'], self.expt_cfg['rd_stop'], self.expt_cfg['rd_step']):
+            for atten in self.expt_cfg['atten_list']:
+                self.generate_datafile(path, name, seq_data_file=seq_data_file)
+                self.pxi.DIG_module.stopAll()
+                for ii, rd in enumerate(self.on_rds):
+                    self.lattice_cfg['readout'][self.rd_setups[ii]]['freq'][rd] = freq + read_freq_list[ii]
+                    self.lattice_cfg["powers"][self.rd_setups[ii]]["readout_drive_digital_attenuation"][rd] = atten
+                self.initiate_readout_LOs()
+                self.initiate_readout_attenuators()
+                self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, self.lattice_cfg, name)
+                self.pxi.DIG_ch_1.clear()
+                self.pxi.DIG_ch_1.start()
+                self.pxi.DIG_ch_2.clear()
+                self.pxi.DIG_ch_2.start()
+                self.pxi.DIG_ch_3.clear()
+                self.pxi.DIG_ch_3.start()
+                self.pxi.DIG_ch_4.clear()
+                self.pxi.DIG_ch_4.start()
+                time.sleep(0.1)
+                if self.expt_cfg['singleshot']:
+                    self.data = self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+                elif self.expt_cfg['trajectory']:
+                    self.data = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+                else:
+                    self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+            #
+        for ii, rd in enumerate(self.on_rds):
+            self.lattice_cfg['readout'][self.rd_setups[ii]]['freq'][rd] = read_freq_list[ii]
+            self.lattice_cfg['powers'][self.rd_setups[ii]]['readout_drive_digital_attenuation'][rd] = read_atten_list[ii]
         self.pxi_stop()
         return self.data
 
