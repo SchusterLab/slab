@@ -2,7 +2,7 @@
 setup.py - a module to allow package installation
 """
 
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 NAME = "slab"
 VERSION = "0.1"
@@ -20,4 +20,6 @@ setup(author=AUTHOR,
       install_requires=DEPENDENCIES,
       name=NAME,
       version=VERSION,
+      packages=['slab']+['slab.'+x for x in find_packages()],
+      package_dir={'slab': '.'},  # Optional
 )
