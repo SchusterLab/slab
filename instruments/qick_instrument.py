@@ -14,14 +14,13 @@ class QickInstrument(Instrument, QickSoc):
         print("Registered: %s\t%s" % (inst.name, uri))
         daemon.requestLoop()
 
-    def __init__(self, name, address='', enabled=True, timeout=1, query_sleep=0, **kwargs):
+    def __init__(self, name, address='', enabled=True, timeout=1, query_sleep=0, bitfile=None, **kwargs):
         Instrument.__init__(self, name=name, address=address, enabled=enabled, timeout=timeout, query_sleep=query_sleep, **kwargs)
-        QickSoc.__init__(self)
-        #self.reset()
+        self.bitfile=bitfile
+        self.reset()
 
-    def reset(self, bitfile=None, force_init_clks=False,ignore_version=True, **kwargs):
-        QickSoc.__init__(self)
-        #self.soc = QickSoc(bitfile, force_init_clks,ignore_version, **kwargs)
+    def reset(self, force_init_clks=False,ignore_version=True, **kwargs):
+        QickSoc.__init__(self,bitfile=self.bitfile)
     
     """
     def single_write(self, addr, data):
