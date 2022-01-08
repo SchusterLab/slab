@@ -3,12 +3,12 @@ from qick import QickSoc
 import Pyro4
 import socket
 
-class QickInstrument(Instrument):
+class QickInstrument(Instrument, QickSoc):
     
-    def serve_instrument(inst, ns_address="192.168.14.1"):
+    def serve_instrument(inst, ns_address="192.168.14.1", ns_port=None):
         Pyro4.config.SERVERTYPE = "multiplex"
         daemon = Pyro4.Daemon(host=socket.gethostbyname(socket.gethostname()))
-        ns = Pyro4.locateNS(ns_address)
+        ns = Pyro4.locateNS(ns_address,port=ns_port)
         uri = daemon.register(inst)
         ns.register(inst.name, uri)
         print("Registered: %s\t%s" % (inst.name, uri))
@@ -16,11 +16,14 @@ class QickInstrument(Instrument):
 
     def __init__(self, name, address='', enabled=True, timeout=1, query_sleep=0, **kwargs):
         Instrument.__init__(self, name=name, address=address, enabled=enabled, timeout=timeout, query_sleep=query_sleep, **kwargs)
-        self.reset()
+        QickSoc.__init__(self)
+        #self.reset()
 
     def reset(self, bitfile=None, force_init_clks=False,ignore_version=True, **kwargs):
-        self.soc = QickSoc(bitfile, force_init_clks,ignore_version, **kwargs)
+        QickSoc.__init__(self)
+        #self.soc = QickSoc(bitfile, force_init_clks,ignore_version, **kwargs)
     
+    """
     def single_write(self, addr, data):
         self.soc.single_write(addr,data)
         
@@ -75,4 +78,5 @@ class QickInstrument(Instrument):
 
     def get_avg_max_length(self, ch=0):
         return self.soc.get_avg_max_length(ch)
+    """
 
