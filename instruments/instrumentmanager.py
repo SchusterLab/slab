@@ -110,6 +110,14 @@ class InstrumentManager(dict):
         for instrument in instruments:
             uri = daemon.register(instrument)
             ns.register(instrument.name, uri)
+
+            # register all the objects we expose as properties
+            # https://pyro4.readthedocs.io/en/stable/servercode.html#autoproxying
+            # https://github.com/irmen/Pyro4/blob/master/examples/autoproxy/server.py
+            if hasattr(instrument,"autoproxy"):
+                for obj in instrument.autoproxy:
+                    daemon.register(obj)
+
             print("Registered: %s\t%s" % (instrument.name, uri))
         daemon.requestLoop()
 

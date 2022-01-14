@@ -11,6 +11,14 @@ class QickInstrument(Instrument, QickSoc):
         ns = Pyro4.locateNS(ns_address,port=ns_port)
         uri = daemon.register(inst)
         ns.register(inst.name, uri)
+
+        # register all the objects we expose as properties
+        # https://pyro4.readthedocs.io/en/stable/servercode.html#autoproxying
+        # https://github.com/irmen/Pyro4/blob/master/examples/autoproxy/server.py
+        if hasattr(inst,"autoproxy"):
+            for obj in inst.autoproxy:
+                daemon.register(obj)
+
         print("Registered: %s\t%s" % (inst.name, uri))
         daemon.requestLoop()
 
@@ -18,6 +26,9 @@ class QickInstrument(Instrument, QickSoc):
         Instrument.__init__(self, name=name, address=address, enabled=enabled, timeout=timeout, query_sleep=query_sleep, **kwargs)
         self.bitfile=bitfile
         self.reset()
+
+        # list of objects that need to be registered for autoproxying
+        self.autoproxy = [self.streamer, self.tproc]
 
     def reset(self, force_init_clks=False,ignore_version=True, **kwargs):
         QickSoc.__init__(self,bitfile=self.bitfile)
