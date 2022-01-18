@@ -9,6 +9,7 @@ from slab.dataanalysis import get_next_filename
 from slab.dataanalysis import get_current_filename
 from slab.datamanagement import SlabFile
 from slab.dsfit import fitdecaysin
+import datetime
 
 from skopt import Optimizer
 
@@ -125,6 +126,27 @@ def subtract_mean(data):
     return (data1.T)
 
 
+def get_mask_amp(target, freq, mask):
+    amp_mask = 1.0
+    isok = False
+    for i in range(len(freq)):
+        for j in range(len(freq[i]) - 1):
+            if target >= freq[i][j] and target <= freq[i][j + 1]:
+                isok = True
+                break
+        if isok:
+            break
+    if isok:
+        # linear fitting of S21
+        y0 = mask[i][j]
+        y1 = mask[i][j + 1]
+        x0 = freq[i][j]
+        x1 = freq[i][j + 1]
+        amp_mask = y0 - (y0 - y1) * (x0 - target) / (x0 - x1)
+
+    return amp_mask
+
+
 def calibrate_ramsey(a, pi_length=100, t2=1000):
     quantum_device_cfg = json.loads(a.attrs['quantum_device_cfg'])
     experiment_cfg = json.loads(a.attrs['experiment_cfg'])
@@ -204,9 +226,12 @@ def calibration_auto(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     # Author Ziqian 19th OCT 2021
     # automatically calibrating qubit frequency and pi, pi/2 gate length
     # Initializing qubit frequency and gate length
+    today = datetime.datetime.now()
+    d1 = int(today.strftime("%Y%m%d%H%M%S"))
     expt_cfg = experiment_cfg['calibration_auto']
+    data_path1 = os.path.join(path, 'calibration_data/')
     data_path = os.path.join(path, 'data/')
-    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'calibration_auto', suffix='.h5'))
+    # seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'calibration_auto', suffix='.h5'))
     ram_acq_no = expt_cfg['ramsey_acq_num']
     fq = {}
     pi_gate = {}
@@ -289,6 +314,14 @@ def calibration_auto(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     hpi_amp['fg->fe'] = quantum_device_cfg['pulse_info']['2']['half_pi_gf_amp']
     hpi_amp['ee->ef'] = quantum_device_cfg['pulse_info']['2']['half_pi_ef_e_amp']
     hpi_amp['fe->ff'] = quantum_device_cfg['pulse_info']['2']['half_pi_ff_amp']
+
+    prefix = 'Calibration_auto'
+
+    fname = get_next_filename(data_path1, prefix, suffix='.h5')
+    print(fname)
+    fname = os.path.join(data_path1, fname)
+
+
 
     ## calibrating gg->eg
     print('Calibrating |gg>-->|eg> transition')
@@ -2210,6 +2243,15 @@ def calibration_auto(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     print('ff1_disp: ',fq['ef->ff']-fq['eg->fg'])
     print('ff2_disp: ',fq['fe->ff']-fq['ge->gf'])
 
+    with SlabFile(fname) as f:
+        print(d1)
+
+        for transition_name in string_list:
+            f.append(('fq_'+transition_name), fq[transition_name])
+            f.append(('pi_gate_'+transition_name), pi_gate[transition_name])
+            f.append(('hpi_gate_'+transition_name), hpi_gate[transition_name])
+        f.append('date', d1)
+
 def histogram_time_idle_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     expt_cfg = experiment_cfg['histogram_time_idle_sweep']
     data_path = os.path.join(path, 'data/')
@@ -2227,11 +2269,17 @@ def histogram_time_idle_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, 
     experiment_cfg['histogram_while_flux']['freqs'] = expt_cfg['freqs']
     experiment_cfg['histogram_while_flux']['phases'] = expt_cfg['phases']
     experiment_cfg['histogram_while_flux']['sideband_on'] = expt_cfg['sideband_on']
-    
-    if on_qubits[0]=='1':
-        sweep_states = ['gg','eg','fg']
+
+    if expt_cfg['ge_only']:
+        if on_qubits[0] == '1':
+            sweep_states = ['gg', 'eg']
+        else:
+            sweep_states = ['gg', 'ge']
     else:
-        sweep_states = ['gg','ge','gf']
+        if on_qubits[0]=='1':
+            sweep_states = ['gg','eg','fg']
+        else:
+            sweep_states = ['gg','ge','gf']
     for ss in sweep_states:
         experiment_cfg['histogram_while_flux']['states'].append(ss)
 
@@ -2280,6 +2328,56 @@ def histogram_time_idle_sweep_phase_sweep(quantum_device_cfg, experiment_cfg, ha
         print('Sweep Phase: ', phase_p)
 
         print(quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'])
+
+        for time in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            experiment_cfg['histogram_while_flux']['time'] = time
+            sequences = ps.get_experiment_sequences('histogram_while_flux')
+            update_awg = True
+            print('Sweep time: ', time, ' ns')
+
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            exp.run_experiment(sequences, path, 'histogram_while_flux', seq_data_file, update_awg)
+
+            update_awg = False
+
+
+def histogram_time_idle_sweep_freq_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['histogram_time_idle_sweep_freq_sweep']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram_time_idle_sweep_freq_sweep', suffix='.h5'))
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['histogram_while_flux']['states'] = expt_cfg['states']
+    experiment_cfg['histogram_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['histogram_while_flux']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['histogram_while_flux']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['histogram_while_flux']['flux_probe'] = expt_cfg['flux_probe']
+    experiment_cfg['histogram_while_flux']['flux_line'] = expt_cfg['flux_line']
+
+    experiment_cfg['histogram_while_flux']['amps'] = expt_cfg['amps']
+    experiment_cfg['histogram_while_flux']['freqs'] = expt_cfg['freqs']
+    experiment_cfg['histogram_while_flux']['phases'] = expt_cfg['phases']
+    experiment_cfg['histogram_while_flux']['sideband_on'] = expt_cfg['sideband_on']
+
+    sweep_qubit = expt_cfg['freq_sweep_no']
+
+    if on_qubits[0] == '1':
+        sweep_states = ['gg', 'eg', 'fg']
+    else:
+        sweep_states = ['gg', 'ge', 'gf']
+    for ss in sweep_states:
+        experiment_cfg['histogram_while_flux']['states'].append(ss)
+
+    for freq_p in np.arange(expt_cfg['freq_start'], expt_cfg['freq_stop'], expt_cfg['freq_step']):
+
+        if sweep_qubit == "1":
+            experiment_cfg['histogram_while_flux']['freqs'][0][0] = freq_p
+        else:
+            experiment_cfg['histogram_while_flux']['freqs'][0][1] = freq_p
+
+        print('Sweep Freq: ', freq_p)
+        print('Current freq: ', experiment_cfg['histogram_while_flux']['freqs'])
 
         for time in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
@@ -2694,10 +2792,26 @@ def sideband_rabi_drive_both_flux_freq_sweep(quantum_device_cfg, experiment_cfg,
     experiment_cfg['sideband_rabi_drive_both_flux']['flux_LO'] = expt_cfg['flux_LO']
     experiment_cfg['sideband_rabi_drive_both_flux']['pre_pulse'] = expt_cfg['pre_pulse']
 
+    saved_freq = quantum_device_cfg['flux_line_mask']['flux_freq']
+    saved_mask = quantum_device_cfg['flux_line_mask']['flux_mask']
+
+    freq_norm = expt_cfg['mask_norm'][0]
+
+    amp_origin = []
+    for aa in expt_cfg['amp']:
+        amp_origin.append(aa)
+
     for index, freq in enumerate(np.arange(expt_cfg['freq_start'], expt_cfg['freq_stop'], expt_cfg['freq_step'])):
 
         print('Index: %s Freq. = %s GHz' %(index, freq))
         experiment_cfg['sideband_rabi_drive_both_flux']['freq'] = freq
+
+        if expt_cfg['mask']:
+            corrected_amp = []
+            for aa in amp_origin:
+                corrected_amp.append(aa*get_mask_amp(experiment_cfg['sideband_rabi_drive_both_flux']['freq'], saved_freq, saved_mask)/get_mask_amp(freq_norm, saved_freq, saved_mask))
+            experiment_cfg['sideband_rabi_drive_both_flux']['amp'] = corrected_amp
+            print('Flux line filtering Mask being used! Corrected Amp:', experiment_cfg['sideband_rabi_drive_both_flux']['amp'])
 
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
         sequences = ps.get_experiment_sequences('sideband_rabi_drive_both_flux')
@@ -3191,9 +3305,26 @@ def multitone_sideband_rabi_drive_both_flux_freq_sweep(quantum_device_cfg, exper
     freqs_arr = np.linspace(expt_cfg['freqs_start'], expt_cfg['freqs_stop'], expt_cfg['no_points'])
     # Simultaneously sweeping both freq. array
 
+    saved_freq = quantum_device_cfg['flux_line_mask']['flux_freq']
+    saved_mask = quantum_device_cfg['flux_line_mask']['flux_mask']
+
+    freq_norm = expt_cfg['mask_norm']
+
+    amp_origin = []
+    for aa in expt_cfg['amps'][-1]:
+        amp_origin.append(aa)
+
     for ii, freqs in enumerate(freqs_arr):
         print('Index %s: rabi_drive_freqs: %s' % (ii, freqs.tolist()))
         experiment_cfg['multitone_sideband_rabi_drive_both_flux']['freqs'] = freqs.tolist()
+        if expt_cfg['mask']:
+            corrected_amp = []
+            countt = 0
+            for aa in amp_origin:
+                corrected_amp.append(aa*get_mask_amp(experiment_cfg['multitone_sideband_rabi_drive_both_flux']['freqs'][-1][countt], saved_freq, saved_mask)/get_mask_amp(freq_norm[countt], saved_freq, saved_mask))
+                countt += 1
+            experiment_cfg['multitone_sideband_rabi_drive_both_flux']['amps'][-1] = corrected_amp
+            print('Flux line filtering Mask being used! Corrected Amp:', experiment_cfg['multitone_sideband_rabi_drive_both_flux']['amps'])
 
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
         sequences = ps.get_experiment_sequences('multitone_sideband_rabi_drive_both_flux')
@@ -3429,7 +3560,7 @@ def tomo_2q_multitone_charge_flux_drive_Qubit_sweep(quantum_device_cfg, experime
         update_awg = False
 
 
-def tomo_2q_multitone_charge_flux_drive_gef_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+def tomo_2q_multitone_charge_flux_drive_gef_sweep_backup(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     expt_cfg = experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef_sweep']
     data_path = os.path.join(path, 'data/')
     seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'tomo_2q_multitone_charge_flux_drive_gef_sweep', suffix='.h5'))
@@ -3461,7 +3592,63 @@ def tomo_2q_multitone_charge_flux_drive_gef_sweep(quantum_device_cfg, experiment
 
     for ii, idle_time in enumerate(np.arange(expt_cfg['time_start'], expt_cfg['time_stop'], expt_cfg['time_step'])):
 
+
         print('Index %s: gate_length: %s' %(ii, idle_time))
+        add_slot = []
+        for jj in range(ll):
+            add_slot.append(idle_time)
+        experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['times_prep'][-1] = add_slot
+        print(experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef'])
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('tomo_2q_multitone_charge_flux_drive_gef')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'tomo_2q_multitone_charge_flux_drive_gef_sweep', seq_data_file, update_awg)
+
+        update_awg = False
+
+
+def tomo_2q_multitone_charge_flux_drive_gef_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef_sweep']
+    data_path = os.path.join(path, 'data/')
+
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['default'] = expt_cfg['default']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['default_state'] = expt_cfg['default_state']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['times_prep'] = expt_cfg['times_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge1_amps_prep'] = expt_cfg['charge1_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge1_freqs_prep'] = expt_cfg['charge1_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge1_phases_prep'] = expt_cfg['charge1_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge2_amps_prep'] = expt_cfg['charge2_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge2_freqs_prep'] = expt_cfg['charge2_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['charge2_phases_prep'] = expt_cfg['charge2_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux1_amps_prep'] = expt_cfg['flux1_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux1_freqs_prep'] = expt_cfg['flux1_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux1_phases_prep'] = expt_cfg['flux1_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux2_amps_prep'] = expt_cfg['flux2_amps_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux2_freqs_prep'] = expt_cfg['flux2_freqs_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux2_phases_prep'] = expt_cfg['flux2_phases_prep']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux_LO'] = expt_cfg['flux_LO']
+
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['post_pulse'] = expt_cfg['post_pulse']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['use_tomo_pulse_info'] = expt_cfg['use_tomo_pulse_info']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['sequential_tomo_pulse'] = expt_cfg[
+        'sequential_tomo_pulse']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['defined'] = expt_cfg['defined']
+    ll = len(experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef_sweep']['times_prep'][-1])
+
+    for ii, idle_time in enumerate(np.arange(expt_cfg['time_start'], expt_cfg['time_stop'], expt_cfg['time_step'])):
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, 'tomo_2q_multitone_charge_flux_drive_gef_sweep',
+                                                       suffix='.h5'))
+
+        print('Index %s: gate_length: %s' % (ii, idle_time))
         add_slot = []
         for jj in range(ll):
             add_slot.append(idle_time)
@@ -3882,6 +4069,57 @@ def tomo_1q_multitone_charge_flux_drive_sweep_pi_gate(quantum_device_cfg, experi
 
         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
         exp.run_experiment(sequences, path, 'tomo_1q_multitone_charge_flux_drive_sweep_pi_gate', seq_data_file, update_awg)
+
+        update_awg = False
+
+def flux_line_mask(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['flux_line_mask']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'flux_line_mask', suffix='.h5'))
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['ramsey_while_flux']['stop'] = expt_cfg['stop']
+    experiment_cfg['ramsey_while_flux']['step'] = expt_cfg['step']
+    experiment_cfg['ramsey_while_flux']['use_freq_amp_halfpi'] = expt_cfg['use_freq_amp_halfpi']
+    experiment_cfg['ramsey_while_flux']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['ramsey_while_flux']['flux_pi_calibration'] = expt_cfg['flux_pi_calibration']
+    experiment_cfg['ramsey_while_flux']['flux_probe'] = expt_cfg['flux_probe']
+    experiment_cfg['ramsey_while_flux']['ge_pi'] = expt_cfg['ge_pi']
+    experiment_cfg['ramsey_while_flux']['ef_pi'] = expt_cfg['ef_pi']
+    experiment_cfg['ramsey_while_flux']['ge_pi2'] = expt_cfg['ge_pi2']
+    experiment_cfg['ramsey_while_flux']['start'] = expt_cfg['start']
+    experiment_cfg['ramsey_while_flux']['ramsey_freq'] = expt_cfg['ramsey_freq']
+    experiment_cfg['ramsey_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['ramsey_while_flux']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['ramsey_while_flux']['on_cavity'] = expt_cfg['on_cavity']
+    experiment_cfg['ramsey_while_flux']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['ramsey_while_flux']['flux_amp'] = expt_cfg['flux_amp']
+    experiment_cfg['ramsey_while_flux']['flux_line'] = expt_cfg['flux_line']
+    experiment_cfg['ramsey_while_flux']['phase'] = expt_cfg['phase']
+    experiment_cfg['ramsey_while_flux']['pre_pulse'] = expt_cfg['pre_pulse']
+
+    saved_freq = quantum_device_cfg['flux_line_mask']['flux_freq']
+    saved_mask = quantum_device_cfg['flux_line_mask']['flux_mask']
+
+    aa_save = expt_cfg['flux_amp'][0]
+
+    for ii, freq in enumerate(np.arange(expt_cfg['flux_freq_start'], expt_cfg['flux_freq_stop'], expt_cfg['flux_freq_step'])):
+
+
+        print('Index %s: Freq: %s' %(ii, freq))
+        experiment_cfg['ramsey_while_flux']['flux_freq'] = freq
+        if expt_cfg['mask']:
+
+            mask0 = get_mask_amp(freq, saved_freq, saved_mask)
+            experiment_cfg['ramsey_while_flux']['flux_amp'][0] = aa_save*mask0
+            print('Flux line Masks are on! Ratio Modified by: ', mask0, 'Now flux amp: ',experiment_cfg['ramsey_while_flux']['flux_amp'])
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('ramsey_while_flux')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'flux_line_mask', seq_data_file, update_awg)
 
         update_awg = False
 

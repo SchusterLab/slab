@@ -7237,6 +7237,8 @@ class PulseSequences:
             print('Preparing state: ', self.expt_cfg['default_state'])
         else:
             print('Default preparation not being used')
+        if self.expt_cfg['post_pulse']:
+            print('Post pulses being used')
 
         for qubit_1_measure in measurement_pulse:
 
@@ -7330,6 +7332,63 @@ class PulseSequences:
                                     ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                     cutoff_sigma=2, freqs=self.expt_cfg['flux2_freqs_prep'],
                                     phases=np.pi/180*np.array(self.expt_cfg['flux2_phases_prep']), plot=False))
+
+                sequencer.sync_channels_time(self.channels)
+
+                if self.expt_cfg['post_pulse']:
+                    # print('Post pulses being used')
+                    post_pulse_info = self.quantum_device_cfg['post_pulse_info']
+                    sequencer.append('charge1',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['charge1_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['charge1_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['charge1_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.append('charge2',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['charge2_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['charge2_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['charge2_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.append('flux1',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['flux1_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['flux1_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['flux1_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.append('flux2',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['flux2_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['flux2_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['flux2_phases_prep']),
+                                                                 plot=False))
 
                 sequencer.sync_channels_time(self.channels)
 
