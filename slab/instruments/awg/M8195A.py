@@ -17,6 +17,7 @@ class M8195A(SocketInstrument):
     """Keysight M8195A Arbitrary Waveform Class"""
     # default_port=5025
     def __init__(self, name='M8195A', address='', enabled=True,timeout = 1000):
+
         address = address.upper()
 
         SocketInstrument.__init__(self, name, address, enabled=enabled, timeout=timeout)
@@ -805,8 +806,8 @@ class M8195A(SocketInstrument):
 
     ## Setup AWG
 
-    def setup_awg(m8195a, num_channels, amplitudes=[1., 1., 1., 1.]):
-
+    def setup_awg(m8195a,num_channels,amplitudes=[1.,1.,1.,1.]):
+        print('iside m8195 ORIGINAL +++++++++++++++')
         m8195a.stop_output()
         m8195a.set_factory_default()
 
@@ -819,10 +820,9 @@ class M8195A(SocketInstrument):
         elif num_channels == 4:
             m8195a.set_dac_mode('FOUR')
 
-        print('iside m8195+++++++++++++++ numchannel:',num_channels)
         m8195a.set_dac_sample_rate_divider(num_channels)
 
-        if num_channels == 2:
+        if num_channels==2:
             m8195a.set_waveform_sample_source(1, 'EXT')
             m8195a.set_waveform_sample_source(4, 'EXT')
             m8195a.set_amplitude(1, amplitudes[0])
@@ -831,9 +831,10 @@ class M8195A(SocketInstrument):
 
         else:
             print('iside m819 here')
-            for ii in range(1, num_channels + 1):
-                m8195a.set_waveform_sample_source(ii, 'EXT')
-                m8195a.set_amplitude(ii, amplitudes[ii - 1])
+            for ii in range(1,num_channels+1):
+                m8195a.set_waveform_sample_source(ii,'EXT')
+                m8195a.set_amplitude(ii,amplitudes[ii-1])
+
 
         m8195a.set_reference_clock_frequency(10e6)
         m8195a.set_reference_source('EXT')
@@ -967,6 +968,7 @@ class M8195A(SocketInstrument):
 def upload_M8195A_sequence(m8195a,waveform_matrix,awg, path):
 
     amplitudes = awg['amplitudes']
+
 
     # m8195a = M8195A(address ='192.168.14.234:5025')
     # m8195a.socket.setblocking(1)

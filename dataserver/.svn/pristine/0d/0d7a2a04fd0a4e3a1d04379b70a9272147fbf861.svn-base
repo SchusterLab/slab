@@ -1,0 +1,16 @@
+HDF5 Python data server
+Reinier Heeres <reinier@heeres.eu>
+Phil Reinhold <pcreinhold@gmail.com>
+2013
+
+
+
+Overview
+
+This data server provides remotely accessible python objects (using the
+SharedObject library) to allow usage of HDF5 files from multiple processes.
+The main objects it provides are thin wrappers around the h5py library. In
+addition to the expected functionality they provide signals to integrate with
+interactive programs. For example a data group emits a 'changed' signal so
+that GUIs can re-process and plot data as wanted.
+

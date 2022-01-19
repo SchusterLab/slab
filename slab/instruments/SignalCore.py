@@ -361,12 +361,12 @@ class SignalCore(Instrument):
 
 
 if __name__ == '__main__':
-    sc = SignalCore(name="SignalCore",address="10001E48")
+    sc = SignalCore(name="SignalCore",address="10001E47")
     # sc.set_clock_reference(ext_ref=False)
     # sc.set_power(-50)
     # sc.set_output_state(True)
     # sc.set_rf_mode(0)
-    sc.set_frequency(10050000000)
+    sc.set_frequency(10010000000)
     # sc.set_list_start_freq(2000000000)
     # sc.set_list_stop_freq(10000000000)
     # sc.set_list_dwell_time(10)

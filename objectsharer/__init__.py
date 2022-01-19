@@ -1,0 +1,2 @@
+from objectsharer import *
+
