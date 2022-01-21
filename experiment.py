@@ -52,7 +52,7 @@ class Experiment:
                     self.cfg = AttrDict(json.loads(cfg_str))
             elif self.config_file[-4:].lower() =='.yml':
                 with open(self.config_file,'r') as fid:
-                    self.cfg = AttrDict(yaml.load(fid))
+                    self.cfg = AttrDict(yaml.safe_load(fid))
             else:
                 with open(self.config_file, 'r') as fid:
                     cfg_str = fid.read()
