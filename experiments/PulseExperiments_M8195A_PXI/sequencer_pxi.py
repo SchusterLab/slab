@@ -217,6 +217,7 @@ class Sequencer:
                                                                              self.channels_awg_info['cavity']['dt'])])
                 sequence['switch_trig'] = np.append(sequence['switch_trig'],
                                                     np.zeros(len(sequence['readout_trig']) - len(sequence['switch_trig'])))
+
                 for j in np.nonzero(sequence['switch_trig']):
                     sequence['switch_trig'][j] = 1
                 ends = []
@@ -235,6 +236,7 @@ class Sequencer:
                 for index in starts:
                     fin = max(index - num_pad_pts, 0)
                     sequence['switch_trig'][fin : index+1] = 1
+
                 # for j in range(len(sequence['switch_trig'])):
                 #     sequence['switch_trig'][j] = 1
                 # sequence['switch_trig'][0] = 0
