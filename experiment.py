@@ -80,7 +80,7 @@ class Experiment:
         if swmr==True:
             f = SlabFile(data_file, 'w', libver='latest')
         elif swmr==False:
-            f = SlabFile(data_file)
+            f = SlabFile(data_file, 'a')
         else:
             raise Exception('ERROR: swmr must be type boolean')
 
