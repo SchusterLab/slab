@@ -46,10 +46,9 @@ class Experiment:
         if self.config_file is None:
             self.config_file = os.path.join(self.path, self.prefix + ".json")
         try:
-            if self.config_file[:-3] == '.h5':
+            if self.config_file[-3:] == '.h5':
                 with SlabFile(self.config_file) as f:
-                    cfg_str = f['config']
-                    self.cfg = AttrDict(json.loads(cfg_str))
+                    self.cfg = AttrDict(f.load_config())
             elif self.config_file[-4:].lower() =='.yml':
                 with open(self.config_file,'r') as fid:
                     self.cfg = AttrDict(yaml.safe_load(fid))
