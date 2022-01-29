@@ -49,6 +49,7 @@ class Experiment:
             if self.config_file[-3:] == '.h5':
                 with SlabFile(self.config_file) as f:
                     self.cfg = AttrDict(f.load_config())
+                    self.fname = self.config_file
             elif self.config_file[-4:].lower() =='.yml':
                 with open(self.config_file,'r') as fid:
                     self.cfg = AttrDict(yaml.safe_load(fid))
