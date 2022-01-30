@@ -103,7 +103,11 @@ class InstrumentManager(dict):
     def serve_instruments(self, instruments=None):
         """inst_dict is in form {name:instrument_instance}"""
         Pyro4.config.SERVERTYPE = "multiplex"
-        daemon = Pyro4.Daemon(host=socket.gethostbyname(socket.gethostname()))
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        host=s.getsockname()[0]
+        #host=socket.gethostbyname(socket.gethostname())
+        daemon = Pyro4.Daemon(host=host)
         ns = Pyro4.locateNS(self.ns_address)
      
         for instrument in instruments:
