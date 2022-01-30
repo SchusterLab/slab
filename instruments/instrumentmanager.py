@@ -104,7 +104,7 @@ class InstrumentManager(dict):
         """inst_dict is in form {name:instrument_instance}"""
         Pyro4.config.SERVERTYPE = "multiplex"
         daemon = Pyro4.Daemon(host=socket.gethostbyname(socket.gethostname()))
-        ns = Pyro4.locateNS(self.ns_address,port=self.ns_port)
+        ns = Pyro4.locateNS(self.ns_address)
      
         for instrument in instruments:
             uri = daemon.register(instrument)
@@ -119,7 +119,7 @@ class InstrumentManager(dict):
 
             print("Registered: %s\t%s" % (instrument.name, uri))
         daemon.requestLoop()
-        
+
     def connect_proxies(self):
         ns = Pyro4.locateNS(self.ns_address)
         for name, uri in list(ns.list().items()):
