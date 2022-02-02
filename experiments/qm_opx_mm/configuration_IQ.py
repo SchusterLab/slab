@@ -45,15 +45,15 @@ long_redout_len = 2000
 readout_len = 3000
 
 qubit_LO = 4.8681*1e9
-qubit_freq = [4.961412908342679 *1e9, 4.743013612710257*1e9, 4.743013612710257*1e9, 4.743013612710257*1e9]
+qubit_freq = [4.961404613946841*1e9, 4.743013612710257*1e9, 4.743013612710257*1e9, 4.743013612710257*1e9]
 ge_IF = [int(qubit_freq[i] - qubit_LO) for i in range(4)]
 
-two_chi = [-2.191*1e6,  -1.287*1e6, 0, 0]
-
+two_chi = [-2.191*1e6,  -1.243*1e6, 0, 0]
+two_chi_2 = -int(10.584e3/2) #second order correction 1/2(n**2) * chi_prime
 ####---------------------####
 rr_LO = 7.8897 *1e9 + 10e6
 
-rr_freq_g = 7.7902*1e9
+rr_freq_g = 7.790093*1e9
 rr_freq_e = 7.78867*1e9
 rr_freq = 7.789409118927988*1e9
 # rr_freq = rr_freq_g
@@ -98,16 +98,16 @@ sb_freq = 3.3434e9
 sb_IF = 100e6
 sb_LO = sb_freq + sb_IF
 
-st_self_kerr = 5e3/2
+st_self_kerr = 10e3/2
 
 gauss_len = 80
 gauss_amp = 0.45
 
 pi_len = 80
-pi_amp = 0.3058
+pi_amp = 0.3075
 
 half_pi_len = pi_len
-half_pi_amp = 0.1523
+half_pi_amp = 0.1533
 
 pi_len_resolved = 3000
 pi_amp_resolved = 0.0081

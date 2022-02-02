@@ -12,7 +12,7 @@ import os
 from slab.dataanalysis import get_next_filename
 
 reset_time = 500000
-N = 2000
+N = 1000
 
 a_min= 0.95*pi_amp_resolved
 a_max = 1.05*pi_amp_resolved
