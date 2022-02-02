@@ -37,6 +37,7 @@ import threading
 # import PyQt4.Qt as qt
 import datetime
 import json
+import os.path
 
 
 # def get_SlabFile(fname, local=False):
@@ -433,13 +434,21 @@ class SlabFile(h5py.File):
 
     def get_dict(self, group='/'):
         d = {}
-        for k in list(self[group].attrs.keys()):
-            d[k] = self[group].attrs[k]
+        g=self[group]
+        for k in g.attrs:
+            d[k] = g.attrs[k]
         return d
 
     get_attrs = get_dict
     save_attrs = save_dict
 
+    def get_group_data(self, group='/'):
+        data={'attrs': self.get_dict(group)}
+        
+        g=self[group]
+        for k in g.keys():
+            data[k]=np.array(g[k])
+        return data
 
     def save_settings(self, dic, group='settings'):
         self.save_dict(dic, group)
@@ -510,9 +519,16 @@ def load_array(f, array_name):
 
     return a
 
+def load_slabfile_data(fname, path='', group='/'):
+    fullname=os.path.join(path, fname)
+    with SlabFile(fullname, 'r') as f:
+        data=f.get_group_data(group)
+    return data
+
+
 class AttrDict(dict):
-    marker = object()
     def __init__(self, value=None):
+        super().__init__()
         if value is None:
             pass
         elif isinstance(value, dict):
@@ -526,16 +542,21 @@ class AttrDict(dict):
             value = AttrDict(value)
         super(AttrDict,self).__setitem__(key, value)
 
+
     def __getitem__(self, key):
-        found = self.get(key, AttrDict.marker)
-        if found is AttrDict.marker:
-            found = AttrDict()
-            super(AttrDict,self).__setitem__(key, found)
-        return found
+        v=super().__getitem__(key)
+        if isinstance(v, dict) and not isinstance (v, AttrDict):
+            return AttrDict(v)
+        else:
+            return v
 
-    __setattr__ = __setitem__
-    __getattr__ = __getitem__
-
+    def __setattr__(self, a ,v):
+        return self.__setitem__(a,v)
+    def __getattr__(self, a):
+        if a in self:
+            return self.__getitem__(a)
+        else:
+            return self.__getattribute__(a)
 
 # if __name__ == "__main__":
 #     app = qt.QApplication([])

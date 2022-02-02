@@ -1910,6 +1910,32 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+    def sequential_multimode_blockade_experiments_wt_3modes(self, quantum_device_cfg, experiment_cfg, hardware_cfg,
+                                                            path):
+        swp_cfg = experiment_cfg['sequential_multimode_blockade_experiments_wt_3modes']
+        experiment_name = 'multimode_blockade_experiments_wt'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path,
+                                                                  'sequential_multimode_blockade_experiments_wt_3modes',
+                                                                  suffix='.h5'))
+        wg_pts_index_array = np.arange(swp_cfg['wt_pt_start_index'], swp_cfg['wt_pt_stop_index'] + 1, 1)
+        for index2 in wg_pts_index_array:
+            for index in wg_pts_index_array:
+                if len(wg_pts_index_array) * index2 + index >= swp_cfg['absolute_start_index']:
+                    experiment_cfg[experiment_name]['tom2_index_pt'] = int(index)
+                    print ("tomgraphy point 2 index  = ",index)
+                    experiment_cfg[experiment_name]['tom3_index_pt'] = int(index2)
+                    print("tomgraphy point 3 index  = ", index2)
+                    ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+                    sequences = ps.get_experiment_sequences(experiment_name)
+                    exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
+                    I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                    self.Is.append(I)
+                    self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
     def sequential_multimode_blockade_experiments_wt_unique_pts(self, quantum_device_cfg, experiment_cfg, hardware_cfg,
                                                      path):
         swp_cfg = experiment_cfg['sequential_multimode_blockade_experiments_wt_unique_pts']
@@ -2063,6 +2089,39 @@ class SequentialExperiment:
 
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
+
+
+    def sequential_blockade_experiments_with_optimal_control_wt_many_pts(self, quantum_device_cfg, experiment_cfg, hardware_cfg,
+                                                                path):
+        experiment_name = 'blockade_experiments_with_optimal_control_wt'
+
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, 'sequential_blockade_experiments_with_optimal_control_wt',
+                                                       suffix='.h5'))
+
+        swp_cfg = experiment_cfg['sequential_blockade_experiments_with_optimal_control_wt_many_pts']
+
+        with File(expt_cfg['wigner_points_file_name'], 'r') as f:
+            alphax = np.array(f['alphax'])
+            max_index = len(alphax)
+        start_index = swp_cfg['start_pt_index']
+        while start_index < max_index:
+            experiment_cfg[experiment_name]['unique_index_start'] = start_index
+            experiment_cfg[experiment_name]['unique_index_end'] = start_index + swp_cfg['points_per_expt']
+            print ("wigner point start index  = ", start_index)
+            start_index += swp_cfg['points_per_expt']
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
 
     def sequential_blockade_experiments_with_optimal_control_wt(self, quantum_device_cfg, experiment_cfg, hardware_cfg,
                                                            path):

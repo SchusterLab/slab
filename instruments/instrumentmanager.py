@@ -103,12 +103,24 @@ class InstrumentManager(dict):
     def serve_instruments(self, instruments=None):
         """inst_dict is in form {name:instrument_instance}"""
         Pyro4.config.SERVERTYPE = "multiplex"
-        daemon = Pyro4.Daemon(host=socket.gethostbyname(socket.gethostname()))
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        host=s.getsockname()[0]
+        #host=socket.gethostbyname(socket.gethostname())
+        daemon = Pyro4.Daemon(host=host)
         ns = Pyro4.locateNS(self.ns_address)
      
         for instrument in instruments:
             uri = daemon.register(instrument)
             ns.register(instrument.name, uri)
+
+            # register all the objects we expose as properties
+            # https://pyro4.readthedocs.io/en/stable/servercode.html#autoproxying
+            # https://github.com/irmen/Pyro4/blob/master/examples/autoproxy/server.py
+            if hasattr(instrument,"autoproxy"):
+                for obj in instrument.autoproxy:
+                    daemon.register(obj)
+
             print("Registered: %s\t%s" % (instrument.name, uri))
         daemon.requestLoop()
 
