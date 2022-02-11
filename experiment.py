@@ -10,6 +10,17 @@ import traceback
 
 from slab import SlabFile, InstrumentManager, get_next_filename, AttrDict, LocalInstruments
 
+class NpEncoder(json.JSONEncoder):
+    """ Ensure json dump can handle np arrays """
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
+
 class Experiment:
     """Base class for all experiments"""
 
@@ -69,8 +80,8 @@ class Experiment:
     def save_config(self):
         if self.config_file[:-3] != '.h5':
             with open(self.config_file, 'w') as fid:
-                json.dump(self.cfg, fid)
-            self.datafile().attrs['config'] = json.dumps(self.cfg)
+                json.dump(self.cfg, fid, cls=NpEncoder), 
+            self.datafile().attrs['config'] = json.dumps(self.cfg, cls=NpEncoder)
 
     def datafile(self, group=None, remote=False, data_file = None, swmr=False):
         """returns a SlabFile instance
@@ -88,7 +99,7 @@ class Experiment:
             f = f.require_group(group)
         if 'config' not in f.attrs:
             try:
-                f.attrs['config'] = json.dumps(self.cfg)
+                f.attrs['config'] = json.dumps(self.cfg, cls=NpEncoder)
             except TypeError as err:
                 print(('Error in saving cfg into datafile (experiment.py):', err))
 
