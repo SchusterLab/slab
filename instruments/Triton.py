@@ -86,9 +86,22 @@ class Triton(SocketInstrument):
     def get_temperature(self, ch):
         if ch<1 and ch>10:
             raise Exception('Not a valid temperature channel number')
-        data=self.query_t(f"READ:DEV:T{ch}:TEMP:SIG:TEMP")
-        temp=data.split('\n')[0].split(':')[-1]
-        return Q(temp).magnitude
+
+        success=False
+        timeout=20
+        start_time=time.time()
+        while success==False and time.time()-start_time<timeout:
+            try:
+                data=self.query_t(f"READ:DEV:T{ch}:TEMP:SIG:TEMP")
+                temp=data.split('\n')[0].split(':')[-1]
+                if temp=='nanK':
+                    temp='0K'
+                temp_mag=Q(temp).magnitude
+                success=True
+            except:
+                success=False
+
+        return temp_mag
 
     def get_pressure(self, ch):
         if ch<1 and ch>6:

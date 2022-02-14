@@ -246,7 +246,7 @@ def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfi
         fitdatax=xdata
         fitdatay=ydata
     if fitparams is None:    
-        FFT=scipy.fft(fitdatay)
+        FFT=scipy.fft.fft(fitdatay)
         fft_freqs=scipy.fftpack.fftfreq(len(fitdatay),fitdatax[1]-fitdatax[0])
         max_ind=np.argmax(abs(FFT[4:int(len(fitdatay)/2)]))+4
         fft_val=FFT[max_ind]
@@ -267,6 +267,7 @@ def fitdecaysin(xdata,ydata,fitparams=None,domain=None,showfit=False,showstartfi
     #print "fitparams: ",fitparams
     p1 = fitgeneral(fitdatax, fitdatay, decaysin3, fitparams, domain=None, showfit=showfit, showstartfit=showstartfit,
                     label=label)
+    p1=np.append(p1, fitdatax[0])
     return p1
 
 
@@ -278,7 +279,7 @@ def fitdecaysin_plus_line(xdata, ydata, fitparams=None, domain=None, showfit=Fal
         fitdatax = xdata
         fitdatay = ydata
     if fitparams is None:
-        FFT = scipy.fft(fitdatay)
+        FFT = scipy.fft.fft(fitdatay)
         fft_freqs = scipy.fftpack.fftfreq(len(fitdatay), fitdatax[1] - fitdatax[0])
         max_ind = np.argmax(abs(FFT[4:int(len(fitdatay) / 2)])) + 4
         fft_val = FFT[max_ind]

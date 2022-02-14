@@ -14,10 +14,10 @@ class PostExperiment:
         self.Q = Q
         self.P = P
         self.show = show
-
         # eval('self.' + experiment_name)()
         try:
             temp = eval('self.' + experiment_name)()
+            self.dat = temp
         except:
             print("No post experiment analysis yet")
 
@@ -1766,6 +1766,20 @@ class PostExperiment:
             ax.legend()
             plt.show()
         print("Final state: ", P[-1])
+
+    def optimal_control_test_1step(self):
+        expt_cfg = self.experiment_cfg[self.exptname]
+        P = eval('self.'+self.P)
+        ns = arange(expt_cfg['N_max'])
+        # if self.show and expt_cfg['measurement'] == "photon_number_distribution_measurement":
+        #     fig = plt.figure(figsize=(14, 7))
+        #     ax = fig.add_subplot(111, title=self.exptname)
+        #     ax.plot(ns, P, 'o-', label=self.P)
+        #     ax.set_xlabel('Photon Number')
+        #     ax.set_ylabel("Population")
+        #     ax.legend()
+        #     plt.show()
+        return P
 
     def cavity_spectroscopy_resolved_qubit_pulse(self):
         expt_cfg = self.experiment_cfg[self.exptname]

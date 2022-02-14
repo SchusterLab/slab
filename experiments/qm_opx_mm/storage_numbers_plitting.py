@@ -23,16 +23,16 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, ls
 # qubit_spec_prog:
 ###############
 
-f_min = -5.5e6
+f_min = -7.5e6
 f_max = 0.5e6
-df = 60e3
+df = 40e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
 avgs = 1000
-reset_time = int(7.5e6)
+reset_time = int(2*7.5e6)
 simulation = 0
 
-cav_len = 8
+cav_len = 18
 cav_amp = 1.0
 alpha = opx_amp_to_alpha(cav_amp=cav_amp, cav_len=4*cav_len)
 
@@ -106,19 +106,19 @@ else:
     plt.figure()
     plt.plot(f_vec, res, '.-')
     plt.show()
-    #
-    # job.halt()
-    # path = os.getcwd()
-    # data_path = os.path.join(path, "data/")
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'number_splitting', suffix='.h5'))
-    # print(seq_data_file)
-    #
-    # with File(seq_data_file, 'w') as f:
-    #     f.create_dataset("I", data=I)
-    #     f.create_dataset("Q", data=res)
-    #     f.create_dataset("freq", data=f_vec)
-    #     f.create_dataset("amp", data=cav_amp)
-    #     f.create_dataset("time", data=cav_len*4)
-    #     f.create_dataset("two_chi", data=two_chi[1])
-    #     f.create_dataset("alpha", data=alpha)
+
+    job.halt()
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/stim_em_snap_rp/20220128")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'number_splitting', suffix='.h5'))
+    print(seq_data_file)
+
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=res)
+        f.create_dataset("freq", data=f_vec)
+        f.create_dataset("amp", data=cav_amp)
+        f.create_dataset("time", data=cav_len*4)
+        f.create_dataset("two_chi", data=two_chi[1])
+        f.create_dataset("alpha", data=alpha)

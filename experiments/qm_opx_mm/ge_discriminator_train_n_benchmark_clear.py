@@ -147,17 +147,17 @@ ax.yaxis.set_ticklabels(labels)
 plt.show()
 
 path = os.getcwd()
-# data_path = os.path.join(path, "data/")
-# seq_data_file = os.path.join(data_path,
-#                              get_next_filename(data_path, 'histogram_disc_clear', suffix='.h5'))
-# print(seq_data_file)
-#
-# with File(seq_data_file, 'w') as f:
-#     f.create_dataset("I", data=I)
-#     f.create_dataset("Q", data=Q)
-#     f.create_dataset("res", data=res)
-#     f.create_dataset("seq0", data=seq0)
-#     f.create_dataset("avgs", data=N)
+data_path = os.path.join(path, "data/")
+seq_data_file = os.path.join(data_path,
+                             get_next_filename(data_path, 'histogram_disc_clear', suffix='.h5'))
+print(seq_data_file)
+
+with File(seq_data_file, 'w') as f:
+    f.create_dataset("I", data=I)
+    f.create_dataset("Q", data=Q)
+    f.create_dataset("res", data=res)
+    f.create_dataset("seq0", data=seq0)
+    f.create_dataset("avgs", data=N)
 
 # """Extracting the qubit thermal population from Gaussian fitting of the histograms"""
 # def gaus(x, a0, x0, sigma, a1, x1):

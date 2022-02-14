@@ -159,13 +159,13 @@ else:
 
     job.halt()
 
-    # path = os.getcwd()
-    # data_path = os.path.join(path, "data/")
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'histogram', suffix='.h5'))
-    # print(seq_data_file)
-    # with File(seq_data_file, 'w') as f:
-    #     dset = f.create_dataset("ig", data=Ig)
-    #     dset = f.create_dataset("qg", data=Qg)
-    #     dset = f.create_dataset("ie", data=Ie)
-    #     dset = f.create_dataset("qe", data=Qe)
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'histogram', suffix='.h5'))
+    print(seq_data_file)
+    with File(seq_data_file, 'w') as f:
+        dset = f.create_dataset("ig", data=Ig)
+        dset = f.create_dataset("qg", data=Qg)
+        dset = f.create_dataset("ie", data=Ie)
+        dset = f.create_dataset("qe", data=Qe)
