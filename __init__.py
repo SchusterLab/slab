@@ -1,5 +1,5 @@
 from .instruments import InstrumentManager, LocalInstruments, keysight
-from .datamanagement import SlabFile, h5File, AttrDict
+from .datamanagement import SlabFile, h5File, AttrDict, load_slabfile_data
 #
 # try:
 #     from plotting import ScriptPlotter

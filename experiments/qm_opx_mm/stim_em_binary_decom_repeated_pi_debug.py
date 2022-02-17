@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, ge_IF, qubit_freq, biased_th_g_jpa, two_chi, disc_file, storage_IF, st_self_kerr
+from configuration_IQ import config, ge_IF, qubit_freq, two_chi, disc_file_opt, storage_IF, st_self_kerr
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -16,13 +16,13 @@ import os
 import scipy
 from slab.dataanalysis import get_next_filename
 """Binary decomposition pre and post repeated resolved pi pulses to estimate the cavity state decay"""
-def alpha_awg_cal(alpha, cav_amp=0.4):
+def alpha_awg_cal(alpha, cav_amp=1.0):
     # takes input array of omegas and converts them to output array of amplitudes,
     # using a calibration h5 file defined in the experiment config
     # pull calibration data from file, handling properly in case of multimode cavity
-    cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
+    cal_path = 'C:\_Lib\python\slab\experiments\qm_opx_mm\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_6_14_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_11_24_cavity_square_mode_2.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -41,9 +41,9 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
 
     pulse_length = (alpha/omega_desired)
     """Returns time in units of 4ns for FPGA"""
-    return abs(pulse_length)//4
+    return abs(pulse_length)//4+1
 
-t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
+t_chi = int(abs(0.5*1e9/two_chi[1])) #qubit rotates by pi in this time
 
 """Coherent drive to create Fock state in the cavity"""
 cav_len = 400
@@ -66,115 +66,83 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
 ##################
 avgs = 5000
 reset_time = int(3.5e6)
 simulation = 0
 
-num_pi_pulses_m = 0 #need even number to bring the qubit back to 'g' before coherent drive
+num_pi_pulses_m = 10 #need even number to bring the qubit back to 'g' before coherent drive
 num_pi_pulses_n = 0
-
-def active_reset(biased_th, to_excited=False):
-    res_reset = declare(bool)
-    I = declare(fixed)
-
-    wait(1000//4, "rr")
-    align("rr", "jpa_pump")
-    play('pump_square', 'jpa_pump')
-    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-    wait(1000//4, 'rr')
-    # save(I, "check")
-
-    if to_excited == False:
-        with while_(I < biased_th):
-            align('qubit', 'rr', 'jpa_pump')
-            with if_(~res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
-    else:
-        with while_(I > biased_th):
-            align('qubit', 'rr', 'jpa_pump')
-            with if_(res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
 
 def snap_seq(fock_state=0):
 
     if fock_state==0:
-        play("CW"*amp(0.0), "storage", duration=alpha_awg_cal(1.143))
-        align("storage", "qubit")
-        play("res_pi"*amp(0.0), "qubit")
-        align("storage", "qubit")
-        play("CW"*amp(-0.0), "storage", duration=alpha_awg_cal(-0.58))
+        play("CW"*amp(0.0), 'storage_mode1', duration=alpha_awg_cal(1.143))
+        align('storage_mode1', 'qubit_mode0')
+        play("res_pi"*amp(0.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(-0.0), 'storage_mode1', duration=alpha_awg_cal(-0.58))
 
     elif fock_state==1:
-        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.143))
-        align("storage", "qubit")
-        play("res_pi"*amp(2.0), "qubit")
-        align("storage", "qubit")
-        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58))
+        play("CW"*amp(1.0), 'storage_mode1', duration=alpha_awg_cal(1.143))
+        align('storage_mode1', 'qubit_mode0')
+        play("res_pi"*amp(2.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(-1.0), 'storage_mode1', duration=alpha_awg_cal(-0.58))
 
     elif fock_state==2:
-        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.497))
-        align("storage", "qubit")
-        play("res_pi"*amp(2.0), "qubit")
-        align("storage", "qubit")
-        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(1.133))
-        update_frequency("qubit", ge_IF + two_chi)
-        align("storage", "qubit")
-        play("res_pi"*amp(2.0), "qubit")
-        align("storage", "qubit")
-        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.432))
-        update_frequency("qubit", ge_IF)
+        play("CW"*amp(1.0), 'storage_mode1', duration=alpha_awg_cal(0.497))
+        align('storage_mode1', 'qubit_mode0')
+        play("res_pi"*amp(2.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(-1.0), 'storage_mode1', duration=alpha_awg_cal(1.133))
+        update_frequency('qubit_mode0', ge_IF[0] + two_chi[1])
+        align('storage_mode1', 'qubit_mode0')
+        play("res_pi"*amp(2.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(1.0), 'storage_mode1', duration=alpha_awg_cal(0.432))
+        update_frequency('qubit_mode0', ge_IF[0])
 
     elif fock_state==3:
-        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.531))
-        align("storage", "qubit")
-        play("res_pi"*amp(2.0), "qubit")
-        align("storage", "qubit")
-        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(0.559))
-        update_frequency("qubit", ge_IF + two_chi)
-        align("storage", "qubit")
-        play("res_pi"*amp(2.0), "qubit")
-        align("storage", "qubit")
-        play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(0.946))
-        update_frequency("qubit", ge_IF + 2*two_chi)
-        align("storage", "qubit")
-        play("res_pi"*amp(2.0), "qubit")
-        align("storage", "qubit")
-        play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(0.358))
-        update_frequency("qubit", ge_IF)
+        play("CW"*amp(1.0), 'storage_mode1', duration=alpha_awg_cal(0.531))
+        align('storage_mode1', 'qubit_mode0')
+        play("res_pi"*amp(2.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(-1.0), 'storage_mode1', duration=alpha_awg_cal(0.559))
+        update_frequency('qubit_mode0', ge_IF[0] + two_chi[1])
+        align('storage_mode1', 'qubit_mode0')
+        play("res_pi"*amp(2.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(1.0), 'storage_mode1', duration=alpha_awg_cal(0.946))
+        update_frequency('qubit_mode0', ge_IF[0] + 2*two_chi[1])
+        align('storage_mode1', 'qubit_mode0')
+        play("res_pi"*amp(2.0), 'qubit_mode0')
+        align('storage_mode1', 'qubit_mode0')
+        play("CW"*amp(-1.0), 'storage_mode1', duration=alpha_awg_cal(0.358))
+        update_frequency('qubit_mode0', ge_IF[0])
 
 def bd():
-    play("pi2", "qubit") # unconditional
-    wait(t_chi//4, "qubit")
-    frame_rotation(np.pi, 'qubit')
-    play("pi2", "qubit")
-    align('qubit', 'rr', 'jpa_pump')
-    play('pump_square', 'jpa_pump')
+    play("pi2", 'qubit_mode0') # unconditional
+    wait(t_chi//4+1, 'qubit_mode0')
+    frame_rotation(np.pi, 'qubit_mode0')
+    play("pi2", 'qubit_mode0')
+    align('qubit_mode0', 'rr')
     discriminator.measure_state("clear", "out1", "out2", bit1, I=I)
 
-    reset_frame("qubit")
-    wait(1000//4, "rr")
-    align("qubit", "rr", 'jpa_pump')
+    reset_frame('qubit_mode0')
+    wait(250, "rr")
+    align('qubit_mode0', "rr")
 
-    play("pi2", "qubit") # unconditional
-    wait(t_chi//4//2-3, "qubit") # subtracted 3 to make the simulated waveforms accurate
+    play("pi2", 'qubit_mode0') # unconditional
+    wait(t_chi//4//2-4, 'qubit_mode0') # subtracted 3 to make the simulated waveforms accurate
     with if_(bit1==0):
-        frame_rotation(np.pi, 'qubit')
-        play("pi2", "qubit")
+        frame_rotation(np.pi, 'qubit_mode0')
+        play("pi2", 'qubit_mode0')
     with else_():
-        frame_rotation(3/2*np.pi, 'qubit')
-        play("pi2", "qubit")
-    align('qubit', 'rr', 'jpa_pump')
-    play('pump_square', 'jpa_pump')
+        frame_rotation(3/2*np.pi, 'qubit_mode0')
+        play("pi2", 'qubit_mode0')
+    align('qubit_mode0', 'rr')
     discriminator.measure_state("clear", "out1", "out2", bit2, I=I)
 
 
@@ -204,63 +172,58 @@ with program() as binary_decomposition:
 
     with for_(n, 0, n < avgs, n + 1):
 
-        wait(reset_time//4, 'storage')
-        update_frequency('qubit', ge_IF)
-        update_frequency('storage', storage_IF)
-        align('storage', 'rr', 'jpa_pump', 'qubit')
-        active_reset(biased_th_g_jpa)
-        align('storage', 'rr', 'jpa_pump', 'qubit')
+        wait(reset_time//4, 'storage_mode1')
+        update_frequency('qubit_mode0', ge_IF[0])
+        update_frequency('storage_mode1', storage_IF[1])
         ########################
-        snap_seq(fock_state=0)
+        snap_seq(fock_state=1)
         ########################
 
         """First binary decomposition here"""
-        align('storage', 'qubit')
+        align('storage_mode1', 'qubit_mode0')
         bd()
         assign(num1, Cast.to_int(bit1) + 2*Cast.to_int(bit2))
         save(num1, num1_st)
         """First BD after the state prep ends here"""
         ########################
-        update_frequency('qubit', ge_IF + (num1)*two_chi)
-        reset_frame("qubit")
-        update_frequency('storage', storage_IF + (num1*(num1-1))*st_self_kerr)
+        update_frequency('qubit_mode0', ge_IF[0] + (num1)*two_chi[1])
+        reset_frame('qubit_mode0')
+        update_frequency('storage_mode1', storage_IF[1] + (num1*(num1-1))*st_self_kerr)
 
         # """Flip the qubit to |g> before repeated pi pulses"""
-        # align('rr', 'jpa_pump', 'qubit')
+        # align('rr',  'qubit_mode0')
         # with if_(bit2):
-        #     play('pi', 'qubit')
-        # align('rr', 'jpa_pump', 'qubit')
+        #     play('pi', 'qubit_mode0')
+        # align('rr', 'qubit_mode0')
         ########################
 
         ########################
         """Repeated pi pulses"""
 
         with for_(i, 0, i < num_pi_pulses_m, i+1):
-            wait(500//4, "rr")
-            align("qubit", "rr", 'jpa_pump')
-            play("res_pi", "qubit")
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
+            wait(250, "rr")
+            align('qubit_mode0', "rr")
+            play("res_pi", 'qubit_mode0')
+            align('qubit_mode0', 'rr')
             discriminator.measure_state("clear", "out1", "out2", bit3, I=I)
             save(bit3, bit3_st)
         ########################
 
-        reset_frame("qubit")
-        update_frequency('qubit', ge_IF)
+        reset_frame('qubit_mode0')
+        update_frequency('qubit_mode0', ge_IF[0])
 
         """active reset to bring qubit back to 'g' before the next BD"""
         with if_(bit3):
-            align('rr', 'jpa_pump', 'qubit')
-            play('pi', 'qubit')
+            align('rr', 'qubit_mode0')
+            play('pi', 'qubit_mode0')
 
-        align('storage', 'rr', 'jpa_pump')
+        align('storage_mode1', 'rr')
 
-        play('CW'*amp(0.05), 'storage', duration=100)
+        play('CW'*amp(0.01), 'storage_mode1', duration=100)
 
-        align("qubit", "storage")
+        align('qubit_mode0', 'storage_mode1')
 
         """Post BD starts"""
-        # align('rr', 'jpa_pump', 'qubit')
         bd()
 
         assign(num2, Cast.to_int(bit1) + 2*Cast.to_int(bit2))

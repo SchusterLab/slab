@@ -6,11 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from slab import*
 from slab.instruments import instrumentmanager
-# im = InstrumentManager()
-# LO = im['RF8']
-# LO.set_frequency(rr_LO)
-# LO.set_ext_pulse(mod=False)
-# LO.set_power(18)
 
 simulation = 0
 with program() as digital_train:
@@ -22,7 +17,7 @@ with program() as digital_train:
 with program() as tof_calibration:
     adc_st = declare_stream(adc_trace=True)
     i = declare(int)
-    with for_(i, 0, i < 4000, i+1):
+    with for_(i, 0, i < 10000, i+1):
         wait(20000//4, 'rr')
         reset_phase('rr')
         # reset_phase('jpa_pump')

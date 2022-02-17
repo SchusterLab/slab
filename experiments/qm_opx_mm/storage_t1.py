@@ -1,4 +1,4 @@
-from configuration_IQ import config, ge_IF, biased_th_g
+from configuration_IQ import config, ge_IF, disc_file_opt, two_chi
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -7,8 +7,6 @@ from qm import SimulationConfig, LoopbackInterface
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from slab.instruments import instrumentmanager
-im = InstrumentManager()
 from h5py import File
 import os
 from slab.dsfit import*
@@ -16,18 +14,16 @@ from slab.dataanalysis import get_next_filename
 
 """Storage cavity t1 experiment"""
 
-dt = 2000
-T_max = int(5e5)
+dt = 12500
+T_max = int(5e6)
 T_min = 250
 t_vec = np.arange(T_min, T_max + dt/2, dt)
 
-two_chi = -1.118e6
-
-cav_len = 1000
-cav_amp = 0.20
+cav_len = 10
+cav_amp = 1.0
 
 avgs = 1000
-reset_time = int(3.5e6)
+reset_time = int(7.5e6)
 simulation = 0 #1 to simulate the pulses
 
 simulation_config = SimulationConfig(
@@ -38,38 +34,9 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
 
-def active_reset(biased_th, to_excited=False):
-    res_reset = declare(bool)
-
-    wait(5000//4, "jpa_pump")
-    align("rr", "jpa_pump")
-    play('pump_square', 'jpa_pump')
-    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-    wait(1000//4, 'rr')
-    # save(I, "check")
-
-    if to_excited == False:
-        with while_(I < biased_th):
-            align('qubit', 'rr', 'jpa_pump')
-            with if_(~res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
-    else:
-        with while_(I > biased_th):
-            align('qubit', 'rr', 'jpa_pump')
-            with if_(res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
-
-with program() as storage_t1:
+with program() as storage_mode1_t1:
 
     ##############################
     # declare real-time variables:
@@ -93,18 +60,12 @@ with program() as storage_t1:
 
         with for_(t, T_min, t < T_max + dt/2, t + dt):
 
-            wait(reset_time//4, "storage")
-            update_frequency("qubit", ge_IF)
-            play("CW"*amp(0.5), "storage", duration=479)
-            align("storage", "qubit")
-            play("res_pi", "qubit")
-            align("storage", "qubit")
-            play("CW"*amp(-0.5), "storage", duration=243)
-            align("storage", "qubit")
-            update_frequency("qubit", ge_IF+two_chi)
-            wait(t, "qubit")
-            play("res_pi", "qubit")
-            align("qubit", "rr")
+            wait(reset_time//4, "storage_mode1")
+            play("CW"*amp(cav_amp), "storage_mode1", duration=cav_len)
+            align("storage_mode1", "qubit_mode0")
+            wait(t, "qubit_mode0")
+            play("res_pi", "qubit_mode0")
+            align("qubit_mode0", "rr")
             discriminator.measure_state("clear", "out1", "out2", res, I=I)
 
             save(res, res_st)
@@ -118,12 +79,12 @@ qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
 if simulation:
-    job = qm.simulate(storage_t1, SimulationConfig(15000))
+    job = qm.simulate(storage_mode1_t1, SimulationConfig(15000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 
 else:
-    job = qm.execute(storage_t1, duration_limit=0, data_limit=0)
+    job = qm.execute(storage_mode1_t1, duration_limit=0, data_limit=0)
     print ("Execution done")
 
     result_handles = job.result_handles
@@ -140,20 +101,26 @@ else:
     #     plt.clf()
 
 
-    result_handles.wait_for_all_values()
+    # result_handles.wait_for_all_values()
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
-    print ("Data collection done")
+    plt.figure()
+    plt.plot(4*t_vec/1e3, res, '.-')
+    plt.show()
 
-    job.halt()
-
+    # print ("Data collection done")
+    #
+    # job.halt()
+    #
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'storage_t1', suffix='.h5'))
+                                 get_next_filename(data_path, 'storage_mode_t1', suffix='.h5'))
     print(seq_data_file)
 
     with File(seq_data_file, 'w') as f:
         f.create_dataset("I", data=I)
         f.create_dataset("res", data=res)
         f.create_dataset("time", data=4*t_vec)
+        f.create_dataset("cav_len", data=4*cav_len)
+        f.create_dataset("cav_amp", data=cav_amp)

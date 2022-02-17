@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_LO, rr_LO, storage_LO
+from configuration_IQ import config, qubit_LO, rr_LO, storage_LO, storage_mode
 import numpy as np
 from slab import*
 from slab.instruments import instrumentmanager
@@ -22,7 +22,7 @@ LO_r.set_ext_pulse(mod=False)
 LO_r.set_power(16)
 LO_r.set_output(True)
 
-LO_s.set_frequency(storage_LO[1])
+LO_s.set_frequency(storage_LO[storage_mode])
 LO_s.set_power(13)
 LO_s.set_output_state(True)
 

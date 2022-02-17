@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from h5py import File
+from scipy.signal.windows import gaussian
 ######################
 # AUXILIARY FUNCTIONS:
 ######################
@@ -16,29 +17,50 @@ def IQ_imbalance(g, phi):
     N = 1 / ((1-g**2)*(2*c**2-1))
     return [float(N * x) for x in [(1-g)*c, (1+g)*s, (1-g)*s, (1+g)*c]]
 
+
+def Xgauss(amplitude, mu, sigma, delf, length, delta=-140e6, alpha=0.0):
+    t = np.linspace(0, length, length)
+    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    gauss_der_wave = (
+            amplitude * (-2 * 1e9 * (t - mu) / (2 * sigma ** 2)) * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    )
+    # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
+    Xgauss_wave = gauss_wave * np.cos(2 * np.pi * delf * t * 1e-9) + (alpha / delta) * gauss_der_wave * np.sin(2 * np.pi * delf * t * 1e-9)
+    return [float(x) for x in Xgauss_wave]
+
+def Ygauss_der(amplitude, mu, sigma, delf, length, delta=-140e6, alpha=0.0):
+    t = np.linspace(0, length, length)
+    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    gauss_der_wave = (
+            amplitude * (-2 * 1e9 * (t - mu) / (2 * sigma ** 2)) * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    )
+    # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
+    Ygauss_der_wave = - (alpha / delta) * gauss_der_wave * np.cos(2 * np.pi * delf * t * 1e-9) + gauss_wave * np.sin(2 * np.pi * delf * t * 1e-9)
+    return [float(x) for x in Ygauss_der_wave]
+
 ################
 # CONFIGURATION:
 ################
 long_redout_len = 2000
-readout_len = 2000
+readout_len = 3000
 
 qubit_LO = 4.8681*1e9
-qubit_freq = [4.961390892902997*1e9, 4.743013612710257*1e9, 4.743013612710257*1e9, 4.743013612710257*1e9]
+qubit_freq = [4.961404613946841*1e9, 4.743013612710257*1e9, 4.743013612710257*1e9, 4.743013612710257*1e9]
 ge_IF = [int(qubit_freq[i] - qubit_LO) for i in range(4)]
 
-two_chi = [-2.191*1e6,  -1.255*1e6, 0, 0]
-
+two_chi = [-2.191*1e6,  -1.243*1e6, 0, 0]
+two_chi_2 = -int(10.584e3/2) #second order correction 1/2(n**2) * chi_prime
 ####---------------------####
-rr_LO = 7.8897 *1e9
+rr_LO = 7.8897 *1e9 + 10e6
 
-rr_freq_g = 7.7902*1e9
+rr_freq_g = 7.790093*1e9
 rr_freq_e = 7.78867*1e9
-rr_freq = 7.789437924302165*1e9
+rr_freq = 7.789409118927988*1e9
 # rr_freq = rr_freq_g
 
 rr_IF = int(rr_LO - rr_freq)
 
-rr_amp = 0.4
+rr_amp = 0.22
 
 biased_th_g = 0.005
 biased_th_g_jpa = 0.005
@@ -51,39 +73,41 @@ pump_amp = 1.0*0.060
 
 disc_file = 'ge_disc_params_jpa.npz'
 disc_file_opt = 'ge_disc_params_opt.npz'
+disc_file_opt_drag = 'ge_disc_params_opt_drag.npz'
 ####---------------------####
-storage_freq = [5.4605359569639695*1e9, 5.965085549955351*1e9, 6.511215233526263*1e9, 6.7611215233526263*1e9]
+storage_freq = [5.4605359569639695*1e9, 5.965085584240055 *1e9, 6.511215233526263*1e9, 6.7611215233526263*1e9]
 storage_LO = [5.56e9, 6.061e9, 6.61e9, 6.861e9]
 storage_IF = [int(abs(storage_freq[i]-storage_LO[i])) for i in range(4)]
-
+#965064602219015
+#6492042423932318e
 usable_modes = [0, 2, 3, 5, 7]
 storage_mode = 1
 storage_specs = {
-                    "cavity_freqs": [5.4605359569639695, 5.716462014493138, 5.965074405687646, 6.223070885487213, 6.469035948052279,
-                                  6.727426795488453, 6.989342790177679, 7.246965518337121, 7.508968647629388],
-                    "iq_offset": [[-0.028, -0.044], [-0.025, -0.035], [-0.028, -0.0225], [-0.029, -0.023]],
+    "cavity_freqs": [5.4605359569639695, 5.716462014493138, 5.965074405687646, 6.223070885487213, 6.469035948052279,
+                     6.727426795488453, 6.989342790177679, 7.246965518337121, 7.508968647629388],
+    "iq_offset": [[-0.028, 0.044], [-0.025, -0.035], [-0.028, -0.0225], [-0.029, -0.023]],
 
-                    "chiby2pi_e": [-0.0010891041380485422, -0.0008194259051674988, -0.000635844481884853, -0.0005476352706394915,
-                               -0.0004543887123739803, -0.00036096051973111374, -0.0003508840459173126, -0.0003066193537078787,
-                                   -0.0002676786468624358, -0.0002670845673854734, -0.00027576338150714363],
-                    "chi_2_by2pi": [0, 3.6317466677315835e-6, 1.6492042423932318e-6, 1.0194765942550532e-6, 4.142291694098077e-7,
-                                    4.4955828071291393e-7, 0, 0, 0, 0],
-                 }
+    "chiby2pi_e": [-0.0010891041380485422, -0.0008194259051674988, -0.000635844481884853, -0.0005476352706394915,
+                   -0.0004543887123739803, -0.00036096051973111374, -0.0003508840459173126, -0.0003066193537078787,
+                   -0.0002676786468624358, -0.0002670845673854734, -0.00027576338150714363],
+    "chi_2_by2pi": [0, 3.6317466677315835e-6, 1.6492042423932318e-6, 1.0194765942550532e-6, 4.142291694098077e-7,
+                    4.4955828071291393e-7, 0, 0, 0, 0],
+}
 
 sb_freq = 3.3434e9
 sb_IF = 100e6
 sb_LO = sb_freq + sb_IF
 
-st_self_kerr = 15e3/2
+st_self_kerr = 10e3/2
 
-gauss_len = 40
+gauss_len = 80
 gauss_amp = 0.45
 
-pi_len = 40
-pi_amp = 0.6407
+pi_len = 80
+pi_amp = 0.3075
 
 half_pi_len = pi_len
-half_pi_amp = 0.3127
+half_pi_amp = 0.1533
 
 pi_len_resolved = 3000
 pi_amp_resolved = 0.0081
@@ -96,9 +120,23 @@ pi_ef_amp = 0.6479
 half_ef_pi_len = pi_ef_len
 half_ef_pi_amp = pi_ef_amp/2
 
-opt_readout = "C:\\_Lib\\python\\slab\\experiments\\qm_opx_mm\\pulses\\00009_readout_optimal_pulse.h5"
+pi_amp_drag = 0.5897
+half_pi_amp_drag = 0.2860
+
+alpha=0.5
+delta = 1e6
+drag_gauss_wf = Xgauss(amplitude=gauss_amp, mu=gauss_len/2, sigma=gauss_len / 5, delf=delta, length=gauss_len, delta=-143e6, alpha=alpha)
+drag_gauss_der_wf = Ygauss_der(amplitude=gauss_amp, mu=gauss_len/2, sigma=gauss_len / 5, delf=delta, length=gauss_len, delta=-143e6, alpha=alpha)
+
+drag_pi_wf = Xgauss(amplitude=gauss_amp*pi_amp_drag, mu=gauss_len/2, sigma=gauss_len / 5, delf=delta, length=gauss_len, delta=-143e6, alpha=alpha)
+drag_pi_der_wf = Ygauss_der(amplitude=gauss_amp*pi_amp_drag, mu=gauss_len/2, sigma=gauss_len / 5, delf=delta, length=gauss_len, delta=-143e6, alpha=alpha)
+
+drag_pi_2_wf = Xgauss(amplitude=gauss_amp*half_pi_amp_drag, mu=gauss_len/2, sigma=gauss_len / 5, delf=delta, length=gauss_len, delta=-143e6, alpha=alpha)
+drag_pi_2_der_wf = Ygauss_der(amplitude=gauss_amp*half_pi_amp_drag, mu=gauss_len/2, sigma=gauss_len / 5, delf=delta, length=gauss_len, delta=-143e6, alpha=alpha)
+
+opt_readout = "C:\\_Lib\\python\\slab\\experiments\\qm_opx_mm\\pulses\\00013_readout_optimal_pulse.h5"
 with File(opt_readout,'r') as a:
-    opt_amp = 1.00*np.array(a['I_wf'])
+    opt_amp = 1.0*np.array(a['I_wf'])
 opt_len = len(opt_amp)
 pump_len = opt_len
 
@@ -146,16 +184,20 @@ config = {
                     'gaussian_16': 'gaussian_16_pulse',
                     'pi': 'pi_pulse',
                     'pi2': 'pi2_pulse',
+                    'gaussian_drag': 'gaussian_drag_pulse',
+                    'pi_drag':'pi_drag_pulse',
+                    'pi_2_drag':'pi_2_drag_pulse',
                     'minus_pi2': 'minus_pi2_pulse',
                     'res_pi': params[2],
+                    'res_2pi': params[3],
                     'qoct': 'qoct_pulse',
                 },
             }
             for params in [
-                ('qubit_mode0', ge_IF[0], 'res_pi_pulse_mode0'),
-                ('qubit_mode1', ge_IF[1], 'res_pi_pulse_mode1'),
-                ('qubit_mode2', ge_IF[2], 'res_pi_pulse_mode2'),
-                ('qubit_mode3', ge_IF[3], 'res_pi_pulse_mode3')
+                ('qubit_mode0', ge_IF[0], 'res_pi_pulse_mode0', 'res_2pi_pulse_mode0'),
+                ('qubit_mode1', ge_IF[1], 'res_pi_pulse_mode1', 'res_2pi_pulse_mode1'),
+                ('qubit_mode2', ge_IF[2], 'res_pi_pulse_mode2', 'res_2pi_pulse_mode2'),
+                ('qubit_mode3', ge_IF[3], 'res_pi_pulse_mode3', 'res_2pi_pulse_mode3')
             ]
         },
 
@@ -250,7 +292,15 @@ config = {
             },
             'digital_marker': 'ON'
         },
-
+        "gaussian_drag_pulse": {
+            'operation': 'control',
+            'length': gauss_len,
+            'waveforms': {
+                'I': 'gauss_drag_wf_i',
+                'Q': 'gauss_drag_wf_q'
+            },
+            'digital_marker': 'ON'
+        },
         "gaussian_16_pulse": {
             'operation': 'control',
             'length': 16,
@@ -278,7 +328,22 @@ config = {
                 'Q': 'zero_wf'
             },
         },
-
+        'pi_drag_pulse': {
+            'operation': 'control',
+            'length': pi_len,
+            'waveforms': {
+                'I': 'pi_drag_wf_i',
+                'Q': 'pi_drag_wf_q'
+            },
+        },
+        'pi_2_drag_pulse': {
+            'operation': 'control',
+            'length': pi_len,
+            'waveforms': {
+                'I': 'pi_2_drag_wf_i',
+                'Q': 'pi_2_drag_wf_q'
+            },
+        },
         'minus_pi2_pulse': {
             'operation': 'control',
             'length': half_pi_len,
@@ -305,6 +370,23 @@ config = {
             ]
         },
 
+        **{
+            params[0]: {
+                'operation': 'control',
+                'length': pi_len_resolved,
+                'waveforms': {
+                    'I': params[1],
+                    'Q': 'zero_wf'
+                },
+            }
+            for params in [
+                ('res_2pi_pulse_mode0', 'res_2pi_wf_mode0'),
+                ('res_2pi_pulse_mode1', 'res_2pi_wf_mode1'),
+                ('res_2pi_pulse_mode2', 'res_2pi_wf_mode2'),
+                ('res_2pi_pulse_mode3', 'res_2pi_wf_mode3')
+            ]
+        },
+
         'readout_pulse': {
             'operation': 'measurement',
             'length': readout_len,
@@ -313,9 +395,9 @@ config = {
                 'Q': 'zero_wf'
             },
             'integration_weights': {
-                'integW1': 'integW1',
-                'integW2': 'integW2',
-                'integW3': 'integW3',
+                'cos': 'cos',
+                'sin': 'sin',
+                'minus_sin': 'minus_sin',
             },
             'digital_marker': 'ON'
         },
@@ -330,6 +412,7 @@ config = {
             'integration_weights': {
                 'clear_integW1': 'clear_integW1',
                 'clear_integW2': 'clear_integW2',
+                'clear_integW3': 'clear_integW3',
             },
             'digital_marker': 'ON'
         },
@@ -374,7 +457,14 @@ config = {
             'type': 'arbitrary',
             'samples': gauss(gauss_amp, 0.0, gauss_len//4, gauss_len)
         },
-
+        'gauss_drag_wf_i': {
+            'type': 'arbitrary',
+            'samples': drag_gauss_wf
+        },
+        'gauss_drag_wf_q': {
+            'type': 'arbitrary',
+            'samples': drag_gauss_der_wf
+        },
         'gauss_16_wf': {
             'type': 'arbitrary',
             'samples': gauss(gauss_amp, 0.0, 16//4, 16)
@@ -389,22 +479,51 @@ config = {
             'type': 'arbitrary',
             'samples': gauss(gauss_amp * half_pi_amp, 0.0, half_pi_len//4, half_pi_len)
         },
-
         'minus_pi2_wf': {
             'type': 'arbitrary',
             'samples': gauss(-gauss_amp * half_pi_amp, 0.0, half_pi_len//4, half_pi_len)
         },
 
+        'pi_drag_wf_i': {
+            'type': 'arbitrary',
+            'samples': drag_pi_wf
+        },
+        'pi_drag_wf_q': {
+            'type': 'arbitrary',
+            'samples': drag_pi_der_wf
+        },
+        'pi_2_drag_wf_i': {
+            'type': 'arbitrary',
+            'samples': drag_pi_2_wf
+        },
+        'pi_2_drag_wf_q': {
+            'type': 'arbitrary',
+            'samples': drag_pi_2_der_wf
+        },
+
         **{
             params[0]: {
                 'type': 'arbitrary',
-                'samples': gauss(params[1] * pi_amp_resolved, 0.0, pi_len_resolved//4, pi_len_resolved)
+                'samples': gauss(params[1] * gauss_amp, 0.0, pi_len_resolved//4, pi_len_resolved)
             }
             for params in [
                 ('res_pi_wf_mode0', res_pi_amp[0]),
                 ('res_pi_wf_mode1', res_pi_amp[1]),
                 ('res_pi_wf_mode2', res_pi_amp[2]),
                 ('res_pi_wf_mode3', res_pi_amp[3]),
+            ]
+        },
+
+        **{
+            params[0]: {
+                'type': 'arbitrary',
+                'samples': gauss(2*params[1] * gauss_amp, 0.0, pi_len_resolved//4, pi_len_resolved)
+            }
+            for params in [
+                ('res_2pi_wf_mode0', res_pi_amp[0]),
+                ('res_2pi_wf_mode1', res_pi_amp[1]),
+                ('res_2pi_wf_mode2', res_pi_amp[2]),
+                ('res_2pi_wf_mode3', res_pi_amp[3]),
             ]
         },
 
@@ -467,17 +586,17 @@ config = {
 
     'integration_weights': {
 
-        'integW1': {
+        'cos': {
             'cosine': [2.0] * int(readout_len / 4),
             'sine': [0.0] * int(readout_len / 4)
         },
 
-        'integW2': {
+        'sin': {
             'cosine': [0.0] * int(readout_len / 4),
             'sine': [2.0] * int(readout_len / 4)
         },
 
-        'integW3': {
+        'minus_sin': {
             'cosine': [0.0] * int(readout_len / 4),
             'sine': [-2.0] * int(readout_len / 4)
         },
@@ -489,6 +608,11 @@ config = {
         'clear_integW2': {
             'cosine': [0.0] * int(opt_len / 4 ),
             'sine': [2.0] * int(opt_len / 4 )
+        },
+
+        'clear_integW3': {
+            'cosine': [0.0] * int(opt_len / 4 ),
+            'sine': [-2.0] * int(opt_len / 4 )
         },
 
         'demod1_iw': {
@@ -536,3 +660,8 @@ config = {
     }
 
 }
+storage_cal_file = ['',
+                    'C:\_Lib\python\slab\experiments\qm_opx_mm\drive_calibration/00000_2021_12_28_cavity_square_mode_2.h5',
+                    '',
+                    '']
+qubit_cal_file = "C:\_Lib\python\slab\experiments\qm_opx_mm\drive_calibration/00000_2021_12_28_qubit_square.h5"

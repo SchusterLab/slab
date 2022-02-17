@@ -1,4 +1,4 @@
-from configuration_IQ import config, rr_LO
+from configuration_IQ import config, rr_LO, readout_len
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -13,6 +13,24 @@ from slab import*
 ##################
 # histogram_prog:
 ##################
+pulse_len = readout_len
+
+w_plus = [(1.0, pulse_len)]
+w_minus = [(-1.0, pulse_len)]
+w_zero = [(0.0, pulse_len)]
+
+b = (30.0/180)*np.pi
+w_plus_cos = [(np.cos(b), pulse_len)]
+w_minus_cos = [(-np.cos(b), pulse_len)]
+w_plus_sin = [(np.sin(b), pulse_len)]
+w_minus_sin = [(-np.sin(b), pulse_len)]
+
+config['integration_weights']['cos']['cosine'] = w_plus_cos
+config['integration_weights']['cos']['sine'] = w_minus_sin
+config['integration_weights']['sin']['cosine'] = w_plus_sin
+config['integration_weights']['sin']['sine'] = w_plus_cos
+config['integration_weights']['minus_sin']['cosine'] = w_minus_sin
+config['integration_weights']['minus_sin']['sine'] = w_minus_cos
 
 reset_time = 500000
 avgs = 5000
@@ -24,10 +42,8 @@ with program() as histogram:
     ##############################
 
     n = declare(int)      # Averaging
-    Ig = declare(fixed)
-    Qg = declare(fixed)
-    Ie = declare(fixed)
-    Qe = declare(fixed)
+    I = declare(fixed)
+    Q = declare(fixed)
     # If = declare(fixed)
     # Qf = declare(fixed)
 
@@ -48,11 +64,12 @@ with program() as histogram:
 
         """Just readout without playing anything"""
         wait(reset_time // 4, "rr")
-        measure("readout", "rr", None, dual_demod.full("integW1", "out1", "integW3", "out2", Ig),
-                dual_demod.full("integW2", "out1", "integW1", "out2", Qg))
+        measure("readout", "rr", None,
+                dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
+                dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
 
-        save(Ig, Ig_st)
-        save(Qg, Qg_st)
+        save(I, Ig_st)
+        save(Q, Qg_st)
 
         align("qubit_mode0", "rr")
 
@@ -60,11 +77,12 @@ with program() as histogram:
         wait(reset_time // 4, "qubit_mode0")
         play("pi", "qubit_mode0")
         align("qubit_mode0", "rr")
-        measure("readout", "rr", None, dual_demod.full("integW1", "out1", "integW3", "out2", Ie),
-                dual_demod.full("integW2", "out1", "integW1", "out2", Qe))
+        measure("readout", "rr", None,
+                dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
+                dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
 
-        save(Ie, Ie_st)
-        save(Qe, Qe_st)
+        save(I, Ie_st)
+        save(Q, Qe_st)
 
         # align("qubit", "rr")
         #
@@ -141,13 +159,13 @@ else:
 
     job.halt()
 
-    # path = os.getcwd()
-    # data_path = os.path.join(path, "data/")
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'histogram', suffix='.h5'))
-    # print(seq_data_file)
-    # with File(seq_data_file, 'w') as f:
-    #     dset = f.create_dataset("ig", data=Ig)
-    #     dset = f.create_dataset("qg", data=Qg)
-    #     dset = f.create_dataset("ie", data=Ie)
-    #     dset = f.create_dataset("qe", data=Qe)
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'histogram', suffix='.h5'))
+    print(seq_data_file)
+    with File(seq_data_file, 'w') as f:
+        dset = f.create_dataset("ig", data=Ig)
+        dset = f.create_dataset("qg", data=Qg)
+        dset = f.create_dataset("ie", data=Ie)
+        dset = f.create_dataset("qe", data=Qe)
