@@ -63,13 +63,13 @@ NB_ERRORS = 0
 
 channels = {
     1: {"label": "55K",
-        "ABORT_temp": 45},
+        "ABORT_temp": 50},
     2: {"label": "4K",
-        "ABORT_temp": 3.5},
+        "ABORT_temp": 7},
     5: {"label": "STILL",
-        "ABORT_temp": 1},
+        "ABORT_temp": 1.4},
     8: {"label": "MXC",
-        "ABORT_temp": 0.20},
+        "ABORT_temp": 0.60},
 }
 
 receiver_email_list= ["schusterbf4error@gmail.com", "andrei.vrajitoarea@gmail.com", "bsaxberg@uchicago.edu", "glcroberts@uchicago.edu"]
@@ -79,7 +79,7 @@ slack_channels = ['UB2UYK6FP', 'U0179LMURHA','U1Q9UU3HT', 'USW7K9V9P', '#bf4','U
 
 if __name__ == "__main__":
 
-    while NB_ERRORS < len(channels)*2:
+    while NB_ERRORS < len(channels)*4:
         try:
             req = requests.get('http://192.168.14.212:5001/channel/measurement/latest', timeout=30)
         except:

@@ -23,13 +23,16 @@ import copy
 import sys
 
 class Experiment:
-    def __init__(self,  quantum_device_cfg=None, experiment_cfg=None, hardware_cfg=None,  sequences=None, name=None,lattice_cfg = None):
+    def __init__(self,  quantum_device_cfg=None, experiment_cfg=None, hardware_cfg=None,  sequences=None, name=None,lattice_cfg = None, pass_im=None):
         self.quantum_device_cfg = quantum_device_cfg
         self.experiment_cfg = experiment_cfg
         self.expt_params = self.experiment_cfg[name]
         self.hardware_cfg = hardware_cfg
         self.lattice_cfg = lattice_cfg
-        im = InstrumentManager()
+        if pass_im:
+            im = pass_im
+        else:
+            im = InstrumentManager()
 
         self.setups = ["A", "B"]
         self.on_qbs = self.expt_params["on_qbs"]
@@ -482,7 +485,7 @@ class Experiment:
         self.initiate_drive_attenuators()
         self.initiate_pxi(name, sequences)
         self.initiate_readout_LOs()
-        self.initiate_readout_yigs()
+        # self.initiate_readout_yigs()
         time.sleep(0.2)
         self.pxi.run()
         time.sleep(0.2)
@@ -510,7 +513,7 @@ class Experiment:
             for ii, rd in enumerate(self.on_rds):
                 self.lattice_cfg['readout'][self.rd_setups[ii]]['freq'][rd] = freq + read_freq_list[ii]
             self.initiate_readout_LOs()
-            self.initiate_readout_yigs()
+            # self.initiate_readout_yigs()
             self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, self.lattice_cfg, name)
             self.pxi.DIG_ch_1.clear()
             self.pxi.DIG_ch_1.start()
