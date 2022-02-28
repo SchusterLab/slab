@@ -89,3 +89,5 @@ try: from .Triton import Triton
 except: print("Could not load Oxford Trition driver")
 try: from.OmniYigController import OmniYigController
 except: print("Could not load OmniYig controller")
+try: from .Keithley import *
+except: print("Could not load Keithley")
