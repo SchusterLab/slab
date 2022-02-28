@@ -1,6 +1,6 @@
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config, biased_th_g, disc_file_opt, pi_amp_resolved, pi_len_resolved
+from configuration_IQ import config, disc_file_opt, pi_amp_resolved, pi_len_resolved, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -11,6 +11,16 @@ from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
 
+readout = 'readout' #'clear'
+
+if readout=='readout':
+    disc = disc_file
+else:
+    disc = disc_file_opt
+
+qmm = QuantumMachinesManager()
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc, lsb=True)
+
 reset_time = 500000
 N = 1000
 
@@ -20,8 +30,6 @@ a_max = 1.05*pi_amp_resolved
 da = (a_max - a_min)/100
 a_vec = np.arange(a_min, a_max + da/2, da)
 
-qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
 n_pi_pulses = 12
 
 with program() as power_rabi:
@@ -40,7 +48,7 @@ with program() as power_rabi:
 
         with for_(a, a_min, a < a_max + da/2, a + da):
 
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
+            discriminator.measure_state(readout, "out1", "out2", res, I=I)
             align('qubit_mode0', 'rr')
             play('pi', 'qubit_mode0', condition=res)
             wait(reset_time//10, 'qubit_mode0')
@@ -50,7 +58,7 @@ with program() as power_rabi:
                 play('gaussian'*amp(a), 'qubit_mode0', duration=pi_len_resolved//4)
             play('pi2', 'qubit_mode0')
             align('qubit_mode0', 'rr')
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
+            discriminator.measure_state(readout, "out1", "out2", res, I=I)
 
             save(res, res_st)
             save(I, I_st)

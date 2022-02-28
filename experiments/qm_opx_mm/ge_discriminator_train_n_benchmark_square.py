@@ -1,6 +1,6 @@
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config, disc_file
+from configuration_IQ import config, disc_file, readout_len
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -17,7 +17,28 @@ simulation_config = SimulationConfig(
     )
 )
 
-N = 10000
+
+# pulse_len = readout_len
+
+# w_plus = [(1.0, pulse_len)]
+# w_minus = [(-1.0, pulse_len)]
+# w_zero = [(0.0, pulse_len)]
+#
+# b = (30.0/180)*np.pi
+# w_plus_cos = [(np.cos(b), pulse_len)]
+# w_minus_cos = [(-np.cos(b), pulse_len)]
+# w_plus_sin = [(np.sin(b), pulse_len)]
+# w_minus_sin = [(-np.sin(b), pulse_len)]
+#
+# config['integration_weights']['cos']['cosine'] = w_plus_cos
+# config['integration_weights']['cos']['sine'] = w_minus_sin
+# config['integration_weights']['sin']['cosine'] = w_plus_sin
+# config['integration_weights']['sin']['sine'] = w_plus_cos
+# config['integration_weights']['minus_sin']['cosine'] = w_minus_sin
+# config['integration_weights']['minus_sin']['sine'] = w_minus_cos
+
+
+N = 5000
 wait_time = 500000
 
 lsb = True
@@ -144,15 +165,15 @@ ax.yaxis.set_ticklabels(labels)
 
 plt.show()
 
-# path = os.getcwd()
-# data_path = os.path.join(path, "data/")
-# seq_data_file = os.path.join(data_path,
-#                              get_next_filename(data_path, 'histogram_disc_sq', suffix='.h5'))
-# print(seq_data_file)
-#
-# with File(seq_data_file, 'w') as f:
-#     f.create_dataset("I", data=I)
-#     f.create_dataset("Q", data=Q)
-#     f.create_dataset("res", data=res)
-#     f.create_dataset("seq0", data=seq0)
-#     f.create_dataset("avgs", data=N)
+path = os.getcwd()
+data_path = os.path.join(path, "data/")
+seq_data_file = os.path.join(data_path,
+                             get_next_filename(data_path, 'histogram_disc_sq', suffix='.h5'))
+print(seq_data_file)
+
+with File(seq_data_file, 'w') as f:
+    f.create_dataset("I", data=I)
+    f.create_dataset("Q", data=Q)
+    f.create_dataset("res", data=res)
+    f.create_dataset("seq0", data=seq0)
+    f.create_dataset("avgs", data=N)

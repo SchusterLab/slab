@@ -7,6 +7,7 @@ im = InstrumentManager()
 LO_q = im['RF5']
 LO_r = im['RF8']
 LO_s = im['SC1E48']
+LO_j = im['SC209E']
 flux = im['YOKO1']
 
 ##################

@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, ge_IF, biased_th_g_jpa, two_chi, disc_file_opt
+from configuration_IQ import config, ge_IF, two_chi, disc_file_opt, disc_file
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 from qm.qua import *
@@ -24,9 +24,15 @@ simulation_config = SimulationConfig(
     )
 )
 
-qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
+readout = 'readout' #'clear'
 
+if readout=='readout':
+    disc = disc_file
+else:
+    disc = disc_file_opt
+
+qmm = QuantumMachinesManager()
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc, lsb=True)
 ###############
 # qubit_mode0_spec_prog:
 ###############
@@ -38,15 +44,13 @@ def amp_to_tvec(c_amp):
     dt = (int(2*(cav_amp/c_amp)))
     return t_min, t_max, dt
 
-t_chi = int(abs(0.5*1e9/two_chi[1])) #qubit_mode0 rotates by pi in this time
-
 avgs = 200
-reset_time = int(7.5e6)
+reset_time = int(10e6)
 simulation = 0
 
 f_min = -5.5e6
 f_max = 0.5e6
-df = 200e3
+df = (f_max - f_min)/100
 f_vec = np.arange(f_min, f_max + df/2, df)
 
 def storage_mode1_bd(cav_amp):
@@ -84,7 +88,7 @@ def storage_mode1_bd(cav_amp):
                     align('storage_mode1', 'qubit_mode0')
                     play("res_pi", "qubit_mode0")
                     align('qubit_mode0', 'rr')
-                    discriminator.measure_state("clear", "out1", "out2", res, I=I)
+                    discriminator.measure_state(readout, "out1", "out2", res, I=I)
 
                     save(res, res_st)
 
@@ -113,14 +117,14 @@ def storage_mode1_bd(cav_amp):
         data_path = os.path.join(path, "data/")
         # data_path = 'S:\\_Data\\210326 - QM_OPX\\data\\'
         seq_data_file = os.path.join(data_path,
-                                     get_next_filename(data_path, 'alpha_cal_storage_mode1_spec', suffix='.h5'))
+                                     get_next_filename(data_path, 'alpha_cal_storage_res_spec', suffix='.h5'))
         print(seq_data_file)
         with File(seq_data_file, 'w') as f:
             f.create_dataset("res", data=res)
             f.create_dataset("amp", data=cav_amp)
             f.create_dataset("times", data=t_vec)
             f.create_dataset("freqs", data=f_vec)
-            f.create_dataset("two_chi", data=two_chi[1])
+            f.create_dataset("two_chi", data=two_chi)
 
     return
 
@@ -128,8 +132,8 @@ st_amp = list(np.arange(0.001, 0.01, 0.001))
 st_amp.extend(np.arange(0.01, 0.1, 0.01))
 st_amp.extend(np.arange(0.1, 1.05, 0.1))
 
-# b = storage_mode1_bd(0.4)
+b = storage_mode1_bd(0.4)
 
-for a in st_amp[5:]:
-    print(a)
-    storage_mode1_bd(a)
+# for a in st_amp[:]:
+#     print(a)
+#     storage_mode1_bd(a)

@@ -20,15 +20,8 @@ with program() as resonator_spectroscopy:
 
     f = declare(int)
     i = declare(int)
-    Ig = declare(fixed)
-    Qg = declare(fixed)
-    Ie = declare(fixed)
-    Qe = declare(fixed)
-
-    I1 = declare(fixed)
-    Q1 = declare(fixed)
-    I2 = declare(fixed)
-    Q2 = declare(fixed)
+    I = declare(fixed)
+    Q = declare(fixed)
 
     Ig_st = declare_stream()
     Qg_st = declare_stream()
@@ -41,15 +34,11 @@ with program() as resonator_spectroscopy:
             update_frequency("rr", f)
             wait(reset_time//4, "rr")
             measure("readout", "rr", None,
-                    demod.full("integW1", I1, 'out1'),
-                    demod.full("integW2", Q1, 'out1'),
-                    demod.full("integW1", I2, 'out2'),
-                    demod.full("integW2", Q2, 'out2'))
-            assign(Ig, I1 - Q2)
-            assign(Qg, I2 + Q1)
+                    dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
+                    dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
 
-            save(Ig, Ig_st)
-            save(Qg, Qg_st)
+            save(I, Ig_st)
+            save(Q, Qg_st)
 
             align("rr", 'qubit_mode0')
 
@@ -57,15 +46,12 @@ with program() as resonator_spectroscopy:
             play("pi", "qubit_mode0")
             align("qubit_mode0", "rr")
             measure("readout", "rr", None,
-                    demod.full("integW1", I1, 'out1'),
-                    demod.full("integW2", Q1, 'out1'),
-                    demod.full("integW1", I2, 'out2'),
-                    demod.full("integW2", Q2, 'out2'))
-            assign(Ie, I1 - Q2)
-            assign(Qe, I2 + Q1)
+                    dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
+                    dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
 
-            save(Ie, Ie_st)
-            save(Qe, Qe_st)
+            save(I, Ie_st)
+            save(Q, Qe_st)
+
 
     with stream_processing():
 
@@ -73,7 +59,6 @@ with program() as resonator_spectroscopy:
         Qg_st.buffer(len(f_vec)).average().save('Qg')
         Ie_st.buffer(len(f_vec)).average().save('Ie')
         Qe_st.buffer(len(f_vec)).average().save('Qe')
-
 
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)

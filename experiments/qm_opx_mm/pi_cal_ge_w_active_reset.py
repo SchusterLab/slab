@@ -1,6 +1,6 @@
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config, biased_th_g, disc_file_opt, pi_amp, half_pi_amp
+from configuration_IQ import config,  disc_file_opt, pi_amp, half_pi_amp, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -10,6 +10,11 @@ from slab import*
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
+readout = 'readout' #'clear'
+if readout=='readout':
+    disc = disc_file
+else:
+    disc = disc_file_opt
 
 reset_time = 500000
 N = 1000
@@ -29,7 +34,7 @@ da_pi_2 = (a_pi_2_max - a_pi_2_min)/100
 a_pi_2_vec = np.arange(a_pi_2_min, a_pi_2_max + da_pi_2/2, da_pi_2)
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc, lsb=True)
 
 with program() as power_rabi:
 
@@ -46,7 +51,7 @@ with program() as power_rabi:
 
         with for_(a, a_pi_min, a < a_pi_max + da_pi/2, a + da_pi):
 
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
+            discriminator.measure_state(readout, "out1", "out2", res, I=I)
             align('qubit_mode0', 'rr')
             play('pi', 'qubit_mode0', condition=res)
             align('qubit_mode0', 'rr')
@@ -56,13 +61,13 @@ with program() as power_rabi:
                 play('gaussian'*amp(a), 'qubit_mode0')
             play('pi2', 'qubit_mode0')
             align('qubit_mode0', 'rr')
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
+            discriminator.measure_state(readout, "out1", "out2", res, I=I)
 
             save(res, I_pi_st)
 
         with for_(a, a_pi_2_min, a < a_pi_2_max + da_pi_2/2, a + da_pi_2):
 
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
+            discriminator.measure_state(readout, "out1", "out2", res, I=I)
             align('qubit_mode0', 'rr')
             play('pi', 'qubit_mode0', condition=res)
             align('qubit_mode0', 'rr')
@@ -72,7 +77,7 @@ with program() as power_rabi:
                 play('gaussian'*amp(a), 'qubit_mode0')
             play('pi2', 'qubit_mode0')
             align('qubit_mode0', 'rr')
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
+            discriminator.measure_state(readout, "out1", "out2", res, I=I)
 
             save(res, I_pi_2_st)
 

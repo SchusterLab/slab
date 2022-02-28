@@ -17,7 +17,6 @@ def IQ_imbalance(g, phi):
     N = 1 / ((1-g**2)*(2*c**2-1))
     return [float(N * x) for x in [(1-g)*c, (1+g)*s, (1-g)*s, (1+g)*c]]
 
-
 def Xgauss(amplitude, mu, sigma, delf, length, delta=-140e6, alpha=0.0):
     t = np.linspace(0, length, length)
     gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
@@ -42,44 +41,53 @@ def Ygauss_der(amplitude, mu, sigma, delf, length, delta=-140e6, alpha=0.0):
 # CONFIGURATION:
 ################
 long_redout_len = 2000
-readout_len = 3000
+readout_len = 2200
+gauss_readout_len = 3000
+theta = np.pi/3
 
 qubit_LO = 4.8681*1e9
-qubit_freq = [4.961404613946841*1e9, 4.743013612710257*1e9, 4.743013612710257*1e9, 4.743013612710257*1e9]
+qubit_freq = [4.961404512330668 *1e9, 4.743013612710257*1e9, 4.743013612710257*1e9, 4.743013612710257*1e9]
 ge_IF = [int(qubit_freq[i] - qubit_LO) for i in range(4)]
 
-two_chi = [-2.191*1e6,  -1.243*1e6, 0, 0]
-two_chi_2 = -int(10.584e3/2) #second order correction 1/2(n**2) * chi_prime
+two_chi = -1257.27107973e3
+two_chi_2 = -int(12.93776283e3/2) #second order correction 1/2(n*(n-1) * chi_prime
+
+two_chi_vec = [int(0),  int(-1275343), int(-2535119), int(-3797337), int(-5028675), int(-6.529106e6)]
+# -3.82585522e+03, -1.28464819e+06, -2.53031174e+06, -3.71656166e+06,
+# -5.27971347e+06, -6.60951987e+06
+
+# [    9748.52832103, -1250928.85023926, -2549171.0214298 ,
+#      -3767566.68978087, -5502163.07874041, -6955025.20705052]
+
+qubit_ef_freq = 4.811654551*1e9
+ef_IF = -int(qubit_LO - qubit_ef_freq) #LSB
 ####---------------------####
 rr_LO = 7.8897 *1e9 + 10e6
 
 rr_freq_g = 7.790093*1e9
 rr_freq_e = 7.78867*1e9
-rr_freq = 7.789409118927988*1e9
+rr_freq = 7.789402047040442*1e9
 # rr_freq = rr_freq_g
 
 rr_IF = int(rr_LO - rr_freq)
 
-rr_amp = 0.22
-
-biased_th_g = 0.005
-biased_th_g_jpa = 0.005
+rr_amp = 0.35
 
 pump_LO = rr_LO
 pump_IF = int(100e6-15e6)
-# pump_IF = int(100e6)
 
 pump_amp = 1.0*0.060
 
 disc_file = 'ge_disc_params_jpa.npz'
 disc_file_opt = 'ge_disc_params_opt.npz'
+disc_file_gauss = 'ge_disc_params_gauss.npz'
 disc_file_opt_drag = 'ge_disc_params_opt_drag.npz'
+
 ####---------------------####
 storage_freq = [5.4605359569639695*1e9, 5.965085584240055 *1e9, 6.511215233526263*1e9, 6.7611215233526263*1e9]
 storage_LO = [5.56e9, 6.061e9, 6.61e9, 6.861e9]
 storage_IF = [int(abs(storage_freq[i]-storage_LO[i])) for i in range(4)]
-#965064602219015
-#6492042423932318e
+
 usable_modes = [0, 2, 3, 5, 7]
 storage_mode = 1
 storage_specs = {
@@ -98,27 +106,27 @@ sb_freq = 3.3434e9
 sb_IF = 100e6
 sb_LO = sb_freq + sb_IF
 
-st_self_kerr = 10e3/2
+st_self_kerr = 5e3/2
 
 gauss_len = 80
 gauss_amp = 0.45
 
 pi_len = 80
-pi_amp = 0.3075
+pi_amp = 0.3061
 
 half_pi_len = pi_len
-half_pi_amp = 0.1533
+half_pi_amp = 0.1523
 
 pi_len_resolved = 3000
-pi_amp_resolved = 0.0081
+pi_amp_resolved = 0.0082
 
-res_pi_amp = [pi_amp_resolved, pi_amp_resolved, 0.43, 0.42]
+res_pi_amp = [0.0082, 0.0085, 0.0080, 0.0080, 0.0080, 0.0080, 0.0080, 0.0080]
 
-pi_ef_len = 60
-pi_ef_amp = 0.6479
+pi_ef_len = 80
+pi_ef_amp = 0.25
 
-half_ef_pi_len = pi_ef_len
-half_ef_pi_amp = pi_ef_amp/2
+half_pi_ef_len = pi_ef_len
+half_pi_ef_amp = pi_ef_amp/2
 
 pi_amp_drag = 0.5897
 half_pi_amp_drag = 0.2860
@@ -157,6 +165,8 @@ config = {
                 4: {'offset': 0.003},  # RR Q
                 5: {'offset': storage_specs['iq_offset'][storage_mode][0]},  # storage I
                 6: {'offset': storage_specs['iq_offset'][storage_mode][1]},  # storage Q
+                7: {'offset': 0.0},  # RR I
+                8: {'offset': 0.0},  # RR Q
             },
             'digital_outputs': {},
             'analog_inputs': {
@@ -200,6 +210,29 @@ config = {
                 ('qubit_mode3', ge_IF[3], 'res_pi_pulse_mode3', 'res_2pi_pulse_mode3')
             ]
         },
+        'qubit_ef': {
+            'mixInputs': {
+                'I': ('con1', 1),
+                'Q': ('con1', 2),
+                'lo_frequency': qubit_LO,
+                'mixer': 'mixer_qubit'
+            },
+            'intermediate_frequency': ef_IF,
+            'operations': {
+                'CW': 'CW',
+                'saturation': 'saturation_pulse',
+                'gaussian': 'gaussian_pulse',
+                'pi': 'pi_ef_pulse',
+                'pi2': 'pi2_ef_pulse',
+            },
+            # 'digitalInputs': {
+            #     'lo_qubit': {
+            #         'port': ('con1', 2),
+            #         'delay': 0,
+            #         'buffer': 0
+            #     },
+            # },
+        },
 
         'rr': {
             'mixInputs': {
@@ -213,6 +246,7 @@ config = {
                 'CW': 'CW',
                 'readout': 'readout_pulse',
                 'clear': 'clear_pulse',
+                'gaussian': 'gauss_readout_pulse',
             },
             "outputs": {
                 'out1': ('con1', 1),
@@ -328,6 +362,24 @@ config = {
                 'Q': 'zero_wf'
             },
         },
+        'pi_ef_pulse': {
+            'operation': 'control',
+            'length': pi_ef_len,
+            'waveforms': {
+                'I': 'pi_ef_wf',
+                'Q': 'zero_wf'
+            },
+        },
+
+        'pi2_ef_pulse': {
+            'operation': 'control',
+            'length': half_pi_ef_len,
+            'waveforms': {
+                'I': 'pi2_ef_wf',
+                'Q': 'zero_wf'
+            },
+        },
+
         'pi_drag_pulse': {
             'operation': 'control',
             'length': pi_len,
@@ -398,6 +450,9 @@ config = {
                 'cos': 'cos',
                 'sin': 'sin',
                 'minus_sin': 'minus_sin',
+                'r_cos': 'r_cos',
+                'r_sin': 'r_sin',
+                'r_minus_sin': 'r_minus_sin',
             },
             'digital_marker': 'ON'
         },
@@ -413,6 +468,20 @@ config = {
                 'clear_integW1': 'clear_integW1',
                 'clear_integW2': 'clear_integW2',
                 'clear_integW3': 'clear_integW3',
+            },
+            'digital_marker': 'ON'
+        },
+        'gauss_readout_pulse': {
+            'operation': 'measurement',
+            'length': gauss_readout_len,
+            'waveforms': {
+                'I': 'gauss_readout_wf',
+                'Q': 'zero_wf'
+            },
+            'integration_weights': {
+                'cos': 'cos',
+                'sin': 'sin',
+                'minus_sin': 'minus_sin',
             },
             'digital_marker': 'ON'
         },
@@ -452,10 +521,13 @@ config = {
             'type': 'constant',
             'sample': 0.45 #earlier set to 0.1
         },
-
         'gauss_wf': {
             'type': 'arbitrary',
             'samples': gauss(gauss_amp, 0.0, gauss_len//4, gauss_len)
+        },
+        'gauss_readout_wf': {
+            'type': 'arbitrary',
+            'samples': gauss(rr_amp, 0.0, gauss_readout_len//4, gauss_readout_len)
         },
         'gauss_drag_wf_i': {
             'type': 'arbitrary',
@@ -479,6 +551,17 @@ config = {
             'type': 'arbitrary',
             'samples': gauss(gauss_amp * half_pi_amp, 0.0, half_pi_len//4, half_pi_len)
         },
+
+        'pi_ef_wf': {
+            'type': 'arbitrary',
+            'samples': gauss(gauss_amp * pi_ef_amp, 0.0, pi_ef_len//4, pi_ef_len)
+        },
+
+        'pi2_ef_wf': {
+            'type': 'arbitrary',
+            'samples': gauss(gauss_amp * half_pi_ef_amp, 0.0, half_pi_ef_len//4, half_pi_ef_len)
+        },
+
         'minus_pi2_wf': {
             'type': 'arbitrary',
             'samples': gauss(-gauss_amp * half_pi_amp, 0.0, half_pi_len//4, half_pi_len)
@@ -525,21 +608,6 @@ config = {
                 ('res_2pi_wf_mode2', res_pi_amp[2]),
                 ('res_2pi_wf_mode3', res_pi_amp[3]),
             ]
-        },
-
-        'pi_wf_ef': {
-            'type': 'arbitrary',
-            'samples': gauss(gauss_amp * pi_ef_amp, 0.0, pi_ef_len//4, pi_ef_len)
-        },
-
-        'pi2_wf_ef': {
-            'type': 'arbitrary',
-            'samples': gauss(gauss_amp * half_ef_pi_amp, 0.0, half_ef_pi_len//4, half_ef_pi_len)
-        },
-
-        'minus_pi2_wf_ef': {
-            'type': 'arbitrary',
-            'samples': gauss(-gauss_amp * half_ef_pi_amp, 0.0, half_ef_pi_len//4, half_ef_pi_len)
         },
 
         'readout_wf': {
@@ -600,6 +668,22 @@ config = {
             'cosine': [0.0] * int(readout_len / 4),
             'sine': [-2.0] * int(readout_len / 4)
         },
+
+        'r_cos': {
+            'cosine': [2.0*np.cos(theta)] * int(readout_len / 4),
+            'sine': [-2.0*np.sin(theta)] * int(readout_len / 4)
+        },
+
+        'r_sin': {
+            'cosine': [2.0*np.sin(theta)] * int(readout_len / 4),
+            'sine': [2.0*np.cos(theta)] * int(readout_len / 4)
+        },
+
+        'r_minus_sin': {
+            'cosine': [-2.0*np.sin(theta)] * int(readout_len / 4),
+            'sine': [-2.0*np.cos(theta)] * int(readout_len / 4)
+        },
+
         'clear_integW1': {
             'cosine': [2.0] * int(opt_len / 4 ),
             'sine': [0.0] * int(opt_len / 4 )
@@ -643,6 +727,8 @@ config = {
             {'intermediate_frequency': ge_IF[1], 'lo_frequency': qubit_LO, 'correction': IQ_imbalance(-0.0, 0.0 * np.pi)},
             {'intermediate_frequency': ge_IF[2], 'lo_frequency': qubit_LO, 'correction': IQ_imbalance(-0.0, 0.0 * np.pi)},
             {'intermediate_frequency': ge_IF[3], 'lo_frequency': qubit_LO, 'correction': IQ_imbalance(-0.0, 0.0 * np.pi)},
+            {'intermediate_frequency': ef_IF, 'lo_frequency': qubit_LO,
+             'correction': IQ_imbalance(-0.010, 0.010 * np.pi)}
         ],
 
         'mixer_RR': [
