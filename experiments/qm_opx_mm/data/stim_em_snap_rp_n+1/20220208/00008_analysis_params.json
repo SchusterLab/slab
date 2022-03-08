@@ -1,0 +1,1 @@
+{"qubit_params": {"t1": 127, "t2": 235, "nth": 0.03}, "cavity_params": {"t1": 1412.0, "nth": 0.0006}, "readout_params": {"length": 3.3, "trigger": 7.356, "pi_pulse": 3, "g_inf": 0.035, "e_inf": 0.033}}

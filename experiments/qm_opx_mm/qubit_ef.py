@@ -1,4 +1,4 @@
-from configuration_IQ import config, qubit_LO, ef_IF, biased_th_g_jpa
+from configuration_IQ import config, qubit_LO, ef_IF, disc_file, readout_len
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -14,13 +14,13 @@ from slab.dataanalysis import get_next_filename
 ###############
 # qubit_spec_prog:
 ###############
-f_min = -10e6
-f_max = 10e6
+f_min = -5e6
+f_max = 5e6
 df = 50e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 f_vec = f_vec + qubit_LO + ef_IF
 
-avgs = 1000
+avgs = 100
 reset_time = 500000
 simulation = 0
 
@@ -32,30 +32,27 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
 
-def active_reset(biased_th, to_excited=False):
-    res_reset = declare(bool)
-    wait(5000//4, 'rr')
-    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-    wait(1000//4, 'rr')
+pulse_len = readout_len
 
-    if to_excited == False:
-        with while_(I < biased_th):
-            align('qubit', 'rr')
-            with if_(~res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
-    else:
-        with while_(I > biased_th):
-            align('qubit', 'rr')
-            with if_(res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
+w_plus = [(1.0, pulse_len)]
+w_minus = [(-1.0, pulse_len)]
+w_zero = [(0.0, pulse_len)]
+
+b = (30.0/180)*np.pi
+w_plus_cos = [(np.cos(b), pulse_len)]
+w_minus_cos = [(-np.cos(b), pulse_len)]
+w_plus_sin = [(np.sin(b), pulse_len)]
+w_minus_sin = [(-np.sin(b), pulse_len)]
+
+config['integration_weights']['cos']['cosine'] = w_plus_cos
+config['integration_weights']['cos']['sine'] = w_minus_sin
+config['integration_weights']['sin']['cosine'] = w_plus_sin
+config['integration_weights']['sin']['sine'] = w_plus_cos
+config['integration_weights']['minus_sin']['cosine'] = w_minus_sin
+config['integration_weights']['minus_sin']['sine'] = w_minus_cos
+
 
 with program() as qubit_ef_spec:
 
@@ -67,10 +64,6 @@ with program() as qubit_ef_spec:
     f = declare(int)        # Frequencies
     I = declare(fixed)
     Q = declare(fixed)
-    I1 = declare(fixed)
-    Q1 = declare(fixed)
-    I2 = declare(fixed)
-    Q2 = declare(fixed)
 
     I_st = declare_stream()
     Q_st = declare_stream()
@@ -84,28 +77,18 @@ with program() as qubit_ef_spec:
         with for_(f, ef_IF + f_min, f < ef_IF + f_max + df/2, f + df):
 
             update_frequency("qubit_ef", f)
-            # active_reset(biased_th_g_jpa)
-            # align("qubit", 'rr')
-            wait(reset_time//4, 'qubit')
-            play("pi", "qubit")
-            align("qubit", "qubit_ef")
+            wait(reset_time//4, 'qubit_mode0')
+            play("pi", "qubit_mode0")
+            align("qubit_mode0", "qubit_ef")
             play("saturation"*amp(0.2), "qubit_ef")
             align("qubit_ef", "rr")
-            # measure("long_readout", "rr", None,
-            #         demod.full("long_integW1", I1, 'out1'),
-            #         demod.full("long_integW2", Q1, 'out1'),
-            #         demod.full("long_integW1", I2, 'out2'),
-            #         demod.full("long_integW2", Q2, 'out2'))
-            measure("clear", "rr", None,
-                    demod.full("clear_integW1", I1, 'out1'),
-                    demod.full("clear_integW2", Q1, 'out1'),
-                    demod.full("clear_integW1", I2, 'out2'),
-                    demod.full("clear_integW2", Q2, 'out2'))
-            assign(I, I1-Q2)
-            assign(Q, I2+Q1)
+            measure("readout", "rr", None,
+                    dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
+                    dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
 
             save(I, I_st)
             save(Q, Q_st)
+
 
     with stream_processing():
 
@@ -137,17 +120,17 @@ else:
     job.halt()
 
     plt.figure()
-    plt.plot(Q, '.-')
-    plt.plot(I, '.-')
+    plt.plot(f_vec/1e9,  Q, '.-')
+    plt.plot(f_vec/1e9, I, '.-')
     plt.show()
 
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'ef_spectroscopy', suffix='.h5'))
-    print(seq_data_file)
-
-    with File(seq_data_file, 'w') as f:
-        f.create_dataset("I", data=I)
-        f.create_dataset("Q", data=Q)
-        f.create_dataset("freqs", data=f_vec)
+    # path = os.getcwd()
+    # data_path = os.path.join(path, "data/")
+    # seq_data_file = os.path.join(data_path,
+    #                              get_next_filename(data_path, 'ef_spectroscopy', suffix='.h5'))
+    # print(seq_data_file)
+    #
+    # with File(seq_data_file, 'w') as f:
+    #     f.create_dataset("I", data=I)
+    #     f.create_dataset("Q", data=Q)
+    #     f.create_dataset("freqs", data=f_vec)

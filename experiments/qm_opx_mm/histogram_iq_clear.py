@@ -13,9 +13,9 @@ from slab.dataanalysis import get_next_filename
 ##################
 # histogram_prog:
 ##################
-reset_time = 500000
+reset_time = 50
 avgs = 10000
-simulation = 0
+simulation = 1
 
 w_plus = [(1.0, opt_len)]
 w_minus = [(-1.0, opt_len)]

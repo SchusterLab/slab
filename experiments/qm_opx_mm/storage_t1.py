@@ -15,7 +15,7 @@ from slab.dataanalysis import get_next_filename
 """Storage cavity t1 experiment"""
 
 dt = 12500
-T_max = int(5e6)
+T_max = int(1.5e6)
 T_min = 250
 t_vec = np.arange(T_min, T_max + dt/2, dt)
 
@@ -122,5 +122,5 @@ else:
         f.create_dataset("I", data=I)
         f.create_dataset("res", data=res)
         f.create_dataset("time", data=4*t_vec)
-        f.create_dataset("cav_len", data=4*cav_len)
-        f.create_dataset("cav_amp", data=cav_amp)
+        # f.create_dataset("cav_len", data=4*cav_len)
+        # f.create_dataset("cav_amp", data=cav_amp)

@@ -108,26 +108,26 @@ else:
     job = qm.execute(ramsey, duration_limit=0, data_limit=0)
 
     res_handles = job.result_handles
-    res_handles.wait_for_all_values()
-
-    I = res_handles.get('I').fetch_all()
-    Q = res_handles.get('Q').fetch_all()
-
-    print("Data collection done")
-
-    """Stop the output from OPX,heats up the fridge"""
-    job.halt()
-
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'ramsey_square', suffix='.h5'))
-    print(seq_data_file)
-
-    wait_tvec = 4*wait_tvec
-    times = 4*times
-    with File(seq_data_file, 'w') as f:
-        dset = f.create_dataset("I", data=I)
-        dset = f.create_dataset("Q", data=Q)
-        dset = f.create_dataset("wait_time", data=wait_tvec)
-        dset = f.create_dataset("ramsey_times", data=times)
+    # res_handles.wait_for_all_values()
+    #
+    # I = res_handles.get('I').fetch_all()
+    # Q = res_handles.get('Q').fetch_all()
+    #
+    # print("Data collection done")
+    #
+    # """Stop the output from OPX,heats up the fridge"""
+    # job.halt()
+    #
+    # path = os.getcwd()
+    # data_path = os.path.join(path, "data/")
+    # seq_data_file = os.path.join(data_path,
+    #                              get_next_filename(data_path, 'ramsey_square', suffix='.h5'))
+    # print(seq_data_file)
+    #
+    # wait_tvec = 4*wait_tvec
+    # times = 4*times
+    # with File(seq_data_file, 'w') as f:
+    #     dset = f.create_dataset("I", data=I)
+    #     dset = f.create_dataset("Q", data=Q)
+    #     dset = f.create_dataset("wait_time", data=wait_tvec)
+    #     dset = f.create_dataset("ramsey_times", data=times)

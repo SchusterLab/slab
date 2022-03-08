@@ -38,28 +38,11 @@ qmm = QuantumMachinesManager()
 discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
 ##################
 
+cav_t1s = [1444e3, 1444e3, 712e3, 527e3, 395e3, 313e3]
 
+def stim_em(coh_amp=0.0, coh_len=100, f_state=0, n_pi_m=10, n_pi_n=30, avgs=20000, phase=0.0):
 
-
-# w_plus = [(1.0, opt_len)]
-# w_minus = [(-1.0, opt_len)]
-# w_zero = [(0.0, opt_len)]
-#
-# b = (30.0/180)*np.pi
-# w_plus_cos = [(np.cos(b), opt_len)]
-# w_minus_cos = [(-np.cos(b), opt_len)]
-# w_plus_sin = [(np.sin(b), opt_len)]
-# w_minus_sin = [(-np.sin(b), opt_len)]
-# config['integration_weights']['clear_integW1']['cosine'] = w_plus_cos
-# config['integration_weights']['clear_integW1']['sine'] = w_minus_sin
-# config['integration_weights']['clear_integW2']['cosine'] = w_plus_sin
-# config['integration_weights']['clear_integW2']['sine'] = w_plus_cos
-# config['integration_weights']['clear_integW3']['cosine'] = w_minus_sin
-# config['integration_weights']['clear_integW3']['sine'] = w_minus_cos
-
-def stim_em(coh_amp=0.0, coh_len=100, f_state=0, n_pi_m=0, n_pi_n=30, avgs=20000):
-
-    reset_time = int((f_state+0.5)*7.5e6)
+    reset_time = int((f_state+0.5)*15e6)
     simulation = 0
 
     with program() as exp:
@@ -70,11 +53,14 @@ def stim_em(coh_amp=0.0, coh_len=100, f_state=0, n_pi_m=0, n_pi_n=30, avgs=20000
 
         n = declare(int)      # Averaging
         i = declare(int)      # Amplitudes
+        j = declare(int)
 
         num = declare(int)
 
         I = declare(fixed)
         bit = declare(bool)
+
+        bit_sum = declare(int)
 
         I_st = declare_stream()
         bit_st = declare_stream()
@@ -85,6 +71,8 @@ def stim_em(coh_amp=0.0, coh_len=100, f_state=0, n_pi_m=0, n_pi_n=30, avgs=20000
 
         with for_(n, 0, n < avgs, n + 1):
 
+            assign(bit_sum, 0)
+
             wait(reset_time//4, 'storage_mode1')
             update_frequency('qubit_mode0', ge_IF[0])
             update_frequency('storage_mode1', storage_IF[1])
@@ -93,41 +81,50 @@ def stim_em(coh_amp=0.0, coh_len=100, f_state=0, n_pi_m=0, n_pi_n=30, avgs=20000
             """Analytic SNAP pulses to create Fock states"""
             snap_seq(fock_state=f_state)
             ########################
-            """Repeated pi pulses at n"""
-            ########################
+            """Repeated pi pulses at n+1"""
+            # ########################
             align('qubit_mode0','storage_mode1')
-            update_frequency('qubit_mode0', ge_IF[0] + (f_state+1)*two_chi[1]+ ((f_state+1)**2)*two_chi_2)
+            update_frequency('qubit_mode0', ge_IF[0] + (f_state+1)*two_chi[1]+ (f_state+1)*(f_state+1-1)*two_chi_2 - int(30e3))
+
             with for_(i, 0, i < n_pi_m, i+1):
                 align('qubit_mode0', "rr")
                 play("res_pi", 'qubit_mode0')
                 align('qubit_mode0', 'rr')
                 discriminator.measure_state("clear", "out1", "out2", bit, I=I)
-                save(I, I_st)
-                save(bit, bit_st)
+                # save(I, I_st)
+                # save(bit, bit_st)
+                assign(bit_sum, bit_sum + Cast.to_int(bit))
                 wait(250, "rr")
             #########################
-            update_frequency('storage_mode1', storage_IF[1] + (f_state*(f_state-1))*st_self_kerr)
-            update_frequency('qubit_mode0', ge_IF[0] + (f_state+1)*two_chi[1]+ ((f_state+1)**2)*two_chi_2)
-            align('rr', 'qubit_mode0', 'storage_mode1')
-            play('CW'*amp(coh_amp), 'storage_mode1', duration=coh_len)
-            align('qubit_mode0','storage_mode1')
-            ########################
-            """Repeated pi pulses at n+1"""
-            ########################
-            with for_(i, 0, i < n_pi_n, i+1):
-                align('qubit_mode0', "rr")
-                play("res_pi", 'qubit_mode0')
-                align('qubit_mode0', 'rr')
+            with if_(bit_sum==0):
+                update_frequency('storage_mode1', storage_IF[1] + (f_state*(f_state-1))*st_self_kerr)
+                align('rr', 'qubit_mode0', 'storage_mode1')
+                # frame_rotation_2pi(phase, 'storage_mode1')
+                play('CW'*amp(coh_amp), 'storage_mode1', duration=coh_len)
+                align('rr', 'qubit_mode0', 'storage_mode1')
+                wait(740, "rr") # to match the same time as the time between each repeated pi pulse sequence
                 discriminator.measure_state("clear", "out1", "out2", bit, I=I)
                 save(I, I_st)
                 save(bit, bit_st)
-
-                wait(250, "rr")
-            ########################
+                wait(250, "rr") #same time as the time between each repeated pi pulse sequence
+                update_frequency('qubit_mode0', ge_IF[0] + (f_state+1)*two_chi[1]+ (f_state+1)*(f_state+1-1)*two_chi_2 - int(30e3))
+                align('rr', 'qubit_mode0', 'storage_mode1')
+                ########################
+                """Repeated pi pulses at n+1"""
+                ########################
+                with for_(j, 0, j < n_pi_n, j+1):
+                    align('qubit_mode0', "rr")
+                    play("res_pi", 'qubit_mode0')
+                    align('qubit_mode0', 'rr')
+                    discriminator.measure_state("clear", "out1", "out2", bit, I=I)
+                    save(I, I_st)
+                    save(bit, bit_st)
+                    wait(250, "rr")
+                ########################
 
         with stream_processing():
-            bit_st.boolean_to_int().buffer(n_pi_m+n_pi_n).save_all('bit')
-            I_st.buffer(n_pi_m+n_pi_n).save_all('I')
+            bit_st.boolean_to_int().buffer(n_pi_n+1).save_all('bit')
+            I_st.buffer(n_pi_n+1).save_all('I')
 
     qm = qmm.open_qm(config)
     if simulation:
@@ -145,14 +142,14 @@ def stim_em(coh_amp=0.0, coh_len=100, f_state=0, n_pi_m=0, n_pi_n=30, avgs=20000
         return job
 
 import json
-analysis_params = { 'qubit_params': {'t1':119, 't2':236, 'nth':3e-2},
-                    'cavity_params' : {'t1':1.352e3, 'nth':0.0006},
-                    'readout_params':{'length':3.3, 'trigger':7.356, 'pi_pulse':3, 'g_inf':0.0318, 'e_inf':0.04},
+analysis_params = { 'qubit_params': {'t1':123, 't2':150, 'nth':3e-2},
+                    'cavity_params' : {'t1':1.412e3, 'nth':0.0006},
+                    'readout_params':{'length':3.3, 'trigger':7.356, 'pi_pulse':3, 'g_inf':0.035, 'e_inf':0.0378},
                     }
 
-path = os.getcwd()
-
-data_path = os.path.join(path, "data/stim_em_snap_rp/20220202")
+# path = os.getcwd()
+data_path = 'S:\\_Data\\20220222 - 3DMM - StimEm - OPX\\data\\stim_em_snap_rp_n+1\\20220226\\'
+# data_path = os.path.join(path, "data/stim_em_snap_rp_n+1/20220222")
 filename = "analysis_params"
 seq_data_file = os.path.join(data_path,
                              get_next_filename(data_path, filename, suffix='.json'))
@@ -161,46 +158,52 @@ seq_data_file = os.path.join(data_path,
 with open(seq_data_file, "w")as outfile:
     json.dump(analysis_params, outfile)
 
-
 camp = list(np.round(np.arange(0.001, 0.0095, 0.002).tolist(), 6))
 camp.extend(np.round(np.arange(0.01, 0.10, 0.005).tolist(), 6))
 camp.extend(np.round(np.arange(0.1, 0.95, 0.2).tolist(), 6))
 camp.append(0.0)
 
-# camp = [0.01]
+camp = [0.0, 0.005, 0.01, 0.05, 0.08, 0.1]
 
-for f_num in range(4):
+# camp = [0.02, 0.04, 0.06, 0.08]
+phase = [0,  0.5, 1.0]
+
+for kk in range(2):
+
+    ph = phase[kk]
 
     for ii in range(len(camp)):
 
-        l = 10
-        avgs = 20000
-        coh_amp = np.round(camp[ii], 4)
-        fock_number = f_num
-        job = stim_em(coh_amp=coh_amp, coh_len=l, f_state=fock_number, n_pi_m=10, n_pi_n=30, avgs=avgs)
+        for f_num in range(2, 5, 1):
 
-        result_handles = job.result_handles
-        result_handles.wait_for_all_values()
-        time.sleep(5)
-        I = result_handles.get('I').fetch_all()['value']
-        Q = result_handles.get('bit').fetch_all()['value']
-        alpha = opx_amp_to_alpha(cav_amp=coh_amp, cav_len=4*l)
+            l = 10
+            avgs = 20000
+            coh_amp = np.round(camp[ii], 4)
+            fock_number = f_num
+            job = stim_em(coh_amp=coh_amp, coh_len=l, f_state=fock_number, n_pi_m=3, n_pi_n=30, avgs=avgs, phase=ph)
 
-        path = os.getcwd()
+            result_handles = job.result_handles
+            result_handles.wait_for_all_values()
+            time.sleep(5)
+            I = result_handles.get('I').fetch_all()['value']
+            Q = result_handles.get('bit').fetch_all()['value']
+            alpha = opx_amp_to_alpha(cav_amp=coh_amp, cav_len=4*l)
 
-        data_path = os.path.join(path, "data/stim_em_snap_rp/20220202/n" + str(fock_number))
+            path = os.getcwd()
 
-        filename = "stim_em_n+1" + str(fock_number) +"_camp_" + str(coh_amp)+"_len_"+str(l)
+            data_path = 'S:\\_Data\\20220222 - 3DMM - StimEm - OPX\\data\\stim_em_snap_rp_n+1\\20220226\\n'+ str(fock_number)
 
-        seq_data_file = os.path.join(data_path,
-                                     get_next_filename(data_path, filename, suffix='.h5'))
+            filename = "stim_em_n" + str(fock_number) +"_camp_" + str(coh_amp)+"_len_"+str(l)
 
-        print(seq_data_file)
-        with File(seq_data_file, 'w') as f:
-            f.create_dataset("amp", data=coh_amp)
-            f.create_dataset("time", data=l)
-            f.create_dataset("alpha", data=alpha)
-            f.create_dataset("pi_m", data=10)
-            f.create_dataset("pi_n", data=30)
-            f.create_dataset("I", data=I)
-            f.create_dataset("bit", data=Q)
+            seq_data_file = os.path.join(data_path,
+                                         get_next_filename(data_path, filename, suffix='.h5'))
+
+            print(seq_data_file)
+            with File(seq_data_file, 'w') as f:
+                f.create_dataset("amp", data=coh_amp)
+                f.create_dataset("time", data=l)
+                f.create_dataset("alpha", data=alpha)
+                f.create_dataset("pi_m", data=0)
+                f.create_dataset("pi_n", data=31)
+                f.create_dataset("I", data=I)
+                f.create_dataset("bit", data=Q)

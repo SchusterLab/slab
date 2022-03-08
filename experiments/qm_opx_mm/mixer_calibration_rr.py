@@ -28,9 +28,9 @@ job = qm.execute(mixer_calibration, duration_limit=0, data_limit=0)
 # qm.set_dc_offset_by_qe("rr", "Q", 0.0)
 # qm.set_dc_offset_by_qe("rr", "I", 0.0)
 
-delta_F = 50e3
-rbw = 1e3
-vbw = 10
+delta_F = 2e9
+rbw = 100e3
+vbw = rbw
 
 spec.set_center_frequency(rr_LO-rr_IF)
 spec.set_span(delta_F)
@@ -40,9 +40,9 @@ spec.set_vidbw(vbw)
 # spec.set_average_state(True)
 # spec.set_averages(5)
 # # # time.sleep(50)
-# tr = spec.take_one()
-# plt.plot(tr[0], tr[1], '.--')
-# freq, amp = tr[0], tr[1]
+tr = spec.take_one()
+plt.plot(tr[0], tr[1], '.--')
+freq, amp = tr[0], tr[1]
 
 # plt.axvline(x=rr_LO, linestyle='--', color='k')
 # plt.axvline(x=rr_LO - rr_IF, linestyle='--', color='k')

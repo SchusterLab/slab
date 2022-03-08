@@ -115,7 +115,7 @@ else:
     # job.halt()
     #
     path = os.getcwd()
-    data_path = os.path.join(path, "data/thesis/")
+    data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
                                  get_next_filename(data_path, 'readout_photon_number_ramsey_square', suffix='.h5'))
     print(seq_data_file)

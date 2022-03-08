@@ -1,4 +1,4 @@
-from configuration_IQ import config, disc_file_opt
+from configuration_IQ import config, disc_file_opt, disc_file
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -13,6 +13,13 @@ from slab.dataanalysis import get_next_filename
 ##################
 # t1:
 ##################
+readout = 'readout' #'clear'
+
+if readout=='readout':
+    disc = disc_file
+else:
+    disc = disc_file_opt
+
 dt = 1000
 T_max = 125000
 T_min = 4
@@ -23,7 +30,7 @@ reset_time = 500000
 simulation = 0 #1 to simulate the pulses
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc, lsb=True)
 
 with program() as ge_t1:
 
@@ -47,14 +54,14 @@ with program() as ge_t1:
 
         with for_(t, T_min, t < T_max + dt/2, t + dt):
 
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
+            discriminator.measure_state(readout, "out1", "out2", res, I=I)
             align('qubit_mode0', 'rr')
             play('pi', 'qubit_mode0', condition=res)
             wait(reset_time//10, "qubit_mode0")
             play("pi", "qubit_mode0")
             wait(t, "qubit_mode0")
             align('qubit_mode0', 'rr')
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
+            discriminator.measure_state(readout, "out1", "out2", res, I=I)
 
             save(res, res_st)
             save(I, I_st)

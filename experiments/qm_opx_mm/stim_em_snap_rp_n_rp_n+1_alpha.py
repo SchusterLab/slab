@@ -91,36 +91,44 @@ def stim_em(coh_amp=0.0, coh_len=100, f_state=0, n_pi_m=0, n_pi_n=30, avgs=20000
             """Analytic SNAP pulses to create Fock states"""
             snap_seq(fock_state=f_state)
             ########################
+            align('storage_mode1', 'qubit_mode0', 'rr')
+            wait(4, 'rr')
+            discriminator.measure_state("clear", "out1", "out2", bit, I=I)
+            save(I, I_st)
+            save(bit, bit_st)
             """Repeated pi pulses at n"""
             ########################
-            align('qubit_mode0','storage_mode1')
+            align('qubit_mode0','rr','storage_mode1')
             update_frequency('qubit_mode0', ge_IF[0] + (f_state)*two_chi[1] + (f_state**2)*two_chi_2)
-            with for_(i, 0, i < n_pi_m, i+1):
+            with for_(i, 0, i < n_pi_m-1, i+1):
                 align('qubit_mode0', "rr")
+                wait(250, "qubit_mode0")
                 play("res_pi", 'qubit_mode0')
                 align('qubit_mode0', 'rr')
                 discriminator.measure_state("clear", "out1", "out2", bit, I=I)
                 save(I, I_st)
                 save(bit, bit_st)
-                wait(250, "rr")
             #########################
             update_frequency('storage_mode1', storage_IF[1] + (f_state*(f_state-1))*st_self_kerr)
             update_frequency('qubit_mode0', ge_IF[0] + (f_state+1)*two_chi[1]+ ((f_state+1)**2)*two_chi_2)
             align('rr', 'qubit_mode0', 'storage_mode1')
             play('CW'*amp(coh_amp), 'storage_mode1', duration=coh_len)
-            align('qubit_mode0','storage_mode1')
             ########################
+            align('storage_mode1', 'qubit_mode0', 'rr')
+            wait(4, 'rr')
+            discriminator.measure_state("clear", "out1", "out2", bit, I=I)
+            save(I, I_st)
+            save(bit, bit_st)
             """Repeated pi pulses at n+1"""
             ########################
-            with for_(i, 0, i < n_pi_n, i+1):
+            with for_(i, 0, i < n_pi_n-1, i+1):
                 align('qubit_mode0', "rr")
+                wait(250, "qubit_mode0")
                 play("res_pi", 'qubit_mode0')
                 align('qubit_mode0', 'rr')
                 discriminator.measure_state("clear", "out1", "out2", bit, I=I)
                 save(I, I_st)
                 save(bit, bit_st)
-
-                wait(250, "rr")
             ########################
 
         with stream_processing():
@@ -143,14 +151,14 @@ def stim_em(coh_amp=0.0, coh_len=100, f_state=0, n_pi_m=0, n_pi_n=30, avgs=20000
         return job
 
 import json
-analysis_params = { 'qubit_params': {'t1':119, 't2':236, 'nth':3e-2},
+analysis_params = { 'qubit_params': {'t1':125, 't2':214, 'nth':3e-2},
                     'cavity_params' : {'t1':1.352e3, 'nth':0.0006},
-                    'readout_params':{'length':3.3, 'trigger':7.356, 'pi_pulse':3, 'g_inf':0.0318, 'e_inf':0.04},
+                    'readout_params':{'length':3.3, 'trigger':7.356, 'pi_pulse':3, 'g_inf':0.0324, 'e_inf':0.0338},
                     }
 
 path = os.getcwd()
 
-data_path = os.path.join(path, "data/stim_em_snap_rp/20220125")
+data_path = os.path.join(path, "data/stim_em_snap_rp/20220203")
 filename = "analysis_params"
 seq_data_file = os.path.join(data_path,
                              get_next_filename(data_path, filename, suffix='.json'))
@@ -159,15 +167,13 @@ seq_data_file = os.path.join(data_path,
 with open(seq_data_file, "w")as outfile:
     json.dump(analysis_params, outfile)
 
-
 camp = list(np.round(np.arange(0.001, 0.0095, 0.002).tolist(), 6))
 camp.extend(np.round(np.arange(0.01, 0.10, 0.005).tolist(), 6))
 camp.extend(np.round(np.arange(0.1, 0.95, 0.2).tolist(), 6))
 camp.append(0.0)
-
 # camp = [0.01]
 
-for f_num in range(4):
+for f_num in range(3, 4, 1):
 
     for ii in range(len(camp)):
 
@@ -175,7 +181,7 @@ for f_num in range(4):
         avgs = 20000
         coh_amp = np.round(camp[ii], 4)
         fock_number = f_num
-        job = stim_em(coh_amp=coh_amp, coh_len=l, f_state=fock_number, n_pi_m=10, n_pi_n=30, avgs=avgs)
+        job = stim_em(coh_amp=coh_amp, coh_len=l, f_state=fock_number, n_pi_m=11, n_pi_n=31, avgs=avgs)
 
         result_handles = job.result_handles
         result_handles.wait_for_all_values()
@@ -186,7 +192,7 @@ for f_num in range(4):
 
         path = os.getcwd()
 
-        data_path = os.path.join(path, "data/stim_em_snap_rp/20220125/n" + str(fock_number))
+        data_path = os.path.join(path, "data/stim_em_snap_rp/20220203/n" + str(fock_number))
 
         filename = "stim_em_n" + str(fock_number) +"_camp_" + str(coh_amp)+"_len_"+str(l)
 
@@ -198,7 +204,7 @@ for f_num in range(4):
             f.create_dataset("amp", data=coh_amp)
             f.create_dataset("time", data=l)
             f.create_dataset("alpha", data=alpha)
-            f.create_dataset("pi_m", data=10)
-            f.create_dataset("pi_n", data=30)
+            f.create_dataset("pi_m", data=11)
+            f.create_dataset("pi_n", data=31)
             f.create_dataset("I", data=I)
             f.create_dataset("bit", data=Q)

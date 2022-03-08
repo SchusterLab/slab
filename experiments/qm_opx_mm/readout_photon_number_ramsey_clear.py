@@ -107,14 +107,14 @@ else:
     plt.colorbar()
     plt.xlabel('Ramsey time (μs)')
     plt.ylabel('Wait time (μs)')
-
-    print("Data collection done")
-
-    """Stop the output from OPX,heats up the fridge"""
-    job.halt()
-
+    #
+    # print("Data collection done")
+    #
+    # """Stop the output from OPX,heats up the fridge"""
+    # job.halt()
+    #
     path = os.getcwd()
-    data_path = os.path.join(path, "data/thesis/")
+    data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
                                  get_next_filename(data_path, 'readout_photon_number_ramsey_clear', suffix='.h5'))
     print(seq_data_file)

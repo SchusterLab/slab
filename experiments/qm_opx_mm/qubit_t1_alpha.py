@@ -10,6 +10,7 @@ from slab import*
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
+from fock_state_prep import opx_amp_to_alpha
 ##################
 # t1:
 ##################
@@ -23,6 +24,8 @@ l_max = 45
 dl = 2
 
 l_vec = np.arange(l_min, l_max + dl/2, dl)
+
+alpha_vec = opx_amp_to_alpha(cav_amp=1.0, cav_len=4*l_vec)
 
 avgs = 1000
 reset_time = int(7.5e6)
@@ -106,21 +109,21 @@ else:
     print ("Execution done")
 
     result_handles = job.result_handles
-    result_handles.wait_for_all_values()
-
+    # result_handles.wait_for_all_values()
+    #
     res = result_handles.get('Q').fetch_all()
     I = result_handles.get('I').fetch_all()
     plt.figure()
-    plt.pcolormesh(4*times/1e3, 4*l_vec, res, cmap='RdBu', shading='auto')
+    plt.pcolormesh(4*times/1e3, alpha_vec, I, cmap='RdBu', shading='auto')
     plt.colorbar()
     plt.xlabel('Wait times ($\mu$s)')
-    plt.ylabel('Storage coherent len (ns)')
+    plt.ylabel(r'$\alpha$')
     plt.show()
 
 
     job.halt()
     path = os.getcwd()
-    data_path = os.path.join(path, "data/")
+    data_path = os.path.join(path, "data/thesis")
     seq_data_file = os.path.join(data_path,
                                  get_next_filename(data_path, 't1_alpha', suffix='.h5'))
     print(seq_data_file)
@@ -130,3 +133,5 @@ else:
         f.create_dataset("Q", data=res)
         f.create_dataset("time", data=4*times/1e3)
         f.create_dataset("len", data=4*l_vec)
+        f.create_dataset("alphas", data=alpha_vec)
+
