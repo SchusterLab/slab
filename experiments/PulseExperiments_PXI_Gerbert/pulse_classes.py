@@ -264,6 +264,63 @@ class exp_ramp(Pulse):
     def get_length(self):
         return self.exp_ramp_len  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
 
+class exp_ramp_and_modulate(Pulse):
+    def __init__(self, max_amp, exp_ramp_len,flat_len,tau_ramp,ramp2_sigma_len,cutoff_sigma,amp, freq, phase, phase_t0 = 0,dt=None,plot=False):
+        self.max_amp = max_amp
+        self.exp_ramp_len = exp_ramp_len
+        self.flat_len = flat_len
+        self.tau = tau_ramp
+        self.fastfluxlength = flat_len
+        self.ramp2_sigma_len = ramp2_sigma_len
+        self.cutoff_sigma = cutoff_sigma
+        self.amp = amp
+        self.freq = freq
+        self.phase = phase
+        self.phase_t0 = phase_t0
+        self.dt = dt
+        self.plot = plot
+        self.t0 = 0
+
+    def get_pulse_array(self):
+
+        t_flat_start = self.t0 + self.exp_ramp_len
+
+        t_flat_end = self.t0 + self.exp_ramp_len  + self.flat_len
+
+        t_end = self.t0 + self.exp_ramp_len  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
+
+        ## Exp Ramp Coefficients
+        A = 1/(np.exp(-1*self.exp_ramp_len/self.tau)-1)
+        B = -1*A
+
+        pulse_array = \
+            self.max_amp * (
+                (self.t_array >= t_flat_start) * (
+                self.t_array < t_flat_end) +  # Normal square pulse
+
+                (self.t_array >= self.t0) * (self.t_array < t_flat_start) * (
+                        A*np.exp(-1*(self.t_array-self.t0)/self.tau) + B) +  # leading Exp Edge
+
+                (self.t_array >= t_flat_end) * (
+                        self.t_array <= t_end) * np.exp(
+            -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
+                    2 * self.ramp2_sigma_len ** 2))  # trailing gaussian edge
+        )
+
+        pulselen = self.exp_ramp_len  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
+
+        # Cutting pulse off before the end doesn't seem to work as expected?
+        # pulse_array = pulse_array + np.heaviside(-1*(self.t_array - (self.t_array)[0] - pulselen + 30),0)*(self.amp * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase))
+        # pulselen = 100
+        ## Try exponential damping - also not working?
+        # pulse_array = pulse_array + (1/(1+np.exp((self.t_array-pulselen/2)/(pulselen/4)))) * (self.amp * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase))
+        pulse_array = pulse_array + ((self.t_array >=self.t0) * (self.t_array <= t_flat_start) ) * (self.amp * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase))
+
+        return pulse_array
+
+    def get_length(self):
+        return self.exp_ramp_len  + self.flat_len + self.ramp2_sigma_len * self.cutoff_sigma
+
 class multiexponential_ramp(Pulse):
     def __init__(self, max_amp, exp_ramp_len,flat_len,tau_ramp,ramp2_sigma_len,cutoff_sigma, freq, phase,multiples = 2, phase_t0 = 0,dt=None,plot=False):
         self.max_amp = max_amp

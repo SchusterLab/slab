@@ -30,7 +30,6 @@ font = {'family' : 'normal',
         'size'   : 18}
 
 matplotlib.rc('font', **font)
-print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n USING AN OLD COPY OF GERFIT")
 
 ## Json formatter for lattice_device_cfg
 # Changed basestring to str, and dict uses items() instead of iteritems().
@@ -165,9 +164,10 @@ def return_I_Q_res(filenb, phi=0, pi=False, ff=False):
         on_qbs = expt_params['on_qbs']
         on_rds = expt_params['on_rds']
 
-        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
-        ran = params['ran']  # range of DAC card for processing
-        readout_f = params['readout_freq']
+        # params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+        ran = 1  # params['ran']  # range of DAC card for processing
+        setup = lattice_cfg["qubit"]["setup"][on_rds[0]]
+        readout_f = lattice_cfg["readout"][setup]["freq"][on_rds[0]]
 
         try:
             I_raw = a['I']
@@ -184,7 +184,47 @@ def return_I_Q_res(filenb, phi=0, pi=False, ff=False):
         a.close()
     return f, I, Q
 
+def return_I_Q_res_2setups(filenb, phi0=0, phi1=0, pi=False, ff=False):
+    expt_name = "resonator_spectroscopy"
 
+    if pi:
+        expt_name = expt_name + "_pi"
+    if ff:
+        expt_name = "ff_" + expt_name
+
+    fname = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+
+    with File(fname, 'r') as a:
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        on_qbs = expt_params['on_qbs']
+        on_rds = expt_params['on_rds']
+
+        #params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+        ran = 1  # range of DAC card for processing
+
+
+        setup0 = lattice_cfg["qubit"]["setup"][on_rds[0]]
+        setup1 = lattice_cfg["qubit"]["setup"][on_rds[1]]
+        I_raw0 = a['qb{}_I'.format(setup0)]
+        Q_raw0 = a['qb{}_Q'.format(setup0)]
+        I_raw1 = a['qb{}_I'.format(setup1)]
+        Q_raw1 = a['qb{}_Q'.format(setup1)]
+        readout_f0 = lattice_cfg["readout"][setup0]["freq"][on_rds[0]]
+        readout_f1 = lattice_cfg["readout"][setup1]["freq"][on_rds[1]]
+
+        f0 = arange(expt_params['start'] + readout_f0, expt_params['stop'] + readout_f0, expt_params['step'])[:len(I_raw0)]
+        f1 = arange(expt_params['start'] + readout_f1, expt_params['stop'] + readout_f1, expt_params['step'])[:len(I_raw1)]
+
+        # process I, Q data
+        (I0, Q0, mag, phase) = iq_process(f=f0, raw_I=I_raw0, raw_Q=Q_raw0, ran=ran, phi=phi0, sub_mean=False)
+        (I1, Q1, mag, phase) = iq_process(f=f1, raw_I=I_raw1, raw_Q=Q_raw1, ran=ran, phi=phi1, sub_mean=False)
+
+        a.close()
+    return [(f0, I0, Q0), (f1, I1, Q1)]
 def plot_freq_data(f, I, Q, mag, phase, expected_f, show=['I', 'Q'], domain=None, mag_phase_plot=False, polar=False, title='', marker=False,plot=True):
     """Fits frequency data to a lorentzian, then plots data and prints result
 
@@ -822,374 +862,7 @@ def ff_ramp_down_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, debug=Fal
         return t_vals[:len(I_raw)], parray
 
 
-def melting_single_readout_full_ramp(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
-                                     debug=False, pi_cal=False, norm_plot=False, rabi_vals=None, fit_J=False):
-    expt_name = "melting_single_readout_full_ramp"
-    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
-    with File(filename, 'r') as a:
-        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
-        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
-        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
-        expt_params = experiment_cfg[expt_name.lower()]
-        on_qbs = expt_params['on_qbs']
-        on_rds = expt_params['on_rds']
 
-        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
-        readout_params = params['readout_params']
-        ran = params['ran']  # range of DAC card for processing
-        readout_f = params['readout_freq']
-        dig_atten_qb = params['dig_atten_qb']
-        dig_atten_rd = params['dig_atten_rd']
-        read_lo_pwr = params['read_lo_pwr']
-        qb_lo_pwr = params['qb_lo_pwr']
-        nu_q = params['qb_freq']
-
-        I_raw = np.array(a["I"])
-        Q_raw = np.array(a["Q"])
-        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
-        t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
-            :(len(I_raw))]
-
-        J = []
-
-        for s in show:
-            if pi_cal:
-                plt.plot(t, eval(s)[0:-2])
-                if rabi_vals != None:
-                    plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
-                    plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
-                if fit_J:
-                    res = fit_sin(t, eval(s)[0:-2])
-                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
-                    plt.plot(t, res['fitfunc'](t))
-                plt.axhline(y=eval(s)[-2], c='g', label="g")
-                plt.axhline(y=eval(s)[-1], c='r', label="e")
-                plt.legend()
-                plt.xlabel('time (ns)')
-                plt.ylabel(s + " volts")
-                plt.show()
-
-                if norm_plot:
-                    plt.plot(t, (eval(s)[0:-2] - eval(s)[-1]) / (eval(s)[-2] - eval(s)[-1]))
-                    plt.ylim((-0.1, 1))
-                    plt.xlabel('time (ns)')
-                    plt.ylabel(s + ' normalized')
-                    plt.legend()
-            #             plt.show()
-            else:
-                plt.title(s)
-                plt.plot(t, eval(s))
-                if fit_J:
-                    res = fit_sin(t, eval(s)[0:-2])
-                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
-                    plt.plot(t, res['fitfunc'](t))
-                plt.show()
-        if fit_J:
-            return J
-
-def melting_single_readout_full_ramp_v2(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
-                                     debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
-
-    expt_name = "melting_single_readout_full_ramp"
-    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
-    with File(filename, 'r') as a:
-        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
-        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
-        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
-        expt_params = experiment_cfg[expt_name.lower()]
-        on_qbs = expt_params['on_qbs']
-        on_rds = expt_params['on_rds']
-
-        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
-        readout_params = params['readout_params']
-        ran = params['ran']  # range of DAC card for processing
-        readout_f = params['readout_freq']
-        dig_atten_qb = params['dig_atten_qb']
-        dig_atten_rd = params['dig_atten_rd']
-        read_lo_pwr = params['read_lo_pwr']
-        qb_lo_pwr = params['qb_lo_pwr']
-        nu_q = params['qb_freq']
-
-        I_raw = np.array(a["I"])
-        Q_raw = np.array(a["Q"])
-        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
-        t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
-            :(len(I_raw))]
-
-        J = []
-
-        for s in show:
-            if pi_cal:
-                pi_file = a.attrs['pi_cal_fname']
-                with File(pi_file, 'r') as p:
-                    I_raw_P = np.array(p["I"])
-                    Q_raw_P = np.array(p["Q"])
-                    (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
-                print(I_P)
-                I = np.concatenate((I, I_P))
-                Q = np.concatenate((Q, Q_P))
-                plt.plot(t, eval(s)[0:-2])
-                if rabi_vals != None:
-                    plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
-                    plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
-                if fit_J:
-                    res = fit_sin(t, eval(s)[0:-2])
-                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
-                    plt.plot(t, res['fitfunc'](t))
-                plt.axhline(y=eval(s)[-2], c='g', label="g")
-                plt.axhline(y=eval(s)[-1], c='r', label="e")
-                plt.legend()
-                plt.xlabel('time (ns)')
-                plt.ylabel(s + " volts")
-                plt.show()
-
-                if norm_plot:
-                    plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
-                    plt.ylim((-0.1, 1))
-                    plt.xlabel('time (ns)')
-                    plt.ylabel(s + ' normalized')
-                    plt.legend()
-            #             plt.show()
-            else:
-                plt.title(s)
-                plt.plot(t, eval(s))
-                if fit_J:
-                    res = fit_sin(t, eval(s)[0:-2])
-                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
-                    plt.plot(t, res['fitfunc'](t))
-                plt.show()
-        if fit_J:
-            return J
-        else:
-            return I,Q
-
-def melting_single_readout_full_ramp_Q3(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
-                                     debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
-
-    expt_name = "melting_single_readout_full_ramp_Q3"
-    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
-    with File(filename, 'r') as a:
-        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
-        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
-        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
-        expt_params = experiment_cfg[expt_name.lower()]
-        on_qbs = expt_params['on_qbs']
-        on_rds = expt_params['on_rds']
-
-        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
-        readout_params = params['readout_params']
-        ran = params['ran']  # range of DAC card for processing
-        readout_f = params['readout_freq']
-        dig_atten_qb = params['dig_atten_qb']
-        dig_atten_rd = params['dig_atten_rd']
-        read_lo_pwr = params['read_lo_pwr']
-        qb_lo_pwr = params['qb_lo_pwr']
-        nu_q = params['qb_freq']
-
-        I_raw = np.array(a["I"])
-        Q_raw = np.array(a["Q"])
-        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
-        t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
-            :(len(I_raw))]
-
-        J = []
-
-        for s in show:
-            if pi_cal:
-                pi_file = a.attrs['pi_cal_fname']
-                with File(pi_file, 'r') as p:
-                    I_raw_P = np.array(p["I"])
-                    Q_raw_P = np.array(p["Q"])
-                    (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
-                print(I_P)
-                I = np.concatenate((I, I_P))
-                Q = np.concatenate((Q, Q_P))
-                plt.plot(t, eval(s)[0:-2])
-                if rabi_vals != None:
-                    plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
-                    plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
-                if fit_J:
-                    res = fit_sin(t, eval(s)[0:-2])
-                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
-                    plt.plot(t, res['fitfunc'](t))
-                plt.axhline(y=eval(s)[-2], c='g', label="g")
-                plt.axhline(y=eval(s)[-1], c='r', label="e")
-                plt.legend()
-                plt.xlabel('time (ns)')
-                plt.ylabel(s + " volts")
-                plt.show()
-
-                if norm_plot:
-                    plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
-                    plt.ylim((-0.1, 1))
-                    plt.xlabel('time (ns)')
-                    plt.ylabel(s + ' normalized')
-                    plt.legend()
-            #             plt.show()
-            else:
-                plt.title(s)
-                plt.plot(t, eval(s))
-                if fit_J:
-                    res = fit_sin(t, eval(s)[0:-2])
-                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
-                    plt.plot(t, res['fitfunc'](t))
-                plt.show()
-        if fit_J:
-            return J
-        else:
-            return I,Q
-
-def melting_single_readout_full_ramp_2setups(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
-                                     debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
-
-    expt_name = "melting_single_readout_full_ramp_Q3"
-    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
-    with File(filename, 'r') as a:
-        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
-        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
-        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
-        expt_params = experiment_cfg[expt_name.lower()]
-        on_qbs = expt_params['on_qbs']
-        on_rds = expt_params['on_rds']
-
-        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
-        readout_params = params['readout_params']
-        ran = params['ran']  # range of DAC card for processing
-        readout_f = params['readout_freq']
-        dig_atten_qb = params['dig_atten_qb']
-        dig_atten_rd = params['dig_atten_rd']
-        read_lo_pwr = params['read_lo_pwr']
-        qb_lo_pwr = params['qb_lo_pwr']
-        nu_q = params['qb_freq']
-
-        I_raw = np.array(a["I"])
-        Q_raw = np.array(a["Q"])
-        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
-        t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
-            :(len(I_raw))]
-
-        J = []
-
-        for s in show:
-            if pi_cal:
-                pi_file = a.attrs['pi_cal_fname']
-                with File(pi_file, 'r') as p:
-                    I_raw_P = np.array(p["I"])
-                    Q_raw_P = np.array(p["Q"])
-                    (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
-                print(I_P)
-                I = np.concatenate((I, I_P))
-                Q = np.concatenate((Q, Q_P))
-                plt.plot(t, eval(s)[0:-2])
-                if rabi_vals != None:
-                    plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
-                    plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
-                if fit_J:
-                    res = fit_sin(t, eval(s)[0:-2])
-                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
-                    plt.plot(t, res['fitfunc'](t))
-                plt.axhline(y=eval(s)[-2], c='g', label="g")
-                plt.axhline(y=eval(s)[-1], c='r', label="e")
-                plt.legend()
-                plt.xlabel('time (ns)')
-                plt.ylabel(s + " volts")
-                plt.show()
-
-                if norm_plot:
-                    plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
-                    plt.ylim((-0.1, 1))
-                    plt.xlabel('time (ns)')
-                    plt.ylabel(s + ' normalized')
-                    plt.legend()
-            #             plt.show()
-            else:
-                plt.title(s)
-                plt.plot(t, eval(s))
-                if fit_J:
-                    res = fit_sin(t, eval(s)[0:-2])
-                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
-                    plt.plot(t, res['fitfunc'](t))
-                plt.show()
-        if fit_J:
-            return J
-        else:
-            return I,Q
-
-def melting_single_readout_full_ramp(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
-                                     debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
-
-    expt_name = "melting_single_readout_full_ramp"
-    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
-    with File(filename, 'r') as a:
-        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
-        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
-        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
-        expt_params = experiment_cfg[expt_name.lower()]
-        on_qbs = expt_params['on_qbs']
-        on_rds = expt_params['on_rds']
-
-        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
-        readout_params = params['readout_params']
-        ran = params['ran']  # range of DAC card for processing
-        readout_f = params['readout_freq']
-        dig_atten_qb = params['dig_atten_qb']
-        dig_atten_rd = params['dig_atten_rd']
-        read_lo_pwr = params['read_lo_pwr']
-        qb_lo_pwr = params['qb_lo_pwr']
-        nu_q = params['qb_freq']
-
-        I_raw = np.array(a["I"])
-        Q_raw = np.array(a["Q"])
-        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
-        t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
-            :(len(I_raw))]
-
-        J = []
-
-        for s in show:
-            if pi_cal:
-                pi_file = a.attrs['pi_cal_fname']
-                with File(pi_file, 'r') as p:
-                    I_raw_P = np.array(p["I"])
-                    Q_raw_P = np.array(p["Q"])
-                    (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
-                print(I_P)
-                I = np.concatenate((I, I_P))
-                Q = np.concatenate((Q, Q_P))
-                plt.plot(t, eval(s)[0:-2])
-                if rabi_vals != None:
-                    plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
-                    plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
-                if fit_J:
-                    res = fit_sin(t, eval(s)[0:-2])
-                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
-                    plt.plot(t, res['fitfunc'](t))
-                plt.axhline(y=eval(s)[-2], c='g', label="g")
-                plt.axhline(y=eval(s)[-1], c='r', label="e")
-                plt.legend()
-                plt.xlabel('time (ns)')
-                plt.ylabel(s + " volts")
-                plt.show()
-
-                if norm_plot:
-                    plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
-                    plt.ylim((-0.1, 1))
-                    plt.xlabel('time (ns)')
-                    plt.ylabel(s + ' normalized')
-                    plt.legend()
-            #             plt.show()
-            else:
-                plt.title(s)
-                plt.plot(t, eval(s))
-                if fit_J:
-                    res = fit_sin(t, eval(s)[0:-2])
-                    J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
-                    plt.plot(t, res['fitfunc'](t))
-                plt.show()
-        if fit_J:
-            return J
-        else:
-            return I,Q
 
 
 def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], domain=None,mag_phase_plot=False, polar=False, debug=False, marker=None,plot = True, ff=False, pi=False):
@@ -1260,7 +933,7 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], domain=None,ma
 def ff_pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None):
     print("This version has been deprecated, just pass ff=True to pulse probe iq")
 
-def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, ff=False, pi=False, decay = True):
+def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, ff=False, pi=False, ef=False, decay = True):
     """
     takes in rabi data, processes it, plots it, and fits it
     :param filenb: filenumber
@@ -1280,6 +953,8 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
         expt_name = "ff_rabi"
     if pi:
         expt_name = "rabi_pi"
+    if ef:
+        expt_name = "ef_rabi"
 
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
@@ -1484,6 +1159,118 @@ def rabi_amp(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=No
         ax.legend()
         plt.show()
     return p
+
+def rabi_threshold(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, ff=False,decay = True):
+    """
+    takes in rabi data, processes it, plots it, and fits it
+    :param filenb: filenumber
+    :param phi: desired iq rotation
+    :param sub_mean: boolean, if you want to subract mean off data
+    :param show: array of strings, whether you want to fit to I or Q or both
+    :param fitparams: array of starting values for parameters
+    :param domain: domain over which you want to fit, ie [1000, 2000]
+    :param debug: boolean, prints out all experient parameters
+    """
+
+    # if you use gaussian pulses for Rabi, the time that you plot is the sigma -the actual pulse time is 4*sigma (4 being set in the code
+    SIGMA_CUTOFF = 4
+
+    expt_name = "rabi"
+    if ff:
+        expt_name = "ff_rabi"
+
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        #####IMPORT STUFF#####
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        pulse_type = expt_params['pulse_type']
+        amp = expt_params['amp']
+
+        on_qb = quantum_device_cfg['setups'][0]
+        params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+        readout_params = params['readout_params']
+        ran = params['ran'] # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
+
+
+        ####GET IQ #####
+        if "threshold" in expt_params.keys() and expt_params["threshold"]:
+            state = array(a["state"])
+
+        I_raw = array(a["I"])
+        Q_raw = array(a["Q"])
+        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+        print(I)
+        t = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))]
+        if pulse_type == "gauss":
+            t = t * 4
+
+        if debug:
+            print("DEBUG")
+            print("averages =", expt_params['acquisition_num'])
+            print("Rd LO pwr= ", read_lo_pwr, "dBm")
+            print("Qb LO pwr= ", qb_lo_pwr, "dBm")
+            print("Rd atten= ", dig_atten_rd, "dB")
+            print("Qb atten= ", dig_atten_qb, "dB")
+            print("Readout params", readout_params)
+            print("experiment params", expt_params)
+
+            #####PLOT####
+        title = expt_name + '$, \\nu_q$ = ' + str(around(nu_q, 3)) + ' GHz ' + 'amp = ' + str(amp)
+        fig = plt.figure(figsize=(14, 5))
+        ax = fig.add_subplot(111, title=title)
+        for s in show:
+            if s == "Q":
+                ax.plot(t, eval(s), 'ro-', label=s)
+            else:
+                ax.plot(t, eval(s), 'bo-', label=s)
+            ax.set_xlabel('Time (ns)')
+            ax.set_ylabel(s + " (V)")
+
+            ####FIT AND ANALYZE###
+            if decay == True:
+                p = fitdecaysin(t, eval(s), showfit=False, fitparams=fitparams, domain=domain)
+                ax.plot(t, decaysin3(p, t), 'k-', label="fit")
+            else:
+                sin3 = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) + p[3]
+                p = fitsin(t, eval(s), showfit=False, fitparams=fitparams, domain=domain)
+                ax.plot(t, sin3(p, t), 'k-', label="fit")
+
+
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
+            print("ANALYSIS " + s)
+            if pulse_type == 'gauss':
+                print("pulse type is GAUSS! pi_len in sigma to input into code to get right pulse out is:")
+                print("Half pi length in sigma =", t_half_pi / 4, "sigma")
+                print("pi length in sigma =", t_pi / 4, "sigma")
+                print("\n")
+
+            print("Half pi length in ns =", t_half_pi, "ns")
+            print("pi length =", t_pi, "ns")
+            print("suggested_pi_length = ", int(t_pi) + 1, "    suggested_pi_amp = ",
+                  amp * (t_pi) / float(int(t_pi) + 1))
+            if decay == True:
+                print("Rabi decay time = ", p[3], "ns")
+            if debug:
+                print(p)
+
+        ax.legend()
+        #plt.show()
+    return p
+
 
 def t1(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False):
     """
@@ -1746,7 +1533,7 @@ def fid_func(Vval, ssbinsg, ssbinse, sshg, sshe):
     return np.abs(((np.sum(sshg[:ind_g]) - np.sum(sshe[:ind_e])) / sshg.sum()))
 
 def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, rancut=120,
-                  details=True, numbins=200, ff=False, IQrot = True, hard_phi=None):
+                  details=True, numbins=200, ff=False, IQrot = True, hard_phi=None, plt_f =False):
     expt_name = 'histogram'
     if ff:
         expt_name = 'ff_histogram'
@@ -1819,6 +1606,9 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
             ax = fig.add_subplot(221, title='length,window = ' + str(readout_length) + ',' + str(window))
             for ii in range(2):
                 ax.plot(IQsss[2 * ii][:], IQsss[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
+            if plt_f:
+                ax.plot(IQsss[2 * 2][:], IQsss[2 * 2 + 1][:], '.', color=colors[2], alpha=0.85)
+
 
             ax.set_xlabel('I (V)')
             ax.set_ylabel('Q (V)')
@@ -1828,6 +1618,10 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
             ax = fig.add_subplot(222, title=tags + ', atten = ' + str(atten))
 
             for ii in range(2):
+                ax.errorbar(mean(IQsss[2 * ii]), mean(IQsss[2 * ii + 1]), xerr=std(IQsss[2 * ii]),
+                            yerr=std(IQsss[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+            if plt_f:
+                ii=2
                 ax.errorbar(mean(IQsss[2 * ii]), mean(IQsss[2 * ii + 1]), xerr=std(IQsss[2 * ii]),
                             yerr=std(IQsss[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
             ax.set_xlabel('I')
@@ -1856,6 +1650,9 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
                 ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[0], label=labels[0],histtype=u'step', linewidth = 1.5)
                 ax.hist(IQsssrot[kk+2], bins=numbins, alpha=0.75, color=colors[1], label=labels[1],
                         histtype=u'step', linewidth=1.5)
+                if plt_f:
+                    ax.hist(IQsssrot[kk + 4], bins=numbins, alpha=0.75, color=colors[2], label=labels[2],
+                            histtype=u'step', linewidth=1.5)
                 ax.axvline(x=0)
                 ax.set_xlabel(titles[kk] + '(V)')
                 ax.set_ylabel('Number')
@@ -1888,283 +1685,6 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
         plt.show()
 
     return temp, phi, vec, IQsssrot[0], IQsssrot[2]
-
-
-def histogram_og(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False,rancut=120):
-    expt_name = 'histogram'
-    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
-
-    with File(filename, 'r') as a:
-
-        tags = ''
-
-
-        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
-        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
-        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
-        expt_params = experiment_cfg[expt_name.lower()]
-        on_qbs = expt_params['on_qbs']
-        on_rds = expt_params['on_rds']
-
-        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
-        readout_params = params['readout_params']
-        ran = params['ran']  # range of DAC card for processing
-        readout_f = params['readout_freq']
-        dig_atten_qb = params['dig_atten_qb']
-        dig_atten_rd = params['dig_atten_rd']
-        read_lo_pwr = params['read_lo_pwr']
-        qb_lo_pwr = params['qb_lo_pwr']
-        nu_q = params['qb_freq']
-
-        expt_cfg = (json.loads(a.attrs['experiment_cfg']))[expt_name.lower()]
-        numbins = expt_cfg['numbins']
-        print(numbins)
-        numbins = 200
-        a_num = expt_cfg['acquisition_num']
-        ns = expt_cfg['num_seq_sets']
-        readout_length = readout_params['length']
-        window = params['readout_window']
-        atten = '0'
-        print('Readout length = ', readout_length)
-        print('Readout window = ', window)
-        print("Digital atten = ", atten)
-        print("Readout freq = ", readout_f)
-        I = array(a['I'])
-        Q = array(a['Q'])
-        sample = a_num
-
-        I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
-
-        colors = ['r', 'b', 'g']
-        labels = ['g', 'e', 'f']
-        titles = ['I', 'Q']
-
-        IQs = mean(I[::3], 1), mean(Q[::3], 1), mean(I[1::3], 1), mean(Q[1::3], 1), mean(I[2::3], 1), mean(Q[2::3], 1)
-        IQsss = I.T.flatten()[0::3], Q.T.flatten()[0::3], I.T.flatten()[1::3], Q.T.flatten()[1::3], I.T.flatten()[
-                                                                                                    2::3], Q.T.flatten()[
-                                                                                                           2::3]
-
-        fig = plt.figure(figsize=(15, 7 * 5))
-
-        ax = fig.add_subplot(621, title='length,window = ' + str(readout_length) + ',' + str(window))
-        x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
-        x0e, y0e = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
-        phi = arctan((y0e - y0g) / (x0e - x0g))
-        for ii in range(2):
-            ax.plot(IQsss[2 * ii][:], IQsss[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
-
-        ax.set_xlabel('I (V)')
-        ax.set_ylabel('Q (V)')
-        ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
-        ax.set_ylim(y0g - ran / rancut, y0g + ran / rancut)
-
-        ax = fig.add_subplot(622, title=tags  + ', atten = ' + str(atten))
-
-        for ii in range(3):
-            ax.errorbar(mean(IQsss[2 * ii]), mean(IQsss[2 * ii + 1]), xerr=std(IQsss[2 * ii]),
-                        yerr=std(IQsss[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
-        ax.set_xlabel('I')
-        ax.set_ylabel('Q')
-
-        ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
-        ax.set_ylim(y0g - ran / rancut , y0g + ran / rancut )
-
-        IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
-                    -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),
-                    I.T.flatten()[1::3] * cos(phi) + Q.T.flatten()[1::3] * sin(phi),
-                    -I.T.flatten()[1::3] * sin(phi) + Q.T.flatten()[1::3] * cos(phi),
-                    I.T.flatten()[2::3] * cos(phi) + Q.T.flatten()[2::3] * sin(phi),
-                    -I.T.flatten()[2::3] * sin(phi) + Q.T.flatten()[2::3] * cos(phi))
-
-        ax = fig.add_subplot(623, title='rotated')
-        x0g, y0g = mean(IQsssrot[0][:]), mean(IQsssrot[1][:])
-        x0e, y0e = mean(IQsssrot[2][:]), mean(IQsssrot[3][:])
-
-        for ii in range(3):
-            ax.plot(IQsssrot[2 * ii][:], IQsssrot[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
-
-        ax.set_xlabel('I (V)')
-        ax.set_ylabel('Q (V)')
-        ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
-        ax.set_ylim(y0g - ran / rancut , y0g + ran / rancut )
-
-        ax = fig.add_subplot(624)
-
-        for ii in range(3):
-            ax.errorbar(mean(IQsssrot[2 * ii]), mean(IQsssrot[2 * ii + 1]), xerr=std(IQsssrot[2 * ii]),
-                        yerr=std(IQsssrot[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
-        ax.set_xlabel('I')
-        ax.set_ylabel('Q')
-
-        ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
-        ax.set_ylim(y0g - ran / rancut , y0g + ran / rancut )
-
-        for kk in range(4):
-
-            ax = fig.add_subplot(6, 2, kk % 2 + 5, title=expt_name + titles[kk % 2])
-            ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
-            ax.set_xlabel(titles[kk % 2] + '(V)')
-            ax.set_ylabel('Number')
-            ax.legend()
-            if kk % 2 == 0:
-                ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
-            else:
-                ax.set_xlim(y0g - ran / rancut , y0g + ran / rancut )
-
-    for ii, i in enumerate(['I', 'Q']):
-        sshg, ssbinsg = np.histogram(IQsss[ii], bins=numbins)
-        sshe, ssbinse = np.histogram(IQsss[ii + 2], bins=numbins)
-        fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
-
-        print("Single shot readout fidility from channel ", i, " = ", fid)
-
-    print('---------------------------')
-
-    for ii, i in enumerate(['I', 'Q']):
-        if ii is 0:
-            lims = [x0g - ran / rancut , x0g + ran / rancut ]
-        else:
-            lims = [y0g - ran / rancut , y0g + ran / rancut ]
-        sshg, ssbinsg = np.histogram(IQsssrot[ii], bins=numbins, range=lims)
-        sshe, ssbinse = np.histogram(IQsssrot[ii + 2], bins=numbins, range=lims)
-        fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
-
-        print("Single shot readout fidility from channel ", i, " after rotation = ", fid)
-        if ii == 0:
-            temp = fid
-        print("Optimal angle =", phi)
-
-        ax = fig.add_subplot(6, 2, 7 + ii)
-        ax.plot(ssbinse[:-1], cumsum(sshg) / sshg.sum(), color='r')
-        ax.plot(ssbinse[:-1], cumsum(sshe) / sshg.sum(), color='b')
-        ax.plot(ssbinse[:-1], np.abs(cumsum(sshe) - cumsum(sshg)) / sshg.sum(), color='k')
-        if ii == 0:
-            ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
-        else:
-            ax.set_xlim(y0g - ran / rancut , y0g + ran / rancut )
-        ax.set_xlabel(titles[ii] + '(V)')
-        ax.set_ylabel('$F$')
-
-    print('---------------------------')
-
-    fig.tight_layout()
-    plt.show()
-
-    return temp
-
-def histogram_IQ_2setups(filenb):
-    expt_name = 'histogram_2setups'
-    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
-
-    with File(filename, 'r') as a:
-        tags = ''
-        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
-        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
-        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
-        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
-        expt_params = experiment_cfg[expt_name.lower()]
-        on_qbs = expt_params['on_qbs']
-        on_rds = expt_params['on_rds']
-        rd_qb = on_rds[0]
-
-        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
-        readout_params = params['readout_params']
-        ran = params['ran']  # range of DAC card for processing
-
-        expt_cfg = (json.loads(a.attrs['experiment_cfg']))[expt_name.lower()]
-        a_num = expt_cfg['acquisition_num']
-        ns = expt_cfg['num_seq_sets']
-        window = params['readout_window']
-
-        num_seq = 1 + len(on_qbs) + expt_cfg["f"]
-
-        labels = ['gQ{}'.format(rd_qb)]
-        if len(on_qbs)>0:
-            temp = ''
-            for i in pi_qbs:
-                temp = temp + "piQ{}".format(i)
-            labels.append(temp)
-
-        try:
-            rd_setup = params["rd_setup"]
-            I = array(a["qb{}_I".format(rd_setup)])
-            Q = array(a["qb{}_Q".format(rd_setup)])
-        except:
-            I = array(a['I'])
-            Q = array(a['Q'])
-
-        I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
-
-        IQ_means = []
-        IQ_ss = []
-        for seq in range(num_seq):
-            IQ_means.append(mean(I[seq::num_seq], 1))
-            IQ_means.append(mean(A[seq::num_seq], 1))
-
-            IQ_ss.append(I.T.flatten()[seq::num_seq])
-            IQ_ss.append(Q.T.flatten()[seq::num_seq])
-
-    return labels, IQ_ss
-
-
-def histogram_IQ_crosstalk(filenb, phi=0):
-    """returns:
-    labels: [g, e, piQcross, pipiQcross]
-    IQss: [ [I_g, Q_g], [I_e, Q_e], [I_piQcross, Q_piQcross], [I_pipiQcross, Q_pipiQcross]]
-    IQssrot: same, but rotated """
-    expt_name = 'histogram_crosstalk'
-    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
-
-    with File(filename, 'r') as a:
-        tags = ''
-        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
-        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
-        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
-        expt_cfg = experiment_cfg[expt_name.lower()]
-
-        cross_qb = expt_cfg['cross_qb']
-        on_qbs = expt_cfg['on_qbs']
-        on_rds = expt_cfg['on_rds']
-        on_qb = on_qbs[0]
-        rd_qb = on_rds[0]
-
-        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
-        readout_params = params['readout_params']
-        ran = params['ran']  # range of DAC card for processing
-
-        a_num = expt_cfg['acquisition_num']
-        ns = expt_cfg['num_seq_sets']
-        window = params['readout_window']
-
-        num_seq = 4
-        labels = ['gQ{}'.format(rd_qb), "eQ{}".format(rd_qb), "gQ{}piQ{}".format(rd_qb, cross_qb),
-                  "eQ{}piQ{}".format(rd_qb, cross_qb)]
-
-        try:
-            I = array(a['I'])
-            Q = array(a['Q'])
-        except:
-            rd_setup = lattice_cfg["readout"]["setup"][rd_qb]
-            I = array(a["qb{}_I".format(params["rd_setup"])])
-            Q = array(a["qb{}_Q".format(params["rd_setup"])])
-
-        I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
-
-        IQ_means = []
-        IQss = []
-        for seq in range(num_seq):
-            IQss.append(
-                [I.T.flatten()[seq::num_seq],
-                 Q.T.flatten()[seq::num_seq]]
-            )
-        IQssrot = []
-
-        for IQs in IQss:
-            Irot = IQs[0] * cos(phi) + IQs[1] * sin(phi)
-            Qrot = -IQs[0] * sin(phi) + IQs[1] * cos(phi)
-            IQssrot.append([Irot, Qrot])
-
-    return labels, IQss, IQssrot
 
 
 def pi_cal_SS_GMM(filenb, phi=0, ran=1, sub_mean=False):
@@ -2365,111 +1885,6 @@ def qb_tomo_test(filenb, phi=0, ran=1, sub_mean=False, show=["I"], pi_cal=True, 
 
     return I, Q, XYZ
 
-def histogram_IQ_analyzer(IQss, labels=['g', 'e'], ran=1, tags=None, numbins=200):
-    fig = plt.figure(figsize=(15, 7 * 5))
-    colors = ['r', 'b']
-
-    ax = fig.add_subplot(621, title=tags)
-    x0g, y0g = mean(IQss[0]), mean(IQss[1])
-    x0e, y0e = mean(IQss[2]), mean(IQss[3])
-    phi = arctan((y0e - y0g) / (x0e - x0g))
-
-    for ii in range(2):
-        ax.plot(IQss[2 * ii][:], IQss[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
-
-    ax.set_xlabel('I (V)')
-    ax.set_ylabel('Q (V)')
-    ax.set_xlim(x0g - ran , x0g + ran )
-    ax.set_ylim(y0g - ran , y0g + ran )
-
-    ax = fig.add_subplot(622, title=tags)
-
-    for ii in range(2):
-        ax.errorbar(mean(IQss[2 * ii]), mean(IQss[2 * ii + 1]), xerr=std(IQss[2 * ii]),
-                    yerr=std(IQss[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
-    ax.set_xlabel('I')
-    ax.set_ylabel('Q')
-    ax.set_xlim(x0g - ran, x0g + ran)
-    ax.set_ylim(y0g - ran, y0g + ran)
-
-    IQssrot = (IQss[0] * cos(phi) + IQss[1] * sin(phi),
-                -IQss[0] * sin(phi) + IQss[1] * cos(phi),
-               IQss[2] * cos(phi) + IQss[3] * sin(phi),
-               -IQss[2] * sin(phi) + IQss[3] * cos(phi))
-
-    ax = fig.add_subplot(623, title='rotated')
-    x0g, y0g = mean(IQssrot[0][:]), mean(IQssrot[1][:])
-    x0e, y0e = mean(IQssrot[2][:]), mean(IQssrot[3][:])
-
-    for ii in range(2):
-        ax.plot(IQssrot[2 * ii][:], IQssrot[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
-
-    ax.set_xlabel('I (V)')
-    ax.set_ylabel('Q (V)')
-    ax.set_xlim(x0g - ran, x0g + ran)
-    ax.set_ylim(y0g - ran, y0g + ran)
-
-    ax = fig.add_subplot(624)
-
-    for ii in range(2):
-        ax.errorbar(mean(IQssrot[2 * ii]), mean(IQssrot[2 * ii + 1]), xerr=std(IQssrot[2 * ii]),
-                    yerr=std(IQssrot[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
-    ax.set_xlabel('I')
-    ax.set_ylabel('Q')
-    ax.set_xlim(x0g - ran, x0g + ran)
-    ax.set_ylim(y0g - ran, y0g + ran)
-
-    for kk in range(4):
-
-        ax = fig.add_subplot(6, 2, kk % 2 + 5, title=expt_name + labels[kk % 2])
-        ax.hist(IQssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
-        ax.set_xlabel(labels[kk % 2] + '(V)')
-        ax.set_ylabel('Number')
-        ax.legend()
-        if kk % 2 == 0:
-            ax.set_xlim(x0g - ran , x0g + ran )
-        else:
-            ax.set_xlim(y0g - ran , y0g + ran )
-
-
-    for ii, i in enumerate(['I', 'Q']):
-        sshg, ssbinsg = np.histogram(IQss[ii], bins=numbins)
-        sshe, ssbinse = np.histogram(IQss[ii + 2], bins=numbins)
-        fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
-
-        print("Single shot readout fidility from channel ", i, " = ", fid)
-
-    print('---------------------------')
-
-    for ii, i in enumerate(['I', 'Q']):
-        if ii is 0:
-            lims = [x0g - ran , x0g + ran ]
-        else:
-            lims = [y0g - ran, y0g + ran ]
-        sshg, ssbinsg = np.histogram(IQssrot[ii], bins=numbins, range=lims)
-        sshe, ssbinse = np.histogram(IQssrot[ii + 2], bins=numbins, range=lims)
-        fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
-
-        print("Single shot readout fidility from channel ", i, " after rotation = ", fid)
-        if ii == 0:
-            temp = fid
-        print("Optimal angle =", phi)
-
-        ax = fig.add_subplot(6, 2, 7 + ii)
-        ax.plot(ssbinse[:-1], cumsum(sshg) / sshg.sum(), color='r')
-        ax.plot(ssbinse[:-1], cumsum(sshe) / sshg.sum(), color='b')
-        ax.plot(ssbinse[:-1], np.abs(cumsum(sshe) - cumsum(sshg)) / sshg.sum(), color='k')
-        if ii == 0:
-            ax.set_xlim(x0g - ran , x0g + ran )
-        else:
-            ax.set_xlim(y0g - ran , y0g + ran )
-        ax.set_xlabel(labels[ii] + '(V)')
-        ax.set_ylabel('$F$')
-
-    print('---------------------------')
-
-    fig.tight_layout()
-    plt.show()
 
 def twotoneanalysis(fname):
     with SlabFile(fname) as f:
@@ -2973,3 +2388,910 @@ def HJCinterpolation(fname, Ec, wqmax, wqmin, fc, g, flxoffset, flxscale, detail
     flxquantalistQ = flxquantalist
 
     return [energylistQ, voltlistQ, flxquantalistQ]
+
+# OLD FUNCTIONS
+#
+# def melting_single_readout_full_ramp(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
+#                                      debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
+#
+#     expt_name = "melting_single_readout_full_ramp"
+#     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+#     with File(filename, 'r') as a:
+#         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+#         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+#         lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+#         expt_params = experiment_cfg[expt_name.lower()]
+#         on_qbs = expt_params['on_qbs']
+#         on_rds = expt_params['on_rds']
+#
+#         params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+#         readout_params = params['readout_params']
+#         ran = params['ran']  # range of DAC card for processing
+#         readout_f = params['readout_freq']
+#         dig_atten_qb = params['dig_atten_qb']
+#         dig_atten_rd = params['dig_atten_rd']
+#         read_lo_pwr = params['read_lo_pwr']
+#         qb_lo_pwr = params['qb_lo_pwr']
+#         nu_q = params['qb_freq']
+#
+#         I_raw = np.array(a["I"])
+#         Q_raw = np.array(a["Q"])
+#         (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+#         t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
+#             :(len(I_raw))]
+#
+#         J = []
+#
+#         for s in show:
+#             if pi_cal:
+#                 pi_file = a.attrs['pi_cal_fname']
+#                 with File(pi_file, 'r') as p:
+#                     I_raw_P = np.array(p["I"])
+#                     Q_raw_P = np.array(p["Q"])
+#                     (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
+#                 print(I_P)
+#                 I = np.concatenate((I, I_P))
+#                 Q = np.concatenate((Q, Q_P))
+#                 plt.plot(t, eval(s)[0:-2])
+#                 if rabi_vals != None:
+#                     plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
+#                     plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
+#                 if fit_J:
+#                     res = fit_sin(t, eval(s)[0:-2])
+#                     J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+#                     plt.plot(t, res['fitfunc'](t))
+#                 plt.axhline(y=eval(s)[-2], c='g', label="g")
+#                 plt.axhline(y=eval(s)[-1], c='r', label="e")
+#                 plt.legend()
+#                 plt.xlabel('time (ns)')
+#                 plt.ylabel(s + " volts")
+#                 plt.show()
+#
+#                 if norm_plot:
+#                     plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
+#                     plt.ylim((-0.1, 1))
+#                     plt.xlabel('time (ns)')
+#                     plt.ylabel(s + ' normalized')
+#                     plt.legend()
+#             #             plt.show()
+#             else:
+#                 plt.title(s)
+#                 plt.plot(t, eval(s))
+#                 if fit_J:
+#                     res = fit_sin(t, eval(s)[0:-2])
+#                     J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+#                     plt.plot(t, res['fitfunc'](t))
+#                 plt.show()
+#         if fit_J:
+#             return J
+#         else:
+#             return I,Q
+#
+# def melting_single_readout_full_ramp_v2(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
+#                                      debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
+#
+#     expt_name = "melting_single_readout_full_ramp"
+#     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+#     with File(filename, 'r') as a:
+#         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+#         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+#         lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+#         expt_params = experiment_cfg[expt_name.lower()]
+#         on_qbs = expt_params['on_qbs']
+#         on_rds = expt_params['on_rds']
+#
+#         params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+#         readout_params = params['readout_params']
+#         ran = params['ran']  # range of DAC card for processing
+#         readout_f = params['readout_freq']
+#         dig_atten_qb = params['dig_atten_qb']
+#         dig_atten_rd = params['dig_atten_rd']
+#         read_lo_pwr = params['read_lo_pwr']
+#         qb_lo_pwr = params['qb_lo_pwr']
+#         nu_q = params['qb_freq']
+#
+#         I_raw = np.array(a["I"])
+#         Q_raw = np.array(a["Q"])
+#         (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+#         t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
+#             :(len(I_raw))]
+#
+#         J = []
+#
+#         for s in show:
+#             if pi_cal:
+#                 pi_file = a.attrs['pi_cal_fname']
+#                 with File(pi_file, 'r') as p:
+#                     I_raw_P = np.array(p["I"])
+#                     Q_raw_P = np.array(p["Q"])
+#                     (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
+#                 print(I_P)
+#                 I = np.concatenate((I, I_P))
+#                 Q = np.concatenate((Q, Q_P))
+#                 plt.plot(t, eval(s)[0:-2])
+#                 if rabi_vals != None:
+#                     plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
+#                     plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
+#                 if fit_J:
+#                     res = fit_sin(t, eval(s)[0:-2])
+#                     J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+#                     plt.plot(t, res['fitfunc'](t))
+#                 plt.axhline(y=eval(s)[-2], c='g', label="g")
+#                 plt.axhline(y=eval(s)[-1], c='r', label="e")
+#                 plt.legend()
+#                 plt.xlabel('time (ns)')
+#                 plt.ylabel(s + " volts")
+#                 plt.show()
+#
+#                 if norm_plot:
+#                     plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
+#                     plt.ylim((-0.1, 1))
+#                     plt.xlabel('time (ns)')
+#                     plt.ylabel(s + ' normalized')
+#                     plt.legend()
+#             #             plt.show()
+#             else:
+#                 plt.title(s)
+#                 plt.plot(t, eval(s))
+#                 if fit_J:
+#                     res = fit_sin(t, eval(s)[0:-2])
+#                     J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+#                     plt.plot(t, res['fitfunc'](t))
+#                 plt.show()
+#         if fit_J:
+#             return J
+#         else:
+#             return I,Q
+#
+# def melting_single_readout_full_ramp_Q3(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
+#                                      debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
+#
+#     expt_name = "melting_single_readout_full_ramp_Q3"
+#     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+#     with File(filename, 'r') as a:
+#         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+#         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+#         lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+#         expt_params = experiment_cfg[expt_name.lower()]
+#         on_qbs = expt_params['on_qbs']
+#         on_rds = expt_params['on_rds']
+#
+#         params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+#         readout_params = params['readout_params']
+#         ran = params['ran']  # range of DAC card for processing
+#         readout_f = params['readout_freq']
+#         dig_atten_qb = params['dig_atten_qb']
+#         dig_atten_rd = params['dig_atten_rd']
+#         read_lo_pwr = params['read_lo_pwr']
+#         qb_lo_pwr = params['qb_lo_pwr']
+#         nu_q = params['qb_freq']
+#
+#         I_raw = np.array(a["I"])
+#         Q_raw = np.array(a["Q"])
+#         (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+#         t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
+#             :(len(I_raw))]
+#
+#         J = []
+#
+#         for s in show:
+#             if pi_cal:
+#                 pi_file = a.attrs['pi_cal_fname']
+#                 with File(pi_file, 'r') as p:
+#                     I_raw_P = np.array(p["I"])
+#                     Q_raw_P = np.array(p["Q"])
+#                     (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
+#                 print(I_P)
+#                 I = np.concatenate((I, I_P))
+#                 Q = np.concatenate((Q, Q_P))
+#                 plt.plot(t, eval(s)[0:-2])
+#                 if rabi_vals != None:
+#                     plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
+#                     plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
+#                 if fit_J:
+#                     res = fit_sin(t, eval(s)[0:-2])
+#                     J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+#                     plt.plot(t, res['fitfunc'](t))
+#                 plt.axhline(y=eval(s)[-2], c='g', label="g")
+#                 plt.axhline(y=eval(s)[-1], c='r', label="e")
+#                 plt.legend()
+#                 plt.xlabel('time (ns)')
+#                 plt.ylabel(s + " volts")
+#                 plt.show()
+#
+#                 if norm_plot:
+#                     plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
+#                     plt.ylim((-0.1, 1))
+#                     plt.xlabel('time (ns)')
+#                     plt.ylabel(s + ' normalized')
+#                     plt.legend()
+#             #             plt.show()
+#             else:
+#                 plt.title(s)
+#                 plt.plot(t, eval(s))
+#                 if fit_J:
+#                     res = fit_sin(t, eval(s)[0:-2])
+#                     J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+#                     plt.plot(t, res['fitfunc'](t))
+#                 plt.show()
+#         if fit_J:
+#             return J
+#         else:
+#             return I,Q
+#
+# def melting_single_readout_full_ramp_2setups(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
+#                                      debug=False, pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
+#
+#     expt_name = "melting_single_readout_full_ramp_Q3"
+#     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+#     with File(filename, 'r') as a:
+#         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+#         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+#         lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+#         expt_params = experiment_cfg[expt_name.lower()]
+#         on_qbs = expt_params['on_qbs']
+#         on_rds = expt_params['on_rds']
+#
+#         params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+#         readout_params = params['readout_params']
+#         ran = params['ran']  # range of DAC card for processing
+#         readout_f = params['readout_freq']
+#         dig_atten_qb = params['dig_atten_qb']
+#         dig_atten_rd = params['dig_atten_rd']
+#         read_lo_pwr = params['read_lo_pwr']
+#         qb_lo_pwr = params['qb_lo_pwr']
+#         nu_q = params['qb_freq']
+#
+#         I_raw = np.array(a["I"])
+#         Q_raw = np.array(a["Q"])
+#         (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+#         t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
+#             :(len(I_raw))]
+#
+#         J = []
+#
+#         for s in show:
+#             if pi_cal:
+#                 pi_file = a.attrs['pi_cal_fname']
+#                 with File(pi_file, 'r') as p:
+#                     I_raw_P = np.array(p["I"])
+#                     Q_raw_P = np.array(p["Q"])
+#                     (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
+#                 print(I_P)
+#                 I = np.concatenate((I, I_P))
+#                 Q = np.concatenate((Q, Q_P))
+#                 plt.plot(t, eval(s)[0:-2])
+#                 if rabi_vals != None:
+#                     plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
+#                     plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
+#                 if fit_J:
+#                     res = fit_sin(t, eval(s)[0:-2])
+#                     J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+#                     plt.plot(t, res['fitfunc'](t))
+#                 plt.axhline(y=eval(s)[-2], c='g', label="g")
+#                 plt.axhline(y=eval(s)[-1], c='r', label="e")
+#                 plt.legend()
+#                 plt.xlabel('time (ns)')
+#                 plt.ylabel(s + " volts")
+#                 plt.show()
+#
+#                 if norm_plot:
+#                     plt.plot(t, (eval(s)[0:-2] - eval(s)[-2]) / (eval(s)[-1] - eval(s)[-2]))
+#                     plt.ylim((-0.1, 1))
+#                     plt.xlabel('time (ns)')
+#                     plt.ylabel(s + ' normalized')
+#                     plt.legend()
+#             #             plt.show()
+#             else:
+#                 plt.title(s)
+#                 plt.plot(t, eval(s))
+#                 if fit_J:
+#                     res = fit_sin(t, eval(s)[0:-2])
+#                     J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+#                     plt.plot(t, res['fitfunc'](t))
+#                 plt.show()
+#         if fit_J:
+#             return J
+#         else:
+#             return I,Q
+#
+# def melting_single_readout_full_ramp(filenb, phi=0, sub_mean=False, show=["I"], fitparams=None, domain=None,
+#                                      debug=False, pi_cal=False, norm_plot=False, rabi_vals=None, fit_J=False):
+#     expt_name = "melting_single_readout_full_ramp"
+#     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+#     with File(filename, 'r') as a:
+#         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+#         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+#         lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+#         expt_params = experiment_cfg[expt_name.lower()]
+#         on_qbs = expt_params['on_qbs']
+#         on_rds = expt_params['on_rds']
+#
+#         params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+#         readout_params = params['readout_params']
+#         ran = params['ran']  # range of DAC card for processing
+#         readout_f = params['readout_freq']
+#         dig_atten_qb = params['dig_atten_qb']
+#         dig_atten_rd = params['dig_atten_rd']
+#         read_lo_pwr = params['read_lo_pwr']
+#         qb_lo_pwr = params['qb_lo_pwr']
+#         nu_q = params['qb_freq']
+#
+#         I_raw = np.array(a["I"])
+#         Q_raw = np.array(a["Q"])
+#         (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+#         t = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'], expt_params['evolution_t_step'])[
+#             :(len(I_raw))]
+#
+#         J = []
+#
+#         for s in show:
+#             if pi_cal:
+#                 plt.plot(t, eval(s)[0:-2])
+#                 if rabi_vals != None:
+#                     plt.axhline(y=rabi_vals[0], c='grey', label="g rabi")
+#                     plt.axhline(y=rabi_vals[1], c='m', label="e rabi")
+#                 if fit_J:
+#                     res = fit_sin(t, eval(s)[0:-2])
+#                     J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+#                     plt.plot(t, res['fitfunc'](t))
+#                 plt.axhline(y=eval(s)[-2], c='g', label="g")
+#                 plt.axhline(y=eval(s)[-1], c='r', label="e")
+#                 plt.legend()
+#                 plt.xlabel('time (ns)')
+#                 plt.ylabel(s + " volts")
+#                 plt.show()
+#
+#                 if norm_plot:
+#                     plt.plot(t, (eval(s)[0:-2] - eval(s)[-1]) / (eval(s)[-2] - eval(s)[-1]))
+#                     plt.ylim((-0.1, 1))
+#                     plt.xlabel('time (ns)')
+#                     plt.ylabel(s + ' normalized')
+#                     plt.legend()
+#             #             plt.show()
+#             else:
+#                 plt.title(s)
+#                 plt.plot(t, eval(s))
+#                 if fit_J:
+#                     res = fit_sin(t, eval(s)[0:-2])
+#                     J.append(res['omega'] * 10 ** 9 / ((2 * 2 * np.pi * 10 ** 6)))
+#                     plt.plot(t, res['fitfunc'](t))
+#                 plt.show()
+#         if fit_J:
+#             return J
+#
+# def histogram_og(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False,rancut=120):
+#     expt_name = 'histogram'
+#     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+#
+#     with File(filename, 'r') as a:
+#
+#         tags = ''
+#
+#
+#         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+#         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+#         lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+#         expt_params = experiment_cfg[expt_name.lower()]
+#         on_qbs = expt_params['on_qbs']
+#         on_rds = expt_params['on_rds']
+#
+#         params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+#         readout_params = params['readout_params']
+#         ran = params['ran']  # range of DAC card for processing
+#         readout_f = params['readout_freq']
+#         dig_atten_qb = params['dig_atten_qb']
+#         dig_atten_rd = params['dig_atten_rd']
+#         read_lo_pwr = params['read_lo_pwr']
+#         qb_lo_pwr = params['qb_lo_pwr']
+#         nu_q = params['qb_freq']
+#
+#         expt_cfg = (json.loads(a.attrs['experiment_cfg']))[expt_name.lower()]
+#         numbins = expt_cfg['numbins']
+#         print(numbins)
+#         numbins = 200
+#         a_num = expt_cfg['acquisition_num']
+#         ns = expt_cfg['num_seq_sets']
+#         readout_length = readout_params['length']
+#         window = params['readout_window']
+#         atten = '0'
+#         print('Readout length = ', readout_length)
+#         print('Readout window = ', window)
+#         print("Digital atten = ", atten)
+#         print("Readout freq = ", readout_f)
+#         I = array(a['I'])
+#         Q = array(a['Q'])
+#         sample = a_num
+#
+#         I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
+#
+#         colors = ['r', 'b', 'g']
+#         labels = ['g', 'e', 'f']
+#         titles = ['I', 'Q']
+#
+#         IQs = mean(I[::3], 1), mean(Q[::3], 1), mean(I[1::3], 1), mean(Q[1::3], 1), mean(I[2::3], 1), mean(Q[2::3], 1)
+#         IQsss = I.T.flatten()[0::3], Q.T.flatten()[0::3], I.T.flatten()[1::3], Q.T.flatten()[1::3], I.T.flatten()[
+#                                                                                                     2::3], Q.T.flatten()[
+#                                                                                                            2::3]
+#
+#         fig = plt.figure(figsize=(15, 7 * 5))
+#
+#         ax = fig.add_subplot(621, title='length,window = ' + str(readout_length) + ',' + str(window))
+#         x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
+#         x0e, y0e = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
+#         phi = arctan((y0e - y0g) / (x0e - x0g))
+#         for ii in range(2):
+#             ax.plot(IQsss[2 * ii][:], IQsss[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
+#
+#         ax.set_xlabel('I (V)')
+#         ax.set_ylabel('Q (V)')
+#         ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
+#         ax.set_ylim(y0g - ran / rancut, y0g + ran / rancut)
+#
+#         ax = fig.add_subplot(622, title=tags  + ', atten = ' + str(atten))
+#
+#         for ii in range(3):
+#             ax.errorbar(mean(IQsss[2 * ii]), mean(IQsss[2 * ii + 1]), xerr=std(IQsss[2 * ii]),
+#                         yerr=std(IQsss[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+#         ax.set_xlabel('I')
+#         ax.set_ylabel('Q')
+#
+#         ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
+#         ax.set_ylim(y0g - ran / rancut , y0g + ran / rancut )
+#
+#         IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
+#                     -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),
+#                     I.T.flatten()[1::3] * cos(phi) + Q.T.flatten()[1::3] * sin(phi),
+#                     -I.T.flatten()[1::3] * sin(phi) + Q.T.flatten()[1::3] * cos(phi),
+#                     I.T.flatten()[2::3] * cos(phi) + Q.T.flatten()[2::3] * sin(phi),
+#                     -I.T.flatten()[2::3] * sin(phi) + Q.T.flatten()[2::3] * cos(phi))
+#
+#         ax = fig.add_subplot(623, title='rotated')
+#         x0g, y0g = mean(IQsssrot[0][:]), mean(IQsssrot[1][:])
+#         x0e, y0e = mean(IQsssrot[2][:]), mean(IQsssrot[3][:])
+#
+#         for ii in range(3):
+#             ax.plot(IQsssrot[2 * ii][:], IQsssrot[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
+#
+#         ax.set_xlabel('I (V)')
+#         ax.set_ylabel('Q (V)')
+#         ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
+#         ax.set_ylim(y0g - ran / rancut , y0g + ran / rancut )
+#
+#         ax = fig.add_subplot(624)
+#
+#         for ii in range(3):
+#             ax.errorbar(mean(IQsssrot[2 * ii]), mean(IQsssrot[2 * ii + 1]), xerr=std(IQsssrot[2 * ii]),
+#                         yerr=std(IQsssrot[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+#         ax.set_xlabel('I')
+#         ax.set_ylabel('Q')
+#
+#         ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
+#         ax.set_ylim(y0g - ran / rancut , y0g + ran / rancut )
+#
+#         for kk in range(4):
+#
+#             ax = fig.add_subplot(6, 2, kk % 2 + 5, title=expt_name + titles[kk % 2])
+#             ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
+#             ax.set_xlabel(titles[kk % 2] + '(V)')
+#             ax.set_ylabel('Number')
+#             ax.legend()
+#             if kk % 2 == 0:
+#                 ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
+#             else:
+#                 ax.set_xlim(y0g - ran / rancut , y0g + ran / rancut )
+#
+#     for ii, i in enumerate(['I', 'Q']):
+#         sshg, ssbinsg = np.histogram(IQsss[ii], bins=numbins)
+#         sshe, ssbinse = np.histogram(IQsss[ii + 2], bins=numbins)
+#         fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
+#
+#         print("Single shot readout fidility from channel ", i, " = ", fid)
+#
+#     print('---------------------------')
+#
+#     for ii, i in enumerate(['I', 'Q']):
+#         if ii is 0:
+#             lims = [x0g - ran / rancut , x0g + ran / rancut ]
+#         else:
+#             lims = [y0g - ran / rancut , y0g + ran / rancut ]
+#         sshg, ssbinsg = np.histogram(IQsssrot[ii], bins=numbins, range=lims)
+#         sshe, ssbinse = np.histogram(IQsssrot[ii + 2], bins=numbins, range=lims)
+#         fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
+#
+#         print("Single shot readout fidility from channel ", i, " after rotation = ", fid)
+#         if ii == 0:
+#             temp = fid
+#         print("Optimal angle =", phi)
+#
+#         ax = fig.add_subplot(6, 2, 7 + ii)
+#         ax.plot(ssbinse[:-1], cumsum(sshg) / sshg.sum(), color='r')
+#         ax.plot(ssbinse[:-1], cumsum(sshe) / sshg.sum(), color='b')
+#         ax.plot(ssbinse[:-1], np.abs(cumsum(sshe) - cumsum(sshg)) / sshg.sum(), color='k')
+#         if ii == 0:
+#             ax.set_xlim(x0g - ran / rancut , x0g + ran / rancut )
+#         else:
+#             ax.set_xlim(y0g - ran / rancut , y0g + ran / rancut )
+#         ax.set_xlabel(titles[ii] + '(V)')
+#         ax.set_ylabel('$F$')
+#
+#     print('---------------------------')
+#
+#     fig.tight_layout()
+#     plt.show()
+#
+#     return temp
+#
+# def histogram_IQ_2setups(filenb):
+#     expt_name = 'histogram_2setups'
+#     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+#
+#     with File(filename, 'r') as a:
+#         tags = ''
+#         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+#         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+#         lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+#         lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+#         expt_params = experiment_cfg[expt_name.lower()]
+#         on_qbs = expt_params['on_qbs']
+#         on_rds = expt_params['on_rds']
+#         rd_qb = on_rds[0]
+#
+#         params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+#         readout_params = params['readout_params']
+#         ran = params['ran']  # range of DAC card for processing
+#
+#         expt_cfg = (json.loads(a.attrs['experiment_cfg']))[expt_name.lower()]
+#         a_num = expt_cfg['acquisition_num']
+#         ns = expt_cfg['num_seq_sets']
+#         window = params['readout_window']
+#
+#         num_seq = 1 + len(on_qbs) + expt_cfg["f"]
+#
+#         labels = ['gQ{}'.format(rd_qb)]
+#         if len(on_qbs)>0:
+#             temp = ''
+#             for i in pi_qbs:
+#                 temp = temp + "piQ{}".format(i)
+#             labels.append(temp)
+#
+#         try:
+#             rd_setup = params["rd_setup"]
+#             I = array(a["qb{}_I".format(rd_setup)])
+#             Q = array(a["qb{}_Q".format(rd_setup)])
+#         except:
+#             I = array(a['I'])
+#             Q = array(a['Q'])
+#
+#         I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
+#
+#         IQ_means = []
+#         IQ_ss = []
+#         for seq in range(num_seq):
+#             IQ_means.append(mean(I[seq::num_seq], 1))
+#             IQ_means.append(mean(A[seq::num_seq], 1))
+#
+#             IQ_ss.append(I.T.flatten()[seq::num_seq])
+#             IQ_ss.append(Q.T.flatten()[seq::num_seq])
+#
+#     return labels, IQ_ss
+#
+#
+# def histogram_IQ_crosstalk(filenb, phi=0):
+#     """returns:
+#     labels: [g, e, piQcross, pipiQcross]
+#     IQss: [ [I_g, Q_g], [I_e, Q_e], [I_piQcross, Q_piQcross], [I_pipiQcross, Q_pipiQcross]]
+#     IQssrot: same, but rotated """
+#     expt_name = 'histogram_crosstalk'
+#     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+#
+#     with File(filename, 'r') as a:
+#         tags = ''
+#         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+#         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+#         lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+#         expt_cfg = experiment_cfg[expt_name.lower()]
+#
+#         cross_qb = expt_cfg['cross_qb']
+#         on_qbs = expt_cfg['on_qbs']
+#         on_rds = expt_cfg['on_rds']
+#         on_qb = on_qbs[0]
+#         rd_qb = on_rds[0]
+#
+#         params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+#         readout_params = params['readout_params']
+#         ran = params['ran']  # range of DAC card for processing
+#
+#         a_num = expt_cfg['acquisition_num']
+#         ns = expt_cfg['num_seq_sets']
+#         window = params['readout_window']
+#
+#         num_seq = 4
+#         labels = ['gQ{}'.format(rd_qb), "eQ{}".format(rd_qb), "gQ{}piQ{}".format(rd_qb, cross_qb),
+#                   "eQ{}piQ{}".format(rd_qb, cross_qb)]
+#
+#         try:
+#             I = array(a['I'])
+#             Q = array(a['Q'])
+#         except:
+#             rd_setup = lattice_cfg["readout"]["setup"][rd_qb]
+#             I = array(a["qb{}_I".format(params["rd_setup"])])
+#             Q = array(a["qb{}_Q".format(params["rd_setup"])])
+#
+#         I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
+#
+#         IQ_means = []
+#         IQss = []
+#         for seq in range(num_seq):
+#             IQss.append(
+#                 [I.T.flatten()[seq::num_seq],
+#                  Q.T.flatten()[seq::num_seq]]
+#             )
+#         IQssrot = []
+#
+#         for IQs in IQss:
+#             Irot = IQs[0] * cos(phi) + IQs[1] * sin(phi)
+#             Qrot = -IQs[0] * sin(phi) + IQs[1] * cos(phi)
+#             IQssrot.append([Irot, Qrot])
+#
+#     return labels, IQss, IQssrot
+# def histogram_IQ_analyzer(IQss, labels=['g', 'e'], ran=1, tags=None, numbins=200):
+#     fig = plt.figure(figsize=(15, 7 * 5))
+#     colors = ['r', 'b']
+#
+#     ax = fig.add_subplot(621, title=tags)
+#     x0g, y0g = mean(IQss[0]), mean(IQss[1])
+#     x0e, y0e = mean(IQss[2]), mean(IQss[3])
+#     phi = arctan((y0e - y0g) / (x0e - x0g))
+#
+#     for ii in range(2):
+#         ax.plot(IQss[2 * ii][:], IQss[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
+#
+#     ax.set_xlabel('I (V)')
+#     ax.set_ylabel('Q (V)')
+#     ax.set_xlim(x0g - ran , x0g + ran )
+#     ax.set_ylim(y0g - ran , y0g + ran )
+#
+#     ax = fig.add_subplot(622, title=tags)
+#
+#     for ii in range(2):
+#         ax.errorbar(mean(IQss[2 * ii]), mean(IQss[2 * ii + 1]), xerr=std(IQss[2 * ii]),
+#                     yerr=std(IQss[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+#     ax.set_xlabel('I')
+#     ax.set_ylabel('Q')
+#     ax.set_xlim(x0g - ran, x0g + ran)
+#     ax.set_ylim(y0g - ran, y0g + ran)
+#
+#     IQssrot = (IQss[0] * cos(phi) + IQss[1] * sin(phi),
+#                 -IQss[0] * sin(phi) + IQss[1] * cos(phi),
+#                IQss[2] * cos(phi) + IQss[3] * sin(phi),
+#                -IQss[2] * sin(phi) + IQss[3] * cos(phi))
+#
+#     ax = fig.add_subplot(623, title='rotated')
+#     x0g, y0g = mean(IQssrot[0][:]), mean(IQssrot[1][:])
+#     x0e, y0e = mean(IQssrot[2][:]), mean(IQssrot[3][:])
+#
+#     for ii in range(2):
+#         ax.plot(IQssrot[2 * ii][:], IQssrot[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
+#
+#     ax.set_xlabel('I (V)')
+#     ax.set_ylabel('Q (V)')
+#     ax.set_xlim(x0g - ran, x0g + ran)
+#     ax.set_ylim(y0g - ran, y0g + ran)
+#
+#     ax = fig.add_subplot(624)
+#
+#     for ii in range(2):
+#         ax.errorbar(mean(IQssrot[2 * ii]), mean(IQssrot[2 * ii + 1]), xerr=std(IQssrot[2 * ii]),
+#                     yerr=std(IQssrot[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
+#     ax.set_xlabel('I')
+#     ax.set_ylabel('Q')
+#     ax.set_xlim(x0g - ran, x0g + ran)
+#     ax.set_ylim(y0g - ran, y0g + ran)
+#
+#     for kk in range(4):
+#
+#         ax = fig.add_subplot(6, 2, kk % 2 + 5, title=expt_name + labels[kk % 2])
+#         ax.hist(IQssrot[kk], bins=numbins, alpha=0.75, color=colors[int(kk / 2)], label=labels[int(kk / 2)])
+#         ax.set_xlabel(labels[kk % 2] + '(V)')
+#         ax.set_ylabel('Number')
+#         ax.legend()
+#         if kk % 2 == 0:
+#             ax.set_xlim(x0g - ran , x0g + ran )
+#         else:
+#             ax.set_xlim(y0g - ran , y0g + ran )
+#
+#
+#     for ii, i in enumerate(['I', 'Q']):
+#         sshg, ssbinsg = np.histogram(IQss[ii], bins=numbins)
+#         sshe, ssbinse = np.histogram(IQss[ii + 2], bins=numbins)
+#         fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
+#
+#         print("Single shot readout fidility from channel ", i, " = ", fid)
+#
+#     print('---------------------------')
+#
+#     for ii, i in enumerate(['I', 'Q']):
+#         if ii is 0:
+#             lims = [x0g - ran , x0g + ran ]
+#         else:
+#             lims = [y0g - ran, y0g + ran ]
+#         sshg, ssbinsg = np.histogram(IQssrot[ii], bins=numbins, range=lims)
+#         sshe, ssbinse = np.histogram(IQssrot[ii + 2], bins=numbins, range=lims)
+#         fid = np.abs(((np.cumsum(sshg) - np.cumsum(sshe)) / sshg.sum())).max()
+#
+#         print("Single shot readout fidility from channel ", i, " after rotation = ", fid)
+#         if ii == 0:
+#             temp = fid
+#         print("Optimal angle =", phi)
+#
+#         ax = fig.add_subplot(6, 2, 7 + ii)
+#         ax.plot(ssbinse[:-1], cumsum(sshg) / sshg.sum(), color='r')
+#         ax.plot(ssbinse[:-1], cumsum(sshe) / sshg.sum(), color='b')
+#         ax.plot(ssbinse[:-1], np.abs(cumsum(sshe) - cumsum(sshg)) / sshg.sum(), color='k')
+#         if ii == 0:
+#             ax.set_xlim(x0g - ran , x0g + ran )
+#         else:
+#             ax.set_xlim(y0g - ran , y0g + ran )
+#         ax.set_xlabel(labels[ii] + '(V)')
+#         ax.set_ylabel('$F$')
+#
+#     print('---------------------------')
+#
+#     fig.tight_layout()
+#     plt.show()
+
+# def histogram_IQ_crosstalk_combo_onefile(filenb, phi=0, ind=0):
+#
+#     """returns:
+#     labels: [g, e, piQcross, pipiQcross]
+#     IQss: [ [I_g, Q_g], [I_e, Q_e], [I_piQcross, Q_piQcross], [I_pipiQcross, Q_pipiQcross]]
+#     IQssrot: same, but rotated """
+#     expt_name = 'histogram_crosstalk_combo'
+#     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+#
+#     with File(filename, 'r') as a:
+#         tags = ''
+#         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+#         experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+#         lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+#         expt_cfg = experiment_cfg[expt_name.lower()]
+#
+#         cross_qb = expt_cfg['cross_qb']
+#         on_qbs = expt_cfg['on_qbs']
+#         on_rds = expt_cfg['on_rds']
+#         on_qb = on_qbs[0]
+#         rd_qb = on_rds[0]
+#
+#         params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+#         readout_params = params['readout_params']
+#         ran = params['ran']  # range of DAC card for processing
+#
+#         a_num = expt_cfg['acquisition_num']
+#         ns = expt_cfg['num_seq_sets']
+#         window = params['readout_window']
+#
+#         num_seq = 5
+#         labels = ['gQ{}'.format(rd_qb), "eQ{}".format(rd_qb), "gQ{}piQ{}".format(rd_qb, cross_qb),
+#                   "eQ{}piQ{}".format(rd_qb, cross_qb), "piQ{}eQ{}".format(cross_qb, rd_qb)]
+#
+#         try:
+#             I = array(a['I'])
+#             Q = array(a['Q'])
+#             I = np.array(np.split(I[ind], num_seq))
+#             Q = np.array(np.split(Q[ind], num_seq))
+#         except:
+#             rd_setup = lattice_cfg["readout"]["setup"][rd_qb]
+#             I = array(a["qb{}_I".format(params["rd_setup"])])
+#             Q = array(a["qb{}_Q".format(params["rd_setup"])])
+#
+#         I, Q = I / 2 ** 15 * ran, Q / 2 ** 15 * ran
+#
+#         IQ_means = []
+#         IQss = []
+#         for seq in range(num_seq):
+#             IQss.append(
+#                 [I.T.flatten()[seq::num_seq],
+#                  Q.T.flatten()[seq::num_seq]]
+#             )
+#         IQssrot = []
+#
+#         for IQs in IQss:
+#             Irot = IQs[0] * cos(phi) + IQs[1] * sin(phi)
+#             Qrot = -IQs[0] * sin(phi) + IQs[1] * cos(phi)
+#             IQssrot.append([Irot, Qrot])
+#
+#     return labels, IQss, IQssrot
+
+# def melt_lattice(base, nb_qbs=7, phi=0, sub_mean=False, quad=None, show=['I'], fitparams=None, domain=None, debug=False,
+#                  pi_cal=True, norm_plot=False, rabi_vals=None, fit_J=False):
+#     bigsiglist = [[], [], [], [], [], [], []]
+#     I_raw_P_list = [[], [], [], [], [], [], []]
+#     siglist = []
+#     I0_list = []
+#     I1_list = []
+#     Q0_list = []
+#     Q1_list = []
+#
+#     if quad == None:
+#         quad - ['I'] * nb_qbs
+#
+#     for ii in range(nb_qbs):
+#         filenb = base
+#         expt_name = "melting_single_readout_full_ramp_Q3"
+#         filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name + ".h5"
+#         with File(filename, 'r') as a:
+#             #             print("Opened File")
+#             hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+#             experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+#             quantum_device_cfg = (json.loads(a.attrs['quantum_device_cfg']))
+#             #             print(experiment_cfg['melting_single_readout_full_ramp_Q3'])
+#             expt_params = experiment_cfg['melting_single_readout_full_ramp_Q3']
+#             on_qb = quantum_device_cfg['setups'][0]
+#
+#             params = get_params(hardware_cfg, experiment_cfg, quantum_device_cfg, on_qb)
+#             readout_params = params['readout_params']
+#
+#             ran = params['ran']  # range of DAC card for processing
+#             readout_f = params['readout_freq']
+#             dig_atten_qb = params['dig_atten_qb']
+#             dig_atten_rd = params['dig_atten_rd']
+#             read_lo_pwr = params['read_lo_pwr']
+#             qb_lo_pwr = params['qb_lo_pwr']
+#             nu_q = params['qb_freq']
+#             I_raw = np.array(a["I"])
+#             Q_raw = np.array(a["Q"])
+#             (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+#             t_evol = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'],
+#                             expt_params['evolution_t_step'])[:(len(I_raw))]
+#             pi_file = a.attrs['pi_cal_fname']
+#             with File(pi_file, 'r') as p:
+#                 I_raw_P = np.array(p["I"])
+#                 Q_raw_P = np.array(p["Q"])
+#                 (I_P, Q_P, mag_P, phase_P) = iq_process(f, I_raw_P, Q_raw_P, ran, phi, sub_mean)
+#             I_raw_P_list[ii].append(I_raw_P[-1])
+#
+#             if quad[ii] == 'I':
+#                 # print('I')
+#                 Inorm = (np.array(I) - I_P[-2]) / (I_P[-1] - I_P[-2])
+#                 I0_list.append(I_P[-2])
+#                 I1_list.append(I_P[-1])
+#                 siglist.append(Inorm)
+#             else:
+#                 # print('Q')
+#                 Qnorm = (np.array(Q) - Q_P[-2]) / (Q_P[-1] - Q_P[-2])
+#                 Q0_list.append(Q_P[-2])
+#                 Q1_list.append(Q_P[-1])
+#                 siglist.append(Qnorm)
+#             #         bigsiglist[ii].append(Inorm)
+#             print("Q%s" % ii)
+#             I, Q = melting_single_readout_full_ramp_Q3(base, show=quad[ii])
+#
+#         base += 1
+#
+#     plt.pcolormesh(t_evol, np.arange(len(siglist)), siglist, shading='nearest', vmin=0, vmax=1, cmap="RdYlBu_r")
+#     plt.xlabel('time (ns)')
+#     plt.ylabel('Qubit ')
+#     plt.title('Single particle melting')
+#     plt.colorbar()
+#     plt.show()
+#
+#     plt.title("Total pop in lattice")
+#     np.shape(siglist)
+#     siglist = np.array(siglist)
+#     plt.plot(t_evol, np.sum(siglist, 0))
+#     plt.xlabel('time (ns)')
+#     plt.ylabel('Total Pop(t)')
+#     plt.show()
+#
+#     plt.title("Site trajectories")
+#     np.shape(siglist)
+#     siglist = np.array(siglist)
+#     for ii in range(7):
+#         plt.plot(t_evol, siglist[ii], label=ii)
+#     plt.xlabel('time (ns)')
+#     plt.ylabel('Pop(t)')
+#     plt.legend()
+#     plt.show()
+#
+#     return siglist

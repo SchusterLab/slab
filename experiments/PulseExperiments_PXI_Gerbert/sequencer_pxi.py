@@ -61,10 +61,10 @@ class Sequencer:
             pulse_array_comp.append(pulse_array_indiv)
             len_list.append(len(pulse_array_indiv))
 
-        # pad with zeros end so all same length
+        # pad at end so all same length
         len_max = max(len_list)
         for ii, ar in enumerate(pulse_array_comp):
-            pulse_array_comp[ii] = np.concatenate((ar, np.zeros(len_max-len_list[ii])), axis=0)
+            pulse_array_comp[ii] = np.concatenate((ar, ar[-1]*np.ones(len_max-len_list[ii])), axis=0)
 
         pulse_array = np.sum(pulse_array_comp, axis=0)
 
