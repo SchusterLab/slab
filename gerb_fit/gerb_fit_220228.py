@@ -933,6 +933,72 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], domain=None,ma
 def ff_pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], mag_phase_plot=False, polar=False, debug=False, marker=None):
     print("This version has been deprecated, just pass ff=True to pulse probe iq")
 
+def pulse_probe_ef_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], domain=None,mag_phase_plot=False, polar=False, debug=False, marker=None,plot = True, ff=False, pi=False):
+    """Fits pulse_probe_iq data, then plots data and prints result
+    :param filelist -- the data runs you want to analyze and plot
+    :paramphi -- in degrees, angle by which you want to rotate IQ
+    :paramsub_mean -- if True, subtracts out the average background of IQ measurements
+    :param show -- if plot I or Q
+    :parammag_phase_plot -- boolean, determines whether or not you plot mag and phase as well
+    :paramplar -- adds a plot of I and Q in polar coordinates
+    :paramdebug -- print out experiment attributes
+    """
+    # the 'with' statement automatically opens and closes File a, even if code in the with block fails
+    expt_name = "pulse_probe_ef_iq"
+    if ff:
+        expt_name = "ff_pulse_probe_ef_iq"
+    if pi:
+        expt_name = "pulse_probe_ef_iq_pi"
+
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        # get data in from json file
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+        # print(quantum_device_cfg.keys())
+        expt_params = experiment_cfg[expt_name.lower()]
+        on_qbs = expt_params['on_qbs']
+        on_rds = expt_params['on_rds']
+
+        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+        readout_params = params['readout_params']
+        ran = params['ran'] # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+
+        nu_q = params['qb_freq'] + lattice_cfg["qubit"]["anharmonicity"][on_qbs[0]]# expected qubit ef freq
+        if ff:
+            ff_vec = expt_params['ff_vec']
+            print("fast flux vec is {}".format(ff_vec))
+
+        I_raw = a['I']
+        Q_raw = a['Q']
+        f = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I_raw))] + nu_q
+
+        if debug:
+            print("DEBUG")
+            print("averages =", expt_params['acquisition_num'])
+            print("Rd LO pwr= ", read_lo_pwr, "dBm")
+            print("Qb LO pwr= ", qb_lo_pwr, "dBm")
+            print("Rd atten= ", dig_atten_rd, "dB")
+            print("Qb atten= ", dig_atten_qb, "dB")
+            print("Readout params", readout_params)
+            print("experiment params", expt_params)
+
+        # process I, Q data
+        (I, Q, mag, phase) = iq_process(f=f, raw_I=I_raw, raw_Q=Q_raw, ran=ran, phi=phi, sub_mean=sub_mean)
+
+        # plot and fit data
+        title = expt_name
+        p = plot_freq_data(f=f, I=I, Q=Q, mag=mag, phase=phase,
+                       expected_f=nu_q, show=show, domain=domain, mag_phase_plot=mag_phase_plot, polar=polar, title=title, marker=marker,plot=plot)
+        return p
+
+
 def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, ff=False, pi=False, ef=False, decay = True):
     """
     takes in rabi data, processes it, plots it, and fits it
@@ -1533,7 +1599,7 @@ def fid_func(Vval, ssbinsg, ssbinse, sshg, sshe):
     return np.abs(((np.sum(sshg[:ind_g]) - np.sum(sshe[:ind_e])) / sshg.sum()))
 
 def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, rancut=120,
-                  details=True, numbins=200, ff=False, IQrot = True, hard_phi=None, plt_f =False):
+                  details=True, numbins=200, ff=False, IQrot = True, hard_phi=None, plt_f =False, pair="ge"):
     expt_name = 'histogram'
     if ff:
         expt_name = 'ff_histogram'
@@ -1589,8 +1655,15 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
                                                                                                     2::3], Q.T.flatten()[
                                                                                                            2::3]
 
-        x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
-        x0e, y0e = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
+        if pair=="ge":
+            x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
+            x0e, y0e = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
+        if pair=="gf":
+            x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
+            x0e, y0e = mean(IQsss[4][::int(a_num / sample)]), mean(IQsss[5][::int(a_num / sample)])
+        if pair=="ef":
+            x0g, y0g = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
+            x0e, y0e = mean(IQsss[4][::int(a_num / sample)]), mean(IQsss[5][::int(a_num / sample)])
         vec = [(x0g+x0e)/2, (y0g+y0e)/2]
         if IQrot:
             phi = arctan((y0e - y0g) / (x0e - x0g))
