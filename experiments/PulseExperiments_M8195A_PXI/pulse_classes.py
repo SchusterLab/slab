@@ -449,7 +449,7 @@ class Gauss(Pulse):
 
 
 class Gauss_multitone(Pulse):
-    def __init__(self, max_amp, sigma_len, cutoff_sigma, freqs, phases, dt=None, plot=False):
+    def __init__(self, max_amp, sigma_len, cutoff_sigma, freqs, phases, dt=None, plot=False, phase_t0=0):
         self.max_amp = max_amp
         self.sigma_len = sigma_len
         self.cutoff_sigma = cutoff_sigma
@@ -457,6 +457,7 @@ class Gauss_multitone(Pulse):
         self.phases = phases
         self.dt = dt
         self.plot = plot
+        self.phase_t0 = 0
 
         self.t0 = 0
 
@@ -649,7 +650,8 @@ class DRAG(Pulse):
 
 
 class ARB(Pulse):
-    def __init__(self, A_list, B_list, len, freq, phase, dt=None, plot=False, scale=1.0):
+    def __init__(self, A_list, B_list, len, freq, phase, dt=None, plot=False, scale=1.0, t0=0,
+                 uneven_tlist=[]):
         self.A_list = np.pad(A_list, (1,1 ), 'constant', constant_values=(0, 0))
         self.B_list = np.pad(B_list, (1,1 ), 'constant', constant_values=(0, 0))
 
@@ -659,12 +661,17 @@ class ARB(Pulse):
         self.dt = dt
         self.plot = plot
         self.scale = scale
+        self.uneven_tlist = uneven_tlist
 
-        self.t0 = 0
+        self.t0 = t0
 
     def get_pulse_array(self):
-        t_array_A_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.A_list))
-        t_array_B_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.B_list))
+        if len(self.uneven_tlist) > 0:  # currently only handles one set of uneven times
+            t_array_A_list = self.uneven_tlist
+            t_array_B_list = self.uneven_tlist
+        else:
+            t_array_A_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.A_list))
+            t_array_B_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.B_list))
 
         tck_A = interpolate.splrep(t_array_A_list, self.A_list)
         tck_B = interpolate.splrep(t_array_B_list, self.B_list)
@@ -676,8 +683,8 @@ class ARB(Pulse):
 
         # print ("freq = ", self.freq)
 
-        pulse_array = (pulse_array_x * np.cos(2 * np.pi * self.freq * self.t_array + self.phase) + \
-                      - pulse_array_y * np.sin(2 * np.pi * self.freq * self.t_array + self.phase)) * self.scale
+        pulse_array = (pulse_array_x * np.cos(2 * np.pi * self.freq * (self.t_array - self.t0) + self.phase) + \
+                      - pulse_array_y * np.sin(2 * np.pi * self.freq * (self.t_array - self.t0) + self.phase)) * self.scale
 
         return pulse_array
 

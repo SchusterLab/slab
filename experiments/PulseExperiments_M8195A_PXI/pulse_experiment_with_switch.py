@@ -267,8 +267,10 @@ class Experiment:
         f.attrs['hardware_cfg'] = json.dumps(self.hardware_cfg)
         f.close()
 
-    def generate_datafile(self,path,name,seq_data_file = None):
+    def generate_datafile(self,path,name,seq_data_file = None, data_file_path=None):
         # seq_data_file = None
+        if data_file_path:
+            path = data_file_path
         if seq_data_file == None:
             data_path = os.path.join(path, 'data/')
             self.data_file = os.path.join(data_path, get_next_filename(data_path, name, suffix='.h5'))
@@ -462,9 +464,10 @@ class Experiment:
 
         return self.data_file
 
-    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
+    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,
+                           check_sync = False,save_errs = False, data_file_path=None):
         self.expt_cfg = self.experiment_cfg[name]
-        self.generate_datafile(path,name,seq_data_file=seq_data_file)
+        self.generate_datafile(path,name,seq_data_file=seq_data_file, data_file_path=data_file_path)
         self.set_trigger()
         self.initiate_readout_LOs()
         self.initiate_jpa_pump_LOs()

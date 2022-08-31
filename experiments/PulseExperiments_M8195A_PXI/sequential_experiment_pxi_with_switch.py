@@ -24,21 +24,24 @@ import pickle
 
 class SequentialExperiment:
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg,experiment_name, path,
-                 analyze = False,show=True,P = 'Q', return_val=False, hvi=False, use_cavity=False):
+                 analyze = False,show=True,P = 'Q', return_val=False, hvi=False, use_cavity=False, data_path=None):
 
         self.Is = []
         self.Qs = []
         self.show = show
         self.hvi = hvi
         self.use_cavity = use_cavity
+        self.data_path = data_path
 
         eval('self.' + experiment_name)(quantum_device_cfg, experiment_cfg, hardware_cfg,path)
         if analyze:
             try:
                 if return_val:
-                    return self.analyze(quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name,self.show,self.Is,self.Qs,P = 'I', return_val=True)
+                    return self.analyze(quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name,
+                                        self.show,self.Is,self.Qs,P = 'I', return_val=True)
                 else:
-                    self.analyze(quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name, self.show, self.Is, self.Qs, P='I')
+                    self.analyze(quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name, self.show,
+                                 self.Is, self.Qs, P='I')
             except: print ("No post expt analysis")
         else:pass
 
@@ -113,6 +116,38 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+
+    def histogram_amp_and_length_sweep(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        expt_cfg = experiment_cfg['histogram_amp_and_length_sweep']
+        attens = np.arange(expt_cfg['atten_start'],expt_cfg['atten_stop'],expt_cfg['atten_step'])
+        lengths = np.arange(expt_cfg['length_start'],expt_cfg['length_stop'],expt_cfg['length_step'])
+        experiment_name = 'histogram'
+
+        # expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram_amp_and_length_sweep', suffix='.h5'))
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences(experiment_name)
+        ii = 0
+        for length in lengths:
+            for att in attens:
+                quantum_device_cfg['readout']['dig_atten'] = att
+                print ("Attenuation = ",att,"dB")
+                quantum_device_cfg['readout']['length'] = length
+                quantum_device_cfg['readout']['window'] = [expt_cfg['start_window'], expt_cfg['start_window'] + \
+                                                           length - expt_cfg['shorten_end']]
+                print ("Length = ",length,"GHz")
+                print("Expt num = ", ii)
+                exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
+                I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+                self.Is.append(I)
+                self.Qs.append(Q)
+                ii+=1
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
     def qp_pumping_t1_sweep(self, quantum_device_cfg, experiment_cfg, hardware_cfg, path):
 
         expt_cfg = experiment_cfg['qp_pumping_t1_sweep']
@@ -142,9 +177,29 @@ class SequentialExperiment:
         self.Is = np.array(self.Is)
         self.Qs = np.array(self.Qs)
 
+    def cross_kerr_with_readout_spectroscopy(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+        experiment_name = 'cross_kerr_with_readout_spectroscopy'
+        expt_cfg = experiment_cfg[experiment_name]
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'cross_kerr_with_readout_spectroscopy', suffix='.h5'))
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+
+        for freq in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+            quantum_device_cfg['readout']['freq'] = freq
+            sequences = ps.get_experiment_sequences(experiment_name)
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name, hvi=self.hvi)
+            I,Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            self.Is.append(I)
+            self.Qs.append(Q)
+
+        self.Is = np.array(self.Is)
+        self.Qs = np.array(self.Qs)
+
     def resonator_spectroscopy(self,quantum_device_cfg, experiment_cfg, hardware_cfg, path):
         experiment_name = 'resonator_spectroscopy'
         expt_cfg = experiment_cfg[experiment_name]
+        if self.data_path:
+            path = self.data_path
         data_path = os.path.join(path, 'data/')
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'resonator_spectroscopy', suffix='.h5'))
         ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
@@ -913,6 +968,8 @@ class SequentialExperiment:
         experiment_name = 'sideband_chi_ge_calibration'
 
         expt_cfg = experiment_cfg[experiment_name]
+        if self.data_path:
+            path = self.data_path
         data_path = os.path.join(path, 'data/')
 
         seq_data_file = os.path.join(data_path,
@@ -1220,6 +1277,8 @@ class SequentialExperiment:
         experiment_name = 'photon_number_distribution_measurement'
 
         expt_cfg = experiment_cfg[experiment_name]
+        if self.data_path:
+            path = self.data_path
         data_path = os.path.join(path, 'data/')
 
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_photon_number_distribution_measurement', suffix='.h5'))
@@ -1421,6 +1480,8 @@ class SequentialExperiment:
         experiment_name = 'optimal_control_test_1step'
 
         expt_cfg = experiment_cfg[experiment_name]
+        if self.data_path:
+            path = self.data_path
         data_path = os.path.join(path, 'data/')
 
         seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'sequential_optimal_control_test', suffix='.h5'))
@@ -1894,6 +1955,8 @@ class SequentialExperiment:
         swp_cfg = experiment_cfg['sequential_multimode_blockade_experiments_wt']
         experiment_name = 'multimode_blockade_experiments_wt'
         expt_cfg = experiment_cfg[experiment_name]
+        if self.data_path:
+            path = self.data_path
         data_path = os.path.join(path, 'data/')
         seq_data_file = os.path.join(data_path, get_next_filename(data_path,
                                                                   'sequential_multimode_blockade_experiments_wt',
@@ -1915,6 +1978,8 @@ class SequentialExperiment:
         swp_cfg = experiment_cfg['sequential_multimode_blockade_experiments_wt_3modes']
         experiment_name = 'multimode_blockade_experiments_wt'
         expt_cfg = experiment_cfg[experiment_name]
+        if self.data_path:
+            path = self.data_path
         data_path = os.path.join(path, 'data/')
         seq_data_file = os.path.join(data_path, get_next_filename(data_path,
                                                                   'sequential_multimode_blockade_experiments_wt_3modes',
@@ -1941,6 +2006,8 @@ class SequentialExperiment:
         swp_cfg = experiment_cfg['sequential_multimode_blockade_experiments_wt_unique_pts']
         experiment_name = 'multimode_blockade_experiments_wt'
         expt_cfg = experiment_cfg[experiment_name]
+        if self.data_path:
+            path = self.data_path
         data_path = os.path.join(path, 'data/')
         seq_data_file = os.path.join(data_path, get_next_filename(data_path,
                                                                   'sequential_multimode_blockade_experiments_wt',
@@ -2367,6 +2434,8 @@ class SequentialExperiment:
         experiment_name = 'two_cavity_swap_freq_scan'
 
         expt_cfg = experiment_cfg[experiment_name]
+        if self.data_path:
+            path = self.data_path
         data_path = os.path.join(path, 'data/')
 
         seq_data_file = os.path.join(data_path,

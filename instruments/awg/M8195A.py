@@ -809,7 +809,7 @@ class M8195A(SocketInstrument):
 
         m8195a.stop_output()
         m8195a.set_factory_default()
-
+        # num_channels = 1  # currently hard coded for testing stuff with Sasha
         if num_channels == 1:
             m8195a.set_dac_mode('SING')
 
@@ -822,6 +822,7 @@ class M8195A(SocketInstrument):
         m8195a.set_dac_sample_rate_divider(num_channels)
 
         for ii in range(1,num_channels+1):
+        # for ii in range(3,4):  # changed to test stuff with Sasha
             m8195a.set_waveform_sample_source(ii,'EXT')
             m8195a.set_amplitude(ii,amplitudes[ii-1])
 

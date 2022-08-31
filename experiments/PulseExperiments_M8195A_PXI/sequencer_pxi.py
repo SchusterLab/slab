@@ -225,6 +225,7 @@ class Sequencer:
                     if sequence['switch_trig'][j] == 1 and sequence['switch_trig'][j+1] == 0:
                         ends.append(j)
                 num_pad_pts = int(self.awg_info['keysight_pxi']['pad_switch_trig_end']/self.channels_awg_info['switch_trig']['dt'])
+                num_pad_pts_start = int(self.awg_info['keysight_pxi']['pad_switch_trig_start']/self.channels_awg_info['switch_trig']['dt'])
                 for index in ends:
                     fin = min(index+num_pad_pts, len(sequence['switch_trig']))
                     sequence['switch_trig'][index : fin] = 1
@@ -234,7 +235,7 @@ class Sequencer:
                     if sequence['switch_trig'][j+1] == 1 and sequence['switch_trig'][j] == 0:
                         starts.append(j)
                 for index in starts:
-                    fin = max(index - num_pad_pts, 0)
+                    fin = max(index - num_pad_pts_start, 0)
                     sequence['switch_trig'][fin : index+1] = 1
 
                 # for j in range(len(sequence['switch_trig'])):
