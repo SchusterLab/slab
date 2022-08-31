@@ -11,17 +11,18 @@ import os
 from slab.dataanalysis import get_next_filename
 """Ramsey phase"""
 
-ramsey_freq = 25e3
+ramsey_freq = 50e3
 omega = 2*np.pi*ramsey_freq
 
-dt = 1000
+dt = 500
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
-T_min = 8
-T_max = 150000
+T_min = 4
+T_max = 75000
 times = np.arange(T_min, T_max + dt/2, dt)
-avgs = 1000
+
+avgs = 500
 reset_time = 500000
 simulation = 0
 

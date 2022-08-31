@@ -47,6 +47,29 @@ class Sequencer:
         pulse_array = pulse.pulse_array
         self.pulse_array_list[channel].append(pulse_array)
 
+    def append_composite(self, channel, pulse_list, delay_list):
+        pulse_array_comp = []
+        len_list = []
+        dt = self.channels_awg_info[channel]['dt']
+
+        # get all pulse arrays
+        for ii, pulse in enumerate(pulse_list):
+            pulse.generate_pulse_array(t0=self.get_time(channel) + delay_list[ii], dt=dt)
+            pulse_array_indiv = pulse.pulse_array
+            #pad with zeros start
+            pulse_array_indiv = np.concatenate((np.zeros(int(delay_list[ii]/dt)), pulse_array_indiv), axis=0)
+            pulse_array_comp.append(pulse_array_indiv)
+            len_list.append(len(pulse_array_indiv))
+
+        # pad at end so all same length
+        len_max = max(len_list)
+        for ii, ar in enumerate(pulse_array_comp):
+            pulse_array_comp[ii] = np.concatenate((ar, ar[-1]*np.ones(len_max-len_list[ii])), axis=0)
+
+        pulse_array = np.sum(pulse_array_comp, axis=0)
+
+        self.pulse_array_list[channel].append(pulse_array)
+
     def get_time(self, channel):
         return self.channels_awg_info[channel]['dt'] * len(np.concatenate(self.pulse_array_list[channel])) + \
                self.channels_awg_info[channel]['time_delay']

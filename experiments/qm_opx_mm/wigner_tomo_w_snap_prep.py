@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, ge_IF, biased_th_g_jpa, two_chi
+from configuration_IQ import config, ge_IF, two_chi, disc_file_opt, storage_cal_file, disc_file
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
@@ -14,43 +14,18 @@ from slab import*
 from h5py import File
 import os, scipy
 from slab.dataanalysis import get_next_filename
+from fock_state_prep import oct_to_opx_amp, opx_amp_to_alpha, oct_to_opx_amp_test, snap_seq_test
 
 """Wigner tomography of the cavity state with binary decomposition"""
 
-t_chi = int(abs(0.5*1e9/two_chi)) #qubit rotates by pi in this time
+t_chi = int(abs(0.5*1e9/two_chi[1]//4)) #qubit rotates by pi in this time
 
 avgs = 2000
-reset_time = int(3.5e6)
+reset_time = int(5*7.5e6)
 simulation = 0
-def alpha_awg_cal(alpha, cav_amp=0.4):
-    # takes input array of omegas and converts them to output array of amplitudes,
-    # using a calibration h5 file defined in the experiment config
-    # pull calibration data from file, handling properly in case of multimode cavity
-    cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_05_10_cavity_square.h5'
-
-    with File(fn_file, 'r') as f:
-        omegas = np.array(f['omegas'])
-        amps = np.array(f['amps'])
-    # assume zero frequency at zero amplitude, used for interpolation function
-    omegas = np.append(omegas, 0.0)
-    amps = np.append(amps, 0.0)
-
-    o_s = omegas
-    a_s = amps
-
-    # interpolate data, transfer_fn is a function that for each omega returns the corresponding amp
-    transfer_fn = scipy.interpolate.interp1d(a_s, o_s)
-
-    omega_desired = transfer_fn(cav_amp)
-
-    pulse_length = (alpha/omega_desired)
-    """Returns time in units of 4ns for FPGA"""
-    return abs(pulse_length)//4+1
-
-def wigner_alpha_awg_amp(wigner_pt_file = None, cavity_cal_file = None, cav_len=2000):
-    cal_path = 'C:\\_Lib\\python\\slab\\experiments\\qm_opx'
+def wigner_alpha_awg_amp(wigner_pt_file = None, cavity_cal_file = None, cav_len=200):
+    cal_path = 'C:\\_Lib\\python\\slab\\experiments\\qm_opx_mm'
     wigner_pt_file = cal_path + '\\wigner_function_points\\'+ wigner_pt_file
 
     with File(wigner_pt_file, 'r') as f:
@@ -94,7 +69,7 @@ def wigner_alpha_awg_amp(wigner_pt_file = None, cavity_cal_file = None, cav_len=
 
     return x_awg, y_awg, cav_len
 
-cav_file = '00000_2021_05_10_cavity_square.h5'
+cav_file = '00000_2021_12_28_cavity_square_mode_2.h5'
 wigner_file = '00000_wigner_points_nmax_3_nexpt_50_kappa_1pt0_gauss.h5'
 
 ax, ay, cav_len = wigner_alpha_awg_amp(wigner_pt_file=wigner_file, cavity_cal_file=cav_file)
@@ -108,37 +83,19 @@ simulation_config = SimulationConfig(
     )
 )
 
+readout = 'readout' #'clear'
+
+if readout=='readout':
+    disc = disc_file
+else:
+    disc = disc_file_opt
+
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', 'ge_disc_params_jpa.npz', lsb=True)
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc, lsb=True)
 
-def active_reset(biased_th, to_excited=False):
-    res_reset = declare(bool)
+fock_state = 3
 
-    wait(5000//4, "jpa_pump")
-    align("rr", "jpa_pump")
-    play('pump_square', 'jpa_pump')
-    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-    wait(1000//4, 'rr')
-    # save(I, "check")
-
-    if to_excited == False:
-        with while_(I < biased_th):
-            align('qubit', 'rr', 'jpa_pump')
-            with if_(~res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
-    else:
-        with while_(I > biased_th):
-            align('qubit', 'rr', 'jpa_pump')
-            with if_(res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
+reset_time = int((fock_state+0.5)*10e6)
 
 with program() as wigner_tomo:
 
@@ -166,29 +123,30 @@ with program() as wigner_tomo:
 
         with for_(i, 0, i < n_disp, i + 1):
 
-            wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
-            align('storage', 'rr', 'jpa_pump', 'qubit')
-            active_reset(biased_th_g_jpa)
-            align('storage', 'rr', 'jpa_pump', 'qubit')
-            play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.143))
-            align("storage", "qubit")
-            play("res_pi"*amp(2.0), "qubit")
-            align("storage", "qubit")
-            play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-0.58)) #249
+            wait(reset_time// 4, 'storage_mode1')# wait for the storage to relax, several T1s
+            align('storage_mode1', 'qubit_mode0')
+            snap_seq_test(fock_state=fock_state)
+            update_frequency("qubit_mode0", ge_IF[0])
+            align('storage_mode1', 'qubit_mode0', 'rr')
+
+            # measure and do a qubit reset if the qubit is in e
+            discriminator.measure_state(readout, "out1", "out2", res, I=I)
+            align('qubit_mode0', 'rr')
+            play('pi', 'qubit_mode0', condition=res)
+            align('storage_mode1', 'qubit_mode0', 'rr')
+
             """Do a dispacement drive of the cavity in the phase space"""
-            # wait(1000//4, "storage")
-            play("CW"*amp(axqua[i], 0, ayqua[i], 0), "storage", duration=cav_len//4)
-            align("storage", "qubit")
-            # reset_frame("qubit")
+            wait(5, "storage_mode1")
+            play("CW"*amp(axqua[i], 0, ayqua[i], 0), "storage_mode1", duration=cav_len//4)
+            align("storage_mode1", "qubit_mode0")
 
             # parity
-            play("pi2", "qubit") # unconditional
-            wait(t_chi//4, "qubit")
-            frame_rotation(np.pi, 'qubit') #
-            play("pi2", "qubit")
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
+            play("pi2", "qubit_mode0") # unconditional
+            wait(t_chi, "qubit_mode0")
+            frame_rotation(np.pi, 'qubit_mode0') #
+            play("pi2", "qubit_mode0")
+            align('qubit_mode0', 'rr',)
+            discriminator.measure_state(readout, "out1", "out2", res, I=I)
 
             save(res, res_st)
             save(I, I_st)
@@ -212,12 +170,12 @@ else:
     job = qm.execute(wigner_tomo, duration_limit=0, data_limit=0)
 
     result_handles = job.result_handles
-    result_handles.wait_for_all_values()
+    # result_handles.wait_for_all_values()
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
 
-    job.halt()
-    cal_path = 'C:\\_Lib\\python\\slab\\experiments\\qm_opx'
+    # job.halt()
+    cal_path = 'C:\\_Lib\\python\\slab\\experiments\\qm_opx_mm'
     wigner_file = '00000_wigner_points_nmax_3_nexpt_50_kappa_1pt0_gauss.h5'
     wigner_pt_file = cal_path + '\\wigner_function_points\\'+ wigner_file
 
@@ -229,7 +187,7 @@ else:
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'wigner_tomo_binary_decomp', suffix='.h5'))
+                                 get_next_filename(data_path, 'wigner_tomo_snap', suffix='.h5'))
     print(seq_data_file)
     with File(seq_data_file, 'w') as f:
         f.create_dataset("res", data=res)

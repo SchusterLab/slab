@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, ge_IF, two_chi, disc_file_opt
+from configuration_IQ import config, ge_IF, two_chi, disc_file_opt, rr_IF, disc_file, two_chi_vec
 from qm.qua import *
 from qm import SimulationConfig
 from qm import SimulationConfig, LoopbackInterface
@@ -12,30 +12,36 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 import numpy as np
 import matplotlib.pyplot as plt
 from slab import*
-from slab.instruments import instrumentmanager
-from slab.dsfit import*
 from h5py import File
 import os
 from slab.dataanalysis import get_next_filename
-
-qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
-
+from fock_state_prep import opx_amp_to_alpha
 ###############
 # qubit_spec_prog:
 ###############
+readout = 'readout' #'clear'
+
+if readout=='readout':
+    disc = disc_file
+else:
+    disc = disc_file_opt
+
+qmm = QuantumMachinesManager()
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc, lsb=True)
+
 
 f_min = -10.5e6
 f_max = 0.5e6
-df = 50e3
+df = (f_max-f_min)/100
 f_vec = np.arange(f_min, f_max + df/2, df)
 
 avgs = 1000
-reset_time = int(5e6)
+reset_time = int(4*7.5e6)
 simulation = 0
 
-cav_len = 5
+cav_len = 16
 cav_amp = 1.0
+alpha = opx_amp_to_alpha(cav_amp=cav_amp, cav_len=4*cav_len)
 
 with program() as storage_spec:
 
@@ -59,20 +65,12 @@ with program() as storage_spec:
         with for_(f, ge_IF[0] + f_min, f < ge_IF[0] + f_max + df/2, f + df):
 
             wait(reset_time// 4, "storage_mode1")# wait for the storage to relax, several T1s
-            # update_frequency("qubit_mode0", ge_IF[0])
-            # discriminator.measure_state("readout", "out1", "out2", res, I=I)
-            # align('qubit_mode0', 'rr')
-            # play('pi', 'qubit_mode0', condition=res)
-            # wait(reset_time//10, "qubit_mode0")
-
-            # align('storage_mode1', 'qubit_mode0')
             update_frequency("qubit_mode0", f)
-
-            play("CW"*amp(cav_amp), "storage_mode1", duration=cav_len)
+            play("gaussian"*amp(cav_amp), "storage_mode1", duration=cav_len)
             align("storage_mode1", "qubit_mode0")
             play("res_pi", "qubit_mode0")
             align('qubit_mode0', 'rr')
-            discriminator.measure_state("clear", "out1", "out2", res, I=I)
+            discriminator.measure_state(readout, "out1", "out2", res, I=I)
 
             save(res, res_st)
             save(I, I_st)
@@ -108,25 +106,26 @@ else:
     #     plt.clf()
 
     # result_handles.wait_for_all_values()
+
     res = result_handles.get('res').fetch_all()
     I = result_handles.get('I').fetch_all()
 
     plt.figure()
     plt.plot(f_vec, res, '.-')
     plt.show()
-    #
-    # job.halt()
-    # path = os.getcwd()
-    # data_path = os.path.join(path, "data/")
-    # # data_path = 'S:\\_Data\\210326 - QM_OPX\\data\\'
-    # seq_data_file = os.path.join(data_path,
-    #                              get_next_filename(data_path, 'number_splitting', suffix='.h5'))
-    # print(seq_data_file)
-    #
-    # with File(seq_data_file, 'w') as f:
-    #     f.create_dataset("I", data=I)
-    #     f.create_dataset("Q", data=res)
-    #     f.create_dataset("freq", data=f_vec)
-    #     f.create_dataset("amp", data=cav_amp)
-    #     f.create_dataset("time", data=cav_len*4)
-    #     f.create_dataset("two_chi", data=two_chi[1])
+    # # #
+    # # # job.halt()
+    path = os.getcwd()
+    data_path = os.path.join(path, "data/")
+    seq_data_file = os.path.join(data_path,
+                                 get_next_filename(data_path, 'number_splitting_gauss', suffix='.h5'))
+    print(seq_data_file)
+
+    with File(seq_data_file, 'w') as f:
+        f.create_dataset("I", data=I)
+        f.create_dataset("Q", data=res)
+        f.create_dataset("freq", data=f_vec)
+        f.create_dataset("amp", data=cav_amp)
+        f.create_dataset("time", data=cav_len*4)
+        f.create_dataset("two_chi", data=two_chi_vec[1])
+        f.create_dataset("alpha", data=alpha)

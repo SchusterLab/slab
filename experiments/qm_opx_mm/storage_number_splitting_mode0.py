@@ -26,14 +26,14 @@ discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, ls
 
 f_min = -14.5e6
 f_max = 0.5e6
-df = 100e3
+df = 150e3
 f_vec = np.arange(f_min, f_max + df/2, df)
 
 avgs = 1000
-reset_time = int(5e6)
+reset_time = int(7.5e6)
 simulation = 0
 
-cav_len = 10
+cav_len = 50
 cav_amp = 1.0
 
 with program() as storage_spec:
@@ -66,7 +66,6 @@ with program() as storage_spec:
 
             # align('storage_mode0', 'qubit_mode0')
             update_frequency("qubit_mode0", f)
-
             play("CW"*amp(cav_amp), "storage_mode0", duration=cav_len)
             align("storage_mode0", "qubit_mode0")
             play("res_pi", "qubit_mode0")
@@ -85,7 +84,7 @@ qm = qmm.open_qm(config)
 
 if simulation:
     """To simulate the pulse sequence"""
-    job = qm.simulate(storage_spec, SimulationConfig(150000))
+    job = qm.simulate(storage_spec, SimulationConfig(15000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 
@@ -107,25 +106,25 @@ else:
     #     plt.clf()
 
     # result_handles.wait_for_all_values()
-    res = result_handles.get('res').fetch_all()
-    I = result_handles.get('I').fetch_all()
-
-    plt.figure()
-    plt.plot(f_vec, res, '.-')
-    plt.show()
-
-    job.halt()
-    path = os.getcwd()
-    data_path = os.path.join(path, "data/")
-    # data_path = 'S:\\_Data\\210326 - QM_OPX\\data\\'
-    seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'number_splitting', suffix='.h5'))
-    print(seq_data_file)
-
-    with File(seq_data_file, 'w') as f:
-        f.create_dataset("I", data=I)
-        f.create_dataset("Q", data=res)
-        f.create_dataset("freq", data=f_vec)
-        f.create_dataset("amp", data=cav_amp)
-        f.create_dataset("time", data=cav_len*4)
-        f.create_dataset("two_chi", data=two_chi[storage_mode])
+    # res = result_handles.get('res').fetch_all()
+    # I = result_handles.get('I').fetch_all()
+    #
+    # plt.figure()
+    # plt.plot(f_vec, res, '.-')
+    # plt.show()
+    #
+    # job.halt()
+    # path = os.getcwd()
+    # data_path = os.path.join(path, "data/")
+    # # data_path = 'S:\\_Data\\210326 - QM_OPX\\data\\'
+    # seq_data_file = os.path.join(data_path,
+    #                              get_next_filename(data_path, 'number_splitting', suffix='.h5'))
+    # print(seq_data_file)
+    #
+    # with File(seq_data_file, 'w') as f:
+    #     f.create_dataset("I", data=I)
+    #     f.create_dataset("Q", data=res)
+    #     f.create_dataset("freq", data=f_vec)
+    #     f.create_dataset("amp", data=cav_amp)
+    #     f.create_dataset("time", data=cav_len*4)
+    #     f.create_dataset("two_chi", data=two_chi[storage_mode])

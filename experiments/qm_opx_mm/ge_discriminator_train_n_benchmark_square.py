@@ -1,6 +1,6 @@
 from qm import SimulationConfig, LoopbackInterface
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
-from configuration_IQ import config, disc_file
+from configuration_IQ import config, disc_file, readout_len
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -17,11 +17,29 @@ simulation_config = SimulationConfig(
     )
 )
 
-N = 10000
-wait_time = 500000
-jpa_amp = 1.0
 
-phi = 0.0
+# pulse_len = readout_len
+
+# w_plus = [(1.0, pulse_len)]
+# w_minus = [(-1.0, pulse_len)]
+# w_zero = [(0.0, pulse_len)]
+#
+# b = (30.0/180)*np.pi
+# w_plus_cos = [(np.cos(b), pulse_len)]
+# w_minus_cos = [(-np.cos(b), pulse_len)]
+# w_plus_sin = [(np.sin(b), pulse_len)]
+# w_minus_sin = [(-np.sin(b), pulse_len)]
+#
+# config['integration_weights']['cos']['cosine'] = w_plus_cos
+# config['integration_weights']['cos']['sine'] = w_minus_sin
+# config['integration_weights']['sin']['cosine'] = w_plus_sin
+# config['integration_weights']['sin']['sine'] = w_plus_cos
+# config['integration_weights']['minus_sin']['cosine'] = w_minus_sin
+# config['integration_weights']['minus_sin']['sine'] = w_minus_cos
+
+
+N = 5000
+wait_time = 500000
 
 lsb = True
 qmm = QuantumMachinesManager()
@@ -35,33 +53,11 @@ discriminator = TwoStateDiscriminator(qmm=qmm,
 
 use_opt_weights = False
 
-def training_measurement(readout_pulse, use_opt_weights):
-
-    if use_opt_weights:
-        discriminator.measure_state(readout_pulse, "out1", "out2", res, I=I, adc=adc_st)
-    else:
-        measure("readout", "rr", adc_st,
-                demod.full("integW1", I1, 'out1'),
-                demod.full("integW2", Q1, 'out1'),
-                demod.full("integW1", I2, 'out2'),
-                demod.full("integW2", Q2, 'out2'))
-
-        if lsb == False:
-            assign(I, I1 + Q2)
-            assign(Q, -Q1 + I2)
-        else:
-            assign(I, I1 - Q2)
-            assign(Q, Q1 + I2)
-
 with program() as training_program:
 
     n = declare(int)
     I = declare(fixed)
     Q = declare(fixed, value=0)
-    I1 = declare(fixed)
-    Q1 = declare(fixed)
-    I2 = declare(fixed)
-    Q2 = declare(fixed)
     res = declare(bool)
 
     I_st = declare_stream()
@@ -71,7 +67,9 @@ with program() as training_program:
     with for_(n, 0, n < N, n + 1):
 
         wait(wait_time//4, "rr")
-        training_measurement("readout", use_opt_weights=use_opt_weights)
+        measure("readout", "rr", adc_st,
+                dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
+                dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
         save(I, I_st)
         save(Q, Q_st)
 
@@ -80,7 +78,9 @@ with program() as training_program:
         wait(wait_time//4, "qubit_mode0")
         play("pi", "qubit_mode0")
         align("qubit_mode0", "rr")
-        training_measurement("readout", use_opt_weights=use_opt_weights)
+        measure("readout", "rr", adc_st,
+                dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
+                dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
         save(I, I_st)
         save(Q, Q_st)
 
@@ -91,7 +91,7 @@ with program() as training_program:
         adc_st.input2().save_all("adc2")
 
 # training + testing to get fidelity:
-discriminator.train(program=training_program, plot=True, dry_run=False, use_hann_filter=False, correction_method='robust')
+discriminator.train(program=training_program, plot=True, dry_run=False, use_hann_filter=True, correction_method='robust')
 
 with program() as benchmark_readout:
 
@@ -168,19 +168,12 @@ plt.show()
 path = os.getcwd()
 data_path = os.path.join(path, "data/")
 seq_data_file = os.path.join(data_path,
-                             get_next_filename(data_path, 'histogram_disc', suffix='.h5'))
+                             get_next_filename(data_path, 'histogram_disc_sq', suffix='.h5'))
 print(seq_data_file)
 
-# with File(seq_data_file, 'w') as f:
-#     f.create_dataset("I", data=I)
-#     f.create_dataset("Q", data=Q)
-#     f.create_dataset("res", data=res)
-#     f.create_dataset("seq0", data=seq0)
-#     f.create_dataset("avgs", data=N)
-
-# """Extracting the qubit thermal population from Gaussian fitting of the histograms"""
-# def gaus(x, a0, x0, sigma, a1, x1):
-#     return a0*np.exp(-(x-x0)**2/(2*sigma**2)) + a1*np.exp(-(x-x1)**2/(2*sigma**2))
-# from scipy.optimize import curve_fit
-# y, x = np.histogram(I[np.array(seq0) == 0], 50)
-# popt, pcov = curve_fit(gaus, x[:-1], y, p0=[1, 0.003, 0.001, 0, -0.002])
+with File(seq_data_file, 'w') as f:
+    f.create_dataset("I", data=I)
+    f.create_dataset("Q", data=Q)
+    f.create_dataset("res", data=res)
+    f.create_dataset("seq0", data=seq0)
+    f.create_dataset("avgs", data=N)

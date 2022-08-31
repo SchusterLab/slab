@@ -1,4 +1,4 @@
-from configuration_IQ import config, rr_LO
+from configuration_IQ import config, rr_IF, readout_len
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -13,6 +13,24 @@ from slab import*
 ##################
 # histogram_prog:
 ##################
+# pulse_len = readout_len
+#
+# w_plus = [(1.0, pulse_len)]
+# w_minus = [(-1.0, pulse_len)]
+# w_zero = [(0.0, pulse_len)]
+#
+# b = (30.0/180)*np.pi
+# w_plus_cos = [(np.cos(b), pulse_len)]
+# w_minus_cos = [(-np.cos(b), pulse_len)]
+# w_plus_sin = [(np.sin(b), pulse_len)]
+# w_minus_sin = [(-np.sin(b), pulse_len)]
+#
+# config['integration_weights']['cos']['cosine'] = w_plus_cos
+# config['integration_weights']['cos']['sine'] = w_minus_sin
+# config['integration_weights']['sin']['cosine'] = w_plus_sin
+# config['integration_weights']['sin']['sine'] = w_plus_cos
+# config['integration_weights']['minus_sin']['cosine'] = w_minus_sin
+# config['integration_weights']['minus_sin']['sine'] = w_minus_cos
 
 reset_time = 500000
 avgs = 5000
@@ -24,12 +42,8 @@ with program() as histogram:
     ##############################
 
     n = declare(int)      # Averaging
-    Ig = declare(fixed)
-    Qg = declare(fixed)
-    Ie = declare(fixed)
-    Qe = declare(fixed)
-    # If = declare(fixed)
-    # Qf = declare(fixed)
+    I = declare(fixed)
+    Q = declare(fixed)
 
     Ig_st = declare_stream()
     Qg_st = declare_stream()
@@ -37,8 +51,10 @@ with program() as histogram:
     Ie_st = declare_stream()
     Qe_st = declare_stream()
 
-    # If_st = declare_stream()
-    # Qf_st = declare_stream()
+    If_st = declare_stream()
+    Qf_st = declare_stream()
+
+    # update_frequency('rr', rr_IF)
 
     ###############
     # the sequence:
@@ -48,11 +64,12 @@ with program() as histogram:
 
         """Just readout without playing anything"""
         wait(reset_time // 4, "rr")
-        measure("readout", "rr", None, dual_demod.full("integW1", "out1", "integW3", "out2", Ig),
-                dual_demod.full("integW2", "out1", "integW1", "out2", Qg))
+        measure("readout", "rr", None,
+                dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
+                dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
 
-        save(Ig, Ig_st)
-        save(Qg, Qg_st)
+        save(I, Ig_st)
+        save(Q, Qg_st)
 
         align("qubit_mode0", "rr")
 
@@ -60,31 +77,27 @@ with program() as histogram:
         wait(reset_time // 4, "qubit_mode0")
         play("pi", "qubit_mode0")
         align("qubit_mode0", "rr")
-        measure("readout", "rr", None, dual_demod.full("integW1", "out1", "integW3", "out2", Ie),
-                dual_demod.full("integW2", "out1", "integW1", "out2", Qe))
+        measure("readout", "rr", None,
+                dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
+                dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
 
-        save(Ie, Ie_st)
-        save(Qe, Qe_st)
+        save(I, Ie_st)
+        save(Q, Qe_st)
 
-        # align("qubit", "rr")
+        # align("qubit_mode0", "rr")
         #
         # """Play a ge pi pulse and then an ef pi pulse and then readout"""
-        # wait(reset_time // 4, "qubit")
-        # play("pi", "qubit")
-        # align("qubit", "qubit_ef")
+        # wait(reset_time // 4, "qubit_mode0")
+        # play("pi", "qubit_mode0")
+        # align("qubit_mode0", "qubit_ef")
         # play("pi", "qubit_ef")
         # align("qubit_ef", "rr")
-        # measure("long_readout", "rr", None,
-        #         demod.full("long_integW1", I1, 'out1'),
-        #         demod.full("long_integW2", Q1, 'out1'),
-        #         demod.full("long_integW1", I2, 'out2'),
-        #         demod.full("long_integW2", Q2, 'out2'))
+        # measure("readout", "rr", None,
+        #         dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
+        #         dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
         #
-        # assign(If, I1 - Q2)
-        # assign(Qf, I2 + Q1)
-        #
-        # save(If, If_st)
-        # save(Qf, Qf_st)
+        # save(I, If_st)
+        # save(Q, Qf_st)
 
     with stream_processing():
         Ig_st.save_all('Ig')
@@ -119,15 +132,15 @@ else:
     Ie_handle = res_handles.get("Ie")
     Qe_handle = res_handles.get("Qe")
 
-    # If_handle = res_handles.get("If")
-    # Qf_handle = res_handles.get("Qf")
+    If_handle = res_handles.get("If")
+    Qf_handle = res_handles.get("Qf")
 
     Ig = np.array(Ig_handle.fetch_all()['value'])
     Qg = np.array(Qg_handle.fetch_all()['value'])
 
     Ie = np.array(Ie_handle.fetch_all()['value'])
     Qe = np.array(Qe_handle.fetch_all()['value'])
-
+    #
     # If = np.array(If_handle.fetch_all()['value'])
     # Qf = np.array(Qf_handle.fetch_all()['value'])
 

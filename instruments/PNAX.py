@@ -29,6 +29,9 @@ class N5242A(SocketInstrument):
 
     def get_id(self):
         return self.query('*IDN?')
+    
+    def preset(self):
+        self.write(":SYST:PRES")
 
     def get_query_sleep(self):
         return self.query_sleep

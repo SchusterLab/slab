@@ -30,6 +30,7 @@ font = {'family' : 'normal',
         'size'   : 18}
 
 matplotlib.rc('font', **font)
+print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n USING AN OLD COPY OF GERFIT")
 
 ## Json formatter for lattice_device_cfg
 # Changed basestring to str, and dict uses items() instead of iteritems().
@@ -717,10 +718,10 @@ def ff_track_traj(filenb, phi=0, sub_mean=True, iq_plot=False, debug=False, mark
                                expected_f=nu_q, mag_phase_plot=False, polar=False, title=title, marker=marker,plot=plot)
         return per_vals[:len(I_raw)], parray[2]
 
-def ff_ramp_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, debug=False, marker=None, mag_phase_plot=False, polar=False,
+def ff_ramp_down_cal_ppiq(filenb, phi=0, sub_mean=True, iq_plot=False, debug=False, marker=None, mag_phase_plot=False, polar=False,
                      slices=False,plot=True):
     # the 'with' statement automatically opens and closes File a, even if code in the with block fails
-    expt_name = "ff_ramp_cal_ppiq"
+    expt_name = "ff_ramp_down_cal_ppiq"
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
         # get data in from json file
@@ -1372,6 +1373,117 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
         plt.show()
     return p
 
+def rabi_amp(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, ff=False, pi=False, decay = True):
+    """
+    takes in rabi data, processes it, plots it, and fits it
+    :param filenb: filenumber
+    :param phi: desired iq rotation
+    :param sub_mean: boolean, if you want to subract mean off data
+    :param show: array of strings, whether you want to fit to I or Q or both
+    :param fitparams: array of starting values for parameters
+    :param domain: domain over which you want to fit, ie [1000, 2000]
+    :param debug: boolean, prints out all experient parameters
+    """
+
+    # if you use gaussian pulses for Rabi, the time that you plot is the sigma -the actual pulse time is 4*sigma (4 being set in the code
+    SIGMA_CUTOFF = 4
+
+    expt_name = "rabi_amp"
+    if ff:
+        expt_name = "ff_rabi_amp"
+    if pi:
+        expt_name = "rabi_amp_pi"
+
+    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        #####IMPORT STUFF#####
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+
+        pulse_type = expt_params['pulse_type']
+
+        on_qbs = expt_params['on_qbs']
+        on_rds = expt_params['on_rds']
+
+        params = get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb=True)
+        readout_params = params['readout_params']
+        ran = params['ran'] # range of DAC card for processing
+        readout_f = params['readout_freq']
+        dig_atten_qb = params['dig_atten_qb']
+        dig_atten_rd = params['dig_atten_rd']
+        read_lo_pwr = params['read_lo_pwr']
+        qb_lo_pwr = params['qb_lo_pwr']
+        nu_q = params['qb_freq']
+
+
+        ####GET IQ #####
+        if "threshold" in expt_params.keys() and expt_params["threshold"]:
+            state = array(a["state"])
+        I_raw = array(a["I"])
+        Q_raw = array(a["Q"])
+        (I, Q, mag, phase) = iq_process(f, I_raw, Q_raw, ran, phi, sub_mean)
+        amp = arange(expt_params['start'], expt_params['stop'], expt_params['step'])[:(len(I))]
+        if pulse_type == "gauss":
+            t = t * 4
+
+        if debug:
+            print("DEBUG")
+            print("averages =", expt_params['acquisition_num'])
+            print("Rd LO pwr= ", read_lo_pwr, "dBm")
+            print("Qb LO pwr= ", qb_lo_pwr, "dBm")
+            print("Rd atten= ", dig_atten_rd, "dB")
+            print("Qb atten= ", dig_atten_qb, "dB")
+            print("Readout params", readout_params)
+            print("experiment params", expt_params)
+
+            #####PLOT####
+        title = expt_name + '$, \\nu_q$ = ' + str(around(nu_q, 3)) + ' GHz '
+        fig = plt.figure(figsize=(14, 5))
+        ax = fig.add_subplot(111, title=title)
+        for s in show:
+            if s == "Q":
+                ax.plot(amp, eval(s), 'ro-', label=s)
+            else:
+                ax.plot(amp, eval(s), 'bo-', label=s)
+            ax.set_xlabel('amp (mV)')
+            ax.set_ylabel(s + " (V)")
+
+            ####FIT AND ANALYZE###
+            if decay == True:
+                p = fitdecaysin(amp, eval(s), showfit=False, fitparams=fitparams, domain=domain)
+                ax.plot(amp, decaysin3(p, amp), 'k-', label="fit")
+            else:
+                sin3 = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) + p[3]
+                p = fitsin(amp, eval(s), showfit=False, fitparams=fitparams, domain=domain)
+                ax.plot(amp, sin3(p, amp), 'k-', label="fit")
+
+
+            t_pi = 1 / (2 * p[1])
+            t_half_pi = 1 / (4 * p[1])
+            ax.axvline(t_pi, color='k', linestyle='dashed')
+            ax.axvline(t_half_pi, color='k', linestyle='dashed')
+
+#             print("ANALYSIS " + s)
+#             if pulse_type == 'gauss':
+#                 print("pulse type is GAUSS! pi_len in sigma to input into code to get right pulse out is:")
+#                 print("Half pi length in sigma =", t_half_pi / 4, "sigma")
+#                 print("pi length in sigma =", t_pi / 4, "sigma")
+#                 print("\n")
+
+#             print("Half pi length in ns =", t_half_pi, "ns")
+#             print("pi length =", t_pi, "ns")
+#             print("suggested_pi_length = ", int(t_pi) + 1, "    suggested_pi_amp = ",
+#                   amp * (t_pi) / float(int(t_pi) + 1))
+#             if decay == True:
+#                 print("Rabi decay time = ", p[3], "ns")
+#             if debug:
+#                 print(p)
+
+        ax.legend()
+        plt.show()
+    return p
 
 def t1(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False):
     """
@@ -1724,8 +1836,8 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
             ax.set_xlim(x0g - ran / rancut, x0g + ran / rancut)
             ax.set_ylim(y0g - ran / rancut, y0g + ran / rancut)
 
-        I = I
-        Q = Q
+        I = I - vec[0]
+        Q = Q - vec[1]
         print(phi)
         IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
                     -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),

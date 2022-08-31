@@ -23,15 +23,15 @@ dt = 25
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
-T_min = 0
-T_max = 750
+T_min = 4
+T_max = 2500
 times = np.arange(T_min, T_max + dt/2, dt)
 
-wait_tmin = 25
-wait_tmax = 1000
+wait_tmin = 4
+wait_tmax = 500
 wait_dt = 25
 wait_tvec = np.arange(wait_tmin, wait_tmax + wait_dt/2, wait_dt)
-t_buffer = 500
+t_buffer = 125
 
 avgs = 1000
 reset_time = 500000
@@ -63,9 +63,6 @@ with program() as ramsey:
 
             with for_(t, T_min, t < T_max + dt/2, t + dt):
 
-                # discriminator.measure_state("readout", "out1", "out2", res, I=I)
-                # wait(reset_time//40, "rr")
-                # play('pi', 'qubit_mode0', condition=res)
                 wait(reset_time//4, "rr")
                 play('clear', 'rr')
                 align("rr", "qubit_mode0")
@@ -110,22 +107,21 @@ else:
     plt.colorbar()
     plt.xlabel('Ramsey time (μs)')
     plt.ylabel('Wait time (μs)')
-
-    print("Data collection done")
-
-    """Stop the output from OPX,heats up the fridge"""
-    job.halt()
-
+    #
+    # print("Data collection done")
+    #
+    # """Stop the output from OPX,heats up the fridge"""
+    # job.halt()
+    #
     path = os.getcwd()
     data_path = os.path.join(path, "data/")
     seq_data_file = os.path.join(data_path,
-                                 get_next_filename(data_path, 'ramsey_clear', suffix='.h5'))
+                                 get_next_filename(data_path, 'readout_photon_number_ramsey_clear', suffix='.h5'))
     print(seq_data_file)
 
-    wait_tvec = 4*wait_tvec
-    times = 4*times
     with File(seq_data_file, 'w') as f:
         dset = f.create_dataset("I", data=I)
         dset = f.create_dataset("Q", data=Q)
-        dset = f.create_dataset("wait_time", data=wait_tvec)
-        dset = f.create_dataset("ramsey_times", data=times)
+        dset = f.create_dataset("wait_time", data=4*wait_tvec)
+        dset = f.create_dataset("ramsey_times", data=4*times)
+        dset = f.create_dataset("ramsey_freq", data=ramsey_freq)

@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, ge_IF, biased_th_g_jpa, storage_freq, two_chi, disc_file
+from configuration_IQ import config, ge_IF, storage_freq, two_chi, disc_file_opt
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -18,7 +18,7 @@ from h5py import File
 import os
 from slab.dsfit import*
 from slab.dataanalysis import get_next_filename
-
+from fock_state_prep import opx_amp_to_alpha
 """Storage cavity self-Kerr calibration 
     1. Variable coherent drive on the storage
     2. Wait time (t)
@@ -27,52 +27,29 @@ from slab.dataanalysis import get_next_filename
     +> Results in a 2D spectrum which can be fitted to extract self_Kerr
     ramsey experiment using analytic SNAP pulses to create |0>+|1> 
 """
-def alpha_awg_cal(alpha, cav_amp=0.4):
-    # takes input array of omegas and converts them to output array of amplitudes,
-    # using a calibration h5 file defined in the experiment config
-    # pull calibration data from file, handling properly in case of multimode cavity
-    cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
-
-    fn_file = cal_path + '\\00000_2021_05_20_cavity_square.h5'
-
-    with File(fn_file, 'r') as f:
-        omegas = np.array(f['omegas'])
-        amps = np.array(f['amps'])
-    # assume zero frequency at zero amplitude, used for interpolation function
-    omegas = np.append(omegas, 0.0)
-    amps = np.append(amps, 0.0)
-
-    o_s = omegas
-    a_s = amps
-
-    # interpolate data, transfer_fn is a function that for each omega returns the corresponding amp
-    transfer_fn = scipy.interpolate.interp1d(a_s, o_s)
-
-    omega_desired = transfer_fn(cav_amp)
-
-    pulse_length = (alpha/omega_desired)
-    """Returns time in units of 4ns for FPGA"""
-    return abs(pulse_length)//4+1
-
-ramsey_freq = 500e3
+ramsey_freq = 100e3
 omega = 2*np.pi*ramsey_freq
 
-dt = 25
+dt = 250
 T_min = 4
-T_max = 3000
+T_max = 30000
 t_vec = np.arange(T_min, T_max + dt/2, dt)
 
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
 avgs = 1000
-reset_time = int(3.5e6)
+reset_time = int(7.5e6)
 simulation = 0 #1 to simulate the pulses
 
 #Coherent drive length
-l_min = 4
-l_max = 80
-dl = 4
+l_min = 5
+l_max = 25
+dl = 2
 l_vec = np.arange(l_min, l_max + dl/2, dl)
+
+opx_amp = 1.0
+
+alpha_vec = opx_amp_to_alpha(cav_amp=opx_amp, cav_len=4*l_vec)
 
 simulation_config = SimulationConfig(
     duration=60000,
@@ -82,35 +59,7 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
-
-def active_reset(biased_th, to_excited=False):
-    res_reset = declare(bool)
-
-    wait(1000//4, "jpa_pump")
-    align("rr", "jpa_pump")
-    play('pump_square', 'jpa_pump')
-    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-    wait(1000//4, 'rr')
-
-    if to_excited == False:
-        with while_(I < biased_th):
-            align('qubit', 'rr', 'jpa_pump')
-            with if_(~res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
-    else:
-        with while_(I > biased_th):
-            align('qubit', 'rr', 'jpa_pump')
-            with if_(res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
 
 with program() as storage_self_kerr:
 
@@ -142,22 +91,18 @@ with program() as storage_self_kerr:
 
             with for_(t, T_min, t < T_max + dt/2, t + dt):
 
-                wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
-                align('storage', 'rr', 'jpa_pump', 'qubit')
-                active_reset(biased_th_g_jpa)
-                align('storage', 'rr', 'jpa_pump', 'qubit')
+                wait(reset_time// 4, 'storage_mode1')# wait for the storage to relax, several T1s
                 ########################
-                play("CW"*amp(0.5), "storage", duration=l)
+                play("CW"*amp(opx_amp), 'storage_mode1', duration=l)
                 ########################
-                wait(t, 'storage')
-                frame_rotation_2pi(phi, 'storage')
+                wait(t, 'storage_mode1')
+                frame_rotation_2pi(phi, 'storage_mode1')
                 ########################
-                play("CW"*amp(-0.5), "storage", duration=l)
+                play("CW"*amp(-opx_amp), 'storage_mode1', duration=l)
                 ########################
-                align("storage", "qubit")
-                play("res_pi", "qubit")
-                align('qubit', 'rr', 'jpa_pump')
-                play('pump_square', 'jpa_pump')
+                align('storage_mode1', 'qubit_mode0')
+                play("res_pi", 'qubit_mode0')
+                align('qubit_mode0', 'rr')
                 discriminator.measure_state("clear", "out1", "out2", res, I=I)
                 assign(phi, phi + dphi)
 
@@ -207,7 +152,7 @@ else:
     job.halt()
 
     path = os.getcwd()
-    data_path = os.path.join(path, "data/")
+    data_path = os.path.join(path, "data/thesis/")
     seq_data_file = os.path.join(data_path,
                                  get_next_filename(data_path, 'storage_self_kerr', suffix='.h5'))
     print(seq_data_file)
@@ -218,4 +163,6 @@ else:
         f.create_dataset("ramsey_freq", data=ramsey_freq)
         f.create_dataset("cavity_freq", data=storage_freq)
         f.create_dataset("cav_len", data=4*l_vec)
-        f.create_dataset("cav_amp", data=0.5)
+        f.create_dataset("cav_amp", data=1.0)
+        f.create_dataset("alpha", data=alpha_vec)
+

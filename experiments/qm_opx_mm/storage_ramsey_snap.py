@@ -3,7 +3,7 @@ Created on May 2021
 
 @author: Ankur Agrawal, Schuster Lab
 """
-from configuration_IQ import config, ge_IF, biased_th_g_jpa, storage_freq, two_chi, disc_file
+from configuration_IQ import config, ge_IF, storage_freq, two_chi, disc_file_opt    
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -16,13 +16,13 @@ import os, scipy
 from slab.dataanalysis import get_next_filename
 
 """Storage cavity ramsey experiment using analytic SNAP pulses to create |0>+|1> """
-def alpha_awg_cal(alpha, cav_amp=0.4):
+def alpha_awg_cal(alpha, cav_amp=1.0):
     # takes input array of omegas and converts them to output array of amplitudes,
     # using a calibration h5 file defined in the experiment config
     # pull calibration data from file, handling properly in case of multimode cavity
-    cal_path = 'C:\_Lib\python\slab\experiments\qm_opx\drive_calibration'
+    cal_path = 'C:\_Lib\python\slab\experiments\qm_opx_mm\drive_calibration'
 
-    fn_file = cal_path + '\\00000_2021_08_13_cavity_square.h5'
+    fn_file = cal_path + '\\00000_2021_11_24_cavity_square_mode_2.h5'
 
     with File(fn_file, 'r') as f:
         omegas = np.array(f['omegas'])
@@ -43,7 +43,7 @@ def alpha_awg_cal(alpha, cav_amp=0.4):
     """Returns time in units of 4ns for FPGA"""
     return abs(pulse_length)//4+1
 
-ramsey_freq = 10e3
+ramsey_freq = 20e3
 omega = 2*np.pi*ramsey_freq
 
 dt = 2500
@@ -54,7 +54,7 @@ t_vec = np.arange(T_min, T_max + dt/2, dt)
 dphi = omega*dt*1e-9/(2*np.pi)*4 #to convert to ns
 
 avgs = 1000
-reset_time = int(3.75e6)
+reset_time = int(7.5e6)
 simulation = 0 #1 to simulate the pulses
 
 simulation_config = SimulationConfig(
@@ -65,36 +65,8 @@ simulation_config = SimulationConfig(
 )
 
 qmm = QuantumMachinesManager()
-discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file, lsb=True)
-
-def active_reset(biased_th, to_excited=False):
-    res_reset = declare(bool)
-
-    wait(1000//4, "jpa_pump")
-    align("rr", "jpa_pump")
-    play('pump_square', 'jpa_pump')
-    discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-    wait(1000//4, 'rr')
-
-    if to_excited == False:
-        with while_(I < biased_th):
-            align('qubit', 'rr', 'jpa_pump')
-            with if_(~res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
-    else:
-        with while_(I > biased_th):
-            align('qubit', 'rr', 'jpa_pump')
-            with if_(res_reset):
-                play('pi', 'qubit')
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
-            discriminator.measure_state("clear", "out1", "out2", res_reset, I=I)
-            wait(1000//4, 'rr')
-
+discriminator = TwoStateDiscriminator(qmm, config, True, 'rr', disc_file_opt, lsb=True)
+opx_amp = 1.0
 with program() as storage_t2:
 
     ##############################
@@ -120,31 +92,27 @@ with program() as storage_t2:
 
         with for_(t, T_min, t < T_max + dt/2, t + dt):
 
-            # update_frequency("qubit", ge_IF)
-            wait(reset_time// 4, "storage")# wait for the storage to relax, several T1s
-            align('storage', 'rr', 'jpa_pump', 'qubit')
-            active_reset(biased_th_g_jpa)
-            align('storage', 'rr', 'jpa_pump', 'qubit')
+            # update_frequency('qubit_mode0', ge_IF)
+            wait(reset_time// 4, 'storage_mode1')# wait for the storage to relax, several T1s
             ########################
-            play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.88543008))
-            align("storage", "qubit")
-            play("res_pi"*amp(2.0), "qubit")
-            align("storage", "qubit")
-            play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-1.31268847))
+            play("CW"*amp(opx_amp),'storage_mode1', duration=alpha_awg_cal(1.143, cav_amp=opx_amp))
+            align('storage_mode1', 'qubit_mode0')
+            play("res_pi"*amp(2.0), 'qubit_mode0')
+            align('storage_mode1', 'qubit_mode0')
+            play("CW"*amp(-opx_amp),'storage_mode1', duration=alpha_awg_cal(-0.58, cav_amp=opx_amp))
             ########################
-            wait(t, 'storage')
-            frame_rotation_2pi(phi, 'storage')
+            wait(t, 'storage_mode1')
+            frame_rotation_2pi(phi, 'storage_mode1')
             ########################
-            play("CW"*amp(0.4), "storage", duration=alpha_awg_cal(1.88543008))
-            align("storage", "qubit")
-            play("res_pi"*amp(2.0), "qubit")
-            align("storage", "qubit")
-            play("CW"*amp(-0.4), "storage", duration=alpha_awg_cal(-1.31268847))
+            play("CW"*amp(opx_amp),'storage_mode1', duration=alpha_awg_cal(1.143, cav_amp=opx_amp))
+            align('storage_mode1', 'qubit_mode0')
+            play("res_pi"*amp(2.0), 'qubit_mode0')
+            align('storage_mode1', 'qubit_mode0')
+            play("CW"*amp(-opx_amp),'storage_mode1', duration=alpha_awg_cal(-0.58, cav_amp=opx_amp))
             ########################
-            align("storage", "qubit")
-            play("res_pi", "qubit")
-            align('qubit', 'rr', 'jpa_pump')
-            play('pump_square', 'jpa_pump')
+            align('storage_mode1', 'qubit_mode0')
+            play("res_pi", 'qubit_mode0')
+            align('qubit_mode0', 'rr')
             discriminator.measure_state("clear", "out1", "out2", res, I=I)
             assign(phi, phi + dphi)
 
@@ -169,27 +137,15 @@ else:
 
     result_handles = job.result_handles
 
-    # res_handle = result_handles.get("res")
-    # res_handle.wait_for_values(1)
-    # plt.figure()
-    # while(result_handles.is_processing()):
-    #     res = res_handle.fetch_all()
-    #     plt.plot(4*t_vec, res, '.-')
-    #     # plt.xlabel(r'Time ($\mu$s)')
-    #     # plt.ylabel(r'$\Delta \nu$ (kHz)')
-    #     plt.pause(5)
-    #     plt.clf()
-
-    #
     # result_handles.wait_for_all_values()
-    res = result_handles.get('res').fetch_all()
-    I = result_handles.get('I').fetch_all()
-
-    times = 4*t_vec/1e3
-
-    plt.figure()
-    plt.plot(times, res, '.-')
-    plt.show()
+    # res = result_handles.get('res').fetch_all()
+    # I = result_handles.get('I').fetch_all()
+    #
+    # times = 4*t_vec/1e3
+    #
+    # plt.figure()
+    # plt.plot(times, res, '.-')
+    # plt.show()
 
     #
     # job.halt()

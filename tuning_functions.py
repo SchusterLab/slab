@@ -72,7 +72,7 @@ class Tuning:
         except:
             pass
         try:
-            self.FF_SWCTMinv = inv(self.FF_SWCTM)
+            self.      FF_SWCTMinv = inv(self.FF_SWCTM)
         except:
             pass
 

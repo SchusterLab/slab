@@ -7,16 +7,16 @@ import numpy as np
 from slab import*
 from slab.instruments import instrumentmanager
 im = InstrumentManager()
-LO = im['RF5']
-spec = im['SA']
-
-nu_q = qubit_freq[0]
-# nu_IF = ge_IF
-nu_LO = qubit_LO
-LO.set_frequency(nu_LO)
-LO.set_power(18)
-LO.set_output(True)
-LO.set_ext_pulse(mod=False)
+# LO = im['RF5']
+# spec = im['SA']
+#
+# nu_q = qubit_freq[0]
+# # nu_IF = ge_IF
+# nu_LO = qubit_LO
+# LO.set_frequency(nu_LO)
+# LO.set_power(18)
+# LO.set_output(True)
+# LO.set_ext_pulse(mod=False)
 
 with program() as mixer_calibration:
     with infinite_loop_():
@@ -26,13 +26,13 @@ qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
 job = qm.execute(mixer_calibration, duration_limit=0, data_limit=0)
-delta_F = 1e9
-spec.set_center_frequency(nu_LO)
-spec.set_span(delta_F)
-spec.set_resbw(100e3)
-time.sleep(5)
-tr = spec.take_one()
-plt.plot(tr[0], tr[1])
+# delta_F = 1e9
+# spec.set_center_frequency(nu_LO)
+# spec.set_span(delta_F)
+# spec.set_resbw(100e3)
+# time.sleep(5)
+# tr = spec.take_one()
+# plt.plot(tr[0], tr[1])
 # plt.axvline(x=nu_LO, linestyle='--', color='k')
 # plt.axvline(x=nu_LO - ge_IF[0], linestyle='--', color='k')
 # plt.axvline(x=nu_LO + ge_IF[0], linestyle='--', color='k')
