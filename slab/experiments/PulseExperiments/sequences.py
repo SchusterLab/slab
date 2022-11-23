@@ -1,9 +1,9 @@
 try:
     from .sequencer import Sequencer
-    from .pulse_classes import Gauss, Idle, Ones, Square, Square_multitone, Square_multitone_sequential, DRAG, ARB_freq_a, Multitone_EDG
+    from .pulse_classes import Gauss, Idle, Ones, Square, Square_multitone, Square_multitone_sequential, DRAG, ARB_freq_a, Multitone_EDG, opt_single_qudit, opt_single_qudit4
 except:
     from sequencer import Sequencer
-    from pulse_classes import Gauss, Idle, Ones, Square, Square_multitone, Square_multitone_sequential, DRAG, ARB_freq_a, Multitone_EDG
+    from pulse_classes import Gauss, Idle, Ones, Square, Square_multitone, Square_multitone_sequential, DRAG, ARB_freq_a, Multitone_EDG, opt_single_qudit
 # from qutip_experiment import run_qutip_experiment
 
 import numpy as np
@@ -13,6 +13,7 @@ import pickle
 import random
 import copy
 from numpy import pi
+from math import erf
 
 class PulseSequences:
     # channels and awgs
@@ -165,6 +166,17 @@ class PulseSequences:
             "2": Square(max_amp=self.pulse_info['2']['half_pi_gf_amp'], flat_len=self.pulse_info['2']['half_pi_gf_len'],
                         ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                         cutoff_sigma=2, freq=self.qubit_gf_freq["2"], phase=0)}
+
+        self.sideband_eefg = {
+            "pi": Square(max_amp=self.quantum_device_cfg['sideband_info']['ee-fg']['pi_amp'], flat_len=self.quantum_device_cfg['sideband_info']['ee-fg']['pi_len'],
+                        ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                        cutoff_sigma=2, freq=self.quantum_device_cfg['sideband_info']['ee-fg']['freq'], phase=0),
+            "hpi": Square(max_amp=self.quantum_device_cfg['sideband_info']['ee-fg']['half_pi_amp'],
+                         flat_len=self.quantum_device_cfg['sideband_info']['ee-fg']['half_pi_len'],
+                         ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                             'ramp_sigma_len'],
+                         cutoff_sigma=2, freq=self.quantum_device_cfg['sideband_info']['ee-fg']['freq'], phase=0),
+        }
 
         self.multimodes = self.quantum_device_cfg['multimodes']
 
@@ -1285,6 +1297,152 @@ class PulseSequences:
         return sequencer.complete(self, plot=False)
         
 
+    def vstar_decode_phase(self, sequencer):
+        # vstar decode phase sweep
+        phase_no = self.expt_cfg['decode_phase']
+
+        for current_phase in np.arange(self.expt_cfg['phase_start'], self.expt_cfg['phase_stop'], self.expt_cfg['phase_step']):
+            sequencer.new_sequence(self)
+
+            # Initialize logical state
+            pre_pulse_info = self.quantum_device_cfg['pre_pulse_info']
+            sequencer.append('charge1', Square_multitone_sequential(max_amps=pre_pulse_info['charge1_amps_prep'],
+                                                                    flat_lens=pre_pulse_info['times_prep'],
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info'][
+                                                                        '1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=pre_pulse_info['charge1_freqs_prep'],
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        pre_pulse_info['charge1_phases_prep']),
+                                                                    plot=False))
+            sequencer.append('charge2', Square_multitone_sequential(max_amps=pre_pulse_info['charge2_amps_prep'],
+                                                                    flat_lens=pre_pulse_info['times_prep'],
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info'][
+                                                                        '1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=pre_pulse_info['charge2_freqs_prep'],
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        pre_pulse_info['charge2_phases_prep']),
+                                                                    plot=False))
+            sequencer.append('flux1', Square_multitone_sequential(max_amps=pre_pulse_info['flux1_amps_prep'],
+                                                                  flat_lens=pre_pulse_info['times_prep'],
+                                                                  ramp_sigma_len=
+                                                                  self.quantum_device_cfg['flux_pulse_info'][
+                                                                      '1'][
+                                                                      'ramp_sigma_len'],
+                                                                  cutoff_sigma=2,
+                                                                  freqs=pre_pulse_info['flux1_freqs_prep'],
+                                                                  phases=np.pi / 180 * np.array(
+                                                                      pre_pulse_info['flux1_phases_prep']),
+                                                                  plot=False))
+            sequencer.append('flux2', Square_multitone_sequential(max_amps=pre_pulse_info['flux2_amps_prep'],
+                                                                  flat_lens=pre_pulse_info['times_prep'],
+                                                                  ramp_sigma_len=
+                                                                  self.quantum_device_cfg['flux_pulse_info'][
+                                                                      '1'][
+                                                                      'ramp_sigma_len'],
+                                                                  cutoff_sigma=2,
+                                                                  freqs=pre_pulse_info['flux2_freqs_prep'],
+                                                                  phases=np.pi / 180 * np.array(
+                                                                      pre_pulse_info['flux2_phases_prep']),
+                                                                  plot=False))
+
+            sequencer.sync_channels_time(self.channels)
+
+            #  Turned on the error correction tones for specific time
+            tones = max(len(self.expt_cfg['freqs'][0]), len(self.expt_cfg['freqs'][1]))
+            freqs = self.expt_cfg['freqs']
+            amps = (self.expt_cfg['amps'])
+            phases = (self.expt_cfg['phases'])  # phase should be in degrees
+            rabi_len = self.expt_cfg['logical_time']
+            for index, charge_line_id in enumerate(self.expt_cfg['charge_line']):
+                sequencer.append('charge%s' % charge_line_id,
+                                 Square_multitone(max_amp=np.array(amps[index]),
+                                                  flat_len=[rabi_len] * tones,
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2, freq=np.array(freqs[index]),
+                                                  phase=np.pi / 180 * (np.array(phases[index])), plot=False))
+            for index, flux_line_id in enumerate(self.expt_cfg['flux_line']):
+                sequencer.append('flux%s' % flux_line_id,
+                                 Square_multitone(max_amp=np.array(amps[index + 2]),
+                                                  flat_len=[rabi_len] * tones,
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2, freq=np.array(freqs[index + 2]),
+                                                  phase=np.pi / 180 * (np.array(phases[index + 2])), plot=False))
+            sequencer.sync_channels_time(self.channels)
+
+            # Decoding sequence
+            post_pulse_info = self.quantum_device_cfg['post_pulse_info']
+            post_pulse_info['flux2_phases_prep'][phase_no][0] = current_phase
+            post_pulse_info['flux2_phases_prep'][phase_no][1] = current_phase
+            post_pulse_info['flux1_phases_prep'][phase_no][0] = current_phase
+            post_pulse_info['flux1_phases_prep'][phase_no][1] = current_phase
+            post_pulse_info['charge2_phases_prep'][phase_no][0] = current_phase
+            post_pulse_info['charge2_phases_prep'][phase_no][1] = current_phase
+            post_pulse_info['charge1_phases_prep'][phase_no][0] = current_phase
+            post_pulse_info['charge1_phases_prep'][phase_no][1] = current_phase
+
+            sequencer.append('charge1', Square_multitone_sequential(max_amps=post_pulse_info['charge1_amps_prep'],
+                                                                    flat_lens=post_pulse_info['times_prep'],
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info'][
+                                                                        '1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=post_pulse_info['charge1_freqs_prep'],
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        post_pulse_info['charge1_phases_prep']),
+                                                                    plot=False))
+            sequencer.append('charge2', Square_multitone_sequential(max_amps=post_pulse_info['charge2_amps_prep'],
+                                                                    flat_lens=post_pulse_info['times_prep'],
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info'][
+                                                                        '1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=post_pulse_info['charge2_freqs_prep'],
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        post_pulse_info['charge2_phases_prep']),
+                                                                    plot=False))
+            sequencer.append('flux1', Square_multitone_sequential(max_amps=post_pulse_info['flux1_amps_prep'],
+                                                                  flat_lens=post_pulse_info['times_prep'],
+                                                                  ramp_sigma_len=
+                                                                  self.quantum_device_cfg['flux_pulse_info'][
+                                                                      '1'][
+                                                                      'ramp_sigma_len'],
+                                                                  cutoff_sigma=2,
+                                                                  freqs=post_pulse_info['flux1_freqs_prep'],
+                                                                  phases=np.pi / 180 * np.array(
+                                                                      post_pulse_info['flux1_phases_prep']),
+                                                                  plot=False))
+            sequencer.append('flux2', Square_multitone_sequential(max_amps=post_pulse_info['flux2_amps_prep'],
+                                                                  flat_lens=post_pulse_info['times_prep'],
+                                                                  ramp_sigma_len=
+                                                                  self.quantum_device_cfg['flux_pulse_info'][
+                                                                      '1'][
+                                                                      'ramp_sigma_len'],
+                                                                  cutoff_sigma=2,
+                                                                  freqs=post_pulse_info['flux2_freqs_prep'],
+                                                                  phases=np.pi / 180 * np.array(
+                                                                      post_pulse_info['flux2_phases_prep']),
+                                                                  plot=False))
+
+            sequencer.sync_channels_time(self.channels)
+
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'])
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+
 
     def rabi(self, sequencer):
         # rabi sequences
@@ -1948,8 +2106,10 @@ class PulseSequences:
     #         self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
     #         sequencer.end_sequence()
     #
-    #     return sequencer.complete(self, plot=False)
-    
+
+
+
+
     def histogram_while_flux(self, sequencer):
         # vacuum rabi sequences
         heterodyne_cfg = self.quantum_device_cfg['heterodyne']
@@ -1965,50 +2125,60 @@ class PulseSequences:
             # ge state
             if state == 'ge':
 
-                if self.expt_cfg['flux_probe']:
-                    sequencer.append('flux1', self.qubit_pi['2'])
-                else:
-                    sequencer.append('charge%s' %self.charge_port['2'], self.qubit_pi['2'])
+                sequencer.append('charge%s' %self.charge_port['2'], self.qubit_pi['2'])
 
             # eg state
             if state == 'eg':
 
-                if self.expt_cfg['flux_probe']:
-                    sequencer.append('flux1', self.qubit_pi['1'])
-                else:
-                    sequencer.append('charge%s' %self.charge_port['1'], self.qubit_pi['1'])
+
+                sequencer.append('charge%s' %self.charge_port['1'], self.qubit_pi['1'])
 
             # ee state
             if state == 'ee':
 
-                if self.expt_cfg['flux_probe']:
-                    sequencer.append('flux1', self.qubit_pi['2'])
-                    sequencer.append('flux1', self.qubit_ee_pi['1'])
-                else:
-                    sequencer.append('charge%s' %self.charge_port['2'], self.qubit_pi['2'])
-                    sequencer.sync_channels_time(self.channels)
-                    sequencer.append('charge%s' %self.charge_port['2'], self.qubit_ee_pi['1'])
+                sequencer.append('charge%s' %self.charge_port['2'], self.qubit_pi['2'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge%s' %self.charge_port['1'], self.qubit_ee_pi['1'])
 
             # gf state
             if state == 'gf':
 
-                if self.expt_cfg['flux_probe']:
-                    sequencer.append('flux1', self.qubit_pi['2'])
-                    sequencer.append('flux1', self.qubit_ef_pi['2'])
-                else:
-                    sequencer.append('charge%s' %self.charge_port['2'], self.qubit_pi['2'])
-                    sequencer.append('charge%s' %self.charge_port['2'], self.qubit_ef_pi['2'])
+                sequencer.append('charge%s' %self.charge_port['2'], self.qubit_pi['2'])
+                sequencer.append('charge%s' %self.charge_port['2'], self.qubit_ef_pi['2'])
 
 
             # fg state
             if state == 'fg':
 
-                if self.expt_cfg['flux_probe']:
-                    sequencer.append('flux1', self.qubit_pi['1'])
-                    sequencer.append('flux1', self.qubit_ef_pi['1'])
-                else:
-                    sequencer.append('charge%s' %self.charge_port['1'], self.qubit_pi['1'])
-                    sequencer.append('charge%s' %self.charge_port['1'], self.qubit_ef_pi['1'])
+                sequencer.append('charge%s' %self.charge_port['1'], self.qubit_pi['1'])
+                sequencer.append('charge%s' %self.charge_port['1'], self.qubit_ef_pi['1'])
+
+            # ef state
+            if state == 'ef':
+                sequencer.append('charge1', self.qubit_pi['1'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge2', self.qubit_ee_pi['2'])
+                sequencer.append('charge2', self.qubit_ef_e_pi['2'])
+
+            # fe state
+            if state == 'fe':
+
+                sequencer.append('charge1', self.qubit_pi['1'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge2', self.qubit_ee_pi['2'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge1', self.qubit_ef_e_pi['1'])
+
+            # ff state
+            if state == 'ff':
+                # print('ff state prepared')
+                sequencer.append('charge1', self.qubit_pi['1'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge2', self.qubit_ee_pi['2'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge1', self.qubit_ef_e_pi['1'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge2', self.qubit_ef_e_pi['2'])
 
 
             # arbitrary state
@@ -2071,16 +2241,1781 @@ class PulseSequences:
                 if self.expt_cfg['sideband_on']:                
                     # sideband drives on
                     rabi_len = self.expt_cfg['time']
-                    for index, flux_line_id in enumerate(self.expt_cfg['flux_line']):
-                        sequencer.append('flux%s' %flux_line_id,
+                    for index, charge_line_id in enumerate(self.expt_cfg['charge_line']):
+                        sequencer.append('charge%s' %charge_line_id,
                                          Square_multitone(max_amp=np.array(amps[index]),
                                             flat_len=[rabi_len]*tones, ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                             cutoff_sigma=2, freq=np.array(freqs[index]), phase=np.pi/180*(np.array(phases[index])), plot=False))
+                    for index, flux_line_id in enumerate(self.expt_cfg['flux_line']):
+                        sequencer.append('flux%s' %flux_line_id,
+                                         Square_multitone(max_amp=np.array(amps[index+2]),
+                                            flat_len=[rabi_len]*tones, ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                            cutoff_sigma=2, freq=np.array(freqs[index+2]), phase=np.pi/180*(np.array(phases[index+2])), plot=False))
                     sequencer.sync_channels_time(self.channels)
 
             sequencer.sync_channels_time(self.channels)
             self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
             sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+    def histogram_while_flux_pre_post_gate(self, sequencer):
+        # vacuum rabi sequences
+        heterodyne_cfg = self.quantum_device_cfg['heterodyne']
+        tones = max(len(self.expt_cfg['freqs'][0]), len(self.expt_cfg['freqs'][1]))
+        freqs = self.expt_cfg['freqs']
+        amps = (self.expt_cfg['amps'])
+        phases = (self.expt_cfg['phases'])  # phase should be in degrees
+
+        for state in self.expt_cfg['states']:
+
+            sequencer.new_sequence(self)
+
+            # ge state
+            if state == 'ge':
+                sequencer.append('charge%s' % self.charge_port['2'], self.qubit_pi['2'])
+
+            # eg state
+            if state == 'eg':
+                sequencer.append('charge%s' % self.charge_port['1'], self.qubit_pi['1'])
+
+            # ee state
+            if state == 'ee':
+                sequencer.append('charge%s' % self.charge_port['2'], self.qubit_pi['2'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge%s' % self.charge_port['1'], self.qubit_ee_pi['1'])
+
+            # gf state
+            if state == 'gf':
+                sequencer.append('charge%s' % self.charge_port['2'], self.qubit_pi['2'])
+                sequencer.append('charge%s' % self.charge_port['2'], self.qubit_ef_pi['2'])
+
+            # fg state
+            if state == 'fg':
+                sequencer.append('charge%s' % self.charge_port['1'], self.qubit_pi['1'])
+                sequencer.append('charge%s' % self.charge_port['1'], self.qubit_ef_pi['1'])
+
+            # ef state
+            if state == 'ef':
+                sequencer.append('charge1', self.qubit_pi['1'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge2', self.qubit_ee_pi['2'])
+                sequencer.append('charge2', self.qubit_ef_e_pi['2'])
+
+            # fe state
+            if state == 'fe':
+                sequencer.append('charge1', self.qubit_pi['1'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge2', self.qubit_ee_pi['2'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge1', self.qubit_ef_e_pi['1'])
+
+            # ff state
+            if state == 'ff':
+                # print('ff state prepared')
+                sequencer.append('charge1', self.qubit_pi['1'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge2', self.qubit_ee_pi['2'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge1', self.qubit_ef_e_pi['1'])
+                sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge2', self.qubit_ef_e_pi['2'])
+
+            # arbitrary state
+            if state == 'arb':
+                # Initial pulse before histogram
+                pre_pulse_info = self.quantum_device_cfg['pre_pulse_info']
+                repeat = pre_pulse_info['repeat']
+                for repeat_i in range(repeat):
+                    sequencer.append('charge1',
+                                     Square_multitone_sequential(max_amps=pre_pulse_info['charge1_amps_prep'],
+                                                                 flat_lens=pre_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=pre_pulse_info['charge1_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     pre_pulse_info['charge1_phases_prep']),
+                                                                 plot=False))
+                    sequencer.append('charge2',
+                                     Square_multitone_sequential(max_amps=pre_pulse_info['charge2_amps_prep'],
+                                                                 flat_lens=pre_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=pre_pulse_info['charge2_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     pre_pulse_info['charge2_phases_prep']),
+                                                                 plot=False))
+                    sequencer.append('flux1',
+                                     Square_multitone_sequential(max_amps=pre_pulse_info['flux1_amps_prep'],
+                                                                 flat_lens=pre_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=pre_pulse_info['flux1_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     pre_pulse_info['flux1_phases_prep']),
+                                                                 plot=False))
+                    sequencer.append('flux2',
+                                     Square_multitone_sequential(max_amps=pre_pulse_info['flux2_amps_prep'],
+                                                                 flat_lens=pre_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=pre_pulse_info['flux2_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     pre_pulse_info['flux2_phases_prep']),
+                                                                 plot=False))
+
+                sequencer.sync_channels_time(self.channels)
+
+                if self.expt_cfg['sideband_on']:
+                    # sideband drives on
+                    rabi_len = self.expt_cfg['time']
+                    for index, charge_line_id in enumerate(self.expt_cfg['charge_line']):
+                        sequencer.append('charge%s' % charge_line_id,
+                                         Square_multitone(max_amp=np.array(amps[index]),
+                                                          flat_len=[rabi_len] * tones, ramp_sigma_len=
+                                                          self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                              'ramp_sigma_len'],
+                                                          cutoff_sigma=2, freq=np.array(freqs[index]),
+                                                          phase=np.pi / 180 * (np.array(phases[index])), plot=False))
+                    for index, flux_line_id in enumerate(self.expt_cfg['flux_line']):
+                        sequencer.append('flux%s' % flux_line_id,
+                                         Square_multitone(max_amp=np.array(amps[index + 2]),
+                                                          flat_len=[rabi_len] * tones, ramp_sigma_len=
+                                                          self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                              'ramp_sigma_len'],
+                                                          cutoff_sigma=2, freq=np.array(freqs[index + 2]),
+                                                          phase=np.pi / 180 * (np.array(phases[index + 2])),
+                                                          plot=False))
+                    sequencer.sync_channels_time(self.channels)
+                if self.expt_cfg['post_gate']:
+                    post_pulse_info = self.quantum_device_cfg['post_pulse_info']
+                    print(post_pulse_info['charge2_phases_prep'])
+                    sequencer.append('charge1',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['charge1_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['charge1_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['charge1_phases_prep']),
+                                                                 plot=False))
+                    sequencer.append('charge2',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['charge2_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['charge2_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['charge2_phases_prep']),
+                                                                 plot=False))
+                    sequencer.append('flux1',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['flux1_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['flux1_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['flux1_phases_prep']),
+                                                                 plot=False))
+                    sequencer.append('flux2',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['flux2_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['flux2_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['flux2_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.sync_channels_time(self.channels)
+
+            sequencer.sync_channels_time(self.channels)
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+
+    def histogram_while_gate_2q_QFT(self, sequencer):
+        # Author Ziqian 25 Feb 2022
+
+        sequencer.new_sequence(self)
+        self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+        self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+        self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+        self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+        self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+        vge1 = 0
+        vge2 = 0
+        vef1 = 0
+        vef2 = 0
+
+        ## Compute alpha gate length:
+        alpha = 2 * np.arctan(np.sqrt(2)) / np.pi
+        middle_time1 = self.tomo_pulse_info['1']['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                self.tomo_pulse_info['1']['pi_len'] - self.tomo_pulse_info['1'][
+            'half_pi_len'])
+        middle_time2 = self.tomo_pulse_info['2']['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                self.tomo_pulse_info['2']['pi_len'] - self.tomo_pulse_info['2'][
+            'half_pi_len'])
+        ######################
+        # State preparation
+        sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                flat_lens=self.expt_cfg['times_prep'],
+                                                                ramp_sigma_len=
+                                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                    'ramp_sigma_len'],
+                                                                cutoff_sigma=2,
+                                                                freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                phases=np.pi / 180 * np.array(
+                                                                    self.expt_cfg['charge1_phases_prep']),
+                                                                plot=False))
+
+        sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                flat_lens=self.expt_cfg['times_prep'],
+                                                                ramp_sigma_len=
+                                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                    'ramp_sigma_len'],
+                                                                cutoff_sigma=2,
+                                                                freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                phases=np.pi / 180 * np.array(
+                                                                    self.expt_cfg['charge2_phases_prep']),
+                                                                plot=False))
+
+        sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                                              flat_lens=self.expt_cfg['times_prep'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['flux1_freqs_prep'],
+                                                              phases=np.pi / 180 * np.array(
+                                                                  self.expt_cfg['flux1_phases_prep']), plot=False))
+
+        sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                                              flat_lens=self.expt_cfg['times_prep'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['flux2_freqs_prep'],
+                                                              phases=np.pi / 180 * np.array(
+                                                                  self.expt_cfg['flux2_phases_prep']), plot=False))
+
+        sequencer.sync_channels_time(self.channels)
+
+        vge1 +=self.expt_cfg['v_ge'][0]-self.expt_cfg['phase_est']*20.0*2
+        vge2 +=self.expt_cfg['v_ge'][1]-self.expt_cfg['phase_est']*60.0*2
+        vef1 +=self.expt_cfg['v_ef'][0]-self.expt_cfg['phase_est']*20.0*2
+        vef2 +=self.expt_cfg['v_ef'][1]-self.expt_cfg['phase_est']*60.0*2
+
+        ##########################################################
+        # Apply QFT
+        # 1st H gate on Q2
+        # 1. ff 8pi/9, 2. ef 4pi/9, 3. fe 4pi/9, 4 ee 2pi/9
+        # 2nd H gate on Q1
+
+        #############################################################
+        # Apply Q2 Hadamard gate
+        #############################################################
+        # ef pi/2-->alpha ge-->ef pi/2-->Z
+
+
+        times_prep1 = [[self.tomo_pulse_info['2']['half_pi_ef_len'], 0], [middle_time2, 0],
+                       [self.tomo_pulse_info['2']['half_pi_ef_len'], 0]]
+        charge_amps1 = [[self.tomo_pulse_info['2']['pi_ef_amp'], 0],
+                        [self.tomo_pulse_info['2']['pi_amp'], 0],
+                        [self.tomo_pulse_info['2']['pi_ef_amp'], 0]]
+        charge_phases1 = [[vef2 - 180, 0], [vge2 - 180, 0], [vef2 - 90, 0]]
+        charge_freqs1 = [[self.tomo_pulse_info['2']['freq_ef'], 0],
+                         [self.tomo_pulse_info['2']['freq'], 0],
+                         [self.tomo_pulse_info['2']['freq_ef'], 0]]
+
+        vge2 += 180
+        vef2 += -90
+        if self.expt_cfg['correct_sqg']:
+            vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][0]
+            vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][1]
+            vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][2]
+            vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][3]
+        print(vge1, vge2, vef1, vef2)
+        sequencer.append('charge2', Square_multitone_sequential(max_amps=charge_amps1,
+                                                                flat_lens=times_prep1,
+                                                                ramp_sigma_len=
+                                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                    'ramp_sigma_len'],
+                                                                cutoff_sigma=2,
+                                                                freqs=charge_freqs1,
+                                                                phases=np.pi / 180 * np.array(
+                                                                    charge_phases1),
+                                                                plot=False))
+        sequencer.sync_channels_time(self.channels)
+        ###############################################################
+        # Apply ff 8pi/9 phase gate
+        sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['ff_amp'],
+                                                              flat_lens=self.expt_cfg['ff_pi_time'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['ff_freq'],
+                                                              phases=np.pi / 180 * np.array([[0.0, 0.0]]), plot=False))
+        # sequencer.sync_channels_time(self.channels)
+        sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['ff_amp'],
+                                                              flat_lens=self.expt_cfg['ff_pi_time'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['ff_freq'],
+                                                              phases=np.pi / 180 * np.array([[20.0, 20.0]]), plot=False))
+        sequencer.sync_channels_time(self.channels)
+        vge1 += self.expt_cfg['ff_vge'][0]
+        vge2 += self.expt_cfg['ff_vge'][1]
+        vef1 += self.expt_cfg['ff_vef'][0]
+        vef2 += self.expt_cfg['ff_vef'][1]
+
+        vge1 += self.expt_cfg['ff_vge'][0]
+        vge2 += self.expt_cfg['ff_vge'][1]
+        vef1 += self.expt_cfg['ff_vef'][0]
+        vef2 += self.expt_cfg['ff_vef'][1]
+        print(vge1, vge2, vef1, vef2)
+        ###############################################################
+        ###############################################################
+        # Apply fe 4pi/9 phase gate
+        sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['fe_amp'],
+                                                              flat_lens=self.expt_cfg['fe_pi_time'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['fe_freq'],
+                                                              phases=np.pi / 180 * np.array([[0.0, 0.0]]), plot=False))
+        # sequencer.sync_channels_time(self.channels)
+        sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['fe_amp'],
+                                                              flat_lens=self.expt_cfg['fe_pi_time'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['fe_freq'],
+                                                              phases=np.pi / 180 * np.array([[-80.0, -80.0]]), plot=False))
+        sequencer.sync_channels_time(self.channels)
+        vge1 += self.expt_cfg['fe_vge'][0]
+        vge2 += self.expt_cfg['fe_vge'][1]
+        vef1 += self.expt_cfg['fe_vef'][0]
+        vef2 += self.expt_cfg['fe_vef'][1]
+
+        vge1 += self.expt_cfg['fe_vge'][0]
+        vge2 += self.expt_cfg['fe_vge'][1]
+        vef1 += self.expt_cfg['fe_vef'][0]
+        vef2 += self.expt_cfg['fe_vef'][1]
+        print(vge1, vge2, vef1, vef2)
+        ###############################################################
+        ###############################################################
+        # # Apply ef 4pi/9 phase gate
+        sequencer.append('charge1', Square_multitone_sequential(max_amps=[[self.tomo_pulse_info['1']['pi_ff_amp'],0.0]],
+                                                                flat_lens=[[self.tomo_pulse_info['1']['pi_ff_len'],0.0]],
+                                                                ramp_sigma_len=
+                                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                    'ramp_sigma_len'],
+                                                                cutoff_sigma=2,
+                                                                freqs=[[self.qubit_ff_freq['1'],0.0]],
+                                                                phases=np.pi / 180 * np.array(
+                                                                    [[0.0+vef1,0.0]])))
+        sequencer.sync_channels_time(self.channels)
+        if self.expt_cfg['correct_sqg']:
+            vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][0]
+            vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][1]
+            vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][2]
+            vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][3]
+            print(vge1, vge2, vef1, vef2)
+        sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['ff_amp'],
+                                                              flat_lens=self.expt_cfg['ff_pi_time'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['ff_freq'],
+                                                              phases=np.pi / 180 * np.array([[0.0, 0.0]]), plot=False))
+        # sequencer.sync_channels_time(self.channels)
+        sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['ff_amp'],
+                                                              flat_lens=self.expt_cfg['ff_pi_time'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['ff_freq'],
+                                                              phases=np.pi / 180 * np.array([[-80.0, -80.0]]), plot=False))
+        sequencer.sync_channels_time(self.channels)
+
+        vge1 += self.expt_cfg['ff_vge'][0]
+        vge2 += self.expt_cfg['ff_vge'][1]
+        vef1 += self.expt_cfg['ff_vef'][0]
+        vef2 += self.expt_cfg['ff_vef'][1]
+
+        vge1 += self.expt_cfg['ff_vge'][0]
+        vge2 += self.expt_cfg['ff_vge'][1]
+        vef1 += self.expt_cfg['ff_vef'][0]
+        vef2 += self.expt_cfg['ff_vef'][1]
+        print(vge1, vge2, vef1, vef2)
+        # # sequencer.append('charge1', Square_multitone_sequential(max_amps=[[self.tomo_pulse_info['1']['pi_ff_amp'], 0.0]],
+        # #                                                         flat_lens=[[self.tomo_pulse_info['1']['pi_ff_len'], 0.0]],
+        # #                                                         ramp_sigma_len=
+        # #                                                         self.quantum_device_cfg['flux_pulse_info']['1'][
+        # #                                                             'ramp_sigma_len'],
+        # #                                                         cutoff_sigma=2,
+        # #                                                         freqs=[[self.qubit_ff_freq['1'], 0.0]],
+        # #                                                         phases=np.pi / 180 * np.array(
+        # #                                                             [[180.0 + vef1, 0.0]])))
+        # # sequencer.sync_channels_time(self.channels)
+        # # if self.expt_cfg['correct_sqg']:
+        # #     vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][0]
+        # #     vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][1]
+        # #     vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][2]
+        # #     vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][3]
+        # #     print(vge1, vge2, vef1, vef2)
+        # ###############################################################
+        # ###############################################################
+        # # Apply ee 2pi/9 phase gate
+        # # sequencer.append('charge1',
+        # #                  Square_multitone_sequential(max_amps=[[self.tomo_pulse_info['1']['pi_ef_e_amp'], 0.0]],
+        # #                                              flat_lens=[[self.tomo_pulse_info['1']['pi_ef_e_len'], 0.0]],
+        # #                                              ramp_sigma_len=
+        # #                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+        # #                                                  'ramp_sigma_len'],
+        # #                                              cutoff_sigma=2,
+        # #                                              freqs=[[self.qubit_ef_e_freq['1'], 0.0]],
+        # #                                              phases=np.pi / 180 * np.array(
+        # #                                                  [[0.0 + vef1, 0.0]])))
+        # # sequencer.sync_channels_time(self.channels)
+        # # if self.expt_cfg['correct_sqg']:
+        # #     vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][0]
+        # #     vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][1]
+        # #     vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][2]
+        # #     vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][3]
+        # #     print(vge1, vge2, vef1, vef2)
+        sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['fe_amp'],
+                                                              flat_lens=self.expt_cfg['fe_pi_time'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['fe_freq'],
+                                                              phases=np.pi / 180 * np.array([[0.0, 0.0]]),
+                                                              plot=False))
+        # sequencer.sync_channels_time(self.channels)
+        sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['fe_amp'],
+                                                              flat_lens=self.expt_cfg['fe_pi_time'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['fe_freq'],
+                                                              phases=np.pi / 180 * np.array([[220.0, 220.0]]),
+                                                              plot=False))
+        sequencer.sync_channels_time(self.channels)
+
+        vge1 += self.expt_cfg['fe_vge'][0]
+        vge2 += self.expt_cfg['fe_vge'][1]
+        vef1 += self.expt_cfg['fe_vef'][0]
+        vef2 += self.expt_cfg['fe_vef'][1]
+
+        vge1 += self.expt_cfg['fe_vge'][0]
+        vge2 += self.expt_cfg['fe_vge'][1]
+        vef1 += self.expt_cfg['fe_vef'][0]
+        vef2 += self.expt_cfg['fe_vef'][1]
+        print(vge1, vge2, vef1, vef2)
+        sequencer.append('charge1',
+                         Square_multitone_sequential(max_amps=[[self.tomo_pulse_info['1']['pi_ef_e_amp'], 0.0]],
+                                                     flat_lens=[[self.tomo_pulse_info['1']['pi_ef_e_len'], 0.0]],
+                                                     ramp_sigma_len=
+                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                         'ramp_sigma_len'],
+                                                     cutoff_sigma=2,
+                                                     freqs=[[self.qubit_ef_e_freq['1'], 0.0]],
+                                                     phases=np.pi / 180 * np.array(
+                                                         [[180.0 + vef1, 0.0]])))
+        sequencer.sync_channels_time(self.channels)
+        if self.expt_cfg['correct_sqg']:
+            vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][0]
+            vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][1]
+            vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][2]
+            vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['pi_ef'][3]
+            print(vge1, vge2, vef1, vef2)
+        ###############################################################
+        #############################################################
+        # Apply Q1 Hadamard gate
+        #############################################################
+        times_prep1 = [[self.tomo_pulse_info['1']['half_pi_ef_len'], 0], [middle_time1, 0],
+                       [self.tomo_pulse_info['1']['half_pi_ef_len'], 0]]
+        charge_amps1 = [[self.tomo_pulse_info['1']['pi_ef_amp'], 0],
+                        [self.tomo_pulse_info['1']['pi_amp'], 0],
+                        [self.tomo_pulse_info['1']['pi_ef_amp'], 0]]
+        charge_phases1 = [[vef1 - 180, 0], [vge1 - 180, 0], [vef1 - 90, 0]]
+        charge_freqs1 = [[self.tomo_pulse_info['1']['freq_ef'], 0],
+                         [self.tomo_pulse_info['1']['freq'], 0],
+                         [self.tomo_pulse_info['1']['freq_ef'], 0]]
+
+        vge1 += 180
+        vef1 += -90
+        if self.expt_cfg['correct_sqg']:
+            vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][0]
+            vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][1]
+            vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][2]
+            vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][3]
+        print(vge1, vge2, vef1, vef2)
+
+        sequencer.append('charge1', Square_multitone_sequential(max_amps=charge_amps1,
+                                                                flat_lens=times_prep1,
+                                                                ramp_sigma_len=
+                                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                    'ramp_sigma_len'],
+                                                                cutoff_sigma=2,
+                                                                freqs=charge_freqs1,
+                                                                phases=np.pi / 180 * np.array(
+                                                                    charge_phases1),
+                                                                plot=False))
+
+        sequencer.sync_channels_time(self.channels)
+        ###############################################################
+
+        ##############################################################
+        # Readout
+
+        # sequencer.sync_channels_time(self.channels)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # sequence: [gg, ge, eg, gf, fg, ee, ef, fe, ff]
+        # qubit gg for calibration
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubits ge and eg for calibration
+
+        # for qubit_id in self.expt_cfg['on_qubits']:
+
+        for qubit_id in ['2', '1']:
+            sequencer.new_sequence(self)
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        # gf and fg
+
+        for qubit_id in ['2', '1']:
+            sequencer.new_sequence(self)
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        # qubit ee for calibration
+
+
+        sequencer.new_sequence(self)
+        # pi on qubit1
+        sequencer.append('charge1', self.qubit_pi['1'])
+        # Idle time for qubit 2
+        idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge2', Idle(idle_time))
+        # pi on qubit2 with at the shifted frequency
+        sequencer.append('charge2',
+                         Square(max_amp=self.pulse_info['2']['pi_ee_amp'],
+                                flat_len=self.pulse_info['2']['pi_ee_len'],
+                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                    'ramp_sigma_len'],
+                                cutoff_sigma=2,
+                                freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'],
+                                phase=0))
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit ef and fe for calibration
+
+
+        for qubit_id in ['2', '1']:
+            sequencer.new_sequence(self)
+            # pi on qubit1
+            sequencer.append('charge1', self.qubit_pi['1'])
+            # Idle time for qubit 2
+            idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge2', Idle(idle_time))
+            # pi on qubit2 with at the shifted frequency
+            sequencer.append('charge2',
+                             Square(max_amp=self.pulse_info['2']['pi_ee_amp'],
+                                    flat_len=self.pulse_info['2']['pi_ee_len'],
+                                    ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                        'ramp_sigma_len'],
+                                    cutoff_sigma=2,
+                                    freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'],
+                                    phase=0))
+            # Idle time for qubit 1
+            idle_time = self.pulse_info['2']['pi_ee_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge1', Idle(idle_time))
+            # ef pi on qubit_id with shifted frequency
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_e_pi[qubit_id])
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        # qubit ff for calibration
+
+
+        sequencer.new_sequence(self)
+        # pi on qubit1
+        sequencer.append('charge1', self.qubit_pi['1'])
+        # Idle time for qubit 2
+        idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge2', Idle(idle_time))
+        # pi on qubit2 with at the shifted frequency
+        sequencer.append('charge2',
+                         Square(max_amp=self.pulse_info['2']['pi_ee_amp'],
+                                flat_len=self.pulse_info['2']['pi_ee_len'],
+                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                    'ramp_sigma_len'],
+                                cutoff_sigma=2,
+                                freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'],
+                                phase=0))
+        # Idle time for qubit 1
+        idle_time = self.pulse_info['2']['pi_ee_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge1', Idle(idle_time))
+        # ef pi on qubit_id with shifted frequency
+        sequencer.append('charge1', self.qubit_ef_e_pi['1'])
+        # Idle time for qubit 2
+        idle_time = self.tomo_pulse_info['1']['pi_ef_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge2', Idle(idle_time))
+        sequencer.append('charge2', self.qubit_ff_pi['2'])
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+    def histogram_while_gate_2q_grover(self, sequencer):
+
+        sequencer.new_sequence(self)
+        self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+        self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+        self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+        self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+        self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+        vge1 = 0
+        vge2 = 0
+        vef1 = 0
+        vef2 = 0
+
+        # Grover search
+        # step 1 preparing evenly populated state
+        # step 2 Repeated amplifying phases
+        # step 3 readout
+
+        ## Compute alpha gate length:
+        alpha = 2 * np.arctan(np.sqrt(2)) / np.pi
+        middle_time1 = self.tomo_pulse_info['1']['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                self.tomo_pulse_info['1']['pi_len'] - self.tomo_pulse_info['1'][
+            'half_pi_len'])
+        middle_time2 = self.tomo_pulse_info['2']['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                self.tomo_pulse_info['2']['pi_len'] - self.tomo_pulse_info['2'][
+            'half_pi_len'])
+        ######################
+        # ef pi/2-->alpha ge-->ef pi/2-->Z
+        times_prep1 = [[self.tomo_pulse_info['1']['half_pi_ef_len'], 0], [middle_time1, 0],
+                       [self.tomo_pulse_info['1']['half_pi_ef_len'], 0]]
+        charge_amps1 = [[self.tomo_pulse_info['1']['pi_ef_amp'], 0],
+                        [self.tomo_pulse_info['1']['pi_amp'], 0],
+                        [self.tomo_pulse_info['1']['pi_ef_amp'], 0]]
+        charge_phases1 = [[-180, 0], [-180, 0], [-90, 0]]
+        charge_freqs1 = [[self.tomo_pulse_info['1']['freq_ef'], 0],
+                         [self.tomo_pulse_info['1']['freq'], 0],
+                         [self.tomo_pulse_info['1']['freq_ef'], 0]]
+
+        times_prep2 = [[self.tomo_pulse_info['2']['half_pi_ef_len'], 0], [middle_time1, 0],
+                       [self.tomo_pulse_info['2']['half_pi_ef_len'], 0]]
+        charge_amps2 = [[self.tomo_pulse_info['2']['pi_ef_amp'], 0],
+                        [self.tomo_pulse_info['2']['pi_amp'], 0],
+                        [self.tomo_pulse_info['2']['pi_ef_amp'], 0]]
+        charge_phases2 = [[-180, 0], [-180, 0], [-90, 0]]
+        charge_freqs2 = [[self.tomo_pulse_info['2']['freq_ef'], 0],
+                         [self.tomo_pulse_info['2']['freq'], 0],
+                         [self.tomo_pulse_info['2']['freq_ef'], 0]]
+
+        if self.expt_cfg['correct_sqg']:
+            vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][0]
+            vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][1]
+            vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][2]
+            vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][3]
+
+            vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][0]
+            vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][1]
+            vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][2]
+            vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][3]
+
+        vge1 +=300
+        vge2 +=300
+        vef1 +=30
+        vef2 +=30
+
+        sequencer.append('charge1', Square_multitone_sequential(max_amps=charge_amps1,
+                                                                flat_lens=times_prep1,
+                                                                ramp_sigma_len=
+                                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                    'ramp_sigma_len'],
+                                                                cutoff_sigma=2,
+                                                                freqs=charge_freqs1,
+                                                                phases=np.pi / 180 * np.array(
+                                                                    charge_phases1),
+                                                                plot=False))
+
+        sequencer.append('charge2', Square_multitone_sequential(max_amps=charge_amps2,
+                                                                flat_lens=times_prep2,
+                                                                ramp_sigma_len=
+                                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                    'ramp_sigma_len'],
+                                                                cutoff_sigma=2,
+                                                                freqs=charge_freqs2,
+                                                                phases=np.pi / 180 * np.array(
+                                                                    charge_phases2),
+                                                                plot=False))
+        sequencer.sync_channels_time(self.channels)
+
+
+
+        ##########################################################
+        # repeatedly apply phase amplifier
+        for ii in range(self.expt_cfg['g_repeat']):
+            #############################################################
+            # Apply oracle
+            if self.expt_cfg['charge_o']:
+                # Calculate correct phase
+                print('Charge drive in oracle is used!')
+                charge1_phase = []
+                charge2_phase = []
+                x1 = 0
+                y1 = 0
+                for ii in self.expt_cfg['charge1_phases_prep']:
+                    charge1_part = []
+                    y1 = 0
+                    for jj in ii:
+                        charge1_part.append(jj+self.expt_cfg['vge1'][x1][y1]*vge1+self.expt_cfg['vef1'][x1][y1]*vef1)
+                        y1 +=1
+                    x1+=1
+                    charge1_phase.append(charge1_part)
+
+                x1 = 0
+                y1 = 0
+                for ii in self.expt_cfg['charge2_phases_prep']:
+                    charge2_part = []
+                    y1 = 0
+                    for jj in ii:
+                        charge2_part.append(
+                            jj + self.expt_cfg['vge2'][x1][y1] * vge2 + self.expt_cfg['vef2'][x1][y1] * vef2)
+                        y1 += 1
+                    x1 += 1
+                    charge2_phase.append(charge2_part)
+                print(charge1_phase)
+                print(charge2_phase)
+
+                sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                      flat_lens=self.expt_cfg['times1'],
+                                                                      ramp_sigma_len=
+                                                                      self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                          'ramp_sigma_len'],
+                                                                      cutoff_sigma=2,
+                                                                      freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                      phases=np.pi / 180 * np.array(
+                                                                          charge1_phase), plot=False))
+                sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                        flat_lens=self.expt_cfg['times1'],
+                                                                        ramp_sigma_len=
+                                                                        self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                            'ramp_sigma_len'],
+                                                                        cutoff_sigma=2,
+                                                                        freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                        phases=np.pi / 180 * np.array(
+                                                                            charge2_phase), plot=False))
+                sequencer.sync_channels_time(self.channels)
+                vge1 += self.expt_cfg['middle_vge'][0]
+                vge2 += self.expt_cfg['middle_vge'][1]
+                vef1 += self.expt_cfg['middle_vef'][0]
+                vef2 += self.expt_cfg['middle_vef'][1]
+
+            sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['o_flux2_amp'],
+                                                                  flat_lens=self.expt_cfg['o_times'],
+                                                                  ramp_sigma_len=
+                                                                  self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                      'ramp_sigma_len'],
+                                                                  cutoff_sigma=2,
+                                                                  freqs=self.expt_cfg['o_flux2_freq'],
+                                                                  phases=np.pi / 180 * np.array(
+                                                                      self.expt_cfg['o_flux2_phase']), plot=False))
+            sequencer.sync_channels_time(self.channels)
+            vge1 += self.expt_cfg['o_vge'][0]
+            vge2 += self.expt_cfg['o_vge'][1]
+            vef1 += self.expt_cfg['o_vef'][0]
+            vef2 += self.expt_cfg['o_vef'][1]
+            print(vge1, vge2, vef1, vef2)
+
+            if self.expt_cfg['charge_o']:
+                # Calculate correct phase
+                charge1_phase = []
+                charge2_phase = []
+                x1 = 0
+                y1 = 0
+                for ii in self.expt_cfg['charge1_phases_inv']:
+                    charge1_part = []
+                    y1 = 0
+                    for jj in ii:
+                        charge1_part.append(
+                            jj + self.expt_cfg['vge1_inv'][x1][y1] * vge1 + self.expt_cfg['vef1_inv'][x1][y1] * vef1)
+                        y1 += 1
+                    x1 += 1
+                    charge1_phase.append(charge1_part)
+
+                x1 = 0
+                y1 = 0
+                for ii in self.expt_cfg['charge2_phases_inv']:
+                    charge2_part = []
+                    y1 = 0
+                    for jj in ii:
+                        charge2_part.append(
+                            jj + self.expt_cfg['vge2_inv'][x1][y1] * vge2 + self.expt_cfg['vef2_inv'][x1][y1] * vef2)
+                        y1 += 1
+                    x1 += 1
+                    charge2_phase.append(charge2_part)
+                print(charge1_phase)
+                print(charge2_phase)
+
+                sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_inv'],
+                                                                        flat_lens=self.expt_cfg['times3'],
+                                                                        ramp_sigma_len=
+                                                                        self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                            'ramp_sigma_len'],
+                                                                        cutoff_sigma=2,
+                                                                        freqs=self.expt_cfg['charge1_freqs_inv'],
+                                                                        phases=np.pi / 180 * np.array(
+                                                                            charge1_phase), plot=False))
+                sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_inv'],
+                                                                        flat_lens=self.expt_cfg['times3'],
+                                                                        ramp_sigma_len=
+                                                                        self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                            'ramp_sigma_len'],
+                                                                        cutoff_sigma=2,
+                                                                        freqs=self.expt_cfg['charge2_freqs_inv'],
+                                                                        phases=np.pi / 180 * np.array(
+                                                                            charge2_phase), plot=False))
+                sequencer.sync_channels_time(self.channels)
+                vge1 += self.expt_cfg['middle_vge'][0]
+                vge2 += self.expt_cfg['middle_vge'][1]
+                vef1 += self.expt_cfg['middle_vef'][0]
+                vef2 += self.expt_cfg['middle_vef'][1]
+            #############################################################
+            # ef pi/2-->alpha ge-->ef pi/2-->Z
+            times_prep1 = [[self.tomo_pulse_info['1']['half_pi_ef_len'], 0], [middle_time1, 0],
+                           [self.tomo_pulse_info['1']['half_pi_ef_len'], 0]]
+            charge_amps1 = [[self.tomo_pulse_info['1']['pi_ef_amp'], 0],
+                            [self.tomo_pulse_info['1']['pi_amp'], 0],
+                            [self.tomo_pulse_info['1']['pi_ef_amp'], 0]]
+            charge_phases1 = [[vef1-180, 0], [vge1-180, 0], [vef1-90, 0]]
+            charge_freqs1 = [[self.tomo_pulse_info['1']['freq_ef'], 0],
+                             [self.tomo_pulse_info['1']['freq'], 0],
+                             [self.tomo_pulse_info['1']['freq_ef'], 0]]
+
+            times_prep2 = [[self.tomo_pulse_info['2']['half_pi_ef_len'], 0], [middle_time1, 0],
+                           [self.tomo_pulse_info['2']['half_pi_ef_len'], 0]]
+            charge_amps2 = [[self.tomo_pulse_info['2']['pi_ef_amp'], 0],
+                            [self.tomo_pulse_info['2']['pi_amp'], 0],
+                            [self.tomo_pulse_info['2']['pi_ef_amp'], 0]]
+            charge_phases2 = [[vef2-180, 0], [vge2-180, 0], [vef2-90, 0]]
+            charge_freqs2 = [[self.tomo_pulse_info['2']['freq_ef'], 0],
+                             [self.tomo_pulse_info['2']['freq'], 0],
+                             [self.tomo_pulse_info['2']['freq_ef'], 0]]
+
+            vge1 += -60
+            vge2 += -60
+            vef1 += 30
+            vef2 += 30
+            if self.expt_cfg['correct_sqg']:
+                vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][0]
+                vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][1]
+                vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][2]
+                vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][3]
+
+                vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][0]
+                vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][1]
+                vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][2]
+                vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][3]
+            print(vge1, vge2, vef1, vef2)
+
+            sequencer.append('charge1', Square_multitone_sequential(max_amps=charge_amps1,
+                                                                    flat_lens=times_prep1,
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=charge_freqs1,
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        charge_phases1),
+                                                                    plot=False))
+
+            sequencer.append('charge2', Square_multitone_sequential(max_amps=charge_amps2,
+                                                                    flat_lens=times_prep2,
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=charge_freqs2,
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        charge_phases2),
+                                                                    plot=False))
+            sequencer.sync_channels_time(self.channels)
+            ##########################################################################################
+
+            sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['g_flux2_amp'],
+                                                                  flat_lens=self.expt_cfg['g_times'],
+                                                                  ramp_sigma_len=
+                                                                  self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                      'ramp_sigma_len'],
+                                                                  cutoff_sigma=2,
+                                                                  freqs=self.expt_cfg['g_flux2_freq'],
+                                                                  phases=np.pi / 180 * np.array(
+                                                                      self.expt_cfg['g_flux2_phase']), plot=False))
+            sequencer.sync_channels_time(self.channels)
+            vge1 += self.expt_cfg['g_vge'][0]
+            vge2 += self.expt_cfg['g_vge'][1]
+            vef1 += self.expt_cfg['g_vef'][0]
+            vef2 += self.expt_cfg['g_vef'][1]
+            print(vge1, vge2, vef1, vef2)
+            ############################################################################
+
+            vge1 += -120
+            vge2 += -120
+            vef1 += -120
+            vef2 += -120
+
+            times_prep1 = [[self.tomo_pulse_info['1']['half_pi_ef_len'], 0], [middle_time1, 0],
+                           [self.tomo_pulse_info['1']['half_pi_ef_len'], 0]]
+            charge_amps1 = [[self.tomo_pulse_info['1']['pi_ef_amp'], 0],
+                            [self.tomo_pulse_info['1']['pi_amp'], 0],
+                            [self.tomo_pulse_info['1']['pi_ef_amp'], 0]]
+            charge_phases1 = [[vef1 - 180, 0], [vge1 - 180, 0], [vef1 - 270, 0]]
+            charge_freqs1 = [[self.tomo_pulse_info['1']['freq_ef'], 0],
+                             [self.tomo_pulse_info['1']['freq'], 0],
+                             [self.tomo_pulse_info['1']['freq_ef'], 0]]
+
+            times_prep2 = [[self.tomo_pulse_info['2']['half_pi_ef_len'], 0], [middle_time1, 0],
+                           [self.tomo_pulse_info['2']['half_pi_ef_len'], 0]]
+            charge_amps2 = [[self.tomo_pulse_info['2']['pi_ef_amp'], 0],
+                            [self.tomo_pulse_info['2']['pi_amp'], 0],
+                            [self.tomo_pulse_info['2']['pi_ef_amp'], 0]]
+            charge_phases2 = [[vef2 - 180, 0], [vge2 - 180, 0], [vef2 - 270, 0]]
+            charge_freqs2 = [[self.tomo_pulse_info['2']['freq_ef'], 0],
+                             [self.tomo_pulse_info['2']['freq'], 0],
+                             [self.tomo_pulse_info['2']['freq_ef'], 0]]
+
+            vge1 += -180
+            vge2 += -180
+            vef1 += -270
+            vef2 += -270
+
+            sequencer.append('charge1', Square_multitone_sequential(max_amps=charge_amps1,
+                                                                    flat_lens=times_prep1,
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=charge_freqs1,
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        charge_phases1),
+                                                                    plot=False))
+
+            sequencer.append('charge2', Square_multitone_sequential(max_amps=charge_amps2,
+                                                                    flat_lens=times_prep2,
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=charge_freqs2,
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        charge_phases2),
+                                                                    plot=False))
+            sequencer.sync_channels_time(self.channels)
+            if self.expt_cfg['correct_sqg']:
+                vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][0]
+                vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][1]
+                vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][2]
+                vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['1']['hadmard'][3]
+
+                vge1 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][0]
+                vge2 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][1]
+                vef1 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][2]
+                vef2 += self.quantum_device_cfg['single_qubit_gate_phase']['2']['hadmard'][3]
+            print(vge1, vge2, vef1, vef2)
+
+
+
+        ##############################################################
+        # Readout
+
+        # sequencer.sync_channels_time(self.channels)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # sequence: [gg, ge, eg, gf, fg, ee, ef, fe, ff]
+        # qubit gg for calibration
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubits ge and eg for calibration
+
+        # for qubit_id in self.expt_cfg['on_qubits']:
+
+        for qubit_id in ['2', '1']:
+            sequencer.new_sequence(self)
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        # gf and fg
+
+        for qubit_id in ['2', '1']:
+            sequencer.new_sequence(self)
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        # qubit ee for calibration
+
+
+        sequencer.new_sequence(self)
+        # pi on qubit1
+        sequencer.append('charge1', self.qubit_pi['1'])
+        # Idle time for qubit 2
+        idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge2', Idle(idle_time))
+        # pi on qubit2 with at the shifted frequency
+        sequencer.append('charge2',
+                         Square(max_amp=self.pulse_info['2']['pi_ee_amp'],
+                                flat_len=self.pulse_info['2']['pi_ee_len'],
+                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                    'ramp_sigma_len'],
+                                cutoff_sigma=2,
+                                freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'],
+                                phase=0))
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit ef and fe for calibration
+
+
+        for qubit_id in ['2', '1']:
+            sequencer.new_sequence(self)
+            # pi on qubit1
+            sequencer.append('charge1', self.qubit_pi['1'])
+            # Idle time for qubit 2
+            idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge2', Idle(idle_time))
+            # pi on qubit2 with at the shifted frequency
+            sequencer.append('charge2',
+                             Square(max_amp=self.pulse_info['2']['pi_ee_amp'],
+                                    flat_len=self.pulse_info['2']['pi_ee_len'],
+                                    ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                        'ramp_sigma_len'],
+                                    cutoff_sigma=2,
+                                    freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'],
+                                    phase=0))
+            # Idle time for qubit 1
+            idle_time = self.pulse_info['2']['pi_ee_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge1', Idle(idle_time))
+            # ef pi on qubit_id with shifted frequency
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_e_pi[qubit_id])
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        # qubit ff for calibration
+
+
+        sequencer.new_sequence(self)
+        # pi on qubit1
+        sequencer.append('charge1', self.qubit_pi['1'])
+        # Idle time for qubit 2
+        idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge2', Idle(idle_time))
+        # pi on qubit2 with at the shifted frequency
+        sequencer.append('charge2',
+                         Square(max_amp=self.pulse_info['2']['pi_ee_amp'],
+                                flat_len=self.pulse_info['2']['pi_ee_len'],
+                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                    'ramp_sigma_len'],
+                                cutoff_sigma=2,
+                                freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'],
+                                phase=0))
+        # Idle time for qubit 1
+        idle_time = self.pulse_info['2']['pi_ee_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge1', Idle(idle_time))
+        # ef pi on qubit_id with shifted frequency
+        sequencer.append('charge1', self.qubit_ef_e_pi['1'])
+        # Idle time for qubit 2
+        idle_time = self.tomo_pulse_info['1']['pi_ef_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge2', Idle(idle_time))
+        sequencer.append('charge2', self.qubit_ff_pi['2'])
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+    def histogram_while_gate_2q(self, sequencer):
+
+        sequencer.new_sequence(self)
+        self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+        self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+        self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+        self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+        self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+        if self.expt_cfg['default']:
+            print('Default gate is used!')
+
+        # State preparation
+        if self.expt_cfg['default']:
+            ## Compute alpha gate length:
+            alpha = 2 * np.arctan(np.sqrt(2)) / np.pi
+            middle_time1 = self.tomo_pulse_info['1']['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                    self.tomo_pulse_info['1']['pi_len'] - self.tomo_pulse_info['1'][
+                'half_pi_len'])
+            middle_time2 = self.tomo_pulse_info['2']['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                    self.tomo_pulse_info['2']['pi_len'] - self.tomo_pulse_info['2'][
+                'half_pi_len'])
+            ## Apply gate
+            qubit_id_now = '1'
+            if self.expt_cfg['default_gate'][0]=='I':
+                times_prep1 = [[middle_time1, 0],[self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],[middle_time1, 0]]
+                charge_amps1 = [[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0]]
+                charge_phases1 = [[0, 0], [0, 0], [180, 0], [180, 0]]
+                charge_freqs1 = [[self.tomo_pulse_info[qubit_id_now]['freq'], 0],[self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],[self.tomo_pulse_info[qubit_id_now]['freq'], 0]]
+
+            if self.expt_cfg['default_gate'][0]=='X':
+                times_prep1 = [[middle_time1, 0],[self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['pi_ef_len'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],[middle_time1, 0]]
+                charge_amps1 = [[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0]]
+                charge_phases1 = [[0, 0], [0, 0], [0, 0], [0, 0], [180, 0], [180, 0]]
+                charge_freqs1 = [[self.tomo_pulse_info[qubit_id_now]['freq'], 0],[self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],[self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],[self.tomo_pulse_info[qubit_id_now]['freq'], 0]]
+
+            if self.expt_cfg['default_gate'][0]=='XX':
+                times_prep1 = [[middle_time1, 0],[self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['pi_len'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],[middle_time1, 0]]
+                charge_amps1 = [[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0]]
+                charge_phases1 = [[0, 0], [0, 0], [180, 0], [180, 0], [180, 0], [180, 0]]
+                charge_freqs1 = [[self.tomo_pulse_info[qubit_id_now]['freq'], 0],[self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq'], 0],[self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],[self.tomo_pulse_info[qubit_id_now]['freq'], 0]]
+
+            if self.expt_cfg['default_gate'][0]=='Z':
+                times_prep1 = [[middle_time1, 0],[self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],[middle_time1, 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0]]
+                charge_amps1 = [[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0]]
+                charge_phases1 = [[0, 0], [0, 0], [300, 0], [300, 0], [210, 0]]
+                charge_freqs1 = [[self.tomo_pulse_info[qubit_id_now]['freq'], 0],[self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],[self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0]]
+
+            if self.expt_cfg['default_gate'][0]=='ZZ':
+                times_prep1 = [[middle_time1, 0],[self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],[middle_time1, 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0]]
+                charge_amps1 = [[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0]]
+                charge_phases1 = [[0, 0], [0, 0], [420, 0], [420, 0], [330, 0]]
+                charge_freqs1 = [[self.tomo_pulse_info[qubit_id_now]['freq'], 0],[self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],[self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0]]
+
+            qubit_id_now = '2'
+            if self.expt_cfg['default_gate'][1] == 'I':
+                times_prep2 = [[middle_time2, 0], [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0], [middle_time2, 0]]
+                charge_amps2 = [[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0]]
+                charge_phases2 = [[0, 0], [0, 0], [180, 0], [180, 0]]
+                charge_freqs2 = [[self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq'], 0]]
+
+            if self.expt_cfg['default_gate'][1] == 'X':
+                times_prep2 = [[middle_time2, 0], [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['pi_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0], [middle_time2, 0]]
+                charge_amps2 = [[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0]]
+                charge_phases2 = [[0, 0], [0, 0], [0, 0], [0, 0], [180, 0], [180, 0]]
+                charge_freqs2 = [[self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq'], 0]]
+
+            if self.expt_cfg['default_gate'][1] == 'XX':
+                times_prep2 = [[middle_time2, 0], [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['pi_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0], [middle_time2, 0]]
+                charge_amps2 = [[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0]]
+                charge_phases2 = [[0, 0], [0, 0], [180, 0], [180, 0], [180, 0], [180, 0]]
+                charge_freqs2 = [[self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq'], 0]]
+
+            if self.expt_cfg['default_gate'][1] == 'Z':
+                times_prep2 = [[middle_time2, 0], [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0], [middle_time2, 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0]]
+                charge_amps2 = [[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0]]
+                charge_phases2 = [[0, 0], [0, 0], [300, 0], [300, 0], [210, 0]]
+                charge_freqs2 = [[self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0]]
+
+            if self.expt_cfg['default_gate'][1] == 'ZZ':
+                times_prep2 = [[middle_time2, 0], [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0], [middle_time2, 0],
+                              [self.tomo_pulse_info[qubit_id_now]['half_pi_ef_len'], 0]]
+                charge_amps2 = [[self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id_now]['pi_ef_amp'], 0]]
+                charge_phases2 = [[0, 0], [0, 0], [420, 0], [420, 0], [330, 0]]
+                charge_freqs2 = [[self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id_now]['freq_ef'], 0]]
+
+            sequencer.append('charge1', Square_multitone_sequential(max_amps=charge_amps1,
+                                                                    flat_lens=times_prep1,
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=charge_freqs1,
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        charge_phases1),
+                                                                    plot=False))
+
+            sequencer.append('charge2', Square_multitone_sequential(max_amps=charge_amps2,
+                                                                    flat_lens=times_prep2,
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=charge_freqs2,
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        charge_phases2),
+                                                                    plot=False))
+
+        elif self.expt_cfg['Bell_inequality']:
+            print("Running Bell inequality experiment")
+            ## Compute alpha gate length:
+            alpha = 2 * np.arctan(np.sqrt(2)) / np.pi
+            middle_time1 = self.tomo_pulse_info['1']['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                    self.tomo_pulse_info['1']['pi_len'] - self.tomo_pulse_info['1'][
+                'half_pi_len'])
+            middle_time2 = self.tomo_pulse_info['2']['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                    self.tomo_pulse_info['2']['pi_len'] - self.tomo_pulse_info['2'][
+                'half_pi_len'])
+            ## setup |gg>+0.8|ee>+|ff>
+            flux_time = [[76.51,0.0],[86.61,0.0]]
+            flux2_amp = [[0.4,0.0],[0.2,0.0]]
+            flux2_freq = [[6.8408,6.5812],[6.581,0.0]]
+            flux2_phase = [[242.09,0],[253.50,0.0]]
+            sequencer.append('flux2', Square_multitone_sequential(max_amps=flux2_amp,
+                                                                  flat_lens=flux_time,
+                                                                  ramp_sigma_len=
+                                                                  self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                      'ramp_sigma_len'],
+                                                                  cutoff_sigma=2,
+                                                                  freqs=flux2_freq,
+                                                                  phases=np.pi / 180 * np.array(
+                                                                      flux2_phase), plot=False))
+            sequencer.sync_channels_time(self.channels)
+            ## Apply Q1 gate
+            qubit_id = "1"
+            v_ge=0
+            v_ef = 0
+            if self.expt_cfg['Bell_gate'][0]=='H1A':
+                v_ge = 0
+                v_ef = 0
+                alpha = 2 * np.arctan(np.sqrt(2)) / np.pi
+                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                    'half_pi_len'])
+
+                times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'], 0], [middle_time, 0],
+                              [self.tomo_pulse_info[qubit_id]['half_pi_ef_len'], 0]]
+                charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id]['pi_ef_amp'], 0]]
+                charge_phases = [[-180 + v_ef / np.pi * 180, 0], [-180 + v_ge / np.pi * 180, 0],
+                                 [-270 + v_ef / np.pi * 180, 0]]
+                charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id]['freq_ef'], 0]]
+
+                # print(times_prep)
+                # print(charge_amps)
+                # print(charge_phases)
+                # print(charge_freqs)
+
+                v_ge += -180 * np.pi / 180
+                v_ef += -270 * np.pi / 180
+                sequencer.append('charge%s' % qubit_id,
+                                 Square_multitone_sequential(max_amps=charge_amps,
+                                                             flat_lens=times_prep,
+                                                             ramp_sigma_len=
+                                                             self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                 'ramp_sigma_len'],
+                                                             cutoff_sigma=2,
+                                                             freqs=charge_freqs,
+                                                             phases=np.pi / 180 * np.array(charge_phases),
+                                                             plot=False))
+                sequencer.sync_channels_time(self.channels)
+            if self.expt_cfg['Bell_gate'][0]=='H2A':
+                v_ge = 0
+                v_ef = 0
+                alpha = 2 * np.arctan(np.sqrt(2)) / np.pi
+                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                    'half_pi_len'])
+
+                times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'], 0], [middle_time, 0],
+                              [self.tomo_pulse_info[qubit_id]['half_pi_ef_len'], 0]]
+                charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id]['pi_ef_amp'], 0]]
+                charge_phases = [[120 + v_ef / np.pi * 180, 0], [-240 + v_ge / np.pi * 180, 0],
+                                 [30 + v_ef / np.pi * 180, 0]]
+                charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id]['freq_ef'], 0]]
+
+                # print(times_prep)
+                # print(charge_amps)
+                # print(charge_phases)
+                # print(charge_freqs)
+
+                v_ge += -240 * np.pi / 180
+                v_ef += 30 * np.pi / 180
+                sequencer.append('charge%s' % qubit_id,
+                                 Square_multitone_sequential(max_amps=charge_amps,
+                                                             flat_lens=times_prep,
+                                                             ramp_sigma_len=
+                                                             self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                 'ramp_sigma_len'],
+                                                             cutoff_sigma=2,
+                                                             freqs=charge_freqs,
+                                                             phases=np.pi / 180 * np.array(charge_phases),
+                                                             plot=False))
+                sequencer.sync_channels_time(self.channels)
+
+            ## Apply Q2 gate
+            qubit_id = "2"
+            if self.expt_cfg['Bell_gate'][1] == 'H1B':
+                v_ge = 0
+                v_ef = 0
+                alpha = 2 * np.arctan(np.sqrt(2)) / np.pi
+                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                    'half_pi_len'])
+
+                times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'], 0], [middle_time, 0],
+                              [self.tomo_pulse_info[qubit_id]['half_pi_ef_len'], 0]]
+                charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id]['pi_ef_amp'], 0]]
+                charge_phases = [[150 + v_ef / np.pi * 180, 0], [-210 + v_ge / np.pi * 180, 0],
+                                 [240 + v_ef / np.pi * 180, 0]]
+                charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id]['freq_ef'], 0]]
+
+                # print(times_prep)
+                # print(charge_amps)
+                # print(charge_phases)
+                # print(charge_freqs)
+
+                v_ge += -210 * np.pi / 180
+                v_ef += 240 * np.pi / 180
+                sequencer.append('charge%s' % qubit_id,
+                                 Square_multitone_sequential(max_amps=charge_amps,
+                                                             flat_lens=times_prep,
+                                                             ramp_sigma_len=
+                                                             self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                 'ramp_sigma_len'],
+                                                             cutoff_sigma=2,
+                                                             freqs=charge_freqs,
+                                                             phases=np.pi / 180 * np.array(charge_phases),
+                                                             plot=False))
+                sequencer.sync_channels_time(self.channels)
+            if self.expt_cfg['Bell_gate'][1] == 'H2B':
+                v_ge = 0
+                v_ef = 0
+                alpha = 2 * np.arctan(np.sqrt(2)) / np.pi
+                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                    'half_pi_len'])
+
+                times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'], 0], [middle_time, 0],
+                              [self.tomo_pulse_info[qubit_id]['half_pi_ef_len'], 0]]
+                charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id]['pi_amp'], 0],
+                               [self.tomo_pulse_info[qubit_id]['pi_ef_amp'], 0]]
+                charge_phases = [[-150 + v_ef / np.pi * 180, 0], [-150 + v_ge / np.pi * 180, 0],
+                                 [-60 + v_ef / np.pi * 180, 0]]
+                charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'], 0],
+                                [self.tomo_pulse_info[qubit_id]['freq'], 0],
+                                [self.tomo_pulse_info[qubit_id]['freq_ef'], 0]]
+
+                # print(times_prep)
+                # print(charge_amps)
+                # print(charge_phases)
+                # print(charge_freqs)
+
+                v_ge += -150 * np.pi / 180
+                v_ef += -60 * np.pi / 180
+                sequencer.append('charge%s' % qubit_id,
+                                 Square_multitone_sequential(max_amps=charge_amps,
+                                                             flat_lens=times_prep,
+                                                             ramp_sigma_len=
+                                                             self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                 'ramp_sigma_len'],
+                                                             cutoff_sigma=2,
+                                                             freqs=charge_freqs,
+                                                             phases=np.pi / 180 * np.array(charge_phases),
+                                                             plot=False))
+                sequencer.sync_channels_time(self.channels)
+
+        else:
+            sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                    flat_lens=self.expt_cfg['times_prep'],
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        self.expt_cfg['charge1_phases_prep']),
+                                                                    plot=False))
+
+            sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                    flat_lens=self.expt_cfg['times_prep'],
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        self.expt_cfg['charge2_phases_prep']),
+                                                                    plot=False))
+
+            sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                                                  flat_lens=self.expt_cfg['times_prep'],
+                                                                  ramp_sigma_len=
+                                                                  self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                      'ramp_sigma_len'],
+                                                                  cutoff_sigma=2,
+                                                                  freqs=self.expt_cfg['flux1_freqs_prep'],
+                                                                  phases=np.pi / 180 * np.array(
+                                                                      self.expt_cfg['flux1_phases_prep']), plot=False))
+
+            sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                                                  flat_lens=self.expt_cfg['times_prep'],
+                                                                  ramp_sigma_len=
+                                                                  self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                      'ramp_sigma_len'],
+                                                                  cutoff_sigma=2,
+                                                                  freqs=self.expt_cfg['flux2_freqs_prep'],
+                                                                  phases=np.pi / 180 * np.array(
+                                                                      self.expt_cfg['flux2_phases_prep']), plot=False))
+
+        sequencer.sync_channels_time(self.channels)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # sequence: [gg, ge, eg, gf, fg, ee, ef, fe, ff]
+        # qubit gg for calibration
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubits ge and eg for calibration
+
+        # for qubit_id in self.expt_cfg['on_qubits']:
+
+        for qubit_id in ['2', '1']:
+            sequencer.new_sequence(self)
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        # gf and fg
+
+        for qubit_id in ['2', '1']:
+            sequencer.new_sequence(self)
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        # qubit ee for calibration
+
+
+        sequencer.new_sequence(self)
+        # pi on qubit1
+        sequencer.append('charge1', self.qubit_pi['1'])
+        # Idle time for qubit 2
+        idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge2', Idle(idle_time))
+        # pi on qubit2 with at the shifted frequency
+        sequencer.append('charge2',
+                         Square(max_amp=self.pulse_info['2']['pi_ee_amp'],
+                                flat_len=self.pulse_info['2']['pi_ee_len'],
+                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                    'ramp_sigma_len'],
+                                cutoff_sigma=2,
+                                freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'],
+                                phase=0))
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit ef and fe for calibration
+
+
+        for qubit_id in ['2', '1']:
+            sequencer.new_sequence(self)
+            # pi on qubit1
+            sequencer.append('charge1', self.qubit_pi['1'])
+            # Idle time for qubit 2
+            idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge2', Idle(idle_time))
+            # pi on qubit2 with at the shifted frequency
+            sequencer.append('charge2',
+                             Square(max_amp=self.pulse_info['2']['pi_ee_amp'],
+                                    flat_len=self.pulse_info['2']['pi_ee_len'],
+                                    ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                        'ramp_sigma_len'],
+                                    cutoff_sigma=2,
+                                    freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'],
+                                    phase=0))
+            # Idle time for qubit 1
+            idle_time = self.pulse_info['2']['pi_ee_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge1', Idle(idle_time))
+            # ef pi on qubit_id with shifted frequency
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_e_pi[qubit_id])
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        # qubit ff for calibration
+
+
+        sequencer.new_sequence(self)
+        # pi on qubit1
+        sequencer.append('charge1', self.qubit_pi['1'])
+        # Idle time for qubit 2
+        idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge2', Idle(idle_time))
+        # pi on qubit2 with at the shifted frequency
+        sequencer.append('charge2',
+                         Square(max_amp=self.pulse_info['2']['pi_ee_amp'],
+                                flat_len=self.pulse_info['2']['pi_ee_len'],
+                                ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                    'ramp_sigma_len'],
+                                cutoff_sigma=2,
+                                freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'],
+                                phase=0))
+        # Idle time for qubit 1
+        idle_time = self.pulse_info['2']['pi_ee_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge1', Idle(idle_time))
+        # ef pi on qubit_id with shifted frequency
+        sequencer.append('charge1', self.qubit_ef_e_pi['1'])
+        # Idle time for qubit 2
+        idle_time = self.tomo_pulse_info['1']['pi_ef_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+            'ramp_sigma_len']
+        sequencer.append('charge2', Idle(idle_time))
+        sequencer.append('charge2', self.qubit_ff_pi['2'])
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=True)
+
+    def histogram_while_gate(self, sequencer):
+
+        sequencer.new_sequence(self)
+
+        # State preparation
+        sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                flat_lens=self.expt_cfg['times_prep'],
+                                                                ramp_sigma_len=
+                                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                    'ramp_sigma_len'],
+                                                                cutoff_sigma=2,
+                                                                freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                phases=np.pi / 180 * np.array(
+                                                                    self.expt_cfg['charge1_phases_prep']),
+                                                                plot=False))
+
+        sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                flat_lens=self.expt_cfg['times_prep'],
+                                                                ramp_sigma_len=
+                                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                    'ramp_sigma_len'],
+                                                                cutoff_sigma=2,
+                                                                freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                phases=np.pi / 180 * np.array(
+                                                                    self.expt_cfg['charge2_phases_prep']),
+                                                                plot=False))
+
+        sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                                              flat_lens=self.expt_cfg['times_prep'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['flux1_freqs_prep'],
+                                                              phases=np.pi / 180 * np.array(
+                                                                  self.expt_cfg['flux1_phases_prep']), plot=False))
+
+        sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                                              flat_lens=self.expt_cfg['times_prep'],
+                                                              ramp_sigma_len=
+                                                              self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                  'ramp_sigma_len'],
+                                                              cutoff_sigma=2,
+                                                              freqs=self.expt_cfg['flux2_freqs_prep'],
+                                                              phases=np.pi / 180 * np.array(
+                                                                  self.expt_cfg['flux2_phases_prep']), plot=False))
+
+        sequencer.sync_channels_time(self.channels)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # Calibration pulse for g, e, f histogram
+        # qubit g
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit e
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit f
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
 
         return sequencer.complete(self, plot=False)
 
@@ -2135,9 +4070,12 @@ class PulseSequences:
                 # fg state
                 if state == 'fg':
 
-                    if self.expt_cfg['flux_probe']:
-                        sequencer.append('flux1', self.qubit_pi['1'])
-                        sequencer.append('flux1', self.qubit_ef_pi['1'])
+                    if self.expt_cfg['flux_pulse']:
+                        sequencer.append('charge%s' % self.charge_port['1'], self.qubit_pi['1'])
+                        sequencer.sync_channels_time(self.channels)
+                        sequencer.append('charge%s' % self.charge_port['2'], self.qubit_ee_pi['2'])
+                        sequencer.sync_channels_time(self.channels)
+                        sequencer.append('flux2', self.sideband_eefg['pi'])
                     else:
                         sequencer.append('charge%s' %self.charge_port['1'], self.qubit_pi['1'])
                         sequencer.append('charge%s' %self.charge_port['1'], self.qubit_ef_pi['1'])
@@ -4477,6 +6415,7 @@ class PulseSequences:
             sequencer.sync_channels_time(self.channels)
             self.readout(sequencer, self.expt_cfg['on_cavity'])
 
+
             sequencer.end_sequence()
 
         return sequencer.complete(self, plot=False)
@@ -5115,6 +7054,3933 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=False)
 
+    def tomo_1q_gef_process_old(self, sequencer):
+        # Author: Ziqian 28 Jan 2022
+        ''' Single qubit three level process tomography in the presence of multitone charge and flux drive'''
+
+        measurement_pulse = ['I', 'Xge', 'Yge', 'Pge', 'Xef', 'Yef', 'PgeXef', 'PgeYef', 'Pgf']
+        pre_states = ['I', 'Pge', 'PgePef', 'Xge', 'Yge', 'Xef', 'Yef', 'Xgf', 'Ygf']
+
+        for pre_state in pre_states:
+
+
+            for qubit_1_measure in measurement_pulse:
+
+                sequencer.new_sequence(self)
+                # Pre pulse rotation
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    pre_phase = 0
+                    if pre_state == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif pre_state == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif pre_state == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif pre_state == 'Xgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+
+                    elif pre_state == 'Xef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi / 2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif pre_state == 'Yef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi / 2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif pre_state == 'Ygf':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+                    elif pre_state == 'PgePef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                sequencer.sync_channels_time(self.channels)
+
+                # Unknown gate preparation
+                sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                        flat_lens=self.expt_cfg['times_prep'],
+                                                                        ramp_sigma_len=
+                                                                        self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                            'ramp_sigma_len'],
+                                                                        cutoff_sigma=2,
+                                                                        freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                        phases=np.pi / 180 * np.array(
+                                                                            self.expt_cfg['charge1_phases_prep']),
+                                                                        plot=False))
+
+                sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                        flat_lens=self.expt_cfg['times_prep'],
+                                                                        ramp_sigma_len=
+                                                                        self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                            'ramp_sigma_len'],
+                                                                        cutoff_sigma=2,
+                                                                        freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                        phases=np.pi / 180 * np.array(
+                                                                            self.expt_cfg['charge2_phases_prep']),
+                                                                        plot=False))
+
+                sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                                                      flat_lens=self.expt_cfg['times_prep'],
+                                                                      ramp_sigma_len=
+                                                                      self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                          'ramp_sigma_len'],
+                                                                      cutoff_sigma=2,
+                                                                      freqs=self.expt_cfg['flux1_freqs_prep'],
+                                                                      phases=np.pi / 180 * np.array(
+                                                                          self.expt_cfg['flux1_phases_prep']), plot=False))
+
+                sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                                                      flat_lens=self.expt_cfg['times_prep'],
+                                                                      ramp_sigma_len=
+                                                                      self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                          'ramp_sigma_len'],
+                                                                      cutoff_sigma=2,
+                                                                      freqs=self.expt_cfg['flux2_freqs_prep'],
+                                                                      phases=np.pi / 180 * np.array(
+                                                                          self.expt_cfg['flux2_phases_prep']), plot=False))
+
+                sequencer.sync_channels_time(self.channels)
+
+                # Tomographic pulses
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                # print(self.tomo_pulse_info)
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    measurement_phase = 0
+
+                    if qubit_1_measure == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2*1.0 + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+
+                    elif qubit_1_measure == 'Xef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2*1.0 + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgeXef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+                    elif qubit_1_measure == 'PgeYef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+
+        # Np flux drive for g,e calibration pulses
+        # qubit g
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit e
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit f
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+    def tomo_1q_process(self, sequencer):
+        # Author: Ziqian 2 May 2022
+        ''' Single qubit process tomography in the presence of multitone charge and flux drive'''
+
+        measurement_pulse = ['I', 'Xge', 'Yge']
+        pre_states = ['I', 'Pge', 'Xge', 'Yge']
+
+        if self.expt_cfg['pre_gate']:
+            gate_name = self.expt_cfg['pre_gate_name']
+            print('Defined gate is used! Name: ', gate_name)
+
+        for pre_state in pre_states:
+
+
+            for qubit_1_measure in measurement_pulse:
+
+                sequencer.new_sequence(self)
+                # Pre pulse rotation
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    v_ge = 0 * np.pi / 180
+                    pre_phase = 0
+                    # if qubit_id=='2':
+                    #     pre_phase = -39*np.pi/180
+                    #     print('Q2 phase correction applied!')
+                    if pre_state == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+
+                    elif pre_state == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi/2 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+
+                    elif pre_state == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+
+                sequencer.sync_channels_time(self.channels)
+
+                # Unknown gate preparation
+                if self.expt_cfg['pre_gate']:
+                    if gate_name == 'Z':
+                        v_ge += -180 * np.pi / 180
+                        sequencer.sync_channels_time(self.channels)
+                else:
+                    v_ge += -self.expt_cfg['phase_ge']*np.pi/180
+                    sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                            flat_lens=self.expt_cfg['times_prep'],
+                                                                            ramp_sigma_len=
+                                                                            self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                                'ramp_sigma_len'],
+                                                                            cutoff_sigma=2,
+                                                                            freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                            phases=np.pi / 180 * np.array(
+                                                                                self.expt_cfg['charge1_phases_prep']),
+                                                                            plot=False))
+
+                    sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                            flat_lens=self.expt_cfg['times_prep'],
+                                                                            ramp_sigma_len=
+                                                                            self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                                'ramp_sigma_len'],
+                                                                            cutoff_sigma=2,
+                                                                            freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                            phases=np.pi / 180 * np.array(
+                                                                                self.expt_cfg['charge2_phases_prep']),
+                                                                            plot=False))
+
+                    sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                                                          flat_lens=self.expt_cfg['times_prep'],
+                                                                          ramp_sigma_len=
+                                                                          self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                              'ramp_sigma_len'],
+                                                                          cutoff_sigma=2,
+                                                                          freqs=self.expt_cfg['flux1_freqs_prep'],
+                                                                          phases=np.pi / 180 * np.array(
+                                                                              self.expt_cfg['flux1_phases_prep']), plot=False))
+
+                    sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                                                          flat_lens=self.expt_cfg['times_prep'],
+                                                                          ramp_sigma_len=
+                                                                          self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                              'ramp_sigma_len'],
+                                                                          cutoff_sigma=2,
+                                                                          freqs=self.expt_cfg['flux2_freqs_prep'],
+                                                                          phases=np.pi / 180 * np.array(
+                                                                              self.expt_cfg['flux2_phases_prep']), plot=False))
+
+                    sequencer.sync_channels_time(self.channels)
+
+                # Tomographic pulses
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                # print(self.tomo_pulse_info)
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    measurement_phase = 0
+
+                    if qubit_1_measure == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2*1.0 + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+
+        # Np flux drive for g,e calibration pulses
+        # qubit g
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit e
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+    def tomo_1q_gef_process_opt_qudit(self, sequencer):
+        # Author: Ziqian 28 Jan 2022
+        ''' Single qubit three level process tomography in the presence of multitone charge and flux drive'''
+
+        measurement_pulse = ['I', 'Xge', 'Yge', 'Pge', 'Xef', 'Yef', 'PgeXef', 'PgeYef', 'Pgf']
+        pre_states = ['I', 'Pge', 'PgePef', 'Xge', 'Yge', 'Xef', 'Yef', 'Xgf', 'Ygf']
+
+        if self.expt_cfg['use_custom_ratio']:
+            pass
+        else:
+            print('Default ratio is used')
+        if self.expt_cfg['phase_offset']:
+            pre_ge = self.expt_cfg['pre_pulse_phase'][0]/np.pi*180
+            pre_ef = self.expt_cfg['pre_pulse_phase'][1] / np.pi * 180
+
+            post_ge = self.expt_cfg['post_pulse_phase'][0] / np.pi * 180
+            post_ef = self.expt_cfg['post_pulse_phase'][1] / np.pi * 180
+            phase_flip = -1
+        else:
+            pre_ge = self.expt_cfg['pre_pulse_phase'][0] / np.pi * 0
+            pre_ef = self.expt_cfg['pre_pulse_phase'][1] / np.pi * 0
+
+            post_ge = self.expt_cfg['post_pulse_phase'][0] / np.pi * 0
+            post_ef = self.expt_cfg['post_pulse_phase'][1] / np.pi * 0
+            phase_flip = 1
+
+        for pre_state in pre_states:
+
+
+            for qubit_1_measure in measurement_pulse:
+
+                sequencer.new_sequence(self)
+                # Pre pulse rotation
+
+
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    v_ge = 0 * np.pi / 180
+                    v_ef = 0 * np.pi / 180
+                    pre_phase = 0
+                    # if qubit_id=='2':
+                    #     pre_phase = -39*np.pi/180
+                    #     print('Q2 phase correction applied!')
+                    if pre_state == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0+pre_ge+np.pi/2*(1-phase_flip) )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi/2*phase_flip+pre_ge )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0+pre_ge+np.pi/2*(1-phase_flip) )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Xgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0+pre_ge+np.pi/2*(1-phase_flip) )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase+pre_ef+np.pi/2*(1-phase_flip))
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+
+
+
+                    elif pre_state == 'Xef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0+pre_ge+np.pi/2*(1-phase_flip) )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase+pre_ef+np.pi/2*(1-phase_flip))
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Yef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0+pre_ge+np.pi/2*(1-phase_flip) )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi/2*phase_flip + pre_phase+pre_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Ygf':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi/2*phase_flip+pre_ge )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase+pre_ef+np.pi/2*(1-phase_flip))
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+
+                    elif pre_state == 'PgePef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0+pre_ge+np.pi/2*(1-phase_flip) )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase+pre_ef+np.pi/2*(1-phase_flip))
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                sequencer.sync_channels_time(self.channels)
+
+                # Unknown gate preparation
+                v_ge += -self.expt_cfg['phase_ge']*np.pi/180
+                v_ef += -self.expt_cfg['phase_ef']*np.pi/180
+                # read alpha parameter from txt file
+                alpha_path = self.expt_cfg['alpha_path']
+                alpha = np.loadtxt(alpha_path) * 1000 / 2 / np.pi
+
+                if self.expt_cfg['use_custom_ratio']:
+                    rrge = self.expt_cfg['Qge_ratio']
+                    rref = self.expt_cfg['Qef_ratio']
+                else:
+                    sigma1 = self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len']
+                    pge = self.tomo_pulse_info[self.expt_cfg['on_qubits'][0]]['pi_len']
+                    pef = self.tomo_pulse_info[self.expt_cfg['on_qubits'][0]]['pi_ef_len']
+                    rrge = 1000 / 2 / (sigma1 * np.sqrt(2 * np.pi) * erf(np.sqrt(2)) + pge)
+                    rref = 1000 / 2 / (sigma1 * np.sqrt(2 * np.pi) * erf(np.sqrt(2)) + pef)/np.sqrt(2)
+                    # print('Default ratio is used:      Ratio_ge:',rrge, '    Ratio_ef:',rref)
+
+                if self.expt_cfg['on_qubits'][0]=='1':
+                    sequencer.append('charge1', opt_single_qudit(Omega=np.array(self.expt_cfg['Omega']),
+                                                                total_len=self.expt_cfg['t_end'],
+                                                                Ns=self.expt_cfg['Ns'],
+                                                                ratio_ge=rrge,
+                                                                ratio_ef=rref,
+                                                                alpha=alpha,
+                                                                plot=False))
+                else:
+
+                    sequencer.append('charge2', opt_single_qudit(Omega=np.array(self.expt_cfg['Omega']),
+                                                                 total_len=self.expt_cfg['t_end'],
+                                                                 Ns=self.expt_cfg['Ns'],
+                                                                 ratio_ge=rrge,
+                                                                 ratio_ef=rref,
+                                                                 alpha=alpha,
+                                                                 plot=False))
+
+                sequencer.sync_channels_time(self.channels)
+
+                # Tomographic pulses
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                # print(self.tomo_pulse_info)
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    measurement_phase = 0*np.pi/180
+
+                    if qubit_1_measure == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge+post_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2*1.0 + measurement_phase+v_ge+post_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge+post_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge+post_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase+v_ge*0+v_ef+post_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+
+                    elif qubit_1_measure == 'Xef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase+v_ef+post_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2*1.0 + measurement_phase+v_ef+post_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgeXef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge+post_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase+v_ge*0+v_ef+post_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+                    elif qubit_1_measure == 'PgeYef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge+post_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + measurement_phase+v_ge*0+v_ef+post_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    # test_a = sequencer.get_sequence()
+                    # np.save('charge1' + pre_state + '_' + qubit_1_measure + '.npy', test_a['charge1'])
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+
+
+        # Np flux drive for g,e calibration pulses
+        # qubit g
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit e
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit f
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+        
+
+        return sequencer.complete(self, plot=False)
+
+    def tomo_1ququart_process_opt_qudit(self, sequencer):
+        # Author: Ziqian 28 Jan 2022
+        ''' Single qubit three level process tomography in the presence of multitone charge and flux drive'''
+
+        measurement_pulse = ['I', 'Xge', 'Yge', 'Pge', 'Xef', 'Yef', 'PgeXef', 'PgeYef', 'Pgf', 'Xfh', 'Yfh', 'PgfXfh',
+                             'PgfYfh', 'Pgh', 'PefXfh', 'PefYfh']
+        pre_states = ['I', 'Pge', 'PgePef', 'PgePefPfh', 'Xge', 'Yge', 'Xgf', 'Ygf', 'Xgh', 'Ygh', 'Xef', 'Yef', 'Xeh',
+                      'Yeh', 'Xfh', 'Yfh']
+
+        if self.expt_cfg['use_custom_ratio']:
+            pass
+        else:
+            print('Default ratio is used')
+        if self.expt_cfg['phase_offset']:
+            pre_ge = self.expt_cfg['pre_pulse_phase'][0] / np.pi * 180
+            pre_ef = self.expt_cfg['pre_pulse_phase'][1] / np.pi * 180
+            pre_fh = self.expt_cfg['pre_pulse_phase'][2] / np.pi * 180
+
+            post_ge = self.expt_cfg['post_pulse_phase'][0] / np.pi * 180
+            post_ef = self.expt_cfg['post_pulse_phase'][1] / np.pi * 180
+            post_fh = self.expt_cfg['post_pulse_phase'][2] / np.pi * 180
+            phase_flip = -1
+        else:
+            pre_ge = self.expt_cfg['pre_pulse_phase'][0] / np.pi * 0
+            pre_ef = self.expt_cfg['pre_pulse_phase'][1] / np.pi * 0
+            pre_fh = self.expt_cfg['pre_pulse_phase'][2] / np.pi * 0
+
+            post_ge = self.expt_cfg['post_pulse_phase'][0] / np.pi * 0
+            post_ef = self.expt_cfg['post_pulse_phase'][1] / np.pi * 0
+            post_fh = self.expt_cfg['post_pulse_phase'][2] / np.pi * 0
+            phase_flip = 1
+
+        for pre_state in pre_states:
+
+            for qubit_1_measure in measurement_pulse:
+
+                sequencer.new_sequence(self)
+                # Pre pulse rotation
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                    self.tomo_pulse_info['1']['freq_fh'] = self.quantum_device_cfg['qubit']['1']['freq_fh']
+                    self.tomo_pulse_info['2']['freq_fh'] = self.quantum_device_cfg['qubit']['2']['freq_fh']
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    v_ge = 0 * np.pi / 180
+                    v_ef = 0 * np.pi / 180
+                    v_fh = 0 * np.pi / 180
+                    pre_phase = 0
+                    # if qubit_id=='2':
+                    #     pre_phase = -39*np.pi/180
+                    #     print('Q2 phase correction applied!')
+                    if pre_state == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi / 2)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Xgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                    elif pre_state == 'Xgh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+
+
+
+                    elif pre_state == 'Xef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                    elif pre_state == 'Xeh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Xfh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Yef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi / 2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                    elif pre_state == 'Yeh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi / 2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                    elif pre_state == 'Yfh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=np.pi / 2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Ygf':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi / 2)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                    elif pre_state == 'Ygh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi / 2)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+
+                    elif pre_state == 'PgePef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'PgePefPfh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                sequencer.sync_channels_time(self.channels)
+
+                # Unknown gate preparation
+                v_ge += -self.expt_cfg['phase_ge'] * np.pi / 180
+                v_ef += -self.expt_cfg['phase_ef'] * np.pi / 180
+                v_fh += -self.expt_cfg['phase_fh'] * np.pi / 180
+                # read alpha parameter from txt file
+                alpha_path = self.expt_cfg['alpha_path']
+                alpha = np.loadtxt(alpha_path) * 1000 / 2 / np.pi
+
+                if self.expt_cfg['use_custom_ratio']:
+                    rrge = self.expt_cfg['Qge_ratio']
+                    rref = self.expt_cfg['Qef_ratio']
+                    rrfh = self.expt_cfg['Qfh_ratio']
+                else:
+                    sigma1 = self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len']
+                    pge = self.tomo_pulse_info[self.expt_cfg['on_qubits'][0]]['pi_len']
+                    pef = self.tomo_pulse_info[self.expt_cfg['on_qubits'][0]]['pi_ef_len']
+                    pfh = self.tomo_pulse_info[self.expt_cfg['on_qubits'][0]]['pi_fh_len']
+                    rrge = 1000 / 2 / (sigma1 * np.sqrt(2 * np.pi) * erf(np.sqrt(2)) + pge)
+                    rref = 1000 / 2 / (sigma1 * np.sqrt(2 * np.pi) * erf(np.sqrt(2)) + pef) / np.sqrt(2)
+                    rrfh = 1000 / 2 / (sigma1 * np.sqrt(2 * np.pi) * erf(np.sqrt(2)) + pfh) / np.sqrt(3)
+                    # print('Default ratio is used:      Ratio_ge:',rrge, '    Ratio_ef:',rref)
+
+                if self.expt_cfg['on_qubits'][0] == '1':
+                    sequencer.append('charge1', opt_single_qudit4(Omega=np.array(self.expt_cfg['Omega']),
+                                                                 total_len=self.expt_cfg['t_end'],
+                                                                 Ns=self.expt_cfg['Ns'],
+                                                                 ratio_ge=rrge,
+                                                                 ratio_ef=rref,
+                                                                 ratio_fh=rrfh,
+                                                                 alpha=alpha,
+                                                                 plot=False))
+                else:
+
+                    sequencer.append('charge2', opt_single_qudit4(Omega=np.array(self.expt_cfg['Omega']),
+                                                                 total_len=self.expt_cfg['t_end'],
+                                                                 Ns=self.expt_cfg['Ns'],
+                                                                 ratio_ge=rrge,
+                                                                 ratio_ef=rref,
+                                                                 ratio_fh=rrfh,
+                                                                 alpha=alpha,
+                                                                 plot=False))
+
+                sequencer.sync_channels_time(self.channels)
+
+                # Tomographic pulses
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                    self.tomo_pulse_info['1']['freq_fh'] = self.quantum_device_cfg['qubit']['1']['freq_fh']
+                    self.tomo_pulse_info['2']['freq_fh'] = self.quantum_device_cfg['qubit']['2']['freq_fh']
+                # print(self.tomo_pulse_info)
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    measurement_phase = 0
+
+                    if qubit_1_measure == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase + v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi / 2 * 1.0 + measurement_phase + v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase + v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase + v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ge * 0 + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+
+                    elif qubit_1_measure == 'Xef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi / 2 * 1.0 + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgeXef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase + v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ge * 0 + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgeYef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase + v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi / 2 + measurement_phase + v_ge * 0 + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Xfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=np.pi + measurement_phase + v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=-np.pi / 2 + measurement_phase + v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgfXfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase + v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=np.pi + measurement_phase + v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgfYfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase + v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=-np.pi / 2 + measurement_phase + v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pgh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase + v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=np.pi + measurement_phase + v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PefXfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=np.pi + measurement_phase + v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PefYfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=-np.pi / 2 + measurement_phase + v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    # test_a = sequencer.get_sequence()
+                    # np.save('charge1' + pre_state + '_' + qubit_1_measure + '.npy', test_a['charge1'])
+
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+
+        # Np flux drive for g,e calibration pulses
+        # qubit g
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit e
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit f
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit h
+        sequencer.new_sequence(self)
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                              flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'],
+                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                              phase=np.pi)
+            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+    def tomo_1ququart_process(self, sequencer):
+        # Author: Ziqian 29 Oct 2022
+        ''' Single ququart process tomography in the presence of multitone charge and flux drive'''
+
+        measurement_pulse = ['I', 'Xge', 'Yge', 'Pge', 'Xef', 'Yef', 'PgeXef', 'PgeYef', 'Pgf', 'Xfh', 'Yfh', 'PgfXfh', 'PgfYfh', 'Pgh', 'PefXfh', 'PefYfh']
+        pre_states = ['I', 'Pge', 'PgePef', 'PgePefPfh', 'Xge', 'Yge', 'Xgf', 'Ygf', 'Xgh', 'Ygh', 'Xef', 'Yef', 'Xeh', 'Yeh', 'Xfh', 'Yfh']
+
+        if self.expt_cfg['pre_gate']:
+            gate_name = self.expt_cfg['pre_gate_name']
+            print('Defined gate is used! Name: ', gate_name)
+
+        for pre_state in pre_states:
+
+
+            for qubit_1_measure in measurement_pulse:
+
+                sequencer.new_sequence(self)
+                # Pre pulse rotation
+
+
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                    self.tomo_pulse_info['1']['freq_fh'] = self.quantum_device_cfg['qubit']['1']['freq_fh']
+                    self.tomo_pulse_info['2']['freq_fh'] = self.quantum_device_cfg['qubit']['2']['freq_fh']
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    v_ge = 0 * np.pi / 180
+                    v_ef = 0 * np.pi / 180
+                    v_fh = 0 * np.pi / 180
+                    pre_phase = 0
+                    # if qubit_id=='2':
+                    #     pre_phase = -39*np.pi/180
+                    #     print('Q2 phase correction applied!')
+                    if pre_state == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi/2 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Xgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                    elif pre_state == 'Xgh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+
+
+
+                    elif pre_state == 'Xef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                    elif pre_state == 'Xeh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Xfh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Yef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                    elif pre_state == 'Yeh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                    elif pre_state == 'Yfh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=np.pi / 2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Ygf':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi/2 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                    elif pre_state == 'Ygh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi/2 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+
+                    elif pre_state == 'PgePef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'PgePefPfh':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                sequencer.sync_channels_time(self.channels)
+
+                # Unknown gate preparation
+                if self.expt_cfg['pre_gate']:
+
+                    gate_name = self.expt_cfg['pre_gate_name']
+
+                    if gate_name == 'H3':
+                        alpha = 2*np.arctan(np.sqrt(2))/np.pi
+                        middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                                    self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                'half_pi_len'])
+
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0],[middle_time, 0],[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0]]
+                        charge_phases = [[-180+v_ef/np.pi*180,0],[-180+v_ge/np.pi*180,0],[-90+v_ef/np.pi*180,0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'],0],[self.tomo_pulse_info[qubit_id]['freq'],0],[self.tomo_pulse_info[qubit_id]['freq_ef'],0]]
+
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+
+                        v_ge += -180 * np.pi / 180
+                        v_ef += -90 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name=='H1A':
+                        alpha = 2*np.arctan(np.sqrt(2))/np.pi
+                        middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                                    self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                'half_pi_len'])
+
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0],[middle_time, 0],[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0]]
+                        charge_phases = [[-180+v_ef/np.pi*180,0],[-180+v_ge/np.pi*180,0],[-270+v_ef/np.pi*180,0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'],0],[self.tomo_pulse_info[qubit_id]['freq'],0],[self.tomo_pulse_info[qubit_id]['freq_ef'],0]]
+
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+
+                        v_ge += -180 * np.pi / 180
+                        v_ef += -270 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name=='H2A':
+                        alpha = 2*np.arctan(np.sqrt(2))/np.pi
+                        middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                                    self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                'half_pi_len'])
+
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0],[middle_time, 0],[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0]]
+                        charge_phases = [[120+v_ef/np.pi*180,0],[-240+v_ge/np.pi*180,0],[30+v_ef/np.pi*180,0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'],0],[self.tomo_pulse_info[qubit_id]['freq'],0],[self.tomo_pulse_info[qubit_id]['freq_ef'],0]]
+
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+
+                        v_ge += -240 * np.pi / 180
+                        v_ef += 30 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name=='H1B':
+                        alpha = 2*np.arctan(np.sqrt(2))/np.pi
+                        middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                                    self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                'half_pi_len'])
+
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0],[middle_time, 0],[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0]]
+                        charge_phases = [[150+v_ef/np.pi*180,0],[-210+v_ge/np.pi*180,0],[240+v_ef/np.pi*180,0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'],0],[self.tomo_pulse_info[qubit_id]['freq'],0],[self.tomo_pulse_info[qubit_id]['freq_ef'],0]]
+
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+
+                        v_ge += -210 * np.pi / 180
+                        v_ef += 240 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name=='H2B':
+                        alpha = 2*np.arctan(np.sqrt(2))/np.pi
+                        middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                                    self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                'half_pi_len'])
+
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0],[middle_time, 0],[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0]]
+                        charge_phases = [[-150+v_ef/np.pi*180,0],[-150+v_ge/np.pi*180,0],[-60+v_ef/np.pi*180,0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'],0],[self.tomo_pulse_info[qubit_id]['freq'],0],[self.tomo_pulse_info[qubit_id]['freq_ef'],0]]
+
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+
+                        v_ge += -150 * np.pi / 180
+                        v_ef += -60 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'XX':
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['pi_len'], 0],
+                                      [self.tomo_pulse_info[qubit_id]['pi_ef_len'], 0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_amp'], 0],
+                                       [self.tomo_pulse_info[qubit_id]['pi_ef_amp'], 0]]
+                        charge_phases = [[180+v_ge/np.pi*180, 0], [180+v_ef/np.pi*180, 0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq'], 0],
+                                        [self.tomo_pulse_info[qubit_id]['freq_ef'], 0]]
+                        v_ge += -0 * np.pi / 180
+                        v_ef += -0 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+                    if gate_name == 'Z':
+                        v_ge += -120 * np.pi / 180
+                        v_ef += -120 * np.pi / 180
+                        sequencer.sync_channels_time(self.channels)
+
+
+                else:
+                    v_ge += -self.expt_cfg['phase_ge']*np.pi/180
+                    v_ef += -self.expt_cfg['phase_ef']*np.pi/180
+                    v_fh += -self.expt_cfg['phase_fh'] * np.pi / 180
+                    sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                            flat_lens=self.expt_cfg['times_prep'],
+                                                                            ramp_sigma_len=
+                                                                            self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                                'ramp_sigma_len'],
+                                                                            cutoff_sigma=2,
+                                                                            freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                            phases=np.pi / 180 * np.array(
+                                                                                self.expt_cfg['charge1_phases_prep']),
+                                                                            plot=False))
+
+                    sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                            flat_lens=self.expt_cfg['times_prep'],
+                                                                            ramp_sigma_len=
+                                                                            self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                                'ramp_sigma_len'],
+                                                                            cutoff_sigma=2,
+                                                                            freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                            phases=np.pi / 180 * np.array(
+                                                                                self.expt_cfg['charge2_phases_prep']),
+                                                                            plot=False))
+
+                    sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                                                          flat_lens=self.expt_cfg['times_prep'],
+                                                                          ramp_sigma_len=
+                                                                          self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                              'ramp_sigma_len'],
+                                                                          cutoff_sigma=2,
+                                                                          freqs=self.expt_cfg['flux1_freqs_prep'],
+                                                                          phases=np.pi / 180 * np.array(
+                                                                              self.expt_cfg['flux1_phases_prep']), plot=False))
+
+                    sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                                                          flat_lens=self.expt_cfg['times_prep'],
+                                                                          ramp_sigma_len=
+                                                                          self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                              'ramp_sigma_len'],
+                                                                          cutoff_sigma=2,
+                                                                          freqs=self.expt_cfg['flux2_freqs_prep'],
+                                                                          phases=np.pi / 180 * np.array(
+                                                                              self.expt_cfg['flux2_phases_prep']), plot=False))
+
+                    sequencer.sync_channels_time(self.channels)
+
+                # Tomographic pulses
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                    self.tomo_pulse_info['1']['freq_fh'] = self.quantum_device_cfg['qubit']['1']['freq_fh']
+                    self.tomo_pulse_info['2']['freq_fh'] = self.quantum_device_cfg['qubit']['2']['freq_fh']
+                # print(self.tomo_pulse_info)
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    measurement_phase = 0
+
+                    if qubit_1_measure == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2*1.0 + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase+v_ge*0+v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+
+                    elif qubit_1_measure == 'Xef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase+v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2*1.0 + measurement_phase+v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgeXef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase+v_ge*0+v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgeYef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + measurement_phase+v_ge*0+v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Xfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=np.pi + measurement_phase+v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=-np.pi / 2 + measurement_phase+v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgfXfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=np.pi + measurement_phase+v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgfYfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=-np.pi / 2 + measurement_phase+v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pgh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=np.pi + measurement_phase+v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PefXfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=np.pi + measurement_phase+v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PefYfh':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase + v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                          phase=-np.pi / 2 + measurement_phase+v_fh)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+
+        # Np flux drive for g,e calibration pulses
+        # qubit g
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit e
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit f
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit h
+        sequencer.new_sequence(self)
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                              flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'],
+                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                              phase=np.pi)
+            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+    def tomo_1q_gef_process(self, sequencer):
+        # Author: Ziqian 28 Jan 2022
+        ''' Single qubit three level process tomography in the presence of multitone charge and flux drive'''
+
+        measurement_pulse = ['I', 'Xge', 'Yge', 'Pge', 'Xef', 'Yef', 'PgeXef', 'PgeYef', 'Pgf']
+        pre_states = ['I', 'Pge', 'PgePef', 'Xge', 'Yge', 'Xef', 'Yef', 'Xgf', 'Ygf']
+
+        if self.expt_cfg['pre_gate']:
+            gate_name = self.expt_cfg['pre_gate_name']
+            print('Defined gate is used! Name: ', gate_name)
+
+        for pre_state in pre_states:
+
+
+            for qubit_1_measure in measurement_pulse:
+
+                sequencer.new_sequence(self)
+                # Pre pulse rotation
+
+
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    v_ge = 0 * np.pi / 180
+                    v_ef = 0 * np.pi / 180
+                    pre_phase = 0
+                    # if qubit_id=='2':
+                    #     pre_phase = -39*np.pi/180
+                    #     print('Q2 phase correction applied!')
+                    if pre_state == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi/2 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Xgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+
+
+
+                    elif pre_state == 'Xef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Yef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                    elif pre_state == 'Ygf':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi/2 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi/2_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+
+                    elif pre_state == 'PgePef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 )
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ge'][
+                                        int(qubit_id) + 1] * np.pi / 180
+
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) - 1] * np.pi / 180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['pi_ef'][
+                                        int(qubit_id) + 1] * np.pi / 180
+                sequencer.sync_channels_time(self.channels)
+
+                # Unknown gate preparation
+                if self.expt_cfg['pre_gate']:
+
+                    gate_name = self.expt_cfg['pre_gate_name']
+
+                    if gate_name == 'H3':
+                        alpha = 2*np.arctan(np.sqrt(2))/np.pi
+                        middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                                    self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                'half_pi_len'])
+
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0],[middle_time, 0],[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0]]
+                        charge_phases = [[-180+v_ef/np.pi*180,0],[-180+v_ge/np.pi*180,0],[-90+v_ef/np.pi*180,0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'],0],[self.tomo_pulse_info[qubit_id]['freq'],0],[self.tomo_pulse_info[qubit_id]['freq_ef'],0]]
+
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+
+                        v_ge += -180 * np.pi / 180
+                        v_ef += -90 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name=='H1A':
+                        alpha = 2*np.arctan(np.sqrt(2))/np.pi
+                        middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                                    self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                'half_pi_len'])
+
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0],[middle_time, 0],[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0]]
+                        charge_phases = [[-180+v_ef/np.pi*180,0],[-180+v_ge/np.pi*180,0],[-270+v_ef/np.pi*180,0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'],0],[self.tomo_pulse_info[qubit_id]['freq'],0],[self.tomo_pulse_info[qubit_id]['freq_ef'],0]]
+
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+
+                        v_ge += -180 * np.pi / 180
+                        v_ef += -270 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name=='H2A':
+                        alpha = 2*np.arctan(np.sqrt(2))/np.pi
+                        middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                                    self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                'half_pi_len'])
+
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0],[middle_time, 0],[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0]]
+                        charge_phases = [[120+v_ef/np.pi*180,0],[-240+v_ge/np.pi*180,0],[30+v_ef/np.pi*180,0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'],0],[self.tomo_pulse_info[qubit_id]['freq'],0],[self.tomo_pulse_info[qubit_id]['freq_ef'],0]]
+
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+
+                        v_ge += -240 * np.pi / 180
+                        v_ef += 30 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name=='H1B':
+                        alpha = 2*np.arctan(np.sqrt(2))/np.pi
+                        middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                                    self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                'half_pi_len'])
+
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0],[middle_time, 0],[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0]]
+                        charge_phases = [[150+v_ef/np.pi*180,0],[-210+v_ge/np.pi*180,0],[240+v_ef/np.pi*180,0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'],0],[self.tomo_pulse_info[qubit_id]['freq'],0],[self.tomo_pulse_info[qubit_id]['freq_ef'],0]]
+
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+
+                        v_ge += -210 * np.pi / 180
+                        v_ef += 240 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name=='H2B':
+                        alpha = 2*np.arctan(np.sqrt(2))/np.pi
+                        middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+                                    self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                'half_pi_len'])
+
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0],[middle_time, 0],[self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_amp'],0],[self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0]]
+                        charge_phases = [[-150+v_ef/np.pi*180,0],[-150+v_ge/np.pi*180,0],[-60+v_ef/np.pi*180,0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq_ef'],0],[self.tomo_pulse_info[qubit_id]['freq'],0],[self.tomo_pulse_info[qubit_id]['freq_ef'],0]]
+
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+
+                        v_ge += -150 * np.pi / 180
+                        v_ef += -60 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'XX':
+                        times_prep = [[self.tomo_pulse_info[qubit_id]['pi_len'], 0],
+                                      [self.tomo_pulse_info[qubit_id]['pi_ef_len'], 0]]
+                        charge_amps = [[self.tomo_pulse_info[qubit_id]['pi_amp'], 0],
+                                       [self.tomo_pulse_info[qubit_id]['pi_ef_amp'], 0]]
+                        charge_phases = [[180+v_ge/np.pi*180, 0], [180+v_ef/np.pi*180, 0]]
+                        charge_freqs = [[self.tomo_pulse_info[qubit_id]['freq'], 0],
+                                        [self.tomo_pulse_info[qubit_id]['freq_ef'], 0]]
+                        v_ge += -0 * np.pi / 180
+                        v_ef += -0 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        # print(times_prep)
+                        # print(charge_amps)
+                        # print(charge_phases)
+                        # print(charge_freqs)
+                    if gate_name == 'Z':
+                        v_ge += -120 * np.pi / 180
+                        v_ef += -120 * np.pi / 180
+                        sequencer.sync_channels_time(self.channels)
+
+
+                else:
+                    v_ge += -self.expt_cfg['phase_ge']*np.pi/180
+                    v_ef += -self.expt_cfg['phase_ef']*np.pi/180
+                    sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                            flat_lens=self.expt_cfg['times_prep'],
+                                                                            ramp_sigma_len=
+                                                                            self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                                'ramp_sigma_len'],
+                                                                            cutoff_sigma=2,
+                                                                            freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                            phases=np.pi / 180 * np.array(
+                                                                                self.expt_cfg['charge1_phases_prep']),
+                                                                            plot=False))
+
+                    sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                            flat_lens=self.expt_cfg['times_prep'],
+                                                                            ramp_sigma_len=
+                                                                            self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                                'ramp_sigma_len'],
+                                                                            cutoff_sigma=2,
+                                                                            freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                            phases=np.pi / 180 * np.array(
+                                                                                self.expt_cfg['charge2_phases_prep']),
+                                                                            plot=False))
+
+                    sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                                                          flat_lens=self.expt_cfg['times_prep'],
+                                                                          ramp_sigma_len=
+                                                                          self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                              'ramp_sigma_len'],
+                                                                          cutoff_sigma=2,
+                                                                          freqs=self.expt_cfg['flux1_freqs_prep'],
+                                                                          phases=np.pi / 180 * np.array(
+                                                                              self.expt_cfg['flux1_phases_prep']), plot=False))
+
+                    sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                                                          flat_lens=self.expt_cfg['times_prep'],
+                                                                          ramp_sigma_len=
+                                                                          self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                              'ramp_sigma_len'],
+                                                                          cutoff_sigma=2,
+                                                                          freqs=self.expt_cfg['flux2_freqs_prep'],
+                                                                          phases=np.pi / 180 * np.array(
+                                                                              self.expt_cfg['flux2_phases_prep']), plot=False))
+
+                    sequencer.sync_channels_time(self.channels)
+
+                # Tomographic pulses
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                # print(self.tomo_pulse_info)
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    measurement_phase = 0
+
+                    if qubit_1_measure == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2*1.0 + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase+v_ge*0+v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+
+                    elif qubit_1_measure == 'Xef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase+v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2*1.0 + measurement_phase+v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgeXef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase+v_ge*0+v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+                    elif qubit_1_measure == 'PgeYef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase+v_ge)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + measurement_phase+v_ge*0+v_ef)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+
+        # Np flux drive for g,e calibration pulses
+        # qubit g
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit e
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit f
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+    def tomo_1q_gef_process_pauli(self, sequencer):
+        # Author: Ziqian 28 Jan 2022
+        ''' Single qubit three level process tomography in the presence of multitone charge and flux drive'''
+
+        measurement_pulse = ['I', 'Xge', 'Yge', 'Pge', 'Xef', 'Yef', 'PgeXef', 'PgeYef', 'Pgf']
+        # pre_states = ['I', 'Pge', 'PgePef', 'Xge', 'Yge', 'Xef', 'Yef', 'Xgf', 'Ygf']
+        pre_states = ['I', 'X', 'Z', 'XX', 'ZZ', 'ZX', 'ZZX', 'ZXX', 'ZZXX']
+
+        for pre_state in pre_states:
+
+
+            for qubit_1_measure in measurement_pulse:
+
+                sequencer.new_sequence(self)
+
+
+                # Pre pulse rotation
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    pre_phase = 0
+                    if pre_state == 'X':
+                        # Universal phase for |e> over |g> and |f> over |g>
+                        phase_eg = 0
+                        phase_fg = 0
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi / 2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif pre_state == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif pre_state == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif pre_state == 'Xgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+
+                    elif pre_state == 'Xef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi / 2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif pre_state == 'Yef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi / 2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif pre_state == 'Ygf':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=0 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+                    elif pre_state == 'PgePef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + pre_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                sequencer.sync_channels_time(self.channels)
+
+                # Unknown gate preparation
+                sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                        flat_lens=self.expt_cfg['times_prep'],
+                                                                        ramp_sigma_len=
+                                                                        self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                            'ramp_sigma_len'],
+                                                                        cutoff_sigma=2,
+                                                                        freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                        phases=np.pi / 180 * np.array(
+                                                                            self.expt_cfg['charge1_phases_prep']),
+                                                                        plot=False))
+
+                sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                        flat_lens=self.expt_cfg['times_prep'],
+                                                                        ramp_sigma_len=
+                                                                        self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                            'ramp_sigma_len'],
+                                                                        cutoff_sigma=2,
+                                                                        freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                        phases=np.pi / 180 * np.array(
+                                                                            self.expt_cfg['charge2_phases_prep']),
+                                                                        plot=False))
+
+                sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                                                      flat_lens=self.expt_cfg['times_prep'],
+                                                                      ramp_sigma_len=
+                                                                      self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                          'ramp_sigma_len'],
+                                                                      cutoff_sigma=2,
+                                                                      freqs=self.expt_cfg['flux1_freqs_prep'],
+                                                                      phases=np.pi / 180 * np.array(
+                                                                          self.expt_cfg['flux1_phases_prep']), plot=False))
+
+                sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                                                      flat_lens=self.expt_cfg['times_prep'],
+                                                                      ramp_sigma_len=
+                                                                      self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                          'ramp_sigma_len'],
+                                                                      cutoff_sigma=2,
+                                                                      freqs=self.expt_cfg['flux2_freqs_prep'],
+                                                                      phases=np.pi / 180 * np.array(
+                                                                          self.expt_cfg['flux2_phases_prep']), plot=False))
+
+                sequencer.sync_channels_time(self.channels)
+
+                # Tomographic pulses
+
+                use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                if use_tomo_pulse_info:
+                    self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                else:
+                    self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                    self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                    self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                    self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                    self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                # print(self.tomo_pulse_info)
+
+                for qubit_id in self.expt_cfg['on_qubits']:
+                    measurement_phase = 0
+
+                    if qubit_1_measure == 'Xge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=-np.pi/2*1.0 + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pge':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Pgf':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+
+                    elif qubit_1_measure == 'Xef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'Yef':
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2*1.0 + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                    elif qubit_1_measure == 'PgeXef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+                    elif qubit_1_measure == 'PgeYef':
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                          phase=np.pi + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                          phase=-np.pi/2 + measurement_phase)
+                        sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+
+        # Np flux drive for g,e calibration pulses
+        # qubit g
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit e
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit f
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+    def tomo_1ququart_multitone_charge_flux_drive(self, sequencer):
+        # Author: Ziqian 28 Oct 2022
+        ''' Single qubit three level tomography in the presence of multitone charge and flux drive'''
+
+        measurement_pulse = ['I', 'Xge', 'Yge', 'Pge', 'Xef', 'Yef', 'PgeXef', 'PgeYef', 'Pgf', 'Xfh', 'Yfh', 'PgfXfh', 'PgfYfh', 'Pgh', 'PefXfh', 'PefYfh']
+
+        for qubit_1_measure in measurement_pulse:
+
+            sequencer.new_sequence(self)
+
+            # State preparation
+            sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                    flat_lens=self.expt_cfg['times_prep'],
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        self.expt_cfg['charge1_phases_prep']),
+                                                                    plot=False))
+
+            sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                    flat_lens=self.expt_cfg['times_prep'],
+                                                                    ramp_sigma_len=
+                                                                    self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                        'ramp_sigma_len'],
+                                                                    cutoff_sigma=2,
+                                                                    freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                    phases=np.pi / 180 * np.array(
+                                                                        self.expt_cfg['charge2_phases_prep']),
+                                                                    plot=False))
+
+            sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                                                  flat_lens=self.expt_cfg['times_prep'],
+                                                                  ramp_sigma_len=
+                                                                  self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                      'ramp_sigma_len'],
+                                                                  cutoff_sigma=2,
+                                                                  freqs=self.expt_cfg['flux1_freqs_prep'],
+                                                                  phases=np.pi / 180 * np.array(
+                                                                      self.expt_cfg['flux1_phases_prep']), plot=False))
+
+            sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                                                  flat_lens=self.expt_cfg['times_prep'],
+                                                                  ramp_sigma_len=
+                                                                  self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                      'ramp_sigma_len'],
+                                                                  cutoff_sigma=2,
+                                                                  freqs=self.expt_cfg['flux2_freqs_prep'],
+                                                                  phases=np.pi / 180 * np.array(
+                                                                      self.expt_cfg['flux2_phases_prep']), plot=False))
+
+            sequencer.sync_channels_time(self.channels)
+
+            # Tomographic pulses
+
+            use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+            ph_ef = self.expt_cfg['ph_ef_corr']*np.pi/180
+            if use_tomo_pulse_info:
+                self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+            else:
+                self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                self.tomo_pulse_info['1']['freq_fh'] = self.quantum_device_cfg['qubit']['1']['freq_fh']
+                self.tomo_pulse_info['2']['freq_fh'] = self.quantum_device_cfg['qubit']['2']['freq_fh']
+            # print(self.tomo_pulse_info)
+
+            for qubit_id in self.expt_cfg['on_qubits']:
+                measurement_phase = 0
+
+                if qubit_1_measure == 'Xge':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'Yge':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                      phase=-np.pi/2*1.0 + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'Pge':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'Pgf':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                      phase=np.pi + measurement_phase+ph_ef)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+
+                elif qubit_1_measure == 'Xef':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                      phase=np.pi + measurement_phase+ph_ef)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'Yef':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                      phase=-np.pi/2*1.0 + measurement_phase+ph_ef)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'PgeXef':
+                    m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse2)
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                      phase=np.pi + measurement_phase+ph_ef)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+                elif qubit_1_measure == 'PgeYef':
+                    m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse2)
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                      phase=-np.pi/2 + measurement_phase+ph_ef)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'Xfh':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'Yfh':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                      phase=-np.pi/2 + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'PgfXfh':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                      phase=np.pi + measurement_phase + ph_ef)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'PgfYfh':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                      phase=np.pi + measurement_phase + ph_ef)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                      phase=-np.pi / 2 + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'Pgh':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                      phase=np.pi + measurement_phase + ph_ef)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'PefXfh':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                      phase=np.pi + measurement_phase + ph_ef)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                      phase=np.pi + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                elif qubit_1_measure == 'PefYfh':
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                      phase=np.pi + measurement_phase + ph_ef)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+                    m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_fh_amp'],
+                                      flat_len=self.tomo_pulse_info[qubit_id]['half_pi_fh_len'],
+                                      ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                      cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                                      phase=-np.pi / 2 + measurement_phase)
+                    sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        # Np flux drive for g,e calibration pulses
+        # qubit g
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit e
+        sequencer.new_sequence(self)
+
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit f
+        sequencer.new_sequence(self)
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+            # pi_lenth = self.pulse_info[qubit_id]['pi_len']
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubit h
+        sequencer.new_sequence(self)
+        for qubit_id in self.expt_cfg['on_qubits']:
+            sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+            sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_fh_amp'],
+                              flat_len=self.tomo_pulse_info[qubit_id]['pi_fh_len'],
+                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'],
+                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_fh'],
+                              phase=np.pi)
+            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
     def tomo_1q_multitone_charge_flux_drive_gef(self, sequencer):
         # Author: Ziqian 7 Jul 2021
         ''' Single qubit three level tomography in the presence of multitone charge and flux drive'''
@@ -5173,6 +11039,7 @@ class PulseSequences:
             # Tomographic pulses
 
             use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+            ph_ef = self.expt_cfg['ph_ef_corr']*np.pi/180
             if use_tomo_pulse_info:
                 self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
             else:
@@ -5221,7 +11088,7 @@ class PulseSequences:
                                       flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+ph_ef)
                     sequencer.append('charge%s' % qubit_id, m_pulse1)
 
 
@@ -5232,7 +11099,7 @@ class PulseSequences:
                                       flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+ph_ef)
                     sequencer.append('charge%s' % qubit_id, m_pulse1)
 
                 elif qubit_1_measure == 'Yef':
@@ -5240,7 +11107,7 @@ class PulseSequences:
                                       flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
-                                      phase=-np.pi/2*1.0 + measurement_phase)
+                                      phase=-np.pi/2*1.0 + measurement_phase+ph_ef)
                     sequencer.append('charge%s' % qubit_id, m_pulse1)
 
                 elif qubit_1_measure == 'PgeXef':
@@ -5254,7 +11121,7 @@ class PulseSequences:
                                       flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+ph_ef)
                     sequencer.append('charge%s' % qubit_id, m_pulse1)
 
 
@@ -5269,7 +11136,7 @@ class PulseSequences:
                                       flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
-                                      phase=-np.pi/2 + measurement_phase)
+                                      phase=-np.pi/2 + measurement_phase+ph_ef)
                     sequencer.append('charge%s' % qubit_id, m_pulse1)
 
 
@@ -7228,6 +13095,913 @@ class PulseSequences:
         return sequencer.complete(self, plot=False)
 
 
+    def tomo_2q_gef_process_single(self, sequencer):
+        # Author: Ziqian 30 Jan 2022
+        ''' Two-qutrit process tomography'''
+
+        measurement_pulse = ['I', 'Xge', 'Yge', 'Pge', 'Xef', 'Yef', 'PgeXef', 'PgeYef', 'Pgf']
+        # pre_states = ['I', 'Pge', 'PgePef', 'Xge', 'Yge', 'Xef', 'Yef', 'Xgf', 'Ygf']
+        # pre_states = ['I', 'Pge', 'PgePef']
+        Q1_pre_st = self.expt_cfg['Q1_initial_state']
+        Q2_pre_st = self.expt_cfg['Q2_initial_state']
+        if self.expt_cfg['default']:
+            print('Preparing state: ', self.expt_cfg['default_state'])
+        else:
+            print('Default preparation not being used')
+        if self.expt_cfg['post_pulse']:
+            print('Post pulses being used')
+
+        for qubit_1_pepare in Q1_pre_st:
+            # print('Q1 state: ',qubit_1_prepare)
+            for qubit_2_prepare in Q2_pre_st:
+                print('Q1, Q2 state: ', qubit_1_pepare,' ',qubit_2_prepare)
+
+                for qubit_1_measure in measurement_pulse:
+
+                    for qubit_2_measure in measurement_pulse:
+
+                        sequencer.new_sequence(self)
+                        use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                        if use_tomo_pulse_info:
+                            self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                        else:
+                            self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                            self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                            self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                            self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                            self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                        measurement_phase = 0
+
+                        ## Initial state preparation
+                        ## Q1 first
+                        qubit_id = '1'
+
+
+                        pre_phase = 0
+                        if qubit_1_pepare == 'Xge':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        elif qubit_1_pepare == 'Yge':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=np.pi/2 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        elif qubit_1_pepare == 'Pge':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        elif qubit_1_pepare == 'Xgf':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+
+                        elif qubit_1_pepare == 'Xef':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse2)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        elif qubit_1_pepare == 'Yef':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse2)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                              phase=np.pi/2 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        elif qubit_1_pepare == 'Ygf':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=np.pi/2 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse2)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+                        elif qubit_1_pepare == 'PgePef':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse2)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+                        if self.expt_cfg['sequential_pre_state']:
+                            sequencer.sync_channels_time(self.channels)
+
+                        ## Q2 next
+                        qubit_id = '2'
+
+                        pre_phase = 0
+                        if qubit_2_prepare == 'Xge':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        elif qubit_2_prepare == 'Yge':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=np.pi/2 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        elif qubit_2_prepare == 'Pge':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        elif qubit_2_prepare == 'Xgf':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+
+
+                        elif qubit_2_prepare == 'Xef':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse2)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        elif qubit_2_prepare == 'Yef':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse2)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                              phase=np.pi/2 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        elif qubit_2_prepare == 'Ygf':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=np.pi/2 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse2)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+
+                        elif qubit_2_prepare == 'PgePef':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse2)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                  'ramp_sigma_len'],
+                                              cutoff_sigma=2, freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                              phase=0 + pre_phase)
+                            sequencer.append('charge%s' % qubit_id, m_pulse1)
+
+                        sequencer.sync_channels_time(self.channels)
+                        # gate preparation
+                        if self.expt_cfg['default']:
+                            if self.expt_cfg['default_state']=='gg':
+                                # print('Preparing state: |gg>')
+                                pass
+                            if self.expt_cfg['default_state'] == 'ge':
+                                # print('Preparing state: |ge>')
+                                sequencer.append('charge2', self.qubit_pi['2'])
+                            if self.expt_cfg['default_state'] == 'eg':
+                                # print('Preparing state: |eg>')
+                                sequencer.append('charge1', self.qubit_pi['1'])
+                            if self.expt_cfg['default_state'] == 'fg':
+                                # print('Preparing state: |fg>')
+                                sequencer.append('charge1', self.qubit_pi['1'])
+                                sequencer.append('charge1', self.qubit_ef_pi['1'])
+                            if self.expt_cfg['default_state'] == 'gf':
+                                # print('Preparing state: |gf>')
+                                sequencer.append('charge2', self.qubit_pi['2'])
+                                sequencer.append('charge2', self.qubit_ef_pi['2'])
+                            if self.expt_cfg['default_state'] == 'ee':
+                                # print('Preparing state: |ee>')
+                                sequencer.append('charge1', self.qubit_pi['1'])
+                                sequencer.sync_channels_time(self.channels)
+                                sequencer.append('charge2', self.qubit_ee_pi['2'])
+                            if self.expt_cfg['default_state'] == 'ef':
+                                # print('Preparing state: |ef>')
+                                sequencer.append('charge1', self.qubit_pi['1'])
+                                sequencer.sync_channels_time(self.channels)
+                                sequencer.append('charge2', self.qubit_ee_pi['2'])
+                                sequencer.append('charge2', self.qubit_ef_e_pi['2'])
+                            if self.expt_cfg['default_state'] == 'fe':
+                                # print('Preparing state: |fe>')
+                                sequencer.append('charge1', self.qubit_pi['1'])
+                                sequencer.sync_channels_time(self.channels)
+                                sequencer.append('charge2', self.qubit_ee_pi['2'])
+                                sequencer.sync_channels_time(self.channels)
+                                sequencer.append('charge1', self.qubit_ef_e_pi['1'])
+                            if self.expt_cfg['default_state'] == 'ff':
+                                # print('Preparing state: |ff>')
+                                sequencer.append('charge1', self.qubit_pi['1'])
+                                sequencer.sync_channels_time(self.channels)
+                                sequencer.append('charge2', self.qubit_ee_pi['2'])
+                                sequencer.sync_channels_time(self.channels)
+                                sequencer.append('charge1', self.qubit_ef_e_pi['1'])
+                                sequencer.sync_channels_time(self.channels)
+                                sequencer.append('charge2', self.qubit_ef_e_pi['2'])
+                            if self.expt_cfg['default_state']=='g(g+e)':
+                                # print('Preparing state: |g(g+e)>')
+                                sequencer.append('charge2', self.qubit_half_pi['2'])
+                            if self.expt_cfg['default_state']=='(g+e)g':
+                                # print('Preparing state: |(g+e)g>')
+                                sequencer.append('charge1', self.qubit_half_pi['1'])
+                            if self.expt_cfg['default_state']=='g(g-f)':
+                                # print('Preparing state: |g(g-f)>')
+                                sequencer.append('charge2', self.qubit_half_pi['2'])
+                                sequencer.append('charge2', self.qubit_ef_pi['2'])
+                            if self.expt_cfg['default_state']=='(g-f)g':
+                                # print('Preparing state: |(g-f)g>')
+                                sequencer.append('charge1', self.qubit_half_pi['1'])
+                                sequencer.append('charge1', self.qubit_ef_pi['1'])
+                            sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['defined']:
+                            # print('Defined preparation being used')
+                            sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                            flat_lens=self.expt_cfg['times_prep'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                            cutoff_sigma=2, freqs=self.expt_cfg['charge1_freqs_prep'],
+                                            phases=np.pi/180*np.array(self.expt_cfg['charge1_phases_prep']), plot=False))
+
+                            sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                            flat_lens=self.expt_cfg['times_prep'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                            cutoff_sigma=2, freqs=self.expt_cfg['charge2_freqs_prep'],
+                                            phases=np.pi/180*np.array(self.expt_cfg['charge2_phases_prep']), plot=False))
+
+                            sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                            flat_lens=self.expt_cfg['times_prep'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                            cutoff_sigma=2, freqs=self.expt_cfg['flux1_freqs_prep'],
+                                            phases=np.pi/180*np.array(self.expt_cfg['flux1_phases_prep']), plot=False))
+
+                            sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                            flat_lens=self.expt_cfg['times_prep'],
+                                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                            cutoff_sigma=2, freqs=self.expt_cfg['flux2_freqs_prep'],
+                                            phases=np.pi/180*np.array(self.expt_cfg['flux2_phases_prep']), plot=False))
+
+                        sequencer.sync_channels_time(self.channels)
+
+                        if self.expt_cfg['post_pulse']:
+                            # print('Post pulses being used')
+                            post_pulse_info = self.quantum_device_cfg['post_pulse_info']
+                            sequencer.append('charge1',
+                                             Square_multitone_sequential(max_amps=post_pulse_info['charge1_amps_prep'],
+                                                                         flat_lens=post_pulse_info['times_prep'],
+                                                                         ramp_sigma_len=
+                                                                         self.quantum_device_cfg['flux_pulse_info'][
+                                                                             '1'][
+                                                                             'ramp_sigma_len'],
+                                                                         cutoff_sigma=2,
+                                                                         freqs=post_pulse_info['charge1_freqs_prep'],
+                                                                         phases=np.pi / 180 * np.array(
+                                                                             post_pulse_info['charge1_phases_prep']),
+                                                                         plot=False))
+
+                            sequencer.append('charge2',
+                                             Square_multitone_sequential(max_amps=post_pulse_info['charge2_amps_prep'],
+                                                                         flat_lens=post_pulse_info['times_prep'],
+                                                                         ramp_sigma_len=
+                                                                         self.quantum_device_cfg['flux_pulse_info'][
+                                                                             '1'][
+                                                                             'ramp_sigma_len'],
+                                                                         cutoff_sigma=2,
+                                                                         freqs=post_pulse_info['charge2_freqs_prep'],
+                                                                         phases=np.pi / 180 * np.array(
+                                                                             post_pulse_info['charge2_phases_prep']),
+                                                                         plot=False))
+
+                            sequencer.append('flux1',
+                                             Square_multitone_sequential(max_amps=post_pulse_info['flux1_amps_prep'],
+                                                                         flat_lens=post_pulse_info['times_prep'],
+                                                                         ramp_sigma_len=
+                                                                         self.quantum_device_cfg['flux_pulse_info'][
+                                                                             '1'][
+                                                                             'ramp_sigma_len'],
+                                                                         cutoff_sigma=2,
+                                                                         freqs=post_pulse_info['flux1_freqs_prep'],
+                                                                         phases=np.pi / 180 * np.array(
+                                                                             post_pulse_info['flux1_phases_prep']),
+                                                                         plot=False))
+
+                            sequencer.append('flux2',
+                                             Square_multitone_sequential(max_amps=post_pulse_info['flux2_amps_prep'],
+                                                                         flat_lens=post_pulse_info['times_prep'],
+                                                                         ramp_sigma_len=
+                                                                         self.quantum_device_cfg['flux_pulse_info'][
+                                                                             '1'][
+                                                                             'ramp_sigma_len'],
+                                                                         cutoff_sigma=2,
+                                                                         freqs=post_pulse_info['flux2_freqs_prep'],
+                                                                         phases=np.pi / 180 * np.array(
+                                                                             post_pulse_info['flux2_phases_prep']),
+                                                                         plot=False))
+
+                        sequencer.sync_channels_time(self.channels)
+                        v_ge = -np.array(self.expt_cfg['phase_ge']) * np.pi / 180
+                        v_ef = -np.array(self.expt_cfg['phase_ef']) * np.pi / 180
+
+                        # Tomographic pulses
+
+                        apply_sequential_tomo_pulse = self.expt_cfg['sequential_tomo_pulse']
+
+                        use_tomo_pulse_info = self.expt_cfg['use_tomo_pulse_info']
+                        if use_tomo_pulse_info:
+                            self.tomo_pulse_info = self.quantum_device_cfg['tomo_pulse_info']
+                        else:
+                            self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+                            self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+                            self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+                            self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+                            self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+                        measurement_phase = 0
+
+                        if qubit_1_measure == 'Xge':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info['1']['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['1']['freq'],
+                                              phase=np.pi + measurement_phase+v_ge[0])
+                            sequencer.append('charge1', m_pulse1)
+                            if apply_sequential_tomo_pulse:
+                                idle_time = self.tomo_pulse_info['1']['half_pi_len'] + 4 * \
+                                            self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                'ramp_sigma_len']
+                                sequencer.append('charge2', Idle(idle_time))  # Make q1 and q2 pulses sequential
+
+                        elif qubit_1_measure == 'Yge':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info['1']['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['1']['freq'],
+                                              phase=-np.pi/2*1.0 + measurement_phase+v_ge[0])
+                            sequencer.append('charge1', m_pulse1)
+                            if apply_sequential_tomo_pulse:
+                                idle_time = self.tomo_pulse_info['1']['half_pi_len'] + 4 * \
+                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                    'ramp_sigma_len']
+                                sequencer.append('charge2', Idle(idle_time)) # Make q1 and q2 pulses sequential
+
+                        elif qubit_1_measure == 'Pge':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                                              flat_len=self.tomo_pulse_info['1']['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['1']['freq'],
+                                              phase=np.pi + measurement_phase+v_ge[0])
+                            sequencer.append('charge1', m_pulse1)
+                            if apply_sequential_tomo_pulse:
+                                idle_time = self.tomo_pulse_info['1']['pi_len'] + 4 * \
+                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                    'ramp_sigma_len']
+                                sequencer.append('charge2', Idle(idle_time)) # Make q1 and q2 pulses sequential
+
+                        elif qubit_1_measure == 'Xef':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['1']['freq_ef'],
+                                              phase=np.pi + measurement_phase+v_ef[0])
+                            sequencer.append('charge1', m_pulse1)
+                            if apply_sequential_tomo_pulse:
+                                idle_time = self.tomo_pulse_info['1']['half_pi_ef_len'] + 4 * \
+                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                    'ramp_sigma_len']
+                                sequencer.append('charge2', Idle(idle_time)) # Make q1 and q2 pulses sequential
+
+                        elif qubit_1_measure == 'Yef':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['1']['freq_ef'],
+                                              phase=-np.pi/2*1.0 + measurement_phase+v_ef[0])
+                            sequencer.append('charge1', m_pulse1)
+                            if apply_sequential_tomo_pulse:
+                                idle_time = self.tomo_pulse_info['1']['half_pi_ef_len'] + 4 * \
+                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                    'ramp_sigma_len']
+                                sequencer.append('charge2', Idle(idle_time)) # Make q1 and q2 pulses sequential
+
+                        elif qubit_1_measure == 'PgeXef':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                                              flat_len=self.tomo_pulse_info['1']['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['1']['freq'],
+                                              phase=np.pi + measurement_phase+v_ge[0])
+                            sequencer.append('charge1', m_pulse1)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['1']['freq_ef'],
+                                              phase=np.pi + measurement_phase+v_ef[0])
+                            sequencer.append('charge1', m_pulse1)
+
+                            if apply_sequential_tomo_pulse:
+                                idle_time = self.tomo_pulse_info['1']['half_pi_ef_len'] + self.tomo_pulse_info['1']['pi_len'] +8 * \
+                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                    'ramp_sigma_len']
+                                sequencer.append('charge2', Idle(idle_time)) # Make q1 and q2 pulses sequential
+
+                        elif qubit_1_measure == 'PgeYef':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                                              flat_len=self.tomo_pulse_info['1']['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['1']['freq'],
+                                              phase=np.pi + measurement_phase+v_ge[0])
+                            sequencer.append('charge1', m_pulse1)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['1']['freq_ef'],
+                                              phase=-np.pi/2*1.0 + measurement_phase+v_ef[0])
+                            sequencer.append('charge1', m_pulse1)
+
+                            if apply_sequential_tomo_pulse:
+                                idle_time = self.tomo_pulse_info['1']['half_pi_ef_len'] + self.tomo_pulse_info['1']['pi_len'] +8 * \
+                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                    'ramp_sigma_len']
+                                sequencer.append('charge2', Idle(idle_time)) # Make q1 and q2 pulses sequential
+
+                        elif qubit_1_measure == 'Pgf':
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                                              flat_len=self.tomo_pulse_info['1']['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['1']['freq'],
+                                              phase=np.pi + measurement_phase+v_ge[0])
+                            sequencer.append('charge1', m_pulse1)
+                            m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info['1']['pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['1']['freq_ef'],
+                                              phase=np.pi + measurement_phase+v_ef[0])
+                            sequencer.append('charge1', m_pulse1)
+
+                            if apply_sequential_tomo_pulse:
+                                idle_time = self.tomo_pulse_info['1']['pi_ef_len'] + self.tomo_pulse_info['1']['pi_len'] +8 * \
+                                                self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                    'ramp_sigma_len']
+                                sequencer.append('charge2', Idle(idle_time)) # Make q1 and q2 pulses sequential
+
+
+                        if qubit_2_measure == 'Xge':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info['2']['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['2']['freq'],
+                                              phase=np.pi + measurement_phase+v_ge[1])
+                            sequencer.append('charge2', m_pulse2)
+
+                        elif qubit_2_measure == 'Yge':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_amp'],
+                                              flat_len=self.tomo_pulse_info['2']['half_pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['2']['freq'],
+                                              phase=-np.pi/2*1.0 + measurement_phase+v_ge[1])
+                            sequencer.append('charge2', m_pulse2)
+
+                        elif qubit_2_measure == 'Pge':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_amp'],
+                                              flat_len=self.tomo_pulse_info['2']['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['2']['freq'],
+                                              phase=np.pi + measurement_phase+v_ge[1])
+                            sequencer.append('charge2', m_pulse2)
+
+                        elif qubit_2_measure == 'Xef':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['2']['freq_ef'],
+                                              phase=np.pi + measurement_phase+v_ef[1])
+                            sequencer.append('charge2', m_pulse2)
+
+                        elif qubit_2_measure == 'Yef':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['2']['freq_ef'],
+                                              phase=-np.pi/2*1.0 + measurement_phase+v_ef[1])
+                            sequencer.append('charge2', m_pulse2)
+
+                        elif qubit_2_measure == 'PgeXef':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_amp'],
+                                              flat_len=self.tomo_pulse_info['2']['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['2']['freq'],
+                                              phase=np.pi + measurement_phase+v_ge[1])
+                            sequencer.append('charge2', m_pulse2)
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['2']['freq_ef'],
+                                              phase=np.pi + measurement_phase+v_ef[1])
+                            sequencer.append('charge2', m_pulse2)
+
+                        elif qubit_2_measure == 'PgeYef':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_amp'],
+                                              flat_len=self.tomo_pulse_info['2']['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['2']['freq'],
+                                              phase=np.pi + measurement_phase+v_ge[1])
+                            sequencer.append('charge2', m_pulse2)
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['2']['freq_ef'],
+                                              phase=-np.pi/2*1.0 + measurement_phase+v_ef[1])
+                            sequencer.append('charge2', m_pulse2)
+
+                        elif qubit_2_measure == 'Pgf':
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_amp'],
+                                              flat_len=self.tomo_pulse_info['2']['pi_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['2']['freq'],
+                                              phase=np.pi + measurement_phase+v_ge[1])
+                            sequencer.append('charge2', m_pulse2)
+                            m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_ef_amp'],
+                                              flat_len=self.tomo_pulse_info['2']['pi_ef_len'],
+                                              ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                              cutoff_sigma=2,
+                                              freq=self.tomo_pulse_info['2']['freq_ef'],
+                                              phase=np.pi + measurement_phase+v_ef[1])
+                            sequencer.append('charge2', m_pulse2)
+
+
+                        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                        sequencer.end_sequence()
+
+        # sequence: [gg, ge, eg, gf, fg, ee, ef, fe, ff]
+        # qubit gg for calibration
+        sequencer.new_sequence(self)
+        self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+        sequencer.end_sequence()
+
+        # qubits ge and eg for calibration
+
+        # for qubit_id in self.expt_cfg['on_qubits']:
+        if use_tomo_pulse_info:
+            for qubit_id in ['2', '1']:
+                sequencer.new_sequence(self)
+                h_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                  flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'],
+                                  cutoff_sigma=2,
+                                  freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                  phase=np.pi + measurement_phase)
+                sequencer.append('charge%s' % qubit_id, h_pulse1)
+
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+        else:
+            for qubit_id in ['2','1']:
+                sequencer.new_sequence(self)
+                sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+
+        # gf and fg
+        if use_tomo_pulse_info:
+            for qubit_id in ['2', '1']:
+                sequencer.new_sequence(self)
+                h_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_amp'],
+                                  flat_len=self.tomo_pulse_info[qubit_id]['pi_len'],
+                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'],
+                                  cutoff_sigma=2,
+                                  freq=self.tomo_pulse_info[qubit_id]['freq'],
+                                  phase=np.pi + measurement_phase)
+                sequencer.append('charge%s' % qubit_id, h_pulse1)
+                h_pulse1 = Square(max_amp=self.tomo_pulse_info[qubit_id]['pi_ef_amp'],
+                                  flat_len=self.tomo_pulse_info[qubit_id]['pi_ef_len'],
+                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info'][qubit_id]['ramp_sigma_len'],
+                                  cutoff_sigma=2,
+                                  freq=self.tomo_pulse_info[qubit_id]['freq_ef'],
+                                  phase=np.pi + measurement_phase)
+                sequencer.append('charge%s' % qubit_id, h_pulse1)
+
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+        else:
+            for qubit_id in ['2','1']:
+                sequencer.new_sequence(self)
+                sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+                sequencer.append('charge%s' % qubit_id, self.qubit_ef_pi[qubit_id])
+
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+
+        # qubit ee for calibration
+
+        if use_tomo_pulse_info:
+            sequencer.new_sequence(self)
+            h_pulsee1 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                               flat_len=self.tomo_pulse_info['1']['pi_len'],
+                               ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                               cutoff_sigma=2,
+                               freq=self.tomo_pulse_info['1']['freq'],
+                               phase=np.pi + measurement_phase)
+            sequencer.append('charge1', h_pulsee1)
+            # Idle time for qubit 2
+            idle_time = self.tomo_pulse_info['1']['pi_len'] + 4 * \
+                        self.quantum_device_cfg['flux_pulse_info']['1'][
+                            'ramp_sigma_len']
+            sequencer.append('charge2', Idle(idle_time))
+            # pi on qubit2 with at the shifted frequency
+            h_pulsee2 = Square(max_amp=self.tomo_pulse_info['zz2']['pi_amp'],
+                               flat_len=self.tomo_pulse_info['zz2']['pi_len'],
+                               ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                               cutoff_sigma=2,
+                               freq=self.tomo_pulse_info['zz2']['freq'],
+                               phase=np.pi + measurement_phase)
+            sequencer.append('charge2', h_pulsee2)
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+        else:
+            sequencer.new_sequence(self)
+            # pi on qubit1
+            sequencer.append('charge1', self.qubit_pi['1'])
+            # Idle time for qubit 2
+            idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge2', Idle(idle_time))
+            # pi on qubit2 with at the shifted frequency
+            sequencer.append('charge2',
+                             Square(max_amp=self.pulse_info['2']['pi_ee_amp'],
+                                    flat_len=self.pulse_info['2']['pi_ee_len'],
+                                    ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                        'ramp_sigma_len'],
+                                    cutoff_sigma=2,
+                                    freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'],
+                                    phase=0))
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        # qubit ef and fe for calibration
+
+        if use_tomo_pulse_info:
+            for qubit_id in ['2', '1']:
+                sequencer.new_sequence(self)
+                h_pulsee1 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                                  flat_len=self.tomo_pulse_info['1']['pi_len'],
+                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                  cutoff_sigma=2,
+                                  freq=self.tomo_pulse_info['1']['freq'],
+                                  phase=np.pi + measurement_phase)
+                sequencer.append('charge1', h_pulsee1)
+                # Idle time for qubit 2
+                idle_time = self.tomo_pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                    'ramp_sigma_len']
+                sequencer.append('charge2', Idle(idle_time))
+                # pi on qubit2 at the shifted frequency
+                h_pulsee2 = Square(max_amp=self.tomo_pulse_info['zz2']['pi_amp'],
+                                   flat_len=self.tomo_pulse_info['zz2']['pi_len'],
+                                   ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                   cutoff_sigma=2,
+                                   freq=self.tomo_pulse_info['zz2']['freq'],
+                                   phase=np.pi + measurement_phase)
+                sequencer.append('charge2', h_pulsee2)
+                # Idle time for qubit 1
+                idle_time = self.tomo_pulse_info['zz2']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                    'ramp_sigma_len']
+                sequencer.append('charge1', Idle(idle_time))
+                # ef pi on qubit_id with shifted frequency
+                sequencer.append('charge%s' % qubit_id, self.qubit_ef_e_pi[qubit_id])
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+        else:
+            for qubit_id in ['2', '1']:
+                sequencer.new_sequence(self)
+                # pi on qubit1
+                sequencer.append('charge1', self.qubit_pi['1'])
+                # Idle time for qubit 2
+                idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                    'ramp_sigma_len']
+                sequencer.append('charge2', Idle(idle_time))
+                # pi on qubit2 with at the shifted frequency
+                sequencer.append('charge2',
+                                 Square(max_amp=self.pulse_info['2']['pi_ee_amp'], flat_len=self.pulse_info['2']['pi_ee_len'],
+                                        ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                        cutoff_sigma=2,
+                                        freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'], phase=0))
+                # Idle time for qubit 1
+                idle_time = self.pulse_info['2']['pi_ee_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                    'ramp_sigma_len']
+                sequencer.append('charge1', Idle(idle_time))
+                # ef pi on qubit_id with shifted frequency
+                sequencer.append('charge%s' % qubit_id, self.qubit_ef_e_pi[qubit_id])
+                self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+                sequencer.end_sequence()
+
+
+
+        # qubit ff for calibration
+
+        if use_tomo_pulse_info:
+            sequencer.new_sequence(self)
+            h_pulsee1 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                               flat_len=self.tomo_pulse_info['1']['pi_len'],
+                               ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                               cutoff_sigma=2,
+                               freq=self.tomo_pulse_info['1']['freq'],
+                               phase=np.pi + measurement_phase)
+            sequencer.append('charge1', h_pulsee1)
+            # Idle time for qubit 2
+            idle_time = self.tomo_pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge2', Idle(idle_time))
+            # pi on qubit2 with at the shifted frequency
+            h_pulsee2 = Square(max_amp=self.tomo_pulse_info['zz2']['pi_amp'],
+                               flat_len=self.tomo_pulse_info['zz2']['pi_len'],
+                               ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                               cutoff_sigma=2,
+                               freq=self.tomo_pulse_info['zz2']['freq'],
+                               phase=np.pi + measurement_phase)
+            sequencer.append('charge2', h_pulsee2)
+            # Idle time for qubit 1
+            idle_time = self.tomo_pulse_info['zz2']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge1', Idle(idle_time))
+            # ef pi on qubit_id with shifted frequency
+            sequencer.append('charge1', self.qubit_ef_e_pi['1'])
+            # Idle time for qubit 2
+            idle_time = self.tomo_pulse_info['1']['pi_ef_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge2', Idle(idle_time))
+            sequencer.append('charge2', self.qubit_ff_pi['2'])
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+        else:
+            sequencer.new_sequence(self)
+            # pi on qubit1
+            sequencer.append('charge1', self.qubit_pi['1'])
+            # Idle time for qubit 2
+            idle_time = self.pulse_info['1']['pi_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge2', Idle(idle_time))
+            # pi on qubit2 with at the shifted frequency
+            sequencer.append('charge2',
+                             Square(max_amp=self.pulse_info['2']['pi_ee_amp'],
+                                    flat_len=self.pulse_info['2']['pi_ee_len'],
+                                    ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                        'ramp_sigma_len'],
+                                    cutoff_sigma=2,
+                                    freq=self.qubit_freq["2"] + self.quantum_device_cfg['qubit']['qq_disp'],
+                                    phase=0))
+            # Idle time for qubit 1
+            idle_time = self.pulse_info['2']['pi_ee_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge1', Idle(idle_time))
+            # ef pi on qubit_id with shifted frequency
+            sequencer.append('charge1', self.qubit_ef_e_pi['1'])
+            # Idle time for qubit 2
+            idle_time = self.tomo_pulse_info['1']['pi_ef_len'] + 4 * self.quantum_device_cfg['flux_pulse_info']['1'][
+                'ramp_sigma_len']
+            sequencer.append('charge2', Idle(idle_time))
+            sequencer.append('charge2', self.qubit_ff_pi['2'])
+
+            self.readout(sequencer, self.expt_cfg['on_qubits'], sideband=False)
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
+
     def tomo_2q_multitone_charge_flux_drive_gef(self, sequencer):
         # Author: Ziqian 08 Jul 2021
         ''' Two-qubit tomography in the presence of multitone charge and flux drive'''
@@ -7406,6 +14180,10 @@ class PulseSequences:
                     self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
                     self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
                 measurement_phase = 0
+                vge1 = self.expt_cfg['vge'][0]*np.pi/180
+                vge2 = self.expt_cfg['vge'][1]*np.pi/180
+                vef1 = self.expt_cfg['vef'][0]*np.pi/180
+                vef2 = self.expt_cfg['vef'][1]*np.pi/180
 
                 if qubit_1_measure == 'Xge':
                     m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_amp'],
@@ -7413,7 +14191,7 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['1']['freq'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vge1)
                     sequencer.append('charge1', m_pulse1)
                     if apply_sequential_tomo_pulse:
                         idle_time = self.tomo_pulse_info['1']['half_pi_len'] + 4 * \
@@ -7427,7 +14205,7 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['1']['freq'],
-                                      phase=-np.pi/2*1.0 + measurement_phase)
+                                      phase=-np.pi/2*1.0 + measurement_phase+vge1)
                     sequencer.append('charge1', m_pulse1)
                     if apply_sequential_tomo_pulse:
                         idle_time = self.tomo_pulse_info['1']['half_pi_len'] + 4 * \
@@ -7441,7 +14219,7 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['1']['freq'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vge1)
                     sequencer.append('charge1', m_pulse1)
                     if apply_sequential_tomo_pulse:
                         idle_time = self.tomo_pulse_info['1']['pi_len'] + 4 * \
@@ -7455,7 +14233,7 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['1']['freq_ef'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vef1)
                     sequencer.append('charge1', m_pulse1)
                     if apply_sequential_tomo_pulse:
                         idle_time = self.tomo_pulse_info['1']['half_pi_ef_len'] + 4 * \
@@ -7469,7 +14247,7 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['1']['freq_ef'],
-                                      phase=-np.pi/2*1.0 + measurement_phase)
+                                      phase=-np.pi/2*1.0 + measurement_phase+vef1)
                     sequencer.append('charge1', m_pulse1)
                     if apply_sequential_tomo_pulse:
                         idle_time = self.tomo_pulse_info['1']['half_pi_ef_len'] + 4 * \
@@ -7483,14 +14261,14 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['1']['freq'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vge1)
                     sequencer.append('charge1', m_pulse1)
                     m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
                                       flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['1']['freq_ef'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vef1)
                     sequencer.append('charge1', m_pulse1)
 
                     if apply_sequential_tomo_pulse:
@@ -7505,14 +14283,14 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['1']['freq'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vge1)
                     sequencer.append('charge1', m_pulse1)
                     m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
                                       flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['1']['freq_ef'],
-                                      phase=-np.pi/2*1.0 + measurement_phase)
+                                      phase=-np.pi/2*1.0 + measurement_phase+vef1)
                     sequencer.append('charge1', m_pulse1)
 
                     if apply_sequential_tomo_pulse:
@@ -7527,14 +14305,14 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['1']['freq'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vge1)
                     sequencer.append('charge1', m_pulse1)
                     m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['pi_ef_amp'],
                                       flat_len=self.tomo_pulse_info['1']['pi_ef_len'],
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['1']['freq_ef'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vef1)
                     sequencer.append('charge1', m_pulse1)
 
                     if apply_sequential_tomo_pulse:
@@ -7550,7 +14328,7 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['2']['freq'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vge2)
                     sequencer.append('charge2', m_pulse2)
 
                 elif qubit_2_measure == 'Yge':
@@ -7559,7 +14337,7 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['2']['freq'],
-                                      phase=-np.pi/2*1.0 + measurement_phase)
+                                      phase=-np.pi/2*1.0 + measurement_phase+vge2)
                     sequencer.append('charge2', m_pulse2)
 
                 elif qubit_2_measure == 'Pge':
@@ -7568,7 +14346,7 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['2']['freq'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vge2)
                     sequencer.append('charge2', m_pulse2)
 
                 elif qubit_2_measure == 'Xef':
@@ -7577,7 +14355,7 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['2']['freq_ef'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vef2)
                     sequencer.append('charge2', m_pulse2)
 
                 elif qubit_2_measure == 'Yef':
@@ -7586,7 +14364,7 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['2']['freq_ef'],
-                                      phase=-np.pi/2*1.0 + measurement_phase)
+                                      phase=-np.pi/2*1.0 + measurement_phase+vef2)
                     sequencer.append('charge2', m_pulse2)
 
                 elif qubit_2_measure == 'PgeXef':
@@ -7595,14 +14373,14 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['2']['freq'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vge2)
                     sequencer.append('charge2', m_pulse2)
                     m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
                                       flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['2']['freq_ef'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vef2)
                     sequencer.append('charge2', m_pulse2)
 
                 elif qubit_2_measure == 'PgeYef':
@@ -7611,14 +14389,14 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['2']['freq'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vge2)
                     sequencer.append('charge2', m_pulse2)
                     m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
                                       flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['2']['freq_ef'],
-                                      phase=-np.pi/2*1.0 + measurement_phase)
+                                      phase=-np.pi/2*1.0 + measurement_phase+vef2)
                     sequencer.append('charge2', m_pulse2)
 
                 elif qubit_2_measure == 'Pgf':
@@ -7627,14 +14405,14 @@ class PulseSequences:
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['2']['freq'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vge2)
                     sequencer.append('charge2', m_pulse2)
                     m_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_ef_amp'],
                                       flat_len=self.tomo_pulse_info['2']['pi_ef_len'],
                                       ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
                                       cutoff_sigma=2,
                                       freq=self.tomo_pulse_info['2']['freq_ef'],
-                                      phase=np.pi + measurement_phase)
+                                      phase=np.pi + measurement_phase+vef2)
                     sequencer.append('charge2', m_pulse2)
 
 
@@ -8794,6 +15572,465 @@ class PulseSequences:
 
         return sequencer.complete(self, plot=False)
 
+    def sideband_2q_gate_calibration(self, sequencer):
+        # 2Q gate phase calibration code
+        # Separate into three parts: Prepartion X gate, Target 2Q gate U, Decoding X gate
+        # Case 1, calibrating extra VZ_ge, VZ_ef gate needed for 2 qubit:
+            # Using Xpi/2 on both qubit, followed by U and inv(U), decoding the target qubit with Xpi/2(beta), sweeping phase beta
+            # only when oscillation maximized that beta is correct
+        # Case2, calibrating U phase:
+            # Applying Xpi/2 on both qubit, followed by U and VZ gate, sweeping phase, decoding the target qubit with Xpi/2, the other one with Ypi/2
+            # the mean oscillation point is the correct phase for U
+        # In Case2, the phase is swept on all sideband
+        self.tomo_pulse_info = self.quantum_device_cfg['pulse_info']
+        self.tomo_pulse_info['1']['freq'] = self.qubit_freq['1']
+        self.tomo_pulse_info['2']['freq'] = self.qubit_freq['2']
+        self.tomo_pulse_info['1']['freq_ef'] = self.qubit_ef_freq['1']
+        self.tomo_pulse_info['2']['freq_ef'] = self.qubit_ef_freq['2']
+        vge1 = 0
+        vge2 = 0
+        vef1 = 0
+        vef2 = 0
+        vge1 += self.expt_cfg['vge'][0]
+        vge2 += self.expt_cfg['vge'][1]
+        vef1 += self.expt_cfg['vef'][0]
+        vef2 += self.expt_cfg['vef'][1]
+
+        sweep_no = self.expt_cfg['sweep_no']
+        if sweep_no=='1':
+            print('Trying 1st Step Calibration!')
+        else:
+            print('Trying 2nd step Calibration!')
+
+        print('1st Gate, Q1: ', self.expt_cfg['Q1_gate_name1'], ',  Q2: ', self.expt_cfg['Q2_gate_name1'])
+        print('2nd Gate, Q1: ', self.expt_cfg['Q1_gate_name2'], ',  Q2: ', self.expt_cfg['Q2_gate_name2'])
+
+        for phase in np.arange(self.expt_cfg['sweep_start'], self.expt_cfg['sweep_stop'], self.expt_cfg['sweep_step']):
+            sequencer.new_sequence(self)
+
+            ## if sweep_no=1: sweeping U gate
+            ## if sweep_no=2: sweeping Xpi/2 gate on the target qubit
+            qubit_id = self.expt_cfg['on_qubits'][0]
+            self.expt_cfg['on_cavity'] = self.expt_cfg['on_qubits']
+
+            for name1 in self.expt_cfg["Q1_gate_name1"]:
+                for name2 in self.expt_cfg["Q2_gate_name1"]:
+                    # Q1
+                    if name1 == "Xge":
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info['1']['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2,
+                                          freq=self.tomo_pulse_info['1']['freq'],
+                                          phase=(0)/180*np.pi)
+                        sequencer.append('charge1', m_pulse1)
+                        # print('hey')
+                    if name1 == "Yge":
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info['1']['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                          cutoff_sigma=2,
+                                          freq=self.tomo_pulse_info['1']['freq'],
+                                          phase=(90)/180*np.pi)
+                        sequencer.append('charge1', m_pulse1)
+                    if name1 == "Xef":
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                                          flat_len=self.tomo_pulse_info['1']['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq'],
+                                          phase=0)
+                        sequencer.append('charge1', m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq_ef'],
+                                          phase=0)
+                        sequencer.append('charge1', m_pulse1)
+                    if name1 == "Yef":
+                        m_pulse2 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                                          flat_len=self.tomo_pulse_info['1']['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq'],
+                                          phase=0)
+                        sequencer.append('charge1', m_pulse2)
+                        m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq_ef'],
+                                          phase=(90)/180*np.pi)
+                        sequencer.append('charge1', m_pulse1)
+                    # Q2
+                    if name2 == "Xge":
+                        n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info['2']['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                          cutoff_sigma=2,
+                                          freq=self.tomo_pulse_info['2']['freq'],
+                                          phase=(0) / 180 * np.pi)
+                        sequencer.append('charge2', n_pulse1)
+                    if name2 == "Yge":
+                        n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_amp'],
+                                          flat_len=self.tomo_pulse_info['2']['half_pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                                          cutoff_sigma=2,
+                                          freq=self.tomo_pulse_info['2']['freq'],
+                                          phase=(90) / 180 * np.pi)
+                        sequencer.append('charge2', n_pulse1)
+                    if name2 == "Xef":
+                        n_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_amp'],
+                                          flat_len=self.tomo_pulse_info['2']['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq'],
+                                          phase=0)
+                        sequencer.append('charge2', n_pulse2)
+                        n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq_ef'],
+                                          phase=0)
+                        sequencer.append('charge2', n_pulse1)
+                    if name2 == "Yef":
+                        n_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_amp'],
+                                          flat_len=self.tomo_pulse_info['2']['pi_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq'],
+                                          phase=0)
+                        sequencer.append('charge2', n_pulse2)
+                        n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
+                                          flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
+                                          ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                              'ramp_sigma_len'],
+                                          cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq_ef'],
+                                          phase=(90) / 180 * np.pi)
+                        sequencer.append('charge2', n_pulse1)
+                sequencer.sync_channels_time(self.channels)
+
+                # Two Qubit gate part U:
+                if sweep_no=='1':
+                    sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                            flat_lens=self.expt_cfg['times_prep'],
+                                                                            ramp_sigma_len=
+                                                                            self.quantum_device_cfg['flux_pulse_info'][
+                                                                                '1']['ramp_sigma_len'],
+                                                                            cutoff_sigma=2,
+                                                                            freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                            phases=np.pi / 180 * np.array(
+                                                                                self.expt_cfg['charge1_phases_prep']),
+                                                                            plot=False))
+
+                    sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                            flat_lens=self.expt_cfg['times_prep'],
+                                                                            ramp_sigma_len=
+                                                                            self.quantum_device_cfg['flux_pulse_info'][
+                                                                                '1']['ramp_sigma_len'],
+                                                                            cutoff_sigma=2,
+                                                                            freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                            phases=np.pi / 180 * np.array(
+                                                                                self.expt_cfg['charge2_phases_prep']),
+                                                                            plot=False))
+
+                    sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                                                          flat_lens=self.expt_cfg['times_prep'],
+                                                                          ramp_sigma_len=
+                                                                          self.quantum_device_cfg['flux_pulse_info'][
+                                                                              '1']['ramp_sigma_len'],
+                                                                          cutoff_sigma=2,
+                                                                          freqs=self.expt_cfg['flux1_freqs_prep'],
+                                                                          phases=np.pi / 180 * np.array(
+                                                                              self.expt_cfg['flux1_phases_prep']),
+                                                                          plot=False))
+                    # only sweep flux2's phase
+                    flux2_phase = []
+                    for kkk in self.expt_cfg['flux1_phases_prep']:
+                        now = []
+                        for nnn in kkk:
+                            now.append(phase)
+                        flux2_phase.append(now)
+                    # print(flux2_phase)
+                    sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                                                          flat_lens=self.expt_cfg['times_prep'],
+                                                                          ramp_sigma_len=
+                                                                          self.quantum_device_cfg['flux_pulse_info'][
+                                                                              '1']['ramp_sigma_len'],
+                                                                          cutoff_sigma=2,
+                                                                          freqs=self.expt_cfg['flux2_freqs_prep'],
+                                                                          phases=np.pi / 180 * np.array(
+                                                                              flux2_phase),
+                                                                          plot=False))
+                else:
+                    sequencer.append('charge1', Square_multitone_sequential(max_amps=self.expt_cfg['charge1_amps_prep'],
+                                                                            flat_lens=self.expt_cfg['times_prep'],
+                                                                            ramp_sigma_len=
+                                                                            self.quantum_device_cfg['flux_pulse_info'][
+                                                                                '1']['ramp_sigma_len'],
+                                                                            cutoff_sigma=2,
+                                                                            freqs=self.expt_cfg['charge1_freqs_prep'],
+                                                                            phases=np.pi / 180 * np.array(
+                                                                                self.expt_cfg['charge1_phases_prep']),
+                                                                            plot=False))
+
+                    sequencer.append('charge2', Square_multitone_sequential(max_amps=self.expt_cfg['charge2_amps_prep'],
+                                                                            flat_lens=self.expt_cfg['times_prep'],
+                                                                            ramp_sigma_len=
+                                                                            self.quantum_device_cfg['flux_pulse_info'][
+                                                                                '1']['ramp_sigma_len'],
+                                                                            cutoff_sigma=2,
+                                                                            freqs=self.expt_cfg['charge2_freqs_prep'],
+                                                                            phases=np.pi / 180 * np.array(
+                                                                                self.expt_cfg['charge2_phases_prep']),
+                                                                            plot=False))
+
+                    sequencer.append('flux1', Square_multitone_sequential(max_amps=self.expt_cfg['flux1_amps_prep'],
+                                                                          flat_lens=self.expt_cfg['times_prep'],
+                                                                          ramp_sigma_len=
+                                                                          self.quantum_device_cfg['flux_pulse_info'][
+                                                                              '1']['ramp_sigma_len'],
+                                                                          cutoff_sigma=2,
+                                                                          freqs=self.expt_cfg['flux1_freqs_prep'],
+                                                                          phases=np.pi / 180 * np.array(
+                                                                              self.expt_cfg['flux1_phases_prep']),
+                                                                          plot=False))
+
+                    sequencer.append('flux2', Square_multitone_sequential(max_amps=self.expt_cfg['flux2_amps_prep'],
+                                                                          flat_lens=self.expt_cfg['times_prep'],
+                                                                          ramp_sigma_len=
+                                                                          self.quantum_device_cfg['flux_pulse_info'][
+                                                                              '1']['ramp_sigma_len'],
+                                                                          cutoff_sigma=2,
+                                                                          freqs=self.expt_cfg['flux2_freqs_prep'],
+                                                                          phases=np.pi / 180 * np.array(
+                                                                              self.expt_cfg['flux2_phases_prep']),
+                                                                          plot=False))
+
+                sequencer.sync_channels_time(self.channels)
+
+                # last decoding gate
+                for name3 in self.expt_cfg["Q1_gate_name2"]:
+                    for name4 in self.expt_cfg["Q2_gate_name2"]:
+
+                        if sweep_no=='1':
+                            # Q1
+                            if name3 == "Xge":
+                                m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_amp'],
+                                                  flat_len=self.tomo_pulse_info['1']['half_pi_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2,
+                                                  freq=self.tomo_pulse_info['1']['freq'],
+                                                  phase=(0+vge1) / 180 * np.pi)
+                                sequencer.append('charge1', m_pulse1)
+                            if name3 == "Yge":
+                                m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_amp'],
+                                                  flat_len=self.tomo_pulse_info['1']['half_pi_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2,
+                                                  freq=self.tomo_pulse_info['1']['freq'],
+                                                  phase=(90+vge1) / 180 * np.pi)
+                                sequencer.append('charge1', m_pulse1)
+                            if name3 == "Xef":
+                                # m_pulse2 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                                #                   flat_len=self.tomo_pulse_info['1']['pi_len'],
+                                #                   ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                #                       'ramp_sigma_len'],
+                                #                   cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq'],
+                                #                   phase=(0+vge1) / 180 * np.pi)
+                                # sequencer.append('charge1', m_pulse2)
+                                m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
+                                                  flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq_ef'],
+                                                  phase=(0+vef1) / 180 * np.pi)
+                                sequencer.append('charge1', m_pulse1)
+                            if name3 == "Yef":
+                                # m_pulse2 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                                #                   flat_len=self.tomo_pulse_info['1']['pi_len'],
+                                #                   ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                #                       'ramp_sigma_len'],
+                                #                   cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq'],
+                                #                   phase=(0+vge1) / 180 * np.pi)
+                                # sequencer.append('charge1', m_pulse2)
+                                m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
+                                                  flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq_ef'],
+                                                  phase=(90+vef1) / 180 * np.pi)
+                                sequencer.append('charge1', m_pulse1)
+                            # Q2
+                            if name4 == "Xge":
+                                n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_amp'],
+                                                  flat_len=self.tomo_pulse_info['2']['half_pi_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2,
+                                                  freq=self.tomo_pulse_info['2']['freq'],
+                                                  phase=(vge2) / 180 * np.pi)
+                                sequencer.append('charge2', n_pulse1)
+                            if name4 == "Yge":
+                                n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_amp'],
+                                                  flat_len=self.tomo_pulse_info['2']['half_pi_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2,
+                                                  freq=self.tomo_pulse_info['2']['freq'],
+                                                  phase=(90+vge2) / 180 * np.pi)
+                                sequencer.append('charge2', n_pulse1)
+                            if name4 == "Xef":
+                                # n_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_amp'],
+                                #                   flat_len=self.tomo_pulse_info['2']['pi_len'],
+                                #                   ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                #                       'ramp_sigma_len'],
+                                #                   cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq'],
+                                #                   phase=(0+vge2) / 180 * np.pi)
+                                # sequencer.append('charge2', n_pulse2)
+                                n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
+                                                  flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq_ef'],
+                                                  phase=(0+vef2) / 180 * np.pi)
+                                sequencer.append('charge2', n_pulse1)
+                            if name4 == "Yef":
+                                # n_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_amp'],
+                                #                   flat_len=self.tomo_pulse_info['2']['pi_len'],
+                                #                   ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                #                       'ramp_sigma_len'],
+                                #                   cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq'],
+                                #                   phase=(0+vge2) / 180 * np.pi)
+                                # sequencer.append('charge2', n_pulse2)
+                                n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
+                                                  flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq_ef'],
+                                                  phase=(90+vef2) / 180 * np.pi)
+                                sequencer.append('charge2', n_pulse1)
+                        else:
+                            if qubit_id == '1':
+                                phase1 = phase
+                                phase2 = 0
+                            else:
+                                phase1 = 0
+                                phase2 = phase
+                            # Q1
+                            if name3 == "Xge":
+                                m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_amp'],
+                                                  flat_len=self.tomo_pulse_info['1']['half_pi_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2,
+                                                  freq=self.tomo_pulse_info['1']['freq'],
+                                                  phase=(0 + vge1 + phase1) / 180 * np.pi)
+                                sequencer.append('charge1', m_pulse1)
+                            if name3 == "Yge":
+                                m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_amp'],
+                                                  flat_len=self.tomo_pulse_info['1']['half_pi_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2,
+                                                  freq=self.tomo_pulse_info['1']['freq'],
+                                                  phase=(90 + vge1 + phase1) / 180 * np.pi)
+                                sequencer.append('charge1', m_pulse1)
+                            if name3 == "Xef":
+                                # m_pulse2 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                                #                   flat_len=self.tomo_pulse_info['1']['pi_len'],
+                                #                   ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                #                       'ramp_sigma_len'],
+                                #                   cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq'],
+                                #                   phase=(0 + vge1) / 180 * np.pi)
+                                # sequencer.append('charge1', m_pulse2)
+                                m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
+                                                  flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq_ef'],
+                                                  phase=(0 + vef1 + phase1) / 180 * np.pi)
+                                sequencer.append('charge1', m_pulse1)
+                            if name3 == "Yef":
+                                # m_pulse2 = Square(max_amp=self.tomo_pulse_info['1']['pi_amp'],
+                                #                   flat_len=self.tomo_pulse_info['1']['pi_len'],
+                                #                   ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                #                       'ramp_sigma_len'],
+                                #                   cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq'],
+                                #                   phase=(0 + vge1) / 180 * np.pi)
+                                # sequencer.append('charge1', m_pulse2)
+                                m_pulse1 = Square(max_amp=self.tomo_pulse_info['1']['half_pi_ef_amp'],
+                                                  flat_len=self.tomo_pulse_info['1']['half_pi_ef_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2, freq=self.tomo_pulse_info['1']['freq_ef'],
+                                                  phase=(90 + vef1 + phase1) / 180 * np.pi)
+                                sequencer.append('charge1', m_pulse1)
+                            # Q2
+                            if name4 == "Xge":
+                                n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_amp'],
+                                                  flat_len=self.tomo_pulse_info['2']['half_pi_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2,
+                                                  freq=self.tomo_pulse_info['2']['freq'],
+                                                  phase=(vge2 + phase2) / 180 * np.pi)
+                                sequencer.append('charge2', n_pulse1)
+                            if name4 == "Yge":
+                                n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_amp'],
+                                                  flat_len=self.tomo_pulse_info['2']['half_pi_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2,
+                                                  freq=self.tomo_pulse_info['2']['freq'],
+                                                  phase=(90 + vge2 + phase2) / 180 * np.pi)
+                                sequencer.append('charge2', n_pulse1)
+                            if name4 == "Xef":
+                                # n_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_amp'],
+                                #                   flat_len=self.tomo_pulse_info['2']['pi_len'],
+                                #                   ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                #                       'ramp_sigma_len'],
+                                #                   cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq'],
+                                #                   phase=(0 + vge2) / 180 * np.pi)
+                                # sequencer.append('charge2', n_pulse2)
+                                n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
+                                                  flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq_ef'],
+                                                  phase=(0 + vef2 + phase2) / 180 * np.pi)
+                                sequencer.append('charge2', n_pulse1)
+                            if name4 == "Yef":
+                                # n_pulse2 = Square(max_amp=self.tomo_pulse_info['2']['pi_amp'],
+                                #                   flat_len=self.tomo_pulse_info['2']['pi_len'],
+                                #                   ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                #                       'ramp_sigma_len'],
+                                #                   cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq'],
+                                #                   phase=(0 + vge2) / 180 * np.pi)
+                                # sequencer.append('charge2', n_pulse2)
+                                n_pulse1 = Square(max_amp=self.tomo_pulse_info['2']['half_pi_ef_amp'],
+                                                  flat_len=self.tomo_pulse_info['2']['half_pi_ef_len'],
+                                                  ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2'][
+                                                      'ramp_sigma_len'],
+                                                  cutoff_sigma=2, freq=self.tomo_pulse_info['2']['freq_ef'],
+                                                  phase=(90 + vef2 + phase2) / 180 * np.pi)
+                                sequencer.append('charge2', n_pulse1)
+
+            sequencer.sync_channels_time(self.channels)
+
+
+
+
+            self.readout(sequencer, self.expt_cfg['on_cavity'])
+
+            sequencer.end_sequence()
+
+        return sequencer.complete(self, plot=False)
+
 
     def half_pi_phase(self, sequencer):
         # ramsey sequences
@@ -8851,12 +16088,84 @@ class PulseSequences:
 
     def echo2(self, sequencer):
         # ramsey sequences
-
+        if self.expt_cfg['use_freq_amp_halfpi'][0]:
+            charge_port = self.expt_cfg['use_freq_amp_halfpi'][-1]
+            freq = self.expt_cfg['use_freq_amp_halfpi'][1]
+            amp = self.expt_cfg['use_freq_amp_halfpi'][2]
+            half_pi_len = self.expt_cfg['use_freq_amp_halfpi'][3]
+            pi_len = self.expt_cfg['use_freq_amp_halfpi'][4]
+            self.qubit_half_pi1 = {
+                "1": Square(max_amp=amp, flat_len=half_pi_len,
+                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                            cutoff_sigma=2, freq=freq, phase=0),
+                "2": Square(max_amp=amp, flat_len=half_pi_len,
+                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                            cutoff_sigma=2, freq=freq, phase=0)}
+            self.qubit_pi1 = {
+                "1": Square(max_amp=amp, flat_len=pi_len,
+                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                            cutoff_sigma=2, freq=freq, phase=0),
+                "2": Square(max_amp=amp, flat_len=pi_len,
+                            ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['2']['ramp_sigma_len'],
+                            cutoff_sigma=2, freq=freq, phase=0)}
+        else:
+            self.qubit_half_pi1 = self.qubit_half_pi
+            self.qubit_pi1 = self.qubit_pi
         for ramsey_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
             sequencer.new_sequence(self)
 
             for qubit_id in self.expt_cfg['on_qubits']:
-                sequencer.append('charge%s' % qubit_id, self.qubit_half_pi[qubit_id])
+                if self.expt_cfg['pre_pulse']:
+                    # Initial pulse before Rabi
+                    pre_pulse_info = self.quantum_device_cfg['pre_pulse_info']
+                    repeat = pre_pulse_info['repeat']
+                    for repeat_i in range(repeat):
+                        sequencer.append('charge1', Square_multitone_sequential(max_amps=pre_pulse_info['charge1_amps_prep'],
+                                                                                flat_lens=pre_pulse_info['times_prep'],
+                                                                                ramp_sigma_len=
+                                                                                self.quantum_device_cfg['flux_pulse_info'][
+                                                                                    '1'][
+                                                                                    'ramp_sigma_len'],
+                                                                                cutoff_sigma=2,
+                                                                                freqs=pre_pulse_info['charge1_freqs_prep'],
+                                                                                phases=np.pi / 180 * np.array(
+                                                                                    pre_pulse_info['charge1_phases_prep']),
+                                                                                plot=False))
+                        sequencer.append('charge2', Square_multitone_sequential(max_amps=pre_pulse_info['charge2_amps_prep'],
+                                                                                flat_lens=pre_pulse_info['times_prep'],
+                                                                                ramp_sigma_len=
+                                                                                self.quantum_device_cfg['flux_pulse_info'][
+                                                                                    '1'][
+                                                                                    'ramp_sigma_len'],
+                                                                                cutoff_sigma=2,
+                                                                                freqs=pre_pulse_info['charge2_freqs_prep'],
+                                                                                phases=np.pi / 180 * np.array(
+                                                                                    pre_pulse_info['charge2_phases_prep']),
+                                                                                plot=False))
+                        sequencer.append('flux1', Square_multitone_sequential(max_amps=pre_pulse_info['flux1_amps_prep'],
+                                                                              flat_lens=pre_pulse_info['times_prep'],
+                                                                              ramp_sigma_len=
+                                                                              self.quantum_device_cfg['flux_pulse_info'][
+                                                                                  '1'][
+                                                                                  'ramp_sigma_len'],
+                                                                              cutoff_sigma=2,
+                                                                              freqs=pre_pulse_info['flux1_freqs_prep'],
+                                                                              phases=np.pi / 180 * np.array(
+                                                                                  pre_pulse_info['flux1_phases_prep']),
+                                                                              plot=False))
+                        sequencer.append('flux2', Square_multitone_sequential(max_amps=pre_pulse_info['flux2_amps_prep'],
+                                                                              flat_lens=pre_pulse_info['times_prep'],
+                                                                              ramp_sigma_len=
+                                                                              self.quantum_device_cfg['flux_pulse_info'][
+                                                                                  '1'][
+                                                                                  'ramp_sigma_len'],
+                                                                              cutoff_sigma=2,
+                                                                              freqs=pre_pulse_info['flux2_freqs_prep'],
+                                                                              phases=np.pi / 180 * np.array(
+                                                                                  pre_pulse_info['flux2_phases_prep']),
+                                                                              plot=False))
+
+                    sequencer.sync_channels_time(self.channels)
                 for ge_pi_id in self.expt_cfg['ge_pi']:
 
                     if self.expt_cfg['flux_probe']:
@@ -8865,18 +16174,20 @@ class PulseSequences:
                         sequencer.append('charge%s' % self.charge_port[ge_pi_id], self.qubit_pi[ge_pi_id])
 
                     sequencer.sync_channels_time(self.channels)
+                sequencer.append('charge%s' % qubit_id, self.qubit_half_pi1[qubit_id])
+
                 for echo_id in range(self.expt_cfg['echo_times']):
                     # Idle time before pi pulse
                     sequencer.append('charge%s' % qubit_id, Idle(time=ramsey_len/(float(2*self.expt_cfg['echo_times']))))
                     if self.expt_cfg['cp']:
-                        sequencer.append('charge%s' % qubit_id, self.qubit_pi[qubit_id])
+                        sequencer.append('charge%s' % qubit_id, self.qubit_pi1[qubit_id])
                     elif self.expt_cfg['cpmg']:
                         # sequencer.append('charge%s' % qubit_id,
                         #          Gauss(max_amp=self.pulse_info[qubit_id]['pi_amp'],
                         #                sigma_len=self.pulse_info[qubit_id]['pi_len'], cutoff_sigma=2,
                         #                freq=self.qubit_freq[qubit_id], phase=0.5*np.pi, plot=False))
                         ## Case: Square top pulse
-                        cpmg_pulse = copy.copy(self.qubit_pi[qubit_id])
+                        cpmg_pulse = copy.copy(self.qubit_pi1[qubit_id])
                         cpmg_pulse.phase = 0.5*np.pi
                         sequencer.append('charge%s' % qubit_id, cpmg_pulse)
                     # Idle time after pi pulse
@@ -8885,7 +16196,7 @@ class PulseSequences:
                 #                  Gauss(max_amp=self.pulse_info[qubit_id]['half_pi_amp'],
                 #                        sigma_len=self.pulse_info[qubit_id]['half_pi_len'], cutoff_sigma=2,
                 #                        freq=self.qubit_freq[qubit_id], phase=2*np.pi*ramsey_len*self.expt_cfg['ramsey_freq'], plot=False))
-                ramsey_2nd_pulse = copy.copy(self.qubit_half_pi[qubit_id])
+                ramsey_2nd_pulse = copy.copy(self.qubit_half_pi1[qubit_id])
                 ramsey_2nd_pulse.phase = 2*np.pi*ramsey_len*self.expt_cfg['ramsey_freq']
                 sequencer.append('charge%s' % qubit_id, ramsey_2nd_pulse)
             self.readout(sequencer, self.expt_cfg['on_qubits'])

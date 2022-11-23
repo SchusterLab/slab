@@ -807,7 +807,7 @@ class M8195A(SocketInstrument):
     ## Setup AWG
 
     def setup_awg(m8195a,num_channels,amplitudes=[1.,1.,1.,1.]):
-        print('iside m8195 ORIGINAL +++++++++++++++')
+        # print('iside m8195 ORIGINAL +++++++++++++++')
         m8195a.stop_output()
         m8195a.set_factory_default()
 
@@ -827,10 +827,10 @@ class M8195A(SocketInstrument):
             m8195a.set_waveform_sample_source(4, 'EXT')
             m8195a.set_amplitude(1, amplitudes[0])
             m8195a.set_amplitude(4, amplitudes[1])
-            print('iside m8195+++++++++++++++')
+            # print('iside m8195+++++++++++++++')
 
         else:
-            print('iside m819 here')
+            # print('iside m819 here')
             for ii in range(1,num_channels+1):
                 m8195a.set_waveform_sample_source(ii,'EXT')
                 m8195a.set_amplitude(ii,amplitudes[ii-1])

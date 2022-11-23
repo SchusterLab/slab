@@ -8,7 +8,7 @@ import json
 from slab.dataanalysis import get_next_filename
 from slab.dataanalysis import get_current_filename
 from slab.datamanagement import SlabFile
-from slab.dsfit import fitdecaysin
+from slab.dsfit import fitdecaysin, fitsin
 import datetime
 
 from skopt import Optimizer
@@ -147,6 +147,47 @@ def get_mask_amp(target, freq, mask):
     return amp_mask
 
 
+def single_gate_calibration(a, p1=1 / 360, p2=0, p3=0.5, vlines=None, hlines=None):
+    quantum_device_cfg = json.loads(a.attrs['quantum_device_cfg'])
+    experiment_cfg = json.loads(a.attrs['experiment_cfg'])
+    hardware_cfg = json.loads(a.attrs['hardware_cfg'])
+
+    expt_cfg = experiment_cfg['sideband_2q_gate_calibration']
+    expt_pts = np.arange(expt_cfg['sweep_start'], expt_cfg['sweep_stop'], expt_cfg['sweep_step'])
+
+    on_cavity = expt_cfg['on_qubits']
+    ii = 0
+
+    for cavity_id in on_cavity:
+
+        expt_avg_data = np.array(a['expt_avg_data_ch%s' % cavity_id])
+
+        y = expt_avg_data
+        fitguess = [max(y) / 2 - min(y) / 2, p1, p2, p3]
+        fitdata = fitsin(expt_pts[:], expt_avg_data[:], fitparams=fitguess, showfit=False)
+
+        pi_length = (90.0 - fitdata[2]) / (360.0 * fitdata[1])
+        pi_length1 = pi_length
+        if pi_length1 > 0:
+            while pi_length1 > 0:
+                pi_length1 -= abs(180 / 360.0 / fitdata[1])
+            ccc = pi_length1
+            pi_length1 += abs(180 / 360.0 / fitdata[1])
+            if abs(pi_length1)>abs(ccc):
+                pi_length1=ccc
+        else:
+            while pi_length1 < 0:
+                pi_length1 += abs(180 / 360.0 / fitdata[1])
+            ccc = pi_length1
+            pi_length1 -= abs(180 / 360.0 / fitdata[1])
+            if abs(pi_length1) > abs(ccc):
+                pi_length1 = ccc
+
+        ii = ii + 1
+
+        return pi_length1
+
+
 def calibrate_ramsey(a, pi_length=100, t2=1000):
     quantum_device_cfg = json.loads(a.attrs['quantum_device_cfg'])
     experiment_cfg = json.loads(a.attrs['experiment_cfg'])
@@ -220,6 +261,1196 @@ def calibrate_rabi_while_flux(a, pi_length=100, t1=1000):
         ii = ii + 1
 
         return pi_length1, hpi_length
+
+def auto_2q_single_gate_phase_calibration(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    # Author Ziqian 19th Feb 2022
+    # automcatically calibrate Vz gate needed for single qubit rotations
+    data_path = os.path.join(path, 'data/')
+    expt_cfg = experiment_cfg['auto_2q_single_gate_phase_calibration']
+    acq_no = expt_cfg['acquisition_num']
+    phase_start = expt_cfg['sweep_start']
+    phase_stop = expt_cfg['sweep_stop']
+    phase_step = expt_cfg['sweep_step']
+    repeat = expt_cfg['copy_no']
+
+
+    alpha = 2 * np.arctan(np.sqrt(2)) / np.pi
+    middle_time1 = quantum_device_cfg['pulse_info']['2']['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+            quantum_device_cfg['pulse_info']['1']['pi_len'] - quantum_device_cfg['pulse_info']['2'][
+        'half_pi_len'])
+    middle_time2 = quantum_device_cfg['pulse_info']['2']['half_pi_len'] + (alpha - 0.5) / 0.5 * (
+            quantum_device_cfg['pulse_info']['2']['pi_len'] - quantum_device_cfg['pulse_info']['2'][
+        'half_pi_len'])
+
+    phase_matrix = {}
+    # phase matrix sequence = [vge1, vge2, vef1, vef2]
+    # name is the applied gate, value is the extra Vz gate needed
+    phase_matrix['Q1_ge_pi']=[0,0,0,0]
+    phase_matrix['Q2_ge_pi'] = [0,0,0,0]
+    phase_matrix['Q1_ge_pi/2'] = [0,0,0,0]
+    phase_matrix['Q2_ge_pi/2'] = [0,0,0,0]
+    phase_matrix['Q1_ef_pi'] = [0,0,0,0]
+    phase_matrix['Q2_ef_pi'] = [0,0,0,0]
+    phase_matrix['Q1_ef_pi/2'] = [0,0,0,0]
+    phase_matrix['Q2_ef_pi/2'] = [0,0,0,0]
+    phase_matrix['Q1_ge_alpha'] = [0,0,0,0]
+    phase_matrix['Q2_ge_alpha'] = [0,0,0,0]
+    phase_matrix['Q1_hadmard'] = [0,0,0,0]
+    phase_matrix['Q2_hadmard'] = [0,0,0,0]
+
+    phase_matrix['both_hadmard'] = [0,0,0,0]
+
+    prefix = 'auto_2q_single_gate_phase_calibration'
+
+    fname = get_next_filename(data_path, prefix, suffix='.h5')
+    print(fname)
+    fname = os.path.join(data_path, fname)
+    q1name1=['Xge','Xge','Xef','Xef']
+    q2name1=['Xge','Xge','Xef','Xef']
+    q1name2=['Xge','I','Xef','I']
+    q2name2=['I','Xge','I','Xef']
+    onqubits=['1','2','1','2']
+    vzname=['on Q1ge','on Q2ge','on Q1ef','on Q2ef']
+
+    ## calibrating Q1 ge pi effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0,0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0,0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep']=[[quantum_device_cfg['pulse_info']['1']['pi_len'],0.0],[quantum_device_cfg['pulse_info']['1']['pi_len'],0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+            [quantum_device_cfg['pulse_info']['1']['pi_amp'], 0.0], [quantum_device_cfg['pulse_info']['1']['pi_amp'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+            [quantum_device_cfg['qubit']['1']['freq'], 0.0], [quantum_device_cfg['qubit']['1']['freq'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [
+            [0.0, 0.0], [180.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path, get_current_filename(data_path, 'sideband_2q_gate_calibration', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q1 ge ',vzname[iii],'--: %.2f ' % (pil))
+        phase_matrix['Q1_ge_pi'][iii] = pil/repeat/2.0
+
+    ## calibrating Q2 ge pi effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [
+            [quantum_device_cfg['pulse_info']['2']['pi_len'], 0.0], [quantum_device_cfg['pulse_info']['2']['pi_len'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+            [quantum_device_cfg['pulse_info']['2']['pi_amp'], 0.0], [quantum_device_cfg['pulse_info']['2']['pi_amp'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+            [quantum_device_cfg['qubit']['2']['freq'], 0.0], [quantum_device_cfg['qubit']['2']['freq'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [
+            [0.0, 0.0], [180.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'sideband_2q_gate_calibration', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q2 ge ',vzname[iii],'--: %.2f ' % (pil))
+        phase_matrix['Q2_ge_pi'][iii] = pil/repeat/2.0
+    ## calibrating Q1 ef pi effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [
+            [quantum_device_cfg['pulse_info']['1']['pi_ef_len'], 0.0], [quantum_device_cfg['pulse_info']['1']['pi_ef_len'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+            [quantum_device_cfg['pulse_info']['1']['pi_ef_amp'], 0.0], [quantum_device_cfg['pulse_info']['1']['pi_ef_amp'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+            [quantum_device_cfg['qubit']['1']['freq']+quantum_device_cfg['qubit']['1']['anharmonicity'], 0.0], [quantum_device_cfg['qubit']['1']['freq']+quantum_device_cfg['qubit']['1']['anharmonicity'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [
+            [0.0, 0.0], [180.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'sideband_2q_gate_calibration', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q1 ef ', vzname[iii], '--: %.2f ' % (pil))
+        phase_matrix['Q1_ef_pi'][iii] = pil/repeat/2.0
+    ## calibrating Q2 ef pi effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [
+            [quantum_device_cfg['pulse_info']['2']['pi_ef_len'], 0.0],
+            [quantum_device_cfg['pulse_info']['2']['pi_ef_len'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+            [quantum_device_cfg['pulse_info']['2']['pi_ef_amp'], 0.0],
+            [quantum_device_cfg['pulse_info']['2']['pi_ef_amp'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+            [quantum_device_cfg['qubit']['2']['freq'] + quantum_device_cfg['qubit']['2']['anharmonicity'], 0.0],
+            [quantum_device_cfg['qubit']['2']['freq'] + quantum_device_cfg['qubit']['2']['anharmonicity'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [
+            [0.0, 0.0], [180.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'sideband_2q_gate_calibration', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q2 ef ', vzname[iii], '--: %.2f ' % (pil))
+        phase_matrix['Q2_ef_pi'][iii] = pil/repeat/2.0
+
+    ###############################################################################################
+    ## calibrating Q1 ge pi/2 effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [
+            [quantum_device_cfg['pulse_info']['1']['half_pi_len'], 0.0],
+            [quantum_device_cfg['pulse_info']['1']['half_pi_len'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+            [quantum_device_cfg['pulse_info']['1']['half_pi_amp'], 0.0],
+            [quantum_device_cfg['pulse_info']['1']['half_pi_amp'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+            [quantum_device_cfg['qubit']['1']['freq'], 0.0], [quantum_device_cfg['qubit']['1']['freq'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [
+            [0.0, 0.0], [180.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'sideband_2q_gate_calibration', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q1 ge pi/2 ', vzname[iii], '--: %.2f ' % (pil))
+        phase_matrix['Q1_ge_pi/2'][iii] = pil/repeat/2.0
+
+    ## calibrating Q2 ge pi/2 effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [
+            [quantum_device_cfg['pulse_info']['2']['half_pi_len'], 0.0],
+            [quantum_device_cfg['pulse_info']['2']['half_pi_len'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+            [quantum_device_cfg['pulse_info']['2']['half_pi_amp'], 0.0],
+            [quantum_device_cfg['pulse_info']['2']['half_pi_amp'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+            [quantum_device_cfg['qubit']['2']['freq'], 0.0], [quantum_device_cfg['qubit']['2']['freq'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [
+            [0.0, 0.0], [180.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'sideband_2q_gate_calibration', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q2 ge pi/2 ', vzname[iii], '--: %.2f ' % (pil))
+        phase_matrix['Q2_ge_pi/2'][iii] = pil/repeat/2.0
+    ## calibrating Q1 ef pi/2 effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [
+            [quantum_device_cfg['pulse_info']['1']['half_pi_ef_len'], 0.0],
+            [quantum_device_cfg['pulse_info']['1']['half_pi_ef_len'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+            [quantum_device_cfg['pulse_info']['1']['half_pi_ef_amp'], 0.0],
+            [quantum_device_cfg['pulse_info']['1']['half_pi_ef_amp'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+            [quantum_device_cfg['qubit']['1']['freq'] + quantum_device_cfg['qubit']['1']['anharmonicity'], 0.0],
+            [quantum_device_cfg['qubit']['1']['freq'] + quantum_device_cfg['qubit']['1']['anharmonicity'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [
+            [0.0, 0.0], [180.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'sideband_2q_gate_calibration', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q1 ef pi/2 ', vzname[iii], '--: %.2f ' % (pil))
+        phase_matrix['Q1_ef_pi/2'][iii] = pil/repeat/2.0
+    ## calibrating Q2 ef pi/2 effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [
+            [quantum_device_cfg['pulse_info']['2']['half_pi_ef_len'], 0.0],
+            [quantum_device_cfg['pulse_info']['2']['half_pi_ef_len'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+            [quantum_device_cfg['pulse_info']['2']['half_pi_ef_amp'], 0.0],
+            [quantum_device_cfg['pulse_info']['2']['half_pi_ef_amp'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+            [quantum_device_cfg['qubit']['2']['freq'] + quantum_device_cfg['qubit']['2']['anharmonicity'], 0.0],
+            [quantum_device_cfg['qubit']['2']['freq'] + quantum_device_cfg['qubit']['2']['anharmonicity'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [
+            [0.0, 0.0], [180.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'sideband_2q_gate_calibration', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q2 ef/2 ', vzname[iii], '--: %.2f ' % (pil))
+        phase_matrix['Q2_ef_pi/2'][iii] = pil/repeat/2.0
+    ################################################################################################
+
+
+    ## calibrating Q1alpha ge effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [
+            [middle_time1, 0.0],
+            [middle_time1, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+            [quantum_device_cfg['pulse_info']['1']['half_pi_amp'], 0.0],
+            [quantum_device_cfg['pulse_info']['1']['half_pi_amp'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+            [quantum_device_cfg['qubit']['1']['freq'], 0.0], [quantum_device_cfg['qubit']['1']['freq'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [
+            [0.0, 0.0], [180.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'sideband_2q_gate_calibration', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q1 alpha ge ', vzname[iii], '--: %.2f ' % (pil))
+        phase_matrix['Q1_ge_alpha'][iii] = pil/repeat/2.0
+
+    ## calibrating Q2alpha ge effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [
+            [middle_time2, 0.0],
+            [middle_time2, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+            [quantum_device_cfg['pulse_info']['2']['half_pi_amp'], 0.0],
+            [quantum_device_cfg['pulse_info']['2']['half_pi_amp'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+            [quantum_device_cfg['qubit']['2']['freq'], 0.0], [quantum_device_cfg['qubit']['2']['freq'], 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [
+            [0.0, 0.0], [180.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+            [0.0, 0.0], [0.0, 0.0]]*repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'sideband_2q_gate_calibration', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q2 alpha ge ', vzname[iii], '--: %.2f ' % (pil))
+        phase_matrix['Q2_ge_alpha'][iii] = pil/repeat/2.0
+
+    ## calibrating Q1 hadmard effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [[quantum_device_cfg['pulse_info']['1']['half_pi_ef_len'], 0.0],
+                                                                           [middle_time1, 0.0],[quantum_device_cfg['pulse_info']['1']['half_pi_ef_len'], 0.0],[quantum_device_cfg['pulse_info']['1']['half_pi_ef_len'], 0.0],
+                                                                           [middle_time1, 0.0],[quantum_device_cfg['pulse_info']['1']['half_pi_ef_len'], 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+                                                                                  [quantum_device_cfg['pulse_info'][
+                                                                                       '1']['half_pi_ef_amp'], 0.0],
+                                                                                  [quantum_device_cfg['pulse_info'][
+                                                                                       '1']['half_pi_amp'],
+                                                                                   0.0],[quantum_device_cfg['pulse_info'][
+                                                                                       '1']['half_pi_ef_amp'], 0.0],[quantum_device_cfg['pulse_info'][
+                                                                                       '1']['half_pi_ef_amp'], 0.0],
+                                                                                  [quantum_device_cfg['pulse_info'][
+                                                                                       '1']['half_pi_amp'],
+                                                                                   0.0],[quantum_device_cfg['pulse_info'][
+                                                                                       '1']['half_pi_ef_amp'], 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+                                                                                   [quantum_device_cfg['qubit'][
+                                                                                        '1']['freq']+quantum_device_cfg['qubit'][
+                                                                                        '1']['anharmonicity'], 0.0], [
+                quantum_device_cfg['qubit']['1']['freq'], 0.0],[quantum_device_cfg['qubit'][
+                                                                                        '1']['freq']+quantum_device_cfg['qubit'][
+                                                                                        '1']['anharmonicity'], 0.0],[quantum_device_cfg['qubit'][
+                                                                                        '1']['freq']+quantum_device_cfg['qubit'][
+                                                                                        '1']['anharmonicity'], 0.0], [
+                quantum_device_cfg['qubit']['1']['freq'], 0.0],[quantum_device_cfg['qubit'][
+                                                                                        '1']['freq']+quantum_device_cfg['qubit'][
+                                                                                        '1']['anharmonicity'], 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [[-180, 0], [-180, 0], [-90, 0], [-270,0],[0,0],[0,0]] * repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+                                                                                  [0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+                                                                                   [0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [
+                                                                                    [0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0]] * repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+                                                                                [0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+                                                                                 [0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+                                                                                  [0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0]] * repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+                                                                                [0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+                                                                                 [0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+                                                                                  [0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0],[0.0, 0.0], [0.0, 0.0]] * repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'sideband_2q_gate_calibration', suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q1 hadmard gate ', vzname[iii], '--: %.2f ' % (pil))
+        phase_matrix['Q1_hadmard'][iii] = pil / repeat / 2.0
+
+    ## calibrating Q2 hadmard effect##########################################################################
+    for iii in range(4):
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+        experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+        experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+        experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+        experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+        experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+        experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+        experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+        experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [[quantum_device_cfg['pulse_info']['2'][
+                                                                             'half_pi_ef_len'], 0.0],
+                                                                        [middle_time2, 0.0], [
+                                                                            quantum_device_cfg['pulse_info'][
+                                                                                '2']['half_pi_ef_len'], 0.0], [
+                                                                            quantum_device_cfg['pulse_info'][
+                                                                                '2']['half_pi_ef_len'], 0.0],
+                                                                        [middle_time2, 0.0], [
+                                                                            quantum_device_cfg['pulse_info'][
+                                                                                '2']['half_pi_ef_len'],
+                                                                            0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+                                                                                  [quantum_device_cfg[
+                                                                                       'pulse_info'][
+                                                                                       '2']['half_pi_ef_amp'],
+                                                                                   0.0],
+                                                                                  [quantum_device_cfg[
+                                                                                       'pulse_info'][
+                                                                                       '2']['half_pi_amp'],
+                                                                                   0.0], [
+                quantum_device_cfg['pulse_info'][
+                    '2']['half_pi_ef_amp'], 0.0], [quantum_device_cfg['pulse_info'][
+                                                       '2']['half_pi_ef_amp'], 0.0],
+                                                                                  [quantum_device_cfg[
+                                                                                       'pulse_info'][
+                                                                                       '2']['half_pi_amp'],
+                                                                                   0.0], [
+                quantum_device_cfg['pulse_info'][
+                    '2']['half_pi_ef_amp'], 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+                                                                                   [quantum_device_cfg['qubit'][
+                                                                                        '2']['freq'] +
+                                                                                    quantum_device_cfg['qubit'][
+                                                                                        '2']['anharmonicity'],
+                                                                                    0.0], [
+                quantum_device_cfg['qubit']['2']['freq'], 0.0], [quantum_device_cfg['qubit'][
+                                                                     '2']['freq'] + quantum_device_cfg['qubit'][
+                                                                     '2']['anharmonicity'], 0.0],
+                                                                                   [quantum_device_cfg['qubit'][
+                                                                                        '2']['freq'] +
+                                                                                    quantum_device_cfg['qubit'][
+                                                                                        '2']['anharmonicity'],
+                                                                                    0.0], [
+                quantum_device_cfg['qubit']['2']['freq'], 0.0], [quantum_device_cfg['qubit'][
+                                                                     '2']['freq'] + quantum_device_cfg['qubit'][
+                                                                     '2']['anharmonicity'], 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [[-180, 0], [-180, 0], [-90, 0],
+                                                                                 [-270, 0], [0, 0],
+                                                                                 [0, 0]] * repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+                                                                                  [0.0, 0.0], [0.0, 0.0],
+                                                                                  [0.0, 0.0], [0.0, 0.0],
+                                                                                  [0.0, 0.0],
+                                                                                  [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [
+                                                                                   [0.0, 0.0], [0.0, 0.0],
+                                                                                   [0.0, 0.0], [0.0, 0.0],
+                                                                                   [0.0, 0.0],
+                                                                                   [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [
+                                                                                    [0.0, 0.0], [0.0, 0.0],
+                                                                                    [0.0, 0.0], [0.0, 0.0],
+                                                                                    [0.0, 0.0],
+                                                                                    [0.0, 0.0]] * repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+                                                                                [0.0, 0.0], [0.0, 0.0],
+                                                                                [0.0, 0.0], [0.0, 0.0],
+                                                                                [0.0, 0.0], [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+                                                                                 [0.0, 0.0], [0.0, 0.0],
+                                                                                 [0.0, 0.0], [0.0, 0.0],
+                                                                                 [0.0, 0.0],
+                                                                                 [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+                                                                                  [0.0, 0.0], [0.0, 0.0],
+                                                                                  [0.0, 0.0], [0.0, 0.0],
+                                                                                  [0.0, 0.0],
+                                                                                  [0.0, 0.0]] * repeat
+
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+                                                                                [0.0, 0.0], [0.0, 0.0],
+                                                                                [0.0, 0.0], [0.0, 0.0],
+                                                                                [0.0, 0.0], [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+                                                                                 [0.0, 0.0], [0.0, 0.0],
+                                                                                 [0.0, 0.0], [0.0, 0.0],
+                                                                                 [0.0, 0.0],
+                                                                                 [0.0, 0.0]] * repeat
+        experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+                                                                                  [0.0, 0.0], [0.0, 0.0],
+                                                                                  [0.0, 0.0], [0.0, 0.0],
+                                                                                  [0.0, 0.0],
+                                                                                  [0.0, 0.0]] * repeat
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+        update_awg = False
+        ########################################### Fitting Rabi
+        print('Fitting phase sweep data...')
+        data_path_now = os.path.join(data_path,
+                                     get_current_filename(data_path, 'sideband_2q_gate_calibration',
+                                                          suffix='.h5'))
+        with SlabFile(data_path_now) as a:
+            pil = single_gate_calibration(a)
+        print('Corrected phase -- Q2 hadmard gate ', vzname[iii], '--: %.2f ' % (pil))
+        phase_matrix['Q2_hadmard'][iii] = pil / repeat / 2.0
+
+        ## calibrating Simultaneous hadmard effect##########################################################################
+        for iii in range(4):
+            experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name1'] = [q1name1[iii]]
+            experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name1'] = [q2name1[iii]]
+            experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase1'] = [0]
+            experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase1'] = [0]
+
+            experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_name2'] = [q1name2[iii]]
+            experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_name2'] = [q2name2[iii]]
+            experiment_cfg['sideband_2q_gate_calibration']['Q1_gate_phase2'] = [0]
+            experiment_cfg['sideband_2q_gate_calibration']['Q2_gate_phase2'] = [0]
+
+            experiment_cfg['sideband_2q_gate_calibration']['on_qubits'] = [onqubits[iii]]
+            experiment_cfg['sideband_2q_gate_calibration']['acquisition_num'] = acq_no
+            experiment_cfg['sideband_2q_gate_calibration']['sweep_no'] = '2'
+            experiment_cfg['sideband_2q_gate_calibration']['vge'] = [0, 0]
+            experiment_cfg['sideband_2q_gate_calibration']['vef'] = [0, 0]
+            experiment_cfg['sideband_2q_gate_calibration']['pi_calibration'] = True
+            experiment_cfg['sideband_2q_gate_calibration']['calibration_qubit'] = onqubits[iii]
+
+            experiment_cfg['sideband_2q_gate_calibration']['sweep_start'] = phase_start
+            experiment_cfg['sideband_2q_gate_calibration']['sweep_stop'] = phase_stop
+            experiment_cfg['sideband_2q_gate_calibration']['sweep_step'] = phase_step
+
+            experiment_cfg['sideband_2q_gate_calibration']['times_prep'] = [[quantum_device_cfg['pulse_info']['2'][
+                                                                                 'half_pi_ef_len'], quantum_device_cfg['pulse_info']['1'][
+                                                                                 'half_pi_ef_len']],
+                                                                            [middle_time2, middle_time1], [
+                                                                                quantum_device_cfg['pulse_info'][
+                                                                                    '2']['half_pi_ef_len'], quantum_device_cfg['pulse_info'][
+                                                                                    '1']['half_pi_ef_len']], [
+                                                                                quantum_device_cfg['pulse_info'][
+                                                                                    '2']['half_pi_ef_len'], quantum_device_cfg['pulse_info'][
+                                                                                    '1']['half_pi_ef_len']],
+                                                                            [middle_time2, middle_time1], [
+                                                                                quantum_device_cfg['pulse_info'][
+                                                                                    '2']['half_pi_ef_len'],
+                                                                                quantum_device_cfg['pulse_info'][
+                                                                                    '1']['half_pi_ef_len']]] * repeat
+            experiment_cfg['sideband_2q_gate_calibration']['charge2_amps_prep'] = [
+                                                                                      [quantum_device_cfg[
+                                                                                           'pulse_info'][
+                                                                                           '2']['half_pi_ef_amp'],
+                                                                                       0.0],
+                                                                                      [quantum_device_cfg[
+                                                                                           'pulse_info'][
+                                                                                           '2']['half_pi_amp'],
+                                                                                       0.0], [
+                    quantum_device_cfg['pulse_info'][
+                        '2']['half_pi_ef_amp'], 0.0], [quantum_device_cfg['pulse_info'][
+                                                           '2']['half_pi_ef_amp'], 0.0],
+                                                                                      [quantum_device_cfg[
+                                                                                           'pulse_info'][
+                                                                                           '2']['half_pi_amp'],
+                                                                                       0.0], [
+                    quantum_device_cfg['pulse_info'][
+                        '2']['half_pi_ef_amp'], 0.0]] * repeat
+            experiment_cfg['sideband_2q_gate_calibration']['charge2_freqs_prep'] = [
+                                                                                       [quantum_device_cfg['qubit'][
+                                                                                            '2']['freq'] +
+                                                                                        quantum_device_cfg['qubit'][
+                                                                                            '2']['anharmonicity'],
+                                                                                        0.0], [
+                    quantum_device_cfg['qubit']['2']['freq'], 0.0], [quantum_device_cfg['qubit'][
+                                                                         '2']['freq'] + quantum_device_cfg['qubit'][
+                                                                         '2']['anharmonicity'], 0.0],
+                                                                                       [quantum_device_cfg['qubit'][
+                                                                                            '2']['freq'] +
+                                                                                        quantum_device_cfg['qubit'][
+                                                                                            '2']['anharmonicity'],
+                                                                                        0.0], [
+                    quantum_device_cfg['qubit']['2']['freq'], 0.0], [quantum_device_cfg['qubit'][
+                                                                         '2']['freq'] + quantum_device_cfg['qubit'][
+                                                                         '2']['anharmonicity'], 0.0]] * repeat
+            experiment_cfg['sideband_2q_gate_calibration']['charge2_phases_prep'] = [[-180, 0], [-180, 0], [-90, 0],
+                                                                                     [-270, 0], [0, 0],
+                                                                                     [0, 0]] * repeat
+
+            experiment_cfg['sideband_2q_gate_calibration']['charge1_amps_prep'] = [
+                                                                                      [0.0,quantum_device_cfg['pulse_info'][
+                                                                                           '1']['half_pi_ef_amp']],
+                                                                                      [0.0,quantum_device_cfg['pulse_info'][
+                                                                                           '1']['half_pi_amp']],
+                                                                                      [0.0,quantum_device_cfg['pulse_info'][
+                                                                                           '1']['half_pi_ef_amp']],
+                                                                                      [0.0,quantum_device_cfg['pulse_info'][
+                                                                                           '1']['half_pi_ef_amp']],
+                                                                                      [0.0,quantum_device_cfg['pulse_info'][
+                                                                                           '1']['half_pi_amp']],
+                                                                                      [0.0,quantum_device_cfg['pulse_info'][
+                                                                                           '1']['half_pi_ef_amp']]] * repeat
+            experiment_cfg['sideband_2q_gate_calibration']['charge1_freqs_prep'] = [[0.0,quantum_device_cfg['qubit'][
+                                                                                            '1']['freq'] +
+                                                                                        quantum_device_cfg['qubit'][
+                                                                                            '1']['anharmonicity']],
+                                                                                       [0.0,quantum_device_cfg['qubit'][
+                                                                                               '1']['freq']],
+                                                                                       [0.0,quantum_device_cfg['qubit'][
+                                                                                            '1']['freq'] +
+                                                                                        quantum_device_cfg['qubit'][
+                                                                                            '1']['anharmonicity']],
+                                                                                       [0.0,quantum_device_cfg['qubit'][
+                                                                                            '1']['freq'] +
+                                                                                        quantum_device_cfg['qubit'][
+                                                                                            '1']['anharmonicity']],
+                                                                                       [0.0,quantum_device_cfg['qubit'][
+                                                                                               '1']['freq']],
+                                                                                       [0.0,quantum_device_cfg['qubit'][
+                                                                                            '1']['freq'] +
+                                                                                        quantum_device_cfg['qubit'][
+                                                                                            '1']['anharmonicity']]] * repeat
+            experiment_cfg['sideband_2q_gate_calibration']['charge1_phases_prep'] = [[0,-180], [0,-180], [0,-90],
+                                                                                     [0,-270], [0, 0], [0, 0]] * repeat
+
+            experiment_cfg['sideband_2q_gate_calibration']['flux1_amps_prep'] = [
+                                                                                    [0.0, 0.0], [0.0, 0.0],
+                                                                                    [0.0, 0.0], [0.0, 0.0],
+                                                                                    [0.0, 0.0], [0.0, 0.0]] * repeat
+            experiment_cfg['sideband_2q_gate_calibration']['flux1_freqs_prep'] = [
+                                                                                     [0.0, 0.0], [0.0, 0.0],
+                                                                                     [0.0, 0.0], [0.0, 0.0],
+                                                                                     [0.0, 0.0],
+                                                                                     [0.0, 0.0]] * repeat
+            experiment_cfg['sideband_2q_gate_calibration']['flux1_phases_prep'] = [
+                                                                                      [0.0, 0.0], [0.0, 0.0],
+                                                                                      [0.0, 0.0], [0.0, 0.0],
+                                                                                      [0.0, 0.0],
+                                                                                      [0.0, 0.0]] * repeat
+
+            experiment_cfg['sideband_2q_gate_calibration']['flux2_amps_prep'] = [
+                                                                                    [0.0, 0.0], [0.0, 0.0],
+                                                                                    [0.0, 0.0], [0.0, 0.0],
+                                                                                    [0.0, 0.0], [0.0, 0.0]] * repeat
+            experiment_cfg['sideband_2q_gate_calibration']['flux2_freqs_prep'] = [
+                                                                                     [0.0, 0.0], [0.0, 0.0],
+                                                                                     [0.0, 0.0], [0.0, 0.0],
+                                                                                     [0.0, 0.0],
+                                                                                     [0.0, 0.0]] * repeat
+            experiment_cfg['sideband_2q_gate_calibration']['flux2_phases_prep'] = [
+                                                                                      [0.0, 0.0], [0.0, 0.0],
+                                                                                      [0.0, 0.0], [0.0, 0.0],
+                                                                                      [0.0, 0.0],
+                                                                                      [0.0, 0.0]] * repeat
+
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences('sideband_2q_gate_calibration')
+            update_awg = True
+
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            exp.run_experiment(sequences, path, 'sideband_2q_gate_calibration')
+
+            update_awg = False
+            ########################################### Fitting Rabi
+            print('Fitting phase sweep data...')
+            data_path_now = os.path.join(data_path,
+                                         get_current_filename(data_path, 'sideband_2q_gate_calibration',
+                                                              suffix='.h5'))
+            with SlabFile(data_path_now) as a:
+                pil = single_gate_calibration(a)
+            print('Corrected phase -- simultaneous hadmard gate ', vzname[iii], '--: %.2f ' % (pil))
+            phase_matrix['both_hadmard'][iii] = pil / repeat / 2.0
+
+    print('################################')
+    print('Final results:')
+    # print(phase_matrix)
+    for key, value in phase_matrix.items():
+        print(key, ':', value)
+    print('"1": {')
+    print('"pi_ge": ',phase_matrix['Q1_ge_pi'],',')
+    print('"pi_ef": ', phase_matrix['Q1_ef_pi'], ',')
+    print('"pi/2_ge": ', phase_matrix['Q1_ge_pi/2'], ',')
+    print('"pi/2_ef": ', phase_matrix['Q1_ef_pi/2'], ',')
+    print('"alpha_ge": ', phase_matrix['Q1_ge_alpha'], ',')
+    print('"hadmard": ', phase_matrix['Q1_hadmard'], ',')
+    print('"both_hadmard": ', phase_matrix['both_hadmard'])
+    print('},')
+    print('"2": {')
+    print('"pi_ge": ', phase_matrix['Q2_ge_pi'], ',')
+    print('"pi_ef": ', phase_matrix['Q2_ef_pi'], ',')
+    print('"pi/2_ge": ', phase_matrix['Q2_ge_pi/2'], ',')
+    print('"pi/2_ef": ', phase_matrix['Q2_ef_pi/2'], ',')
+    print('"alpha_ge": ', phase_matrix['Q2_ge_alpha'], ',')
+    print('"hadmard": ', phase_matrix['Q2_hadmard'])
+    print('},')
+
+
 
 
 def calibration_auto(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
@@ -2252,6 +3483,69 @@ def calibration_auto(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
             f.append(('hpi_gate_'+transition_name), hpi_gate[transition_name])
         f.append('date', d1)
 
+
+
+def histogram_erasure_qubit_gf_ramsey(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['histogram_erasure_qubit_gf_ramsey']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram_erasure_qubit_gf_ramsey', suffix='.h5'))
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['histogram_while_flux_pre_post_gate']['states'] = expt_cfg['states']
+    experiment_cfg['histogram_while_flux_pre_post_gate']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['histogram_while_flux_pre_post_gate']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['histogram_while_flux_pre_post_gate']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['histogram_while_flux_pre_post_gate']['flux_probe'] = expt_cfg['flux_probe']
+    experiment_cfg['histogram_while_flux_pre_post_gate']['flux_line'] = expt_cfg['flux_line']
+    experiment_cfg['histogram_while_flux_pre_post_gate']['charge_line'] = expt_cfg['charge_line']
+
+    experiment_cfg['histogram_while_flux_pre_post_gate']['amps'] = expt_cfg['amps']
+    experiment_cfg['histogram_while_flux_pre_post_gate']['freqs'] = expt_cfg['freqs']
+    experiment_cfg['histogram_while_flux_pre_post_gate']['phases'] = expt_cfg['phases']
+    experiment_cfg['histogram_while_flux_pre_post_gate']['sideband_on'] = expt_cfg['sideband_on']
+    experiment_cfg['histogram_while_flux_pre_post_gate']['post_gate'] = expt_cfg['post_gate']
+
+    if expt_cfg['ge_only']:
+        if len(on_qubits)==1:
+            if on_qubits[0] == '1':
+                sweep_states = ['gg', 'eg']
+            else:
+                sweep_states = ['gg', 'ge']
+        else:
+            sweep_states = ['gg', 'ge', 'eg', 'ee']
+    else:
+        if len(on_qubits)==1:
+            if on_qubits[0]=='1':
+                sweep_states = ['gg','eg','fg']
+            else:
+                sweep_states = ['gg','ge','gf']
+        else:
+            sweep_states = ['gg', 'ge', 'eg', 'gf', 'fg', 'ee', 'ef', 'fe', 'ff']
+    for ss in sweep_states:
+        experiment_cfg['histogram_while_flux_pre_post_gate']['states'].append(ss)
+
+    for time in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+        # Change ramsey frequency
+        ramsey_2nd_pulse_phase = 2 * np.pi * time * expt_cfg['ramsey_freq']
+        quantum_device_cfg['post_pulse_info']['charge1_phases_prep']=[[ramsey_2nd_pulse_phase,ramsey_2nd_pulse_phase]]
+        quantum_device_cfg['post_pulse_info']['charge2_phases_prep'] = [
+            [ramsey_2nd_pulse_phase, ramsey_2nd_pulse_phase]]
+        quantum_device_cfg['post_pulse_info']['flux1_phases_prep'] = [
+            [ramsey_2nd_pulse_phase, ramsey_2nd_pulse_phase]]
+        quantum_device_cfg['post_pulse_info']['flux2_phases_prep'] = [
+            [ramsey_2nd_pulse_phase, ramsey_2nd_pulse_phase]]
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        experiment_cfg['histogram_while_flux_pre_post_gate']['time'] = time
+        sequences = ps.get_experiment_sequences('histogram_while_flux_pre_post_gate')
+        update_awg = True
+        print('Sweep time: ',time,' ns')
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'histogram_while_flux_pre_post_gate', seq_data_file, update_awg)
+
+        update_awg = False
+
 def histogram_time_idle_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     expt_cfg = experiment_cfg['histogram_time_idle_sweep']
     data_path = os.path.join(path, 'data/')
@@ -2264,6 +3558,7 @@ def histogram_time_idle_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, 
     experiment_cfg['histogram_while_flux']['singleshot'] = expt_cfg['singleshot']
     experiment_cfg['histogram_while_flux']['flux_probe'] = expt_cfg['flux_probe']
     experiment_cfg['histogram_while_flux']['flux_line'] = expt_cfg['flux_line']
+    experiment_cfg['histogram_while_flux']['charge_line'] = expt_cfg['charge_line']
 
     experiment_cfg['histogram_while_flux']['amps'] = expt_cfg['amps']
     experiment_cfg['histogram_while_flux']['freqs'] = expt_cfg['freqs']
@@ -2271,15 +3566,21 @@ def histogram_time_idle_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, 
     experiment_cfg['histogram_while_flux']['sideband_on'] = expt_cfg['sideband_on']
 
     if expt_cfg['ge_only']:
-        if on_qubits[0] == '1':
-            sweep_states = ['gg', 'eg']
+        if len(on_qubits)==1:
+            if on_qubits[0] == '1':
+                sweep_states = ['gg', 'eg']
+            else:
+                sweep_states = ['gg', 'ge']
         else:
-            sweep_states = ['gg', 'ge']
+            sweep_states = ['gg', 'ge', 'eg', 'ee']
     else:
-        if on_qubits[0]=='1':
-            sweep_states = ['gg','eg','fg']
+        if len(on_qubits)==1:
+            if on_qubits[0]=='1':
+                sweep_states = ['gg','eg','fg']
+            else:
+                sweep_states = ['gg','ge','gf']
         else:
-            sweep_states = ['gg','ge','gf']
+            sweep_states = ['gg', 'ge', 'eg', 'gf', 'fg', 'ee', 'ef', 'fe', 'ff']
     for ss in sweep_states:
         experiment_cfg['histogram_while_flux']['states'].append(ss)
 
@@ -2297,6 +3598,127 @@ def histogram_time_idle_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, 
         update_awg = False
 
 
+def histogram_time_idle_sweep_phase_sweep_Lx(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['histogram_time_idle_sweep_phase_sweep_Lx']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram_time_idle_sweep_phase_sweep_Lx', suffix='.h5'))
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['histogram_while_flux']['states'] = expt_cfg['states']
+    experiment_cfg['histogram_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['histogram_while_flux']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['histogram_while_flux']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['histogram_while_flux']['flux_probe'] = expt_cfg['flux_probe']
+    experiment_cfg['histogram_while_flux']['flux_line'] = expt_cfg['flux_line']
+    experiment_cfg['histogram_while_flux']['charge_line'] = expt_cfg['charge_line']
+
+    experiment_cfg['histogram_while_flux']['amps'] = expt_cfg['amps']
+    experiment_cfg['histogram_while_flux']['freqs'] = expt_cfg['freqs']
+    experiment_cfg['histogram_while_flux']['phases'] = expt_cfg['phases']
+    experiment_cfg['histogram_while_flux']['sideband_on'] = expt_cfg['sideband_on']
+
+    phase_arr = np.linspace(expt_cfg['phase_start'], expt_cfg['phase_stop'], expt_cfg['phase_step_no'])
+
+    if expt_cfg['ge_only']:
+        if len(on_qubits) == 1:
+            if on_qubits[0] == '1':
+                sweep_states = ['gg', 'eg']
+            else:
+                sweep_states = ['gg', 'ge']
+        else:
+            sweep_states = ['gg', 'ge', 'eg', 'ee']
+    else:
+        if len(on_qubits) == 1:
+            if on_qubits[0] == '1':
+                sweep_states = ['gg', 'eg', 'fg']
+            else:
+                sweep_states = ['gg', 'ge', 'gf']
+        else:
+            sweep_states = ['gg', 'ge', 'eg', 'gf', 'fg', 'ee', 'ef', 'fe', 'ff']
+    for ss in sweep_states:
+        experiment_cfg['histogram_while_flux']['states'].append(ss)
+
+    for ii, phases in enumerate(phase_arr):
+        print('Index %s: Sweep Phase: %s' % (ii, phases.tolist()))
+        quantum_device_cfg['pre_pulse_info']['charge1_phases_prep'][-2][0] = phases[0]
+        quantum_device_cfg['pre_pulse_info']['charge2_phases_prep'][-1][0] = phases[1]
+        print('Current phase: ',quantum_device_cfg['pre_pulse_info']['charge1_phases_prep'], quantum_device_cfg['pre_pulse_info']['charge2_phases_prep'])
+
+        for time in np.arange(expt_cfg['start'], expt_cfg['stop'], expt_cfg['step']):
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            experiment_cfg['histogram_while_flux']['time'] = time
+            sequences = ps.get_experiment_sequences('histogram_while_flux')
+            update_awg = True
+            print('Sweep time: ', time, ' ns')
+
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            exp.run_experiment(sequences, path, 'histogram_while_flux', seq_data_file, update_awg)
+
+            update_awg = False
+
+
+def histogram_time_idle_sweep_phase_sweep_Lx_2d(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['histogram_time_idle_sweep_phase_sweep_Lx_2d']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'histogram_time_idle_sweep_phase_sweep_Lx_2d', suffix='.h5'))
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['histogram_while_flux']['states'] = expt_cfg['states']
+    experiment_cfg['histogram_while_flux']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['histogram_while_flux']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['histogram_while_flux']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['histogram_while_flux']['flux_probe'] = expt_cfg['flux_probe']
+    experiment_cfg['histogram_while_flux']['flux_line'] = expt_cfg['flux_line']
+    experiment_cfg['histogram_while_flux']['charge_line'] = expt_cfg['charge_line']
+
+    experiment_cfg['histogram_while_flux']['amps'] = expt_cfg['amps']
+    experiment_cfg['histogram_while_flux']['freqs'] = expt_cfg['freqs']
+    experiment_cfg['histogram_while_flux']['phases'] = expt_cfg['phases']
+    experiment_cfg['histogram_while_flux']['sideband_on'] = expt_cfg['sideband_on']
+    experiment_cfg['histogram_while_flux']['time'] = expt_cfg['time_stop']
+
+    phase_arr1 = np.linspace(expt_cfg['Q1_phase_start'], expt_cfg['Q1_phase_stop'], expt_cfg['Q1_phase_step_no'])
+    phase_arr2 = np.linspace(expt_cfg['Q2_phase_start'], expt_cfg['Q2_phase_stop'], expt_cfg['Q2_phase_step_no'])
+
+    if expt_cfg['ge_only']:
+        if len(on_qubits) == 1:
+            if on_qubits[0] == '1':
+                sweep_states = ['gg', 'eg']
+            else:
+                sweep_states = ['gg', 'ge']
+        else:
+            sweep_states = ['gg', 'ge', 'eg', 'ee']
+    else:
+        if len(on_qubits) == 1:
+            if on_qubits[0] == '1':
+                sweep_states = ['gg', 'eg', 'fg']
+            else:
+                sweep_states = ['gg', 'ge', 'gf']
+        else:
+            sweep_states = ['gg', 'ge', 'eg', 'gf', 'fg', 'ee', 'ef', 'fe', 'ff']
+    for ss in sweep_states:
+        experiment_cfg['histogram_while_flux']['states'].append(ss)
+    print(phase_arr1)
+    print(phase_arr2)
+    for ii, phases_q1 in enumerate(phase_arr1):
+
+        for jj, phases_q2 in enumerate(phase_arr2):
+
+            quantum_device_cfg['pre_pulse_info']['charge1_phases_prep'][-2][0] = phases_q1
+            quantum_device_cfg['pre_pulse_info']['charge2_phases_prep'][-1][0] = phases_q2
+            print('Index %s: Sweep Q1 Phase: %s' % (ii, quantum_device_cfg['pre_pulse_info']['charge1_phases_prep']))
+            print('Index %s: Sweep Q2 Phase: %s' % (jj, quantum_device_cfg['pre_pulse_info']['charge2_phases_prep']))
+
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+
+            sequences = ps.get_experiment_sequences('histogram_while_flux')
+            update_awg = True
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            exp.run_experiment(sequences, path, 'histogram_while_flux', seq_data_file, update_awg)
+
+            update_awg = False
+
+
 def histogram_time_idle_sweep_phase_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     expt_cfg = experiment_cfg['histogram_time_idle_sweep_phase_sweep']
     data_path = os.path.join(path, 'data/')
@@ -2309,22 +3731,35 @@ def histogram_time_idle_sweep_phase_sweep(quantum_device_cfg, experiment_cfg, ha
     experiment_cfg['histogram_while_flux']['singleshot'] = expt_cfg['singleshot']
     experiment_cfg['histogram_while_flux']['flux_probe'] = expt_cfg['flux_probe']
     experiment_cfg['histogram_while_flux']['flux_line'] = expt_cfg['flux_line']
+    experiment_cfg['histogram_while_flux']['charge_line'] = expt_cfg['charge_line']
 
     experiment_cfg['histogram_while_flux']['amps'] = expt_cfg['amps']
     experiment_cfg['histogram_while_flux']['freqs'] = expt_cfg['freqs']
     experiment_cfg['histogram_while_flux']['phases'] = expt_cfg['phases']
     experiment_cfg['histogram_while_flux']['sideband_on'] = expt_cfg['sideband_on']
 
-    if on_qubits[0] == '1':
-        sweep_states = ['gg', 'eg', 'fg']
+    if expt_cfg['ge_only']:
+        if len(on_qubits) == 1:
+            if on_qubits[0] == '1':
+                sweep_states = ['gg', 'eg']
+            else:
+                sweep_states = ['gg', 'ge']
+        else:
+            sweep_states = ['gg', 'ge', 'eg', 'ee']
     else:
-        sweep_states = ['gg', 'ge', 'gf']
+        if len(on_qubits) == 1:
+            if on_qubits[0] == '1':
+                sweep_states = ['gg', 'eg', 'fg']
+            else:
+                sweep_states = ['gg', 'ge', 'gf']
+        else:
+            sweep_states = ['gg', 'ge', 'eg', 'gf', 'fg', 'ee', 'ef', 'fe', 'ff']
     for ss in sweep_states:
         experiment_cfg['histogram_while_flux']['states'].append(ss)
 
     for phase_p in np.arange(expt_cfg['phase_start'], expt_cfg['phase_stop'], expt_cfg['phase_step']):
 
-        quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'][-2][0] = phase_p
+        quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'][-1][0] = phase_p
         print('Sweep Phase: ', phase_p)
 
         print(quantum_device_cfg['pre_pulse_info']['flux2_phases_prep'])
@@ -2354,6 +3789,7 @@ def histogram_time_idle_sweep_freq_sweep(quantum_device_cfg, experiment_cfg, har
     experiment_cfg['histogram_while_flux']['singleshot'] = expt_cfg['singleshot']
     experiment_cfg['histogram_while_flux']['flux_probe'] = expt_cfg['flux_probe']
     experiment_cfg['histogram_while_flux']['flux_line'] = expt_cfg['flux_line']
+    experiment_cfg['histogram_while_flux']['charge_line'] = expt_cfg['charge_line']
 
     experiment_cfg['histogram_while_flux']['amps'] = expt_cfg['amps']
     experiment_cfg['histogram_while_flux']['freqs'] = expt_cfg['freqs']
@@ -2372,9 +3808,9 @@ def histogram_time_idle_sweep_freq_sweep(quantum_device_cfg, experiment_cfg, har
     for freq_p in np.arange(expt_cfg['freq_start'], expt_cfg['freq_stop'], expt_cfg['freq_step']):
 
         if sweep_qubit == "1":
-            experiment_cfg['histogram_while_flux']['freqs'][0][0] = freq_p
+            experiment_cfg['histogram_while_flux']['freqs'][2][0] = freq_p
         else:
-            experiment_cfg['histogram_while_flux']['freqs'][0][1] = freq_p
+            experiment_cfg['histogram_while_flux']['freqs'][2][1] = freq_p
 
         print('Sweep Freq: ', freq_p)
         print('Current freq: ', experiment_cfg['histogram_while_flux']['freqs'])
@@ -2731,6 +4167,43 @@ def pulse_probe_through_flux_amp_sweep(quantum_device_cfg, experiment_cfg, hardw
 
         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
         exp.run_experiment(sequences, path, 'pulse_probe_through_flux_amp_sweep', seq_data_file, update_awg)
+
+        update_awg = False
+
+
+def vstar_decode_phase_time_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['vstar_decode_phase_time_sweep']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'vstar_decode_phase_time_sweep', suffix='.h5'))
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['vstar_decode_phase']['amps'] = expt_cfg['amps']
+    experiment_cfg['vstar_decode_phase']['freqs'] = expt_cfg['freqs']
+    experiment_cfg['vstar_decode_phase']['phases'] = expt_cfg['phases']
+    experiment_cfg['vstar_decode_phase']['phase_start'] = expt_cfg['phase_start']
+    experiment_cfg['vstar_decode_phase']['phase_stop'] = expt_cfg['phase_stop']
+    experiment_cfg['vstar_decode_phase']['phase_start'] = expt_cfg['phase_start']
+    experiment_cfg['vstar_decode_phase']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['vstar_decode_phase']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['vstar_decode_phase']['calibration_qubit'] = expt_cfg['calibration_qubit']
+    experiment_cfg['vstar_decode_phase']['pi_calibration'] = expt_cfg['pi_calibration']
+
+    experiment_cfg['vstar_decode_phase']['flux_line'] = expt_cfg['flux_line']
+    experiment_cfg['vstar_decode_phase']['charge_line'] = expt_cfg['charge_line']
+    experiment_cfg['vstar_decode_phase']['decode_phase'] = expt_cfg['decode_phase']
+
+
+    for index, length in enumerate(np.arange(expt_cfg['logical_time_start'], expt_cfg['logical_time_stop'], expt_cfg['logical_time_step'])):
+
+        experiment_cfg['vstar_decode_phase']['logical_time'] = length
+        print('Index: %s logical time: %s' %(index, length), ' ns')
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('vstar_decode_phase')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'vstar_decode_phase_time_sweep', seq_data_file, update_awg)
 
         update_awg = False
 
@@ -3610,6 +5083,63 @@ def tomo_2q_multitone_charge_flux_drive_gef_sweep_backup(quantum_device_cfg, exp
         update_awg = False
 
 
+def tomo_2q_gef_process(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['tomo_2q_gef_process']
+    data_path = os.path.join(path, '2q_process_data/')
+
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['tomo_2q_gef_process_single']['default'] = expt_cfg['default']
+    experiment_cfg['tomo_2q_gef_process_single']['default_state'] = expt_cfg['default_state']
+    experiment_cfg['tomo_2q_gef_process_single']['times_prep'] = expt_cfg['times_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['tomo_2q_gef_process_single']['charge1_amps_prep'] = expt_cfg['charge1_amps_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['charge1_freqs_prep'] = expt_cfg['charge1_freqs_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['charge1_phases_prep'] = expt_cfg['charge1_phases_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['charge2_amps_prep'] = expt_cfg['charge2_amps_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['charge2_freqs_prep'] = expt_cfg['charge2_freqs_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['charge2_phases_prep'] = expt_cfg['charge2_phases_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['flux1_amps_prep'] = expt_cfg['flux1_amps_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['flux1_freqs_prep'] = expt_cfg['flux1_freqs_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['flux1_phases_prep'] = expt_cfg['flux1_phases_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['flux2_amps_prep'] = expt_cfg['flux2_amps_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['flux2_freqs_prep'] = expt_cfg['flux2_freqs_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['flux2_phases_prep'] = expt_cfg['flux2_phases_prep']
+    experiment_cfg['tomo_2q_gef_process_single']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['tomo_2q_gef_process_single']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['tomo_2q_gef_process_single']['flux_LO'] = expt_cfg['flux_LO']
+
+    experiment_cfg['tomo_2q_gef_process_single']['post_pulse'] = expt_cfg['post_pulse']
+    experiment_cfg['tomo_2q_gef_process_single']['use_tomo_pulse_info'] = expt_cfg['use_tomo_pulse_info']
+    experiment_cfg['tomo_2q_gef_process_single']['sequential_tomo_pulse'] = expt_cfg[
+        'sequential_tomo_pulse']
+    experiment_cfg['tomo_2q_gef_process_single']['sequential_pre_state'] = expt_cfg[
+        'sequential_pre_state']
+    experiment_cfg['tomo_2q_gef_process_single']['defined'] = expt_cfg['defined']
+    Q1_set = expt_cfg['Q1_initial_state_set']
+    Q2_set = expt_cfg['Q2_initial_state_set']
+
+    for ii, Q1s in enumerate(Q1_set):
+        for jj, Q2s in enumerate(Q2_set):
+            seq_data_file = os.path.join(data_path,
+                                         get_next_filename(data_path, 'tomo_2q_gef_process',
+                                                           suffix='.h5'))
+
+            print('Q1 Index %s: Q2 Index %s: ' % (ii, jj),'Initial state: ',Q1s, ' ', Q2s)
+            experiment_cfg['tomo_2q_gef_process_single']['Q1_initial_state'] = [Q1s]
+            experiment_cfg['tomo_2q_gef_process_single']['Q2_initial_state'] = [Q2s]
+            print(experiment_cfg['tomo_2q_gef_process_single'])
+
+            ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            sequences = ps.get_experiment_sequences('tomo_2q_gef_process_single')
+            update_awg = True
+
+            exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+            exp.run_experiment(sequences, path, 'tomo_2q_gef_process', seq_data_file, update_awg)
+
+            update_awg = False
+
+
 def tomo_2q_multitone_charge_flux_drive_gef_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     expt_cfg = experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef_sweep']
     data_path = os.path.join(path, 'data/')
@@ -3635,6 +5165,9 @@ def tomo_2q_multitone_charge_flux_drive_gef_sweep(quantum_device_cfg, experiment
     experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['acquisition_num'] = expt_cfg['acquisition_num']
     experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['singleshot'] = expt_cfg['singleshot']
     experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['flux_LO'] = expt_cfg['flux_LO']
+
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['vge'] = expt_cfg['vge']
+    experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['vef'] = expt_cfg['vef']
 
     experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['post_pulse'] = expt_cfg['post_pulse']
     experiment_cfg['tomo_2q_multitone_charge_flux_drive_gef']['use_tomo_pulse_info'] = expt_cfg['use_tomo_pulse_info']
@@ -3668,7 +5201,7 @@ def tomo_2q_multitone_charge_flux_drive_gef_sweep(quantum_device_cfg, experiment
 def tomo_2q_multitone_bell_state_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
     expt_cfg = experiment_cfg['tomo_2q_multitone_bell_state_sweep']
     data_path = os.path.join(path, 'data/')
-    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'tomo_2q_multitone_bell_state_sweep', suffix='.h5'))
+    # seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'tomo_2q_multitone_bell_state_sweep', suffix='.h5'))
     on_qubits = expt_cfg['on_qubits']
 
     experiment_cfg['tomo_2q_multitone_charge_flux_drive']['times_prep'] = expt_cfg['times_prep']
@@ -3698,6 +5231,9 @@ def tomo_2q_multitone_bell_state_sweep(quantum_device_cfg, experiment_cfg, hardw
     experiment_cfg['tomo_2q_multitone_charge_flux_drive']['sequential_tomo_pulse'] = expt_cfg['sequential_tomo_pulse']
 
     for ii, idle_time in enumerate(np.arange(expt_cfg['time_start'], expt_cfg['time_stop'], expt_cfg['time_step'])):
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, 'tomo_2q_multitone_bell_state_sweep',
+                                                       suffix='.h5'))
 
         print('Index %s: gate_length: %s' %(ii, idle_time))
         experiment_cfg['tomo_2q_multitone_charge_flux_drive']['times_prep'][-1] = [idle_time,idle_time]
@@ -4236,6 +5772,38 @@ def vacuum_rabi_pre_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path
 
         exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
         exp.run_experiment(sequences, path, 'vacuum_rabi_pre_sweep', seq_data_file, update_awg)
+
+        update_awg = False
+
+
+def vacuum_rabi_pre_sweep_time(quantum_device_cfg, experiment_cfg, hardware_cfg, path):
+    expt_cfg = experiment_cfg['vacuum_rabi_pre_sweep_time']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'vacuum_rabi_pre_sweep_time', suffix='.h5'))
+    on_qubits = expt_cfg['on_qubits']
+
+    experiment_cfg['vacuum_rabi']['stop'] = expt_cfg['stop']
+    experiment_cfg['vacuum_rabi']['step'] = expt_cfg['step']
+    experiment_cfg['vacuum_rabi']['pre_pulse'] = expt_cfg['pre_pulse']
+    experiment_cfg['vacuum_rabi']['start'] = expt_cfg['start']
+    experiment_cfg['vacuum_rabi']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['vacuum_rabi']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['vacuum_rabi']['singleshot'] = expt_cfg['singleshot']
+    experiment_cfg['vacuum_rabi']['time_bin_data'] = expt_cfg['time_bin_data']
+
+
+    for ii, time in enumerate(np.arange(expt_cfg['start_time'], expt_cfg['stop_time'], expt_cfg['step_time'])):
+
+        print('Index %s: vacuum_rabi_pre_time: %s' %(ii, time))
+        quantum_device_cfg['pre_pulse_info']['times_prep'][-1] = [time, time]
+        print(quantum_device_cfg['pre_pulse_info'])
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('vacuum_rabi')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'vacuum_rabi_pre_sweep_time', seq_data_file, update_awg)
 
         update_awg = False
 

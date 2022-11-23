@@ -1,6 +1,12 @@
 import visdom
 import numpy as np
 from scipy import interpolate
+import sys
+# insert at 1, 0 is the script path (or '' in REPL)
+sys.path.insert(1, 'C:\_Lib\python\slab\experiments\PulseExperiments')
+import analyze_qudit
+
+
 
 
 class Pulse:
@@ -33,6 +39,119 @@ class Pulse:
 
     def get_t_array(self, total_length):
         return np.arange(0, total_length, self.dt) + self.t0
+
+
+class opt_single_qudit(Pulse):
+    def __init__(self, Omega, total_len, Ns, ratio_ge, ratio_ef, alpha, dt=None, plot=False):
+        self.Omega = Omega
+        self.total_len = total_len
+        self.Ns = Ns
+        self.ratio_ge = ratio_ge
+        self.ratio_ef = ratio_ef
+        self.alpha = alpha
+        self.dt = dt
+        self.plot = plot
+
+        self.t0 = 0
+
+    def get_pulse_array(self):
+
+        pulser = analyze_qudit.Pulser(self.Omega, self.t_array, self.Ns)
+        # rescaling alpha
+        alpha_scaled = []
+        for i in range(len(self.alpha)):
+            if np.mod(i, 4) < 2:
+                alpha_scaled.append(self.alpha[i] / self.ratio_ge)
+            else:
+                alpha_scaled.append(self.alpha[i] / self.ratio_ef)
+        alpha_scaled = np.array(alpha_scaled)
+        # advancing phase
+        # alpha_scaled1 = []
+        # for i in range(len(alpha_scaled)):
+        #     if np.mod(i, 4) == 0:
+        #         alpha_scaled1.append(
+        #             alpha_scaled[i] * np.cos(self.Omega[0][0] * self.t0 * np.pi * 2) - alpha_scaled[i + 1] * np.sin(
+        #                 self.Omega[0][0] * self.t0 * np.pi * 2))
+        #     if np.mod(i, 4) == 1:
+        #         alpha_scaled1.append(
+        #             alpha_scaled[i - 1] * np.sin(self.Omega[0][0] * self.t0 * np.pi * 2) + alpha_scaled[i] * np.cos(
+        #                 self.Omega[0][0] * self.t0 * np.pi * 2))
+        #     if np.mod(i, 4) == 2:
+        #         alpha_scaled1.append(
+        #             alpha_scaled[i] * np.cos(self.Omega[0][1] * self.t0 * np.pi * 2) - alpha_scaled[i + 1] * np.sin(
+        #                 self.Omega[0][1] * self.t0 * np.pi * 2))
+        #     if np.mod(i, 4) == 3:
+        #         alpha_scaled1.append(
+        #             alpha_scaled[i - 1] * np.sin(self.Omega[0][1] * self.t0 * np.pi * 2) + alpha_scaled[i] * np.cos(
+        #                 self.Omega[0][1] * self.t0 * np.pi * 2))
+        # alpha_scaled1 = np.array(alpha_scaled1)
+        # f = pulser.params_to_controls(alpha_scaled1)
+        # print([[self.Omega[0][0] * self.t0 * np.pi * 2, self.Omega[0][1] * self.t0 * np.pi * 2]])
+        f = pulser.params_to_controls(alpha_scaled, phase_shift=[np.pi/2, np.pi/2])
+        # print(f)
+
+        return f[0]
+
+    def get_length(self):
+        return self.total_len
+
+
+class opt_single_qudit4(Pulse):
+    def __init__(self, Omega, total_len, Ns, ratio_ge, ratio_ef, ratio_fh, alpha, dt=None, plot=False):
+        self.Omega = Omega
+        self.total_len = total_len
+        self.Ns = Ns
+        self.ratio_ge = ratio_ge
+        self.ratio_ef = ratio_ef
+        self.ratio_fh = ratio_fh
+        self.alpha = alpha
+        self.dt = dt
+        self.plot = plot
+
+        self.t0 = 0
+
+    def get_pulse_array(self):
+
+        pulser = analyze_qudit.Pulser(self.Omega, self.t_array, self.Ns)
+        # rescaling alpha
+        alpha_scaled = []
+        for i in range(len(self.alpha)):
+            if np.mod(i, 6) < 2:
+                alpha_scaled.append(self.alpha[i] / self.ratio_ge)
+            elif np.mod(i, 6) < 4:
+                alpha_scaled.append(self.alpha[i] / self.ratio_ef)
+            else:
+                alpha_scaled.append(self.alpha[i] / self.ratio_fh)
+        alpha_scaled = np.array(alpha_scaled)
+        # advancing phase
+        # alpha_scaled1 = []
+        # for i in range(len(alpha_scaled)):
+        #     if np.mod(i, 4) == 0:
+        #         alpha_scaled1.append(
+        #             alpha_scaled[i] * np.cos(self.Omega[0][0] * self.t0 * np.pi * 2) - alpha_scaled[i + 1] * np.sin(
+        #                 self.Omega[0][0] * self.t0 * np.pi * 2))
+        #     if np.mod(i, 4) == 1:
+        #         alpha_scaled1.append(
+        #             alpha_scaled[i - 1] * np.sin(self.Omega[0][0] * self.t0 * np.pi * 2) + alpha_scaled[i] * np.cos(
+        #                 self.Omega[0][0] * self.t0 * np.pi * 2))
+        #     if np.mod(i, 4) == 2:
+        #         alpha_scaled1.append(
+        #             alpha_scaled[i] * np.cos(self.Omega[0][1] * self.t0 * np.pi * 2) - alpha_scaled[i + 1] * np.sin(
+        #                 self.Omega[0][1] * self.t0 * np.pi * 2))
+        #     if np.mod(i, 4) == 3:
+        #         alpha_scaled1.append(
+        #             alpha_scaled[i - 1] * np.sin(self.Omega[0][1] * self.t0 * np.pi * 2) + alpha_scaled[i] * np.cos(
+        #                 self.Omega[0][1] * self.t0 * np.pi * 2))
+        # alpha_scaled1 = np.array(alpha_scaled1)
+        # f = pulser.params_to_controls(alpha_scaled1)
+        # print([[self.Omega[0][0] * self.t0 * np.pi * 2, self.Omega[0][1] * self.t0 * np.pi * 2]])
+        f = pulser.params_to_controls(alpha_scaled, phase_shift=[np.pi/2*0, np.pi/2*0, np.pi/2*0])
+        # print(f)
+
+        return f[0]
+
+    def get_length(self):
+        return self.total_len
 
 
 class Gauss(Pulse):
@@ -94,7 +213,6 @@ class Square(Pulse):
         )
 
         pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
-
         return pulse_array
 
     def get_length(self):
