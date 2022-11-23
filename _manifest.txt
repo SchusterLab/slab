@@ -1,0 +1,10 @@
+Mask:		Total Chips:	1
+ID	Copies	Short Description	Chip Type	Chip Info
+A	1	Chip is a class which contains structures
+       Perhaps it will also be used to do some error checking
+    
+______________________
+A	1	Chip is a class which contains structures
+       Perhaps it will also be used to do some error checking
+    
+

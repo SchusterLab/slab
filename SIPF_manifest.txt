@@ -1,0 +1,10 @@
+Mask:	SIPF	Total Chips:	1
+ID	Copies	Short Description	Chip Type	Chip Info
+S9	1	Chip is a class which contains structures
+       Perhaps it will also be used to do some error checking
+    
+______________________
+S9	1	Chip is a class which contains structures
+       Perhaps it will also be used to do some error checking
+    
+
