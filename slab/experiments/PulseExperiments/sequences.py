@@ -821,6 +821,177 @@ class PulseSequences:
         return sequencer.complete(self,plot=False)
 
 
+    def multitone_drive(self, sequencer):
+        # Modified by Ziqian
+        # in each braket, the amplitude, frequency, phases determines a simultaneous multitone send through flux line 1 or 2
+        # sideband rabi time domain, drive both VSLQ flux loops with mutitones having different amplitudes and phases
+        tones = max(len(self.expt_cfg['freqs'][0]),len(self.expt_cfg['freqs'][1]))
+        freqs = self.expt_cfg['freqs']
+        amps = (self.expt_cfg['amps'])
+        phases = (self.expt_cfg['phases']) # phase should be in degrees
+
+        if self.expt_cfg['Gaussian'][0]: # Gaussian part not fixed yet
+            pass
+
+        else:
+            # Modified by Tanay
+            # For flat-top pulses, has Gaussian ramp
+            for rabi_len in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'], self.expt_cfg['step']):
+                sequencer.new_sequence(self)
+                for ge_pi_id in self.expt_cfg['ge_pi']:
+                    sequencer.append('charge%s' % self.charge_port[ge_pi_id], self.qubit_pi[ge_pi_id])
+
+                sequencer.sync_channels_time(self.channels)
+
+                for ef_pi_id in self.expt_cfg['ef_pi']:
+                    sequencer.append('charge%s' % self.charge_port[ef_pi_id], self.qubit_ef_pi[ef_pi_id])
+
+                sequencer.sync_channels_time(self.channels)
+
+                if self.expt_cfg['pre_pulse']:
+                    # Initial pulse before Rabi
+                    pre_pulse_info = self.quantum_device_cfg['pre_pulse_info']
+                    sequencer.append('charge1',
+                                     Square_multitone_sequential(max_amps=pre_pulse_info['charge1_amps_prep'],
+                                                                 flat_lens=pre_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=pre_pulse_info['charge1_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     pre_pulse_info['charge1_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.append('charge2',
+                                     Square_multitone_sequential(max_amps=pre_pulse_info['charge2_amps_prep'],
+                                                                 flat_lens=pre_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=pre_pulse_info['charge2_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     pre_pulse_info['charge2_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.append('flux1',
+                                     Square_multitone_sequential(max_amps=pre_pulse_info['flux1_amps_prep'],
+                                                                 flat_lens=pre_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=pre_pulse_info['flux1_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     pre_pulse_info['flux1_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.append('flux2',
+                                     Square_multitone_sequential(max_amps=pre_pulse_info['flux2_amps_prep'],
+                                                                 flat_lens=pre_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=pre_pulse_info['flux2_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     pre_pulse_info['flux2_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.sync_channels_time(self.channels)
+
+
+                for index, qubit_id in enumerate(self.expt_cfg['on_qubits']):
+
+
+
+                    for flux_pulse_id in self.expt_cfg['flux_pulse']:
+                        sequencer.append('flux%s' %flux_pulse_id, self.flux_pulse[flux_pulse_id])
+
+                    sequencer.sync_channels_time(self.channels)
+
+                for index, charge_line_id in enumerate(self.expt_cfg['charge_line']):
+                    sequencer.append('charge%s' %charge_line_id,
+                                     Square_multitone(max_amp=np.array(amps[index]),
+                                        flat_len=[rabi_len]*tones, ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                        cutoff_sigma=2, freq=np.array(freqs[index]), phase=np.pi/180*(np.array(phases[index])), plot=False))
+
+                for index, flux_line_id in enumerate(self.expt_cfg['flux_line']):
+                    sequencer.append('flux%s' %flux_line_id,
+                                     Square_multitone(max_amp=np.array(amps[index+2]),
+                                        flat_len=[rabi_len]*tones, ramp_sigma_len=self.quantum_device_cfg['flux_pulse_info']['1']['ramp_sigma_len'],
+                                        cutoff_sigma=2, freq=np.array(freqs[index+2]), phase=np.pi/180*(np.array(phases[index+2])), plot=False))
+                sequencer.sync_channels_time(self.channels)
+
+                if self.expt_cfg['post_pulse']:
+                    # Post pulse after Rabi
+                    post_pulse_info = self.quantum_device_cfg['post_pulse_info']
+                    sequencer.append('charge1',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['charge1_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['charge1_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['charge1_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.append('charge2',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['charge2_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['charge2_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['charge2_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.append('flux1',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['flux1_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['flux1_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['flux1_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.append('flux2',
+                                     Square_multitone_sequential(max_amps=post_pulse_info['flux2_amps_prep'],
+                                                                 flat_lens=post_pulse_info['times_prep'],
+                                                                 ramp_sigma_len=
+                                                                 self.quantum_device_cfg['flux_pulse_info'][
+                                                                     '1'][
+                                                                     'ramp_sigma_len'],
+                                                                 cutoff_sigma=2,
+                                                                 freqs=post_pulse_info['flux2_freqs_prep'],
+                                                                 phases=np.pi / 180 * np.array(
+                                                                     post_pulse_info['flux2_phases_prep']),
+                                                                 plot=False))
+
+                    sequencer.sync_channels_time(self.channels)
+
+                self.readout(sequencer, self.expt_cfg['on_qubits'])
+
+                sequencer.end_sequence()
+
+        return sequencer.complete(self,plot=False)
+
+
     def multitone_sideband_rabi_drive_both_flux(self, sequencer):
         # Modified by Ziqian
         # in each braket, the amplitude, frequency, phases determines a simultaneous multitone send through flux line 1 or 2
@@ -8429,9 +8600,9 @@ class PulseSequences:
                 sequencer.sync_channels_time(self.channels)
 
                 # Unknown gate preparation
-                v_ge += -self.expt_cfg['phase_ge'] * np.pi / 180
-                v_ef += -self.expt_cfg['phase_ef'] * np.pi / 180
-                v_fh += -self.expt_cfg['phase_fh'] * np.pi / 180
+                v_ge += self.expt_cfg['phase_ge'] * np.pi / 180
+                v_ef += self.expt_cfg['phase_ef'] * np.pi / 180
+                v_fh += self.expt_cfg['phase_fh'] * np.pi / 180
                 # read alpha parameter from txt file
                 alpha_path = self.expt_cfg['alpha_path']
                 alpha = np.loadtxt(alpha_path) * 1000 / 2 / np.pi
@@ -9210,6 +9381,878 @@ class PulseSequences:
 
                     gate_name = self.expt_cfg['pre_gate_name']
 
+
+                    if gate_name == 'XX_no_VZ':
+                        phase_list = [4.842226544882868,
+                                    1.9490274910788066,
+                                    1.0627276227979017,
+                                    2.728104616447435,
+                                    4.0631493981515945,
+                                    5.491466122745835]
+                        theta_list = [3.1415927485429114,
+                                    3.1415925487853356,
+                                    3.1415925409968133,
+                                    3.1415925385110004,
+                                    3.1415927896231115,
+                                    3.141592617279135]
+                        # rotation gate name sequence correct
+                        rot_list = [
+                                    0,
+                                    1,
+                                    2,
+                                    1,
+                                    0,
+                                    1
+                                  ]
+                        times_rot = []
+                        amps_rot = []
+                        phases_rot = []
+                        freqs_rot = []
+                        # calculate rotation time
+                        for rot_no in range(len(phase_list)):
+                            id = rot_no
+                            if rot_list[id]==0:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==1:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_ef'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_ef_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_ef_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_ef_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==2:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_fh'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_fh_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_fh_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_fh_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_fh_len'])
+                                times_rot.append([middle_time, 0])
+
+                        times_prep = times_rot
+                        charge_amps = amps_rot
+                        charge_phases = phases_rot
+                        charge_freqs = freqs_rot
+
+                        print(times_prep)
+                        print(charge_amps)
+                        print(charge_phases)
+                        print(charge_freqs)
+
+                        v_ge += -0 * np.pi / 180
+                        v_ef += -0 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'XH_VZ':
+                        phase_list = [3.141595647417272,
+                                    5.766345815904203,
+                                    6.283177020050216,
+                                    2.6247782214125492,
+                                    6.231552175832145,
+                                    5.820378701937786]
+                        theta_list = [1.5707975995517374,
+                                    3.1415934109940427,
+                                    3.1415935904099666,
+                                    1.5707973977902978,
+                                    3.141593777673095,
+                                    3.1415934400148235]
+                        remained_vz = [3.035957623885644,
+                                    2.164324805419813,
+                                    3.1391867747286746]
+                        # rotation gate name: 0,1,2,0,1,0, sequence correct
+                        rot_list = [0,
+                                    1,
+                                    2,
+                                    1,
+                                    0,
+                                    1]
+                        times_rot = []
+                        amps_rot = []
+                        phases_rot = []
+                        freqs_rot = []
+                        # calculate rotation time
+                        for rot_no in range(len(phase_list)):
+                            id = rot_no
+                            if rot_list[id]==0:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==1:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_ef'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_ef_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_ef_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_ef_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==2:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_fh'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_fh_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_fh_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_fh_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_fh_len'])
+                                times_rot.append([middle_time, 0])
+
+                        times_prep = times_rot
+                        charge_amps = amps_rot
+                        charge_phases = phases_rot
+                        charge_freqs = freqs_rot
+
+                        print(times_prep)
+                        print(charge_amps)
+                        print(charge_phases)
+                        print(charge_freqs)
+
+                        v_ge += remained_vz[0]
+                        v_ef += remained_vz[1]
+                        v_fh += remained_vz[2]
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'XH_no_VZ':
+                        phase_list = [0.0,
+                                    3.1415931992491726,
+                                    6.283185307179586,
+                                    6.283185307179586,
+                                    9.998554277534e-07,
+                                    6.283185307179586]
+                        theta_list = [3.141592488802918,
+                                    3.1415925715810373,
+                                    1.5707954710143683,
+                                    3.141593161857997,
+                                    3.1415927101075236,
+                                    1.570795624595357]
+                        # rotation gate name sequence correct
+                        rot_list = [
+                                    1,
+                                    0,
+                                    1,
+                                    2,
+                                    1,
+                                    0
+                                  ]
+                        times_rot = []
+                        amps_rot = []
+                        phases_rot = []
+                        freqs_rot = []
+                        # calculate rotation time
+                        for rot_no in range(len(phase_list)):
+                            id = rot_no
+                            if rot_list[id]==0:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==1:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_ef'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_ef_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_ef_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_ef_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==2:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_fh'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_fh_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_fh_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_fh_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_fh_len'])
+                                times_rot.append([middle_time, 0])
+
+                        times_prep = times_rot
+                        charge_amps = amps_rot
+                        charge_phases = phases_rot
+                        charge_freqs = freqs_rot
+
+                        print(times_prep)
+                        print(charge_amps)
+                        print(charge_phases)
+                        print(charge_freqs)
+
+                        v_ge += -0 * np.pi / 180
+                        v_ef += -0 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'HI_VZ':
+                        phase_list = [2.4409621516769087,
+                                    0.7006299367185221,
+                                    3.842222018558578,
+                                    0.00035618626737747393]
+                        theta_list = [3.1415919207430028,
+                                    1.5707958682609617,
+                                    1.570796746334877,
+                                    3.141591707514087]
+                        remained_vz = [5.5821980234812845,
+                                    4.543565657597375,
+                                    5.58219754655104]
+                        # rotation gate name: 0,1,2,0,1,0, sequence correct
+                        rot_list = [1,
+                                    2,
+                                    0,
+                                    1]
+                        times_rot = []
+                        amps_rot = []
+                        phases_rot = []
+                        freqs_rot = []
+                        # calculate rotation time
+                        for rot_no in range(len(phase_list)):
+                            id = rot_no
+                            if rot_list[id]==0:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==1:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_ef'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_ef_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_ef_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_ef_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==2:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_fh'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_fh_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_fh_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_fh_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_fh_len'])
+                                times_rot.append([middle_time, 0])
+
+                        times_prep = times_rot
+                        charge_amps = amps_rot
+                        charge_phases = phases_rot
+                        charge_freqs = freqs_rot
+
+                        print(times_prep)
+                        print(charge_amps)
+                        print(charge_phases)
+                        print(charge_freqs)
+
+                        v_ge += remained_vz[0]
+                        v_ef += remained_vz[1]
+                        v_fh += remained_vz[2]
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'HI_no_VZ':
+                        phase_list = [1.236843270174321e-06,
+                                    3.141589649708464,
+                                    3.1415910539526224,
+                                    6.283185307179586]
+                        theta_list = [3.1415926107033423,
+                                    4.712392459179849,
+                                    1.570794415940165,
+                                    3.1415929484234666]
+                        # rotation gate name sequence correct
+                        rot_list = [
+                                    1,
+                                    0,
+                                    2,
+                                    1
+                                  ]
+                        times_rot = []
+                        amps_rot = []
+                        phases_rot = []
+                        freqs_rot = []
+                        # calculate rotation time
+                        for rot_no in range(len(phase_list)):
+                            id = rot_no
+                            if rot_list[id]==0:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==1:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_ef'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_ef_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_ef_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_ef_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==2:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_fh'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_fh_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_fh_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_fh_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_fh_len'])
+                                times_rot.append([middle_time, 0])
+
+                        times_prep = times_rot
+                        charge_amps = amps_rot
+                        charge_phases = phases_rot
+                        charge_freqs = freqs_rot
+
+                        print(times_prep)
+                        print(charge_amps)
+                        print(charge_phases)
+                        print(charge_freqs)
+
+                        v_ge += -0 * np.pi / 180
+                        v_ef += -0 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'HH_VZ':
+                        phase_list = [0.0,
+                                    3.141593737695821,
+                                    0.0,
+                                    6.283183839949762,
+                                    0.0,
+                                    9.967927202209955e-07]
+                        theta_list = [3.1415942555834917,
+                                    1.5707947084635416,
+                                    1.9106356172092365,
+                                    2.0943989515015637,
+                                    1.9106300729704437,
+                                    1.5707977468887142]
+                        remained_vz = [6.283184757253145,
+                                        6.283185307179586,
+                                        6.283185307179586]
+                        # rotation gate name: 0,1,2,0,1,0, sequence correct
+                        rot_list = [1,
+                                    2,
+                                    1,
+                                    0,
+                                    1,
+                                    2]
+                        times_rot = []
+                        amps_rot = []
+                        phases_rot = []
+                        freqs_rot = []
+                        # calculate rotation time
+                        for rot_no in range(len(phase_list)):
+                            id = rot_no
+                            if rot_list[id]==0:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==1:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_ef'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_ef_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_ef_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_ef_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==2:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_fh'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_fh_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_fh_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_fh_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_fh_len'])
+                                times_rot.append([middle_time, 0])
+
+                        times_prep = times_rot
+                        charge_amps = amps_rot
+                        charge_phases = phases_rot
+                        charge_freqs = freqs_rot
+
+                        print(times_prep)
+                        print(charge_amps)
+                        print(charge_phases)
+                        print(charge_freqs)
+
+                        v_ge += remained_vz[0]
+                        v_ef += remained_vz[1]
+                        v_fh += remained_vz[2]
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'HH_no_VZ':
+                        phase_list = [0.0,
+                                    3.1415915781220853,
+                                    6.283185307179586,
+                                    0.0,
+                                    0.0,
+                                    0.0]
+                        theta_list = [3.1415945764086106,
+                                    1.5707954276061282,
+                                    1.9106362975603475,
+                                    2.09439538536692,
+                                    1.9106290530661356,
+                                    1.570797162312248]
+                        # rotation gate name sequence correct
+                        rot_list = [
+                                    1,
+                                    2,
+                                    1,
+                                    0,
+                                    1,
+                                    2
+                                  ]
+                        times_rot = []
+                        amps_rot = []
+                        phases_rot = []
+                        freqs_rot = []
+                        # calculate rotation time
+                        for rot_no in range(len(phase_list)):
+                            id = rot_no
+                            if rot_list[id]==0:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==1:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_ef'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_ef_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_ef_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_ef_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==2:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_fh'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_fh_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_fh_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_fh_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_fh_len'])
+                                times_rot.append([middle_time, 0])
+
+                        times_prep = times_rot
+                        charge_amps = amps_rot
+                        charge_phases = phases_rot
+                        charge_freqs = freqs_rot
+
+                        print(times_prep)
+                        print(charge_amps)
+                        print(charge_phases)
+                        print(charge_freqs)
+
+                        v_ge += -0 * np.pi / 180
+                        v_ef += -0 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'H4_no_VZ':
+                        phase_list = [0.8249129822884619,
+                                    3.9086885581602946,
+                                    1.976184795301822,
+                                    3.9649485766466452,
+                                    5.857424451452168,
+                                    5.58656197250619,
+                                    4.723159800939384]
+                        theta_list = [1.2733167111446178,
+                                    1.0413643712920708,
+                                    3.096569185358281,
+                                    1.7513298448157213,
+                                    2.3135126553348875,
+                                    1.5698213337181626,
+                                    1.5650321888764613]
+                        # rotation gate name sequence correct
+                        rot_list = [
+                                    0,
+                                    1,
+                                    0,
+                                    2,
+                                    1,
+                                    2,
+                                    0
+                                  ]
+                        times_rot = []
+                        amps_rot = []
+                        phases_rot = []
+                        freqs_rot = []
+                        # calculate rotation time
+                        for rot_no in range(len(phase_list)):
+                            id = rot_no
+                            if rot_list[id]==0:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==1:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_ef'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_ef_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_ef_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_ef_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==2:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_fh'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_fh_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_fh_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_fh_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_fh_len'])
+                                times_rot.append([middle_time, 0])
+
+                        times_prep = times_rot
+                        charge_amps = amps_rot
+                        charge_phases = phases_rot
+                        charge_freqs = freqs_rot
+
+                        print(times_prep)
+                        print(charge_amps)
+                        print(charge_phases)
+                        print(charge_freqs)
+
+                        v_ge += -0 * np.pi / 180
+                        v_ef += -0 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'H4':
+                        phase_list = [4.07087837, 4.53585661, 5.47128466, 6.23010941, 3.76391394,
+                                      1.95820622, 4.09606722, 1.40104011]
+                        theta_list = [0.47230244, 1.79556205, 1.86307976, 2.42157874, 1.5043591,
+                                      2.43384318, 1.23321753, 1.57079633]
+                        # rotation gate name: 1, 0, 2, 1, 2, 0, 1, 0, sequence flipped
+                        rot_list = [1,0,2,1,2,0,1,0]
+                        times_rot = []
+                        amps_rot = []
+                        phases_rot = []
+                        freqs_rot = []
+                        # calculate rotation time
+                        for rot_no in range(len(phase_list)):
+                            id = len(phase_list)-rot_no-1
+                            if rot_list[id]==0:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==1:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_ef'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_ef_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_ef_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_ef_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==2:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_fh'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_fh_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_fh_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_fh_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_fh_len'])
+                                times_rot.append([middle_time, 0])
+
+                        times_prep = times_rot
+                        charge_amps = amps_rot
+                        charge_phases = phases_rot
+                        charge_freqs = freqs_rot
+
+                        print(times_prep)
+                        print(charge_amps)
+                        print(charge_phases)
+                        print(charge_freqs)
+
+                        v_ge += -0 * np.pi / 180
+                        v_ef += -0 * np.pi / 180
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'H4_fast':
+                        phase_list = [2.49786721, 3.4634592 , 4.71240729, 3.60507598, 4.7124554 , 4.71228092]
+                        theta_list = [1.57079633, 1.910611  , 2.09439801, 1.31800044, 1.91065264, 1.57079633]
+                        remained_vz = [4.0685728 , 5.03433808, 0.        ]
+                        # rotation gate name: 0,1,2,0,1,0, sequence flipped
+                        rot_list = [0,1,2,0,1,0]
+                        times_rot = []
+                        amps_rot = []
+                        phases_rot = []
+                        freqs_rot = []
+                        # calculate rotation time
+                        for rot_no in range(len(phase_list)):
+                            id = len(phase_list)-rot_no-1
+                            if rot_list[id]==0:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==1:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_ef'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_ef_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_ef_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_ef_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==2:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_fh'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_fh_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_fh_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_fh_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_fh_len'])
+                                times_rot.append([middle_time, 0])
+
+                        times_prep = times_rot
+                        charge_amps = amps_rot
+                        charge_phases = phases_rot
+                        charge_freqs = freqs_rot
+
+                        print(times_prep)
+                        print(charge_amps)
+                        print(charge_phases)
+                        print(charge_freqs)
+
+                        v_ge += remained_vz[0]
+                        v_ef += remained_vz[1]
+                        v_fh += remained_vz[2]
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
+                    if gate_name == 'H4_VZ':
+                        phase_list = [4.712397203812698,
+                                    4.7123885661516836,
+                                    3.6052529573463707,
+                                    4.712376716147608,
+                                    3.4633474936556334,
+                                    2.4981083638108084]
+                        theta_list = [1.570797905453195,
+                                    1.9106370027571469,
+                                    1.3181235667598517,
+                                    2.0943963635506564,
+                                    1.910633981523282,
+                                    1.5707995723805384]
+                        remained_vz = [4.068913937279878,
+                                        5.034138925306069,
+                                        6.283163898014695]
+                        # rotation gate name: 0,1,2,0,1,0, sequence correct
+                        rot_list = [0,
+                                    1,
+                                    0,
+                                    2,
+                                    1,
+                                    0]
+                        times_rot = []
+                        amps_rot = []
+                        phases_rot = []
+                        freqs_rot = []
+                        # calculate rotation time
+                        for rot_no in range(len(phase_list)):
+                            id = rot_no
+                            if rot_list[id]==0:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==1:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_ef'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_ef_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_ef_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_ef_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_ef_len'])
+                                times_rot.append([middle_time, 0])
+                            if rot_list[id]==2:
+                                freqs_rot.append([self.tomo_pulse_info[qubit_id]['freq_fh'],0])
+                                phases_rot.append([phase_list[id]/np.pi*180,0])
+                                amps_rot.append([self.tomo_pulse_info[qubit_id]['pi_fh_amp'],0])
+                                middle_time = self.tomo_pulse_info[qubit_id]['half_pi_fh_len'] + (theta_list[id]/np.pi - 0.5) / 0.5 * (
+                                        self.tomo_pulse_info[qubit_id]['pi_fh_len'] - self.tomo_pulse_info[qubit_id][
+                                    'half_pi_fh_len'])
+                                times_rot.append([middle_time, 0])
+
+                        times_prep = times_rot
+                        charge_amps = amps_rot
+                        charge_phases = phases_rot
+                        charge_freqs = freqs_rot
+
+                        print(times_prep)
+                        print(charge_amps)
+                        print(charge_phases)
+                        print(charge_freqs)
+
+                        v_ge += remained_vz[0]
+                        v_ef += remained_vz[1]
+                        v_fh += remained_vz[2]
+                        sequencer.append('charge%s' % qubit_id,
+                                         Square_multitone_sequential(max_amps=charge_amps,
+                                                                     flat_lens=times_prep,
+                                                                     ramp_sigma_len=
+                                                                     self.quantum_device_cfg['flux_pulse_info']['1'][
+                                                                         'ramp_sigma_len'],
+                                                                     cutoff_sigma=2,
+                                                                     freqs=charge_freqs,
+                                                                     phases=np.pi / 180 * np.array(charge_phases),
+                                                                     plot=False))
+                        sequencer.sync_channels_time(self.channels)
+                        if self.expt_cfg['phase_correction']:
+                            v_ge += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][int(qubit_id)-1]*np.pi/180
+                            v_ef += self.quantum_device_cfg['single_qubit_gate_phase'][qubit_id]['hadmard'][
+                                int(qubit_id) + 1]*np.pi/180
+
                     if gate_name == 'H3':
                         alpha = 2*np.arctan(np.sqrt(2))/np.pi
                         middle_time = self.tomo_pulse_info[qubit_id]['half_pi_len'] + (alpha - 0.5) / 0.5 * (
@@ -9405,9 +10448,15 @@ class PulseSequences:
                         # print(charge_amps)
                         # print(charge_phases)
                         # print(charge_freqs)
+                    if gate_name == 'Z3':
+                        v_ge += -90 * np.pi / 180
+                        v_ef += -90 * np.pi / 180
+                        v_fh += -90 * np.pi / 180
+                        sequencer.sync_channels_time(self.channels)
                     if gate_name == 'Z':
-                        v_ge += -120 * np.pi / 180
-                        v_ef += -120 * np.pi / 180
+                        v_ge += 90 * np.pi / 180
+                        v_ef += 90 * np.pi / 180
+                        v_fh += 90 * np.pi / 180
                         sequencer.sync_channels_time(self.channels)
 
 

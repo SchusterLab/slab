@@ -4809,6 +4809,63 @@ def multitone_sideband_rabi_drive_both_flux_freq_sweep(quantum_device_cfg, exper
         update_awg = False
 
 
+def multitone_drive_freq_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path): ## UNCHECKED
+    expt_cfg = experiment_cfg['multitone_drive_freq_sweep']
+    data_path = os.path.join(path, 'data/')
+    seq_data_file = os.path.join(data_path, get_next_filename(data_path, 'multitone_drive_freq_sweep', suffix='.h5'))
+
+    experiment_cfg['multitone_drive']['amps'] = expt_cfg['amps']
+    experiment_cfg['multitone_drive']['pre_pulse'] = expt_cfg['pre_pulse']
+    experiment_cfg['multitone_drive']['post_pulse'] = expt_cfg['post_pulse']
+    experiment_cfg['multitone_drive']['phases'] = expt_cfg['phases']
+    experiment_cfg['multitone_drive']['start'] = expt_cfg['time_start']
+    experiment_cfg['multitone_drive']['stop'] = expt_cfg['time_stop']
+    experiment_cfg['multitone_drive']['step'] = expt_cfg['time_step']
+    experiment_cfg['multitone_drive']['ge_pi'] = expt_cfg['ge_pi']
+    experiment_cfg['multitone_drive']['ef_pi'] = expt_cfg['ef_pi']
+    experiment_cfg['multitone_drive']['Gaussian'] = expt_cfg['Gaussian']
+    experiment_cfg['multitone_drive']['pi_calibration'] = expt_cfg['pi_calibration']
+    experiment_cfg['multitone_drive']['flux_pi_calibration'] = expt_cfg['flux_pi_calibration']
+    experiment_cfg['multitone_drive']['acquisition_num'] = expt_cfg['acquisition_num']
+    experiment_cfg['multitone_drive']['on_qubits'] = expt_cfg['on_qubits']
+    experiment_cfg['multitone_drive']['flux_pulse'] = expt_cfg['flux_pulse']
+    experiment_cfg['multitone_drive']['flux_line'] = expt_cfg['flux_line']
+    experiment_cfg['multitone_drive']['calibration_qubit'] = expt_cfg['calibration_qubit']
+
+    freqs_arr = np.linspace(expt_cfg['freqs_start'], expt_cfg['freqs_stop'], expt_cfg['no_points'])
+    # Simultaneously sweeping both freq. array
+
+    saved_freq = quantum_device_cfg['flux_line_mask']['flux_freq']
+    saved_mask = quantum_device_cfg['flux_line_mask']['flux_mask']
+
+    freq_norm = expt_cfg['mask_norm']
+
+    amp_origin = []
+    for aa in expt_cfg['amps'][-1]:
+        amp_origin.append(aa)
+
+    for ii, freqs in enumerate(freqs_arr):
+        print('Index %s: rabi_drive_freqs: %s' % (ii, freqs.tolist()))
+        experiment_cfg['multitone_drive']['freqs'] = freqs.tolist()
+        if expt_cfg['mask']:
+            corrected_amp = []
+            countt = 0
+            for aa in amp_origin:
+                corrected_amp.append(aa*get_mask_amp(experiment_cfg['multitone_drive']['freqs'][-1][countt], saved_freq, saved_mask)/get_mask_amp(freq_norm[countt], saved_freq, saved_mask))
+                countt += 1
+            experiment_cfg['multitone_drive']['amps'][-1] = corrected_amp
+            print('Flux line filtering Mask being used! Corrected Amp:', experiment_cfg['multitone_drive']['amps'])
+
+        ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        sequences = ps.get_experiment_sequences('multitone_drive')
+        update_awg = True
+
+        exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg)
+        exp.run_experiment(sequences, path, 'multitone_drive_freq_sweep', seq_data_file, update_awg)
+
+        update_awg = False
+
+
 def multitone_sideband_rabi_drive_both_flux_amp_sweep(quantum_device_cfg, experiment_cfg, hardware_cfg, path): ## UNCHECKED
     expt_cfg = experiment_cfg['multitone_sideband_rabi_drive_both_flux_amp_sweep']
     data_path = os.path.join(path, 'data/')
