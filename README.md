@@ -1,12 +1,7 @@
-# SLab
 This repository houses experiment code for [Schuster Lab](http://schusterlab.uchicago.edu) at the University of Chicago.
 
-## Contents
-- [Setup](#setup)
+This is a repository to setup the Quantum Machine OPX qubit measurement apparatus. It contains all the experiment files for Stimulated Emission experiment. 
 
-## Setup
-```
-Clone this repository into C:\_Lib\python\slab and add to PYTHONPATH
-```
+The configuration file contains the instrument, pulse, adc information.
 
-
+Each qubit and cavity characterization experiemens is written in a spearate .py file.
