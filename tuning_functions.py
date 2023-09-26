@@ -21,7 +21,7 @@ class Tuning:
         lattice_cfg = file_names
         og_dir = os.getcwd()
         if files_dir==None:
-            os.chdir("C:\\210801 - PHMIV3_56 - BF4 cooldown 4\\ipython notebook")
+            os.chdir("C:\\210801 - PHMIV3_56 - BF4 cooldown 6\\ipython notebook")
         else:
             os.chdir(files_dir)
         self.N = N

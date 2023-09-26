@@ -356,7 +356,7 @@ def get_params(hardware_cfg, experiment_cfg, lattice_cfg, on_qbs, on_rds, one_qb
 
     return params
 
-def get_config(filenb, expt_name):
+def get_config(filenb, expt_name, data_path = "..\\data\\"):
     """Takes in any experiemnt, and returns config
 
     Keyword arguments:
@@ -364,7 +364,7 @@ def get_config(filenb, expt_name):
     expt_name -- the name of the experiment you are doing this with
     """
     # the 'with' statement automatically opens and closes File a, even if code in the with block fails
-    filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    filename = data_path + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
         # get data in from json file
         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
@@ -881,6 +881,8 @@ def pulse_probe_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], domain=None,ma
         expt_name = "ff_pulse_probe_iq"
     if pi:
         expt_name = "pulse_probe_iq_pi"
+    if ff and pi:
+        expt_name = "ff_pulse_probe_iq_pi"
 
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
@@ -949,6 +951,8 @@ def pulse_probe_ef_iq(filenb, phi=0, sub_mean=True, show=['I', 'Q'], domain=None
         expt_name = "ff_pulse_probe_ef_iq"
     if pi:
         expt_name = "pulse_probe_ef_iq_pi"
+    if ff and pi:
+        expt_name = "ff_pulse_probe_ef_iq_pi"
 
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
@@ -1021,6 +1025,8 @@ def rabi(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, 
         expt_name = "rabi_pi"
     if ef:
         expt_name = "ef_rabi"
+    if pi and ff:
+        expt_name = "ff_rabi_pi"
 
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
@@ -1422,7 +1428,7 @@ def t1(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, de
         plt.show()
     return p
 
-def ramsey(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False):
+def ramsey(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, pi=False, ff=False, ef=False, decay=True):
     """
     takes in ramsey data, processes it, plots it, and fits it
     :param filenb: filenumber
@@ -1434,6 +1440,14 @@ def ramsey(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None
     :param debug: boolean, prints out all experient parameters
     """
     expt_name = 'ramsey'
+    if pi:
+        expt_name = 'ramsey_pi'
+    if ff:
+        expt_name = "ff_ramsey"
+    if ff and pi:
+        expt_name = "ff_ramsey_pi"
+    if ef:
+        expt_name = "ef_ramsey"
     filename = "..\\data\\" + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
     with File(filename, 'r') as a:
         hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
@@ -1486,8 +1500,14 @@ def ramsey(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None
 
             ######ANALYZE
             # p = fitdecaysin(t[3:],s[3:],fitparams = fitparams, domain = domain, showfit=False)
-            p = fitdecaysin(t, eval(s), fitparams=fitparams, domain=domain, showfit=False)
-            ax.plot(t, decaysin3(p, t), 'k-', label='fit')
+            if decay:
+                p = fitdecaysin(t, eval(s), fitparams=fitparams, domain=domain, showfit=False)
+                ax.plot(t, decaysin3(p, t), 'k-', label='fit')
+            else:
+                p=fitsin(t, eval(s), fitparams=fitparams, domain=domain, showfit=False)
+                sin3 = lambda p, x: p[0] * np.sin(2. * np.pi * p[1] * x + p[2] * np.pi / 180.) + p[3]
+                ax.plot(t, sin3(p, t), 'k-', label='fit')
+
 
             offset = ramsey_freq - p[1]
             nu_q_new = nu_q + offset * 1e-3
@@ -1498,7 +1518,8 @@ def ramsey(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None
             print("Oscillation freq = ", p[1], " MHz")
             print("Offset freq between data and ramsey =", offset, "MHz")
             print("Suggested qubit frequency choice =", nu_q_new, "GHz")
-            print("T2* =", p[3], "us")
+            if decay:
+                print("T2* =", p[3], "us")
         ax.legend()
         plt.show()
     return p, nu_q_new
@@ -1598,8 +1619,9 @@ def fid_func(Vval, ssbinsg, ssbinse, sshg, sshe):
         ind_e = len(ssbinse)
     return np.abs(((np.sum(sshg[:ind_g]) - np.sum(sshe[:ind_e])) / sshg.sum()))
 
+
 def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, domain=None, debug=False, rancut=120,
-                  details=True, numbins=200, ff=False, IQrot = True, hard_phi=None, plt_f =False, pair="ge"):
+                  details=True, numbins=200, ff=False, IQrot=True, hard_phi=None, plt_f=False, pair="ge"):
     expt_name = 'histogram'
     if ff:
         expt_name = 'ff_histogram'
@@ -1650,27 +1672,34 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
         labels = ['g', 'e', 'f']
         titles = ['I', 'Q']
 
+        # shape I, Q = [[(g, e, f)*num_seq_sets]*num_avg], shape[3*num_seq_sets, num_avg]
+        # shape IQs = [[I_seq0*num_seq_sets], [Q_seq0*num_seq_sets], [I_seq1*num_seq_sets], [Q_seq1*num_seq_sets], etc]
+        # shape IQs = [[I_seq0*num_seq_sets*num_avg], [Q_seq0*num_seq_sets*num_avg], [I_seq1*num_seq_sets*num_avg], [Q_seq1*num_seq_sets*num_avg], etc]
         IQs = mean(I[::3], 1), mean(Q[::3], 1), mean(I[1::3], 1), mean(Q[1::3], 1), mean(I[2::3], 1), mean(Q[2::3], 1)
         IQsss = I.T.flatten()[0::3], Q.T.flatten()[0::3], I.T.flatten()[1::3], Q.T.flatten()[1::3], I.T.flatten()[
                                                                                                     2::3], Q.T.flatten()[
                                                                                                            2::3]
 
-        if pair=="ge":
+        if pair == "ge":
             x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
             x0e, y0e = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
-        if pair=="gf":
+            pair_nb = [0, 1]
+        if pair == "gf":
             x0g, y0g = mean(IQsss[0][::int(a_num / sample)]), mean(IQsss[1][::int(a_num / sample)])
             x0e, y0e = mean(IQsss[4][::int(a_num / sample)]), mean(IQsss[5][::int(a_num / sample)])
-        if pair=="ef":
+            pair_nb = [0, 2]
+        if pair == "ef":
             x0g, y0g = mean(IQsss[2][::int(a_num / sample)]), mean(IQsss[3][::int(a_num / sample)])
             x0e, y0e = mean(IQsss[4][::int(a_num / sample)]), mean(IQsss[5][::int(a_num / sample)])
-        vec = [(x0g+x0e)/2, (y0g+y0e)/2]
+            pair_nb = [1, 2]
+        vec = [(x0g + x0e) / 2, (y0g + y0e) / 2]
+
         if IQrot:
             phi = arctan((y0e - y0g) / (x0e - x0g))
-            if x0g>x0e:
-                phi = phi+np.pi
-            if hard_phi!=None:
-                phi=hard_phi *np.pi/180
+            if x0g > x0e:
+                phi = phi + np.pi
+            if hard_phi != None:
+                phi = hard_phi * np.pi / 180
         else:
             phi = 0
         if details:
@@ -1681,7 +1710,6 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
                 ax.plot(IQsss[2 * ii][:], IQsss[2 * ii + 1][:], '.', color=colors[ii], alpha=0.85)
             if plt_f:
                 ax.plot(IQsss[2 * 2][:], IQsss[2 * 2 + 1][:], '.', color=colors[2], alpha=0.85)
-
 
             ax.set_xlabel('I (V)')
             ax.set_ylabel('Q (V)')
@@ -1694,7 +1722,7 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
                 ax.errorbar(mean(IQsss[2 * ii]), mean(IQsss[2 * ii + 1]), xerr=std(IQsss[2 * ii]),
                             yerr=std(IQsss[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
             if plt_f:
-                ii=2
+                ii = 2
                 ax.errorbar(mean(IQsss[2 * ii]), mean(IQsss[2 * ii + 1]), xerr=std(IQsss[2 * ii]),
                             yerr=std(IQsss[2 * ii + 1]), fmt='o', color=colors[ii], markersize=10)
             ax.set_xlabel('I')
@@ -1705,7 +1733,8 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
 
         I = I - vec[0]
         Q = Q - vec[1]
-        print(phi)
+
+        # shape IQsssrot = [seq0_rotI, seq0_rotQ, seq1_rotI, seq1_rotQ, seq2_rotI, seq2_rotQ,]
         IQsssrot = (I.T.flatten()[0::3] * cos(phi) + Q.T.flatten()[0::3] * sin(phi),
                     -I.T.flatten()[0::3] * sin(phi) + Q.T.flatten()[0::3] * cos(phi),
                     I.T.flatten()[1::3] * cos(phi) + Q.T.flatten()[1::3] * sin(phi),
@@ -1713,15 +1742,16 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
                     I.T.flatten()[2::3] * cos(phi) + Q.T.flatten()[2::3] * sin(phi),
                     -I.T.flatten()[2::3] * sin(phi) + Q.T.flatten()[2::3] * cos(phi))
 
-        x0g, y0g = mean(IQsssrot[0][:]), mean(IQsssrot[1][:])
-        x0e, y0e = mean(IQsssrot[2][:]), mean(IQsssrot[3][:])
+        x0g, y0g = mean(IQsssrot[pair_nb[0] * 2][:]), mean(IQsssrot[pair_nb[0] * 2 + 1][:])
+        x0e, y0e = mean(IQsssrot[pair_nb[1] * 2][:]), mean(IQsssrot[pair_nb[1] * 2 + 1][:])
 
         if details:
             for kk in range(2):
 
-                ax = fig.add_subplot(2, 2, kk + 3, title=expt_name + titles[kk ])
-                ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[0], label=labels[0],histtype=u'step', linewidth = 1.5)
-                ax.hist(IQsssrot[kk+2], bins=numbins, alpha=0.75, color=colors[1], label=labels[1],
+                ax = fig.add_subplot(2, 2, kk + 3, title=expt_name + titles[kk])
+                ax.hist(IQsssrot[kk], bins=numbins, alpha=0.75, color=colors[0], label=labels[0], histtype=u'step',
+                        linewidth=1.5)
+                ax.hist(IQsssrot[kk + 2], bins=numbins, alpha=0.75, color=colors[1], label=labels[1],
                         histtype=u'step', linewidth=1.5)
                 if plt_f:
                     ax.hist(IQsssrot[kk + 4], bins=numbins, alpha=0.75, color=colors[2], label=labels[2],
@@ -1740,8 +1770,8 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
             lims = [x0g - ran / rancut, x0g + ran / rancut]
         else:
             lims = [y0g - ran / rancut, y0g + ran / rancut]
-        sshg, ssbinsg = np.histogram(IQsssrot[ii], bins=numbins, range=lims)
-        sshe, ssbinse = np.histogram(IQsssrot[ii + 2], bins=numbins, range=lims)
+        sshg, ssbinsg = np.histogram(IQsssrot[ii + 2 * pair_nb[0]], bins=numbins, range=lims)
+        sshe, ssbinse = np.histogram(IQsssrot[ii + 2 * pair_nb[1]], bins=numbins, range=lims)
         fid_list = [fid_func(V, ssbinsg, ssbinse, sshg, sshe) for V in ssbinsg[0:-1]]
         fid = max(fid_list)
         if ii == 0:
@@ -1757,7 +1787,7 @@ def histogram_fit(filenb, phi=0, sub_mean=True, show=['I'], fitparams=None, doma
         fig.tight_layout()
         plt.show()
 
-    return temp, phi, vec, IQsssrot[0], IQsssrot[2]
+    return temp, phi, vec, IQsssrot[2*pair_nb[0]], IQsssrot[2*pair_nb[1]]
 
 
 def pi_cal_SS_GMM(filenb, phi=0, ran=1, sub_mean=False):
@@ -1807,6 +1837,218 @@ def pi_cal_SS_GMM(filenb, phi=0, ran=1, sub_mean=False):
 
     (I_P, Q_P, mag_P, phase_P) = iq_process(f=0, raw_I=I_raw_P, raw_Q=Q_raw_P, ran=ran, phi=phi, sub_mean=sub_mean)
     return I_P, Q_P
+
+def pi_cal_SS_GMM_data(I_temp, Q_temp, pair="ge"):
+    I_temp = np.array(I_temp)
+    Q_temp = np.array(Q_temp)
+    if pair=="ge":
+        UnstructuredIQdata = np.array([I_temp[0:2].flatten(), Q_temp[0:2].flatten()]).T
+    if pair=="ef":
+        UnstructuredIQdata = np.array([I_temp[1:3].flatten(), Q_temp[1:3].flatten()]).T
+    if pair=="gf":
+        UnstructuredIQdata = np.array([np.array([I_temp[0], I_temp[2]]).flatten(), np.array([Q_temp[0], Q_temp[2]]).flatten()]).T
+
+    gm = GM(n_components=2, covariance_type='full', max_iter=100, init_params='kmeans', weights_init=None,
+            precisions_init=None, random_state=1, warm_start=False, verbose=0, verbose_interval=10).fit(
+        UnstructuredIQdata)
+
+    ## identify |g> |e> peaks.  First index of I_raw_p is |g>, mean correspodning to this is |g>
+    GMM_means = np.array(gm.means_)
+
+    GMM_gI = GMM_means[0, 0]
+    GMM_gQ = GMM_means[0, 1]
+    GMM_eI = GMM_means[1, 0]
+    GMM_eQ = GMM_means[1, 1]
+
+    data_gI = np.mean(I_temp[0, :])
+    data_gQ = np.mean(Q_temp[0, :])
+    data_eI = np.mean(I_temp[1, :])
+    data_eQ = np.mean(Q_temp[1, :])
+
+    # Simplify: just look at |g> state distance.
+    ggdiff = (GMM_gI - data_gI) ** 2 + (
+                GMM_gQ - data_gQ) ** 2  # + (GMM_eI - data_eI)**2 + (GMM_eQ - data_eQ)**2 # |e> state variation -> not a good metric
+    gediff = (GMM_eI - data_gI) ** 2 + (GMM_eQ - data_gQ) ** 2  # + (GMM_gI - data_eI)**2 + (GMM_gQ - data_eQ)**2
+
+    ## Overwriting GMM |g> peak with data |g> peak
+    #         GMM_gI = data_gI
+    #         GMM_gQ = data_gQ
+
+    I_raw_P = np.array([GMM_gI, GMM_eI])
+    Q_raw_P = np.array([GMM_gQ, GMM_eQ])
+    if gediff < ggdiff:
+        #             print("labels out of order")
+        I_raw_P = np.array([GMM_eI, GMM_gI])
+        Q_raw_P = np.array([GMM_eQ, GMM_gQ])
+    ## Overwriting GMM |g> peak with data |g> peak
+
+    return I_raw_P, Q_raw_P
+
+
+def conf_mat_melting(filenb, debug=False, expt_name="melting_single_readout_full_ramp_2setups", pi_cal_seq=True,
+                     pair="ge", thresh=0, t_evol_hd=[], path ="..\\data\\"):
+    filename = path + str(filenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+    with File(filename, 'r') as a:
+        hardware_cfg = (json.loads(a.attrs['hardware_cfg']))
+        experiment_cfg = (json.loads(a.attrs['experiment_cfg']))
+        lattice_cfg = (json.loads(a.attrs['lattice_cfg']))
+        expt_params = experiment_cfg[expt_name.lower()]
+        on_qbs = expt_params['on_qbs']
+        on_rds = expt_params['on_rds']
+        num_avgs = expt_params["acquisition_num"]
+
+        if t_evol_hd == []:
+            t_evol = arange(expt_params['evolution_t_start'], expt_params['evolution_t_stop'],
+                            expt_params['evolution_t_step'])
+        else:
+            t_evol = t_evol_hd
+
+        # assuming single readout
+        rd_setups = [lattice_cfg["readout"]["setup"][rd] for rd in on_rds]
+        rd_setup = rd_setups[0]
+        ran = 1
+
+        try:
+            ef_cal = expt_params["ef_cal"]
+        except:
+            ef_cal = False
+        if ef_cal:
+            cal_nb_seq = 3
+        else:
+            cal_nb_seq = 2
+
+        if pi_cal_seq:
+            ## get phi and vec
+            try:
+                I_raw_cal = np.array(a["qb{}_I".format(rd_setup[0])][-cal_nb_seq:])  # in shape (num_expt, num_avg)
+                Q_raw_cal = np.array(a["qb{}_Q".format(rd_setup[0])][-cal_nb_seq:])
+            except:
+                I_raw_cal = np.array(a["I"][-cal_nb_seq:])  # in shape (num_expt, num_avg)
+                Q_raw_cal = np.array(a["Q"][-cal_nb_seq:])
+
+            # cal sequence is 2 sequences: 0, 1
+            # I_raw_pical = [I_raw_cal[0], I_raw_cal[1]]
+            # Q_raw_pical = [Q_raw_cal[0], Q_raw_cal[1]]
+
+            I_raw_pical_mean, Q_raw_pical_mean = pi_cal_SS_GMM_data(I_raw_cal, Q_raw_cal, pair=pair)
+            dist = np.sqrt(
+                (I_raw_pical_mean[1] - I_raw_pical_mean[0]) ** 2 + (Q_raw_pical_mean[1] - Q_raw_pical_mean[0]) ** 2)
+
+            phi = arctan((Q_raw_pical_mean[1] - Q_raw_pical_mean[0]) / (I_raw_pical_mean[1] - I_raw_pical_mean[0]))
+            if I_raw_pical_mean[1] < I_raw_pical_mean[0]:
+                phi = phi + np.pi
+            vec = [(I_raw_pical_mean[1] + I_raw_pical_mean[0]) / 2, (Q_raw_pical_mean[1] + Q_raw_pical_mean[0]) / 2]
+
+            # threshold data
+            # get raw data
+            try:
+                I_raw = np.array(a["qb{}_I".format(rd_setup)])  # in shape (num_expt, num_avg)
+                Q_raw = np.array(a["qb{}_Q".format(rd_setup)])
+            except:
+                I_raw = np.array(a["I"])  # in shape (num_expt, num_avg)
+                Q_raw = np.array(a["Q"])
+            I_centered = I_raw - vec[0]
+            Q_centered = Q_raw - vec[1]
+            I_rot = I_centered * np.cos(phi) + Q_centered * np.sin(phi)
+            qb_state = (I_rot / dist) > thresh
+            qb_state_list = np.array(qb_state[0:-cal_nb_seq])  # now in shape (num_expt. num_avg)
+            cal_state_list = qb_state[-cal_nb_seq:]  # in shape (num_expt, num_avg)
+            I_cal_rot = copy.deepcopy(I_rot[-cal_nb_seq:])
+            I_rot = copy.deepcopy(I_rot[0:-cal_nb_seq])
+
+        else:
+            ## get phi and vec
+            pi_file = a.attrs['pi_cal_fname']
+            path, file = os.path.split(pi_file)
+            picalfilenb = int(file[0:5])
+            expt_name = "pi_cal"
+            #             pi_cal_filename = "..\\data\\" + str(picalfilenb) + "_" + expt_name.lower() + ".h5"
+            pi_cal_filename = "C:\\221230 - PHMIV3_56 - BF4 cooldown 10\\data\\" + str(picalfilenb).zfill(5) + "_" + expt_name.lower() + ".h5"
+            with File(pi_cal_filename, 'r') as pi_a:
+                I_raw_cal = np.array(pi_a["I"])
+                Q_raw_cal = np.array(pi_a["Q"])
+
+            # cal sequence is 2 sequences: 0, 1
+            # I_raw_pical = [I_raw_cal[0], I_raw_cal[1]]
+            # Q_raw_pical = [Q_raw_cal[0], Q_raw_cal[1]]
+
+            I_raw_pical_mean, Q_raw_pical_mean = pi_cal_SS_GMM_data(I_raw_cal, Q_raw_cal, pair=pair)
+            dist = np.sqrt(
+                (I_raw_pical_mean[1] - I_raw_pical_mean[0]) ** 2 + (Q_raw_pical_mean[1] - Q_raw_pical_mean[0]) ** 2)
+
+            phi = arctan((Q_raw_pical_mean[1] - Q_raw_pical_mean[0]) / (I_raw_pical_mean[1] - I_raw_pical_mean[0]))
+            if I_raw_pical_mean[1] < I_raw_pical_mean[0]:
+                phi = phi + np.pi
+            vec = [(I_raw_pical_mean[1] + I_raw_pical_mean[0]) / 2, (Q_raw_pical_mean[1] + Q_raw_pical_mean[0]) / 2]
+
+            # threshold data
+            # get raw data
+            try:
+                I_raw = np.array(a["qb{}_I".format(rd_setup)])  # in shape (num_expt, num_avg)
+                Q_raw = np.array(a["qb{}_Q".format(rd_setup)])
+            except:
+                I_raw = np.array(a["I"])  # in shape (num_expt, num_avg)
+                Q_raw = np.array(a["Q"])
+            I_centered = I_raw - vec[0]
+            Q_centered = Q_raw - vec[1]
+            I_rot = I_centered * np.cos(phi) + Q_centered * np.sin(phi)
+            qb_state = (I_rot / dist) > thresh
+
+            I_cal_centered = I_raw_cal - vec[0]
+            Q_cal_centered = Q_raw_cal - vec[1]
+            I_cal_rot = I_cal_centered * np.cos(phi) + Q_cal_centered * np.sin(phi)
+            cal_state = I_cal_rot > thresh
+
+            qb_state_list = np.array(qb_state)  # now in shape (num_expt. num_avg)
+            cal_state_list = cal_state  # in shape (num_expt, num_avg)
+
+        # get confusion matrix
+        # rows: prepare 0, 1
+        # columns: measure 0, 1
+        conf_mat = np.zeros((2, 2))
+        if pair == "ge":
+            seq_nums = [0, 1]
+        if pair == "ef":
+            seq_nums = [1, 2]
+        if pair == "gf":
+            seq_nums = [0, 2]
+
+        for ii, seq in enumerate(seq_nums):
+            conf_mat[ii][0] = num_avgs - np.sum(cal_state_list[seq])
+            conf_mat[ii][1] = np.sum(cal_state_list[seq])
+        # invert that
+        conf_mat = np.matrix(conf_mat).T / num_avgs
+        # print(df(conf_mat_2qb))
+
+        # qb state list is a list of states of qb i [0, 0, 1, etc]
+        # now build a matrix from this of the form [counts 0, counts 1]
+
+        tresholded_state = []
+        tresholded_state_cor = []
+        num_expt = qb_state_list.shape[0]
+
+        for ii in range(num_expt):
+            nb_counts = num_avgs
+            counts = np.matrix([nb_counts - np.sum(qb_state_list[ii]), np.sum(qb_state_list[ii])])  # [0, 1]
+            corrected_counts = (np.linalg.inv(conf_mat) @ counts.T).T
+
+            # turn back into normal array from matrix
+            counts = np.asarray(counts)[0]
+            corrected_counts = np.asarray(corrected_counts)[0]
+            # fix errors
+            # corrected_counts = fix_negative_counts(corrected_counts)
+            # normalize
+            counts = counts / nb_counts
+            corrected_counts = corrected_counts / nb_counts
+
+            tresholded_state.append(counts[1])
+            tresholded_state_cor.append(corrected_counts[1])
+
+    if debug:
+        return I_cal_rot / dist, I_rot / dist, t_evol, tresholded_state, tresholded_state_cor, conf_mat  # form: corrected counts for: 0, 1
+    else:
+        return t_evol, tresholded_state, tresholded_state_cor, conf_mat  # form: corrected counts for: 0, 1
+
 
 def histogram_IQ_crosstalk_combo(filenb, phi=0):
     """returns:

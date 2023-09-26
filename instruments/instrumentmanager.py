@@ -32,10 +32,12 @@ class InstrumentManager(dict):
     """
     def __init__(self, config_path=None, server=False, ns_address=None):
         """Initializes InstrumentManager using config_path if available"""
+
         dict.__init__(self)
         self.config_path = config_path
         self.config = None
         self.ns_address = ns_address
+
         #self.instruments={}
         if not server and Pyro4Loaded:
                 try:
@@ -126,6 +128,8 @@ class InstrumentManager(dict):
 
     def connect_proxies(self):
         ns = Pyro4.locateNS(self.ns_address)
+
+        print("connected proxies, ns=",ns)
         for name, uri in list(ns.list().items()):
             self[name] = Pyro4.Proxy(uri)
 

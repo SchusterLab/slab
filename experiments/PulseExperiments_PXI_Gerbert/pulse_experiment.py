@@ -185,28 +185,18 @@ class Experiment:
             raise
 
     def initiate_stab_LOs(self):
-        try:
-            for ii, d in enumerate(self.stab_los):
-                stab_freq = self.quantum_device_cfg['stabilizer_info']['freq']*1e9
-                d.set_frequency(stab_freq)
-                d.set_clock_reference(ext_ref=True)
-                d.set_power(self.quantum_device_cfg['stabilizer_info']["stab_lo_power"])
-                d.set_output_state(True)
-                d.set_rf_mode(val=0) # single RF tone on output 1
-                d.set_standby(False)
-                d.set_rf2_standby(True) # no output on RF 2
-                rfparams = d.get_rf_parameters()
-                settingparams = d.get_device_status()
-                print(" ==== STABILIZER LO SETTINGS ==== ")
-                print("RF1 OUT ENABLED: %s"%settingparams.operate_status.rf1_out_enable)
-                print("RF1 STANDBY: %s"%settingparams.operate_status.rf1_standby)
-                print("RF1 EXT REF DETECTED: %s"%settingparams.operate_status.ext_ref_detect)
-                print("RF1 FREQ: %s"%(rfparams.rf1_freq))
-                print("RF1 LEVEL: %s"%(rfparams.rf_level))
+        # try:
+        for ii, d in enumerate(self.stab_los):
+            stab_freq = self.lattice_cfg['stabilizer_info']['freq']*1e9
+            d.set_output(True)
+            d.set_frequency(stab_freq)
+            d.set_power(self.lattice_cfg['stabilizer_info']["stab_lo_power"])
+            # d.set_mod(state=True)
+            d.set_ext_pulse(mod=True)
 
-        except:
-            print("Error in readout STABILIZER LO configuration")
-            raise
+        # except:
+        #     print("Error in readout STABILIZER LO configuration")
+        #     raise
 
     # def initiate_readout_yigs(self):
     #     try:
@@ -440,7 +430,7 @@ class Experiment:
         self.initiate_drive_LOs()
         self.initiate_readout_LOs()
         # self.initiate_readout_yigs()
-        #self.initiate_stab_LOs()
+        self.initiate_stab_LOs()
         self.initiate_readout_attenuators()
         self.initiate_drive_attenuators()
         self.initiate_pxi(name, sequences)
@@ -535,6 +525,69 @@ class Experiment:
             self.lattice_cfg['readout'][self.rd_setups[ii]]['freq'][rd] = read_freq_list[ii]
         self.pxi_stop()
         return self.data
+
+    def run_experiment_pxi_mxgsweep(self, sequences, path, name, seq_data_file=None, update_awg=False, expt_num=0,
+                                   check_sync=False, save_errs=False, pi=False, ff=False, two_setups=False):
+        data_path = os.path.join(path, 'data/')
+        seq_data_file = os.path.join(data_path,
+                                     get_next_filename(data_path, name, suffix='.h5'))
+
+        self.expt_cfg = self.experiment_cfg[name]
+        self.generate_datafile(path, name, seq_data_file=seq_data_file)
+        self.set_trigger()
+        self.trig.set_output(state=False)
+        self.initiate_drive_LOs()
+        self.initiate_stab_LOs()
+        self.initiate_readout_attenuators()
+        self.initiate_drive_attenuators()
+        self.initiate_pxi(name, sequences)
+        self.initiate_readout_LOs()
+        # self.initiate_readout_yigs()
+        time.sleep(0.2)
+        self.pxi.run()
+        time.sleep(0.2)
+        self.trig.set_output(state=True)
+
+        # throw away first point
+        if self.expt_cfg['singleshot']:
+            foo = self.pxi.SSdata_many()
+        elif self.expt_cfg['trajectory']:
+            foo = self.pxi.traj_data_many()
+        else:
+            try:
+                pi_calibration = expt_cfg['pi_calibration']
+            except:
+                pi_calibration = False
+            foo = self.pxi.acquire_avg_data(pi_calibration=False)
+
+        MXG_init_freq = self.lattice_cfg["stabilizer_info"]["freq"]
+
+        for freq in np.arange(self.expt_cfg['start'], self.expt_cfg['stop'],
+                              self.expt_cfg['step']):
+            self.pxi.DIG_module.stopAll()
+            self.lattice_cfg["stabilizer_info"]["freq"] = freq + MXG_init_freq
+            self.initiate_stab_LOs()
+            self.pxi.configureDigChannels(self.hardware_cfg, self.experiment_cfg, self.quantum_device_cfg, self.lattice_cfg, name)
+            self.pxi.DIG_ch_1.clear()
+            self.pxi.DIG_ch_1.start()
+            self.pxi.DIG_ch_2.clear()
+            self.pxi.DIG_ch_2.start()
+            self.pxi.DIG_ch_3.clear()
+            self.pxi.DIG_ch_3.start()
+            self.pxi.DIG_ch_4.clear()
+            self.pxi.DIG_ch_4.start()
+            time.sleep(0.1)
+            if self.expt_cfg['singleshot']:
+                self.data = self.get_ss_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+            elif self.expt_cfg['trajectory']:
+                self.data = self.get_traj_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+            else:
+                self.data = self.get_avg_data_pxi(self.expt_cfg, name, seq_data_file=seq_data_file)
+        #
+        self.lattice_cfg["stabilizer_info"]["freq"] = MXG_init_freq
+        self.pxi_stop()
+        return self.data
+
 
     def run_experiment_pxi_histsweep(self, sequences, path, name, seq_data_file=None, update_awg=False, expt_num=0,
                                    check_sync=False, save_errs=False, pi=False, ff=False, two_setups=False):

@@ -546,7 +546,7 @@ class KeysightSingleQubit:
             #Queue trigger waveforms to trigger channels
             PXIwave_master_trigger.queue(self.stab_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, cycles=1, prescaler=0)
             PXIwave_master_trigger.queue(self.stab_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, cycles=1, prescaler=0)
-            #PXIwave_stab_I.queue(self.stab_ch_1, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['stab_I'], cycles=1, prescaler=0)
+            PXIwave_stab_I.queue(self.stab_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['stab_I'], cycles=1, prescaler=0)
             # PXIwave_stab_Q.queue(self.stab_ch_2, trigger_mode=SD1.SD_TriggerModes.EXTTRIG,
             #                     delay=self.hardware_delays['stab_Q'],cycles=1, prescaler=0)
             # PXIwave_stabilizer_marker.queue(self.stab_ch_3, trigger_mode=SD1.SD_TriggerModes.EXTTRIG, delay=self.hardware_delays['stab_marker'], cycles=1,
