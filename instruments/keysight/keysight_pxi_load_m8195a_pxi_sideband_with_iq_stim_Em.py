@@ -50,7 +50,7 @@ class KeysightSingleQubit:
                                        7: key.ModuleType.OUTPUT,
                                        8: key.ModuleType.OUTPUT,
                                        9: key.ModuleType.OUTPUT,
-                                       10: key.ModuleType.INPUT})
+                                       10: key.ModuleType.INPUT}, hvi=False)
 
         self.hardware_cfg = hardware_cfg
         self.jpa_pump = quantum_device_cfg['readout']['jpa_pump']

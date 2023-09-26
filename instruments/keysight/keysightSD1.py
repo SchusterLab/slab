@@ -8,7 +8,7 @@ import numpy as np
 
 if sys.version_info[1] > 7 :
     os.add_dll_directory('C:\\Program Files\\Keysight\\SD1\\shared')
-    os.add_dll_directory('C:\\Program Files\\Common Files\\Keysight\\PathWave Test Sync Executive\\HVIcore\\1.0\\bin')
+    # os.add_dll_directory('C:\\Program Files\\Common Files\\Keysight\\PathWave Test Sync Executive\\HVIcore\\1.0\\bin')
 
 
 

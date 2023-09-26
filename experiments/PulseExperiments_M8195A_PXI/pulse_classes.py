@@ -71,7 +71,8 @@ class Square(Pulse):
         )
 
         if not self.fix_phase:pulse_array = pulse_array * np.cos(2 * np.pi * self.freq * (self.t_array - self.phase_t0) + self.phase)
-        else:pulse_array = pulse_array * np.cos(2 * np.pi * (self.freq + self.dc_offset) * (self.t_array - self.phase_t0) + self.phase -2 * np.pi * (self.dc_offset)*(self.t_array - self.t_array[0]) )
+        else:pulse_array = pulse_array * np.cos(2 * np.pi * (self.freq + self.dc_offset) * (self.t_array - self.phase_t0) +
+                                                self.phase -2 * np.pi * (self.dc_offset)*(self.t_array - self.t_array[0]) )
         return pulse_array
 
     def get_length(self):
@@ -449,7 +450,7 @@ class Gauss(Pulse):
 
 
 class Gauss_multitone(Pulse):
-    def __init__(self, max_amp, sigma_len, cutoff_sigma, freqs, phases, dt=None, plot=False):
+    def __init__(self, max_amp, sigma_len, cutoff_sigma, freqs, phases, dt=None, plot=False, phase_t0=0):
         self.max_amp = max_amp
         self.sigma_len = sigma_len
         self.cutoff_sigma = cutoff_sigma
@@ -457,11 +458,11 @@ class Gauss_multitone(Pulse):
         self.phases = phases
         self.dt = dt
         self.plot = plot
+        self.phase_t0 = 0
 
         self.t0 = 0
 
     def get_pulse_array(self):
-
         # pulse_array = self.max_amp * np.exp(
         #     -1.0 * (self.t_array - (self.t0 + 2 * self.sigma_len)) ** 2 / (2 * self.sigma_len ** 2))
         if isinstance(self.max_amp, (int, float)):
@@ -649,9 +650,16 @@ class DRAG(Pulse):
 
 
 class ARB(Pulse):
-    def __init__(self, A_list, B_list, len, freq, phase, dt=None, plot=False, scale=1.0):
-        self.A_list = np.pad(A_list, (1,1 ), 'constant', constant_values=(0, 0))
-        self.B_list = np.pad(B_list, (1,1 ), 'constant', constant_values=(0, 0))
+    def __init__(self, A_list, B_list, len, freq, phase, dt=None, plot=False, scale=1.0, t0=0,
+                 uneven_tlist=[]):
+        if type(uneven_tlist) == list:
+            uneven_tlist = np.array(uneven_tlist)
+        if not uneven_tlist.tolist():
+            self.A_list = np.pad(A_list, (1,1 ), 'constant', constant_values=(0, 0))
+            self.B_list = np.pad(B_list, (1,1 ), 'constant', constant_values=(0, 0))
+        else:
+            self.A_list = A_list
+            self.B_list = B_list
 
         self.len = len
         self.freq = freq
@@ -659,25 +667,33 @@ class ARB(Pulse):
         self.dt = dt
         self.plot = plot
         self.scale = scale
+        self.uneven_tlist = uneven_tlist
 
-        self.t0 = 0
+        self.t0 = t0
 
     def get_pulse_array(self):
-        t_array_A_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.A_list))
-        t_array_B_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.B_list))
+        if len(self.uneven_tlist) > 0:  # currently only handles one set of uneven times
+            t_array_A_list = np.array(self.uneven_tlist) + self.t_array[0]
+            t_array_B_list = np.array(self.uneven_tlist) + self.t_array[0]
+        else:
+            t_array_A_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.A_list))
+            t_array_B_list = np.linspace(self.t_array[0], self.t_array[-1], num=len(self.B_list))
+
+        # print(self.t_array[0],self.t_array[-1])
+        # print(t_array_A_list)
+        # print(self.A_list)
+        # print(len(t_array_A_list), len(self.A_list))
 
         tck_A = interpolate.splrep(t_array_A_list, self.A_list)
         tck_B = interpolate.splrep(t_array_B_list, self.B_list)
-        
-        # print (self.t_array[0],self.t_array[-1])
 
         pulse_array_x = interpolate.splev(self.t_array, tck_A, der=0)
         pulse_array_y = interpolate.splev(self.t_array, tck_B, der=0)
 
         # print ("freq = ", self.freq)
 
-        pulse_array = (pulse_array_x * np.cos(2 * np.pi * self.freq * self.t_array + self.phase) + \
-                      - pulse_array_y * np.sin(2 * np.pi * self.freq * self.t_array + self.phase)) * self.scale
+        pulse_array = (pulse_array_x * np.cos(2 * np.pi * self.freq * (self.t_array - self.t0) + self.phase) + \
+                      - pulse_array_y * np.sin(2 * np.pi * self.freq * (self.t_array - self.t0) + self.phase)) * self.scale
 
         return pulse_array
 
@@ -911,6 +927,57 @@ class ARB_freq_a(Pulse):
 
     def get_length(self):
         return self.len
+
+
+class Square_Vary_Freq(Pulse):
+    def __init__(self, max_amp, flat_len, ramp_sigma_len, cutoff_sigma, start_freq, end_freq, phase, phase_t0 = 0,
+                 fix_phase=True, dc_offset = 0, dt=None, plot=False):
+        self.max_amp = max_amp
+        self.flat_len = flat_len
+        self.ramp_sigma_len = ramp_sigma_len
+        self.cutoff_sigma = cutoff_sigma
+        self.start_freq = start_freq
+        self.end_freq = end_freq
+        self.phase = phase
+        self.phase_t0 = phase_t0
+        self.dt = dt
+        self.plot = plot
+        self.fix_phase = fix_phase
+        self.dc_offset = dc_offset
+
+        # self.t0 = 0
+
+    def get_pulse_array(self):
+        t_flat_start = self.t0 + self.cutoff_sigma * self.ramp_sigma_len
+        t_flat_end = self.t0 + self.cutoff_sigma * self.ramp_sigma_len + self.flat_len
+
+        t_end = self.t0 + 2 * self.cutoff_sigma * self.ramp_sigma_len + self.flat_len
+
+        pulse_array = self.max_amp * (
+                (self.t_array >= t_flat_start) * (
+                self.t_array < t_flat_end) +  # Normal square pulse
+                (self.t_array >= self.t0) * (self.t_array < t_flat_start) * np.exp(
+            -1.0 * (self.t_array - (t_flat_start)) ** 2 / (
+                    2 * self.ramp_sigma_len ** 2)) +  # leading gaussian edge
+                (self.t_array >= t_flat_end) * (
+                        self.t_array <= t_end) * np.exp(
+            -1.0 * (self.t_array - (t_flat_end)) ** 2 / (
+                    2 * self.ramp_sigma_len ** 2))  # trailing edge
+        )
+
+        if not self.fix_phase:
+            pulse_array = pulse_array * np.cos(2 * np.pi * (self.start_freq + (self.end_freq - self.start_freq) *
+                                                            (self.t_array - self.t_array[0]) / self.flat_len) *
+                                               (self.t_array - self.phase_t0) + self.phase)
+        else:
+            pulse_array = pulse_array * np.cos(2 * np.pi * ((self.start_freq + (self.end_freq - self.start_freq) *
+                                                             (self.t_array - self.t0) / (np.max(self.t_array) - np.min(self.t_array)))
+                                                            + self.dc_offset) * (self.t_array - self.t_array[0]) + self.phase -
+                                               2 * np.pi * (self.dc_offset)*(self.t_array - self.t_array[0]))
+        return pulse_array
+
+    def get_length(self):
+        return self.flat_len + 2 * self.cutoff_sigma * self.ramp_sigma_len
 
 
 class Ones(Pulse):

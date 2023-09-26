@@ -267,8 +267,11 @@ class Experiment:
         f.attrs['hardware_cfg'] = json.dumps(self.hardware_cfg)
         f.close()
 
-    def generate_datafile(self,path,name,seq_data_file = None):
+    def generate_datafile(self,path,name,seq_data_file = None, data_file_path=None,
+                          return_filename=False):
         # seq_data_file = None
+        if data_file_path:
+            path = data_file_path
         if seq_data_file == None:
             data_path = os.path.join(path, 'data/')
             self.data_file = os.path.join(data_path, get_next_filename(data_path, name, suffix='.h5'))
@@ -279,6 +282,8 @@ class Experiment:
             self.save_cfg_info(f)
         print('\n')
         print(self.data_file)
+        if return_filename:
+            return self.data_file
 
     def get_singleshot_data_alazar(self, sequence_length, acquisition_num, data_file, seq_data_file):
         avgPerAcquisition = int(min(acquisition_num, 100))
@@ -462,9 +467,12 @@ class Experiment:
 
         return self.data_file
 
-    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False):
+    def run_experiment_pxi(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,
+                           check_sync = False,save_errs = False, data_file_path=None,
+                           return_filename=False):
         self.expt_cfg = self.experiment_cfg[name]
-        self.generate_datafile(path,name,seq_data_file=seq_data_file)
+        filename = self.generate_datafile(path,name,seq_data_file=seq_data_file, data_file_path=data_file_path,
+                               return_filename=return_filename)
         self.set_trigger()
         self.initiate_readout_LOs()
         self.initiate_jpa_pump_LOs()
@@ -494,6 +502,8 @@ class Experiment:
         # old way of turning off switch after entire experiment
         # switch_trig.write(False)
         self.awg_stop(name)
+        if return_filename:
+            return self.I, self.Q, filename
         return self.I,self.Q
     
     def run_experiment_pxi_repeated(self, sequences, path, name, seq_data_file=None,update_awg=False,expt_num = 0,check_sync = False,save_errs = False, no_load = False, clear_pxi = False):

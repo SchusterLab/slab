@@ -20,12 +20,13 @@ import pickle
 
 class SequentialExperiment:
     def __init__(self, quantum_device_cfg, experiment_cfg, hardware_cfg, experiment_name, path, analyze = False,
-                 show=True, P = 'Q', return_val=False, fock_number=-1):
+                 show=True, P = 'Q', return_val=False, fock_number=-1, hvi=False):
 
         self.Is = []
         self.Qs = []
         self.show = show
         self.fock_number = fock_number
+        self.hvi = hvi
 
         eval('self.' + experiment_name)(quantum_device_cfg, experiment_cfg, hardware_cfg,path)
         if analyze:
@@ -2792,7 +2793,7 @@ class SequentialExperiment:
             ps = PulseSequences(quantum_device_cfg, experiment_cfg, hardware_cfg, plot_visdom=True)
             sequences = ps.get_experiment_sequences(experiment_name)
             exp = Experiment(quantum_device_cfg, experiment_cfg, hardware_cfg, sequences, experiment_name)
-            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file)
+            I, Q = exp.run_experiment_pxi(sequences, path, experiment_name, seq_data_file=seq_data_file, hvi=self.hvi)
             self.Is.append(I)
             self.Qs.append(Q)
             print("$$$$$$$$$$$$$&&&&&&&&&&&& \n Current iteration: %d"%(temp))
