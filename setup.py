@@ -20,4 +20,5 @@ setup(author=AUTHOR,
       install_requires=DEPENDENCIES,
       name=NAME,
       version=VERSION,
+      py_modules=[],
 )

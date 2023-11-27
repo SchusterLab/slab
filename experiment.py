@@ -7,8 +7,9 @@ import json
 import yaml
 import numpy as np
 import traceback
+from ping3 import ping
 
-from slab import SlabFile, InstrumentManager, get_next_filename, AttrDict, LocalInstruments
+from slab import SlabFile, InstrumentManager, get_next_filename, AttrDict
 
 class NpEncoder(json.JSONEncoder):
     """ Ensure json dump can handle np arrays """
@@ -24,7 +25,7 @@ class NpEncoder(json.JSONEncoder):
 class Experiment:
     """Base class for all experiments"""
 
-    def __init__(self, path='', prefix='data', config_file=None, liveplot_enabled=False, **kwargs):
+    def __init__(self, path='', ns_address='10.108.30.56', prefix='data', config_file=None, liveplot_enabled=False, **kwargs):
         """ Initializes experiment class
             @param path - directory where data will be stored
             @param prefix - prefix to use when creating data files
@@ -45,7 +46,10 @@ class Experiment:
             self.config_file = os.path.join(path, config_file)
         else:
             self.config_file = None
-        self.im = InstrumentManager()
+
+        response_time = ping(ns_address, timeout=1)
+        assert response_time is not None, f"ns_address={ns_address} is unreachable. Please specify a new nameserver address in the Experiment class instantiation"
+        self.im = InstrumentManager(ns_address=ns_address)
         # if liveplot_enabled:
         #     self.plotter = LivePlotClient()
         # self.dataserver= dataserver_client()

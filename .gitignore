@@ -1,12 +1,14 @@
 # editor files
 *.idea
 *.vscode
+*.history*
 *~
 *#
 
 # python
 *.pyc
 __pycache__
+*slab.egg-info*
 
 # julia
 Manifest.toml

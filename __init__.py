@@ -10,5 +10,5 @@ from .dsfit import argselectdomain, selectdomain, zipsort, fitgeneral, fitexp, f
     fithangertilt, fitlor, fitdecaysin, fithanger_new, hangerfunc_new, fit_SNT
 from .dataanalysis import *
 from .matplotlib_text_wrapper import *
-from .experiment import Experiment
+from .experiment import Experiment, NpEncoder
 from . import kfit

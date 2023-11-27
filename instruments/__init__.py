@@ -1,30 +1,40 @@
 
 from .instrumentmanager import InstrumentManager
-from .instrumenttypes import Instrument, VisaInstrument, TelnetInstrument, SocketInstrument, SerialInstrument, \
-    WebInstrument
-from .localinstruments import LocalInstruments
+from .instrumenttypes import Instrument
+try: from .qick_instrument import QickInstrument
+except: print("Could not import QickInstrument (will only work if running on rfsoc). If running on rfsoc, try install/update qick package")
 
+from .localinstruments import LocalInstruments
+from .instrumenttypes import VisaInstrument, TelnetInstrument, SocketInstrument, SerialInstrument, WebInstrument
 try: from .InstrumentManagerWindow import InstrumentManagerWindow
 except: print("Could not load InstrumentManagerWindow")
-
-from .spectrumanalyzer import E4440
-from .nwa import E5071
-from .PNAX import N5242A
-from .RhodeSchwarz import RhodeSchwarz
-from .rfgenerators import N5183B,E8257D,BNC845
-from .cryostat import Triton_old
-from .awg import *
-from .spec_analyzer.spectrum_analyzer import *
-from .ipsmagnet import *
-from .TestInstruments import EchoInstrument,RandomInstrument
-from .TDS7104 import TekTDS7104
-from .RCA18 import MCRCA18
-from .multimeter import Keithley199
+try: from .spectrumanalyzer import E4440
+except: print("Could not load E4440")
+try: from .nwa import E5071
+except: print("Could not load E5071")
+try: from .PNAX import N5242A
+except: print("Could not load N5242A")
+try: from .RhodeSchwarz import RhodeSchwarz
+except: print("Could not load RhodeSchwarz")
+try: from .rfgenerators import N5183B,E8257D,BNC845
+except: print("Could not load N5183B,E8257D,BNC845")
+try: from .cryostat import Triton_old
+except: print("Could not load Triton_old")
+try: from .awg import *
+except Exception as e: print(e)
+try: from .spec_analyzer.spectrum_analyzer import *
+except Exception as e: print(e)
+try: from .ipsmagnet import *
+except Exception as e: print(e)
+try: from .TestInstruments import EchoInstrument,RandomInstrument
+except Exception as e: print(e)
+try: from .TDS7104 import TekTDS7104
+except: print("Could not load TekTDS7104")
+try: from .RCA18 import MCRCA18
+except: print("Could not load MCRCA18")
+try: from .multimeter import Keithley199
+except: print("Could not load Keithley199")
 from .minicircuits_rfswitch import MiniCircuitsSwitch
-
-try: from .qick_instrument import QickInstrument
-except: print("Could not import QickInstrument, try install qick package")
-
 try: from .AD5780PARDAC.DACInterface import AD5780_serial
 except: print("Could not load AD5780 dac ")
 try: from.SignalCore import SignalCore

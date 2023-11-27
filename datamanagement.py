@@ -207,7 +207,8 @@ class h5File(h5py.File):
             self.create_dataset(key, shape=data.shape,
                                 maxshape=tuple([None] * len(data.shape)),
                                 dtype=str(data.dtype))
-        except RuntimeError:
+        # except RuntimeError:
+        except:
             del self[key]
             self.create_dataset(key, shape=data.shape,
                                 maxshape=tuple([None] * len(data.shape)),
@@ -381,7 +382,8 @@ class SlabFile(h5py.File):
             f.create_dataset(key, shape=data.shape,
                              maxshape=tuple([None] * len(data.shape)),
                              dtype=str(data.dtype))
-        except RuntimeError:
+        # except RuntimeError:
+        except:
             del f[key]
             f.create_dataset(key, shape=data.shape,
                              maxshape=tuple([None] * len(data.shape)),
