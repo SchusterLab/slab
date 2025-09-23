@@ -87,7 +87,7 @@ class Experiment:
                 json.dump(self.cfg, fid, cls=NpEncoder), 
             self.datafile().attrs['config'] = json.dumps(self.cfg, cls=NpEncoder)
 
-    def datafile(self, group=None, remote=False, data_file = None, swmr=False):
+    def datafile(self, group=None, remote=False, data_file = None, swmr=False, cfg=True):
         """returns a SlabFile instance
            proxy functionality not implemented yet"""
         if data_file ==None:
@@ -101,7 +101,7 @@ class Experiment:
 
         if group is not None:
             f = f.require_group(group)
-        if 'config' not in f.attrs:
+        if 'config' not in f.attrs and cfg:
             try:
                 f.attrs['config'] = json.dumps(self.cfg, cls=NpEncoder)
             except TypeError as err:

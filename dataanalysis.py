@@ -155,6 +155,18 @@ def next_file_index(datapath,prefix=''):
         ii=0
     return ii
 
+def next_file_index_v2(datapath,suffix='.h5'):
+    """Searches directories for files of the form *_prefix* and returns next number
+        in the series"""
+
+    dirlist=glob.glob(os.path.join(datapath,'*'+suffix))
+    dirlist.sort()
+    try:
+        ii=int(os.path.split(dirlist[-1])[-1].split('_')[0])+1
+    except:
+        ii=0
+    return ii
+
 def current_file_index(datapath,prefix=''):
     """Searches directories for files of the form *_prefix* and returns current number
         in the series"""
@@ -192,6 +204,10 @@ def current_path_index(expt_path, prefix=''):
 
 def get_next_filename(datapath,prefix,suffix=''):
     ii = next_file_index(datapath, prefix)
+    return "%05d_" % (ii) + prefix +suffix
+
+def get_next_filename_v2(datapath,prefix,suffix=''):
+    ii = next_file_index_v2(datapath, suffix)
     return "%05d_" % (ii) + prefix +suffix
 
 def get_current_filename(datapath,prefix,suffix=''):

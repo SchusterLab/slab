@@ -4,7 +4,7 @@ try:
 except Exception as e:
     print(e)
     print("Warning VISA library import failed")
-import telnetlib
+# import telnetlib
 import socket
 import time
 
@@ -125,28 +125,28 @@ class VisaInstrument(Instrument):
     def close(self):
         if self.enabled: self.instrument.close()
 
-class TelnetInstrument(Instrument):
-    def __init__(self, name, address='', enabled=True, timeout=10):
-        Instrument.__init__(self, name, address, enabled, timeout, **kwargs)
-        self.protocol = 'Telnet'
-        if len(address.split(':')) > 1:
-            self.port = int(address.split(':')[1])
-        if self.enabled:
-            self.tn = telnetlib.Telnet(address.split(':')[0], self.port)
+# class TelnetInstrument(Instrument):
+    # def __init__(self, name, address='', enabled=True, timeout=10):
+        # Instrument.__init__(self, name, address, enabled, timeout, **kwargs)
+        # self.protocol = 'Telnet'
+        # if len(address.split(':')) > 1:
+            # self.port = int(address.split(':')[1])
+        # if self.enabled:
+            # self.tn = telnetlib.Telnet(address.split(':')[0], self.port)
 
-    def write(self, s):
-        if self.enabled: self.tn.write(self.encode_s(s))
+    # def write(self, s):
+        # if self.enabled: self.tn.write(self.encode_s(s))
 
-    def read(self, timeout=None):
-        # todo: implement timeout, reference SocketInstrument.read
-        if self.enabled: return self.tn.read_some().decode()
+    # def read(self, timeout=None):
+        # # todo: implement timeout, reference SocketInstrument.read
+        # if self.enabled: return self.tn.read_some().decode()
 
-    def readb(self, timeout=None):
-        # todo: implement timeout, reference SocketInstrument.read
-        if self.enabled: return self.tn.read_some()
+    # def readb(self, timeout=None):
+        # # todo: implement timeout, reference SocketInstrument.read
+        # if self.enabled: return self.tn.read_some()
 
-    def close(self):
-        if self.enabled: self.tn.close()
+    # def close(self):
+        # if self.enabled: self.tn.close()
 
 
 import select
